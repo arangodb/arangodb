@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FlushFeature.h"
@@ -32,7 +30,6 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
@@ -46,13 +43,7 @@ namespace arangodb {
 
 FlushFeature::FlushFeature(ApplicationServer& server,
                            metrics::IRegistry& metricsRegistry)
-    : FlushFeature(server, metricsRegistry, FlushFeatureOptions{}) {}
-
-FlushFeature::FlushFeature(ApplicationServer& server,
-                           metrics::IRegistry& metricsRegistry,
-                           FlushFeatureOptions options)
     : ApplicationFeature{server, *this},
-      _options(std::move(options)),
       _stopped(false),
       _metricsFlushSubscriptions(
           metricsRegistry.add(arangodb_flush_subscriptions{})) {
@@ -61,11 +52,6 @@ FlushFeature::FlushFeature(ApplicationServer& server,
 }
 
 FlushFeature::~FlushFeature() = default;
-
-void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  FlushOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 void FlushFeature::registerFlushSubscription(
     std::shared_ptr<FlushSubscription> const& subscription) {
@@ -88,7 +74,7 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   auto const initialTick = engine.currentTick();
 
   size_t stale = 0;

@@ -18,7 +18,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
 // //////////////////////////////////////////////////////////////////////////////
 
 "use strict";
@@ -611,6 +610,64 @@ function optimizerRuleMdi2dIndexTestSuite() {
   };
 }
 
+// Both MDI indexes share a column family. "second" is created after "first",
+// so it has the higher object ID and its entries sort directly after the end
+// of "first". Each test writes in a transaction before it queries, so the
+// query reads through the transaction's WriteBatchWithIndex iterator.
+function mdiIndexInWriteTransactionTestSuite() {
+  const colName = "UnitTestMdiIndexTrxCollection";
+  let col;
+
+  return {
+    setUp: function () {
+      col = db._create(colName);
+      col.insert({ _key: "z", f1: 1, f3: 2 });
+      col.ensureIndex({ type: "mdi", name: "first", fields: ["f1", "f3"],
+                        fieldValueTypes: "double", sparse: true });
+      col.ensureIndex({ type: "mdi", name: "second", fields: ["f3", "f1"],
+                        fieldValueTypes: "double", sparse: true });
+    },
+
+    tearDown: function () {
+      db._drop(colName);
+    },
+
+    // The query uses "first" with the box f3 >= 1. The entry of "second" for
+    // "z", read with the fields of "first", is (2, 1) and lies inside that
+    // box, so the query must stop at the end of "first" to return "z" once.
+    testEntriesOfOtherMdiIndexAreNotReturned: function () {
+      const query = `FOR n IN ${colName} FILTER n.f3 >= 1 RETURN n._key`;
+      const trx = db._createTransaction({ collections: { write: [colName] } });
+      try {
+        trx.collection(colName).update("z", { f1: 1 });
+        assertEqual(["z"], trx.query(query).toArray());
+      } finally {
+        trx.abort();
+      }
+      assertEqual(["z"], db._query(query).toArray());
+    },
+
+    // The query uses "first" with the box f3 >= 1.5, which only "z" matches.
+    // The entries of "second", read with the fields of "first", are (0, 0),
+    // (1, 1) and (2, 1), all outside the box. After them the iterator
+    // computes the next z-value and seeks, and that seek must also stop at
+    // the end of "first". The update puts the entries of all three documents
+    // into the transaction; its value does not matter.
+    testQueryEndsAtIndexBoundary: function () {
+      col.insert([{ _key: "x", f1: 0, f3: 0 }, { _key: "y", f1: 1, f3: 1 }]);
+      const query = `FOR n IN ${colName} FILTER n.f3 >= 1.5 RETURN n._key`;
+      const trx = db._createTransaction({ collections: { write: [colName] } });
+      try {
+        trx.query(`FOR n IN ${colName} UPDATE n WITH { u: 1 } IN ${colName}`);
+        assertEqual(["z"], trx.query(query).toArray());
+      } finally {
+        trx.abort();
+      }
+    },
+  };
+}
+
 jsunity.run(optimizerRuleMdi2dIndexTestSuite);
+jsunity.run(mdiIndexInWriteTransactionTestSuite);
 
 return jsunity.done();

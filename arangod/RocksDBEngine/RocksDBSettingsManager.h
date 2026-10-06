@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
-/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

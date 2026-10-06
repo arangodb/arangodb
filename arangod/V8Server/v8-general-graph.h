@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,9 +28,12 @@
 
 #include <v8.h>
 
-struct TRI_vocbase_t;
 struct TRI_v8_global_t;
 
+namespace arangodb {
+struct Database;
+}
+
 void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
-                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                            arangodb::Database* vocbase, TRI_v8_global_t* v8g,
                             v8::Isolate* isolate);

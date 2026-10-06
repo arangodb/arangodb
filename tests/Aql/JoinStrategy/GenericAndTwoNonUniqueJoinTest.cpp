@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <functional>

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminDatabaseHandler.h"
@@ -37,6 +36,7 @@ RestAdminDatabaseHandler::RestAdminDatabaseHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/database/target-version (prefix)
 RestStatus RestAdminDatabaseHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

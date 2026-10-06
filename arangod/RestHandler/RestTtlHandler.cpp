@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTtlHandler.h"
@@ -28,6 +27,7 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/TtlFeature.h"
 #include "VocBase/Methods/Ttl.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 
@@ -40,6 +40,7 @@ RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/ttl (prefix)
 RestStatus RestTtlHandler::execute() {
   if (!_vocbase.isSystem()) {
     // ttl operations only allowed in _system database

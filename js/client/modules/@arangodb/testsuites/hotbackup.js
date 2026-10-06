@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
@@ -53,7 +50,6 @@ function hotBackup (options) {
   const encryptionKey = '01234567890123456789012345678901';
   let c = getClusterStrings(options);
   console.warn(options);
-  options.extraArgs['vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
   }
@@ -103,6 +99,7 @@ function hotBackup (options) {
   try {
     if (!PTK.runSetupSuite(setupFile) ||
         !PTK.runRtaMakedata() ||
+        !PTK.runRtaWaitdata() ||
         !PTK.dumpFrom('UnitTestsDumpSrc') ||
         !PTK.restartInstance() ||
         !PTK.restoreTo('UnitTestsDumpDst') ||
@@ -116,6 +113,7 @@ function hotBackup (options) {
         !PTK.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
         !PTK.isAlive() ||
         !PTK.restoreHotBackup() ||
+        !PTK.instanceManager.waitForAllShardsInSync() ||
         !PTK.runTests(dumpCheck, 'UnitTestsDumpDst')||
         !PTK.runRtaCheckData() ||
         !PTK.tearDown(tearDownFile)) {
@@ -159,7 +157,6 @@ function hotBackup (options) {
 
 function hotBackup_load_backend (options, which, args) {
   const encryptionKey = '01234567890123456789012345678901';
-  options.extraArgs['vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
   }
@@ -192,11 +189,17 @@ function hotBackup_load_backend (options, which, args) {
       try {
         return PTK.runTestFn(testFn, args, 'postRestore');
       } catch (ex) {
-        if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
+        if (ex.hasOwnProperty('errorNum') && ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
+          print('.');
           sleep(2);
-          continue;
+        } else {
+          let errorNum = null;
+          if (ex.hasOwnProperty('errorNum')) {
+            errorNum = ex.errorNum;
+          }
+          print(`${Date()} Aborting retryWaitRestore because of ${errorNum} ${ex.message} - ${ex.stack}`);
+          throw ex;
         }
-        throw ex;
       }
     }
   }

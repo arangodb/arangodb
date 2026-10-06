@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,6 +28,7 @@
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -47,13 +47,13 @@ class RocksDBEngine;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 velocypack::Slice info);
+                                 LocalStorageProperties const& storage);
   virtual ~RocksDBMetaCollection();
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override;
 
-  uint64_t objectId() const noexcept { return _objectId; }
+  uint64_t objectId() const noexcept override { return _objectId; }
 
   RocksDBMetadata& meta() { return _meta; }
   RocksDBMetadata const& meta() const noexcept { return _meta; }

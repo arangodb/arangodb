@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -189,6 +187,7 @@ class FollowerInfo {
   /// @brief inject the information about "servers" and "failoverCandidates".
   /// must be called with _dataLock locked.
   void injectFollowerInfoInternal(velocypack::Builder& builder) const;
+  bool checkWriteConcernCondition() const noexcept;
 
   bool updateFailoverCandidates();
 

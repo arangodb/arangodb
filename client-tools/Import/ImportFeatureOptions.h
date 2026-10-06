@@ -29,6 +29,8 @@
 namespace arangodb {
 
 struct ImportFeatureOptions {
+  ImportFeatureOptions();
+
   std::string filename;
   bool useBackslash = false;
   bool convert = true;

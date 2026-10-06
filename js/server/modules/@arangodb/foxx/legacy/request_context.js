@@ -20,9 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lucas Dohmen
-// / @author Michael Hackstein
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const SwaggerDocs = require('@arangodb/foxx/legacy/swaggerDocs').Docs;

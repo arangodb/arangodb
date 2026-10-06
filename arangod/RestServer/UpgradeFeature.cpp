@@ -18,18 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UpgradeFeature.h"
 
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Auth/UserManager.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/SupervisorFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -42,8 +39,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/UpgradeOptionsProvider.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
@@ -74,95 +69,39 @@ UpgradeFeature::UpgradeFeature(
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<AqlFeaturePhase>();
-}
-
-void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
-  _tasks.push_back(std::move(task));
-}
-
-void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  UpgradeOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-static int upgradeRestart() {
-  unsetenv(StaticStrings::UpgradeEnvName.c_str());
-  return 0;
-}
-
-void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // The following environment variable is another way to run a database
-  // upgrade. If the environment variable is set, the system does a database
-  // upgrade and then restarts itself without the environment variable.
-  // This is used in hotbackup if a restore to a backup happens which is from
-  // an older database version. The restore process sets the environment
-  // variable at runtime and then does a restore. After the restart (with
-  // the old data) the database upgrade is run and another restart is
-  // happening afterwards with the environment variable being cleared.
-  char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
-  if (upgrade != nullptr) {
-    _options.upgrade = true;
-    restartAction = new std::function<int()>();
-    *restartAction = upgradeRestart;
-    LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
-        << "Detected environment variable " << StaticStrings::UpgradeEnvName
-        << " with value " << upgrade
-        << " will perform database auto-upgrade and immediately restart.";
-  }
-  if (_options.upgrade && !_options.upgradeCheck) {
-    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both '--database.auto-upgrade true' and "
-           "'--database.upgrade-check false'";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
-  }
-
-  if (_options.upgradeFullCompaction && !_options.upgrade) {
-    LOG_TOPIC("47699", FATAL, arangodb::Logger::ENGINES)
-        << "cannot specify '--database.auto-upgrade-full-compaction true' "
-           "without '--database.auto-upgrade true'";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
-  }
 
   if (!_options.upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
       << "executing upgrade procedure: disabling server features";
 
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
-  if (ServerState::instance()->isCoordinator()) {
-    auto disableDaemonAndSupervisor = [&]() {
-#ifdef ARANGODB_HAVE_FORK
-      server().forceDisableFeatures<DaemonFeature>();
-      server().forceDisableFeatures<SupervisorFeature>();
-#endif
-    };
-
-    std::array greetingsFeature{std::type_index(typeid(GreetingsFeature))};
-    server().forceDisableFeatures(greetingsFeature);
-    disableDaemonAndSupervisor();
-  } else {
-    server().forceDisableFeatures(_nonServerFeatures);
-    std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
-                                 std::type_index(typeid(HttpEndpointProvider))};
-    server().forceDisableFeatures(bootstrapFeatures);
+  if (!ServerState::instance()->isCoordinator()) {
+    server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
+    if (server.hasFeature<ActionFeature>()) {
+      server.forceDisableFeatures<ActionFeature>();
+    }
+    server.forceDisableFeatures<BootstrapFeature>();
   }
+  // a coordinator has nothing left to disable here: already unregistered
 
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
-
-  DatabaseFeature& database = server().getFeature<DatabaseFeature>();
+  DatabaseFeature& database = server.getFeature<DatabaseFeature>();
   database.enableUpgrade();
 
 #ifdef USE_ENTERPRISE
-  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
-  hotBackupFeature.forceDisable();
+  server.getFeature<HotBackupFeature>().forceDisable();
 #endif
+}
+
+void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
+  _tasks.push_back(std::move(task));
 }
 
 void UpgradeFeature::prepare() {
@@ -355,7 +294,7 @@ Result UpgradeFeature::performFullCompaction() {
   LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
 
   // Perform full compaction with both changeLevel and compactBottomMostLevel
   // enabled This matches the behavior of the /_admin/compact API with

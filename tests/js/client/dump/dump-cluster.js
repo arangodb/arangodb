@@ -20,9 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 
@@ -57,17 +54,10 @@ jsunity.run(function dump_cluster_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
       "testLatestId",
       "testAnalyzers",
       // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptyEnterpriseGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
       "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",

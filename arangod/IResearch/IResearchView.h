@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -217,7 +215,7 @@ class IResearchView final : public LogicalView {
   std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
-  std::atomic<bool> _inRecovery;
+  std::atomic<bool> _isReady;
 
   IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice info,
                 IResearchViewMeta&& meta, bool isUserRequest);

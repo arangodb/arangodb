@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author 
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 // TODO add some test which don't use number values!
 

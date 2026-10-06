@@ -12,7 +12,7 @@ import { GeneralGraphCreateValues } from "./CreateGraph.types";
 const useCollectionToFromAndToMap = () => {
   const { graphs } = useFetchGraphs();
   const collectionsToFromAndToMap = useMemo(() => {
-    let collectionsToFromAndToMap = {} as {
+    const collectionsToFromAndToMap = {} as {
       [key: string]: {
         from: string[];
         to: string[];

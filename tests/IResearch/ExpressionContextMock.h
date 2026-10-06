@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,8 +28,6 @@
 #include "Transaction/Methods.h"
 
 #include <unordered_map>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {

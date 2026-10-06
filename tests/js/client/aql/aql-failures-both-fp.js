@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Michael Hackstein
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");

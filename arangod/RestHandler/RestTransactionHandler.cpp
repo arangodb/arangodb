@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTransactionHandler.h"
@@ -106,6 +105,7 @@ RequestLane RestTransactionHandler::lane() const {
   return RequestLane::CLIENT_V8;
 }
 
+// Mounted at /_api/transaction (prefix)
 auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
@@ -114,7 +114,14 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_await executeBegin();
         co_return;
       } else if (_request->suffixes().empty()) {
-        executeJSTransaction();
+        if (_request->requestedApiVersion() == 0) {
+          executeJSTransaction();
+        } else {
+          generateError(
+              rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+              "JavaScript transactions are no longer supported. Use streaming "
+              "transactions (POST /_api/transaction/begin)");
+        }
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
@@ -176,9 +183,7 @@ void RestTransactionHandler::executeGetState() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // unofficial API to retrieve the transactions history. NOT A PUBLIC API!
   if (_request->suffixes()[0] == "history") {
-    auto auth = AuthenticationFeature::instance();
-    if ((auth == nullptr || !auth->isActive()) ||
-        (auth->isActive() && ExecContext::current().isSuperuser())) {
+    if (ExecContext::current().isSuperuserOrDisabled()) {
       velocypack::Builder builder;
       mgr->history().toVelocyPack(builder);
       generateResult(rest::ResponseCode::OK, builder.slice());
@@ -337,9 +342,7 @@ futures::Future<futures::Unit> RestTransactionHandler::executeAbort() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // unofficial API to clear the transactions history. NOT A PUBLIC API!
   } else if (_request->suffixes()[0] == "history") {
-    auto auth = AuthenticationFeature::instance();
-    if ((auth == nullptr || !auth->isActive()) ||
-        (auth->isActive() && ExecContext::current().isSuperuser())) {
+    if (ExecContext::current().isSuperuserOrDisabled()) {
       mgr->history().clear();
       generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     } else {
@@ -386,7 +389,8 @@ void RestTransactionHandler::generateTransactionResult(
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
 #ifdef USE_V8
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");
@@ -403,6 +407,7 @@ void RestTransactionHandler::executeJSTransaction() {
   std::string portType = _request->connectionInfo().portType();
 
   bool allowUseDatabase =
+      server().hasFeature<ActionFeature>() &&
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);

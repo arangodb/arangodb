@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -939,6 +937,13 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexMatchesValues: function () {
       [ 
+        ["", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["a", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["abc", "^[a-z0-9_-]{3,16}$", false, ["abc"] ],
+        ["", "^$", false, [""] ],
+        ["", "a*", false, [""] ],
+        ["", "(a)?b", false, null ],
+        ["", "", false, [""] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
         ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
@@ -1334,6 +1339,29 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
         [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
         [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
+        [ '', '', 'foo', 'bar' ],
+        [ '', '', 'foo' ],
+        [ '', '', [ 'foo', 'baz' ], [ 'bar', 'qux' ] ],
+        [ '', '', { foo: 'bar' } ],
+        [ '', '', 'foo', 'bar', 1 ],
+        [ '_a_b_c_', 'abc', '', '_' ],
+        [ '_a_bc', 'abc', '', '_', 2 ],
+        [ '_a_b_c_', 'abc', [ '' ], [ '_' ] ],
+        [ '_a_b_c_', 'abc', { '': '_' } ],
+        [ '_a_bc', 'abc', { '': '_' }, 2 ],
+        [ '-ö-ü-', 'öü', '', '-' ],
+        [ 'x', '', '', 'x' ],
+        [ '_a-_c_', 'abc', [ 'b', '' ], [ '-', '_' ] ],
+        [ '<1><2>', 'baaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1><2>', 'baaaa', [ 'aaa', 'ba' ], [ '<2>', '<1>' ] ],
+        [ '<1><2>', 'abbbb', [ 'ab', 'bbb' ], [ '<1>', '<2>' ] ],
+        [ '<1><2>', 'baaaa', { 'ba': '<1>', 'aaa': '<2>' } ],
+        [ '<1><2>a', 'baaaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1><2><2>', 'baaaaaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1>b', 'bab', [ 'ba', 'ab' ], [ '<1>', '<2>' ] ],
+        [ 'xx', 'aaaaaa', 'aaa', 'x' ],
+        [ '123', 123, [ ], 'x' ],
+        [ '', null, 'n', 'x', 0 ],
       ];
 
       values.forEach(function (value) {
@@ -1349,6 +1377,17 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testSubstituteDuplicateEmptyKeyUsesFirst: function () {
+      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '_', '': '-' })`));
+    },
+
+    testSubstituteComputedValueUnchanged: function () {
+      const value = '0123456789abcdefghijklmnopqrstuvwxyz';
+      const expected = [ value + '1', value + '2' ];
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), 'x', 'y', 0)`));
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), [ ], 'y')`));
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////

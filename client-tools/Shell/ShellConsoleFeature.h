@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,10 +38,10 @@ class ShellConsoleFeature final
                       ShellConsoleFeatureOptions options);
   explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 
+  bool shouldConnect() const { return _options.connect; }
   bool quiet() const { return _options.quiet; }
   void setQuiet(bool value) { _options.quiet = value; }
   bool colors() const { return _options.colors; }

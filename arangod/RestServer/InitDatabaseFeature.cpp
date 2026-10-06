@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitDatabaseFeature.h"
@@ -28,6 +27,8 @@
 #include <iostream>
 #include <thread>
 
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
@@ -65,26 +66,24 @@ InitDatabaseFeature::InitDatabaseFeature(
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-}
 
-void InitDatabaseFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  InitDatabaseOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void InitDatabaseFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ProgramOptions::ProcessingResult const& result = options->processingResult();
+  ProgramOptions::ProcessingResult const& result =
+      server.options()->processingResult();
   _seenPassword = result.touched("database.password");
 
   if (_options.initDatabase || _options.restoreAdmin) {
-    server().forceDisableFeatures(_nonServerFeatures);
+    server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
+    if (server.hasFeature<ActionFeature>()) {
+      server.forceDisableFeatures<ActionFeature>();
+    }
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures<EnvironmentFeature>();
+    server.disableFeatures<EnvironmentFeature>();
   }
 }
 

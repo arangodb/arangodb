@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -98,8 +97,8 @@ struct DocumentFactory {
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
 
-  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier,
-                     DocumentCoreParameters) -> std::unique_ptr<DocumentCore>;
+  auto constructCore(Database&, GlobalLogIdentifier, DocumentCoreParameters)
+      -> std::unique_ptr<DocumentCore>;
 
   auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 

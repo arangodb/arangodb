@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryInfoLoggerFeature.h"
@@ -26,13 +25,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/Query.h"
-#include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
@@ -43,13 +41,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -76,7 +75,9 @@ class QueryInfoLoggerThread final : public Thread {
       application_features::ApplicationServer& server,
       size_t maxBufferedQueries, uint64_t pushInterval,
       uint64_t cleanupInterval, double retentionTime)
-      : Thread("QueryInfoLogger"),
+      // every operation of this thread is already wrapped in its own
+      // ExecContextSuperuserScope where needed
+      : Thread("QueryInfoLogger", nullptr),
         _maxBufferedQueries(maxBufferedQueries),
         _pushInterval(pushInterval),
         _cleanupInterval(cleanupInterval),
@@ -497,17 +498,11 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(
       _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   startsAfter<application_features::CommunicationFeaturePhase>();
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }
-
-void QueryInfoLoggerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  QueryInfoLoggerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 void QueryInfoLoggerFeature::beginShutdown() {
   if (_loggerThread) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,9 +39,6 @@ class ReplicationTimeoutFeature
       ReplicationTimeoutFeatureOptions options);
   explicit ReplicationTimeoutFeature(
       application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   double timeoutFactor() const noexcept { return _options.timeoutFactor; }
   double timeoutPer4k() const noexcept { return _options.timeoutPer4k; }

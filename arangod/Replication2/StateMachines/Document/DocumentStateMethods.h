@@ -18,18 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
-
 #include <memory>
-
-struct TRI_vocbase_t;
+#include <vector>
 
 namespace arangodb {
 
+struct Database;
 struct ShardID;
 
 template<typename T>
@@ -58,7 +55,7 @@ struct SnapshotParams;
 struct DocumentStateMethods {
   virtual ~DocumentStateMethods() = default;
 
-  [[nodiscard]] static auto createInstance(TRI_vocbase_t& vocbase)
+  [[nodiscard]] static auto createInstance(Database& vocbase)
       -> std::shared_ptr<DocumentStateMethods>;
 
   [[nodiscard]] virtual auto processSnapshotRequest(

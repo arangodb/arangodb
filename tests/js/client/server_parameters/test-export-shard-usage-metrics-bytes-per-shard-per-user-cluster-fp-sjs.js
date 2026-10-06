@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2024, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jwtSecret = 'abc123';
@@ -40,7 +38,6 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const { instanceRole } = require("@arangodb/testutils/instance");
 const { deriveTestSuite } = require("@arangodb/test-helper");
-const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
 const dh = require("@arangodb/testutils/document-state-helper");
@@ -78,9 +75,9 @@ function BaseTestSuite(targetUser) {
 
   let getRawMetrics = function() {
     let lines = [];
-    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(server => {
-      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
-      assertEqual(200, res.status);
+    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(arangod => {
+      let res = arangod.getRawUsageMetric();
+      assertEqual(200, res.code);
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
     });
     return lines;
@@ -289,16 +286,16 @@ function BaseTestSuite(targetUser) {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((arangod) => {
+          let res = arangod.getRawMetric();
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
         assertEqual([], lines);
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((arangod) => {
+          let res = arangod.getRawUsageMetric();
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
         });
@@ -1563,10 +1560,10 @@ function TestUser1Suite() {
   const user = 'user1';
 
   const protocol = 'tcp';
-  let oldUser = arango.connectedUser();
 
   let suite = {
     setUpAll: function () {
+      IM.rememberConnection(true);
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1582,8 +1579,7 @@ function TestUser1Suite() {
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(IM.endpoint, '_system', oldUser, '');
-
+      IM.reconnectMe(true);
       db._useDatabase("_system");
       db._dropDatabase(name);
       users.remove(user);
@@ -1601,10 +1597,10 @@ function TestUser2Suite() {
   const user = 'user2';
 
   const protocol = 'tcp';
-  let oldUser = arango.connectedUser();
 
   let suite = {
     setUpAll: function () {
+      IM.rememberConnection(true);
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1620,7 +1616,7 @@ function TestUser2Suite() {
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(IM.endpoint, '_system', oldUser, '');
+      IM.reconnectMe(true);
 
       db._useDatabase("_system");
       db._dropDatabase(name);

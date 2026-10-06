@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 const _ = require('lodash');
 let jsunity = require('jsunity');
@@ -32,13 +31,7 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
-let { debugCanUseFailAt,
-      debugSetFailAt,
-      debugResetRaceControl,
-      debugRemoveFailAt,
-      debugClearFailAt,
-      versionHas
-    } = require('@arangodb/test-helper');
+let { versionHas } = require('@arangodb/test-helper');
 
 const isCov = versionHas('coverage');
 const {

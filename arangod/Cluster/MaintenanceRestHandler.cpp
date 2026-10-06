@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaintenanceRestHandler.h"
@@ -46,6 +44,7 @@ MaintenanceRestHandler::MaintenanceRestHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/actions (exact)
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

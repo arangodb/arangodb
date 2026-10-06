@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesFeature.h"
@@ -58,6 +57,7 @@
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/ReduceExtractionToProjection.h"
 #include "Aql/Optimizer/Rule/RemoveCollectVariables.h"
 #include "Aql/Optimizer/Rule/RemoveDataModificationOutVariables.h"
 #include "Aql/Optimizer/Rule/RemoveFiltersCoveredByIndex.h"
@@ -65,6 +65,7 @@
 #include "Aql/Optimizer/Rule/RemoveRedundantCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantOr.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantSorts.h"
+#include "Aql/Optimizer/Rule/RemoveSortRand.h"
 #include "Aql/Optimizer/Rule/RemoveTraversalPathVariable.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
@@ -90,7 +91,7 @@
 #include "Aql/Optimizer/Rule/UseIndexForSort.h"
 #include "Aql/Optimizer/Rule/UseIndexes.h"
 #include "Aql/Optimizer/Rule/UseVectorIndex.h"
-#include "Aql/OptimizerRulesOptionsProvider.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/Optimizer/Rule/ClusterLiftConstantsForDisjointGraphNodes.h"
 #include "Enterprise/Aql/Optimizer/Rule/ClusterOneShard.h"
@@ -110,8 +111,6 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
 
@@ -138,12 +137,6 @@ OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server,
 #endif
 
   startsAfter<AqlFeature>();
-}
-
-void OptimizerRulesFeature::collectOptions(
-    std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  OptimizerRulesOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -933,7 +926,7 @@ filtering by using `storedValues`. This rule is only enabled by the
 
   registerRule("materialize-for-enumerate-near", materializeForEnumerateNear,
                OptimizerRule::materializeForEnumerateNearRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden),
                R"(Choose how each EnumerateNearVectorNode emits its document.
 If the vector index storedValues cover the downstream projections, or if a
 pushed-down filter already loaded the document, the vector node produces the
@@ -955,9 +948,6 @@ to perform a real search repeatedly if the results can be cached in a bitset.)")
                R"(Fourth pass of removing all calculations whose result is not
 referenced in the query. This can be a consequence of applying other
 optimizations)");
-
-  // add the storage-engine specific rules
-  addStorageEngineRules();
 
   // Splice subqueries
   //
@@ -1008,6 +998,32 @@ the index.)");
 next batch while processing the current batch, allowing parts of the query to
 run in parallel. This is only possible for certain operations in a query.)");
 
+  // remove SORT RAND() LIMIT 1 if appropriate
+  registerRule(
+      "remove-sort-rand-limit-1", removeSortRandRule,
+      OptimizerRule::removeSortRandRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
+into `EnumerateCollectionNode`.
+
+The RocksDB storage engine doesn't allow to seek random documents efficiently.
+This optimization picks a pseudo-random document based on a limited number of
+seeks within the collection's key range, selecting a random start key in the
+key range, and then going a few steps before or after that.)");
+
+  // simplify an EnumerationCollectionNode that fetches an entire document to a
+  // projection of this document
+  registerRule(
+      "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
+      OptimizerRule::reduceExtractionToProjectionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Modify `EnumerationCollectionNode` and `IndexNode` that would have
+extracted entire documents to only return a projection of each document.
+
+Projections are limited to at most 5 different document attributes by default.
+The maximum number of projected attributes can optionally be adjusted by
+setting the `maxProjections` hint for an AQL `FOR` operation.)");
+
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
             [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
@@ -1018,11 +1034,6 @@ run in parallel. This is only possible for certain operations in a query.)");
   // make the rules database read-only from now on
   _fixed = true;
 #endif
-}
-
-void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addOptimizerRules(*this);
 }
 
 /// @brief translate a list of rule ids into rule names

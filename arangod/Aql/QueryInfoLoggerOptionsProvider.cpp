@@ -29,7 +29,7 @@ namespace arangodb::aql {
 
 using namespace arangodb::options;
 
-void QueryInfoLoggerOptionsProvider::declareOptions(
+void QueryInfoLoggerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, QueryInfoLoggerOptions& opts) {
   options
       ->addOption("--query.collection-logger-max-buffered-queries",
@@ -76,10 +76,9 @@ void QueryInfoLoggerOptionsProvider::declareOptions(
           makeDefaultFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
                            Flags::OnSingle))
       .setIntroducedIn(31202)
-      .setLongDescription(
-          R"(A value of `100` logs all queries, whereas a value of `1`
-approximately logs every 100th query and ignores the rest. The minimum value
-is `0` and means no logging.)");
+      .setLongDescription(R"(A value of `100` logs all queries, whereas a value
+of `1` approximately logs every 100th query and ignores the rest. The minimum
+value is `0` and means no logging.)");
 
   options
       ->addOption("--query.collection-logger-retention-time",

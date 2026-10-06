@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,7 +27,6 @@
 
 namespace arangodb {
 
-extern char const* LGPLNotice;
 void logLGPLNotice(void);
 
 class LoggerFeature;

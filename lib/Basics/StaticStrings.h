@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -275,7 +274,6 @@ class StaticStrings {
   static std::string const AllowUserKeys;
   static std::string const CacheEnabled;  // also used for indexes
   static std::string const ComputedValues;
-  static std::string const SupportsRBAC;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsLocalGraphNode;

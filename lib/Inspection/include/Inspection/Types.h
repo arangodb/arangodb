@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,6 +25,21 @@
 #include <string_view>
 
 namespace arangodb::inspection {
+
+/// Result of a field condition, i.e., of the predicate passed to
+/// `field(...).when(...)` or one of its direction specific variants.
+enum class FieldCondition {
+  /// The field takes part in the inspection as usual.
+  Process,
+  /// The field is skipped. When loading, an attribute of that name present in
+  /// the input is reported as an unexpected attribute; when saving, the field
+  /// is omitted from the output.
+  Reject,
+  /// The field is skipped. When loading, an attribute of that name present in
+  /// the input is silently ignored; when saving, the field is omitted from the
+  /// output.
+  Ignore,
+};
 
 namespace detail {
 template<class T>

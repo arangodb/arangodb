@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ProcessEnvironmentOptionsProvider::declareOptions(
+void ProcessEnvironmentOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     ProcessEnvironmentFeatureOptions& opts) {
   options->addSection("temp", "temporary files");

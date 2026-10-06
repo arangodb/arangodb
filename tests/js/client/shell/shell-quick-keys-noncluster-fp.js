@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -31,11 +30,6 @@ const arango = arangodb.arango;
 const db = arangodb.db;
 let IM = global.instanceManager;
 
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      reconnectRetry
-    } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 
 function quickKeysSuite() {

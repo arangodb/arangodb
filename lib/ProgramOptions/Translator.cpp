@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <unordered_map>
@@ -26,7 +25,7 @@
 #include "Translator.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/files.h"
 
 namespace {
@@ -89,7 +88,7 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
 
           if (vv.length() == 0) {
             if (k == "PID") {
-              vv = std::to_string(Thread::currentProcessId());
+              vv = std::to_string(BasicThread::currentProcessId());
             } else if (k == "TEMP_BASE_DIR") {
               vv = TRI_GetTempPath();
             }

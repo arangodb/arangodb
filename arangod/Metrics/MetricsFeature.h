@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,7 +35,6 @@
 #include "Metrics/MetricKey.h"
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #include <map>
 #include <shared_mutex>
@@ -44,7 +42,6 @@
 namespace arangodb {
 class QueryRegistryFeature;
 class StatisticsFeature;
-class DatabaseFeature;
 class ClusterFeature;
 }  // namespace arangodb
 namespace arangodb::metrics {
@@ -59,34 +56,30 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  MetricsFeature(
-      application_features::ApplicationServer& server,
-      LazyApplicationFeatureReference<QueryRegistryFeature>
-          lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
-      LazyApplicationFeatureReference<ClusterMetricsFeature>
-          lazyClusterMetricsFeatureRef,
-      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
-      MetricsOptions options);
   explicit MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
       LazyApplicationFeatureReference<StatisticsFeature>
           lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
 
+  MetricsFeature(
+      application_features::ApplicationServer& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<StatisticsFeature>
+          lazyStatisticsFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+      MetricsOptions options);
+
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
   UsageTrackingMode usageTrackingMode() const noexcept;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   // tries to add the metric. If the metric already exists, it is returned
   // instead.
@@ -145,14 +138,12 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   LazyApplicationFeatureReference<QueryRegistryFeature>
       _lazyQueryRegistryFeatureRef;
   LazyApplicationFeatureReference<StatisticsFeature> _lazyStatisticsFeatureRef;
-  LazyApplicationFeatureReference<DatabaseFeature> _lazyDatabaseFeatureRef;
   LazyApplicationFeatureReference<ClusterMetricsFeature>
       _lazyClusterMetricsFeatureRef;
   LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
 
   QueryRegistryFeature* _queryRegistryFeature = nullptr;
   StatisticsFeature* _statisticsFeature = nullptr;
-  DatabaseFeature* _databaseFeature = nullptr;
   ClusterMetricsFeature* _clusterMetricsFeature = nullptr;
   ClusterFeature* _clusterFeature = nullptr;
 

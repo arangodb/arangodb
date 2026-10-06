@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Parser.h"
@@ -39,7 +38,8 @@
 namespace arangodb::aql {
 
 /// @brief create the parser
-Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
+Parser::Parser(QueryContext& query, QueryWarnings* warnings, Ast& ast,
+               QueryString& qs)
     : _query(query),
       _ast(ast),
       _queryString(qs),
@@ -49,7 +49,8 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _lazyConditions(ast) {
+      _lazyConditions(ast),
+      _warnings(std::move(warnings)) {
   _stack.reserve(4);
 
   _queryStringStart = _queryString.data();
@@ -168,7 +169,7 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
       absl::StrCat(data, " near '", queryString().extractRegion(line, column),
                    "' at position ", line, ":", (column + 1));
 
-  _query.warnings().registerError(errorCode, errorMessage);
+  THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, errorMessage);
 }
 
 /// @brief register a warning
@@ -176,7 +177,7 @@ void Parser::registerWarning(ErrorCode errorCode, std::string_view data,
                              [[maybe_unused]] int line,
                              [[maybe_unused]] int column) {
   // ignore line and column for now
-  _query.warnings().registerWarning(errorCode, data);
+  _warnings->registerWarning(errorCode, data);
 }
 
 /// @brief push an AstNode array element on top of the stack

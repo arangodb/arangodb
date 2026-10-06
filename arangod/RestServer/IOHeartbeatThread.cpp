@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IOHeartbeatThread.h"
@@ -51,7 +50,8 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// production if IO is slow or not possible at all.
 IOHeartbeatThread::IOHeartbeatThread(metrics::IRegistry& metricsRegistry,
                                      DatabasePathFeature& databasePathFeature)
-    : Thread("IOHeartbeat"),
+    // disk probe only, no ExecContext required
+    : Thread("IOHeartbeat", nullptr),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsRegistry.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsRegistry.add(arangodb_ioheartbeat_failures_total{})),

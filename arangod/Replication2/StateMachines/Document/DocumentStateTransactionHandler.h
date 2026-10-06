@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -28,12 +27,14 @@
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/Guarded.h"
-#include "Transaction/Options.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <memory>
-#include <string>
 #include <unordered_map>
+
+namespace arangodb {
+struct Database;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -68,7 +69,7 @@ class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(
-      GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
+      GlobalLogIdentifier gid, Database* vocbase,
       std::shared_ptr<IDocumentStateHandlersFactory> factory,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler);
 
@@ -106,7 +107,7 @@ class DocumentStateTransactionHandler
 
  private:
   GlobalLogIdentifier const _gid;
-  TRI_vocbase_t* const _vocbase;
+  Database* const _vocbase;
   LoggerContext const _loggerContext;
   std::shared_ptr<IDocumentStateHandlersFactory> const _factory;
   std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;

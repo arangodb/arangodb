@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/snowball_stemmer.hpp"

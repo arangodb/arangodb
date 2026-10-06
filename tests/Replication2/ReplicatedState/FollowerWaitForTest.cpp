@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
@@ -27,10 +26,10 @@
 
 #include "Logger/LogMacros.h"
 #include "LogLevels.h"
+#include "Mocks/FakeRegistry.h"
 
 #include "Replication2/Mocks/FakeFollower.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
@@ -59,8 +58,10 @@ struct FollowerWaitForAppliedTest
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
+  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(_fakeRegistry,
+                                                                 "foo");
   std::shared_ptr<test::MockStatePersistorInterface> _persistor =
       std::make_shared<test::MockStatePersistorInterface>();
 };

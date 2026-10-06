@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel Larkin
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"

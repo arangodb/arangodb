@@ -31,9 +31,10 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct FileSystemOptionsProvider : OptionsProvider<FileSystemFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FileSystemFeatureOptions& options) override;
+struct FileSystemOptionsProvider
+    : OptionsProviderImpl<FileSystemOptionsProvider, FileSystemFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FileSystemFeatureOptions& options);
 };
 
 }  // namespace arangodb

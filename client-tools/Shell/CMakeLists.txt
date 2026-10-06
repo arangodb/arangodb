@@ -1,5 +1,6 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
+  ClientFeatureOptions.cpp
   ClientOptionsProvider.cpp
   ShellConsoleFeature.cpp
   ShellConsoleOptionsProvider.cpp
@@ -14,15 +15,16 @@ target_link_libraries(arango_shell
 )
 
 target_link_libraries(arango_shell v8_interface)
+target_link_libraries(arango_shell clienttools_utils)
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
 
+  ArangoshServer.cpp
   ShellFeature.cpp
   ShellOptionsProvider.cpp
-  TelemetricsHandler.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp

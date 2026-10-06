@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeaturePhase.h"
@@ -34,12 +33,6 @@ ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
                                                  std::type_index registration,
                                                  std::string_view name)
     : ApplicationFeature(server, registration, name) {}
-
-void ApplicationFeaturePhase::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
-  LOG_TOPIC("1463e", DEBUG, arangodb::Logger::STARTUP)
-      << "ValidateOptions for phase " << name() << " completed";
-}
 
 void ApplicationFeaturePhase::prepare() {
   LOG_TOPIC("12f47", DEBUG, arangodb::Logger::STARTUP)

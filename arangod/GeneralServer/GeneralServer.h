@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

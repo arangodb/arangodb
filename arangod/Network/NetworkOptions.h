@@ -34,6 +34,7 @@ struct NetworkOptions {
   static constexpr std::uint64_t MaxAllowedInFlight = 65536;
   static constexpr std::uint64_t MinAllowedInFlight = 64;
 
+  NetworkOptions();
   explicit NetworkOptions(network::ConnectionPool::Config const& config);
 
   enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };

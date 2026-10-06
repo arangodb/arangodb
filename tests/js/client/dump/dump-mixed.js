@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -75,7 +73,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute"
     ]
   );

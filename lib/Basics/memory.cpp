@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -21,12 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const request = require('@arangodb/request');
-const { getMetric, getEndpointsByType } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function loggerMetricsSuite() {
   'use strict';
@@ -39,42 +38,42 @@ function loggerMetricsSuite() {
   return {
     
     testMetricsOnAgent: function () {
-      let endpoints = getEndpointsByType('agent');
-      assertTrue(endpoints.length > 0);
+      let agents = IM.getInstancesRole(instanceRole.agent);
+      assertTrue(agents.length > 0);
 
-      endpoints.forEach((ep) => {
+      agents.forEach((agent) => {
         metrics.forEach((m) => {
           // getMetric will throw if the metric is not present 
           // on the target host
-          let value = getMetric(ep, m);
+          let value = agent.getMetric(m);
           assertEqual("number", typeof value);
         });
       });
     },
 
     testMetricsOnCoordinator: function () {
-      let endpoints = getEndpointsByType('coordinator');
-      assertTrue(endpoints.length > 0);
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+      assertTrue(coordinators.length > 0);
 
-      endpoints.forEach((ep) => {
+      coordinators.forEach((coordinator) => {
         metrics.forEach((m) => {
           // getMetric will throw if the metric is not present 
           // on the target host
-          let value = getMetric(ep, m);
+          let value = coordinator.getMetric(m);
           assertEqual("number", typeof value);
         });
       });
     },
     
     testMetricsOnDBServer: function () {
-      let endpoints = getEndpointsByType('dbserver');
-      assertTrue(endpoints.length > 0);
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbservers.length > 0);
 
-      endpoints.forEach((ep) => {
+      dbservers.forEach((dbserver) => {
         metrics.forEach((m) => {
           // getMetric will throw if the metric is not present 
           // on the target host
-          let value = getMetric(ep, m);
+          let value = dbserver.getMetric(m);
           assertEqual("number", typeof value);
         });
       });

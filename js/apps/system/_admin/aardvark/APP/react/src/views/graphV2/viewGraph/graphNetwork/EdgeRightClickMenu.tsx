@@ -10,7 +10,7 @@ export const EdgeRightClickMenu = forwardRef(
     }
     return (
       <MenuList ref={ref}>
-        <MenuOptionGroup title={`Edge: ${rightClickedEntity.edgeId}` || ""}>
+        <MenuOptionGroup title={`Edge: ${rightClickedEntity.edgeId}`}>
           <MenuItem
             onClick={() =>
               setSelectedAction({

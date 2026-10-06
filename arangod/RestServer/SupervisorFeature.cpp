@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -114,31 +113,6 @@ SupervisorFeature::SupervisorFeature(
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
-}
-
-void SupervisorFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  SupervisorOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void SupervisorFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_options.supervisor) {
-    try {
-      DaemonFeature& daemon = server().getFeature<DaemonFeature>();
-
-      // force daemon mode
-      daemon.setDaemon(true);
-
-      // revalidate options
-      daemon.validateOptions(options);
-    } catch (...) {
-      LOG_TOPIC("9207d", FATAL, arangodb::Logger::FIXME)
-          << "daemon mode not available, cannot start supervisor";
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 void SupervisorFeature::daemonize() {

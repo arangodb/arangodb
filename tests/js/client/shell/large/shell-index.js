@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Dr. Frank Celler, Lucas Dohmen
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

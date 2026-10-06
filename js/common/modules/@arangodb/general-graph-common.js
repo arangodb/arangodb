@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Florian Bartels, Michael Hackstein, Guido Schwab
-// / @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');

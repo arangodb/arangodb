@@ -18,40 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <velocypack/Slice.h>
 
 #include <cstddef>
 #include <mutex>
 #include <memory>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }  // namespace application_features
+struct Database;
 class IOHeartbeatThread;
 class LogicalCollection;
-class ReplicationFeature;
 class StorageEngine;
 class ClusterEngine;
 class RocksDBEngine;
@@ -99,25 +99,23 @@ class DatabaseManagerThread final : public ServerThread {
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
 #ifdef USE_V8
-  V8DealerFeature& _dealer;
+  V8DealerFeature* _dealer;
 #endif
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
                               public IDatabaseProvider,
-                              public IRecoveryCallback {
+                              public IDatabaseBootstrap {
   friend class DatabaseManagerThread;
 
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
-  explicit DatabaseFeature(application_features::ApplicationServer& server,
-                           DatabaseFeatureOptions options);
   explicit DatabaseFeature(application_features::ApplicationServer& server);
+  DatabaseFeature(application_features::ApplicationServer& server,
+                  DatabaseFeatureOptions options);
   ~DatabaseFeature() final;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;
@@ -126,16 +124,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif
 
-  /// @brief will be called when the recovery phase has run
-  /// this will call the engine-specific recoveryDone() procedures
-  /// and will execute engine-unspecific operations (such as starting
-  /// the replication appliers) for all databases
   void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
@@ -144,11 +137,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   bool started() const noexcept;
 
   /// @brief enumerate all databases
-  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
+  void enumerate(std::function<void(Database*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() ->
+  ///   if !StorageEngine.isReady() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
   ///   else ->
@@ -156,14 +149,16 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker& versionTracker() { return _versionTracker; }
+  void notifyDdlChange(char const* reason) override {
+    _versionTracker.track(reason);
+  }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
-  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+  std::vector<std::string> getDatabaseNamesForCurrentUser();
 
-  Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&&, Database*& result);
 
   ErrorCode dropDatabase(std::string_view name);
   ErrorCode dropDatabase(TRI_voc_tick_t id);
@@ -182,16 +177,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   // concurrently while the returned pointer is used).
   // this is a potentially unsafe API. if in doubt, prefer using
   // `useDatabase(...)`, which is safe.
-  [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
+  [[deprecated]] Database* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func) override;
+      std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
-
-  StorageEngine& engine() const noexcept {
-    TRI_ASSERT(_engine != nullptr);
-    return *_engine;
-  }
 
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;
@@ -222,7 +212,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
-  static TRI_vocbase_t& getCalculationVocbase();
+  static Database& getCalculationVocbase();
 
   /// @brief update metadata metrics (number of databases, collections, shards)
   /// This should only be called on single servers
@@ -237,7 +227,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  private:
   void initCalculationVocbase();
 
-  void stopAppliers();
+  // called by the engine once it's open, not by anything else.
+  void bootstrapDatabases(velocypack::Slice databases) override;
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
@@ -256,8 +247,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+#ifdef USE_V8
+  V8DealerFeature* _dealer{nullptr};
+#endif
 
-  using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
+  using DatabasesList = containers::FlatHashMap<std::string, Database*>;
   class DatabasesListGuard {
    public:
     [[nodiscard]] static std::shared_ptr<DatabasesList> create() {
@@ -286,7 +280,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
     std::shared_ptr<DatabasesList const> _impl = create();
   } _databases;
   mutable std::mutex _databasesMutex;
-  containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
+  containers::FlatHashSet<Database*> _droppedDatabases;
 
   /// @brief lock for serializing the creation of databases
   std::mutex _databaseCreateLock;
@@ -299,7 +293,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   VersionTracker _versionTracker;
 
   StorageEngine* _engine = nullptr;
-  ReplicationFeature* _replicationFeature = nullptr;
 
   /// @brief metadata metrics structure for single servers only
   struct MetadataMetrics {

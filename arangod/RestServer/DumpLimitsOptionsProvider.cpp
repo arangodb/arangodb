@@ -32,7 +32,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DumpLimitsOptionsProvider::declareOptions(
+void DumpLimitsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DumpLimitsFeatureOptions& opts) {
   options->addSection("dump", "Dump limits");
 
@@ -45,9 +45,8 @@ void DumpLimitsOptionsProvider::declareOptions(
           makeFlags(Flags::Dynamic, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(The approximate per-server maximum allowed memory usage value
-for all ongoing dump actions combined.)");
+      .setLongDescription(R"(The approximate per-server maximum allowed memory
+usage value for all ongoing dump actions combined.)");
 
   options
       ->addOption(
@@ -58,8 +57,8 @@ for all ongoing dump actions combined.)");
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
+      .setLongDescription(R"(Each batch in a dump can grow to at most
+this size.)");
 
   options
       ->addOption(
@@ -70,8 +69,8 @@ for all ongoing dump actions combined.)");
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
+      .setLongDescription(R"(Each batch in a dump can grow to at most
+this size.)");
 
   options
       ->addOption("--dump.max-parallelism",
@@ -84,9 +83,22 @@ for all ongoing dump actions combined.)");
       .setLongDescription(R"(Each dump action on a server can use at most
 this many parallel threads. Note that end users can still start multiple
 dump actions that run in parallel.)");
+
+  options
+      ->addOption("--dump.max-prefetch-count",
+                  "Maximum number of batches that can be prefetched in a dump.",
+                  new UInt64Parameter(&opts.prefetchCountUpperBound, 1,
+                                      /*minimum*/ opts.prefetchCountLowerBound),
+                  makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
+                            Flags::OnDBServer, Flags::OnSingle))
+      .setIntroducedIn(31212)
+      .setLongDescription(R"(Each dump action on a server keeps at most this
+many prepared batches around, waiting to be fetched by the client. The queue
+holding them is allocated upfront, so this value also bounds the memory a
+single dump request can reserve for it.)");
 }
 
-void DumpLimitsOptionsProvider::validateOptions(
+void DumpLimitsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     DumpLimitsFeatureOptions& opts) {
   if (opts.batchSizeLowerBound > opts.batchSizeUpperBound) {
@@ -100,6 +112,13 @@ void DumpLimitsOptionsProvider::validateOptions(
     LOG_TOPIC("f433c", FATAL, arangodb::Logger::CONFIG)
         << "invalid value for --dump.max-parallelism. Please use a value "
         << "of at least " << opts.parallelismLowerBound;
+    FATAL_ERROR_EXIT();
+  }
+
+  if (opts.prefetchCountLowerBound > opts.prefetchCountUpperBound) {
+    LOG_TOPIC("4a6d1", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --dump.max-prefetch-count. Please use a value "
+        << "of at least " << opts.prefetchCountLowerBound;
     FATAL_ERROR_EXIT();
   }
 }

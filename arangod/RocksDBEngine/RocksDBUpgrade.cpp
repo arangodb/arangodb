@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBUpgrade.h"
@@ -40,10 +39,10 @@
 #include <rocksdb/statistics.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-using namespace arangodb;
+namespace arangodb {
 
-void arangodb::rocksdbStartupVersionCheck(
-    options::ProgramOptions const& programOptions,
+void rocksdbStartupVersionCheck(
+    std::shared_ptr<options::ProgramOptions> programOptions,
     IDatabaseProvider& databaseProvider, rocksdb::TransactionDB* db,
     bool dbExisted, bool forceLittleEndianKeys) {
   static_assert(
@@ -192,8 +191,9 @@ void arangodb::rocksdbStartupVersionCheck(
 
       if (s.ok() && storedValue.size() == 1) {
         if (storedValue[0] == '1') {
-          if (!localValue && programOptions.processingResult().touched(
-                                 std::string{optionName})) {
+          if (!localValue && programOptions &&
+              programOptions->processingResult().touched(
+                  std::string{optionName})) {
             // user is trying to switch back from extended names to traditional
             // names. this is unsupported
             LOG_TOPIC("1d4f6", ERR, Logger::ENGINES)
@@ -249,3 +249,5 @@ void arangodb::rocksdbStartupVersionCheck(
                  databaseProvider.extendedNames(value);
                });
 }
+
+}  // namespace arangodb

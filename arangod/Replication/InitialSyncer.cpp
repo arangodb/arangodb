@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
@@ -31,9 +30,8 @@
 
 namespace arangodb {
 
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    replutils::ProgressInfo::Setter setter)
+InitialSyncer::InitialSyncer(ReplicationSyncConfiguration const& configuration,
+                             replutils::ProgressInfo::Setter setter)
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
@@ -43,22 +41,18 @@ InitialSyncer::~InitialSyncer() {
   }
 
   try {
-    if (!_state.isChildSyncer) {
-      // we cannot pass _progress here because it refers to
-      // some properties of the derived class (DatabaseInitialSyncer).
-      // instead we create our own progress info object here
-      // that does nothing.
-      replutils::ProgressInfo progress([](std::string const&) {});
-      _batch.finish(_state.connection, progress, _state.syncerId);
-    }
+    // we cannot pass _progress here because it refers to
+    // some properties of the derived class (DatabaseInitialSyncer).
+    // instead we create our own progress info object here
+    // that does nothing.
+    replutils::ProgressInfo progress([](std::string const&) {});
+    _batch.finish(_state.connection, progress, _state.syncerId);
   } catch (...) {
   }
 }
 
 /// @brief start a recurring task to extend the batch
 void InitialSyncer::startRecurringBatchExtension() {
-  TRI_ASSERT(!_state.isChildSyncer);
-
   std::lock_guard<std::mutex> guard(_batchPingMutex);
 
   if (isAborted()) {

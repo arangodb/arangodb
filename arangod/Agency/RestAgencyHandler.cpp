@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyHandler.h"
@@ -753,6 +752,7 @@ void RestAgencyHandler::reportMethodNotAllowed() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
+// Mounted at /_api/agency (prefix, only when agency is enabled)
 auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
   response()->setAllowCompression(
       rest::ResponseCompressionType::kAllowCompression);

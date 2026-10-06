@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminDeploymentHandler.h"
@@ -26,14 +25,9 @@
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -46,6 +40,7 @@ RestAdminDeploymentHandler::RestAdminDeploymentHandler(
 
 std::string const RestAdminDeploymentHandler::Id = "id";
 
+// Mounted at /_admin/deployment (prefix)
 auto RestAdminDeploymentHandler::executeAsync()
     -> futures::Future<futures::Unit> {
   if (!ServerState::instance()->isCoordinator() &&

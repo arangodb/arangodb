@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <filesystem>
@@ -156,17 +155,6 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
   startsAfter<RandomFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();
-}
-
-void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  V8ShellOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void V8ShellFeature::start() {
@@ -405,7 +393,7 @@ bool V8ShellFeature::printHello() {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
-      console.printLine(LGPLNotice);
+      console.printLine(rest::Version::getLGPLNotice());
       console.printLine("");
 
       console.printWelcomeInfo();
@@ -508,7 +496,7 @@ ErrorCode V8ShellFeature::runShell(
   v8::Context::Scope context_scope{context};
 
   bool promptError;
-  setup(context, true, positionals, &promptError);
+  setup(context, console.shouldConnect(), positionals, &promptError);
 
   V8LineEditor v8LineEditor(
       _isolate, context, console.useHistory() ? "." + _name + ".history" : "");
@@ -735,6 +723,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 bool V8ShellFeature::runString(std::vector<std::string> const& strings,
                                std::vector<std::string> const& positionals) {
   v8::Locker locker{_isolate};
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
@@ -744,7 +733,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  setup(context, console.shouldConnect(), positionals);
 
   bool ok = true;
   for (auto const& script : strings) {
@@ -769,7 +758,6 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     }
   }
 
-  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   console.flushLog();
 
   return ok;
@@ -1002,7 +990,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
+  TRI_GET_GLOBALS();
   ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));

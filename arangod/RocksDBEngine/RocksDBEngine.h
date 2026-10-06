@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
+#include <atomic>
 #include <chrono>
 #include <deque>
 #include <map>
@@ -45,14 +44,15 @@
 #include "ISortingPolicy.h"
 #include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IRegistry.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "VectorIndex/IVectorIndexProvider.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -94,7 +94,6 @@ class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
-class RocksDBRecoveryManager;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
@@ -112,6 +111,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct ISchedulerProvider;
 struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
@@ -182,25 +182,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
+                ISchedulerProvider const& schedulerProvider,
                 IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy,
-                RocksDBEngineOptions options);
-  RocksDBEngine(application_features::ApplicationServer& server,
-                RocksDBOptionsProvider& optionsProvider,
-                metrics::IRegistry& metrics,
-                IDatabasePathProvider const& databasePathProvider,
-                IVectorIndexProvider const& vectorIndexProvider,
-                IFlushControl& flushControl,
-                IDumpLimitsProvider const& dumpLimitsProvider,
-                replication2::IReplicatedLogProvider* replicatedLogProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                IDatabaseProvider& databaseProvider,
-                IIndexCacheRefill& indexCacheRefill,
-                ICacheManagerProvider& cacheManagerProvider,
-                ISortingPolicy const& sortingPolicy);
+                RocksDBEngineOptions options = {});
   ~RocksDBEngine();
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
@@ -209,12 +197,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // inherited from ApplicationFeature
   // ---------------------------------
-
-  // add the storage engine's specific options to the global list of options
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  // validate the storage engine's specific options
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
@@ -226,8 +208,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) override;
+  RocksDBIndexFactory const& indexFactory() const override;
+
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
@@ -235,9 +217,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) override;
+      LogicalCollection& collection,
+      LocalStorageProperties const& storage) override;
 
-  void getCapabilities(velocypack::Builder& builder) const override;
+  void getCapabilities(velocypack::Builder& builder,
+                       uint32_t apiVersion) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const override;
@@ -266,27 +250,12 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void cleanupReplicationContexts() override;
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override;
-  Result createTickRanges(velocypack::Builder& builder) override;
-  Result firstTick(uint64_t& tick) override;
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override;
+
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
@@ -316,10 +285,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
-  RecoveryState recoveryState() noexcept override;
+  EngineState engineState() noexcept override {
+    return _engineState.load(std::memory_order_acquire);
+  }
 
-  /// @brief current recovery tick
-  TRI_voc_tick_t recoveryTick() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override {
+    return _recoveryTick.load(std::memory_order_relaxed);
+  }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
@@ -372,19 +344,15 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
-
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
+  uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 
@@ -475,7 +443,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
-  bool isEncryptionEnabled() const;
+  bool isEncryptionEnabled() const override;
 
   std::string const& getEncryptionKey();
 
@@ -550,6 +518,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     TRI_ASSERT(_recoveryStartSequence == 0);
     _recoveryStartSequence = value;
   }
+
+  // IResearchFeature could have left stale helpers from a previous test.
+  static void cleanupStaleRecoveryHelpers() noexcept {
+    _recoveryHelpers.clear();
+  }
 #endif
 
   class RocksDBSnapshot final : public StorageSnapshot {
@@ -580,12 +553,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
-  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
-                                                         ErrorCode& status);
-  ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
-  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                                velocypack::Slice slice,
-                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
@@ -601,8 +568,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   [[nodiscard]] bool isVectorIndexEnabled() const;
 
 #ifdef USE_ENTERPRISE
-  void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
-  void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
 
   void validateJournalFiles() const;
@@ -620,6 +585,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  // hands the on-disk database inventory to the bootstrap provider
+  void materializeDatabases();
+
+  void runRecovery();
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,
@@ -640,13 +610,14 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
+  std::atomic<EngineState> _engineState{EngineState::kPreRecovery};
+  std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
-  RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  IDatabaseProvider& _databaseProvider;
+  ISchedulerProvider const& _schedulerProvider;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
   ISortingPolicy const& _sortingPolicy;

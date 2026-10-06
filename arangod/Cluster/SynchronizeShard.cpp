@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SynchronizeShard.h"
@@ -50,9 +48,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -609,9 +606,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     leaderId = config.get(LEADER_ID).copyString();
   }
 
-  ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config,
-                                                      database);
+  ReplicationSyncConfiguration configuration =
+      ReplicationSyncConfiguration::fromVelocyPack(vocbase.server(), config,
+                                                   database);
   configuration.setClientInfo(job.clientInfoString());
   configuration.validate();
 
@@ -1714,7 +1711,7 @@ void SynchronizeShard::setState(ActionState state) {
 std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
     TRI_vocbase_t& vocbase, std::string const& endpoint) {
   // build configuration for WAL tailing
-  ReplicationApplierConfiguration configuration(_feature.server());
+  ReplicationSyncConfiguration configuration(_feature.server());
   configuration._endpoint = endpoint;
   configuration._database = getDatabase();
   configuration._requestTimeout = 600.0;
@@ -1730,8 +1727,7 @@ std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
   configuration.validate();
 
   // build DatabaseTailingSyncer object for WAL tailing
-  auto syncer = DatabaseTailingSyncer::create(vocbase, configuration,
-                                              /*lastTick*/ 0, /*useTick*/ true);
+  auto syncer = DatabaseTailingSyncer::create(vocbase, configuration);
 
   std::string const& leader = _description.get(THE_LEADER);
   if (!leader.empty()) {

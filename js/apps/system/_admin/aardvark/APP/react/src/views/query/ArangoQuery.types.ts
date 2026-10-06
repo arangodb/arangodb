@@ -1,7 +1,7 @@
 import { CursorExtras } from "arangojs/cursor";
 
 
-export type QueryResultType<ResultType extends any = any> = {
+export type QueryResultType<ResultType = any> = {
   type: "query" | "profile" | "explain";
   queryValue: string;
   queryBindParams?: { [key: string]: string; };

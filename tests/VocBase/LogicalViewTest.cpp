@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -31,12 +29,12 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -44,7 +42,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
@@ -112,27 +109,27 @@ class LogicalViewTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
  protected:
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
   ViewFactory viewFactory;
 
-  LogicalViewTest() : server(nullptr, nullptr), engine(server) {
+  LogicalViewTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ExecContext
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::DatabaseFeature>(dbFeature),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -160,8 +157,6 @@ class LogicalViewTest
   }
 
   ~LogicalViewTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
@@ -179,61 +174,48 @@ TEST_F(LogicalViewTest, test_auth) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
 
-  // no ExecContext
+  // no ExecContext (implicitly superuser!)
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
-    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
+    EXPECT_TRUE(arangodb::ExecContext::current()
+                    .canReadView(vocbase.name(), logicalView->name())
+                    .ok());
   }
 
   // no read access
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
-    EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
+    auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+        "", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::NONE);
+    EXPECT_FALSE(
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
+            .ok());
   }
 
-  // no write access
+  // read access
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
-    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
-    EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
+    auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+        "", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO);
+    EXPECT_TRUE(
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
+            .ok());
   }
 
-  // write access (view access is db access as per
-  // https://github.com/arangodb/backlog/issues/459)
+  // write access
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
-    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
-    EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
+    auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+        "", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RW);
+    EXPECT_TRUE(
+        classicCtx.execContext->canReadView(vocbase.name(), logicalView->name())
+            .ok());
   }
 }

@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void FrontendOptionsProvider::declareOptions(
+void FrontendOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, FrontendFeatureOptions& opts) {
   options->addSection("web-interface", "browser-based frontend");
 

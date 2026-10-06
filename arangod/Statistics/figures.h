@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -66,6 +65,8 @@ struct Distribution {
     _counts.resize(_cuts.size() + 1);
   }
 
+  // False-positive: other cannot be const, and also not a rval-ref
+  // NOLINTNEXTLINE(misc-unconventional-assign-operator)
   Distribution& operator=(Distribution& other) {
     std::lock_guard l1{_mutex};
     std::lock_guard l2{other._mutex};

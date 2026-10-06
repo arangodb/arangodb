@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 #include <boost/lockfree/queue.hpp>
 
@@ -42,7 +41,7 @@ struct ConditionVariable;
 
 struct LogMessage;
 
-class LogThread final : public Thread {
+class LogThread final : public BasicThread {
   struct MessageEnvelope {
     LogGroup* group;
     LogMessage* msg;

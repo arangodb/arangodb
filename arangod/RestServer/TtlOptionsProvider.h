@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-struct TtlOptionsProvider : OptionsProvider<TtlProperties> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      TtlProperties& options) override;
+struct TtlOptionsProvider
+    : OptionsProviderImpl<TtlOptionsProvider, TtlProperties> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          TtlProperties& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       TtlProperties& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           TtlProperties& options);
 };
 
 }  // namespace arangodb

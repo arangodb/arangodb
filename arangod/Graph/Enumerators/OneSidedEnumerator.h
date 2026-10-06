@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Enumerators/ITraversalEnumerator.h"
+#include "Graph/PathManagement/IPathResult.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Types/VertexRef.h"
@@ -57,7 +56,7 @@ struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
 template<class Configuration>
-class OneSidedEnumerator final : public TraversalEnumerator {
+class OneSidedEnumerator final : public ITraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
   using Provider = typename Configuration::Provider;
@@ -123,7 +122,7 @@ class OneSidedEnumerator final : public TraversalEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
+  auto getNextPath() -> std::unique_ptr<IPathResult> override;
 
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder&)
@@ -139,9 +138,8 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   bool skipPath() override;
   auto destroyEngines() -> void override;
 
-  template<typename =
-               std::enable_if<std::is_same_v<Step, enterprise::SmartGraphStep>>>
-  auto getSmartSearch() -> ResultPathType const&;
+  auto getSmartSearch() -> ResultPathType const& requires
+      std::is_same_v<Step, enterprise::SmartGraphStep>;
 
   auto prepareIndexExpressions(aql::Ast* ast) -> void override;
 

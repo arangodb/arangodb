@@ -18,19 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "Mocks/MetricsCollector.h"
+#include "Mocks/FakeRegistry.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include "RocksDBEngine/Mocks.h"
 
 #include <atomic>
 #include <memory>
@@ -42,9 +42,6 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionManager;
 class WalAccess;
-namespace aql {
-class OptimizerRulesFeature;
-}
 namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
@@ -108,7 +105,7 @@ class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
 
 // Base ensures _mockRegistry outlives StorageEngine's _transactionStatistics.
 struct StorageEngineMockBase {
-  arangodb::tests::MetricsCollector _mockRegistry;
+  arangodb::metrics::FakeRegistry _mockRegistry;
 };
 
 class StorageEngineMock : private StorageEngineMockBase,
@@ -116,7 +113,7 @@ class StorageEngineMock : private StorageEngineMockBase,
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
-  static arangodb::RecoveryState recoveryStateResult;
+  static arangodb::EngineState recoveryStateResult;
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
@@ -129,10 +126,6 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::application_features::ApplicationServer& server,
       bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
-  void addOptimizerRules(
-      arangodb::aql::OptimizerRulesFeature& feature) override;
-  void addRestHandlers(
-      arangodb::rest::RestHandlerFactory& handlerFactory) override;
 #ifdef USE_V8
   void addV8Functions() override;
 #endif
@@ -146,10 +139,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
-      arangodb::velocypack::Slice /*info*/) override;
-  arangodb::Result createTickRanges(VPackBuilder&) override;
-  std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
-      arangodb::transaction::ManagerFeature&) override;
+      arangodb::LocalStorageProperties const& /*storage*/) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -164,7 +154,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
   arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                             arangodb::LogicalView const& view) override;
-  arangodb::Result firstTick(uint64_t&) override;
   std::vector<std::string> currentWalFiles() const override;
   arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
   void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
@@ -176,21 +165,13 @@ class StorageEngineMock : private StorageEngineMockBase,
                                      bool isUpgrade) override;
   void getDatabases(arangodb::velocypack::Builder& result) override;
   void cleanupReplicationContexts() override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& result) override;
-  arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& result) override;
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection& col,
                                   std::string const& keysId) override;
-  arangodb::RecoveryState recoveryState() override;
-  TRI_voc_tick_t recoveryTick() override;
-
-  arangodb::Result lastLogger(
-      TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-      arangodb::velocypack::Builder& builderSPtr) override;
+  arangodb::EngineState engineState() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                               bool isUpgrade) override;
@@ -198,17 +179,9 @@ class StorageEngineMock : private StorageEngineMockBase,
   using StorageEngine::registerView;
   TRI_voc_tick_t releasedTick() const override;
   void releaseTick(TRI_voc_tick_t) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
   arangodb::Result renameCollection(
       TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
       std::string const& oldName) override;
-  ErrorCode saveReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice,
-      bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
-                                                bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
   void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;
@@ -242,7 +215,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> _dbProvider;
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
-  arangodb::VersionTracker _versionTracker;
 };

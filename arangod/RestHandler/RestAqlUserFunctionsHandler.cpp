@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -42,6 +41,7 @@ RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/aqlfunction (prefix, requires V8)
 RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
 

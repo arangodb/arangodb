@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 

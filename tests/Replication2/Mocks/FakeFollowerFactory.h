@@ -18,14 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb::replication2::test {
 

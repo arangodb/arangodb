@@ -1,5 +1,4 @@
 import L from "leaflet";
-import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
 import { QueryResultType } from "../ArangoQuery.types";
 
@@ -167,14 +166,6 @@ const GEOMETRY_TYPES = [
   "MultiPolygon"
 ];
 
-const POINT_GEOMETRY_TYPES = ["Point", "MultiPoint"];
-
-const GEODESIC_GEOMETRY_TYPES = [
-  "LineString",
-  "MultiLineString",
-  "Polygon",
-  "MultiPolygon"
-];
 type GeoItemType = {
   type?: string;
   coordinates?: any[];
@@ -184,22 +175,13 @@ type GeoItemType = {
   };
 };
 
-const isValidPoint = (item: { type?: string; coordinates?: any[] }) => {
-  if (item.type && POINT_GEOMETRY_TYPES.includes(item.type)) {
+const isValidGeometry = (item: GeoItemType) => {
+  if (item.type && GEOMETRY_TYPES.includes(item.type)) {
     try {
-      new L.GeoJSON(item as any);
-      return true;
-    } catch (ignore) {
-      return false;
-    }
-  }
-};
-const isValidGeodesic = (item: GeoItemType) => {
-  if (item.type && GEODESIC_GEOMETRY_TYPES.includes(item.type)) {
-    try {
-      new GeodesicLine().fromGeoJson(item as any);
-      return true;
-    } catch (ignore) {
+      // an empty coordinate array builds a layer without throwing, but has no
+      // bounds; counting it as geo offers the map tab and then renders nothing
+      return new L.GeoJSON(item as any).getBounds().isValid();
+    } catch {
       return false;
     }
   }
@@ -213,10 +195,9 @@ const detectGeo = ({
   isTable: boolean;
 } => {
   let validGeojsonCount = 0;
-  let isGeo = false;
   let isTable = false;
   // makes a map like {type: 1, coordinates: 2} across all resultItems
-  let attributeCountMap = {} as {
+  const attributeCountMap = {} as {
     [key: string]: number;
   };
   if (!result?.length) {
@@ -238,7 +219,7 @@ const detectGeo = ({
     }
     if (resultItem.coordinates && resultItem.type) {
       if (GEOMETRY_TYPES.includes(resultItem.type)) {
-        if (isValidPoint(resultItem) || isValidGeodesic(resultItem)) {
+        if (isValidGeometry(resultItem)) {
           validGeojsonCount++;
         }
       }
@@ -248,10 +229,7 @@ const detectGeo = ({
       resultItem.geometry.type
     ) {
       if (GEOMETRY_TYPES.includes(resultItem.geometry.type)) {
-        if (
-          isValidPoint(resultItem.geometry) ||
-          isValidGeodesic(resultItem.geometry)
-        ) {
+        if (isValidGeometry(resultItem.geometry)) {
           validGeojsonCount++;
         }
       }
@@ -259,7 +237,7 @@ const detectGeo = ({
 
     const resultItemKeys = Object.keys(resultItem);
     resultItemKeys.forEach(key => {
-      if (attributeCountMap.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(attributeCountMap, key)) {
         attributeCountMap[key] = attributeCountMap[key] + 1;
       } else {
         attributeCountMap[key] = 1;
@@ -280,11 +258,7 @@ const detectGeo = ({
     }
   });
 
-  if (result.length === validGeojsonCount) {
-    isGeo = true;
-  } else {
-    isGeo = false;
-  }
+  const isGeo = result.length === validGeojsonCount;
   return {
     isGeo,
     isTable

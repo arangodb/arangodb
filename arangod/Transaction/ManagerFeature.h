@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,10 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+
+namespace arangodb {
+class StorageEngine;
+}  // namespace arangodb
 
 namespace arangodb::metrics {
 struct IRegistry;
@@ -47,14 +50,12 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   }
 
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::IRegistry& metricsRegistry,
+                 metrics::IRegistry& metricsRegistry, StorageEngine& engine,
                  ManagerFeatureOptions options);
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::IRegistry& metricsRegistry);
+                 metrics::IRegistry& metricsRegistry, StorageEngine& engine);
   ~ManagerFeature();
 
-  void collectOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
   void stop() override;
@@ -62,19 +63,14 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  size_t streamingMaxTransactionSize() const noexcept;
-  double streamingLockTimeout() const noexcept;
-  double streamingIdleTimeout() const noexcept;
   static transaction::Manager* manager() noexcept;
-
-  /// @brief track number of aborted managed transactions
-  void trackExpired(uint64_t numExpired) noexcept;
 
  private:
   void queueGarbageCollection();
 
-  static std::unique_ptr<transaction::Manager> MANAGER;
+  static std::shared_ptr<transaction::Manager> MANAGER;
 
+  StorageEngine& _engine;
   ManagerFeatureOptions _options;
 
   std::mutex _workItemMutex;

@@ -29,8 +29,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void VPackOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                          VPackFeatureOptions& options) {
+void VPackOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, VPackFeatureOptions& options) {
   std::unordered_set<std::string> const inputTypes{
       {"json", "json-hex", "vpack", "vpack-hex"}};
   std::unordered_set<std::string> const outputTypes{

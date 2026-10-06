@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler, Michael Hackstein
-// / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const dd = require('dedent');

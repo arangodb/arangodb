@@ -123,7 +123,7 @@ const DeleteQueryModal = ({
     try {
       await currentDb.killQuery(queryToDelete);
       window.arangoHelper.arangoNotification(`Deleted query: ${queryToDelete}`);
-    } catch (e) {
+    } catch {
       window.arangoHelper.arangoError("Failed to kill query");
     }
     await refetchQueries();

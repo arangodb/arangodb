@@ -20,10 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Dr. Frank Celler
-// / @author Michael Hackstein
-// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var fs = require('fs');
@@ -31,7 +27,6 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
 
-var throwFileNotFound = arangodb.throwFileNotFound;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
@@ -183,59 +178,6 @@ function updateService (mount, update) {
   return getStorage().replaceByExample({mount}, update);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Joins the last two diretories to one subdir, removes the unwanted original
-// //////////////////////////////////////////////////////////////////////////////
-function joinLastPath (tempPath) {
-  var pathParts = tempPath.split(fs.pathSeparator).reverse();
-  var individual = pathParts.shift();
-
-  // we already have a directory which would be shared amongst tasks.
-  // since we don't want that we remove it here.
-  var voidDir = pathParts.slice().reverse().join(fs.pathSeparator);
-  if (fs.isDirectory(voidDir)) {
-    fs.removeDirectoryRecursive(voidDir);
-  }
-
-  var base = pathParts.shift();
-  pathParts.unshift(base + '-' + individual);
-  var rc = pathParts.reverse().join(fs.pathSeparator);
-
-  return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a zip archive of a Foxx app. Returns the absolute path
-// //////////////////////////////////////////////////////////////////////////////
-function zipDirectory (directory, zipFilename) {
-  if (!fs.isDirectory(directory)) {
-    throw new Error(directory + ' is not a directory.');
-  }
-  if (!zipFilename) {
-    zipFilename = joinLastPath((fs.getTempFile('bundles', false)));
-  }
-
-  var tree = fs.listTree(directory);
-  var files = [];
-  var i;
-  var filename;
-
-  for (i = 0; i < tree.length; i++) {
-    filename = fs.join(directory, tree[i]);
-
-    if (fs.isFile(filename)) {
-      files.push(tree[i]);
-    }
-  }
-  if (files.length === 0) {
-    throwFileNotFound("Directory '" + String(directory) + "' is empty");
-  }
-  // sort files to be sure they are always in same order within the zip file
-  // independent of the OS and file system
-  files.sort();
-  fs.zipFile(zipFilename, directory, files);
-  return zipFilename;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Exports
@@ -248,8 +190,9 @@ exports.list = list;
 exports.listDevelopment = listDevelopment;
 exports.buildGithubUrl = buildGithubUrl;
 exports.validateMount = validateMount;
-exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
-exports.joinLastPath = joinLastPath;
+exports.throwFileNotFound = fs.throwFileNotFound;
+exports.zipDirectory = fs.zipDirectory;
+exports.joinLastPath = fs.joinLastPath;

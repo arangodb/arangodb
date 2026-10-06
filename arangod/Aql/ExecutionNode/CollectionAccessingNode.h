@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,12 +28,10 @@
 #include "Cluster/Utils/ShardID.h"
 
 #include <optional>
-#include <string>
 #include <unordered_map>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 namespace velocypack {
 class Builder;
 class Slice;
@@ -59,7 +56,7 @@ class CollectionAccessingNode : public DataAccessingNode {
       arangodb::velocypack::Builder& builder) const;
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const;
+  Database* vocbase() const;
 
   /// @brief return the collection
   aql::Collection const* collection() const final;

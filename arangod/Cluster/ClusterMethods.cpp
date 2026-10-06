@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterMethods.h"

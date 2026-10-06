@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,9 +37,6 @@ class CacheOptionsFeature final
                                CacheOptions options);
   explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   CacheOptions getOptions() const override final;
 

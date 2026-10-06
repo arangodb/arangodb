@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 const jsunity = require("jsunity");
 const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotMatch} = jsunity.jsUnity.assertions;

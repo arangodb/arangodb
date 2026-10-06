@@ -1,5 +1,6 @@
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
+  ArangoVPackServer.cpp
   VPackFeature.cpp
   VPackOptionsProvider.cpp
   arangovpack.cpp

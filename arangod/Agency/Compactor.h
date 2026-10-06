@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 
 namespace arangodb {
 namespace consensus {

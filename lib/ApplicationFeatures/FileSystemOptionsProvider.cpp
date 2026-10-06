@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void FileSystemOptionsProvider::declareOptions(
+void FileSystemOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, FileSystemFeatureOptions& opts) {
   options
       ->addOption("--use-splice-syscall",

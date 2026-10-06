@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexey Bakharev
 // //////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");

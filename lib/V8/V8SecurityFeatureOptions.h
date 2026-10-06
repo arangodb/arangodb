@@ -42,6 +42,7 @@ struct V8SecurityFeatureOptions {
   std::vector<std::string> endpointsDenyList;
 
   std::vector<std::string> filesAllowList;
+  std::vector<std::string> filesDenyList;
 };
 
 }  // namespace arangodb

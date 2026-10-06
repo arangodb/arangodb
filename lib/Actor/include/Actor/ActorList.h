@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

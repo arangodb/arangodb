@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,6 +41,8 @@ struct SharedAtomic {
 
   T load(std::memory_order order) { return _data.load(order); }
 
+  // This is analog to std::atomic<T>::operator=
+  // NOLINTNEXTLINE(misc-unconventional-assign-operator)
   T operator=(T desired) noexcept {
     _data = desired;
     return desired;

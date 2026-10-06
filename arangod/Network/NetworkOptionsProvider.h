@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-struct NetworkOptionsProvider : OptionsProvider<NetworkOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      NetworkOptions& options) override;
+struct NetworkOptionsProvider
+    : OptionsProviderImpl<NetworkOptionsProvider, NetworkOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          NetworkOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       NetworkOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           NetworkOptions& options);
 };
 
 }  // namespace arangodb

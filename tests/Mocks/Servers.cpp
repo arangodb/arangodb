@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Servers.h"
@@ -32,7 +31,6 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
@@ -52,7 +50,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "Async/async.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
 #include "Basics/files.h"
@@ -70,7 +68,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -80,6 +78,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/common.h"
 #include "Logger/LogMacros.h"
@@ -157,7 +156,6 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SoftShutdownFeature>(false);
@@ -177,7 +175,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<application_features::DatabaseFeaturePhase>(
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
-  server.addFeature<transaction::ManagerFeature>(false, metrics);
+  server.addFeature<transaction::ManagerFeature>(false, metrics,
+                                                 server.engine());
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
@@ -189,7 +188,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LicenseFeature>(false);
+  server.addFeature<LicenseFeature>(false,
+                                    server.getFeature<DatabasePathFeature>());
   server.addFeature<EncryptionFeature>(false);
 #endif
 }
@@ -231,7 +231,8 @@ static void SetupAqlPhase(MockServer& server) {
   auto& metrics = server.getFeature<metrics::MetricsFeature>();
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
-  server.addFeature<TemporaryStorageFeature>(false);
+  auto& dbPath = server.getFeature<DatabasePathFeature>();
+  server.addFeature<TemporaryStorageFeature>(false, dbPath);
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
   server.addFeature<aql::QueryInfoLoggerFeature>(true);
@@ -242,10 +243,11 @@ static void SetupAqlPhase(MockServer& server) {
       arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
           server.server()));
   {
-    auto& feature =
-        server.addFeature<arangodb::iresearch::IResearchFeature>(true, metrics);
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
+    auto& provider = server.addOptionsProvider<
+        arangodb::iresearch::IResearchOptionsProvider>();
+    provider.validateOptions(server.server().options());
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        true, metrics, provider.options());
   }
 
 #ifdef USE_ENTERPRISE
@@ -256,10 +258,10 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(
-          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
+  _engine = &addFeatureUntracked<StorageEngine, StorageEngineMock>(
+      injectClusterIndexes);
   _oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(myRole);
   _originalMockingState = ClusterEngine::Mocking;
@@ -278,7 +280,9 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();
@@ -303,17 +307,6 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  if (_server.hasFeature<DatabaseFeature>()) {
-    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
-
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
-  }
-
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     if (info != _features.end()) {
@@ -325,14 +318,12 @@ void MockServer::startFeatures() {
         f.prepare();
         if (f.name() == AuthenticationFeature::name()) {
           auto& auth = static_cast<AuthenticationFeature&>(f);
-          std::unique_ptr<auth::UserManagerMock> userManager(
-              new testing::StrictMock<auth::UserManagerMock>());
           if (auth.userManager() != nullptr) {
             // prepare should have created a userManager
             // If there is none, there was a reason for that, we do not want to
             // overwrite that.
-            EXPECT_CALL(*userManager, shutdown);
-            auth.setUserManager(std::move(userManager));
+            auto testerPtr = std::make_unique<auth::UserManagerTester>();
+            auth.setUserManager(std::move(testerPtr));
           }
         }
       } catch (...) {
@@ -636,10 +627,11 @@ void MockClusterServer::startFeatures() {
 
   // register factories & normalizers
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  auto& factory =
-      getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
+  _iresearchLinkFactory =
+      iresearch::IResearchLinkCoordinator::createFactory(server());
   indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType}, factory);
+      std::string{iresearch::StaticStrings::ViewArangoSearchType},
+      *_iresearchLinkFactory);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 
@@ -946,8 +938,15 @@ void MockDBServer::createShard(std::string const& dbName,
     // We may allow this for tests that do not write documents into the
     // collection.
     TRI_ASSERT(clusterCollection.replicationFactor() < 2);
-    props->add(StaticStrings::ReplicationFactor,
-               VPackValue(clusterCollection.replicationFactor()));
+    if (clusterCollection.isSatellite()) {
+      // every writer the maintenance reads from spells a replicationFactor of
+      // 0 as "satellite", so the mock has to spell it the same way
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(clusterCollection.replicationFactor()));
+    }
     props->add(StaticStrings::InternalValidatorTypes,
                VPackValue(clusterCollection.getInternalValidatorTypes()));
   }

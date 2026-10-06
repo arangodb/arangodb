@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
@@ -185,11 +184,6 @@ void Feature::start() {
 }
 
 void Feature::stop() { _cleanupThread.reset(); }
-
-void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  async_registry::OptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 velocypack::Builder Feature::getData() const {
   auto promises = all_promises().index_by_parent();

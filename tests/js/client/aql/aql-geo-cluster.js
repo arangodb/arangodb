@@ -18,7 +18,6 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-/// @author Max Neunhoeffer
 /// @copyright Copyright 2025, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 const jsunity = require("jsunity");

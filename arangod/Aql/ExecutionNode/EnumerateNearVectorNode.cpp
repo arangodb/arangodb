@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorNode.h"
@@ -74,7 +72,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _index(std::move(indexHandle)),
       _filterMode(filterMode),
       _projectionMode(projectionMode) {
-  TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(_index->type() == IndexType::Vector);
   // If any mode of filterin is enabled, we need a filter expression.
   TRI_ASSERT((_filterMode == vector::FilterMode::kNone) ==
              (filterExpression == nullptr));
@@ -337,8 +335,7 @@ bool EnumerateNearVectorNode::isAscending() const noexcept {
 
 void EnumerateNearVectorNode::setIndex(
     transaction::Methods::IndexHandle indexHandle) {
-  TRI_ASSERT(indexHandle->type() ==
-             Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(indexHandle->type() == IndexType::Vector);
   _index = std::move(indexHandle);
 }
 

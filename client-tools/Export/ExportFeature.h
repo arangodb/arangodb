@@ -49,9 +49,6 @@ class ExportFeature final : public application_features::ApplicationFeature {
   ExportFeature(application_features::ApplicationServer& server, int* result);
   ~ExportFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
   std::shared_ptr<VPackBuilder> customQueryBindVars() const {

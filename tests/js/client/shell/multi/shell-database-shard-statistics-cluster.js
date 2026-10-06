@@ -21,13 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getDBServers } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function shardStatisticsDatabaseSuite() {
   'use strict';
@@ -129,9 +129,9 @@ function shardStatisticsDatabaseSuite() {
       for (let i = 0; i < 5; ++i) {
         db._create("test" + i, { numberOfShards: 3, replicationFactor: 2 });
       }
-        
-      let dbservers = getDBServers();
-      assertTrue(dbservers.length > 0);
+
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbServers.length > 0);
 
       let partialValues = {
         databases: 0,
@@ -143,7 +143,7 @@ function shardStatisticsDatabaseSuite() {
         servers: 0,
       };
 
-      dbservers.forEach((server) => {
+      dbServers.forEach((server) => {
         let part = arango.GET("/_api/database/shardStatistics?DBserver=" + encodeURIComponent(server.id)).result;
         Object.keys(partialValues).forEach((k) => {
           partialValues[k] += part[k];

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,12 +25,12 @@
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/voc-types.h"
 
 #include <shared_mutex>
 
 namespace arangodb {
 
+struct Database;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
@@ -42,7 +41,7 @@ class LogicalView;
 ////////////////////////////////////////////////////////////////////////////////
 class CollectionNameResolver {
  public:
-  explicit CollectionNameResolver(TRI_vocbase_t& vocbase);
+  explicit CollectionNameResolver(Database& vocbase);
   ~CollectionNameResolver() = default;
 
   // copy an existing resolver
@@ -150,7 +149,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase instance this resolver instance uses
   //////////////////////////////////////////////////////////////////////////////
-  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  Database& vocbase() const noexcept { return _vocbase; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that map to the specified 'id'
@@ -163,7 +162,7 @@ class CollectionNameResolver {
   std::string lookupName(DataSourceId cid) const;
 
   /// @brief vocbase base pointer
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
   /// @brief role of server in cluster
   ServerState::RoleEnum const _serverRole;

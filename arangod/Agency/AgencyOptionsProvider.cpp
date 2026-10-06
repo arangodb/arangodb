@@ -23,6 +23,7 @@
 #include "AgencyOptionsProvider.h"
 
 #include "Basics/application-exit.h"
+#include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
@@ -34,8 +35,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void AgencyOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           AgencyOptions& options) {
+void AgencyOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, AgencyOptions& options) {
   opts->addSection("agency", "agency");
 
   opts->addOption("--agency.activate", "Activate the Agency.",
@@ -208,28 +209,45 @@ cluster deployments.)");
                       arangodb::options::Flags::OnAgent));
 }
 
-void AgencyOptionsProvider::validateOptions(
+void AgencyOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AgencyOptions& options) {
   auto const& result = opts->processingResult();
 
-  if (result.touched("agency.size")) {
-    if (options.size < 1) {
-      LOG_TOPIC("98510", FATAL, Logger::AGENCY)
-          << "agency must have size greater 0";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
+  if (!result.touched("agency.size")) {
     options.size = 1;
   }
 
+  // using a pool size different to the number of agents has never been
+  // implemented properly, so bail out early here. this has to happen here,
+  // rather than in validateOptionsImpl, since it must run before options.size
+  // overwrites the pool size below
   if (result.touched("agency.pool-size") && options.poolSize != options.size) {
-    // using a pool size different to the number of agents
-    // has never been implemented properly, so bail out early here.
     LOG_TOPIC("af108", FATAL, Logger::AGENCY)
         << "agency pool size is deprecated and is not expected to be set";
     FATAL_ERROR_EXIT();
   }
   options.poolSize = options.size;
+
+  if (options.compactionKeepSize == 0) {
+    LOG_TOPIC("ca485", WARN, Logger::AGENCY)
+        << "agency.compaction-keep-size must not be 0, set to 50000";
+    options.compactionKeepSize = 50000;
+  }
+
+  if (result.touched("agency.supervision")) {
+    options.supervisionTouched = true;
+  }
+}
+
+void AgencyOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, AgencyOptions const& options) {
+  auto const& result = opts->processingResult();
+
+  if (result.touched("agency.size") && options.size < 1) {
+    LOG_TOPIC("98510", FATAL, Logger::AGENCY)
+        << "agency must have size greater 0";
+    FATAL_ERROR_EXIT();
+  }
 
   // Size needs to be odd
   if (options.size % 2 == 0) {
@@ -255,14 +273,12 @@ void AgencyOptionsProvider::validateOptions(
         << "agency.election-timeout-max should probably be chosen longer!";
   }
 
-  if (options.compactionKeepSize == 0) {
-    LOG_TOPIC("ca485", WARN, Logger::AGENCY)
-        << "agency.compaction-keep-size must not be 0, set to 50000";
-    options.compactionKeepSize = 50000;
-  }
-
-  if (result.touched("agency.supervision")) {
-    options.supervisionTouched = true;
+  if (!options.agencyMyAddress.empty() &&
+      Endpoint::unifiedForm(options.agencyMyAddress).empty()) {
+    LOG_TOPIC("4faa0", FATAL, Logger::AGENCY)
+        << "invalid endpoint '" << options.agencyMyAddress
+        << "' specified for --agency.my-address";
+    FATAL_ERROR_EXIT();
   }
 }
 

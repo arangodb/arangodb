@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FileDescriptorsFeature.h"
@@ -80,18 +79,6 @@ FileDescriptorsFeature::FileDescriptorsFeature(
   startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<EnvironmentFeature>();
-}
-
-void FileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void FileDescriptorsFeature::prepare() {

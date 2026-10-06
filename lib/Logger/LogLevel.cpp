@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>

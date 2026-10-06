@@ -25,6 +25,10 @@
 #include <cstdint>
 #include "Transaction/Options.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBEngineEEOptions.h"
+#endif
+
 namespace arangodb {
 
 struct RocksDBEngineOptions {
@@ -60,6 +64,9 @@ struct RocksDBEngineOptions {
   bool forceLegacySortingMethod = false;
   bool forceLittleEndianKeys = false;
   bool exportReadWriteMetrics = false;
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptions eeOptions;
+#endif
 };
 
 }  // namespace arangodb

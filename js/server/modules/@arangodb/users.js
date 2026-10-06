@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Simon Grätzer
-// / @author Copyright 2012-2017, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: reloadAuth

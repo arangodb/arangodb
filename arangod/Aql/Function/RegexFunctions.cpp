@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlValue.h"
@@ -89,7 +88,6 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   AqlValue const& regex =
       aql::functions::extractFunctionParameterValue(parameters, 1);
   appendAsString(vopts, adapter, regex);
-  bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
@@ -109,14 +107,6 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
 
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
-
-  if (!isEmptyExpression && (buffer->length() == 0)) {
-    // Edge case: splitting an empty string by non-empty expression produces an
-    // empty string again.
-    result->add(VPackValue(""));
-    result->close();
-    return AqlValue(result->slice(), result->size());
-  }
 
   UErrorCode status = U_ZERO_ERROR;
 
@@ -232,7 +222,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+    if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent
       // invocation
       copyThisTime--;
@@ -240,7 +230,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
     if ((copyThisTime > 0) &&
         ((copyThisTime == nrResults) || isEmptyExpression)) {
-      // ICU will give us a traling empty string we don't care for if we split
+      // ICU will give us a trailing empty string we don't care for if we split
       // with empty strings.
       copyThisTime--;
     }

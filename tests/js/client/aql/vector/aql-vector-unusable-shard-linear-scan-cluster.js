@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Koushal Kawade
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -247,11 +246,11 @@ function VectorIndexUnusableShardLinearScanSuite() {
             expectationsMixed[full2Mixed] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
             expectationsMixed[starvedNameMixed] = {
                 trainingState: VectorIndexTrainingState.kUnusable,
-                hasError: false,
+                hasError: true,
             };
             assertTrue(
                 waitForPerShardStates(cOneShardUnusable, indexHint, expectationsMixed, 120),
-                "mixed: two shards ready, starved shard unusable");
+                "mixed: two shards ready, starved shard unusable with error");
 
             const mixedStates = getPerShardStates(cOneShardUnusable, indexHint);
             assertEqual(VectorIndexTrainingState.kUnusable,

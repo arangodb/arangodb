@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -494,6 +493,21 @@ function VectorIndexLargeLimitTestSuite() {
                 assertEqual(stats.fullCount, largeLimitNumberOfDocs,
                     `FullCount mismatch. ${diag}`);
             }
+        },
+
+        testLimitAboveDocumentCountReturnsEveryDocument: function() {
+            const query = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(d.vector, ${randomPoint},
+                {nProbe: ${nLists}})
+              LIMIT 100000000 RETURN d._key`;
+
+            const queryResults = db._query(query, {fullCount: true});
+            const results = queryResults.toArray();
+
+            assertEqual(largeLimitNumberOfDocs, results.length);
+            assertEqual(largeLimitNumberOfDocs, new Set(results).size);
+            assertEqual(largeLimitNumberOfDocs, queryResults.getExtra().stats.fullCount);
         },
     };
 }

@@ -22,11 +22,23 @@
 
 #pragma once
 
+#include "Basics/NumberOfCores.h"
+
+#include <algorithm>
 #include <cstdint>
 
 namespace arangodb {
 
 struct MaintenanceOptions {
+  MaintenanceOptions() {
+    // use a quarter of the available cores for maintenance threads by
+    // default, but never less than 3 (see MaintenanceFeature::minThreadLimit)
+    maintenanceThreadsMax =
+        (std::max)(static_cast<uint32_t>(3),
+                   static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
+    maintenanceThreadsSlowMax = maintenanceThreadsMax / 2;
+  }
+
   /// @brief option for forcing this feature to always be enable - used by the
   /// catch tests
   bool forceActivation = false;
@@ -34,10 +46,10 @@ struct MaintenanceOptions {
   bool resignLeadershipOnShutdown = false;
 
   /// @brief tunable option for thread pool size
-  uint32_t maintenanceThreadsMax = 0;  // Initialized in constructor
+  uint32_t maintenanceThreadsMax;  // computed in constructor
 
   /// @brief tunable option for number of slow threads
-  uint32_t maintenanceThreadsSlowMax = 0;  // Initialized in constructor
+  uint32_t maintenanceThreadsSlowMax;  // computed in constructor
 
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions
   /// block duplicates from adding to _actionRegistry

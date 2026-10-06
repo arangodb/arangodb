@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2014-2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 /// initializes a coordinator. will be called once per V8 context, on all coordinators

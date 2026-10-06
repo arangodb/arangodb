@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -34,7 +33,6 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8Server/FoxxOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -52,16 +50,6 @@ FoxxFeature::FoxxFeature(application_features::ApplicationServer& server,
       _localQueueInserts(0) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
-}
-
-void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  FoxxOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  FoxxOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void FoxxFeature::prepare() {

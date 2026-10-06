@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -98,7 +97,7 @@ struct InvertedIndexField {
 
   bool json(arangodb::application_features::ApplicationServer& server,
             VPackBuilder& builder, InvertedIndexField const& parent,
-            bool rootMode, TRI_vocbase_t const* defaultVocbase = nullptr) const;
+            bool rootMode, Database const* defaultVocbase = nullptr) const;
 
   std::string_view path() const noexcept;
   std::string_view attributeString() const;
@@ -239,12 +238,12 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::application_features::ApplicationServer& server,
             VPackBuilder& builder, bool writeAnalyzerDefinition,
-            TRI_vocbase_t const* defaultVocbase = nullptr) const;
+            Database const* defaultVocbase = nullptr) const;
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
 
   static bool matchesDefinition(IResearchInvertedIndexMeta const& meta,
-                                VPackSlice other, TRI_vocbase_t const& vocbase);
+                                VPackSlice other, Database const& vocbase);
 
   bool hasNested() const noexcept { return _hasNested; }
 

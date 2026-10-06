@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');

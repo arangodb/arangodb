@@ -21,14 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ArangoView = arangodb.ArangoView;
-var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 const isEnterprise = require("internal").isEnterprise();

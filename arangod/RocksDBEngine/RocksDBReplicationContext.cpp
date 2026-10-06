@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationContext.h"
@@ -121,7 +119,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine,
       // buggy clients may not send the serverId
       _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
-      _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
+      _ttl{replutils::BatchInfo::sanitizeTtl(ttl)},
       _expires{TRI_microtime() + _ttl} {
   TRI_ASSERT(_ttl > 0.0);
   TRI_ASSERT(_patchCount.empty());
@@ -479,7 +477,8 @@ Result RocksDBReplicationContext::getInventory(
   result.add("collections", VPackValue(VPackValueType::Array));
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+  if (exec.canUseCollection(vocbase.name(), collectionName, AccessLevel::Read)
+          .ok()) {
     auto collection = vocbase.lookupCollection(collectionName);
     if (collection != nullptr && !collection->deleted()) {
       // dump inventory data for collection/shard into result
@@ -1121,7 +1120,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 
   std::lock_guard locker{_contextLock};
 
-  ttl = std::max(_ttl, ttl);
+  ttl = replutils::BatchInfo::sanitizeTtl(std::max(_ttl, ttl));
   TRI_ASSERT(ttl > 0.0);
   _expires = now + ttl;
 
@@ -1215,7 +1214,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     if (sorted) {
       auto index = logical->getPhysical()->lookupIndex(
           IndexId::primary());  // RocksDBCollection->primaryIndex() is private
-      TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      TRI_ASSERT(index->type() == IndexType::Primary);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       _bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
     } else {

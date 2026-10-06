@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -30,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -60,12 +60,8 @@ ScriptFeature::ScriptFeature(ApplicationServer& server, int* result,
   startsAfter<AgencyFeaturePhase>();
 }
 
-void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ScriptOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void ScriptFeature::start() {
+  TRI_ASSERT(server().hasFeature<ServerFeature>());
   auto& serverFeature = server().getFeature<ServerFeature>();
   auto operationMode = serverFeature.operationMode();
 

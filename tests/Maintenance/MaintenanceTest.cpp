@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/SharedPRNG.h"
@@ -30,6 +27,7 @@
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "Logger/LoggerFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgencyPaths.h"
@@ -56,19 +54,18 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <random>
 
@@ -141,7 +138,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   NodePtr originalPlan;
   NodePtr supervision;
   NodePtr current;
-  ArangodServer server;
+  application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -519,13 +516,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
-  ArangodServer as;
+  application_features::ApplicationServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, NodePtr> localNodes;
 
-  std::unique_ptr<RocksDBEngine>
+  RocksDBEngine*
       engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
@@ -537,26 +534,25 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
-    auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
+    auto& roOptions = as.addFeature<RocksDBOptionFeature>();
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& dbFeature = as.addFeature<DatabaseFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
 
     as.addFeature<MaintenanceFeature>(nullptr);
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
-    as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
+    auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
@@ -570,15 +566,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                                      : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<RocksDBEngine>(
-        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, rocksDbRecoveryManager, dbFeature,
+    engine = &as.addFeature<StorageEngine, RocksDBEngine>(
+        roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
+        replicatedLogFeature, scheduler, dbFeature, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
-    dbFeature.setEngineTesting(engine.get());
-  }
-
-  ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
   }
 
   auto dbName() const -> std::string {

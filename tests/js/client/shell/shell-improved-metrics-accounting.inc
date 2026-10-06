@@ -21,14 +21,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexey Bakharew
 // //////////////////////////////////////////////////////////////////////////////
 (function () {
 
   'use strict';
   const db = require('@arangodb').db;
-  const { getAllMetricsFromEndpoints, getMetricSingle, getCompleteMetricsValues } = require('@arangodb/test-helper');
+  const { getCompleteMetricsValues } = require('@arangodb/test-helper');
   const isCluster = require("internal").isCluster();
+  const IM = global.instanceManager;
 
   return function (dbName, databaseCreationOptions, collectionCreationOptions, shardingEnabled = false) {
     const n = 10000;
@@ -198,15 +198,10 @@
 
       testRequestMemoryUsage: function () {
         let metrics;
-        if (isCluster) {
-          metrics = getAllMetricsFromEndpoints("arangodb_requests_memory_usage", "all");
-          metrics.forEach(value => {
-              assertTrue(value > 0);
-          });
-        } else {
-          metrics = getMetricSingle("arangodb_requests_memory_usage");
-          assertTrue(metrics > 0);
-        }    
+        metrics = IM.getAllMetricsByName("arangodb_requests_memory_usage");
+        metrics.forEach(value => {
+          assertTrue(value > 0);
+        });
       }
     };
   };

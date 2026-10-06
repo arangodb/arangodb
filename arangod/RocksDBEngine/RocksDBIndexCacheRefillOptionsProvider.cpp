@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void RocksDBIndexCacheRefillOptionsProvider::declareOptions(
+void RocksDBIndexCacheRefillOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     RocksDBIndexCacheRefillFeatureOptions& opts) {
   options

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionAccessingNode.h"
@@ -133,7 +132,7 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(
   builder.add(VPackValue("indexes"));
   col->getPhysical()->getIndexesVPack(
       builder, [](arangodb::Index const* idx, uint8_t& flags) {
-        if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (idx->type() == IndexType::Primary) {
           flags = Index::makeFlags(Index::Serialize::Basics);
           return true;
         }

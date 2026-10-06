@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterEngine.h"
@@ -32,21 +31,20 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
-#include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Iterator.h>
 
@@ -62,44 +60,37 @@ bool ClusterEngine::Mocking = false;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
-                             metrics::IRegistry& metrics)
-    : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
-                    std::make_unique<ClusterIndexFactory>(server, *this)),
-      _clusterFeature(server.getFeature<ClusterFeature>()),
-      _metrics(metrics),
-      _actualEngine(nullptr) {
+                             ClusterFeature& clusterFeature,
+                             DatabaseFeature& database,
+                             metrics::IRegistry& metrics,
+                             IVectorIndexProvider const& vectorIndexProvider)
+    : StorageEngine(server, EngineName, name(),
+                    std::make_unique<ClusterIndexFactory>(server, *this,
+                                                          vectorIndexProvider),
+                    database, database),
+      _clusterFeature(clusterFeature),
+      _metrics(metrics) {
   setOptional(true);
 }
 
 ClusterEngine::~ClusterEngine() = default;
 
-void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
-
-bool ClusterEngine::isRocksDB() const {
-  return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == RocksDBEngine::name();
+std::string_view ClusterEngine::typeName() const {
+  return RocksDBEngine::kEngineName;
 }
 
-bool ClusterEngine::isMock() const {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  return ClusterEngine::Mocking ||
-         (_actualEngine && _actualEngine->name() == "Mock");
-#else
-  return false;
-#endif
+ClusterIndexFactory const& ClusterEngine::indexFactory() const {
+  return static_cast<ClusterIndexFactory const&>(StorageEngine::indexFactory());
 }
 
 HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (isMock()) {
+  if (ClusterEngine::Mocking) {
     return ClusterEngineType::MockEngine;
   }
 #endif
-  TRI_ASSERT(_actualEngine != nullptr);
-
-  TRI_ASSERT(isRocksDB());
   return ClusterEngineType::RocksDBEngine;
 }
 
@@ -117,24 +108,24 @@ void ClusterEngine::prepare() {
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   initTransactionStatistics(_metrics);
-}
 
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
+  VPackBuilder databases;
+  getDatabases(databases);
+  TRI_ASSERT(databases.slice().isArray());
+  _databaseBootstrap.bootstrapDatabases(databases.slice());
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
-                                                   operationOrigin);
+  return std::make_shared<ClusterTransactionState>(
+      vocbase, tid, options, operationOrigin, transactionManager());
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
                                                   VPackSlice info) {
-  if (isRocksDB()) {
+  if (engineType() == ClusterEngineType::RocksDBEngine) {
     // deliberately not add objectId
     if (!info.get(StaticStrings::CacheEnabled).isBool()) {
       builder.add(StaticStrings::CacheEnabled, VPackValue(false));
@@ -144,8 +135,8 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<ClusterCollection>(collection, engineType(), info);
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
+  return std::make_unique<ClusterCollection>(collection, engineType(), storage);
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
@@ -185,16 +176,6 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 // database, collection and index management
 // -----------------------------------------
 
@@ -209,12 +190,12 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
 }
 
 // current recovery state
-RecoveryState ClusterEngine::recoveryState() {
-  return RecoveryState::DONE;  // never in recovery
+EngineState ClusterEngine::engineState() noexcept {
+  return EngineState::kRunning;  // never in recovery
 }
 
 // current recovery tick
-TRI_voc_tick_t ClusterEngine::recoveryTick() {
+TRI_voc_tick_t ClusterEngine::recoveryTick() noexcept {
   return 0;  // never in recovery
 }
 
@@ -252,7 +233,7 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
 }
 
 Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
-  if (inRecovery()) {
+  if (!isReady()) {
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;
@@ -264,31 +245,12 @@ Result ClusterEngine::compactAll(bool changeLevel,
                                compactBottomMostLevel);
 }
 
-/// @brief Add engine-specific optimizer rules
-void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
-  if (engineType() == ClusterEngineType::RocksDBEngine) {
-    RocksDBOptimizerRules::registerResources(feature);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (engineType() == ClusterEngineType::MockEngine) {
-    // do nothing
-#endif
-  } else {
-    // invalid engine type...
-    TRI_ASSERT(false);
-  }
-}
-
 #ifdef USE_V8
 /// @brief Add engine-specific V8 functions
 void ClusterEngine::addV8Functions() {
   ClusterV8Functions::registerResources();
 }
 #endif
-
-/// @brief Add engine-specific REST handlers
-void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  ClusterRestHandlers::registerResources(&handlerFactory);
-}
 
 void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -162,7 +161,7 @@ TEST_F(ClusteringPropertiesTest, test_oneShardDBCannotBeSatellite) {
 
   // No special config required, this always fails
   auto config = defaultDBConfig();
-  config.isOneShardDB = true;
+  config.oneShardDBConfiguration = OneShardDatabaseConfiguration{};
   auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok())
       << "Configured a oneShardDB collection as 'satellite'.";

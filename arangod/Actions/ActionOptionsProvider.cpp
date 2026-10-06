@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ActionOptionsProvider::declareOptions(
+void ActionOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ActionFeatureOptions& opts) {
   options->addOption(
       "--server.allow-use-database",

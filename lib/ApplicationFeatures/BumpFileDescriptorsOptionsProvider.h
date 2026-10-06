@@ -33,18 +33,34 @@ class ProgramOptions;
 
 namespace arangodb {
 
+// Base for the concrete providers below. The option name differs per binary.
 struct BumpFileDescriptorsOptionsProvider
-    : OptionsProvider<BumpFileDescriptorsFeatureOptions> {
-  explicit BumpFileDescriptorsOptionsProvider(std::string optionName);
+    : OptionsProviderImpl<BumpFileDescriptorsOptionsProvider,
+                          BumpFileDescriptorsFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          BumpFileDescriptorsFeatureOptions& options);
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      BumpFileDescriptorsFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           BumpFileDescriptorsFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       BumpFileDescriptorsFeatureOptions& options) override;
+ protected:
+  explicit BumpFileDescriptorsOptionsProvider(std::string optionName) {
+    mutableOptions().optionName = std::move(optionName);
+  }
+};
 
- private:
-  std::string _optionName;
+// arangod
+struct ServerBumpFileDescriptorsOptionsProvider
+    : BumpFileDescriptorsOptionsProvider {
+  ServerBumpFileDescriptorsOptionsProvider()
+      : BumpFileDescriptorsOptionsProvider("--server.descriptors-minimum") {}
+};
+
+// arangodump, arangorestore
+struct ClientBumpFileDescriptorsOptionsProvider
+    : BumpFileDescriptorsOptionsProvider {
+  ClientBumpFileDescriptorsOptionsProvider()
+      : BumpFileDescriptorsOptionsProvider("--descriptors-minimum") {}
 };
 
 }  // namespace arangodb

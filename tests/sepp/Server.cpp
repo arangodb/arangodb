@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Metrics/MetricsFeature.h"
@@ -155,21 +154,17 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
       LazyApplicationFeatureReference<StatisticsFeature>(_server),
-      LazyApplicationFeatureReference<DatabaseFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
-  _server.addFeature<VersionFeature>();
-  _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
   _server.addFeature<async_registry::Feature>();
-  _server.addFeature<AuthenticationFeature>();
+  auto& authenticationFeature = _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
-  _server.addFeature<BumpFileDescriptorsFeature>(
-      "--server.descriptors-minimum");
+  _server.addFeature<BumpFileDescriptorsFeature>();
 #endif
   _server.addFeature<CacheOptionsFeature>();
   auto& cacheManager =
@@ -178,7 +173,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& clusterFeature = _server.addFeature<ClusterFeature>(metrics);
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
-  _server.addFeature<ConfigFeature>(name);
+  _server.addFeature<ConfigFeature>();
 #ifdef USE_V8
   _server.addFeature<ConsoleFeature>();
 #endif
@@ -207,6 +202,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
+  _server.addFeature<RbacFeature>(authenticationFeature);
   _server.addFeature<NonceFeature>();
   _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();
@@ -242,21 +238,16 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<StatisticsFeature>(metrics);
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
-  _server.addFeature<TemporaryStorageFeature>();
+  _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
-  _server.addFeature<transaction::ManagerFeature>(metrics);
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();
   _server.addFeature<aql::OptimizerRulesFeature>();
   _server.addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
-  _server.addFeature<RocksDBOptionFeature>(
-      _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
-                                          : nullptr);
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
+  _server.addFeature<RocksDBOptionFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -265,17 +256,18 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
 #ifdef USE_ENTERPRISE
   _server.addFeature<AuditFeature>();
-  _server.addFeature<LicenseFeature>();
+  _server.addFeature<LicenseFeature>(databasePath);
   _server.addFeature<RCloneFeature>();
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  _server.addFeature<RocksDBEngine>(
+  auto& engine = _server.addFeature<StorageEngine, RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
+  _server.addFeature<transaction::ManagerFeature>(metrics, engine);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

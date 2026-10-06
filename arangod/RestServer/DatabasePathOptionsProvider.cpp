@@ -35,7 +35,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DatabasePathOptionsProvider::declareOptions(
+void DatabasePathOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DatabasePathFeatureOptions& opts) {
   options
       ->addOption("--database.directory", "The path to the database directory.",
@@ -62,7 +62,7 @@ arangod, e.g. `flock()`.)");
                                           "empty", "populated"}));
 }
 
-void DatabasePathOptionsProvider::validateOptions(
+void DatabasePathOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DatabasePathFeatureOptions& opts) {
   auto const& positionals = options->processingResult()._positionals;
 

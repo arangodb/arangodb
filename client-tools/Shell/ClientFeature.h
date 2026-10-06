@@ -18,17 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Utils/BackgroundJwtRenewal.h"
+#include "Utils/RenewingJwtToken.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -53,18 +56,14 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+  ClientFeature(ApplicationServer& server);
+  ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+  void prepare() override;
+  void start() override;
+  void stop() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -73,6 +72,8 @@ class ClientFeature final : public HttpEndpointProvider {
   // set single endpoint
   void setEndpoint(std::string_view value);
 
+  /// the user requests are authenticated as: the user of a --server.jwt-token
+  /// if it names one, otherwise --server.username
   std::string username() const;
   void setUsername(std::string_view value);
 
@@ -82,6 +83,8 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
 
+  /// the token passed via --server.jwt-token; once the feature has started
+  /// it is renewed in the background, so callers must re-read it
   std::string jwtToken() const;
   void setJwtToken(std::string_view jwtToken);
 
@@ -102,7 +105,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
   double jwtRenewalThreshold() const noexcept;
-  void setJwtRenewalThreshold(double value) noexcept;
+  /// also applies to the renewal of a token passed via --server.jwt-token
+  void setJwtRenewalThreshold(double value);
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -130,14 +134,52 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints, double connectionTimeout,
-                double requestTimeout, ClientFeatureOptions options);
+                std::type_index registration, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();
   void readJwtToken();
   void loadJwtSecretFile();
+
+  /**
+   * Parameters shared by all clients: timeouts, warnings, compression
+   */
+  httpclient::SimpleHttpClientParams defaultHttpClientParams() const;
+
+  /**
+   * Client without authentication, location rewriter or token provider
+   */
+  std::unique_ptr<httpclient::SimpleHttpClient> createBareHttpClient(
+      std::string const& definition,
+      httpclient::SimpleHttpClientParams const& params,
+      bool suppressError) const;
+
+  /**
+   * POSTs to the given /_open/auth path and interprets the reply
+   */
+  TokenOutcome postForToken(
+      std::string const& path, std::string const& body,
+      std::unordered_map<std::string, std::string> const& headers) const;
+
+  /**
+   * POSTs /_open/auth with the configured username and password
+   */
+  TokenOutcome loginViaOpenAuth() const;
+
+  /**
+   * POSTs /_open/auth/renew authenticated with the given token
+   */
+  TokenOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+
+  /**
+   * --server.jwt-renewal-threshold as a duration
+   */
+  JwtClock::duration renewalThreshold() const;
+
+  /**
+   * Whether to exchange the configured credentials for a JWT at startup
+   */
+  bool shouldLoginViaOpenAuth() const;
 
   ClientFeatureOptions _options;
 
@@ -147,6 +189,11 @@ class ClientFeature final : public HttpEndpointProvider {
   basics::ReadWriteLock mutable _settingsLock;
 
   std::string _jwtSecret;
+  /// set when a token was passed via --server.jwt-token; shared by all clients
+  /// created by this feature, so every worker thread sees a renewed token
+  std::shared_ptr<RenewingJwtToken> _renewingJwtToken;
+  /// renews _renewingJwtToken even while no requests are sent
+  std::unique_ptr<BackgroundJwtRenewal> _jwtRenewal;
   size_t _retries;
 
   bool _warn;

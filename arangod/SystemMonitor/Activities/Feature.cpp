@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "Feature.h"
 
@@ -100,11 +99,6 @@ void Feature::start() {
 }
 
 void Feature::stop() { _cleanupThread.reset(); }
-
-void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  activities::OptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 velocypack::SharedSlice Feature::getData() const {
   auto snap = registry.snapshot();

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PropagateConstantAttributes.h"
@@ -32,7 +30,7 @@
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetCollection.h"
 #include "Cluster/ServerState.h"
 #include "Containers/ImmutableMap.h"
 #include "Logger/LogMacros.h"
@@ -208,7 +206,7 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
           if (setter != nullptr &&
               (setter->getType() == EN::ENUMERATE_COLLECTION ||
                setter->getType() == EN::INDEX)) {
-            auto collection = utils::getCollection(setter);
+            auto collection = optimizer::getCollection(setter);
             if (collection != nullptr) {
               auto logical = collection->getCollection();
               if (logical->hasSmartJoinAttribute() &&

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

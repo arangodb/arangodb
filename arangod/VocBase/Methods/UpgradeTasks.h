@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,24 +26,22 @@
 
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
+namespace arangodb {
+struct Database;
+}
 namespace arangodb::methods {
 
 /// Code to create and initialize databases
 /// Replaces upgrade-database.js for good
 struct UpgradeTasks {
-  static Result createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+  static Result createSystemCollectionsAndIndices(Database& vocbase,
                                                   velocypack::Slice slice);
-  static Result createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+  static Result createStatisticsCollectionsAndIndices(Database& vocbase,
                                                       velocypack::Slice slice);
-  static Result addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                    velocypack::Slice slice);
-  static Result renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
-                                                   velocypack::Slice slice);
-  static Result dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+  static Result addDefaultUserOther(Database& vocbase, velocypack::Slice slice);
+  static Result dropLegacyAnalyzersCollection(Database& vocbase,
                                               velocypack::Slice slice);
-  static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
+  static Result dropPregelQueriesCollection(Database& vocbase,
                                             velocypack::Slice slice);
 };
 

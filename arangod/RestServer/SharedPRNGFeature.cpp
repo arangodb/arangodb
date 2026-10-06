@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SharedPRNGFeature.h"

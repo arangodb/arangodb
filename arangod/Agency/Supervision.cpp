@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
@@ -202,7 +201,8 @@ std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server,
                          metrics::IRegistry& metricsRegistry)
-    : arangodb::ServerThread(server, "Supervision"),
+    // operates on the agency store only, no ExecContext required
+    : arangodb::ServerThread(server, "Supervision", nullptr),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),

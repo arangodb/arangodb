@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Manager.h"
@@ -41,6 +40,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -53,7 +53,6 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
@@ -64,6 +63,8 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
+
+#include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
@@ -79,13 +80,13 @@ using namespace arangodb;
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
   return (user == exec.user());
 }
 
-std::string currentUser() { return arangodb::ExecContext::current().user(); }
+auto currentUser() { return arangodb::ExecContext::current().user(); }
 
 bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
                         std::vector<std::string>& writes,
@@ -157,12 +158,16 @@ struct MGMethods final : arangodb::transaction::Methods {
 };
 }  // namespace
 
-Manager::Manager(ManagerFeature& feature)
-    : _feature(feature),
+Manager::Manager(application_features::ApplicationServer& server,
+                 ManagerFeatureOptions options,
+                 metrics::Counter& expiredTransactions)
+    : _server(server),
+      _options(std::move(options)),
+      _expiredTransactions(expiredTransactions),
       _nrRunning(0),
       _disallowInserts(false),
       _hotbackupCommitLockHeld(false),
-      _streamingLockTimeout(feature.streamingLockTimeout()),
+      _streamingLockTimeout(_options.streamingLockTimeout),
       _softShutdownOngoing(false) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _history = std::make_unique<transaction::History>(/*maxSize*/ 256);
@@ -209,7 +214,7 @@ uint64_t Manager::getActiveTransactionCount() const noexcept {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
-/*static*/ double Manager::ttlForType(ManagerFeature const& feature,
+/*static*/ double Manager::ttlForType(ManagerFeatureOptions const& options,
                                       Manager::MetaType type) {
   TRI_IF_FAILURE("transaction::Manager::shortTTL") { return 0.1; }
 
@@ -221,13 +226,13 @@ uint64_t Manager::getActiveTransactionCount() const noexcept {
   if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
     TRI_IF_FAILURE("lowStreamingIdleTimeout") { return 5.0; }
 
-    return feature.streamingIdleTimeout();
+    return options.streamingIdleTimeout;
   }
   return idleTTLDBServer;
 }
 
-Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t,
-                                double ttl,
+Manager::ManagedTrx::ManagedTrx(ManagerFeatureOptions const& options,
+                                MetaType t, double ttl,
                                 std::shared_ptr<TransactionState> st,
                                 arangodb::cluster::CallbackGuard rGuard)
     : type(t),
@@ -236,7 +241,7 @@ Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t,
       sideUsers(0),
       finalStatus(Status::UNDEFINED),
       timeToLive(ttl),
-      expiryTime(TRI_microtime() + Manager::ttlForType(feature, t)),
+      expiryTime(TRI_microtime() + Manager::ttlForType(options, t)),
       state(std::move(st)),
       rGuard(std::move(rGuard)),
       user(::currentUser()),
@@ -288,7 +293,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
   if (ServerState::instance()->isDBServer()) {
     auto const& origin = state.options().origin;
     if (!origin.serverId.empty()) {
-      auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
+      auto& clusterFeature = _server.getFeature<ClusterFeature>();
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
           origin,
@@ -320,8 +325,8 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
 
     auto& buck = _transactions[bucket];
 
-    double ttl = Manager::ttlForType(_feature, MetaType::StandaloneAQL);
-    auto it = buck._managed.try_emplace(tid, _feature, MetaType::StandaloneAQL,
+    double ttl = Manager::ttlForType(_options, MetaType::StandaloneAQL);
+    auto it = buck._managed.try_emplace(tid, _options, MetaType::StandaloneAQL,
                                         ttl, state, std::move(rGuard));
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -487,7 +492,7 @@ Result Manager::prepareOptions(transaction::Options& options) {
   } else {
     // for all other transactions, apply a size limitation
     options.maxTransactionSize = std::min<size_t>(
-        options.maxTransactionSize, _feature.streamingMaxTransactionSize());
+        options.maxTransactionSize, _options.streamingMaxTransactionSize);
   }
 
   return res;
@@ -950,7 +955,7 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS)
           << "waiting on trx write-lock " << tid;
       i = 0;
-      if (_feature.server().isStopping()) {
+      if (_server.isStopping()) {
         co_return nullptr;  // shutting down
       }
     }
@@ -1120,8 +1125,8 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     if (it == buck._managed.end()) {
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
-          tid, _feature, MetaType::Tombstone,
-          ttlForType(_feature, MetaType::Tombstone), nullptr,
+          tid, _options, MetaType::Tombstone,
+          ttlForType(_options, MetaType::Tombstone), nullptr,
           arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
       inserted.first->second.db = database;
@@ -1400,7 +1405,9 @@ bool Manager::garbageCollect(bool abortAll) {
   }
 
   // track the number of hard-/soft-aborted transactions
-  _feature.trackExpired(numAborted);
+  if (numAborted > 0) {
+    _expiredTransactions.count(numAborted);
+  }
 
   // remove all expired tombstones
   for (TransactionId tid : toErase) {
@@ -1451,16 +1458,16 @@ bool Manager::abortManagedTrx(
   return !toAbort.empty();
 }
 
-void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
-                           std::string const& username, bool fanout,
+void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
+                           std::string_view username, bool fanout,
                            bool details) const {
   TRI_ASSERT(!builder.isClosed());
 
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
-    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    NetworkFeature const& nf = _server.getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     if (pool == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -1496,7 +1503,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
+              "bearer " + auth::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
@@ -1535,7 +1542,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       [this, &builder, &database, details](TransactionId tid,
                                            ManagedTrx const& trx) {
         bool authorized = isAuthorized(trx, database);
-        if (details && arangodb::ExecContext::current().isSuperuser()) {
+        if (details &&
+            arangodb::ExecContext::current().isSuperuserOrDisabled()) {
           authorized = true;
         }
         if (!authorized) {
@@ -1605,20 +1613,21 @@ History& Manager::history() noexcept {
 }
 #endif
 
-Result Manager::abortAllManagedWriteTrx(std::string const& username,
+Result Manager::abortAllManagedWriteTrx(std::string_view username,
                                         bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES)
       << "aborting all " << (fanout ? "" : "local ") << "write transactions";
   Result res;
 
-  DatabaseFeature& databaseFeature =
-      _feature.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
   databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
     auto queryList = vocbase->queryList();
     TRI_ASSERT(queryList != nullptr);
-    // we are only interested in killed write queries
     queryList->kill(
-        [](aql::Query& query) { return query.isModificationQuery(); }, false);
+        [](aql::Query& query) {
+          return ::authorized(query.user()) && query.isModificationQuery();
+        },
+        false);
   });
 
   // abort local transactions
@@ -1627,9 +1636,9 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
   });
 
   if (fanout && ServerState::instance()->isCoordinator()) {
-    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
-    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    NetworkFeature const& nf = _server.getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     if (pool == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -1655,7 +1664,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
+              "bearer " + auth::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
@@ -1696,7 +1705,7 @@ bool Manager::storeManagedState(
     TransactionId tid, std::shared_ptr<arangodb::TransactionState> state,
     double ttl) {
   if (ttl <= 0) {
-    ttl = Manager::ttlForType(_feature, MetaType::Managed);
+    ttl = Manager::ttlForType(_options, MetaType::Managed);
   }
 
   TRI_ASSERT(state != nullptr);
@@ -1707,14 +1716,29 @@ bool Manager::storeManagedState(
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.try_emplace(
-      tid, _feature, MetaType::Managed, ttl, std::move(state),
+      tid, _options, MetaType::Managed, ttl, std::move(state),
       std::move(rGuard));
   return it.second;
 }
 
 bool Manager::isAuthorized(ManagedTrx const& trx) const {
-  auto const& exec = arangodb::ExecContext::current();
-  return isAuthorized(trx, exec.database());
+  auto const& exec = ExecContext::current();
+  if (exec.isSuperuser()) {
+    // see the comment below, in isAuthorized(ManagedTrx const&,
+    // std::string_view)
+    return true;
+  }
+  auto db = exec.vocbase();
+  TRI_ASSERT(db.has_value());
+  auto const databaseName = db.value().get().name();
+  TRI_ASSERT(!databaseName.empty())
+      << "This function cannot be called when there's no database context";
+  if (databaseName.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Trying to access a transaction outside of a database context");
+  }
+  return isAuthorized(trx, databaseName);
 }
 
 bool Manager::isAuthorized(ManagedTrx const& trx,

@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
@@ -32,7 +30,6 @@
 #include <memory>
 #include <optional>
 
-struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 class ReplicationIterator;
@@ -97,14 +94,14 @@ struct IDatabaseSnapshot {
 };
 
 struct DatabaseSnapshot : IDatabaseSnapshot {
-  explicit DatabaseSnapshot(TRI_vocbase_t& vocbase);
+  explicit DatabaseSnapshot(Database& vocbase);
   [[nodiscard]] auto createCollectionReader(
       std::shared_ptr<LogicalCollection> shard)
       -> std::unique_ptr<ICollectionReader> override;
   auto resetTransaction() -> Result override;
 
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   std::shared_ptr<transaction::Context> _ctx;
   std::unique_ptr<SnapshotTransaction> _trx;
 };
@@ -119,12 +116,12 @@ struct IDatabaseSnapshotFactory {
 
 class DatabaseSnapshotFactory : public IDatabaseSnapshotFactory {
  public:
-  explicit DatabaseSnapshotFactory(TRI_vocbase_t& vocbase);
+  explicit DatabaseSnapshotFactory(Database& vocbase);
 
   auto createSnapshot() -> std::unique_ptr<IDatabaseSnapshot> override;
 
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

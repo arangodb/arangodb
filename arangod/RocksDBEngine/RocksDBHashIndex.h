@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,7 +36,7 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
                    arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
+  IndexType type() const override { return IndexType::Hash; }
 
   char const* typeName() const override { return "rocksdb-hash"; }
 

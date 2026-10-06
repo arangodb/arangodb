@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,8 +46,6 @@ class ClusterUpgradeFeature final
   ClusterUpgradeFeature(application_features::ApplicationServer& server,
                         DatabaseFeature& databaseFeature);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
   void setBootstrapVersion();

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Esteban Lombeyda
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -75,7 +73,7 @@
 #include "Basics/PageSize.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -527,7 +525,7 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv) {
 #ifdef TRI_HAVE_LINUX_PROC
 
 ProcessInfo TRI_ProcessInfoSelf() {
-  return TRI_ProcessInfo(Thread::currentProcessId());
+  return TRI_ProcessInfo(BasicThread::currentProcessId());
 }
 
 #elif ARANGODB_HAVE_GETRUSAGE
@@ -892,10 +890,6 @@ void TRI_ClosePipe(ExternalProcess* process, bool read) {
   auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
 
   if (*pipe != -1) {
-    FILE* stream = fdopen(*pipe, "w");
-    if (stream != nullptr) {
-      fflush(stream);
-    }
     close(*pipe);
     *pipe = -1;
   }

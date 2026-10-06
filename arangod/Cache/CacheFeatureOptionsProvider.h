@@ -23,16 +23,20 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 
 namespace arangodb {
 
-struct CacheFeatureOptionsProvider : OptionsProvider<CacheOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      CacheOptions& options) override;
+struct CacheFeatureOptionsProvider
+    : OptionsProviderImpl<CacheFeatureOptionsProvider, CacheOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          CacheOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       CacheOptions& options) override;
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          CacheOptions& options);
+
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           CacheOptions& options);
 };
 
 }  // namespace arangodb

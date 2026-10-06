@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -30,7 +28,7 @@
 #include <thread>
 #include <vector>
 
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Random/RandomGenerator.h"

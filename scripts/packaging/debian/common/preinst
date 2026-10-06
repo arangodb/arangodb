@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+
+getent group arangodb >/dev/null || groupadd -r arangodb 
+getent passwd arangodb >/dev/null || useradd -r -g arangodb -d /usr/share/arangodb3 -s /bin/false -c "ArangoDB Application User" arangodb
+ 
+# check if the arangodb group was added locally in /etc/group
+# if not, then the arangod binary will very likely try to open a socket
+# connection to nscd to query the group information from there.
+# if there is no nscd running, starting the arangod binary will fail
+(grep -q "^arangodb:" /etc/passwd && grep -q "^arangodb:" /etc/group) || (nscd -g >/dev/null 2>&1) || cat 1>&2 <<EOF
+################################################################################
+Unable to query nscd service for user or group 'arangodb'. As a consequence, it
+is very likely that installing or starting the arangod server will fail because
+it can neither find user/group 'arangodb' in /etc/passwd or /etc/group nor via
+an nscd group lookup.
+
+Please install 'nscd' before installing the arangodb package.
+################################################################################
+EOF
+
+install -o arangodb -g arangodb -m 755 -d /var/lib/arangodb3
+install -o arangodb -g arangodb -m 755 -d /var/lib/arangodb3-apps
+install -o arangodb -g arangodb -m 755 -d /var/log/arangodb3

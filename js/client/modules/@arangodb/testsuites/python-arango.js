@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, SYS_IS_V8_BUILD */
+/* global print, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -78,7 +77,6 @@ class runInPythonTest extends runWithAllureReport {
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
-      "vector-index": "true",
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
@@ -94,7 +92,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.instanceManager.JWT,
+      '--secret', this.instanceManager.jwt_secret,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',
@@ -106,11 +104,6 @@ class runInPythonTest extends runWithAllureReport {
     let testSkipList = [];
     if (!this.options.cluster) {
       testSkipList.push('backup');
-    }
-    if (true) { //!SYS_IS_V8_BUILD) {
-      testSkipList.push('foxx');
-      //testSkipList.push('tasks');
-      testSkipList.push('js-transactions');
     }
     if (testSkipList.length > 0) {
       args = args.concat(['--skip'].concat(testSkipList));

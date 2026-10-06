@@ -18,16 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
+
 #include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"
@@ -144,9 +142,8 @@ bool isDecimal(char const* field, size_t fieldLength) noexcept {
 
 namespace arangodb::import {
 
-ImportStatistics::ImportStatistics(
-    application_features::ApplicationServer& server, uint64_t maxErrors)
-    : _maxErrors(maxErrors), _histogram(server) {}
+ImportStatistics::ImportStatistics(uint64_t maxErrors)
+    : _maxErrors(maxErrors) {}
 
 bool ImportStatistics::logError(std::string_view message) {
   {
@@ -201,7 +198,7 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
       _ignoreMissing(false),
       _skipValidation(false),
       _numberLines(0),
-      _stats(client.server(), _maxErrors),
+      _stats(_maxErrors),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -215,8 +212,8 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
       _emittedField(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client.createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(std::make_unique<SenderThread>(
-        client.server(), std::move(http), &_stats, [this]() {
+    _senderThreads.emplace_back(
+        std::make_unique<SenderThread>(std::move(http), &_stats, [this]() {
           std::lock_guard guard{_threadsCondition.mutex};
           _threadsCondition.cv.notify_one();
         }));
@@ -225,7 +222,7 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread = std::make_unique<AutoTuneThread>(client.server(), *this);
+    _autoTuneThread = std::make_unique<AutoTuneThread>(*this);
     _autoTuneThread->start();
   }
 

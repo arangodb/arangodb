@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchInvertedClusterIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Metrics/Builder.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -94,7 +94,7 @@ std::string IResearchInvertedClusterIndex::getCollectionName() const {
   return collection().name();
 }
 
-IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
+IResearchDataStore::Stats IResearchInvertedClusterIndex::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()
@@ -105,9 +105,9 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
   }
   auto& metrics = data->metrics;
   auto labels = absl::StrCat(  // clang-format off
-      "db=\"", getDbName(), "\","
-      "index=\"", name(), "\","
-      "collection=\"", getCollectionName(), "\",",
+      "db=\"", metrics::escapeLabelValue(getDbName()), "\","
+      "index=\"", metrics::escapeLabelValue(name()), "\","
+      "collection=\"", metrics::escapeLabelValue(getCollectionName()), "\",",
       "index_id=\"", id().id(), "\"");  // clang-format on
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),

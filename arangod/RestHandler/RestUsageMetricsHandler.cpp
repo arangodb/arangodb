@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUsageMetricsHandler.h"
@@ -44,12 +43,13 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/usage-metrics (prefix)
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto& security = server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoringInternal{});
+      r.fail()) {
     // don't leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     co_return;
   }
 

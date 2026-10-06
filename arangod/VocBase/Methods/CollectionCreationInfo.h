@@ -18,14 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <velocypack/Slice.h>
-
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
 

@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Yuriy Popov
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");

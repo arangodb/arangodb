@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentProducingNode.h"
@@ -28,7 +27,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
@@ -236,10 +235,10 @@ bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
   }
 
   attributes.clear();
-  if (utils::findProjections(dynamic_cast<ExecutionNode*>(this), outVariable(),
-                             /*expectedAttribute*/ "",
-                             /*excludeStartNodeFilterCondition*/ true,
-                             attributes)) {
+  if (optimizer::findProjections(
+          dynamic_cast<ExecutionNode*>(this), outVariable(),
+          /*expectedAttribute*/ "",
+          /*excludeStartNodeFilterCondition*/ true, attributes)) {
     if (attributes.size() <= maxProjections()) {
       _projections = Projections(std::move(attributes));
     }

@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 // We need the following options for this test:
@@ -30,7 +29,8 @@
 
 if (getOptions === true) {
   return {
-    'rocksdb.force-legacy-comparator': 'true'
+    'rocksdb.force-legacy-comparator': 'true',
+    "server.authentication": false
   };
 }
 

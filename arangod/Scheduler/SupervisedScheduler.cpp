@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
@@ -33,7 +31,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/SharedPRNG.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/cpu-relax.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -44,6 +42,7 @@
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Cluster/ServerState.h"
+#include "Utils/Thread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -117,10 +116,11 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : public Thread {
  public:
-  explicit SupervisedSchedulerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler, std::string const& name = "Scheduler")
-      : Thread(server, name), _scheduler(scheduler) {}
+  explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler,
+                                     std::string const& name = "Scheduler")
+      // scheduler threads run without an ExecContext; work items carry
+      // their own context
+      : Thread(name, nullptr), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SupervisedSchedulerThread() = default;
@@ -132,20 +132,16 @@ class SupervisedSchedulerThread : public Thread {
 class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler)
-      : SupervisedSchedulerThread(server, scheduler, "SchedMan") {}
+  explicit SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
+      : SupervisedSchedulerThread(scheduler, "SchedMan") {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); }
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler)
-      : SupervisedSchedulerThread(server, scheduler, "SchedWorker") {}
+  explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
+      : SupervisedSchedulerThread(scheduler, "SchedWorker") {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); }
 };
@@ -352,7 +348,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
 }
 
 bool SupervisedScheduler::start() {
-  _manager = std::make_unique<SupervisedSchedulerManagerThread>(_server, *this);
+  _manager = std::make_unique<SupervisedSchedulerManagerThread>(*this);
   if (!_manager->start()) {
     LOG_TOPIC("00443", ERR, Logger::THREADS)
         << "could not start supervisor thread";
@@ -945,8 +941,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _sleeping(false),
       _ready(false),
       _lastJobStarted(clock::now()),
-      _thread(std::make_unique<SupervisedSchedulerWorkerThread>(
-          scheduler._server, scheduler)) {}
+      _thread(std::make_unique<SupervisedSchedulerWorkerThread>(scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 

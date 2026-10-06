@@ -28,11 +28,7 @@
 #include <memory>
 
 #include <velocypack/Builder.h>
-#include "Inspection/Transformers.h"
 #include "Inspection/VPack.h"
-#include "Inspection/VPackSaveInspector.h"
-
-#include "Basics/Guarded.h"
 
 namespace arangodb::activities {
 

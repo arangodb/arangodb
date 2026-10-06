@@ -49,7 +49,7 @@ function resolveYamlInteger (data) {
         if (ch !== '0' && ch !== '1') return false
         hasDigits = true
       }
-      return hasDigits && Number.isFinite(parseYamlInteger(data))
+      return hasDigits && isFinite(parseYamlInteger(data))
     }
 
     if (ch === 'x') {
@@ -60,7 +60,7 @@ function resolveYamlInteger (data) {
         if (!isHexCode(data.charCodeAt(index))) return false
         hasDigits = true
       }
-      return hasDigits && Number.isFinite(parseYamlInteger(data))
+      return hasDigits && isFinite(parseYamlInteger(data))
     }
 
     if (ch === 'o') {
@@ -71,7 +71,7 @@ function resolveYamlInteger (data) {
         if (!isOctCode(data.charCodeAt(index))) return false
         hasDigits = true
       }
-      return hasDigits && Number.isFinite(parseYamlInteger(data))
+      return hasDigits && isFinite(parseYamlInteger(data))
     }
   }
 
@@ -86,7 +86,7 @@ function resolveYamlInteger (data) {
 
   if (!hasDigits) return false
 
-  return Number.isFinite(parseYamlInteger(data))
+  return isFinite(parseYamlInteger(data))
 }
 
 function parseYamlInteger (data) {

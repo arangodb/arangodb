@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Simran Spiller
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

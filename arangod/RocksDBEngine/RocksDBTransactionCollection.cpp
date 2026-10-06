@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionCollection.h"
@@ -58,7 +57,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {
   try {
     // cppcheck-suppress virtualCallInConstructor
-    releaseUsage();
+    releaseUsage();  // NOLINT(clang-analyzer-optin.cplusplus.VirtualCall)
   } catch (...) {
   }
 }

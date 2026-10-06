@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 const jsunity = require("jsunity");
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
@@ -58,9 +56,9 @@ function testSuite() {
         arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
-          "setup", "teardown", "install", "uninstall",
-          "replace", "upgrade", "configure", "configuration",
-          "set-dependencies", "dependencies", "development",
+          "install", "uninstall",
+          "replace", "upgrade", "configure",
+          "set-dependencies", "development",
           "tests", "script"
         ];
 

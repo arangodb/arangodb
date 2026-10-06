@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics.h"
 #include "Metrics/Counter.h"

@@ -18,11 +18,3 @@ sed -i \
     -e 's~^uid = .*$~~' \
     /etc/arangodb3/arangod.conf
 
-rm -f /usr/bin/foxx
-cat >> /usr/bin/foxx <<'EOF'
-#!/bin/sh
-test -d /tmp/foxx || mkdir -m 700 /tmp/foxx
-export HOME=/tmp/foxx
-exec /usr/lib/node_modules/foxx-cli/bin/foxx "$@"
-EOF
-chmod 755 /usr/bin/foxx

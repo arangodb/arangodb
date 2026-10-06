@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,10 +34,8 @@
 #include <mutex>
 #include <optional>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
-
+struct Database;
 namespace velocypack {
 class Builder;
 class Slice;
@@ -162,7 +159,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, bool waitForSync);
+  bool loadCollections(Database*, bool waitForSync);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -196,9 +193,6 @@ class State {
 
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
-
-  /// @brief Get everything from the state machine
-  query_t allLogs() const;
 
   /// @brief load a compacted snapshot, returns true if successful and false
   /// otherwise. In case of success store and index are modified. The store
@@ -236,7 +230,7 @@ class State {
   /// at the persisted data structure and tries to recover the latest state.
   /// The returned builder has the complete state of the agency and index
   /// is set to the index of the last log entry.
-  static std::shared_ptr<VPackBuilder> latestAgencyState(TRI_vocbase_t& vocbase,
+  static std::shared_ptr<VPackBuilder> latestAgencyState(Database& vocbase,
                                                          index_t& index,
                                                          term_t& term);
 
@@ -301,7 +295,7 @@ class State {
   Agent* _agent;
 
   /// @brief Our vocbase
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   std::atomic<bool> _ready;
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -27,7 +25,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include <filesystem>
 
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
@@ -37,14 +34,14 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -62,11 +59,11 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -102,8 +99,8 @@ struct TestIndex : arangodb::Index {
   }
   void load() override {}
   size_t memory() const override { return sizeof(Index); }
-  arangodb::Index::IndexType type() const override {
-    return arangodb::Index::TRI_IDX_TYPE_UNKNOWN;
+  arangodb::IndexType type() const override {
+    return arangodb::IndexType::Unknown;
   }
   char const* typeName() const override { return "testType"; }
   void unload() override {}
@@ -441,53 +438,20 @@ class IResearchAnalyzerFeatureTest
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
     server.startFeatures();
-    expectUserManagerCalls();
 
     auto vocbase =
         _databaseFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
   }
 
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
-
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
     auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* um = authFeature.userManager();
+    auto* um = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature.userManager());
     ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
@@ -498,8 +462,10 @@ class IResearchAnalyzerFeatureTest
                                           // configuration from system database
   }
 
-  std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
-    return arangodb::ExecContext::create("testUser", "testVocbase");
+  arangodb::tests::mocks::BorrowedExecContext getLoggedInContext() {
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
+    return arangodb::tests::mocks::makeClassicExecContextFrom(*um, "testUser");
   }
 
   std::string analyzerName() const {
@@ -521,93 +487,6 @@ class IResearchAnalyzerFeatureTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                         authentication test suite
 // -----------------------------------------------------------------------------
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
-  // no vocbase read access
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access, no user)
-TEST_F(IResearchAnalyzerFeatureTest,
-       test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access)
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  // implicit RO access to collection _analyzers collection granted due to RO
-  // access to db
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  // implicit access for system analyzers collection granted due to RW access to
-  // database
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                emplace test suite
@@ -826,11 +705,11 @@ TEST_F(IResearchAnalyzerFeatureTest,
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
-  // add valid inRecovery (failure)
+  // add valid !isReady() (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   auto feature = createAnalyzerFeature();
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -1252,7 +1131,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
             .ok());
     ASSERT_NE(_vocbase, nullptr);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -1536,7 +1415,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
-      IndexTypeFactory(arangodb::ArangodServer& server)
+      IndexTypeFactory(
+          arangodb::application_features::ApplicationServer& server)
           : arangodb::IndexTypeFactory(server) {}
 
       virtual bool equal(arangodb::velocypack::Slice lhs,
@@ -1566,7 +1446,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     };
     static const IndexTypeFactory indexTypeFactory(server.server());
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.getFeature<arangodb::DatabaseFeature>().engine().indexFactory());
+        server.getFeature<arangodb::StorageEngine>().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
   }
 
@@ -2619,7 +2499,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     feature.unprepare();
   }
 
-  // remove existing (inRecovery) single-server
+  // remove existing (engine !isReady()) single-server
   {
     auto feature = createAnalyzerFeature();
 
@@ -2642,8 +2522,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2673,14 +2552,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // required features cannot use the existing server since its features
     // already have some state
 
-    arangodb::ArangodServer newServer(nullptr, nullptr);
+    arangodb::application_features::ApplicationServer newServer(nullptr,
+                                                                nullptr);
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2693,8 +2571,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                 arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
                     metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-    StorageEngineMock engine(newServer);
-    dbFeature.setEngineTesting(&engine);
+    newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
@@ -2765,7 +2642,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // remove existing (inRecovery) dbserver
+  // remove existing (engine !isReady()) dbserver
   {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
@@ -2774,15 +2651,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::ServerState::instance()->setRole(beforeRole);
     };
 
-    arangodb::ArangodServer newServer(nullptr, nullptr);
+    arangodb::application_features::ApplicationServer newServer(nullptr,
+                                                                nullptr);
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2795,8 +2671,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                 arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
                     metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-    StorageEngineMock engine(newServer);
-    dbFeature.setEngineTesting(&engine);
+    newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
     newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -2860,8 +2735,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2990,7 +2864,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -3032,8 +2906,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   auto vocbase = _systemDatabaseFeature.use();
 
-  // test feature start load configuration (inRecovery, no configuration
-  // collection)
+  // test feature start load configuration (!isReady(), no config collection)
   {
     // ensure no configuration collection
     {
@@ -3051,8 +2924,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3093,8 +2965,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     feature.unprepare();
   }
 
-  // test feature start load configuration (inRecovery, with configuration
-  // collection)
+  // test feature start load configuration (!isReady(), with config collection)
   {
     // ensure there is an empty configuration collection
     {
@@ -3111,7 +2982,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3130,8 +3001,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3241,7 +3111,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3302,18 +3172,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
-  StorageEngineMock engine(newServer);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  dbfeature.setEngineTesting(&engine);
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -3364,7 +3231,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
 
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4003,7 +3870,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, no_system_no_analyzer) {
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4055,7 +3922,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4100,7 +3967,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4158,7 +4025,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4223,7 +4090,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4281,7 +4148,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4386,16 +4253,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     }
   };
 
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      dbFeature,
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4427,7 +4292,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     sysDatabase.start();  // get system database from DatabaseFeature
     auto system = sysDatabase.use();
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *system, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4555,7 +4420,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
           .createDatabase(createInfo(server.server(), "vocbase2", 1), vocbase2)
           .ok());
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase0, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4734,17 +4599,14 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4779,7 +4641,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4887,17 +4749,14 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4932,7 +4791,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

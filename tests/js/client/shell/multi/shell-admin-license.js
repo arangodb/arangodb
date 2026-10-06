@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');

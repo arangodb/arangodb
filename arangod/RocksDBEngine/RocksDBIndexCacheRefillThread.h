@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -35,9 +34,8 @@
 #include <unordered_map>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class DatabaseFeature;
 class LogicalCollection;
 
@@ -66,9 +64,8 @@ class RocksDBIndexCacheRefillThread final : public Thread {
   using CollectionValues = std::unordered_map<DataSourceId, IndexValues>;
   using DatabaseValues = std::unordered_map<TRI_voc_tick_t, CollectionValues>;
 
-  void refill(TRI_vocbase_t& vocbase, DataSourceId cid,
-              IndexValues const& data);
-  void refill(TRI_vocbase_t& vocbase, CollectionValues const& data);
+  void refill(Database& vocbase, DataSourceId cid, IndexValues const& data);
+  void refill(Database& vocbase, CollectionValues const& data);
   void refill(DatabaseValues const& data);
 
   size_t const _maxCapacity;

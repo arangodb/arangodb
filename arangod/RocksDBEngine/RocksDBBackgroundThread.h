@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 
 namespace arangodb {
 

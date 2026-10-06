@@ -23,6 +23,7 @@
 
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityId.h"
+#include "Activities/CurrentlyExecuting.h"
 #include "Containers/Concurrent/metrics.h"
 #include "Activities/Activity.h"
 
@@ -74,24 +75,24 @@ struct Registry : containers::Registry<ActivityPtr> {
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> typename T::HandleType {
-    return makeActivityWithParent<T>(_currentlyExecutingActivity,
+    return makeActivityWithParent<T>(_currentlyExecutingActivity.activity,
                                      std::forward<Args>(args)...);
   }
 
   struct [[nodiscard]] ScopedCurrentlyExecutingActivity;
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
-    return _currentlyExecutingActivity;
+    return _currentlyExecutingActivity.activity;
   }
   static auto setCurrentlyExecutingActivity(ActivityHandle activity) noexcept
       -> void {
-    _currentlyExecutingActivity = std::move(activity);
+    _currentlyExecutingActivity = CurrentlyExecuting{std::move(activity)};
   }
 
   auto snapshot()
       -> errors::ErrorT<inspection::Status, velocypack::SharedSlice>;
 
  private:
-  static thread_local ActivityHandle _currentlyExecutingActivity;
+  static thread_local CurrentlyExecuting _currentlyExecutingActivity;
   std::atomic<ActivityId> _activityIdCounter{0};
 };
 

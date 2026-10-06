@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Koushal Kawade
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
@@ -31,9 +30,21 @@ let { instanceRole } = require('@arangodb/testutils/instance');
 let db = arangodb.db;
 let IM = global.instanceManager;
 
-const {
-  getCtrlCoordinators
-} = require('@arangodb/test-helper');
+let waitForAsyncJob = function (asyncJobId, timeoutInSeconds) {
+  let count = 0;
+  let code = -1;
+  let s;
+  while (true) {
+    s = arango.PUT(`/_api/job/${asyncJobId}`,{});
+    code = s.code;
+
+    if (s.code !== 204 || count > timeoutInSeconds)
+      break;
+
+    internal.wait(1);
+  }
+  return [code, count, JSON.stringify(s)];
+};
 
 function createCoordinatorUnreachableSuite() {
   'use strict';
@@ -67,26 +78,12 @@ function createCoordinatorUnreachableSuite() {
 
     testCoordinatorUnreachableDuringCreateDatabase: function () {
 
-      let waitForAsyncJob = function (asyncJobId, timeoutInSeconds) {
-        let count = 0;
-        let code = -1;
-        while (true) {
-          let s = arango.PUT(`/_api/job/${asyncJobId}`,{});
-          code = s.code;
-
-          if (s.code !== 204 || count > timeoutInSeconds)
-            break;
-
-          internal.wait(1);
-        }
-        return [code, count];
-      };
 
       // 1. First test with an unreachable coordinator
       IM.debugSetFailAt("CreateDatabase::delay", instanceRole.dbServer);
       let createDb = arango.POST_RAW("/_api/database", {name:databaseName}, {"x-arango-async":"store"});
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
 
       // Suspend coordinators for 15 sec which will make
       // the agency remove the database from the plan.
@@ -99,8 +96,8 @@ function createCoordinatorUnreachableSuite() {
       let exitCode = result[0];
       let count = result[1];
 
-      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateDatabase to finish");
-      assertEqual(400, exitCode, "Expected exit code 400, received: " + exitCode);
+      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateDatabase to finish " + result[3]);
+      assertEqual(400, exitCode, "Expected exit code 400, received: " + exitCode + " " + result[3]);
 
       //  2. Now test with a reachable coordinator
       IM.debugRemoveFailAt("CreateDatabase::delay");
@@ -109,32 +106,16 @@ function createCoordinatorUnreachableSuite() {
       exitCode = result[0];
       count = result[1];
 
-      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateDatabase to finish");
-      assertEqual(201, exitCode, "Expected exit code 201, received: " + exitCode);
+      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateDatabase to finish " + result[3]);
+      assertEqual(201, exitCode, "Expected exit code 201, received: " + exitCode + " " + result[3]);
     },
 
     testCoordinatorUnreachableDuringCreateCollection: function () {
-
-      let waitForAsyncJob = function (asyncJobId, timeoutInSeconds) {
-        let count = 0;
-        let code = -1;
-        while (true) {
-          let s = arango.PUT(`/_api/job/${asyncJobId}`,{});
-          code = s.code;
-
-          if (s.code !== 204 || count > timeoutInSeconds)
-            break;
-
-          internal.wait(1);
-        }
-        return [code, count];
-      };
-
       // 1. First test with an unreachable coordinator
       IM.debugSetFailAt("DelayCreateShard15", instanceRole.dbServer);
       let createColl = arango.POST_RAW("/_api/collection", {name:collectionName}, {"x-arango-async":"store"});
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
 
       // Suspend coordinators for 15 sec which will make
       // the agency remove the collection from the plan.
@@ -147,8 +128,8 @@ function createCoordinatorUnreachableSuite() {
       let exitCode = result[0];
       let count = result[1];
 
-      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateCollection to finish");
-      assertEqual(500, exitCode, "Expected exit code 500, received: " + exitCode);
+      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateCollection to finish " + result[3]);
+      assertEqual(500, exitCode, "Expected exit code 500, received: " + exitCode + " " + result[3]);
 
       // //  2. Now test with a reachable coordinator
       IM.debugRemoveFailAt("DelayCreateShard15");
@@ -157,8 +138,8 @@ function createCoordinatorUnreachableSuite() {
       exitCode = result[0];
       count = result[1];
 
-      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateCollection to finish");
-      assertEqual(200, exitCode, "Expected exit code 200, received: " + exitCode);
+      assertTrue(count < timeoutSeconds, "Coordinator stuck endlessly waiting for CreateCollection to finish " + result[3]);
+      assertEqual(200, exitCode, "Expected exit code 200, received: " + exitCode + " " + result[3]);
     },
 
   };

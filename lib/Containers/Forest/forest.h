@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -28,7 +27,7 @@
 
 namespace arangodb::containers {
 
-using Id = void*;
+using Id = void const*;
 
 template<typename Data>
 struct IndexedForest;

@@ -21,20 +21,20 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetric, getDBServers, moveShard, eventuallyAssertMetricSum } = require("@arangodb/test-helper");
+const inst = require('@arangodb/testutils/instance');
+const { eventuallyAssertMetricSum } = require("@arangodb/test-helper");
 let IM = global.instanceManager;
 
 const waitFactor = IM.options.isInstrumented ? 5 : 1;
 
 function ClusterDBServerShardMetricsTestSuite() {
   'use strict';
- 
+
   const dbName = "UnitTestShardMetricsDatabase";
   const collectionName = "UnitTestShardMetricsCollection";
 
@@ -49,7 +49,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   const getDBServerMetricSum = function(dbServers, metricName) {
     let sum = 0;
     for (let server of dbServers) {
-      const value = getMetric(server.endpoint, metricName);
+      const value = server.getMetric(metricName);
       sum += value;
     }
     return sum;
@@ -160,7 +160,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       const shardsNumMetricValue = getDBServerMetricSum(servers, shardsNumMetric);
       if (shardsNumMetricValue !== expectedShardsNum && expectedShardsNum !== null) {
         continue;
-      } 
+      }
 
       const shardsLeaderNumMetricValue = getDBServerMetricSum(servers, shardsLeaderNumMetric);
       if (shardsLeaderNumMetricValue !== expectedShardsLeaderNum && expectedShardsLeaderNum !== null) {
@@ -197,7 +197,7 @@ function ClusterDBServerShardMetricsTestSuite() {
         // Ignore errors
       }
       // Ensure all DB servers are online
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
       dbServers.forEach(server => {
         try {
           server.resume();
@@ -208,7 +208,7 @@ function ClusterDBServerShardMetricsTestSuite() {
     },
 
     testShardCountMetricStability: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
       const systemShardCount = getDbShardCount("_system");
       const systemLeaderCount = getDbLeaderCount("_system");
       getMetricsAndAssert(dbServers, systemShardCount, systemLeaderCount, 0, 0);
@@ -264,7 +264,7 @@ function ClusterDBServerShardMetricsTestSuite() {
     },
 
     testShardOutOfSyncMetricChange: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -306,7 +306,7 @@ function ClusterDBServerShardMetricsTestSuite() {
     },
 
     testShardNotReplicatedMetricChange: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -383,7 +383,7 @@ function ClusterDBServerShardMetricsTestSuite() {
     },
 
     testShardFollowerOutOfSync: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -437,7 +437,7 @@ server.suspend();
     },
 
     testShardMetricsDuringMoveLeader: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -461,8 +461,8 @@ server.suspend();
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(dbName, collectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(dbName, collectionName, shardId,
+                                      fromServer, toServer);
       assertTrue(moveResult);
 
       // The metrics should remain the same
@@ -470,7 +470,7 @@ server.suspend();
     },
 
     testShardMetricsDuringMoveFollower: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -498,8 +498,8 @@ server.suspend();
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(dbName, collectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(dbName, collectionName, shardId,
+                                      fromServer, toServer);
       assertTrue(moveResult);
 
       // The metrics should remain the same
@@ -507,7 +507,7 @@ server.suspend();
     },
 
     testShardMetricsAfterCollectionDeletion: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       // Get baseline metrics before creating anything
       const baselineShardCount = getDbShardCount("_system");
@@ -541,7 +541,7 @@ server.suspend();
     },
 
     testShardMetricsAfterDatabaseDeletion: function () {
-      const dbServers = getDBServers();
+      const dbServers = IM.getInstancesRole(inst.instanceRole.dbserver);
 
       // Get baseline metrics before creating anything
       const baselineShardCount = getDbShardCount("_system");
@@ -579,4 +579,3 @@ server.suspend();
 
 jsunity.run(ClusterDBServerShardMetricsTestSuite);
 return jsunity.done();
-

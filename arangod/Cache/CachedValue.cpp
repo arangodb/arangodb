@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cstdint>
@@ -36,6 +35,7 @@ CachedValue* CachedValue::copy() const {
   std::uint8_t* buf = new std::uint8_t[size()];
   CachedValue* value = nullptr;
   try {
+    // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
     value = new (buf + offset()) CachedValue(*this);
   } catch (...) {
     delete[] buf;

@@ -3,6 +3,9 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
+  # Exact pin: a floating orb range silently changes what runs. Keep in
+  # sync with base_nightly_packages.yml.
+  trivy-scan: arangodb/trivy-scan@1.2.0
 
 parameters:
   enterprise-commit:
@@ -22,7 +25,8 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:23"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-b6c8a8886"
+    description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d6a8996c8
@@ -33,13 +37,17 @@ parameters:
   dont-cancel-pipelines:
     type: boolean
     default: false
-  create-docker-images:
-    type: boolean
-    default: false
+  create-test-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
   rebuild-test-docker-images:
     type: boolean
     default: false
   full:
+    type: boolean
+    default: false
+  with-clang-tidy:
     type: boolean
     default: false
   replication-two:
@@ -118,6 +126,79 @@ parameters:
 
 
 commands:
+  load_cache:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Generate Cache Checksum
+          command: |
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+      - restore_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+  store_cache:
+    steps:
+      - save_cache:
+          key: maven-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/maven_cache_seed" }}
+          paths:
+            - ~/.m2/repository
+  load_cache_s3:
+    parameters:
+      driver-git-repo:
+        type: string
+    steps:
+      - run:
+          name: Load Java Cache from AWS
+          command: |
+            set -x
+            cd ../$(echo '<< parameters.driver-git-repo >>' | sed -e "s;.*/;;" -e "s;.git$;;")
+            find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed
+            set -eo pipefail
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            mkdir -p ~/.m2/repository
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}" \
+              "$TAR" && \
+            tar -C ~ -xzf "$TAR" || true
+  store_cache_s3:
+    steps:
+      - run:
+          command: |
+            set -eo pipefail
+            set -x
+
+            ARCHIVE="maven-v1-${CIRCLE_JOB}-$( md5sum "/tmp/maven_cache_seed" |sed "s; .*;;" ).tar.gz"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/javas-cache
+            TAR="/tmp/javas-cache/${ARCHIVE}"
+
+            if test -d ~/.m2/repository; then
+              tar -C ~ -czf "$TAR" .m2/repository
+
+              du -sh "$TAR"
+              aws configure set profile.anon.s3.multipart_threshold 5GB
+              aws s3 cp --no-sign-request --profile anon \
+                "$TAR" \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/java-caches/${ARCHIVE}"
+            fi
   persist_workspace_to_s3:
     parameters:
       root:
@@ -192,6 +273,58 @@ commands:
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}" \
               - | tar -xzf -
 
+  github-auth:
+    # Anonymous clones from the runners' shared egress IP trip GitHub's limit on
+    # unauthenticated downloads (CI outage 2026-09-02/03). The arango-ci-checkout
+    # GitHub App (contents:read, public repos only) supplies a 1h token; without
+    # credentials or on any failure the job clones anonymously, as before.
+    # Always paired with github-auth-clear after the clone.
+    steps:
+      - run:
+          name: Authenticate git against GitHub
+          command: |
+            set +x
+            if git config --global --get http.https://github.com/.extraheader >/dev/null 2>&1; then
+              exit 0
+            fi
+            if [ -z "${GITHUB_APP_ID:-}" ] || [ -z "${GITHUB_APP_PRIVATE_KEY_B64:-}" ]; then
+              echo "WARNING: GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_B64 not set, cloning anonymously" >&2
+              exit 0
+            fi
+            KEY="$(mktemp)"
+            trap 'rm -f "$KEY"' EXIT
+            printf '%s' "$GITHUB_APP_PRIVATE_KEY_B64" | base64 -d > "$KEY"
+            b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+            NOW=$(date +%s)
+            JWT="$(printf '{"alg":"RS256","typ":"JWT"}' | b64url).$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((NOW-60))" "$((NOW+540))" "$GITHUB_APP_ID" | b64url)"
+            JWT="$JWT.$(printf '%s' "$JWT" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)" || JWT=""
+            INST=""
+            TOKEN=""
+            if [ -n "$JWT" ]; then
+              INST=$(curl -sSf -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                       https://api.github.com/orgs/arangodb/installation | jq -r '.id // empty') || INST=""
+            fi
+            if [ -n "$INST" ]; then
+              TOKEN=$(curl -sSf -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/app/installations/$INST/access_tokens" | jq -r '.token // empty') || TOKEN=""
+            fi
+            if [ -z "$TOKEN" ]; then
+              echo "WARNING: no GitHub App token obtained, cloning anonymously" >&2
+              exit 0
+            fi
+            git config --global http.https://github.com/.extraheader \
+              "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+            echo "git authenticated against github.com as GitHub App installation $INST (token valid 1h)"
+
+  github-auth-clear:
+    # Drop the token header again once the clones it was set for are done, so a
+    # job running past the token's hour never fails on an expired header where
+    # an anonymous request would have worked.
+    steps:
+      - run:
+          name: Forget GitHub token
+          command: git config --global --unset-all http.https://github.com/.extraheader || true
+
   checkout-arangodb:
     parameters:
       destination:
@@ -199,6 +332,7 @@ commands:
       with-submodules:
         type: boolean
     steps:
+      - github-auth
       - run:
           name: Checkout ArangoDB
           command: |
@@ -219,6 +353,7 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
+      - github-auth-clear
 
   checkout-enterprise:
     description: "Checkout enterprise code"
@@ -252,7 +387,6 @@ commands:
             cd ..
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
-
   fetch-aux-binaries:
     parameters:
       arch:
@@ -279,6 +413,77 @@ commands:
 
             curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
+  provision-rbac-sidecar:
+    description: >
+      Downloads the `arangodb_operator` binary when it exists or builds it
+      from source when it does not. See
+      tests/api/rbac/scripts/provision_operator_sidecar.sh for why building is
+      currently the normal outcome.
+    parameters:
+      arch:
+        type: string
+        # Empty means "detect from uname"
+        default: ""
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+    steps:
+      - run:
+          name: Provision the authorization sidecar binary
+          # Build takes a few minutes and produces no output.
+          no_output_timeout: 20m
+          command: |
+            set -eo pipefail
+            missing=""
+            for tool in curl python3 tar unshare; do
+              command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+            done
+            if [ -n "$missing" ]; then
+              echo "this image is missing:$missing - the RBAC stack scripts need them" >&2
+              exit 1
+            fi
+            if ! unshare --map-root-user --mount "${BASH:-bash}" -c : 2>/dev/null; then
+              echo "this executor cannot create a user+mount namespace, which the" >&2
+              echo "authorization sidecar needs for a writable /run." >&2
+              echo "Either run this job on a machine executor (as run-rta-tests" >&2
+              echo "does) or use an image/seccomp profile that permits" >&2
+              echo "unshare(CLONE_NEWUSER|CLONE_NEWNS)." >&2
+              exit 1
+            fi
+            export RBAC_OPERATOR_DIR="$HOME/rbac-operator"
+            OPERATOR_PATH="$(tests/api/rbac/scripts/provision_operator_sidecar.sh \
+              --arch '<< parameters.arch >>' \
+              --repo '<< parameters.operator-repo >>' \
+              --ref '<< parameters.operator-ref >>')"
+            echo "export OPERATOR='$OPERATOR_PATH'" >> "$BASH_ENV"
+            echo "provisioned: $OPERATOR_PATH"
+
+  start-rbac-stack:
+    description: >
+      Launch the authorization sidecar and the arangod that stores its policies.
+      Must run AFTER the build artifacts are attached, because it starts arangod
+      from build/bin - hence run-test's pre-test-steps rather than a step before
+      it, which is where the driver tests put their setup.
+    parameters:
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    steps:
+      - run:
+          name: Start the RBAC authorization stack
+          no_output_timeout: 10m
+          command: |
+            set -eo pipefail
+            if [ -z "${OPERATOR:-}" ]; then
+              echo "OPERATOR is not set - provision-rbac-sidecar must run first" >&2
+              exit 1
+            fi
+            export RBAC_WORK="<< parameters.rbac-work >>"
+            tests/api/rbac/scripts/start_stack_for_unittest.sh
+
   run-test:
     parameters:
       suiteName:
@@ -298,6 +503,9 @@ commands:
       use-s3-workspace:
         type: boolean
         default: true
+      pre-test-steps:
+        type: steps
+        default: []
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -340,11 +548,21 @@ commands:
                 name: Symbolizer server
                 command: ./utils/llvm-symbolizer-server.py
                 background: true
+      - steps: << parameters.pre-test-steps >>
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set -x
             # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
@@ -386,7 +604,7 @@ commands:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --testBuckets $BUCKETS \
               --cluster << parameters.cluster >> \
               --extraArgs "${EXTRA_ARGS}"
       - run:
@@ -532,37 +750,186 @@ jobs:
               echo "Nothing to cancel"
             fi
 
+  # PR-time lint of what governs the nightly security gates: disposition
+  # hygiene and the required-status-check inventory.
+  security-governance:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      # No suppression files exist here today; this keeps any future one
+      # dated and in-window. poam-windows matches the trivy-gate-waivers
+      # table; nosem-exclude skips vendored trees.
+      - trivy-scan/disposition-check:
+          poam-windows: "critical=30,high=30,medium=90,low=180"
+          nosem-exclude: ":!:.circleci/* :!:3rdParty/* :!:*/node_modules/*"
+      - run:
+          name: Compare required checks against the live configuration
+          environment:
+            # "true" anywhere in here marks a variant pipeline, which renames
+            # the build workflows by design (generate_config.py appends the
+            # variant to the workflow name).
+            PIPELINE_VARIANTS: "<< pipeline.parameters.with-tsan >>,<< pipeline.parameters.with-alubsan >>,<< pipeline.parameters.full >>,<< pipeline.parameters.replication-two >>"
+          command: |
+            set -eu
+            set -o pipefail
+            LIST=.circleci/required-checks.txt
+            # PR pipelines run on the head branch, so the protected branch
+            # cannot be derived from CIRCLE_BRANCH.
+            PROTECTED=devel
+            DRIFT=0
+            if [ ! -s "${LIST}" ]; then
+              echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
+              exit 1
+            fi
+            # || true: grep exits 1 on a comments-only list; that is reported
+            # as an error on the next line, not as a pipefail abort here.
+            grep -vE '^[[:space:]]*(#|$)' "${LIST}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sort -u > /tmp/required-expected.txt || true
+            if [ ! -s /tmp/required-expected.txt ]; then
+              echo "ERROR: ${LIST} lists no contexts." >&2
+              exit 1
+            fi
+            echo "Committed required contexts (${LIST}):"
+            sed -e 's/^/  /' /tmp/required-expected.txt
+            # Live GitHub side. Branch protection needs an administration:read
+            # token, rulesets only a repo token, so both are consulted. No
+            # token means UNVERIFIED, never "no drift".
+            : > /tmp/required-live.txt
+            LIVE_SOURCE=""
+            PROT_OK=0
+            if [ -n "${GITHUB_TOKEN:-}" ]; then
+              GH_API="https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+              for ENDPOINT in "branches/${PROTECTED}/protection" "rules/branches/${PROTECTED}"; do
+                if curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
+                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                     -H "Accept: application/vnd.github+json" \
+                     -H "X-GitHub-Api-Version: 2022-11-28" \
+                     -o /tmp/gh-rules.json "${GH_API}/${ENDPOINT}"; then
+                  # grep/sed: heredocs collide with CircleCI parameter
+                  # syntax; "context" only appears in required checks.
+                  grep -oE '"context":[[:space:]]*"[^"]*"' /tmp/gh-rules.json \
+                    | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u >> /tmp/required-live.txt || true
+                  LIVE_SOURCE="${LIVE_SOURCE}${LIVE_SOURCE:+, }${ENDPOINT}"
+                  if [ "${ENDPOINT}" = "branches/${PROTECTED}/protection" ]; then
+                    PROT_OK=1
+                  fi
+                else
+                  echo "NOTICE: could not read ${ENDPOINT} (token scope?), that surface is unverified on this run." >&2
+                fi
+              done
+            elif [ -n "${CIRCLE_PR_REPONAME:-}" ]; then
+              echo "NOTICE: forked PR, no GITHUB_TOKEN; the live GitHub configuration is unverified on this run." >&2
+            else
+              echo "NOTICE: GITHUB_TOKEN is not set; the live GitHub configuration stays UNVERIFIED until a context with a read-only administration:read token is attached." >&2
+            fi
+            # Compare only when a surface that can carry required contexts
+            # answered: an empty read off the rulesets endpoint alone is a
+            # token-scope gap, not proof that nothing is required.
+            if [ -n "${LIVE_SOURCE}" ] && { [ "${PROT_OK}" = "1" ] || [ -s /tmp/required-live.txt ]; }; then
+              sort -u /tmp/required-live.txt -o /tmp/required-live.txt
+              echo "Live required contexts for ${PROTECTED} (${LIVE_SOURCE}):"
+              sed -e 's/^/  /' /tmp/required-live.txt
+              MISSING="$(comm -23 /tmp/required-expected.txt /tmp/required-live.txt)" || true
+              EXTRA="$(comm -13 /tmp/required-expected.txt /tmp/required-live.txt)" || true
+              PARTIAL=0
+              if [ -n "${MISSING}" ]; then
+                # Only branch protection proves absence; a rulesets-only
+                # read may be a partial view of the live configuration.
+                if [ "${PROT_OK}" = "1" ]; then
+                  echo "DRIFT: committed but NOT required by GitHub, so these checks do not block a merge:" >&2
+                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
+                  DRIFT=1
+                else
+                  echo "NOTICE: branch protection was unreadable, so it is unknown whether these committed contexts are live:" >&2
+                  printf '%s\n' "${MISSING}" | sed -e 's/^/  /' >&2
+                  PARTIAL=1
+                fi
+              fi
+              if [ -n "${EXTRA}" ]; then
+                echo "DRIFT: required by GitHub but NOT in the committed list:" >&2
+                printf '%s\n' "${EXTRA}" | sed -e 's/^/  /' >&2
+                DRIFT=1
+              fi
+              if [ "${DRIFT}" = "0" ] && [ "${PARTIAL}" = "0" ]; then
+                echo "GitHub configuration matches the committed list."
+              fi
+            elif [ -n "${LIVE_SOURCE}" ]; then
+              echo "NOTICE: the readable surfaces carried no required-context data; merge-gate drift is unverified on this run." >&2
+            fi
+            # Emitted side, read off this live pipeline: GitHub sees one
+            # check per CircleCI WORKFLOW, and deriving the names from the
+            # config instead is how they go stale.
+            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+              echo "NOTICE: CIRCLECI_TOKEN is not set; emitted workflow names are unverified on this run." >&2
+            elif ! curl -sSfL --retry 3 --retry-delay 2 --max-time 60 \
+                 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+                 -o /tmp/wf.json \
+                 "https://circleci.com/api/v2/pipeline/${CIRCLE_PIPELINE_ID}/workflow"; then
+              echo "NOTICE: could not list this pipeline's workflows; the emitted-context check is unverified on this run." >&2
+            else
+              grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' /tmp/wf.json \
+                | sed -e 's/.*"\([^"]*\)"$/\1/' | sort -u > /tmp/required-emitted.txt || true
+              echo "Workflows emitted by this pipeline (${CIRCLE_PIPELINE_ID}):"
+              sed -e 's/^/  /' /tmp/required-emitted.txt
+              FOUND=0
+              while IFS= read -r CTX; do
+                if grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
+                  FOUND=$((FOUND + 1))
+                fi
+              done < /tmp/required-expected.txt
+              if [ "${FOUND}" = "0" ]; then
+                # Variant and devel pipelines legitimately emit other names;
+                # a default head-branch pipeline emitting none means the
+                # workflows were renamed, which blocks every merge.
+                case "${PIPELINE_VARIANTS:-}" in *true*) VARIANT=1 ;; *) VARIANT=0 ;; esac
+                if [ "${VARIANT}" = "1" ] || [ "${CIRCLE_BRANCH:-}" = "${PROTECTED}" ]; then
+                  echo "NOTICE: variant or ${PROTECTED} pipeline; none of the committed contexts is emitted here, nothing to compare." >&2
+                else
+                  echo "DRIFT: this default pipeline emits none of the committed contexts; if the workflows were renamed, every merge into ${PROTECTED} is blocked by checks nothing emits." >&2
+                  DRIFT=1
+                fi
+              else
+                while IFS= read -r CTX; do
+                  if ! grep -qxF -- "${CTX}" /tmp/required-emitted.txt; then
+                    echo "DRIFT: required context '${CTX}' is not emitted by this pipeline; a required check nothing emits blocks every merge." >&2
+                    DRIFT=1
+                  fi
+                done < /tmp/required-expected.txt
+                [ "${DRIFT}" = "0" ] && echo "Every committed context is emitted by this pipeline."
+              fi
+            fi
+            # Drift fails the job (lint is not a required check, so it
+            # cannot block a merge); missing tokens only skip their half,
+            # keeping forked PRs green.
+            if [ "${DRIFT}" != "0" ]; then
+              echo "ERROR: drift reported above. Fix the committed list or the branch protection." >&2
+              exit 1
+            fi
+
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
       - run:
+          name: Build frontend
           command: |
-            echo "building frontend"
-      - when:
-          # if we're building a docker image, the regular build does the frontend.
-          condition:
-            not:
-              << pipeline.parameters.create-docker-images >>
-          steps:
-            - checkout-arangodb:
-                with-submodules: false
-                destination: "/root/project"
-            - run:
-                name: Build frontend
-                command: |
-                  cd js/apps/system/_admin/aardvark/APP/react
-                  tar -xJf /node_modules.tar.xz
-                  yarn install
-                  yarn build
-            - persist_to_workspace:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-            - persist_workspace_to_s3:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-                archive: frontend.tar.gz
+            cd js/apps/system/_admin/aardvark/APP/react
+            tar -xJf /node_modules.tar.xz
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+      - persist_workspace_to_s3:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+          archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -579,6 +946,12 @@ jobs:
       publish-artifacts:
         type: boolean
         default: true
+      # Fetch aux binaries and produce install-<arch>.tar.gz plus the
+      # per-arch docker build context for Docker image creation. Set only
+      # by the docker-images workflow's compile jobs.
+      create-install-package:
+        type: boolean
+        default: false
       resource-class:
         type: string
       s3-prefix:
@@ -642,14 +1015,11 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
-          condition: << pipeline.parameters.create-docker-images >>
+          condition: << parameters.create-install-package >>
           steps:
             - fetch-aux-binaries:
                 arch: << parameters.arch >>
                 repo-path: .
-      - when:
-          condition: << pipeline.parameters.create-docker-images >>
-          steps:
             - run:
                 name: Create install package
                 command: |
@@ -658,15 +1028,30 @@ jobs:
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
-                    cp build/bin/rclone-arangodb ./install/usr/bin/
+                    # Same location as the nightly images (fetch-aux-binaries.sh):
+                    # usr/sbin, so consumers find it where the published images
+                    # have it.
+                    cp build/bin/rclone-arangodb ./install/usr/sbin/
                   fi
-                  strip ./install/usr/bin/arango*
-                  strip ./install/usr/sbin/arangod
-                  tar -czf install.tar.gz -C install ./
+                  # Strip per the packaging policy (client tools only; the
+                  # starter and arangod keep their symbols).
+                  if [ << parameters.enterprise >> = true ]; then EDITION=enterprise; else EDITION=community; fi
+                  EDITION="${EDITION}" scripts/packaging/strip-install-tree.sh ./install
+                  tar -czf install-<< parameters.arch >>.tar.gz -C install ./
+                  cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
+            # Everything persisted here must be arch-specific: the x64 and
+            # aarch64 compile jobs run concurrently, and concurrent jobs
+            # persisting the same workspace path cause a workspace layer
+            # conflict on attach. The docker build context (dockerfile,
+            # setup.sh, entrypoint.sh) is copied per arch for the same
+            # reason - each build-docker-image job requires only its own
+            # arch's compile job, so it cannot rely on the other arch's
+            # workspace layer being present.
             - persist_to_workspace:
                 root: .
                 paths:
-                  - install.tar.gz
+                  - install-<< parameters.arch >>.tar.gz
+                  - docker-context-<< parameters.arch >>
       - run:
           name: Size leaderboard
           command: |
@@ -710,13 +1095,21 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist.
+            - run:
+                name: Stage generated headers for clang-tidy
+                command: |
+                  cd /root/project
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
+                    | tar --null -cf - -T - \
+                    | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
-                archive: cppcheck.tar.gz
+                archive: compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
+                  tidy-headers
             - persist_workspace_to_s3:
-                # not there? install.tar.gz
                 root: .
                 archive: binaries.tar.gz
                 paths: |
@@ -730,6 +1123,8 @@ jobs:
                   etc/
                   tests/js
                   enterprise/tests/js
+                  tests/api/rbac
+                  arangod/Auth/Rbac/ServiceImpl.cpp
                   utils
                   lib/iresearch/tests/resources
                   3rdParty/rta-makedata
@@ -737,11 +1132,59 @@ jobs:
                   ubsan_arangodb_suppressions.txt
                   lsan_arangodb_suppressions.txt
 
-  create-docker-image:
+  # Builds one architecture's Alpine-based image locally and saves it to a
+  # workspace tarball. No registry auth here - pushing (and the ECR login)
+  # happens once both architectures are available together, in
+  # push-docker-manifest. CircleCI workflows can't depend on jobs in
+  # another workflow, so both architectures live in the same
+  # "docker-images" workflow and hand off through the workspace.
+  build-docker-image:
     parameters:
       resource-class:
         type: string
+      # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
+      distro:
+        type: enum
+        enum: [alpine, deb]
+      # Docker platform architecture (amd64 | arm64), used for --platform
+      # and the image's arch build-arg
       arch:
+        type: string
+      # Compile-side architecture (x64 | aarch64): selects the arch-specific
+      # install tarball and docker build context persisted by the matching
+      # compile-linux job
+      build-arch:
+        type: string
+      output:
+        type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build Docker Image
+          command: |
+            cd docker-context-<< parameters.build-arch >>
+            mkdir install
+            tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
+            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - << parameters.output >>
+
+  # Loads both architectures' locally-built images, pushes each as an
+  # arch-suffixed tag, then creates and pushes a multi-arch manifest under
+  # the bare tag (the community commit short SHA). ECR only, using the
+  # same OIDC role assumption as before - no stored credentials/context.
+  push-docker-manifest:
+    parameters:
+      resource-class:
         type: string
       tag:
         type: string
@@ -756,16 +1199,30 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - attach_workspace:
-          at: .
+          at: /tmp/workspace
       - run:
-          name: Create Docker Image
+          name: Push multi-arch Docker manifest
           command: |
-            cd scripts/docker/deploy
-            mkdir install
-            tar -xzf ../../../install.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
-            echo "Pushing image << parameters.tag >>"
-            docker push << parameters.tag >>
+            docker load -i /tmp/workspace/docker-amd64.tar
+            docker load -i /tmp/workspace/docker-arm64.tar
+
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+
+            set -x
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+
+            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
+            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
+
+            for ARCH in amd64 arm64; do
+              docker tag "${LOCAL_TAG[$ARCH]}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+              retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+            done
+            docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
+            retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
+              --amend "${IMAGE}:<< parameters.tag >>-amd64" \
+              --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
+            retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
 
   run-linux-tests:
     parameters:
@@ -784,9 +1241,33 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
+  run-linux-tests-with-smocker:
+    parameters:
+      <<: *shared-test-job-parameters
+    docker:
+      - image: << parameters.docker_image >>
+      - image: ghcr.io/smocker-dev/smocker
+        name: smocker
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    environment:
+      SMOCKER_HOST: smocker
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >>
+
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -802,6 +1283,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache_s3:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Initialize driver tests
           command: |
@@ -815,10 +1301,17 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache_s3
 
   kafka-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
+      maven-cache:
+        type: boolean
+        default: false
       driver-git-repo:
         type: string
       driver-git-branch:
@@ -881,6 +1374,11 @@ jobs:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - load_cache:
+                driver-git-repo: << parameters.driver-git-repo >>
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
@@ -910,6 +1408,71 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+      - when:
+          condition: << parameters.maven-cache >>
+          steps:
+            - store_cache
+
+  run-rbac-tests:
+    description: >
+      rta_makedata under RBAC, against a real authorization sidecar.
+
+      Shaped like run-driver-tests - extra setup bolted onto run-test - with one
+      difference that matters: the driver clone needs no build artifacts and so
+      happens before run-test, whereas this has to start arangod, which only
+      exists after run-test attaches the workspace. So the stack launch goes in
+      run-test's pre-test-steps.
+
+      `--rbac <endpoint>` is appended here rather than taken from the test
+      definition, so the endpoint the harness is told about and the one the
+      stack actually binds cannot drift apart.
+    parameters:
+      <<: *shared-test-job-parameters
+      operator-repo:
+        type: string
+        default: "https://github.com/arangodb/kube-arangodb.git"
+      operator-ref:
+        type: string
+        default: master
+      operator-arch:
+        type: string
+        default: ""
+      rbac-endpoint:
+        type: string
+        # Must match SIDECAR_MGMT in tests/api/rbac/scripts/env.sh.
+        default: "http://127.0.0.1:8108"
+      rbac-work:
+        type: string
+        default: /tmp/rbac-stack
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >> --rbac << parameters.rbac-endpoint >>
+          pre-test-steps:
+            - provision-rbac-sidecar:
+                arch: << parameters.operator-arch >>
+                operator-repo: << parameters.operator-repo >>
+                operator-ref: << parameters.operator-ref >>
+            - start-rbac-stack:
+                rbac-work: << parameters.rbac-work >>
+      - run:
+          name: Collect RBAC stack logs
+          when: always
+          command: |
+            mkdir -p rbac-stack-logs
+            cp -a "<< parameters.rbac-work >>/log/." rbac-stack-logs/ 2>/dev/null || true
+      - store_artifacts:
+          destination: << parameters.suiteName >>-rbac-stack
+          path: ./rbac-stack-logs/
 
   run-rta-tests:
     machine:
@@ -963,6 +1526,15 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            BUCKETS="$CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX"
+            unset IFS
+            for var in $(compgen -e); do
+               for filter in AWS CIRCLE CONTAINER GITHUB KUBERNETES; do
+                 if [[ "$var" == *"$filter"* ]]; then
+                   unset "$var"
+                 fi
+               done
+            done
             set +x
             pwd
             export SOURCE=nightlypublic
@@ -991,7 +1563,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $BUCKETS \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
@@ -1021,7 +1593,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: cppcheck.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
@@ -1052,6 +1624,108 @@ jobs:
       - store_test_results:
           path: /root/project/cppcheck-junit.xml
 
+  run-clang-tidy:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/large-amd64
+    steps:
+      - run:
+          name: Prepare container
+          command: |
+            mkdir -p /root/workspace/
+            mkdir -p /root/project/
+      - attach_workspace_from_s3:
+          at: /root/workspace/
+          archive: compile_commands.tar.gz
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo "==================="
+            du -sh /root/workspace/build/*
+            echo "=== container limits ==="
+            nproc
+            cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "/root/project"
+      - checkout-enterprise:
+          destination: "/root/project/enterprise"
+      - run:
+          name: Run clang-tidy
+          # tee, not >, so the console keeps producing output and CircleCI does
+          # not kill the step after 10 minutes of silence.
+          no_output_timeout: 3h
+          command: |
+            ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
+            cd /root/project/
+
+            # -j is bounded by two container limits, either of which can bind.
+            # nproc is neither: it reports host cores, not this container's quota.
+            mem=$(cat /sys/fs/cgroup/memory.max 2>/dev/null \
+                  || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null \
+                  || echo "")
+            case "$mem" in
+              ''|*[!0-9]*) mem=8589934592 ;;
+            esac
+            # Measured 1.47GiB per job on a full run; budget 1.5, keep 2GiB spare.
+            by_mem=$(( (mem / 1073741824 - 2) * 10 / 15 ))
+
+            cpus=""
+            if [ -r /sys/fs/cgroup/cpu.max ]; then
+              read -r quota period < /sys/fs/cgroup/cpu.max || true
+              if [ "$quota" != "max" ] && [ "${period:-0}" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            elif [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+              quota=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+              period=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+              if [ "$quota" -gt 0 ] && [ "$period" -gt 0 ]; then
+                cpus=$(( quota / period ))
+              fi
+            fi
+            if [ -z "$cpus" ] || [ "$cpus" -lt 1 ]; then cpus=$(nproc); fi
+
+            jobs=$by_mem
+            if [ "$jobs" -gt "$cpus" ]; then jobs=$cpus; fi
+            if [ "$jobs" -lt 1 ]; then jobs=1; fi
+            echo "limits: mem=$((mem / 1073741824))GiB allows $by_mem, cpu quota $cpus, nproc $(nproc) -> using -j $jobs"
+
+            # /usr/bin/time is not in the build image; use the clock and the
+            # cgroup's own peak-usage counter instead.
+            start=$(date +%s)
+            rc=0
+            utils/clang-tidy.sh arangod lib client-tools enterprise -B /root/workspace/build/ -j "$jobs" \
+              | tee clang-tidy-results.txt || rc=$?
+            end=$(date +%s)
+            peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null \
+                   || cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null \
+                   || echo 0)
+            echo "elapsed_s=$((end - start)) peak_rss_kb=$((peak / 1024)) jobs=$jobs" \
+              > /root/project/clang-tidy-time.txt
+            cat /root/project/clang-tidy-time.txt
+            exit $rc
+      - run:
+          name: Report run cost
+          when: always
+          command: |
+            cd /root/project/
+            cat clang-tidy-time.txt 2>/dev/null || echo "(no timing captured)"
+      - store_artifacts:
+          path: /root/project/clang-tidy-time.txt
+      - run:
+          name: Format result
+          when: always
+          command: |
+            cd /root/project/
+            sed -i 's#/root/project/##g' clang-tidy-results.txt
+            python3 utils/clang-tidy-junit.py clang-tidy-results.txt clang-tidy-junit.xml
+      - store_artifacts:
+          path: /root/project/clang-tidy-results.txt
+      - store_test_results:
+          path: /root/project/clang-tidy-junit.xml
+
 workflows:
   lint:
     jobs:
@@ -1071,6 +1745,11 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
+          context: [circleci-token]
+          requires:
+            - minimal-checkout
+      - security-governance:
+          name: security-governance
           context: [circleci-token]
           requires:
             - minimal-checkout

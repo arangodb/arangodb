@@ -23,8 +23,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lucas Doomen
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogBufferFeature.h"
@@ -206,12 +205,6 @@ LogBufferFeature::LogBufferFeature(
     std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
         ->trackDroppedMessage();
   });
-}
-
-void LogBufferFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LogBufferOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void LogBufferFeature::prepare() {

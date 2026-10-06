@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -165,7 +164,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+  static RocksDBKeyBounds getBounds(IndexType type, uint64_t objectId,
                                     bool unique);
 
   /// @brief get index estimator, optional

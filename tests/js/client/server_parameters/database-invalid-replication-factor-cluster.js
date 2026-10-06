@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2023, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -36,8 +34,8 @@ if (getOptions === true) {
 const jsunity = require("jsunity");
 const wait = require("internal").sleep;
 const errors = require("internal").errors;
-const helper = require("@arangodb/test-helper");
 const db = require("@arangodb").db;
+let { instanceRole } = require('@arangodb/testutils/instance');
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
 
@@ -82,7 +80,7 @@ function InvalidReplicationFactorTestSuite () {
       let res = AM.get(key).arango.Plan.Databases[name];
       assertEqual(res, data);
    
-      const dbServers = helper.getEndpointsByType("dbserver").length;
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver).length;
 
       let keys, current;
       let tries = 0;

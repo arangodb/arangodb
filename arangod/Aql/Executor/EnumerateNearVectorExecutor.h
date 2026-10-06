@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorReadBatch.h"
@@ -128,13 +128,14 @@ class EnumerateNearVectorsExecutor {
   transaction::Methods _trx;
   aql::Collection const* _collection;
   RocksDBVectorIndex const& _vectorIndex;
+  ResourceUsageScope _resultBuffersMemory;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;
   ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
-  std::vector<vector::VectorIndexLabelId> _labels;
+  std::vector<vector::LabelId> _labels;
   // VPack per surviving label: full doc Object for kDocument, storedValues
   // array for kCovered, empty for kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice> _documents;

@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
 
@@ -31,6 +31,7 @@ namespace replication2 {
 struct ReplicatedLogMethods;
 }
 
+// TODO Add (rbac) permission checks, or error-out for now
 class RestLogHandler : public RestVocbaseBaseHandler {
  public:
   RestLogHandler(application_features::ApplicationServer&, GeneralRequest*,

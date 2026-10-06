@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Ignacio Rodriguez
-/// @author Max Neunhoeffer
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"

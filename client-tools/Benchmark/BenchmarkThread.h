@@ -18,21 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cmath>
-#include <memory>
-#include <string>
-#include <vector>
-#include <shared_mutex>
-
 #include "Basics/ConditionVariable.h"
-#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -44,7 +36,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/HttpRequest.h"
 #include "Shell/ClientFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -53,20 +44,25 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 
+#include <cmath>
+#include <memory>
+#include <string>
+#include <vector>
+#include <shared_mutex>
+
 namespace arangodb {
 namespace arangobench {
 
-class BenchmarkThread : public arangodb::Thread {
+class BenchmarkThread : public arangodb::BasicThread {
  public:
-  BenchmarkThread(application_features::ApplicationServer& server,
-                  BenchmarkOperation* operation,
+  BenchmarkThread(BenchmarkOperation* operation,
                   basics::ConditionVariable* condition, void (*callback)(),
                   size_t threadNumber,
                   BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async,
                   double histogramIntervalSize, uint64_t histogramNumIntervals,
                   bool generateHistogram)
-      : Thread(server, "BenchmarkThread"),
+      : BasicThread("BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
         _callback(callback),

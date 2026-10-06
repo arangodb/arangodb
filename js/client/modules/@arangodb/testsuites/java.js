@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -112,6 +111,7 @@ arangodb.acquireHostList=true
       args = args.concat(['-am',]);
     }
     args = args.concat([
+      '-am',
       '-pl',
       'test-functional',
       '-Dgpg.skip',
@@ -164,7 +164,6 @@ function javaDriver (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['extraArgs']['vector-index'] =  true;
   let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
@@ -199,6 +198,7 @@ class runInKafkaTest extends runWithAllureReport {
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dkafka.bootstrap.servers=${this.options.kafkaHost}`,
       '-Dgpg.skip',
+      '-Drecord.trace.level=DEBUG',
       '-Dmaven.javadoc.skip',
       `-Dallure.results.directory=${testResultsDir}`,
       `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,

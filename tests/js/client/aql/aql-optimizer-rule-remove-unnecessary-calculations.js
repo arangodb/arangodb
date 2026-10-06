@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
@@ -275,7 +273,7 @@ function optimizerRuleTestSuite () {
         var resultDisabled = db._query(query, { }, paramDisabled).toArray();
         var resultEnabled  = db._query(query, { }, paramEnabled).toArray();
 
-        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
+        assertTrue(isEqual(resultDisabled, resultEnabled), `${query[0]} Disabled ${JSON.stringify(resultDisabled)} => ${JSON.stringify(resultEnabled)}`);
       });
     },
 

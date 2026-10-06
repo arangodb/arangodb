@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestMetricsHandler.h"
@@ -90,12 +89,13 @@ RestMetricsHandler::RestMetricsHandler(
       _clusterMetricsFeature(
           server.getFeature<metrics::ClusterMetricsFeature>()) {}
 
+// Mounted at /_admin/metrics (prefix)
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto& security = server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoring{});
+      r.fail()) {
     // don't leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     co_return;
   }
 

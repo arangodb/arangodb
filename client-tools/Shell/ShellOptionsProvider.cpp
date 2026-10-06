@@ -29,8 +29,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ShellOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                          ShellFeatureOptions& options) {
+void ShellOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ShellFeatureOptions& options) {
   opts->addSection("javascript", "JavaScript engine");
 
   opts->addOption(

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/CrashHandlerFeature.h"
@@ -56,12 +55,6 @@ void CrashHandlerFeature::start() {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
     _dumpManager->setCrashesDirectory(path);
   }
-}
-
-void CrashHandlerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::crash_handler::CrashHandlerOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 std::shared_ptr<crash_handler::DumpManager>

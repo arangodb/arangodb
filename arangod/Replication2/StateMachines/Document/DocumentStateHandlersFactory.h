@@ -18,21 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Replication2/LoggerContext.h"
-#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-#include <string>
 #include <memory>
-#include <optional>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
+struct Database;
 class MaintenanceFeature;
 
 namespace network {
@@ -58,24 +56,22 @@ struct IMaintenanceActionExecutor;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
-  virtual auto createShardHandler(TRI_vocbase_t& vocbase,
-                                  GlobalLogIdentifier gid)
+  virtual auto createShardHandler(Database& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
-  virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
-                                     GlobalLogIdentifier gid)
+  virtual auto createSnapshotHandler(Database& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      Database& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
-  virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+  virtual auto createTransaction(Database& vocbase, TransactionId tid,
                                  ShardID const& shard,
                                  AccessMode::Type accessType,
                                  std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
-  virtual auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+  virtual auto createMaintenanceActionExecutor(Database& vocbase,
                                                GlobalLogIdentifier gid,
                                                ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
@@ -91,21 +87,21 @@ class DocumentStateHandlersFactory
   DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
                                MaintenanceFeature& maintenanceFeature,
                                LoggerContext defaultLoggerContext);
-  auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+  auto createShardHandler(Database& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createSnapshotHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+  auto createSnapshotHandler(Database& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      Database& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+  auto createTransaction(Database& vocbase, TransactionId tid,
                          ShardID const& shard, AccessMode::Type accessType,
                          std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
-  auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+  auto createMaintenanceActionExecutor(Database& vocbase,
                                        GlobalLogIdentifier gid, ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> override;
   auto createErrorHandler(GlobalLogIdentifier gid)

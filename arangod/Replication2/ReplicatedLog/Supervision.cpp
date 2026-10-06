@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
@@ -44,7 +42,6 @@
 
 #include "Logger/LogMacros.h"
 
-namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {

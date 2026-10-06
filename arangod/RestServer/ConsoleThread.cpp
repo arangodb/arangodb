@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConsoleThread.h"
@@ -33,6 +32,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
+#include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -57,7 +57,9 @@ V8LineEditor* ConsoleThread::serverConsole = nullptr;
 std::mutex ConsoleThread::serverConsoleMutex;
 
 ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
-    : ServerThread(applicationServer, "Console"),
+    // arangod --console REPL: runs with superuser privileges
+    : ServerThread(applicationServer, "Console",
+                   ExecContext::superuserAsShared()),
       _vocbase(vocbase),
       _userAborted(false) {}
 
@@ -141,7 +143,7 @@ start_color_print('arangodb', true);
     sigemptyset(&set);
     sigaddset(&set, SIGINT);
 
-    if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
+    if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) > 0) {
       LOG_TOPIC("62022", ERR, arangodb::Logger::FIXME)
           << "unable to install signal handler";
     }

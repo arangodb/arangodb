@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -48,7 +47,7 @@ auto inspect(Inspector& f, SourceLocationSnapshot& x) {
 }
 
 struct VariableSourceLocation {
-  auto snapshot() -> SourceLocationSnapshot {
+  auto snapshot() const -> SourceLocationSnapshot {
     return SourceLocationSnapshot{.file_name = file_name,
                                   .function_name = function_name,
                                   .line = line.load()};

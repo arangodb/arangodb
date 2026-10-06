@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -30,8 +29,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const jsunity = require("jsunity");
-const testHelper = require('@arangodb/test-helper');
-const deriveTestSuite = testHelper.deriveTestSuite;
+const { deriveTestSuite } = require('@arangodb/test-helper');
 
 let sync = false;
 let api = "/_api/gharial";

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Oreste Costa-Panaia
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>

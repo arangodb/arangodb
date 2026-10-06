@@ -18,14 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ClusterEngine/Common.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -33,6 +34,7 @@
 namespace arangodb {
 
 class ClusterFeature;
+class DatabaseFeature;
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -40,21 +42,19 @@ class ClusterEngine final : public StorageEngine {
 
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer& server,
-                         metrics::IRegistry& metrics);
+                         ClusterFeature& clusterFeature,
+                         DatabaseFeature& database, metrics::IRegistry& metrics,
+                         IVectorIndexProvider const& vectorIndexProvider);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e);
-  StorageEngine* actualEngine() const { return _actualEngine; }
-  bool isRocksDB() const;
-  bool isMock() const;
   ClusterEngineType engineType() const;
 
   // storage engine overrides
   // ------------------------
 
-  std::string_view typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : std::string_view{};
-  }
+  std::string_view typeName() const override;
+
+  ClusterIndexFactory const& indexFactory() const override;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -66,8 +66,6 @@ class ClusterEngine final : public StorageEngine {
 
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
       transaction::Options const& options,
@@ -75,7 +73,8 @@ class ClusterEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) override;
+      LogicalCollection& collection,
+      LocalStorageProperties const& storage) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -103,26 +102,6 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode removeReplicationApplierConfiguration() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(
-      arangodb::velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
@@ -131,16 +110,7 @@ class ClusterEngine final : public StorageEngine {
                            velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result createTickRanges(velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result firstTick(uint64_t& tick) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                    uint64_t tickEnd, velocypack::Builder& builder) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
+
   WalAccess const* walAccess() const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     return nullptr;
@@ -166,9 +136,9 @@ class ClusterEngine final : public StorageEngine {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
-  RecoveryState recoveryState() override;
+  EngineState engineState() noexcept override;
   // current recovery tick
-  TRI_voc_tick_t recoveryTick() override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -204,16 +174,10 @@ class ClusterEngine final : public StorageEngine {
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
 
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
-
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 #endif
-
-  /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
@@ -246,7 +210,6 @@ class ClusterEngine final : public StorageEngine {
   metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
-  StorageEngine* _actualEngine;
 };
 
 }  // namespace arangodb

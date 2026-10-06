@@ -21,16 +21,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
-let arangodb = require('@arangodb');
+let { db } = require('@arangodb');
 const isEnterprise = require("internal").isEnterprise();
-let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
-let db = arangodb.db;
 
 let { versionHas } = require('@arangodb/test-helper');
 

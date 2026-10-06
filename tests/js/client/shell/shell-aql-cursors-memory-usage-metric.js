@@ -21,16 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const { getMetricSingle } = require("@arangodb/test-helper");
 const queries = require("@arangodb/aql/queries");
-
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
   
 function MetricsSuite () {
@@ -40,7 +37,7 @@ function MetricsSuite () {
       
   return {
     testMemoryUsageNonStream: function () {
-      const metricBefore = getMetricSingle(name);
+      const metricBefore = IM.getMetric(name);
 
       const n = 10;
       let ids = [];
@@ -50,7 +47,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = getMetricSingle(name);
+      let metricAfter = IM.getMetric(name);
       assertTrue(metricAfter >= metricBefore + 32 * 1024 * 1024, { metricBefore, metricAfter });
 
       // delete all cursors
@@ -59,13 +56,13 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = getMetricSingle(name);
+      metricAfter = IM.getMetric(name);
       // add some buffer for arbitrary other background queries
       assertTrue(Math.abs(metricAfter - metricBefore) < 1024 * 1024, { metricBefore, metricAfter });
     },
     
     testMemoryUsageStream: function () {
-      const metricBefore = getMetricSingle(name);
+      const metricBefore = IM.getMetric(name);
 
       const n = 10;
       let ids = [];
@@ -75,7 +72,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = getMetricSingle(name);
+      let metricAfter = IM.getMetric(name);
       assertTrue(metricAfter >= metricBefore + 10 * 2000, { metricBefore, metricAfter });
 
       // delete all cursors
@@ -84,7 +81,7 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = getMetricSingle(name);
+      metricAfter = IM.getMetric(name);
       // add some buffer for arbitrary other background queries
       assertTrue(Math.abs(metricAfter - metricBefore) < 10000, { metricBefore, metricAfter });
     },

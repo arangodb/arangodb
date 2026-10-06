@@ -40,7 +40,7 @@ export const InvertedIndexFormJSONEditor = ({
             if (JSON.stringify(json) !== JSON.stringify(values)) {
               setValues(json);
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
         }}

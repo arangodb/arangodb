@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 #include "Cluster/Action.h"
 
 namespace arangodb {

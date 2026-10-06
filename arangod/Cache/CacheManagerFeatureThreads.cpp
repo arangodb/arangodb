@@ -18,25 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Logger/LogMacros.h"
 
+#include <cstdint>
+
 using namespace arangodb;
 
-CacheRebalancerThread::CacheRebalancerThread(
-    application_features::ApplicationServer& server, cache::Manager* manager,
-    std::uint64_t interval)
-    : Thread(server, "CacheRebalancerThread"),
+CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager,
+                                             std::uint64_t interval)
+    // cache bookkeeping only, no ExecContext required
+    : Thread("CacheRebalancerThread", nullptr),
       _manager(manager),
       _rebalancer(_manager),
       _fullInterval(interval),

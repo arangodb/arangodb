@@ -18,10 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
-#include "Metrics/MetricsOptionsProvider.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_set.h>
@@ -39,8 +37,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
@@ -52,13 +48,11 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
     LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
-    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
     : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
                      std::move(lazyStatisticsFeatureRef),
-                     std::move(lazyDatabaseFeatureRef),
                      std::move(lazyClusterMetricsFeatureRef),
                      std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
 
@@ -67,7 +61,6 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
     LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
-    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
@@ -75,7 +68,6 @@ MetricsFeature::MetricsFeature(
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
-      _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
       _options(std::move(options)) {
@@ -92,12 +84,6 @@ MetricsFeature::MetricsFeature(
     return 0.0;
   }
   return TRI_microtime() - _serverStartTime;
-}
-
-void MetricsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -173,12 +159,6 @@ MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
   return _options.usageTrackingMode;
 }
 
-void MetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void MetricsFeature::toPrometheus(std::string& result,
                                   MetricsParts metricsParts,
                                   CollectMode mode) const {
@@ -231,7 +211,7 @@ void MetricsFeature::toPrometheus(std::string& result,
                                      _options.ensureWhitespace);
 
     // Storage engine only provides standard metrics
-    auto& es = _databaseFeature->engine();
+    auto& es = server().getFeature<StorageEngine>();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _options.ensureWhitespace);
     }
@@ -346,7 +326,6 @@ void MetricsFeature::batchRemove(std::string_view name,
 void MetricsFeature::prepare() {
   _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
   _statisticsFeature = std::move(_lazyStatisticsFeatureRef).get();
-  _databaseFeature = std::move(_lazyDatabaseFeatureRef).get();
   _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
   _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }

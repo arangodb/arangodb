@@ -30,7 +30,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void PrivilegeOptionsProvider::declareOptions(
+void PrivilegeOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, PrivilegeFeatureOptions& opts) {
 #ifdef ARANGODB_HAVE_SETUID
   options

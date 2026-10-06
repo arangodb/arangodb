@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/Identifiers/LocalDocumentId.h"

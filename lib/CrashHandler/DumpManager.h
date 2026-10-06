@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,9 +25,11 @@
 #include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 #include "CrashHandler/DataSourceRegistry.h"
 
@@ -40,6 +41,9 @@ static constexpr size_t kMaxCrashDirectories{10};
 class DumpManager {
  public:
   DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
+
+  /// @brief checks whether a crash ID is a canonical lowercase UUID
+  static bool isValidCrashId(std::string_view crashId) noexcept;
 
   /// @brief lists all crash directories (returns UUIDs)
   std::vector<std::string> listCrashes() const;
@@ -59,6 +63,9 @@ class DumpManager {
   void dumpCrashData(std::string_view backtrace) const;
 
  private:
+  std::optional<std::filesystem::path> resolveCrashDirectory(
+      std::string_view crashId) const;
+
   std::filesystem::path _crashesDirectory;
   std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };

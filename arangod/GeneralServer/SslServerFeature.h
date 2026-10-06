@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -48,8 +47,6 @@ class SslServerFeature : public application_features::ApplicationFeature {
                             SslServerOptions options);
   explicit SslServerFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
   virtual void verifySslOptions();

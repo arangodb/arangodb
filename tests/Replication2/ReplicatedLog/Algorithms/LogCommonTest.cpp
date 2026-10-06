@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 #include <gtest/gtest.h>
 #include "Replication2/ReplicatedLog/LogCommon.h"

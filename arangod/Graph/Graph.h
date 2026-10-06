@@ -18,25 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <velocypack/Buffer.h>
-#include <chrono>
-#include <set>
-#include <utility>
-
-#include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
-#include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationResult.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
-struct TRI_vocbase_t;
+#include <velocypack/Buffer.h>
+
+#include <set>
+#include <utility>
 
 namespace arangodb {
 struct ServerDefaults;
@@ -111,7 +105,7 @@ class Graph {
    *
    * @return A graph object corresponding to this document
    */
-  static std::unique_ptr<Graph> fromPersistence(TRI_vocbase_t& vocbase,
+  static std::unique_ptr<Graph> fromPersistence(Database& vocbase,
                                                 velocypack::Slice document);
 
   /**
@@ -126,12 +120,12 @@ class Graph {
    * @return A graph object corresponding to the user input
    */
   static std::unique_ptr<Graph> fromUserInput(
-      TRI_vocbase_t& vocbase, std::string&& name,
+      Database& vocbase, std::string&& name,
       velocypack::Slice collectionInformation, velocypack::Slice options);
 
   // Wrapper for Move constructor
   static std::unique_ptr<Graph> fromUserInput(
-      TRI_vocbase_t& vocbase, std::string const& name,
+      Database& vocbase, std::string const& name,
       velocypack::Slice collectionInformation, velocypack::Slice options);
 
  protected:
@@ -151,7 +145,7 @@ class Graph {
    * collections)
    * @param options The options to be used for collections
    */
-  Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
+  Graph(Database& vocbase, std::string&& graphName,
         velocypack::Slice const& info, velocypack::Slice const& options);
 
   /**

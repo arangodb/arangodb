@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "levenshtein_filter.hpp"

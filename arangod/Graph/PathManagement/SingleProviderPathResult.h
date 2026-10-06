@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,9 +25,10 @@
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/PathManagement/IPathResult.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <numeric>
 #include <unordered_map>
@@ -43,7 +42,7 @@ class Builder;
 namespace graph {
 
 template<class ProviderType, class PathStoreType, class Step>
-class SingleProviderPathResult : public PathResultInterface {
+class SingleProviderPathResult : public IPathResult {
  public:
   SingleProviderPathResult(Step step, ProviderType& provider,
                            PathStoreType& store);

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -49,7 +48,6 @@ class Feature final : public application_features::ApplicationFeature,
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   velocypack::SharedSlice getData() const;
   velocypack::SharedSlice getCrashData() const override;

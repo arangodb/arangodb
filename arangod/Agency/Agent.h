@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,6 +32,7 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
+#include "Utils/Thread.h"
 #include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Futures/Promise.h"

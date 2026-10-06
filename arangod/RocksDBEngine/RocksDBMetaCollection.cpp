@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBMetaCollection.h"
@@ -73,13 +72,12 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 
 }  // namespace
 
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             velocypack::Slice info)
+RocksDBMetaCollection::RocksDBMetaCollection(
+    LogicalCollection& collection, LocalStorageProperties const& storage)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
-      _objectId(basics::VelocyPackHelper::stringUInt64(
-          info, StaticStrings::ObjectId)),
+      _objectId(storage.objectId),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
@@ -105,7 +103,9 @@ RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
       timeout, std::forward<F>(fn));
 }
 
-RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
+RocksDBMetaCollection::~RocksDBMetaCollection() {
+  RocksDBMetaCollection::freeMemory();
+}
 
 void RocksDBMetaCollection::freeMemory() noexcept {
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
@@ -218,7 +218,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& it : _indexes) {
-      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (it->type() == IndexType::Primary) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
         set = true;
@@ -1264,7 +1264,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_engine.inRecovery());
+    TRI_ASSERT(!_engine.isReady());
     return;
   }
 

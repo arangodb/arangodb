@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -64,7 +63,6 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
   LogBufferFeature(application_features::ApplicationServer& server,
                    metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
   /// @brief return all buffered log entries

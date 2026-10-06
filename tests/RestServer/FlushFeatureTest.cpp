@@ -18,31 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
-#include "velocypack/Parser.h"
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBFormat.h"
-#include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -64,20 +55,21 @@ class FlushFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
                                             arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
+  FlushFeatureTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            server),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -89,7 +81,6 @@ class FlushFeatureTest
                           false);  // required for V8DealerFeature::prepare()
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.getFeature<arangodb::metrics::MetricsFeature>()),
@@ -113,8 +104,6 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {

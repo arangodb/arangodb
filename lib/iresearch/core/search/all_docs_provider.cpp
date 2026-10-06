@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_docs_provider.hpp"

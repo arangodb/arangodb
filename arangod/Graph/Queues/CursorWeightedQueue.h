@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -75,6 +74,7 @@ class CursorWeightedQueue {
         append(step);
       }
     }
+    cursor.markForDeletion();
   }
 
   void setStartContent(std::vector<Step> startSteps) {

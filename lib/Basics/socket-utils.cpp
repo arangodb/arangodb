@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -123,7 +122,7 @@ ErrorCode TRI_InetPton4(char const* src, unsigned char* dst) {
   octets = 0;
   *(tp = tmp) = 0;
 
-  while ((ch = *src++) != '\0') {
+  while ((ch = static_cast<unsigned char>(*src++)) != '\0') {
     char const* pch;
 
     if ((pch = strchr(digits, ch)) != nullptr) {
@@ -204,7 +203,7 @@ ErrorCode TRI_InetPton6(char const* src, unsigned char* dst) {
   seen_xdigits = 0;
   val = 0;
 
-  while ((ch = *src++) != '\0') {
+  while ((ch = static_cast<unsigned char>(*src++)) != '\0') {
     char const* pch;
     char const* xdigits;
 

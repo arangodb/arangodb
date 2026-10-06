@@ -152,7 +152,7 @@ function State (input, options) {
   this.json = options['json'] || false
   this.listener = options['listener'] || null
   this.maxDepth = typeof options['maxDepth'] === 'number' ? options['maxDepth'] : 100
-  this.maxMergeSeqLength = typeof options['maxMergeSeqLength'] === 'number' ? options['maxMergeSeqLength'] : 20
+  this.maxTotalMergeKeys = typeof options['maxTotalMergeKeys'] === 'number' ? options['maxTotalMergeKeys'] : 10000
 
   this.implicitTypes = this.schema.compiledImplicit
   this.typeMap = this.schema.compiledTypeMap
@@ -163,6 +163,7 @@ function State (input, options) {
   this.lineStart = 0
   this.lineIndent = 0
   this.depth = 0
+  this.totalMergeKeys = 0
 
   // position of first leading tab in the current line,
   // used to make sure there are no tabs in the indentation
@@ -370,15 +371,28 @@ function captureSegment (state, start, end, checkJson) {
   }
 }
 
+function chargeMergeWork (state) {
+  state.totalMergeKeys++
+
+  if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+    throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')')
+  }
+}
+
 function mergeMappings (state, destination, source, overridableKeys) {
   if (!common.isObject(source)) {
     throwError(state, 'cannot merge mappings; the provided source object is unacceptable')
   }
 
+  // Count the source mapping itself to bound sequences of empty mappings.
+  chargeMergeWork(state)
+
   const sourceKeys = Object.keys(source)
 
   for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
     const key = sourceKeys[index]
+
+    chargeMergeWork(state)
 
     if (!_hasOwnProperty.call(destination, key)) {
       setProperty(destination, key, source[key])
@@ -421,17 +435,12 @@ function storeMappingPair (state, _result, overridableKeys, keyTag, keyNode, val
 
   if (keyTag === 'tag:yaml.org,2002:merge') {
     if (Array.isArray(valueNode)) {
-      if (valueNode.length > state.maxMergeSeqLength) {
-        throwError(state, 'merge sequence length exceeded maxMergeSeqLength (' + state.maxMergeSeqLength + ')')
+      if (valueNode.length > 100) {
+        throwError(state, 'abnormal merge sequence size')
       }
-      const seen = new Set()
+
       for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {
-        const src = valueNode[index]
-        // Existing keys are not overridden on merge, so dedupe sources to
-        // avoid redundant work on repeated aliases.
-        if (seen.has(src)) continue
-        seen.add(src)
-        mergeMappings(state, _result, src, overridableKeys)
+        mergeMappings(state, _result, valueNode[index], overridableKeys)
       }
     } else {
       mergeMappings(state, _result, valueNode, overridableKeys)

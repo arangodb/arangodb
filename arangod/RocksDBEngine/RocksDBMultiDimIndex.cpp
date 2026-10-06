@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBMultiDimIndex.h"
@@ -65,6 +63,10 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
         _dim(dim),
         _prefix(std::move(prefix)),
         _index(index),
+        _cmp(index->comparator()),
+        _mustCheckBounds(
+            RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
+                _collection->id(), readOwnWrites)),
         _lookahead(lookahead) {
     _cur = _min;
 
@@ -89,7 +91,11 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
         RocksDBTransactionState::toMethods(trx, _collection->id());
     _iter = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
       TRI_ASSERT(opts.prefix_same_as_start);
-      opts.iterate_upper_bound = &_upperBound;
+      // a WriteBatchWithIndex iterator does not apply iterate_upper_bound to
+      // the transaction's own writes, so valid() checks every key instead
+      if (!_mustCheckBounds) {
+        opts.iterate_upper_bound = &_upperBound;
+      }
     });
     TRI_ASSERT(_iter != nullptr);
     _compareResult.resize(_dim);
@@ -131,6 +137,12 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
     }
   }
 
+  // the iterator points at an entry of this index within the query's bounds
+  bool valid() const {
+    return _iter->Valid() &&
+           (!_mustCheckBounds || _cmp->Compare(_iter->key(), _upperBound) < 0);
+  }
+
   template<typename F>
   bool findNext(F&& callback, uint64_t limit) {
     for (uint64_t i = 0; i < limit;) {
@@ -139,7 +151,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
           loadKey(_cur);
           _iter->Seek(_rocksdbKey.string());
 
-          if (!_iter->Valid()) {
+          if (!valid()) {
             rocksutils::checkIteratorStatus(*_iter);
             _iterState = IterState::DONE;
           } else {
@@ -157,7 +169,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
           for (size_t numTried = 0;
                !foundNextZValueInBox && numTried < numNextTries(); ++numTried) {
             _iter->Next();
-            if (!_iter->Valid()) {
+            if (!valid()) {
               rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
               break;  // for loop
@@ -187,7 +199,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
             callback(rocksKey, _iter->value());
             ++i;
             _iter->Next();
-            if (!_iter->Valid()) {
+            if (!valid()) {
               rocksutils::checkIteratorStatus(*_iter);
               _iterState = IterState::DONE;
             } else {
@@ -293,6 +305,8 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBMdiIndexBase* _index = nullptr;
+  rocksdb::Comparator const* _cmp;
+  bool const _mustCheckBounds;
 
   size_t const _lookahead;
 
@@ -549,6 +563,9 @@ void mdi::extractBoundsFromCondition(
     // not be null.
     for (size_t i = 0; i < condition->numMembers(); i++) {
       auto op = condition->getMemberUnchecked(i);
+      if (!op->isComparisonOperator()) {
+        continue;
+      }
       auto other = op->getMember(0);
       auto access = op->getMember(1);
       index->canUseConditionPart(access, other, op, reference,
@@ -899,9 +916,8 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                              /*allowExpansion*/ false)),
       _coveredFields(Index::mergeFields(_prefixFields, _storedValues)),
       _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {
-  TRI_ASSERT(_type == TRI_IDX_TYPE_ZKD_INDEX ||
-             _type == TRI_IDX_TYPE_MDI_INDEX ||
-             _type == TRI_IDX_TYPE_MDI_PREFIXED_INDEX);
+  TRI_ASSERT(_type == IndexType::Zkd || _type == IndexType::MDI ||
+             _type == IndexType::MDIPrefixed);
 }
 
 void RocksDBMdiIndexBase::toVelocyPack(
@@ -1049,7 +1065,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
   return mdi::specializeCondition(this, condition, reference);
 }
 
-Index::IndexType RocksDBMdiIndexBase::type() const { return _type; }
+IndexType RocksDBMdiIndexBase::type() const { return _type; }
 
 char const* RocksDBMdiIndexBase::typeName() const {
   return Index::oldtypeName(type());

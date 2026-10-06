@@ -1,0 +1,40 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ] ; then
+	update-rc.d arangodb3 remove >/dev/null
+fi
+
+# In case this system is running systemd, we make systemd reload the unit files
+# to pick up changes.
+if [ -d /run/systemd/system ] ; then
+        systemctl --system daemon-reload >/dev/null || true
+fi
+
+if [ "$1" = "remove" ]; then
+        if [ -x "/usr/bin/deb-systemd-helper" ]; then
+                deb-systemd-helper mask arangodb3.service >/dev/null
+        fi
+fi
+
+if [ "$1" = "purge" ]; then
+        if [ -x "/usr/bin/deb-systemd-helper" ]; then
+                deb-systemd-helper purge arangodb3.service >/dev/null
+                deb-systemd-helper unmask arangodb3.service >/dev/null
+        fi
+fi
+
+if [ "$1" = purge ] && [ -e /usr/share/debconf/confmodule ]; then
+	. /usr/share/debconf/confmodule
+	db_purge
+fi
+
+rm -rf /usr/share/arangodb3/js.old
+
+if [ purge = "$1" ]; then
+	rm -rf /usr/share/arangodb3/js/apps
+	rm -rf /var/log/arangodb3
+	rm -rf /var/lib/arangodb3
+	rm -rf /var/lib/arangodb3-apps 
+	rm -rf /var/run/arangodb
+fi

@@ -25,12 +25,16 @@
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityCreated.h"
 #include "Activities/ActivityType.h"
-#include "Inspection/Transformers.h"
+#include "Basics/Guarded.h"
+#include "Containers/Concurrent/shared.h"
+#include "Containers/Concurrent/thread.h"
 #include "Containers/Concurrent/ThreadOwnedList.h"
+#include "Inspection/Transformers.h"
 
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
 
+#include <list>
 #include <optional>
 
 namespace arangodb::activities {
@@ -40,8 +44,18 @@ struct Snapshot {
   std::optional<ActivityId> parentId;
   ActivityType type;
   ActivityCreated created;
+  std::vector<basics::ThreadInfo> threads;
   VPackBuilder data;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Snapshot& x) {
+  return f.object(x).fields(
+      f.field("id", x.id), f.field("parent", x.parentId),
+      f.field("type", x.type),
+      f.field("created", x.created)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("threads", x.threads), f.field("data", x.data));
+}
 
 // We need a wrapper because the concurrent-registry needs a compile-time
 // constant item type but our activities can have different types (all
@@ -52,29 +66,20 @@ struct ActivityPtr {
 
   using Snapshot = Snapshot;
 
-  auto snapshot() -> Snapshot;
+  auto snapshot() const -> Snapshot;
 };
 
 struct Activity : std::enable_shared_from_this<Activity>,
                   containers::ThreadOwnedList<ActivityPtr>::Node {
   using Snapshot = Snapshot;
-  Activity(ActivityId id, ActivityHandle parent, ActivityType type)
-      : Node{ActivityPtr{this}},
-        _id(std::move(id)),
-        _parent(std::move(parent)),
-        _type(std::move(type)),
-        _created(std::chrono::system_clock::now()) {}
+  using ThreadList = std::list<containers::SharedPtr<basics::ThreadInfo>>;
+  using ThreadListIterator = ThreadList::iterator;
+  Activity(ActivityId id, ActivityHandle parent, ActivityType type);
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };
   auto parent() const noexcept -> ActivityHandle { return _parent; }
-  auto parentId() const noexcept -> std::optional<ActivityId> {
-    if (_parent == nullptr) {
-      return std::nullopt;
-    } else {
-      return _parent->id();
-    }
-  }
+  auto parentId() const noexcept -> std::optional<ActivityId>;
   auto type() const noexcept -> ActivityType { return _type; }
   auto created() const noexcept -> ActivityCreated { return _created; }
   virtual auto data() const noexcept -> VPackBuilder {
@@ -83,6 +88,9 @@ struct Activity : std::enable_shared_from_this<Activity>,
     builder.close();
     return builder;
   }
+  auto threads() const noexcept -> std::vector<basics::ThreadInfo>;
+  auto addCurrentThread() -> ThreadListIterator;
+  auto removeThread(ThreadListIterator it) -> void;
 
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status {
     return inspection::Status{};
@@ -92,6 +100,7 @@ struct Activity : std::enable_shared_from_this<Activity>,
                     .parentId = parentId(),
                     .type = type(),
                     .created = created(),
+                    .threads = threads(),
                     .data = data()};
   }
 
@@ -100,15 +109,7 @@ struct Activity : std::enable_shared_from_this<Activity>,
   ActivityHandle _parent;
   ActivityType _type;
   ActivityCreated _created;
+  Guarded<ThreadList> _threads;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Snapshot& x) {
-  return f.object(x).fields(
-      f.field("id", x.id), f.field("parent", x.parentId),
-      f.field("type", x.type),
-      f.field("created", x.created)
-          .transformWith(inspection::TimeStampTransformer{}),
-      f.field("data", x.data));
-}
 
 }  // namespace arangodb::activities

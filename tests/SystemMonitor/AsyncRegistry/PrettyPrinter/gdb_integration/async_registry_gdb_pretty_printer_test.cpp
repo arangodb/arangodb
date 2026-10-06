@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Async/Registry/registry_variable.h"
@@ -112,7 +111,7 @@ int main() {
   breakpoint();
 
   // add a promise that depends on parent promise
-  auto* child = thread_registry->add([&]() {
+  auto child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -128,7 +127,7 @@ int main() {
   breakpoint();
 
   // add another promise that depends on parent promise
-  auto* second_child = thread_registry->add([&]() {
+  auto second_child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -145,7 +144,7 @@ int main() {
   breakpoint();
 
   // add a child to a child promise
-  auto* child_of_child = thread_registry->add([&]() {
+  auto child_of_child = thread_registry->add([&]() {
     return Promise{{child->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -164,7 +163,7 @@ int main() {
   breakpoint();
 
   // add a child to the second child promise
-  auto* child_of_second_child = thread_registry->add([&]() {
+  auto child_of_second_child = thread_registry->add([&]() {
     return Promise{{second_child->data.id()}, std::source_location::current()};
   });
   expected = std::format(
@@ -185,7 +184,7 @@ int main() {
   breakpoint();
 
   // add a completely unrelated promise
-  auto* second_parent = thread_registry->add([&]() {
+  auto second_parent = thread_registry->add([&]() {
     return Promise{{arangodb::basics::ThreadInfo::current()},
                    std::source_location::current()};
   });
@@ -213,13 +212,16 @@ int main() {
   breakpoint();
 
   auto second_thread_registry = ThreadRegistry::make();
-  auto other_thread =
-      arangodb::basics::ThreadInfo{};  // simulate another thread
   test_registry.add(second_thread_registry);
 
   // add a new promise on another thread
-  auto* parent_on_other_thread = second_thread_registry->add([&]() {
-    return Promise{{other_thread}, std::source_location::current()};
+  auto other_thread =
+      arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>{
+          arangodb::basics::ThreadInfo{
+              5, "some_thread_name"}};  // simulate another thread
+  auto parent_on_other_thread = second_thread_registry->add([&]() {
+    return Promise{CurrentRequester{other_thread},
+                   std::source_location::current()};
   });
   expected = std::format(
       "async registry = {{\n"
@@ -243,8 +245,10 @@ int main() {
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread.get_ref().value()), format(other_thread),
-      format(parent_on_other_thread->data.snapshot()), format(other_thread));
+      format(current_thread.get_ref().value()),
+      format(other_thread.get_ref().value()),
+      format(parent_on_other_thread->data.snapshot()),
+      format(other_thread.get_ref().value()));
 
   breakpoint();
 

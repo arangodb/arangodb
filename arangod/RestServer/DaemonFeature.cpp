@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DaemonFeature.h"
@@ -73,16 +72,6 @@ DaemonFeature::DaemonFeature(ApplicationServer& server,
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  DaemonOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  DaemonOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void DaemonFeature::daemonize() {

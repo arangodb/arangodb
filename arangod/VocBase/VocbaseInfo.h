@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,9 +31,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+class ExecContext;
 namespace application_features {
 class ApplicationServer;
 }

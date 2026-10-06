@@ -18,18 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -37,21 +34,17 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
-#include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/IRegistry.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/HealthData.h"
@@ -59,6 +52,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -76,10 +70,10 @@ namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
  public:
-  explicit HeartbeatBackgroundJobThread(
-      application_features::ApplicationServer& server,
-      HeartbeatThread* heartbeatThread)
-      : Thread(server, "Maintenance"),
+  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
+      // needs superuser permissions for DBServerAgencySync, which executes
+      // maintenance actions
+      : Thread("Maintenance", ExecContext::superuserAsShared()),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -212,7 +206,8 @@ HeartbeatThread::HeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry,
     std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
     double noHeartbeatDelayBeforeShutdown, metrics::IRegistry& metricsRegistry)
-    : arangodb::ServerThread(server, "Heartbeat"),
+    : arangodb::ServerThread(server, "Heartbeat",
+                             ExecContext::superuserAsShared()),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
@@ -369,6 +364,26 @@ void HeartbeatThread::run() {
       << "stopped heartbeat thread (" << role << ")";
 }
 
+namespace {
+
+/// @brief wait for an already scheduled getNewsFromAgency job to finish.
+/// The job runs in a scheduler thread and accesses objects owned by the
+/// ClusterFeature (e.g. the AgencyCache). The ClusterFeature tears those down
+/// once the HeartbeatThread has stopped, so the thread must not stop while the
+/// job is still in flight.
+void waitForScheduledGetNews(std::atomic<int> const& getNewsRunning) noexcept {
+  size_t counter = 0;
+  while (getNewsRunning.load(std::memory_order_seq_cst) != 0) {
+    if (++counter % 200 == 0) {
+      LOG_TOPIC("a3b7c", WARN, Logger::HEARTBEAT)
+          << "waiting for scheduled getNewsFromAgency job to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+}  // namespace
+
 void HeartbeatThread::getNewsFromAgencyForDBServer() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
@@ -493,6 +508,8 @@ void HeartbeatThread::runDBServer() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -760,7 +777,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     } catch (...) {
     }
 
-    if (version > 0) {
+    if (version > 0 && server().hasFeature<FoxxFeature>()) {
       // track the global foxx queues version from the agency. any
       // coordinator can update this any time. the setQueueVersion
       // method makes sure we are not going below a value that
@@ -791,6 +808,8 @@ void HeartbeatThread::runCoordinator() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   while (!isStopping()) {
     try {
@@ -871,8 +890,7 @@ bool HeartbeatThread::init() {
     // thread, but that SyncerThread is started before runDBServer is called.
     // So in order to prevent a data race we should initialize
     // _maintenanceThread before that SyncerThread is started.
-    _maintenanceThread =
-        std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
   }
   return true;
 }
@@ -1139,7 +1157,7 @@ void HeartbeatThread::sendServerStateAsync() {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          server().getFeature<RocksDBEngine>().healthCheck();
+          server().getFeature<StorageEngine>().healthCheck();
       // intentionally dont transmit details so we can save a bit of traffic
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }

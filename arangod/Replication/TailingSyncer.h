@@ -18,24 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <velocypack/Builder.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class InitialSyncer;
-class ReplicationApplier;
 class ReplicationTransaction;
 
 namespace httpclient {
@@ -54,22 +50,15 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplier* applier,
-                ReplicationApplierConfiguration const&,
-                TRI_voc_tick_t initialTick, bool useTick);
+  explicit TailingSyncer(ReplicationSyncConfiguration const&);
 
   virtual ~TailingSyncer();
-
- public:
-  /// @brief run method, performs continuous synchronization
-  /// catches exceptions
-  Result run();
 
  protected:
   /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
 
-  /// @brief set the applier progress
+  /// @brief log the current progress message
   void setProgress(std::string const&);
 
   /// @brief abort all ongoing transactions
@@ -142,59 +131,12 @@ class TailingSyncer : public Syncer {
                   arangodb::velocypack::Builder& builder,
                   uint64_t& ignoreCount);
 
-  /// @brief perform a continuous sync with the leader
-  Result runContinuousSync();
-
-  /// @brief save the current applier state
-  virtual Result saveApplierState() = 0;
-
  private:
-  /// @brief get local replication applier state
-  void getLocalState();
-
-  /// @brief run method, performs continuous synchronization
-  /// internal method, may throw exceptions
-  arangodb::Result runInternal();
-
-  /// @brief fetch data for the continuous synchronization
-  /// @param fetchTick tick from which we want results
-  /// @param lastScannedTick tick which the server MAY start scanning from
-  /// @param firstRegularTick if we got openTransactions server will return the
-  ///                         only operations belonging to these for smaller
-  ///                         ticks
-  void fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
-                      TRI_voc_tick_t firstRegularTick);
-
-  /// @brief apply continuous synchronization data from a batch
-  arangodb::Result processLeaderLog(
-      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-      arangodb::velocypack::Builder& builder, TRI_voc_tick_t& fetchTick,
-      TRI_voc_tick_t& lastScannedTick, TRI_voc_tick_t firstRegularTick,
-      uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
-
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
                                         std::string const& key);
 
-  arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
-                                                    TRI_voc_tick_t readTick,
-                                                    char const* type);
-
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice slice) = 0;
-
-  /// @brief pointer to the applier
-  ReplicationApplier* _applier;
-
-  /// @brief whether or not the replication state file has been written at least
-  /// once with non-empty values. this is required in situations when the
-  /// replication applier is manually started and the leader has absolutely no
-  /// new data to provide, and the follower gets shut down. in that case, the
-  /// state file would never have been written with the initial start tick, so
-  /// the start tick would be lost. re-starting the follower and the replication
-  /// applier with the ticks from the file would then result in a "no start tick
-  /// provided" error
-  bool _hasWrittenState;
 
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;
@@ -203,14 +145,7 @@ class TailingSyncer : public Syncer {
   bool _usersModified;
 
   /// @brief database list with modified _analyzers collection
-  std::set<TRI_vocbase_t*> _analyzersModified;
-
-  /// @brief use the initial tick
-  bool _useTick;
-
-  /// @brief whether or not the specified from tick must be present when
-  /// fetching data from a leader
-  bool _requireFromPresent;
+  std::set<Database*> _analyzersModified;
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;

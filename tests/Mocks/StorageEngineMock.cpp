@@ -18,13 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
-
-#include <typeindex>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
@@ -35,8 +31,6 @@
 #include "Basics/asio_ns.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -48,6 +42,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
@@ -67,6 +62,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 namespace {
 
@@ -74,10 +70,9 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
                    bool injectClusterIndexes)
       : IndexFactory(server) {
-    if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(
-          server, *this, server.getFeature<arangodb::ClusterEngine>());
-    }
+    // there is only a single StorageEngine slot now, and StorageEngineMock
+    // always occupies it, so a real ClusterEngine can never be fetched here.
+    TRI_ASSERT(!injectClusterIndexes);
   }
 
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
@@ -190,8 +185,8 @@ StorageEngineMock::buildInvertedIndexMock(
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};
-arangodb::RecoveryState StorageEngineMock::recoveryStateResult =
-    arangodb::RecoveryState::DONE;
+arangodb::EngineState StorageEngineMock::recoveryStateResult =
+    arangodb::EngineState::kRunning;
 TRI_voc_tick_t StorageEngineMock::recoveryTickResult = 0;
 std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
@@ -201,12 +196,13 @@ StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
     : StorageEngine(server, "Mock", "Mock",
-                    std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
-                        new IndexFactoryMock(server, injectClusterIndexes))),
+                        new IndexFactoryMock(server, injectClusterIndexes)),
+                    _dbProvider, _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
   initTransactionStatistics(_mockRegistry);
+  ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }
 
 arangodb::HealthData StorageEngineMock::healthCheck() { return {}; }
@@ -220,17 +216,6 @@ bool StorageEngineMock::autoRefillIndexCaches() const { return false; }
 
 bool StorageEngineMock::autoRefillIndexCachesOnFollowers() const {
   return false;
-}
-
-void StorageEngineMock::addOptimizerRules(
-    arangodb::aql::OptimizerRulesFeature& /*feature*/) {
-  before();
-  // NOOP
-}
-
-void StorageEngineMock::addRestHandlers(
-    arangodb::rest::RestHandlerFactory& handlerFactory) {
-  TRI_ASSERT(false);
 }
 
 #ifdef USE_V8
@@ -263,20 +248,9 @@ arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*,
 std::unique_ptr<arangodb::PhysicalCollection>
 StorageEngineMock::createPhysicalCollection(
     arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice /*info*/) {
+    arangodb::LocalStorageProperties const& /*storage*/) {
   before();
   return std::make_unique<PhysicalCollectionMock>(collection);
-}
-
-arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::unique_ptr<arangodb::transaction::Manager>
-StorageEngineMock::createTransactionManager(
-    arangodb::transaction::ManagerFeature& feature) {
-  return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
 std::shared_ptr<arangodb::TransactionState>
@@ -339,11 +313,6 @@ arangodb::Result StorageEngineMock::dropView(
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view dropped OK
 }
 
-arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase,
                                           arangodb::DataSourceId cid,
                                           arangodb::velocypack::Builder& result,
@@ -388,25 +357,6 @@ void StorageEngineMock::cleanupReplicationContexts() {
   // nothing to do here
 }
 
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                      ErrorCode& result) {
-  before();
-  result =
-      TRI_ERROR_FILE_NOT_FOUND;  // assume no ReplicationApplierConfiguration
-                                 // for vocbase
-
-  return arangodb::velocypack::Builder();
-}
-
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(ErrorCode& status) {
-  before();
-  status = TRI_ERROR_FILE_NOT_FOUND;
-
-  return arangodb::velocypack::Builder();
-}
-
 ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase,
                                       arangodb::velocypack::Builder& result) {
   result.openArray();
@@ -427,21 +377,14 @@ arangodb::Result StorageEngineMock::handleSyncKeys(
   return arangodb::Result();
 }
 
-arangodb::RecoveryState StorageEngineMock::recoveryState() {
+arangodb::EngineState StorageEngineMock::engineState() noexcept {
   return recoveryStateResult;
 }
-TRI_voc_tick_t StorageEngineMock::recoveryTick() {
+TRI_voc_tick_t StorageEngineMock::recoveryTick() noexcept {
   if (recoveryTickCallback) {
     recoveryTickCallback();
   }
   return recoveryTickResult;
-}
-
-arangodb::Result StorageEngineMock::lastLogger(
-    TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,
-    arangodb::velocypack::Builder& builderSPtr) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
@@ -452,7 +395,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   new_info.setId(++vocbaseCount);
 
   return std::make_unique<TRI_vocbase_t>(std::move(new_info), *this,
-                                         _versionTracker, true);
+                                         _dbProvider);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
@@ -465,34 +408,11 @@ void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
   _releasedTick = tick;
 }
 
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
 arangodb::Result StorageEngineMock::renameCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
     std::string const& oldName) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice, bool) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {

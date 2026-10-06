@@ -42,8 +42,8 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ClientOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           ClientFeatureOptions& options) {
+void ClientOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   opts->addSection("server", "server connection");
 
   opts->addOption("--server.database",
@@ -93,7 +93,11 @@ arangosh without connecting to a server.)");
       "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "
-      "Literal @ need to be escaped as @@.",
+      "Literal @ need to be escaped as @@.\n"
+      "The credentials are exchanged for a JWT via /_open/auth, which is "
+      "renewed automatically before it expires (see "
+      "--server.jwt-renewal-threshold). If the server does not issue tokens, "
+      "HTTP basic authentication is used.",
       new StringParameter(&options.password));
 
   if (isArangosh) {
@@ -134,7 +138,9 @@ arangosh without connecting to a server.)");
         "option is not compatible with --server.ask-jwt-secret, "
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
         "If specified, it is used for all connections - even if a new "
-        "connection to another server is created.",
+        "connection to another server is created. A token with an expiry is "
+        "renewed automatically before it expires (see "
+        "--server.jwt-renewal-threshold).",
         new StringParameter(&options.jwtToken));
   }
 
@@ -149,8 +155,10 @@ arangosh without connecting to a server.)");
   opts->addOption(
       "--server.jwt-renewal-threshold",
       "The time (in seconds) before JWT token expiry to trigger "
-      "automatic renewal. Default is 300 seconds (5 minutes).",
-      new DoubleParameter(&options.jwtRenewalThreshold),
+      "automatic renewal. Default is 300 seconds (5 minutes). With 0, a "
+      "renewal is only attempted once the token has expired.",
+      new DoubleParameter(&options.jwtRenewalThreshold, /*base*/ 1.0,
+                          /*minValue*/ 0.0),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   opts->addOption(
@@ -183,17 +191,18 @@ received by an ArangoDB server.)");
                   "transparently compressed when sending them to the server.",
                   new UInt64Parameter(&options.compressRequestThreshold))
       .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests
-with the deflate compression format. Compression will only happen for
-HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
-body exceeds the threshold value controlled by this startup option,
-and if the request body size after compression is less than the original
-request body size.
-Using the value 0 disables the automatic request compression.)");
+      .setLongDescription(R"(Automatically compress outgoing HTTP requests
+with the deflate compression format.
+
+Compression only happens for HTTP/1.1 and HTTP/2 connections, if the size of the
+uncompressed request body exceeds the threshold value controlled by this
+startup option, and if the request body size after compression is less than the
+original request body size.
+
+Using the value `0` disables the automatic request compression.)");
 }
 
-void ClientOptionsProvider::validateOptions(
+void ClientOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
   if (options.sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)

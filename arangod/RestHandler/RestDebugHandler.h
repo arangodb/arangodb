@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,6 +29,10 @@ class RestDebugHandler : public arangodb::RestBaseHandler {
  public:
   RestDebugHandler(application_features::ApplicationServer&, GeneralRequest*,
                    GeneralResponse*);
+
+ protected:
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
 
  public:
   char const* name() const override final { return "RestDebugHandler"; }

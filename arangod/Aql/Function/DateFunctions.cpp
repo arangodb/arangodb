@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlValue.h"
@@ -429,7 +428,7 @@ AqlValue dateFromParameters(
       return AqlValue(AqlValueHintNull());
     }
 
-    for (uint8_t i = 0; i < parameters.size(); i++) {
+    for (size_t i = 0; i < parameters.size(); i++) {
       AqlValue const& value =
           aql::functions::extractFunctionParameterValue(parameters, i);
 
@@ -923,7 +922,7 @@ AqlValue functions::DateQuarter(ExpressionContext* expressionContext,
   date::month m = ymd.month();
 
   // Library has unsigned operator implemented.
-  uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
+  uint64_t part = static_cast<uint64_t>(std::ceil(unsigned(m) / 3.0f));
   // We only have 4 quarters ;)
   TRI_ASSERT(part <= 4);
   return AqlValue(AqlValueHintUInt(part));

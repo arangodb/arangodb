@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicatedLogFeature.h"
@@ -28,7 +27,6 @@
 #include "Basics/application-exit.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Metrics/MetricsFeature.h"
 #include "Logger/LogMacros.h"
@@ -37,7 +35,6 @@
 
 #include <memory>
 
-using namespace arangodb::options;
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::replication2;
@@ -45,8 +42,14 @@ using namespace arangodb::replication2::replicated_log;
 
 ReplicatedLogFeature::ReplicatedLogFeature(
     application_features::ApplicationServer& server)
+    : ReplicatedLogFeature(server, ReplicatedLogGlobalSettings{}) {}
+
+ReplicatedLogFeature::ReplicatedLogFeature(
+    application_features::ApplicationServer& server,
+    ReplicatedLogGlobalSettings options)
     : application_features::ApplicationFeature{server, *this},
-      _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
+      _options(
+          std::make_shared<ReplicatedLogGlobalSettings>(std::move(options))) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -58,8 +61,8 @@ auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
 }
 
 void ReplicatedLogFeature::start() {
-  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetricsIndirect<false>>(
-      &this->server().getFeature<metrics::MetricsFeature>());
+  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetrics>(
+      this->server().getFeature<metrics::MetricsFeature>());
 }
 
 auto ReplicatedLogFeature::options() const noexcept
@@ -79,15 +82,4 @@ void ReplicatedLogFeature::prepare() {
   }
 }
 
-void ReplicatedLogFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  replication2::ReplicatedLogOptionsProvider provider;
-  provider.declareOptions(options, *_options);
-}
-
 ReplicatedLogFeature::~ReplicatedLogFeature() = default;
-
-#include "ReplicatedLogMetrics.tpp"
-
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<false>;

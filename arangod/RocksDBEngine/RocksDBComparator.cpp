@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBComparator.h"

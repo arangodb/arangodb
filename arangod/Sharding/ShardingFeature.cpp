@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingFeature.h"
@@ -197,6 +196,14 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(
 
   // now create a sharding strategy instance
   return (*it).second(sharding);
+}
+
+std::unique_ptr<ShardingStrategy> ShardingFeature::createOrDefault(
+    std::optional<std::string> const& name, ShardingInfo* sharding) {
+  if (name.has_value() && !name.value().empty()) {
+    return create(name.value(), sharding);
+  }
+  return create(getDefaultShardingStrategy(sharding), sharding);
 }
 
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(

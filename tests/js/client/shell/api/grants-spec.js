@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Andreas Streichardt
 // //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;

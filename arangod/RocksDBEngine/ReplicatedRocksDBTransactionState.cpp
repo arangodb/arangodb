@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicatedRocksDBTransactionState.h"
@@ -41,10 +40,10 @@
 using namespace arangodb;
 
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
-    TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    Database& vocbase, TransactionId tid, transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin, manager) {
+}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 

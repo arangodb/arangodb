@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminRoutingHandler.h"
@@ -35,8 +34,10 @@ RestAdminRoutingHandler::RestAdminRoutingHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/routing (prefix, requires V8)
 RestStatus RestAdminRoutingHandler::execute() {
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");

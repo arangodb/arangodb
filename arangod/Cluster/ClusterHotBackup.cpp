@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterHotBackup.h"
@@ -1558,9 +1556,12 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
                                   "hot backup timeout before locking phase");
         }
 
-        // kill all transactions
-        result =
-            mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        // kill all transactions, regardless of which user owns them
+        {
+          ExecContextSuperuserScope superuserScope;
+          result =
+              mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        }
         if (result.fail()) {
           events::CreateHotbackup(timeStamp + "_" + backupId,
                                   result.errorNumber());

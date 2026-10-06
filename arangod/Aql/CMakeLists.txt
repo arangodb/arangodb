@@ -61,7 +61,6 @@ add_library(arango_aql STATIC
   InputAqlItemRow.cpp
   InsertModifier.cpp
   LateMaterializedExpressionContext.cpp
-  LazyConditions.cpp
   LimitStats.cpp
   ModificationExecutorFlags.h
   ModificationOptions.cpp
@@ -73,7 +72,6 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
@@ -94,6 +92,7 @@ add_library(arango_aql STATIC
   QueryString.cpp
   QueryWarnings.cpp
   Range.cpp
+  RangeSpec.cpp
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
@@ -159,6 +158,7 @@ target_link_libraries(arango_aql
   arango_indexes
   arango_iresearch
   arango_network
+  arango_v8server
   immer)
 
 target_include_directories(arango_aql PRIVATE

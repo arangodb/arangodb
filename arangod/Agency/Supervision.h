@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,10 +25,10 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Cluster/ClusterTypes.h"
 
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 
 #include <chrono>
 #include <functional>

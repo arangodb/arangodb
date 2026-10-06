@@ -24,23 +24,19 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "FileDescriptorsFeatureOptions.h"
-#include <memory>
-
-namespace arangodb::options {
-class ProgramOptions;
-}
 
 namespace arangodb::file_descriptors {
 
 struct FileDescriptorsOptionsProvider
-    : OptionsProvider<FileDescriptorsFeatureOptions> {
+    : OptionsProviderImpl<FileDescriptorsOptionsProvider,
+                          FileDescriptorsFeatureOptions> {
   FileDescriptorsOptionsProvider() = default;
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FileDescriptorsFeatureOptions& options) override;
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FileDescriptorsFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       FileDescriptorsFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           FileDescriptorsFeatureOptions& options);
 };
 
 }  // namespace arangodb::file_descriptors

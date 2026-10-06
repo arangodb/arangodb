@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 /* Modules: */
@@ -35,10 +34,10 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
+const pm = require('@arangodb/testutils/portmanager');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
-const crypto = require('@arangodb/crypto');
 const AsciiTable = require('ascii-table');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
@@ -78,6 +77,8 @@ const instanceRole = inst.instanceRole;
 let instanceCount = 1;
 const seconds = x => x * 1000;
 
+
+
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
     this.instanceCount = instanceCount++;
@@ -97,6 +98,7 @@ class instanceManager {
     this.endpointPort = -1;
     this.connectedEndpoint = undefined;
     this.connectionHandle = undefined;
+    this.privConnectionHandle = undefined;
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
@@ -115,37 +117,65 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
-    if (addArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = addArgs['server.jwt-secret'];
-    } else if (options.hasOwnProperty('jwtSecret')) {
-      this.JWT = options.jwtSecret;
-      addArgs['server.jwt-secret'] = this.JWT;
-    }
-    if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(addArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
-    }
-    if (this.options.encryptionAtRest) {
-      if (this.options.hasOwnProperty('jwtFiles')) {
-        this.JWT = fs.read(this.options.jwtFiles[0]);
-      } else if (!addArgs.hasOwnProperty('server.jwt-secret')) {
-        this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
-        fs.makeDirectoryRecursive(this.rootDir);
-        fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-        this.JWT = fs.read(this.restKeyFile);
-      }
-    }
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
+    this.forceJWT = false;
+    this.jwt_secret = "";
+    this.JWT = "";
+    this.handleJWT();
     this.expectAsserts = false;
-    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
     this.hasSetPassvoid = false;
+    this.pm = pm.getPortManager(options);
+    // Only when the built-in dummy will actually be launched (same condition as
+    // launchInstance). findFreePort() probes ports, which throws under
+    // --javascript.allow-port-testing false - see tests/js/client/permissions/ports.js.
+    this.rbacPort = (this.options.rbac && typeof this.options.rbac !== "string")
+          ? this.pm.findFreePort(this.options.minPort, this.options.maxPort)
+          : null;
+    this.rbacInstance = null;
   }
 
+  handleJWT() {
+    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
+                     this.addArgs.hasOwnProperty('server.authentication'));
+    if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.jwt_secret = this.addArgs['server.jwt-secret'];
+    } else if (this.options.hasOwnProperty('jwtSecret')) {
+      this.jwt_secret = this.options.jwtSecret;
+      this.addArgs['server.jwt-secret'] = this.jwt_secret;
+    }
+    if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
+      this.options.jwtFiles = this.options.jwtFiles.sort();
+      this.jwt_secret = inst.loadJWTKeyFile(fs.join(this.addArgs['server.jwt-secret-folder'],
+                                                    this.options.jwtFiles[0]));
+    } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
+      this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
+    } else if (this.options.encryptionAtRest &&
+               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
+      fs.makeDirectoryRecursive(this.rootDir);
+      fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
+      this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
+    } else if (this.options.cluster && (this.jwt_secret === "") &&
+               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
+      this.addArgs['server.jwt-secret'] = this.jwt_secret;
+    }
+    this.agencyMgr.jwt_secret = this.jwt_secret;
+    this.JWT = inst.encodeJWTSecret(this.jwt_secret);
+  }
+  
   destructor(cleanup) {
+    if (this.connectionHandle) {
+      arango.disconnectHandle(this.connectionHandle);
+    }
+    if (this.privConnectionHandle) {
+      arango.disconnectHandle(this.privConnectionHandle);
+    }
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      arangod._disconnect();
       if (arangod.serverCrashedLocal) {
         cleanup = false;
       }
@@ -154,6 +184,8 @@ class instanceManager {
     if (this.cleanup && cleanup) {
       this._cleanup();
     }
+    arango.flushConnectionCache();
+    this.arangods = [];
   }
   getStructure() {
     let d = [];
@@ -169,8 +201,6 @@ class instanceManager {
       rootDir: this.rootDir,
       leader: ln,
       agencyConfig: this.agencyMgr.getStructure(),
-      httpAuthOptions: this.httpAuthOptions,
-      httpJWTAuthOptions: this.httpJWTAuthOptions,
       urls: this.urls,
       url: this.url,
       endpoints: this.endpoints,
@@ -179,8 +209,10 @@ class instanceManager {
       endpointPort: this.endpointPort,
       arangods: d,
       restKeyFile: this.restKeyFile,
+      jwt_secret: this.jwt_secret,
       tcpdump: this.tcpdump,
       cleanup: this.cleanup,
+      rbacPort: this.rbacPort,
     };
   }
   setFromStructure(struct) {
@@ -191,8 +223,6 @@ class instanceManager {
     this.options['dummy'] = true;
     this.addArgs = struct['addArgs'];
     this.rootDir = struct['rootDir'];
-    this.httpAuthOptions = struct['httpAuthOptions'];
-    this.httpJWTAuthOptions = struct['httpJWTAuthOptions'];
     this.urls = struct['urls'];
     this.url = struct['url'];
     this.endpoints = struct['endpoints'];
@@ -200,10 +230,15 @@ class instanceManager {
     this.endpointPorts = struct['endpointPorts'];
     this.endpointPort = struct['endpointPort'];
     this.restKeyFile = struct['restKeyFile'];
+    this.jwt_secret = struct['jwt_secret'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
+    this.rbacPort = struct['rbacPort'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyMgr, this.tmpDir);
+      let oneArangod = new inst.instance(this.options, '', 'tcp',
+                                         this.agencyMgr, {},
+                                         this.tmpDir, this.tmpDir, '',
+                                         '', 0);
       oneArangod.setFromStructure(arangodStruct);
       this.arangods.push(oneArangod);
       if (oneArangod.isAgent()) {
@@ -241,7 +276,10 @@ class instanceManager {
 
     (struct.arangods || []).forEach(srv => {
       let rootDir = srv.rootDir || '';
-      let arangod = new inst.instance(mgr.options, srv.instanceRole, {}, {}, {}, protocol, rootDir, '', mgr.agencyMgr, mgr.tmpDir);
+      let arangod = new inst.instance(mgr.options, srv.instanceRole, protocol,
+                                      mgr.agencyMgr, {},
+                                      rootDir, mgr.tmpDir, '',
+                                      '', 0);
       arangod.id = srv.id;
       arangod.instanceRole = srv.instanceRole;
       arangod.endpoint = srv.endpoint;
@@ -300,6 +338,13 @@ class instanceManager {
     }
     return ret[0];
   }
+  getInstancesRole(role) {
+    let ret = this.arangods.filter(arangod => arangod.matches(role));
+    if (ret.length === 0) {
+      throw new Error(`wasn't able to find any instance of kind ${role}`);
+    }
+    return ret;
+  }
   getTypeToUrlsMap() {
     let ret = new Map();
     this.instanceRoles.forEach(role => {
@@ -310,7 +355,11 @@ class instanceManager {
     });
     return ret;
   }
-  rememberConnection() {
+  rememberConnection(privileged) {
+    if (privileged) {
+      this.privConnectionHandle = arango.getConnectionHandle();
+      return;
+    }
     this.connectionHandle = arango.getConnectionHandle();
     this.dbName = '_system';
     try {
@@ -320,19 +369,32 @@ class instanceManager {
     this.connectedEndpoint = arango.getEndpoint();
     db._useDatabase('_system');
   }
-  reconnectMe() {
-    if (this.connectionHandle !== undefined) {
-      try {
-        let ret = arango.connectHandle(this.connectionHandle);
-        db._useDatabase(this.dbName);
-        return ret;
-      } catch (ex) {
-        print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+  reconnectMe(privileged) {
+    if (privileged) {
+      if (this.privConnectionHandle !== undefined) {
+        try {
+          let ret = arango.connectHandle(this.privConnectionHandle);
+          db._useDatabase(this.dbName);
+          return ret;
+        } catch (ex) {
+          print(`${RED}${Date()} failed to reconnect handle ${this.privConnectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        }
       }
+      return this.reconnect(true);
+    } else {
+      if (this.connectionHandle !== undefined) {
+        try {
+          let ret = arango.connectHandle(this.connectionHandle);
+          db._useDatabase(this.dbName);
+          return ret;
+        } catch (ex) {
+          print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        }
+      }
+      let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, this.options.password);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     }
-    let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
-    this.connectionHandle = arango.getConnectionHandle();
-    return ret;
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -344,9 +406,24 @@ class instanceManager {
     }
     return res.parsedBody === true;
   }
+  debugSetFailAtNonAgency(failurePoint) {
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (!arangod.isAgent()) {
+        if (arangod.debugSetFailAt(failurePoint)) {
+          count += 1;
+        }
+      }
+    });
+    if (count === 0) {
+      let msg = "";
+      this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint},${msg}`);
+    }
+  }
+  
   debugSetFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
@@ -360,11 +437,9 @@ class instanceManager {
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
     }
-    this.reconnectMe();
   }
   debugShouldFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
@@ -378,37 +453,30 @@ class instanceManager {
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
     }
-    this.reconnectMe();
   }
   debugResetRaceControl(role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
       arangod.debugResetRaceControl();
     });
-    this.reconnectMe();
   }
   debugRemoveFailAt(failurePoint, role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
       arangod.debugClearFailAt(failurePoint);
     });
-    this.reconnectMe();
   }
   debugClearFailAt(failurePoint, role, urlIDOrShortName) {
-    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
       arangod.debugClearFailAt(failurePoint);
     });
-    this.reconnectMe();
   }
   debugTerminate(msg, signal_to_expect) {
     try {
@@ -483,17 +551,12 @@ class instanceManager {
         for (let count = 0;
              count < this.agencyMgr.agencySize;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.agent,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.agent + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.agent]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.agent, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.agent + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.agent], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.agent);
       }
@@ -502,34 +565,24 @@ class instanceManager {
         for (let count = 0;
              count < this.options.dbServers;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.dbServer,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.dbServer]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.dbServer, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.dbServer], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.dbServer);
 
         for (let count = 0;
              count < this.options.coordinators;
              count ++) {
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.coordinator,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.coordinator] ));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.coordinator, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.coordinator], this.rbacPort));
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.coordinator);
@@ -538,17 +591,12 @@ class instanceManager {
              !this.options.agency && count < this.options.singles;
              count ++) {
           // Single server...
-          this.arangods.push(new inst.instance(this.options,
-                                               instanceRole.single,
-                                               this.addArgs,
-                                               this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
-                                               this.protocol,
-                                               fs.join(this.rootDir, instanceRole.single + "_" + count),
-                                               this.restKeyFile,
-                                               this.agencyMgr,
-                                               this.tmpDir,
-                                               this.memlayout[instanceRole.single]));
+          this.arangods.push(new inst.instance(
+            this.options, instanceRole.single, this.protocol,
+            this.agencyMgr, this.addArgs,
+            fs.join(this.rootDir, instanceRole.single + "_" + count),
+            this.tmpDir, this.restKeyFile,
+            this.jwt_secret, this.memlayout[instanceRole.single], this.rbacPort));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
           this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
@@ -565,7 +613,8 @@ class instanceManager {
         this.endpoint = null;
         this.endpointPort = -1;
       };
-      if (this.arangods[0].args.hasOwnProperty('database.password')) {
+      if (this.arangods[0].args.hasOwnProperty('database.password') &&
+          (this.arangods[0].args['database.password'] !== undefined)) {
         this.hasSetPassvoid = true;
         this.options.password = this.arangods[0].args['database.password'];
       }
@@ -580,13 +629,25 @@ class instanceManager {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
     }
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
+      if (this.options.extremeVerbosity) {
+        print(`Launching RBAC dummy [
+          '--port', '${this.rbacPort}',
+          '--jwtstr', ${this.JWT},]`
+        );
+      }
+      this.rbacInstance = executeExternal('utils/rbac_dummy.py', [
+        '--port', `${this.rbacPort}`,
+        '--jwtstr', this.JWT,
+      ]);
+    }
     const startTime = time();
     try {
       let count = 0;
       this.arangods.forEach(arangod => {
         arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+        this.agencyMgr.detectAgencyAlive(false);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
@@ -664,17 +725,10 @@ class instanceManager {
     }
     try {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
-      const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
-      const requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-      requestOptions.method = 'POST';
-      requestOptions.timeout = waitTime * 10;
-      requestOptions.returnBodyOnError = true;
+      // TODO requestOptions.timeout = waitTime * 10;
 
-      const reply = download(
-        baseUrl + '/_admin/execute?returnAsJSON=true',
-        remoteCommand,
-        requestOptions);
-
+      let reply = arango.POST_RAW('/_admin/execute?returnAsJSON=true',
+                                  'require("internal").wait(' + waitTime + ', true);');
       print(Date() + ' waiting ' + waitTime + ' for server GC - done.');
 
       if (!reply.error && reply.code === 200) {
@@ -694,23 +748,22 @@ class instanceManager {
     }
   }
 
-  waitForAgencyJob(jobId, timeout, jobMessage) {
+  waitForAgencyJob(jobId, timeout, jobMessage, expectState='Finished') {
     let count = 0;
     let jobStatus;
 
     while (true) {
       if (count > timeout) {
-        throw new Error(`FAILED to ${jobMessage} TIMEOUT`);
+        throw new Error(`FAILED to ${jobMessage} after TIMEOUT ${timeout} - ${JSON.stringify(jobStatus)}`);
       }
       sleep(0.1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
-      if (jobStatus.parsedBody.status === 'Failed') {
+      if (jobStatus.parsedBody.status === 'Failed' && expectState !== 'Failed') {
         let msg = `FAILED ${jobMessage} - ${JSON.stringify(jobStatus)}`;
-        print(`${RED}${Date()}${msg} ${JSON.stringify(jobStatus)}${RESET}`);
+        print(`${RED}${Date()} ${msg} ${JSON.stringify(jobStatus)}${RESET}`);
         return false;
       }
-      print(jobStatus.parsedBody.status);
-      if (jobStatus.parsedBody.status === 'Finished') {
+      if (jobStatus.parsedBody.status === expectState) {
         print(`${GREEN}${Date()} DONE ${jobMessage} ${JSON.stringify(jobStatus)}${RESET}`);
         return true;
       }
@@ -740,30 +793,46 @@ class instanceManager {
         throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
       }
       if (this.waitForAgencyJob(
-        result.parsedBody.id, 1000,
+        result.parsedBody.id, (this.options.isInstrumented) ? 10000 : 1000,
         `resign ${dbServer.name} from leadership via ${frontend.name}:`)) {
         return;
       }
     }
   }
 
-  moveShard(database, collection, shard, fromServer, toServer) {
+  moveShard(database, collection, shard, fromServer, toServer, timeout=600, isLeader=undefined, remainsFollower=undefined, expectStatus='Finished') {
     let body = {
       database,
       collection,
       shard,
-      'fromServer': fromServer.id,
-      'toServer': toServer.id
+      'fromServer': (typeof(fromServer) === "string") ? fromServer : fromServer.id,
+      'toServer': (typeof(toServer) === "string") ? toServer: toServer.id
     };
-    let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
-    // Now wait until the job we triggered is finished:
-    var count = 600;   // seconds
-
-    if (this.waitForAgencyJob(
-      result.parsedBody.id, 600,
-      `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name} to ${toServer.name}:`)) {
-      return;
+    if (isLeader !== undefined) {
+      body['isLeader'] = isLeader;
     }
+    if (remainsFollower !== undefined) {
+      body['remainsFollower'] = remainsFollower;
+    }
+    // Now wait until the job we triggered is finished:
+    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name}/${body.fromServer} to ${toServer.name}/${body.toServer}:`;
+    let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+    if (result.code !== 202 ||
+        !result.hasOwnProperty('parsedBody') ||
+        !result.parsedBody.hasOwnProperty('id')) {
+      throw new Error(`IM.moveShard failed with ${result.code} - ${msg} ${JSON.stringify(result)}`);
+    }
+    if (timeout < 0) {
+      return result.parsedBody.id;
+    }
+    if (this.waitForAgencyJob(
+      result.parsedBody.id,
+      timeout * 10,
+      msg,
+      expectStatus)) {
+      return true;
+    }
+    return false;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -773,6 +842,10 @@ class instanceManager {
   shutdownInstance (forceTerminate, moreReason="") {
     if (forceTerminate === undefined) {
       forceTerminate = false;
+    }
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
+      killExternal(this.rbacInstance.pid);
+      statusExternal(this.rbacInstance.pid, true);
     }
     let timeoutReached = SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
@@ -833,13 +906,13 @@ class instanceManager {
         arangod.isRole(instanceRole.coordinator) &&
           (arangod.exitStatus !== null));
       if (coords.length > 0) {
-        let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-        requestOptions.method = 'PUT';
         let postBody = onOff ? "on" : "off";
         if (!this.options.noStartStopLogs) {
           print(`${coords[0].url}/_admin/cluster/maintenance => ${postBody}`);
         }
-        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify(postBody), requestOptions);
+        coords[0].toThisInstance(() => {
+          arango.PUT("/_admin/cluster/maintenance", JSON.stringify(postBody));
+        });
       }
     } catch (err) {
       print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
@@ -975,7 +1048,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines(this.expectAsserts);
       if (arangod.exitStatus && arangod.exitStatus.exit !== 0) {
-        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit}` + RESET);
+        print(`${RED}arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit} - flipping result to failed!${RESET}`);
         shutdownSuccess = false;
       }
     });
@@ -987,7 +1060,7 @@ class instanceManager {
       let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
-          arangod.pingUntilReady(this.httpJWTAuthOptions, deadline);
+          arangod.pingUntilReady(deadline);
         } catch (e) {
           this.arangods.forEach( arangod => {
             let status = arangod.status(false);
@@ -1018,10 +1091,8 @@ class instanceManager {
     }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
+      this.jwt_secret = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
         if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
           delete arangod.args['server.jwt-secret-keyfile'];
@@ -1033,19 +1104,21 @@ class instanceManager {
     if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0])).trim();
     }
 
+    this.JWT = inst.encodeJWTSecret(this.jwt_secret);
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
+
+      arangod.jwt_secret = this.jwt_secret;
     });
 
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
       this.arangods.forEach(arangod => {
         arangod.restartIfType(instanceRole, moreArgs, JSON.stringify(this.getStructure()));
-        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+        this.agencyMgr.detectAgencyAlive();
       });
     });
     this.launchFinalize(startTime);
@@ -1084,7 +1157,7 @@ class instanceManager {
           }
           if (arangod.isRole(instanceRole.agent)) {
             print("running agency health check");
-            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
+            this.agencyMgr.detectAgencyAlive(true);
           }
         }
         hook = `${role}OneDone`;
@@ -1110,17 +1183,15 @@ class instanceManager {
 
   checkUptime () {
     let ret = {};
-    let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
-                             { method: 'GET' });
     this.arangods.forEach(arangod => {
-      let reply = download(arangod.url + '/_admin/statistics', '', opts);
-      if (reply.hasOwnProperty('error') || reply.code !== 200) {
+      let reply = arangod.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/statistics');
+      });
+      if (reply.code !== 200 || reply.parsedBody.error) {
         throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
       }
 
-      let statisticsReply = JSON.parse(reply.body);
-
-      ret [ arangod.name ] = statisticsReply.server.uptime;
+      ret [ arangod.name ] = reply.parsedBody.server.uptime;
     });
     return ret;
   }
@@ -1212,18 +1283,8 @@ class instanceManager {
   }
 
   checkClusterAlive() {
-    let httpOptions = _.clone(this.httpJWTAuthOptions);
+    let httpOptions = inst.makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.returnBodyOnError = true;
-
-    // scrape the jwt token
-    //instanceInfo.authOpts = _.clone(this.options);
-    //if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
-    //  instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
-    //} else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
-    //  instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-    //}
-
-
     let count = 0;
     while (true) {
       ++count;
@@ -1253,7 +1314,7 @@ class instanceManager {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
         }
         if (!reply.error && reply.code === 200) {
-          arangod.pingUntilReady(arangod.authHeaders, time() + seconds(60));
+          arangod.pingUntilReady(time() + seconds(60));
           arangod.upAndRunning = true;
           return true;
         }
@@ -1352,6 +1413,7 @@ class instanceManager {
     if (!this.isCluster) {
       return true;
     }
+    print(`${CYAN}${Date()} waitForAllShardsInSync${RESET}`);
     let count = 0;
     let collections = [];
     let dbs = db._databases();
@@ -1377,9 +1439,9 @@ class instanceManager {
                 collections.push([c, s]);
               }
             } catch (ex) {
-              print(`${Date()} 015: ${s}`);
-              print(`${Date()} 015: ${JSON.stringify(col)}`);
-              print(`${Date()} 015: ${ex}`);
+              print(`${Date()}${s}`);
+              print(`${Date()}${JSON.stringify(col)}`);
+              print(`${Date()}${ex}`);
             }
           });
         });
@@ -1389,6 +1451,7 @@ class instanceManager {
           count += 1;
         } else {
           dbsOk += 1;
+          print(`${CYAN}${Date()} waitForAllShardsInSync done.${RESET}`);
           return;
         }
       });
@@ -1396,6 +1459,7 @@ class instanceManager {
         break;
       }
     }
+    print(`${RED}${Date()} waitForAllShardsInSync FAILED.${RESET}`);
     return count < 500;
   }
 
@@ -1464,40 +1528,33 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   checkServerFailurePoints() {
-    this.rememberConnection();
     let failurePoints = [];
     this.arangods.forEach(arangod => {
-      // we don't have JWT success atm, so if, skip:
-      if ((!arangod.isAgent()) &&
-          !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
-          !arangod.args.hasOwnProperty('server.jwt-secret')) {
-        let fp = arangod.debugGetFailurePoints();
-        if (fp.length > 0) {
-          failurePoints.push({
-            "role": arangod.instanceRole,
-            "pid":  arangod.pid,
-            "database.directory": arangod['database.directory'],
-            "failurePoints": fp
-          });
-        }
+      let fp = arangod.debugGetFailurePoints();
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.instanceRole,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
       }
     });
-    this.reconnectMe();
     return failurePoints;
   }
 
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:'';
-    if (this.JWT !== null && (privileged || this.forceJWT)) {
+    if (this.jwt_secret !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
-                       `${this.options.username}`,
-                       `${this.options.password}`,
+                       undefined,
+                       undefined,
                        time() < deadline,
-                       this.JWT);
-      this.connectionHandle = arango.getConnectionHandle();
+                       this.jwt_secret);
+      this.privConnectionHandle = arango.getConnectionHandle();
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
@@ -1701,6 +1758,41 @@ class instanceManager {
     }
   }
 
+  triggerMetrics() {
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (arangod.isRole(instanceRole.coordinator)) {
+        if (count === 0) {
+          arangod.getRawMetric('?mode=write_global');
+        } else {
+          arangod.getRawMetric('?mode=trigger_global');
+        }
+        count += 1;
+      }
+    });
+    if (count > 0) {
+      require("internal").sleep(2);
+    }
+  }
+
+  getMetric(gaugeName) {
+    return this.arangods.filter(arangod => {
+      return arangod.isFrontend();
+    })[0].getMetric(gaugeName);
+  }
+
+  getAllMetricsByName(gaugeName) {
+    let ret = [];
+    this.triggerMetrics();
+    this.arangods.forEach(arangod => {
+      if (!arangod.isAgent() && !arangod.isRole(instanceRole.coordinator)) {
+        ret.push(arangod.getMetric(gaugeName));
+      }
+    });
+    return ret;
+  }
+
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief get process stats over the SUT
   // //////////////////////////////////////////////////////////////////////////////
@@ -1750,10 +1842,9 @@ class instanceManager {
 
   getMemProfSnapshot(instanceInfo, options, counter) {
     if (this.options.memprof) {
-      let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
-                               { method: 'GET' });
-
-      this.arangods.forEach(arangod => arangod.getMemprofSnapshot(opts));
+      this.arangods.forEach(arangod => {
+        arangod.getMemProfSnapshot();
+      });
     }
   }
 
@@ -1844,6 +1935,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
+    'rbac': false,
     'sniff': false,
     'sniffAgency': true,
     'sniffDBServers': true,
@@ -1867,6 +1959,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    '   - `rbac`: whether to launch the SUT with a dummy RBAC server, or the URL of the RBAC server to connect to',
     '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',

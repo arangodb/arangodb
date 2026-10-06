@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
-// / @author Heiko Kernbach
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
@@ -39,10 +36,8 @@ const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
 const generalGraph = require('@arangodb/general-graph');
-const request = require('@arangodb/request');
 const isEnterprise = require('internal').isEnterprise();
 const explainer = require('@arangodb/aql/explainer');
-const replication = require('@arangodb/replication');
 const fs = require('fs');
 const _ = require('lodash');
 
@@ -368,57 +363,31 @@ authRouter.post('/job', function (req, res) {
   Create a new job id entry in a specific system database with a given id.
 `);
 
+// the results of the referenced jobs are collected by the browser before it
+// calls this route. the service must not fetch them itself, because a
+// server-side request back into this very server is rejected by the JavaScript
+// endpoint allowlist.
 authRouter.delete('/job', function (req, res) {
-  let arr = [];
   let frontend = db._collection('_frontend');
 
   if (frontend) {
-    // get all job results and return before deletion
-    _.each(frontend.all().toArray(), function (job) {
-      let resp = request.put({
-        url: '/_api/job/' + encodeURIComponent(job.id),
-        json: true,
-        headers: {
-          'Authorization': req.headers.authorization
-        }
-      }).body;
-      try {
-        arr.push(JSON.parse(resp));
-      } catch (ignore) {
-      }
-    });
-
-    // actual deletion
     frontend.removeByExample({model: 'job'}, false);
   }
-  res.json({result: arr});
+  res.json(true);
 })
 .summary('Delete all jobs')
 .description(dd`
   Delete all jobs in a specific system database with a given id.
 `);
 
+// see the note on 'delete /job' above: fetching the job result is the browser's
+// responsibility.
 authRouter.delete('/job/:id', function (req, res) {
   let frontend = db._collection('_frontend');
-  let toReturn = {};
   if (frontend) {
-    // get the job result and return before deletion
-    let resp = request.put({
-      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
-      json: true,
-      headers: {
-        'Authorization': req.headers.authorization
-      }
-    }).body;
-    try {
-      toReturn = JSON.parse(resp);
-    } catch (ignore) {
-    }
-
-    // actual deletion
     frontend.removeByExample({id: req.pathParams.id}, false);
   }
-  res.json(toReturn);
+  res.json(true);
 })
 .summary('Delete a job id')
 .description(dd`
@@ -435,86 +404,6 @@ authRouter.get('/job', function (req, res) {
   }
 })
 .summary('Return all job ids.')
-.description(dd`
-  This function returns the job ids of all currently running jobs.
-`);
-
-//  * mode (server modes, numeric e.g.
-//    0: No active replication found.
-//    1: Replication per Database found.
-//    2: Replication per Server found.
-authRouter.get('/replication/mode', function (req, res) {
-  // this method is only allowed from within the _system database
-  if (req.database !== '_system') {
-    res.throw('not allowed');
-  }
-
-  let endpoints;
-  let bearer;
-
-  if (internal.authenticationEnabled()) {
-    bearer = req.headers.authorization;
-    endpoints = request.get('/_api/cluster/endpoints', {
-      headers: {
-        'Authorization': bearer
-      }
-    });
-  } else {
-    endpoints = request.get('/_api/cluster/endpoints');
-  }
-
-  let mode = 0;
-  let role = null;
-  {
-    // check if global applier (ga) is running
-    // if that is true, this node is replicating from another arangodb instance
-    // (all databases)
-    const globalApplierRunning = replication.globalApplier.state().state.running;
-    let singleAppliers = [];
-
-    if (globalApplierRunning) {
-      mode = 2;
-      role = 'follower';
-    } else {
-      // if ga is not running, check if a single applier is running (per each db)
-      // if that is true,
-      const allSingleAppliers = replication.applier.stateAll();
-      _.each(allSingleAppliers, function (applier) {
-        if (applier.state.running) {
-          singleAppliers.push(db);
-        }
-      });
-
-      if (singleAppliers.length > 0) {
-        // some per db-level pulling replication was found
-        mode = 1;
-        role = 'follower';
-      } else {
-        // at this point, no active pulling replication settings were found at all
-        // now checking logger state of this node
-        if (replication.logger.state().clients.length > 0) {
-          // found clients
-          // currently one logger instance contains all dbs
-          // there is currently no global logger state defined
-          mode = 1; // TODO - how to find exactly out?
-          role = 'leader';
-        } else {
-          // no clients found
-          // no replication detected
-          mode = 0;
-          role = null;
-        }
-      }
-    }
-  }
-
-  const result = {
-    mode: mode,
-    role: role
-  };
-  res.json(result);
-})
-.summary('Return the replication mode.')
 .description(dd`
   This function returns the job ids of all currently running jobs.
 `);

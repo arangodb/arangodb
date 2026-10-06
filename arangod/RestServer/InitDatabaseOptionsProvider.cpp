@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void InitDatabaseOptionsProvider::declareOptions(
+void InitDatabaseOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, InitDatabaseFeatureOptions& opts) {
   options->addOption("--database.init-database",
                      "Initialize an empty database.",

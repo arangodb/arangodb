@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -32,15 +30,9 @@ const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const wait = require("internal").wait;
-const instanceRoledbServer = 'dbserver';
-const {
-  getEndpointById,
-  getServersByType,
-  getDBServers,
-  getServerById
-} = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 const CI = require('@arangodb/cluster-info');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -330,7 +322,7 @@ function SynchronousReplicationSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      var servers = getServersByType(instanceRoledbServer);
+      var servers = IM.getInstancesRole(instanceRole.dbserver);
       IM.debugClearFailAt();
       if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
       if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
@@ -343,7 +335,7 @@ function SynchronousReplicationSuite() {
 
     testSetup: function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getServersByType(instanceRoledbServer);
+        let dbservers = IM.getInstancesRole(instanceRole.dbserver);
         if (dbservers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;

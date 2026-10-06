@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -44,13 +43,13 @@ namespace graph {
 
 class GraphManager {
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   transaction::OperationOrigin _operationOrigin;
 
   std::shared_ptr<transaction::Context> ctx() const;
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase,
+  explicit GraphManager(Database& vocbase,
                         transaction::OperationOrigin operationOrigin)
       : _vocbase(vocbase), _operationOrigin(operationOrigin) {}
 
@@ -65,7 +64,7 @@ class GraphManager {
   /// @brief find and return a collections if available
   ////////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<LogicalCollection> getCollectionByName(
-      const TRI_vocbase_t& vocbase, std::string const& name);
+      const Database& vocbase, std::string const& name);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks wheter a graph exists or not

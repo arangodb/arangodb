@@ -2,6 +2,7 @@ if (USE_ENTERPRISE)
 
   add_executable(${BIN_ARANGOBACKUP}
     ${ProductVersionFiles_arangobackup}
+    ArangoBackupServer.cpp
     BackupFeature.cpp
     BackupOptionsProvider.cpp
     arangobackup.cpp

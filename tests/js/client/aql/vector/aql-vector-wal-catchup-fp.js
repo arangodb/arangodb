@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 /// Tests that concurrent DML during vector index build is correctly picked up

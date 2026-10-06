@@ -23,8 +23,6 @@ const { assert, log } = require("console");
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Koushal Kawade
-/// @author Copyright 2025, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 (function() {
   var db = require("@arangodb").db;

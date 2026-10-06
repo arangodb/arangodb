@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
@@ -43,16 +42,6 @@ TempFeature::TempFeature(application_features::ApplicationServer& server,
       _appname(appname) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void TempFeature::prepare() {

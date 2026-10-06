@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "actions.h"
@@ -46,7 +45,7 @@ static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>>
 static ReadWriteLock ActionsLock;
 
 /// @brief actions of this type are executed directly. nothing to do here
-TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*,
+TRI_action_result_t TRI_fake_action_t::execute(arangodb::Database*,
                                                arangodb::GeneralRequest*,
                                                arangodb::GeneralResponse*,
                                                std::mutex*, void**) {

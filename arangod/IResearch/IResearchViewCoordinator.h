@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -82,6 +80,11 @@ class IResearchViewCoordinator final : public LogicalView {
 
   bool visitCollections(CollectionVisitor const& visitor) const final;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief names of all collections currently linked to this view
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<std::string> linkedCollectionNames() const final;
+
   IResearchViewMeta const& meta() const noexcept { return _meta; }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -133,7 +136,7 @@ class IResearchViewCoordinator final : public LogicalView {
 
   struct ViewFactory;
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info,
+  IResearchViewCoordinator(Database& vocbase, VPackSlice info,
                            bool isUserRequest);
 
   // transient member, not persisted

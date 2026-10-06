@@ -24,17 +24,14 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct FlushFeatureOptions {};
 
-struct FlushOptionsProvider : OptionsProvider<FlushFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FlushFeatureOptions& options) override;
+struct FlushOptionsProvider
+    : OptionsProviderImpl<FlushOptionsProvider, FlushFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FlushFeatureOptions& options);
 };
 
 }  // namespace arangodb

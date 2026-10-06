@@ -21,15 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const { getMetricSingle } = require("@arangodb/test-helper");
 
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
   
 function MetricsSuite () {
@@ -43,7 +41,7 @@ function MetricsSuite () {
       }
       
       let c = db._create(cn);
-      while (getMetricSingle("rocksdb_total_sst_files") <= 3) {
+      while (IM.getMetric("rocksdb_total_sst_files") <= 3) {
         c.insert(docs);
       }
     },
@@ -53,9 +51,7 @@ function MetricsSuite () {
     },
 
     testCompareTotalNumberToNumberOfFilesOnLevels: function () {
-      let res = arango.GET_RAW("/_admin/metrics");
-      assertEqual(200, res.code);
-
+      let res = IM.arangods[0].getRawMetric();
       const extract = (text, name) => {
         let re = new RegExp("^" + name);
         let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));

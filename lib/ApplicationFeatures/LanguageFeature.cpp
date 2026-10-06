@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LanguageFeature.h"
@@ -132,12 +131,6 @@ LanguageFeature::LanguageFeature(
 }
 
 LanguageFeature::~LanguageFeature() = default;
-
-void LanguageFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LanguageOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
                                         std::string const& binaryExecutionPath,

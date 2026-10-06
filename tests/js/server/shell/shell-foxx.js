@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Lucas Dohmen
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 // Stubbing and Mocking
 

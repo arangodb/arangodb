@@ -25,15 +25,14 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "V8Server/V8DealerFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct V8DealerOptionsProvider : OptionsProvider<V8DealerFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      V8DealerFeatureOptions& options) override;
+struct V8DealerOptionsProvider
+    : OptionsProviderImpl<V8DealerOptionsProvider, V8DealerFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          V8DealerFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           V8DealerFeatureOptions& options);
 };
 
 }  // namespace arangodb

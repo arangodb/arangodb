@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/norm.hpp"
@@ -676,7 +675,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -947,7 +946,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -1041,7 +1040,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }

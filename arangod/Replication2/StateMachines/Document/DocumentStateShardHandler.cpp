@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -31,7 +30,6 @@
 #include "IResearch/IResearchRocksDBLink.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
 #ifdef USE_V8
 #include "Transaction/V8Context.h"
 #endif
@@ -43,7 +41,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    Database& vocbase, GlobalLogIdentifier gid,
     std::shared_ptr<IMaintenanceActionExecutor> maintenance)
     : _gid(std::move(gid)),
       _maintenance(std::move(maintenance)),
@@ -226,7 +224,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
     // the two. If we replay one log we know there can never be a duplicate
     // LocalDocumentID.
     for (auto const& index : shard->getPhysical()->getReadyIndexes()) {
-      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      if (index->type() == IndexType::Inverted) {
         auto& idx =
             basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index);
         TRI_ASSERT(!idx._isCreation) << "Inverted index still in creation mode";
@@ -239,7 +237,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
                    iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
             << "Inverted index still has changes after first commit.";
 #endif
-      } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      } else if (index->type() == IndexType::IResearchLink) {
         auto& idx = basics::downCast<iresearch::IResearchRocksDBLink>(*index);
         TRI_ASSERT(!idx._isCreation)
             << "Search link index still in creation mode";

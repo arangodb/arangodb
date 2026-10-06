@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,18 +28,19 @@
 #include <memory>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
+namespace arangodb {
+struct Database;
+}
 namespace arangodb::aql {
 class QueryContext;
 
 class StandaloneCalculation {
  public:
   static std::unique_ptr<QueryContext> buildQueryContext(
-      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin);
+      Database& vocbase, transaction::OperationOrigin operationOrigin);
 
   static arangodb::Result validateQuery(
-      TRI_vocbase_t& vocbase, std::string_view queryString,
+      Database& vocbase, std::string_view queryString,
       std::string_view parameterName, std::string_view errorContext,
       transaction::OperationOrigin operationOrigin, bool isComputedValue);
 };

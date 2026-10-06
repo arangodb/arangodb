@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,10 +42,6 @@ class BackupFeature : public application_features::ApplicationFeature {
                 ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  virtual void collectOptions(
-      std::shared_ptr<options::ProgramOptions>) override final;
-  virtual void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void prepare() override final;
   virtual void start() override final;
 

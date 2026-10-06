@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlValue.h"
@@ -39,7 +38,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 
-#include <unicode/schriter.h>
 #include <unicode/unistr.h>
 
 using namespace arangodb;
@@ -196,17 +194,9 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
     appendAsString(vopts, adapter, value);
     icu_64_64::UnicodeString uBuf(buf1->data(),
                                   static_cast<int32_t>(buf1->length()));
-    // reserve the result buffer, but need to set empty afterwards:
-    icu_64_64::UnicodeString result;
-    result.getBuffer(uBuf.length());
-    result = "";
-    icu_64_64::StringCharacterIterator iter(uBuf, uBuf.length());
-    UChar c = iter.previous();
-    while (c != icu_64_64::CharacterIterator::DONE) {
-      result.append(c);
-      c = iter.previous();
-    }
-    result.toUTF8String(utf8);
+    // reverse() keeps surrogate pairs intact
+    uBuf.reverse();
+    uBuf.toUTF8String(utf8);
 
     return AqlValue(utf8);
   } else {

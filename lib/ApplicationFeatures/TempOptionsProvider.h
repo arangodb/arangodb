@@ -25,18 +25,15 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "TempFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct TempOptionsProvider : OptionsProvider<TempFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      TempFeatureOptions& options) override;
+struct TempOptionsProvider
+    : OptionsProviderImpl<TempOptionsProvider, TempFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          TempFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       TempFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           TempFeatureOptions& options);
 };
 
 }  // namespace arangodb

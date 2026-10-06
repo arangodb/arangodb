@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Async/Registry/registry_variable.h"
@@ -37,7 +36,6 @@ namespace std_coro = std;
 #include "Basics/Result.h"
 #include "Promise.h"
 #include "Try.h"
-#include "Utils/ExecContext.h"
 
 /// This file contains helper classes and tools for coroutines.
 

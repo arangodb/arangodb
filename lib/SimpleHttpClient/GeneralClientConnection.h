@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -165,7 +164,7 @@ class GeneralClientConnection {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief set whether or not http client is from telemetrics
+  /// @brief set whether the socket operates in non-blocking mode
   //////////////////////////////////////////////////////////////////////////////
 
   void setSocketNonBlocking(bool value) { _isSocketNonBlocking = value; }
@@ -280,7 +279,7 @@ class GeneralClientConnection {
   bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether the http client is from telemetrics
+  /// @brief whether the socket operates in non-blocking mode
   //////////////////////////////////////////////////////////////////////////////
 
   bool _isSocketNonBlocking;

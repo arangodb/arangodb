@@ -26,7 +26,7 @@
 
 namespace arangodb {
 
-void FlushOptionsProvider::declareOptions(
+void FlushOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     FlushFeatureOptions& /*opts*/) {
   options->addObsoleteOption(

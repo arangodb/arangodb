@@ -28,12 +28,12 @@
 namespace arangodb {
 
 struct DatabasePathOptionsProvider
-    : OptionsProvider<DatabasePathFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      DatabasePathFeatureOptions& options) override;
-
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       DatabasePathFeatureOptions& options) override;
+    : OptionsProviderImpl<DatabasePathOptionsProvider,
+                          DatabasePathFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          DatabasePathFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           DatabasePathFeatureOptions& options);
 };
 
 }  // namespace arangodb

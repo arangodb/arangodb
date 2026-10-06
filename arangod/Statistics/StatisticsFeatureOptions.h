@@ -28,6 +28,7 @@ struct StatisticsFeatureOptions {
   bool statistics = true;
   bool statisticsHistory = true;
   bool statisticsAllDatabases = true;
+  bool statisticsHistoryTouched = false;
 };
 
 }  // namespace arangodb

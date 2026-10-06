@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -29,16 +28,17 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const { getMetric, getCoordinators } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function ClusterInfoMemoryTrackingSuite() {
   'use strict';
   const cn = 'UnitTestsCollection';
   const m = 'arangodb_internal_cluster_info_memory_usage';
 
-  const coords = getCoordinators();
+  let coords = IM.getInstancesRole(instanceRole.coordinator);
   assertNotEqual(0, coords.length, coords);
-  const ep = coords[0].endpoint;
+  const ep = coords[0];
 
   return {
     tearDown: function () {
@@ -48,14 +48,14 @@ function ClusterInfoMemoryTrackingSuite() {
     },
     
     testCreateCollections: function() {
-      const memoryUsageBefore = getMetric(ep, m);
+      const memoryUsageBefore = ep.getMetric(m);
 
       const n = 30;
       for (let i = 0; i < n; ++i) {
         db._create(cn + i, { numberOfShards: 1, replicationFactor: 2 });
       }
       
-      const memoryUsageAfter = getMetric(ep, m);
+      const memoryUsageAfter = ep.getMetric(m);
 
       // expect at least 100 bytes for each additional collection. the
       // exact number is unknown and depends on a lot of factors (e.g. STL
@@ -66,11 +66,11 @@ function ClusterInfoMemoryTrackingSuite() {
     },
     
     testCreateShards: function() {
-      const memoryUsageBefore = getMetric(ep, m);
+      const memoryUsageBefore = ep.getMetric(m);
 
       db._create(cn, { numberOfShards: 100, replicationFactor: 2 });
       
-      const memoryUsageAfter = getMetric(ep, m);
+      const memoryUsageAfter = ep.getMetric(m);
 
       // expect at least 100 bytes for each additional shard. the
       // exact number is unknown and depends on a lot of factors (e.g. STL

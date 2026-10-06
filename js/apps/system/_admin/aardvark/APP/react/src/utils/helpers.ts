@@ -36,7 +36,7 @@ export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[]
         filteredList = filteredList.filter(
           item => minimatch(item[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
       }
-    } catch (e) {
+    } catch {
       const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
 
       filteredList = filteredList.filter(item => facets.some(field => minimatch(item[field].toLowerCase(), normalizedPattern)));

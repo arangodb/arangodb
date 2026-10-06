@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBDumpManager.h"
@@ -73,6 +72,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  // rejected by RestDumpHandler::validateRequest() before we get here
+  TRI_ASSERT(!opts.shards.empty());
+
   opts.docsPerBatch =
       std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,
                  _limits.docsPerBatchUpperBound);
@@ -80,6 +82,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
                                 _limits.parallelismUpperBound);
+  opts.prefetchCount =
+      std::clamp(opts.prefetchCount, _limits.prefetchCountLowerBound,
+                 _limits.prefetchCountUpperBound);
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs
@@ -144,7 +149,7 @@ void RocksDBDumpManager::remove(std::string const& id,
     victim = (*it).second;
 
     TRI_ASSERT(victim != nullptr);
-    // give the victim a hind to stop all its threads.
+    // give the victim a hint to stop all its threads.
     victim->stop();
 
     // if we remove the context from the map, then the context will be

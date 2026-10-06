@@ -27,11 +27,12 @@
 
 namespace arangodb {
 
-struct V8ShellOptionsProvider : OptionsProvider<V8ShellFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      V8ShellFeatureOptions& options) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       V8ShellFeatureOptions& options) override;
+struct V8ShellOptionsProvider
+    : OptionsProviderImpl<V8ShellOptionsProvider, V8ShellFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          V8ShellFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           V8ShellFeatureOptions& options);
 };
 
 }  // namespace arangodb

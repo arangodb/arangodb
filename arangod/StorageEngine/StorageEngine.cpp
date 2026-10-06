@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngine.h"
@@ -33,7 +32,11 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseBootstrap.h"
+#include "RestServer/IDatabaseProvider.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -44,9 +47,12 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::type_index registration,
-                             std::unique_ptr<IndexFactory>&& indexFactory)
-    : ApplicationFeature{server, registration, featureName},
+                             std::unique_ptr<IndexFactory>&& indexFactory,
+                             IDatabaseProvider& databaseProvider,
+                             IDatabaseBootstrap& databaseBootstrap)
+    : ApplicationFeature{server, typeid(StorageEngine), featureName},
+      _databaseProvider(databaseProvider),
+      _databaseBootstrap(databaseBootstrap),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
@@ -64,13 +70,15 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 
+uint64_t StorageEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId;
+}
+
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
-  DatabaseFeature& databaseFeature =
-      info.server().getFeature<DatabaseFeature>();
-  return std::make_unique<TRI_vocbase_t>(
-      std::move(info), databaseFeature.engine(),
-      databaseFeature.versionTracker(), databaseFeature.extendedNames());
+  return std::make_unique<TRI_vocbase_t>(std::move(info), *this,
+                                         _databaseProvider);
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
@@ -80,9 +88,7 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
-bool StorageEngine::inRecovery() {
-  return recoveryState() < RecoveryState::DONE;
-}
+bool StorageEngine::isReady() { return engineState() == EngineState::kRunning; }
 
 void StorageEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,
@@ -100,21 +106,22 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
+void StorageEngine::getCapabilities(velocypack::Builder& builder,
+                                    uint32_t apiVersion) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 
   builder.add("supports", velocypack::Value(VPackValueType::Object));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
-  for (auto const& it : indexFactory().supportedIndexes()) {
+  for (auto const& it : indexFactory().supportedIndexes(apiVersion)) {
     builder.add(velocypack::Value(it));
   }
   builder.close();  // indexes
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+  for (auto const& [alias, type] : indexFactory().indexAliases(apiVersion)) {
     builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes
@@ -154,13 +161,9 @@ void StorageEngine::registerReplicatedState(
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
 
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
-
 #ifdef USE_V8
 void StorageEngine::addV8Functions() {}
 #endif
-
-void StorageEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
 
 TransactionStatistics& StorageEngine::transactionStatistics() noexcept {
   ADB_PROD_ASSERT(_transactionStatistics != nullptr)
@@ -177,4 +180,20 @@ TransactionStatistics const& StorageEngine::transactionStatistics()
 
 void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
   _transactionStatistics = std::make_unique<TransactionStatistics>(metrics);
+}
+
+std::shared_ptr<transaction::Manager> StorageEngine::createTransactionManager(
+    transaction::ManagerFeatureOptions options,
+    metrics::Counter& expiredTransactions) {
+  ADB_PROD_ASSERT(_transactionManager.expired());
+  auto manager = std::make_shared<transaction::Manager>(
+      server(), std::move(options), expiredTransactions);
+  _transactionManager = manager;
+  return manager;
+}
+
+transaction::Manager& StorageEngine::transactionManager() const {
+  auto manager = _transactionManager.lock();
+  ADB_PROD_ASSERT(manager != nullptr);
+  return *manager;
 }

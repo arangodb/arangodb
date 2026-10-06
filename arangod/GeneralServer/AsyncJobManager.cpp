@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncJobManager.h"
@@ -40,7 +39,7 @@ namespace {
 bool authorized(
     std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
   arangodb::ExecContext const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
 

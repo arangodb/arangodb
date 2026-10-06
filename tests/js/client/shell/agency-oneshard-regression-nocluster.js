@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

@@ -35,16 +35,16 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-BumpFileDescriptorsOptionsProvider::BumpFileDescriptorsOptionsProvider(
-    std::string optionName)
-    : _optionName(std::move(optionName)) {}
-
-void BumpFileDescriptorsOptionsProvider::declareOptions(
+void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     BumpFileDescriptorsFeatureOptions& opts) {
+  ADB_PROD_ASSERT(!opts.optionName.empty())
+      << "BumpFileDescriptors optionName must be set before options are "
+         "declared";
+
   options
       ->addOption(
-          _optionName,
+          opts.optionName,
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
           new UInt64Parameter(&opts.descriptorsMinimum),
@@ -52,14 +52,14 @@ void BumpFileDescriptorsOptionsProvider::declareOptions(
       .setIntroducedIn(31200);
 }
 
-void BumpFileDescriptorsOptionsProvider::validateOptions(
+void BumpFileDescriptorsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     BumpFileDescriptorsFeatureOptions& opts) {
   if (opts.descriptorsMinimum > 0 &&
       (opts.descriptorsMinimum < FileDescriptors::requiredMinimum ||
        opts.descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << _optionName << ". must be between "
+        << "invalid value for " << opts.optionName << ". must be between "
         << FileDescriptors::requiredMinimum << " and "
         << FileDescriptors::maximumValue;
     FATAL_ERROR_EXIT();

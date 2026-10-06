@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -78,7 +76,7 @@ function corruptRepairSuite () {
       let trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
       // Now let's corrupt the tree:
-      c1._CollectionRevisionTreeCorrupt(17,17);
+      c1._revisionTreeCorrupt(17,17);
       global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', global.instanceManager.endpoint);
       trees = c1._revisionTreeVerification();
       assertFalse(trees.equal);

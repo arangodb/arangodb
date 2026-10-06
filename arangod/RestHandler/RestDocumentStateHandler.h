@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
 

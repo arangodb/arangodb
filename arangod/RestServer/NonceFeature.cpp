@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NonceFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -32,19 +30,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NonceFeature::NonceFeature(application_features::ApplicationServer& server)
-    : NonceFeature(server, NonceFeatureOptions{}) {}
-
-NonceFeature::NonceFeature(application_features::ApplicationServer& server,
-                           NonceFeatureOptions options)
-    : application_features::ApplicationFeature{server, *this},
-      _options(std::move(options)) {
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  NonceOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 }  // namespace arangodb

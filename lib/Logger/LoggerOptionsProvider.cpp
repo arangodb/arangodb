@@ -31,7 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -47,8 +47,8 @@ namespace arangodb {
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-void LoggerOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           LoggerOptions& options) {
+void LoggerOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   opts->addOldOption("log.tty", "log.foreground-tty");
   opts->addOldOption("log.escape", "log.escape-control-chars");
 
@@ -104,7 +104,7 @@ logged as `犬`.
 
 If you set this options to `true`, any Unicode characters are escaped, and the
 hex codes for all Unicode characters are logged instead. For example, `犬` is
-logged as `犬`.
+logged as `\u72AC`.
 
 The default value for this option is set to `false` for compatibility with
 previous versions.
@@ -263,10 +263,9 @@ The available log levels are:
 
 Note that the `debug` and `trace` levels are very verbose.
 
-Some relevant log topics available in ArangoDB 3 are:
+Some relevant log topics available in ArangoDB are:
 
 - `agency`: Information about the cluster Agency.
-- `performance`: Performance-related messages.
 - `queries`: Executed AQL queries, slow queries.
 - `replication`: Replication-related information.
 - `requests`: HTTP requests.
@@ -276,10 +275,10 @@ Some relevant log topics available in ArangoDB 3 are:
 You can adjust the log levels at runtime via the `PUT /_admin/log/level`
 HTTP API endpoint.
 
-**Audit logging** (Enterprise Edition): The server logs all audit events by
-default. Low priority events, such as statistics operations, are logged with the
-`debug` log level. To keep such events from cluttering the log, set the
-appropriate log topics to the `info` log level.)");
+**Audit logging**: The audit log topics use the `info` log level by default.
+Low priority events, such as from synchronous replication, are logged with the
+`debug` log level. To include low priority events in the log, set the
+respective log topics to the `debug` log level.)");
 
   opts->addOption("--log.max-entry-length",
                   "The maximum length of a log entry (in bytes).",
@@ -361,28 +360,6 @@ contains a single character with the server's role. The roles are:
       "--log.file-mode",
       "The mode to use for a new log file. The umask is applied as well.",
       new StringParameter(&options.fileMode));
-
-  if (options.threaded) {
-    opts->addOption("--log.api-enabled",
-                    "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for the superuser (jwt).",
-                    new StringParameter(&options.apiSwitch))
-        .setLongDescription(R"(Credentials are not written to log files.
-Nevertheless, some logged data might be sensitive depending on the context of
-the deployment. For example, if request logging is switched on, user requests
-and corresponding data might end up in log files. Therefore, a certain care
-with log files is recommended.
-
-Since the database server offers an API to control logging and query logging
-data, this API has to be secured properly. By default, the API is accessible
-for admin users (administrative access to the `_system` database).
-However, you can restrict it further to the superuser or disable it altogether:
-
- - `true`: The `/_admin/log` API is accessible for admin users.
- - `jwt`: The `/_admin/log` API is accessible for the superuser only
-   (authentication with JWT superuser token and empty username).
- - `false`: The `/_admin/log` API is not accessible at all.)");
-  }
 
   opts->addOption("--log.use-json-format",
                   "Use JSON as output format for logging.",
@@ -480,14 +457,6 @@ If you set this option to `auto`, the hostname is automatically determined.)");
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
-  if (options.threaded) {
-    opts->addOption("--log.keep-logrotate",
-                    "Keep the old log file after receiving a SIGHUP.",
-                    new BooleanParameter(&options.keepLogRotate),
-                    arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon));
-  }
-
   opts->addOption(
       "--log.foreground-tty", "Also log to TTY if backgrounded.",
       new BooleanParameter(&options.foregroundTty),
@@ -533,7 +502,12 @@ full, log entries are written synchronously until the queue has space again.)");
   opts->addObsoleteOption("log.facility", "", true);
 }
 
-void LoggerOptionsProvider::validateOptions(
+void LoggerOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*progOpts*/, LoggerOptions& options) {
+  Logger::setLogLevel(options.levels);
+}
+
+void LoggerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   if (opts->processingResult().touched("log.file")) {
     std::string definition;
@@ -566,18 +540,6 @@ void LoggerOptionsProvider::validateOptions(
   } else if (opts->processingResult().touched("log.use-microtime")) {
     options.timeFormatString = "timestamp-micros";
     LogTimeFormats::formatFromName(options.timeFormatString);
-  }
-
-  if (options.apiSwitch == "true" || options.apiSwitch == "on" ||
-      options.apiSwitch == "On") {
-    options.apiEnabled = true;
-    options.apiSwitch = "true";
-  } else if (options.apiSwitch == "jwt" || options.apiSwitch == "JWT") {
-    options.apiEnabled = true;
-    options.apiSwitch = "jwt";
-  } else {
-    options.apiEnabled = false;
-    options.apiSwitch = "false";
   }
 
   if (!options.fileMode.empty()) {
@@ -633,8 +595,8 @@ void LoggerOptionsProvider::validateOptions(
 #endif
 
   for (auto& output : options.output) {
-    output = StringUtils::replace(output, "$PID",
-                                  std::to_string(Thread::currentProcessId()));
+    output = StringUtils::replace(
+        output, "$PID", std::to_string(BasicThread::currentProcessId()));
   }
 }
 

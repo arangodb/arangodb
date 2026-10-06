@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -36,11 +34,14 @@ const isCluster = internal.isCluster();
 function DropDatabase() {
   let getAllSubPathCounts = function() {
     let count = 0;
+    let allPaths = [];
     IM.arangods.forEach(arangod => {
       let path = fs.join(arangod.dataDir, 'databases');
-      count += fs.list(path).length;
+      let pathList = fs.list(path);
+      allPaths = allPaths.concat(pathList);
+      count += pathList.length;
     });
-    return count;
+    return (count, allPaths);
   };
   let was = 0;
 
@@ -75,14 +76,15 @@ function DropDatabase() {
     },
 
     tearDown: function () {
+      let now;
       for (let i = 0; i < 20; ++i) {
         let now = getAllSubPathCounts();
-        if (was === now) {
+        if (was[0] === now[0]) {
           return;
         }
         internal.sleep(0.5);
       }
-      assertTrue(false);
+      assertTrue(false, `previous path count ${was[0]} is unequal to after test ${now[0]} in detail: ${JSON.stringify(was[1])} => ${JSON.stringify(now[1])}`);
     },
 
     testWithDropView: function () {

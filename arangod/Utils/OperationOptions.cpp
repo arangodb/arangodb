@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationOptions.h"
@@ -61,11 +60,6 @@ std::string_view refillIndexCachesString(RefillIndexCaches value) noexcept {
 }  // namespace
 #endif
 
-OperationOptions::OperationOptions(ExecContext const& context)
-    : OperationOptions() {
-  _context = &context;
-}
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::ostream& arangodb::operator<<(std::ostream& os,
                                    OperationOptions const& ops) {
@@ -95,14 +89,6 @@ std::ostream& arangodb::operator<<(std::ostream& os,
   return os;
 }
 #endif
-
-// get associate execution context
-ExecContext const& OperationOptions::context() const {
-  if (!_context) {
-    return ExecContext::current();
-  }
-  return *_context;
-}
 
 /// @brief stringifies the overwrite mode
 std::string_view OperationOptions::stringifyOverwriteMode(

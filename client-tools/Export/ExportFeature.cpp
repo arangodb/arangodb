@@ -32,7 +32,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Export/ExportOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -80,24 +79,9 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
       _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-
-  auto const cwd = std::filesystem::current_path();
-  _options.outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;
-
-void ExportFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ExportOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ExportFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ExportOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
 
 void ExportFeature::prepare() {
   logLGPLNotice();

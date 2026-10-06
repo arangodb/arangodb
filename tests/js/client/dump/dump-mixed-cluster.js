@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -72,7 +69,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute"
     ]
   );

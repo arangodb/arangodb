@@ -33,8 +33,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void BenchOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                          BenchFeatureOptions& options) {
+void BenchOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, BenchFeatureOptions& options) {
   opts->addSection("histogram", "Benchmark statistics configuration");
   opts->addOption("--histogram.interval-size",
                   "The bucket width, dynamically calculated by default: "
@@ -166,8 +166,8 @@ void BenchOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
       "Print out replies if the HTTP header indicates database errors.", false);
 }
 
-void BenchOptionsProvider::validateOptions(std::shared_ptr<ProgramOptions> opts,
-                                           BenchFeatureOptions& options) {
+void BenchOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, BenchFeatureOptions& options) {
   if (!options.generateHistogram) {
     if (opts->processingResult().touched("--histogram.interval-size")) {
       LOG_TOPIC("8b53b", WARN, arangodb::Logger::BENCH)

@@ -18,19 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
 
-#include "iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/scorers.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -55,19 +51,18 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -80,7 +75,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -229,8 +223,8 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -240,7 +234,8 @@ struct IResearchExpressionFilterTest
       : server(
             std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""),
             nullptr),
-        engine(server) {
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -255,13 +250,11 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
-    databaseFeature.setEngineTesting(&engine);
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        databaseFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -291,15 +284,15 @@ struct IResearchExpressionFilterTest
                 fromServer(server)),
         true);
 
-    auto& feature =
-        features
-            .emplace_back(
-                server.addFeature<arangodb::iresearch::IResearchFeature>(
-                    metrics),
-                true)
-            .first;
-    feature.collectOptions(server.options());
-    feature.validateOptions(server.options());
+    arangodb::iresearch::IResearchOptionsProvider optionsProvider;
+    auto irsOptions =
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "", "");
+    optionsProvider.declareOptions(irsOptions);
+    optionsProvider.validateOptions(irsOptions);
+    features.emplace_back(
+        server.addFeature<arangodb::iresearch::IResearchFeature>(
+            metrics, optionsProvider.options()),
+        true);
 
     for (auto& f : features) {
       f.first.prepare();
@@ -334,7 +327,6 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

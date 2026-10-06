@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
@@ -502,8 +501,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   WRITE_LOCKER(writeLocker, _lock);
 
   AgencyComm comm(_server);
-  auto const engineName =
-      _server.getFeature<DatabaseFeature>().engine().typeName();
+  auto const engineName = _server.getFeature<StorageEngine>().typeName();
   if (!checkEngineEquality(comm, engineName)) {
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "

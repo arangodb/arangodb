@@ -20,9 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 
@@ -36,7 +33,6 @@ const setup = require(base);
   setup.cleanup();
   setup.createEmpty();
   setup.createExtendedName();
-  setup.createAutoIncKeyGen();
   setup.createUsers();
   setup.createMany();
   setup.createOrder();

@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -59,7 +58,9 @@ function shellFuzzer(options) {
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, opts);
 
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_fuzzer').run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_fuzzer', {
+    "server.authentication": false
+  }).run(testCases);
   return rc;
 }
 

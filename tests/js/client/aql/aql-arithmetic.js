@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
@@ -232,6 +230,32 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(-[ \"abc\" ])"));
       assertEqual([ -3 ], getQueryResults("RETURN NOOPT(-[ \"3\" ])"));
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(-{ })"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unary +/- with bind parameters (must not crash at parse time)
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnaryPlusMinusBindParameters : function () {
+      assertEqual([ 1 ], getQueryResults("RETURN +@x", { x: 1 }));
+      assertEqual([ -1 ], getQueryResults("RETURN -@x", { x: 1 }));
+      assertEqual([ 1 ], getQueryResults("RETURN -(-@x)", { x: 1 }));
+      assertEqual([ -1 ], getQueryResults("RETURN 0 - @x", { x: 1 }));
+      assertEqual([ 1 ], getQueryResults("RETURN ABS(-@x)", { x: 1 }));
+      assertEqual([ 1 ], getQueryResults("RETURN ABS(0 - @x)", { x: 1 }));
+      assertEqual([{
+        directPlus: 1,
+        directMinus: -1,
+        doubleMinus: 1,
+        viaSubtraction: -1,
+        absDirectMinus: 1,
+        absSubtraction: 1
+      }], getQueryResults(
+        "RETURN { directPlus: +@x, directMinus: -@x, doubleMinus: -(-@x), " +
+        "viaSubtraction: 0 - @x, absDirectMinus: ABS(-@x), " +
+        "absSubtraction: ABS(0 - @x) }",
+        { x: 1 }
+      ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

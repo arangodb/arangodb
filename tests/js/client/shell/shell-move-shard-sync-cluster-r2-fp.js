@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -31,7 +30,7 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { waitForShardsInSync, moveShard } = require('@arangodb/test-helper');
+let { waitForShardsInSync } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -128,7 +127,7 @@ function moveShardSynchronizeShardFailureSuite() {
         IM.debugSetFailAt("SynchronizeShard::fail", '', leaderEndpoint);
 
         // Now move the shard:
-        let res = moveShard("_system", cn, collInfo.shard, collInfo.leader, collInfo.follower, false /* dontwait */);
+        let res = IM.moveShard("_system", cn, collInfo.shard, collInfo.leader, collInfo.follower, -1 /* dontwait */);
 
         // See if the program was executed:
         let count = 0;

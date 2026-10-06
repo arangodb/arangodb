@@ -21,12 +21,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
     "server.external-rbac-service": "https://non-empty-to-activate:9090",
+    "server.authentication": false
   };
 }
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,8 +26,9 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/TransactionStatistics.h"
-#include "Transaction/ManagerFeature.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -47,16 +46,7 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class RecoveryState : uint32_t {
-  /// @brief recovery is not yet started
-  BEFORE = 0,
-
-  /// @brief recovery is in progress
-  IN_PROGRESS,
-
-  /// @brief recovery is done
-  DONE
-};
+enum class EngineState : uint32_t { kPreRecovery = 0, kRecovering, kRunning };
 
 namespace aql {
 class OptimizerRulesFeature;
@@ -70,6 +60,9 @@ class Result;
 class TransactionCollection;
 class TransactionState;
 class WalAccess;
+struct IDatabaseProvider;
+struct IDatabaseBootstrap;
+struct CollectionStorageProperties;
 
 namespace rest {
 class RestHandlerFactory;
@@ -79,11 +72,14 @@ namespace replication2::storage {
 struct PersistedStateInfo;
 }
 
+namespace metrics {
+class Counter;
+}  // namespace metrics
+
 namespace transaction {
 
 class Context;
 class Manager;
-class ManagerFeature;
 class Methods;
 struct Options;
 
@@ -104,26 +100,40 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::type_index registration,
-                std::unique_ptr<IndexFactory>&& indexFactory);
+                std::unique_ptr<IndexFactory>&& indexFactory,
+                IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap);
 
   virtual HealthData healthCheck() = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) = 0;
+  // creates the transaction manager and retains a non-owning handle to it, so
+  // that transactions created by this engine can be handed the manager directly
+  // instead of reaching for the global singleton. The returned manager is owned
+  // by the caller (the ManagerFeature).
+  std::shared_ptr<transaction::Manager> createTransactionManager(
+      transaction::ManagerFeatureOptions options,
+      metrics::Counter& expiredTransactions);
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
       transaction::OperationOrigin operationOrigin) = 0;
 
+  // the transaction manager created by this engine (see
+  // createTransactionManager). Must only be called once the manager exists.
+  transaction::Manager& transactionManager() const;
+
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
   virtual void addParametersForNewCollection(velocypack::Builder&,
                                              velocypack::Slice /*info*/);
+  // the id the engine uses to address the collection's data; keeps one that
+  // was supplied already
+  virtual uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const;
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) = 0;
+      LogicalCollection& collection, LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------
@@ -211,14 +221,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
-  /// @brief is database in recovery
-  bool inRecovery();
+  /// @brief true once recovery has finished and the engine is running
+  bool isReady();
 
   /// @brief current recovery state
-  virtual RecoveryState recoveryState() = 0;
+  virtual EngineState engineState() noexcept = 0;
 
   /// @brief current recovery tick
-  virtual TRI_voc_tick_t recoveryTick() = 0;
+  virtual TRI_voc_tick_t recoveryTick() noexcept = 0;
 
   virtual auto dropReplicatedState(
       TRI_vocbase_t&,
@@ -311,52 +321,29 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const;
+  virtual IndexFactory const& indexFactory() const;
 
   // AQL functions
   // -------------
-
-  /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
 #ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions();
 #endif
 
-  /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
-
   // replication
   virtual void cleanupReplicationContexts() = 0;
-
-  virtual velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) = 0;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode&) = 0;
-
-  virtual ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) = 0;
-  virtual ErrorCode removeReplicationApplierConfiguration() = 0;
-
-  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                        velocypack::Slice slice,
-                                                        bool doSync) = 0;
-  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                        bool doSync) = 0;
 
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer,
                                 LogicalCollection& col,
                                 std::string const& keysId) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase,
                                    velocypack::Builder& builder) = 0;
-  virtual Result createTickRanges(velocypack::Builder& builder) = 0;
-  virtual Result firstTick(uint64_t& tick) = 0;
-  virtual Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
-                            uint64_t tickEnd, velocypack::Builder& builder) = 0;
+
   virtual WalAccess const* walAccess() const = 0;
 
-  virtual void getCapabilities(velocypack::Builder& builder) const;
+  virtual void getCapabilities(velocypack::Builder& builder,
+                               uint32_t apiVersion) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
@@ -380,8 +367,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   TransactionStatistics& transactionStatistics() noexcept;
   TransactionStatistics const& transactionStatistics() const noexcept;
 
+#if USE_ENTERPRISE
+  virtual bool isEncryptionEnabled() const { return false; }
+#endif
+
  protected:
   void initTransactionStatistics(metrics::IRegistry& metrics);
+
   void registerCollection(
       TRI_vocbase_t& vocbase,
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
@@ -393,10 +385,20 @@ class StorageEngine : public application_features::ApplicationFeature {
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId,
       std::unique_ptr<replication2::storage::IStorageEngineMethods>);
 
+  // provides access to the database catalog (database objects, version tracker,
+  // name settings).
+  IDatabaseProvider& _databaseProvider;
+
+  // startup-lifecycle hooks called as the engine opens.
+  IDatabaseBootstrap& _databaseBootstrap;
+
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  // non-owning handle to the manager created in createTransactionManager;
+  // owned by the ManagerFeature.
+  std::weak_ptr<transaction::Manager> _transactionManager;
 };
 
 }  // namespace arangodb

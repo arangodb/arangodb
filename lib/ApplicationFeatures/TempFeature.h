@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,8 +40,6 @@ class TempFeature final : public application_features::ApplicationFeature {
   TempFeature(application_features::ApplicationServer& server,
               std::string const& appname);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   std::string path() const { return _options.path; }
