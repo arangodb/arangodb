@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,11 +19,19 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <concepts>
+#include <cstdint>
 
-template<typename T>
-concept HasSnapshot = requires(T const& t) {
-  { t.snapshot() } -> std::convertible_to<typename T::Snapshot>;
+namespace arangodb {
+
+/// @brief Everything a PhysicalCollection needs at construction. The rest of
+/// what it uses is reached through the LogicalCollection it is given.
+struct LocalStorageProperties {
+  /// @brief RocksDB object id; 0 means not assigned yet / coordinator stub
+  uint64_t objectId{0};
+  bool cacheEnabled{false};
 };
+
+}  // namespace arangodb

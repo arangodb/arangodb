@@ -218,7 +218,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) override;
+      LogicalCollection& collection,
+      LocalStorageProperties const& storage) override;
 
   void getCapabilities(velocypack::Builder& builder,
                        uint32_t apiVersion) const override;
@@ -351,6 +352,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
+  uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 

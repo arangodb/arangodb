@@ -1,5 +1,16 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
+  starts right after a replaced match. This fixes issue #23399.
+
+* Upgraded OpenSSL to 3.5.9.
+
+* Updated node modules:
+ - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
+   and CVE-2026-102278
+ - fast-uri to 3.1.8 to resolve CVE-2026-86472
+
 * COR-1012 The client tools started with `--server.username`/`--server.password`
   now obtain a JWT via `POST /_open/auth` like arangosh and renew it before
   it expires, which also makes them work against servers in RBAC mode; they

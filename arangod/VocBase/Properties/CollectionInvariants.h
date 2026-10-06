@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,11 +19,30 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <concepts>
+#include "VocBase/voc-types.h"
 
-template<typename T>
-concept HasSnapshot = requires(T const& t) {
-  { t.snapshot() } -> std::convertible_to<typename T::Snapshot>;
+#include <optional>
+#include <string>
+
+namespace arangodb {
+
+/// @brief The collection properties with no runtime owner. Everything else a
+/// CollectionDescriptor carries belongs to ShardingInfo, PhysicalCollection,
+/// KeyGenerator, LogicalDataSource or a LogicalCollection member.
+/// Never parsed or serialized, hence the plain types.
+struct CollectionInvariants {
+  TRI_col_type_e type{TRI_col_type_e::TRI_COL_TYPE_DOCUMENT};
+
+  bool isSmart{false};
+  bool isDisjoint{false};
+  bool isSmartChild{false};
+
+  std::optional<std::string> smartJoinAttribute;
+
+  bool operator==(CollectionInvariants const&) const = default;
 };
+
+}  // namespace arangodb
