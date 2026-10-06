@@ -85,9 +85,7 @@ UpgradeFeature::UpgradeFeature(
     if (server.hasFeature<AgencyFeature>()) {
       server.forceDisableFeatures<AgencyFeature>();
     }
-    if (server.hasFeature<ActionFeature>()) {
-      server.forceDisableFeatures<ActionFeature>();
-    }
+    TRI_ASSERT(!server.hasFeature<ActionFeature>());
     if (server.hasFeature<BootstrapFeature>()) {
       server.forceDisableFeatures<BootstrapFeature>();
     }
