@@ -41,10 +41,11 @@ const cn = "UnitTestsWalCleanup";
 function WalCleanupSuite () {
   'use strict';
 
+  // the second drop proves files archived after the first cleanup get deleted
   let run = function(insertData, getPrunableCount) {
-    let seenGrowth = false;
-    let seenShrinkage = false;
-    let peak = 0;
+    const steps = ['growth', 'shrinkage', 'growth', 'shrinkage'];
+    let step = 0;
+    let peak = null;
     const timeout = versionHas('tsan') ? 1200 : 600;
     let time = require("internal").time;
     const start = time();
@@ -53,14 +54,21 @@ function WalCleanupSuite () {
       insertData();
 
       let count = getPrunableCount();
-      if (count > peak) {
+      if (peak === null) {
         peak = count;
-        seenGrowth = true;
-      } else if (seenGrowth && count < peak) {
-        seenShrinkage = true;
+      } else if (steps[step] === 'growth') {
+        if (count > peak) {
+          peak = count;
+          step++;
+        }
+      } else if (count > peak) {
+        peak = count;
+      } else if (count < peak) {
+        peak = count;
+        step++;
       }
 
-      if (seenGrowth && seenShrinkage) {
+      if (step === steps.length) {
         break;
       }
 
