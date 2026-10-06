@@ -47,6 +47,16 @@ function aqlMatchStatementTestSuite() {
         return rows.map((x) => x[1]._id).sort();
     };
 
+    const assertBoundEdgeRejected = function (query) {
+        try {
+            db._query(query, {}, options);
+            fail();
+        } catch (err) {
+            assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            assertEqual(err.errorMessage, "MATCH edge variable 'e' is already bound");
+        }
+    };
+
     return {
 
         setUpAll: function () {
@@ -1318,6 +1328,50 @@ function aqlMatchStatementTestSuite() {
                 options
             ).toArray();
             assertEqual(result, ["v1"]);
+        },
+
+        testRejectEdgeBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectEdgeWithLabelBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e :ec]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectVariableLengthEdgeBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e :ec * 1..2]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectEdgeBoundEarlierInSamePattern: function () {
+            assertBoundEdgeRejected(
+                `MATCH (u :vc) -[e :ec]-> (v :vc) -[e :ec]-> (w :vc)
+                 RETURN [u._key, v._key, w._key]`);
+        },
+
+        testRejectEdgeBoundInEarlierCommaPattern: function () {
+            assertBoundEdgeRejected(
+                `MATCH (u :vc) -[e :ec]-> (v :vc), (v) -[e :ec]-> (w :vc)
+                 RETURN [u._key, v._key, w._key]`);
+        },
+
+        testAllowBoundVertexAsTarget: function () {
+            const result = db._query(
+                `FOR x IN vc FILTER x._key == "v1"
+                 MATCH (v :vc) -[e :ec]-> (x)
+                 RETURN [v._key, e._key, x._key]`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, [["v0", "e0", "v1"]]);
         },
 
     };
