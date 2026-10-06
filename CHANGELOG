@@ -15,6 +15,9 @@
   expressions or expressions that need V8, such as user-defined AQL
   functions, as constant index lookup values.
 
+* AQL index lookups whose lookup values need V8, such as calls to
+  user-defined AQL functions, work in builds with V8 support.
+
 * Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
