@@ -995,6 +995,11 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
           r != TRI_ERROR_NO_ERROR) {
+        if (r == TRI_ERROR_RESOURCE_LIMIT) {
+          return {r,
+                  "uncompressed size of Content-Encoding: lz4 body exceeds the "
+                  "allowed maximum"};
+        }
         return {
             r,
             "a decoding error occurred while handling Content-Encoding: lz4"};

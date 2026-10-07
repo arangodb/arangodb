@@ -503,6 +503,18 @@ TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooLarge) {
   EXPECT_EQ(0, uncompressed.size());
 }
 
+// one byte over maxLz4UncompressedSize, rejected before anything is reserved
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeOverLimit) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+  ::setDeclaredSize(compressed, 1024 * 1024 * 1024 + 1);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT,
+            ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
 TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooSmall) {
   basics::StringBuffer compressed;
   ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));

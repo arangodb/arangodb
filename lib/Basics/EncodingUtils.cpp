@@ -35,7 +35,7 @@
 
 namespace {
 constexpr size_t maxUncompressedSize = 512 * 1024 * 1024;
-
+constexpr size_t maxLz4UncompressedSize = 1024 * 1024 * 1024;
 constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
 
 template<typename T>
@@ -218,11 +218,12 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   memcpy(&uncompressedLength, compressed + 1, sizeof(uncompressedLength));
   uncompressedLength = basics::bigToHost<uint32_t>(uncompressedLength);
 
-  if (uncompressedLength == 0 ||
-      uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
-    // uncompressed size is larger than what LZ4 can actually compress.
-    // suspicious!
+  if (uncompressedLength == 0) {
     return TRI_ERROR_BAD_PARAMETER;
+  }
+  // reject before reserving
+  if (uncompressedLength > ::maxLz4UncompressedSize) {
+    return TRI_ERROR_RESOURCE_LIMIT;
   }
 
   if constexpr (std::is_same_v<T, std::string>) {
