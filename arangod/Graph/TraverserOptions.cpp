@@ -718,12 +718,12 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 void TraverserOptions::initializeIndexConditions(
-    aql::Ast* ast, aql::VarInfoMap const& varInfo,
+    aql::Ast* ast, aql::RegisterResolver const& registers,
     aql::Variable const* indexVariable) {
-  BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
+  BaseOptions::initializeIndexConditions(ast, registers, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {
     for (auto& info : infos) {
-      info.initializeNonConstExpressions(ast, varInfo, indexVariable);
+      info.initializeNonConstExpressions(ast, registers, indexVariable);
     }
   }
 }

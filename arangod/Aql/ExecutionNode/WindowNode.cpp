@@ -371,16 +371,12 @@ void WindowNode::calcAggregateRegisters(
   for (auto const& p : _aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
-    TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
-    RegisterId outReg = itOut->second.registerId;
+    RegisterId outReg = outputRegister(p.outVar);
     TRI_ASSERT(outReg.isValid());
 
     RegisterId inReg = RegisterPlan::MaxRegisterId;
     if (Aggregator::requiresInput(p.type)) {
-      auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
-      TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-      inReg = itIn->second.registerId;
+      inReg = inputRegister(p.inVar);
       TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
@@ -403,9 +399,7 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
 
   RegisterId rangeRegister = RegisterPlan::MaxRegisterId;
   if (_rangeVariable != nullptr) {
-    auto itIn = getRegisterPlan()->varInfo.find(_rangeVariable->id);
-    TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
-    rangeRegister = itIn->second.registerId;
+    rangeRegister = inputRegister(_rangeVariable);
     TRI_ASSERT(rangeRegister.isValid());
     readableInputRegisters.insert(rangeRegister);
   }

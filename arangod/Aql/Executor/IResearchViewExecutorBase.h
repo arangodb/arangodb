@@ -443,7 +443,7 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
       AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      uint32_t immutableParts, VarInfoMap const& varInfoMap, int depth,
+      uint32_t immutableParts, RegisterResolver registers,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
@@ -478,9 +478,8 @@ class IResearchViewExecutorInfos {
     return _filterConditionIsEmpty;
   }
 
-  auto const& varInfoMap() const noexcept { return _varInfoMap; }
-
-  int getDepth() const noexcept { return _depth; }
+  /// @brief resolver for the rows the view expressions are evaluated against
+  auto const& registers() const noexcept { return _registers; }
 
   uint32_t immutableParts() const noexcept { return _immutableParts; }
 
@@ -532,7 +531,7 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   AstNode const& _filterCondition;
-  VarInfoMap const& _varInfoMap;
+  RegisterResolver _registers;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
   iresearch::FilterOptimization _filterOptimization;
@@ -541,7 +540,6 @@ class IResearchViewExecutorInfos {
   size_t _parallelism;
   iresearch::SearchMeta const* _meta;
   iresearch::IResearchExecutionPool& _parallelExecutionPool;
-  int const _depth;
   uint32_t _immutableParts;
   bool _filterConditionIsEmpty;
   bool const _volatileSort;

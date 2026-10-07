@@ -319,7 +319,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
     }
 
     return utils::extractNonConstPartsOfIndexCondition(
-        _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
+        _plan->getAst(), inputRegisterResolver(), options().evaluateFCalls,
         idx.get(), _condition->root(), _outVariable);
   }
   return {};
@@ -438,15 +438,18 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
-      if (var->id == outVariable()->id &&
-          filterProjections().usesCoveringIndex()) {
-        // if the index covers the filter projections, then don't add the
-        // document variable to the filter vars. It is not used and will cause
-        // an error during register planning.
+      if (var->id == outVariable()->id) {
+        if (filterProjections().usesCoveringIndex()) {
+          // the index covers the filter projections, so the filter does not
+          // read the document at all. Adding it would cause an error during
+          // register planning.
+          continue;
+        }
+        // not covered: the filter reads the document this node produces
+        filterVarsToRegs.emplace_back(var->id, outputRegister(var));
         continue;
       }
-      auto regId = variableToRegisterId(var);
-      filterVarsToRegs.emplace_back(var->id, regId);
+      filterVarsToRegs.emplace_back(var->id, inputRegister(var));
     }
 
     if (filterProjections().usesCoveringIndex()) {
@@ -471,7 +474,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
-  auto const outRegister = variableToRegisterId(outVariable);
+  auto const outRegister = outputRegister(outVariable);
 
   // if late materialized
   // We have one additional output register for each index variable which is
@@ -491,7 +494,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
       writableOutputRegisters.emplace(regId);
       if (hasFilter()) {

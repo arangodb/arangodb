@@ -26,6 +26,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/VarInfoMap.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
@@ -96,11 +97,10 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
                         aql::QueryContext& query,
                         aql::AqlFunctionsInternalCache& cache,
                         aql::Variable const& outVar,
-                        aql::VarInfoMap const& varInfoMap, int nodeDepth)
+                        aql::RegisterResolver registers)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
-        _varInfoMap(varInfoMap),
-        _nodeDepth(nodeDepth) {}
+        _registers(registers) {}
 
   // register a temporary variable in the ExpressionContext. the
   // slice used here is not owned by the QueryExpressionContext!
@@ -116,13 +116,11 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
                                  bool& mustDestroy) const override;
 
   inline auto const& outVariable() const noexcept { return _outVar; }
-  inline auto const& varInfoMap() const noexcept { return _varInfoMap; }
-  inline int nodeDepth() const noexcept { return _nodeDepth; }
+  inline auto const& registers() const noexcept { return _registers; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
   aql::Variable const& _outVar;
-  aql::VarInfoMap const& _varInfoMap;
-  int const _nodeDepth;
+  aql::RegisterResolver _registers;
 
   // variables only temporarily valid during execution
   // variables only temporarily valid during execution. Slices stored

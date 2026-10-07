@@ -52,15 +52,6 @@ namespace arangodb::aql {
 class ExecutionNode;
 struct Variable;
 
-/// @brief static analysis, walker class and information collector
-struct VarInfo {
-  unsigned int depth{0};
-  RegisterId registerId;
-
-  VarInfo() = default;
-  VarInfo(unsigned int depth, RegisterId registerId);
-};
-
 template<typename T>
 struct RegisterPlanT;
 
@@ -155,8 +146,15 @@ struct RegisterPlanT final
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
-  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
-  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
+  /// @brief a resolver bound to one depth, for code that has to resolve
+  /// variables later than register planning (e.g. during execution).
+  auto resolverForDepth(unsigned int depth) const -> RegisterResolver;
+
+  /// @brief Register of a constant or bind-parameter variable. Const registers
+  /// live in one query-global block rather than in the per-depth item blocks,
+  /// so this lookup is deliberately depth-independent. Returns an invalid
+  /// RegisterId when the variable was never assigned a register.
+  auto constVariableToRegisterId(VariableId varId) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
                       VarSetStack const& varsValidStack,
@@ -164,6 +162,10 @@ struct RegisterPlanT final
       -> RegIdSetStack;
 
  private:
+  /// @brief depth-agnostic lookups, used during register planning itself
+  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
+
   unsigned int depth;
 };
 

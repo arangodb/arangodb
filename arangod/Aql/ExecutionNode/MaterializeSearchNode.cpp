@@ -46,18 +46,8 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inNmDocIdRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
-  RegisterId outDocumentRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    outDocumentRegId = it->second.registerId;
-  }
+  RegisterId inNmDocIdRegId = inputRegister(_inNonMaterializedDocId);
+  RegisterId outDocumentRegId = outputRegister(_outVariable);
 
   RegIdSet readableInputRegisters{inNmDocIdRegId};
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
