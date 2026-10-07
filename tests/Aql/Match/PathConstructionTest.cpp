@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/Match/PathConstruction.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
@@ -75,6 +76,39 @@ TEST_F(PathConstructionTest, appendTraversalPathSplicesVerticesAndEdges) {
   ASSERT_EQ(1U, edges.size());
   EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices.front()->type);
   EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges.front()->type);
+}
+
+TEST_F(PathConstructionTest, consecutiveTraversalPathsKeepEarlierVertices) {
+  Variable const* start = ast.variables()->createTemporaryVariable();
+  Variable const* first = ast.variables()->createTemporaryVariable();
+  Variable const* second = ast.variables()->createTemporaryVariable();
+  std::vector<AstNode const*> vertices;
+  std::vector<AstNode const*> edges;
+  paths.addPathVertex(vertices, start);
+  paths.appendTraversalPath(vertices, edges, first);
+  paths.appendTraversalPath(vertices, edges, second);
+
+  ASSERT_EQ(2U, vertices.size());
+  ASSERT_EQ(2U, edges.size());
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[0]->type);
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, vertices[0]->getMember(0)->type);
+  EXPECT_EQ("vertices", vertices[0]->getMember(0)->getStringView());
+
+  ASSERT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[1]->type);
+  AstNode const* slice = vertices[1]->getMember(0);
+  ASSERT_EQ(NODE_TYPE_FCALL, slice->type);
+  auto const* func = static_cast<Function const*>(slice->getData());
+  ASSERT_NE(nullptr, func);
+  EXPECT_EQ("SLICE", func->name);
+  ASSERT_EQ(NODE_TYPE_ARRAY, slice->getMember(0)->type);
+  ASSERT_EQ(2U, slice->getMember(0)->numMembers());
+  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS,
+            slice->getMember(0)->getMember(0)->type);
+  EXPECT_EQ("vertices", slice->getMember(0)->getMember(0)->getStringView());
+  EXPECT_EQ(1, slice->getMember(0)->getMember(1)->getIntValue());
+
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges[0]->type);
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges[1]->type);
 }
 
 TEST_F(PathConstructionTest, constructPathObjectHasEdgesAndVertices) {
