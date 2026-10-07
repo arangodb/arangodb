@@ -59,23 +59,24 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
     case 'restore':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangorestore.conf');
-      this.executable = pu.ARANGORESTORE_BIN;
+      this.configName = 'arangorestore.conf';
+      this.binName = 'ARANGORESTORE_BIN';
       this.logprefix = 'restore';
       break;
     case 'dump':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangodump.conf');
-      this.executable = pu.ARANGODUMP_BIN;
+      this.configName = 'arangodump.conf';
+      this.binName = 'ARANGODUMP_BIN';
       this.logprefix = 'dump';
       break;
     case 'import':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangoimport.conf');
-      this.executable = pu.ARANGOIMPORT_BIN;
+      this.configName = 'arangoimport.conf';
+      this.binName = 'ARANGOIMPORT_BIN';
       this.logprefix = 'import';
       break;
     default:
       throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
   }
 
   setWhatToImport (what) {
@@ -276,12 +277,16 @@ class ConfigBuilder {
   disableContinue() {
     delete this.config['continue'];
   }
-  toArgv() { return internal.toArgv(this.config); }
+  // the binary set may change between runs (--oldSource upgrade tests)
+  toArgv() {
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
+    return internal.toArgv(this.config);
+  }
 
-  getExe() { return this.executable; }
+  getExe() { return pu[this.binName]; }
 
   print() {
-    print(this.executable);
+    print(this.getExe());
     print(this.config);
   }
 }
@@ -752,8 +757,10 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   }
   let args = Object.assign(makeArgsArangosh(
     options, instanceManager,
-    // waitData needs JWT access for the _users collection
-    writeReadClean === 2
+    // waitData needs JWT access for the _users collection;
+    // old arangosh (< 3.12.6) has no --server.jwt-token
+    writeReadClean === 2 &&
+      !(options.oldSource !== undefined && pu.currentBinarySet === 0)
   ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
