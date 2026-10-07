@@ -51,14 +51,29 @@ void PathConstruction::appendTraversalPath(
     std::vector<AstNode const*>& pathVertices,
     std::vector<AstNode const*>& pathEdges,
     Variable const* traversalPathVariable) {
-  pathEdges.push_back(
-      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-          _ast->createNodeReference(traversalPathVariable), "edges")));
+  auto* pathRef = _ast->createNodeReference(traversalPathVariable);
+  pathEdges.push_back(_ast->createNodeArraySplice(
+      _ast->createNodeAttributeAccess(pathRef, "edges")));
 
-  pathVertices.pop_back();
-  pathVertices.push_back(
-      _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
-          _ast->createNodeReference(traversalPathVariable), "vertices")));
+  // vertices[0] is the segment start, which is already stored as the previous
+  // entry. A single vertex can be replaced by this segment's complete vertex
+  // list. Preserve any previous traversal splice, remove only the shared start
+  // vertex.
+  auto* vertices = _ast->createNodeAttributeAccess(
+      _ast->createNodeReference(traversalPathVariable), "vertices");
+  bool const continuesTraversal =
+      !pathVertices.empty() &&
+      pathVertices.back()->type == NODE_TYPE_ARRAY_SPLICE;
+  if (continuesTraversal) {
+    auto* args = _ast->createNodeArray();
+    args->addMember(vertices);
+    args->addMember(_ast->createNodeValueInt(1));
+    pathVertices.push_back(_ast->createNodeArraySplice(
+        _ast->createNodeFunctionCall("SLICE", args, true)));
+  } else {
+    pathVertices.pop_back();
+    pathVertices.push_back(_ast->createNodeArraySplice(vertices));
+  }
 }
 
 AstNode* PathConstruction::constructArray(
