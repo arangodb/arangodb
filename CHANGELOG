@@ -97,6 +97,19 @@
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
+* AQL index joins with constant index fields return the correct rows for
+  queries that skip rows, such as `LIMIT offset, count`, instead of crashing
+  the server.
+
+* AQL index joins whose post-filters only read stored index values work in
+  clusters with more than one shard of the joined collections per DB server.
+
+* AQL index joins honor the `forceOneShardAttributeValue` query option and
+  only read the shard that the option selects.
+
+* The `join-index-nodes` optimizer rule no longer uses non-deterministic
+  expressions or expressions that need V8, such as user-defined AQL
+  functions, as constant index lookup values.
 
 3.12.12 (2026-09-21)
 --------------------
