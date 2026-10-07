@@ -1615,4 +1615,79 @@ TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
+class AstNodeStringifyTest : public CompareAstNodesTest {};
+
+TEST_F(AstNodeStringifyTest, differentGroupingStringifiesDifferently) {
+  auto* va = makeVar("a");
+  auto* vb = makeVar("b");
+  auto* vc = makeVar("c");
+  auto* vd = makeVar("d");
+  auto* ve = makeVar("e");
+  auto a = [&] { return createRefNode(va); };
+  auto b = [&] { return createRefNode(vb); };
+  auto c = [&] { return createRefNode(vc); };
+  auto d = [&] { return createRefNode(vd); };
+  auto e = [&] { return createRefNode(ve); };
+  auto minus = [&](AstNode* l, AstNode* r) {
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_MINUS, l, r);
+  };
+
+  // binary: (a - b) - c  vs  a - (b - c)
+  EXPECT_NE(minus(minus(a(), b()), c())->toString(),
+            minus(a(), minus(b(), c()))->toString());
+
+  // unary: -(a - b)  vs  (-a) - b
+  auto neg = [&](AstNode* n) {
+    return _ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, n);
+  };
+  EXPECT_NE(neg(minus(a(), b()))->toString(), minus(neg(a()), b())->toString());
+
+  // ternary: (a ? b : c) ? d : e  vs  a ? b : (c ? d : e)
+  auto ternary = [&](AstNode* cond, AstNode* t, AstNode* f) {
+    return _ast->createNodeTernaryOperator(cond, t, f);
+  };
+  EXPECT_NE(ternary(ternary(a(), b(), c()), d(), e())->toString(),
+            ternary(a(), b(), ternary(c(), d(), e()))->toString());
+
+  // n-ary: (a OR b) AND c  vs  a OR (b AND c)
+  EXPECT_NE(naryOp(NODE_TYPE_OPERATOR_NARY_AND,
+                   {naryOp(NODE_TYPE_OPERATOR_NARY_OR, {a(), b()}), c()})
+                ->toString(),
+            naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                   {a(), naryOp(NODE_TYPE_OPERATOR_NARY_AND, {b(), c()})})
+                ->toString());
+
+  // array comparison: (a ALL == b) == c  vs  a ALL == (b == c)
+  auto allEq = [&](AstNode* l, AstNode* r) {
+    return _ast->createNodeBinaryArrayOperator(
+        NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, l, r,
+        _ast->createNodeQuantifier(Quantifier::Type::kAll));
+  };
+  auto eq = [&](AstNode* l, AstNode* r) {
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, l, r);
+  };
+  EXPECT_NE(eq(allEq(a(), b()), c())->toString(),
+            allEq(a(), eq(b(), c()))->toString());
+
+  // range: (a..b) - c  vs  a..(b - c)
+  auto range = [&](AstNode* l, AstNode* r) {
+    return _ast->createNodeRange(l, r);
+  };
+  EXPECT_NE(minus(range(a(), b()), c())->toString(),
+            range(a(), minus(b(), c()))->toString());
+}
+
+TEST_F(AstNodeStringifyTest, sameTreeStringifiesSame) {
+  auto* va = makeVar("a");
+  auto* vb = makeVar("b");
+  auto* vc = makeVar("c");
+  auto build = [&] {
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_MINUS,
+                          createBinaryOp(NODE_TYPE_OPERATOR_BINARY_MINUS,
+                                         createRefNode(va), createRefNode(vb)),
+                          createRefNode(vc));
+  };
+  EXPECT_EQ(build()->toString(), build()->toString());
+}
+
 }  // namespace
