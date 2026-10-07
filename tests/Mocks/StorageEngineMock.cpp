@@ -94,6 +94,11 @@ struct IndexFactoryMock : private MockIndexTypeCatalogHolder,
     TRI_ASSERT(!injectClusterIndexes);
   }
 
+  arangodb::IndexTypeFactory const& factoryFor(
+      arangodb::IndexType) const noexcept override {
+    return invalidFactory();
+  }
+
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
                                  std::vector<std::shared_ptr<arangodb::Index>>&
                                      systemIndexes) const override {

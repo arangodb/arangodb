@@ -212,51 +212,68 @@ struct PrimaryIndexFactory
 RocksDBIndexFactory::RocksDBIndexFactory(
     application_features::ApplicationServer& server,
     IndexTypeCatalog const& catalog)
-    : IndexFactory(server, catalog) {
-  auto const& edgeIndexFactory = own<EdgeIndexFactory>(server, catalog.edge());
-  auto const& fulltextIndexFactory =
-      own<FulltextIndexFactory>(server, catalog.fulltext());
-  auto const& geoIndexFactory = own<GeoIndexFactory>(server, catalog.geo());
-  auto const& geo1IndexFactory = own<Geo1IndexFactory>(server, catalog.geo1());
-  auto const& geo2IndexFactory = own<Geo2IndexFactory>(server, catalog.geo2());
-  auto const& hashIndexFactory =
-      own<SecondaryIndexFactory<RocksDBHashIndex>>(server, catalog.hash());
-  auto const& persistentIndexFactory =
-      own<SecondaryIndexFactory<RocksDBPersistentIndex>>(server,
-                                                         catalog.persistent());
-  auto const& skiplistIndexFactory =
-      own<SecondaryIndexFactory<RocksDBSkiplistIndex>>(server,
-                                                       catalog.skiplist());
-  auto const& ttlIndexFactory = own<TtlIndexFactory>(server, catalog.ttl());
-  auto const& primaryIndexFactory =
-      own<PrimaryIndexFactory>(server, catalog.primary());
-  auto const& zkdIndexFactory = own<MdiIndexFactory>(server, catalog.zkd());
-  auto const& mdiIndexFactory = own<MdiIndexFactory>(server, catalog.mdi());
-  auto const& vectorIndexFactory =
-      own<VectorIndexFactory>(server, catalog.vector());
-  auto const& iresearchInvertedIndexFactory =
-      own<iresearch::IResearchRocksDBInvertedIndexFactory>(server,
-                                                           catalog.inverted());
-  auto const& mdiPrefixedIndexFactory =
-      own<MdiPrefixedIndexFactory>(server, catalog.mdiPrefixed());
+    : IndexFactory(server, catalog),
+      _edge(&own<EdgeIndexFactory>(server, catalog.edge())),
+      _fulltext(&own<FulltextIndexFactory>(server, catalog.fulltext())),
+      _geo(&own<GeoIndexFactory>(server, catalog.geo())),
+      _geo1(&own<Geo1IndexFactory>(server, catalog.geo1())),
+      _geo2(&own<Geo2IndexFactory>(server, catalog.geo2())),
+      _hash(&own<SecondaryIndexFactory<RocksDBHashIndex>>(server,
+                                                          catalog.hash())),
+      _persistent(&own<SecondaryIndexFactory<RocksDBPersistentIndex>>(
+          server, catalog.persistent())),
+      _primary(&own<PrimaryIndexFactory>(server, catalog.primary())),
+      _skiplist(&own<SecondaryIndexFactory<RocksDBSkiplistIndex>>(
+          server, catalog.skiplist())),
+      _ttl(&own<TtlIndexFactory>(server, catalog.ttl())),
+      _zkd(&own<MdiIndexFactory>(server, catalog.zkd())),
+      _mdi(&own<MdiIndexFactory>(server, catalog.mdi())),
+      _mdiPrefixed(
+          &own<MdiPrefixedIndexFactory>(server, catalog.mdiPrefixed())),
+      _vector(&own<VectorIndexFactory>(server, catalog.vector())),
+      _inverted(&own<iresearch::IResearchRocksDBInvertedIndexFactory>(
+          server, catalog.inverted())) {}
 
-  emplace("edge", edgeIndexFactory);
-  emplace("fulltext", fulltextIndexFactory);
-  emplace("geo", geoIndexFactory);
-  emplace("geo1", geo1IndexFactory);
-  emplace("geo2", geo2IndexFactory);
-  emplace("hash", hashIndexFactory);
-  emplace("persistent", persistentIndexFactory);
-  emplace("primary", primaryIndexFactory);
-  emplace("rocksdb", persistentIndexFactory);
-  emplace("skiplist", skiplistIndexFactory);
-  emplace("ttl", ttlIndexFactory);
-  emplace("zkd", zkdIndexFactory);
-  emplace("mdi", mdiIndexFactory);
-  emplace("mdi-prefixed", mdiPrefixedIndexFactory);
-  emplace("vector", vectorIndexFactory);
-  emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
-          iresearchInvertedIndexFactory);
+IndexTypeFactory const& RocksDBIndexFactory::factoryFor(
+    IndexType type) const noexcept {
+  switch (type) {
+    case IndexType::Primary:
+      return *_primary;
+    case IndexType::Edge:
+      return *_edge;
+    case IndexType::Geo:
+      return *_geo;
+    case IndexType::Geo1:
+      return *_geo1;
+    case IndexType::Geo2:
+      return *_geo2;
+    case IndexType::Hash:
+      return *_hash;
+    case IndexType::Persistent:
+      return *_persistent;
+    case IndexType::Skiplist:
+      return *_skiplist;
+    case IndexType::TTL:
+      return *_ttl;
+    case IndexType::Fulltext:
+      return *_fulltext;
+    case IndexType::Zkd:
+      return *_zkd;
+    case IndexType::MDI:
+      return *_mdi;
+    case IndexType::MDIPrefixed:
+      return *_mdiPrefixed;
+    case IndexType::Vector:
+      return *_vector;
+    case IndexType::Inverted:
+      return *_inverted;
+    case IndexType::IResearchLink:
+      return linkFactory();
+    case IndexType::Unknown:
+    case IndexType::NoAccess:
+      return invalidFactory();
+  }
+  return invalidFactory();
 }
 
 void RocksDBIndexFactory::finalizeDefinition(velocypack::Builder& normalized,

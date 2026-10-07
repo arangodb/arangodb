@@ -145,68 +145,80 @@ struct IResearchInvertedIndexClusterFactory
 
 namespace arangodb {
 
-void ClusterIndexFactory::linkIndexFactories(ClusterEngine& engine) {
-  auto const& catalog = _catalog;
-  auto const& edgeIndexFactory =
-      own<EdgeIndexFactory>(_server, engine, catalog.edge());
-  auto const& fulltextIndexFactory =
-      own<ClusterIndexFactoryT<FulltextIndexDefinition>>(_server, engine,
-                                                         catalog.fulltext());
-  auto const& geoIndexFactory = own<ClusterIndexFactoryT<GeoIndexDefinition>>(
-      _server, engine, catalog.geo());
-  auto const& geo1IndexFactory = own<ClusterIndexFactoryT<Geo1IndexDefinition>>(
-      _server, engine, catalog.geo1());
-  auto const& geo2IndexFactory = own<ClusterIndexFactoryT<Geo2IndexDefinition>>(
-      _server, engine, catalog.geo2());
-  auto const& hashIndexFactory =
-      own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(_server, engine,
-                                                          catalog.hash());
-  auto const& persistentIndexFactory =
-      own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(_server, engine,
-                                                          catalog.persistent());
-  auto const& primaryIndexFactory =
-      own<PrimaryIndexFactory>(_server, engine, catalog.primary());
-  auto const& skiplistIndexFactory =
-      own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(_server, engine,
-                                                          catalog.skiplist());
-  auto const& ttlIndexFactory = own<ClusterIndexFactoryT<TtlIndexDefinition>>(
-      _server, engine, catalog.ttl());
-  auto const& mdiIndexFactory = own<ClusterIndexFactoryT<MdiIndexDefinition>>(
-      _server, engine, catalog.mdi());
-  auto const& zkdIndexFactory = own<ClusterIndexFactoryT<MdiIndexDefinition>>(
-      _server, engine, catalog.zkd());
-  auto const& mdiPrefixedIndexFactory =
-      own<ClusterIndexFactoryT<MdiPrefixedIndexDefinition>>(
-          _server, engine, catalog.mdiPrefixed());
-  auto const& invertedIndexFactory = own<IResearchInvertedIndexClusterFactory>(
-      _server, engine, catalog.inverted());
-  auto const& vectorIndexFactory =
-      own<ClusterIndexFactoryT<VectorIndexDefinition>>(_server, engine,
-                                                       catalog.vector());
-
-  emplace("edge", edgeIndexFactory);
-  emplace("fulltext", fulltextIndexFactory);
-  emplace("geo", geoIndexFactory);
-  emplace("geo1", geo1IndexFactory);
-  emplace("geo2", geo2IndexFactory);
-  emplace("hash", hashIndexFactory);
-  emplace("persistent", persistentIndexFactory);
-  emplace("rocksdb", persistentIndexFactory);
-  emplace("primary", primaryIndexFactory);
-  emplace("skiplist", skiplistIndexFactory);
-  emplace("ttl", ttlIndexFactory);
-  emplace("zkd", zkdIndexFactory);
-  emplace("mdi", mdiIndexFactory);
-  emplace("mdi-prefixed", mdiPrefixedIndexFactory);
-  emplace(IRESEARCH_INVERTED_INDEX_TYPE.data(), invertedIndexFactory);
-  emplace("vector", vectorIndexFactory);
-}
-
 ClusterIndexFactory::ClusterIndexFactory(
     application_features::ApplicationServer& server, ClusterEngine& engine,
     IndexTypeCatalog const& catalog)
-    : IndexFactory(server, catalog), _engine(engine) {
-  linkIndexFactories(engine);
+    : IndexFactory(server, catalog),
+      _engine(engine),
+      _edge(&own<EdgeIndexFactory>(server, engine, catalog.edge())),
+      _fulltext(&own<ClusterIndexFactoryT<FulltextIndexDefinition>>(
+          server, engine, catalog.fulltext())),
+      _geo(&own<ClusterIndexFactoryT<GeoIndexDefinition>>(server, engine,
+                                                          catalog.geo())),
+      _geo1(&own<ClusterIndexFactoryT<Geo1IndexDefinition>>(server, engine,
+                                                            catalog.geo1())),
+      _geo2(&own<ClusterIndexFactoryT<Geo2IndexDefinition>>(server, engine,
+                                                            catalog.geo2())),
+      _hash(&own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(
+          server, engine, catalog.hash())),
+      _persistent(&own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(
+          server, engine, catalog.persistent())),
+      _primary(&own<PrimaryIndexFactory>(server, engine, catalog.primary())),
+      _skiplist(&own<ClusterIndexFactoryT<SecondaryIndexDefinition>>(
+          server, engine, catalog.skiplist())),
+      _ttl(&own<ClusterIndexFactoryT<TtlIndexDefinition>>(server, engine,
+                                                          catalog.ttl())),
+      _zkd(&own<ClusterIndexFactoryT<MdiIndexDefinition>>(server, engine,
+                                                          catalog.zkd())),
+      _mdi(&own<ClusterIndexFactoryT<MdiIndexDefinition>>(server, engine,
+                                                          catalog.mdi())),
+      _mdiPrefixed(&own<ClusterIndexFactoryT<MdiPrefixedIndexDefinition>>(
+          server, engine, catalog.mdiPrefixed())),
+      _inverted(&own<IResearchInvertedIndexClusterFactory>(server, engine,
+                                                           catalog.inverted())),
+      _vector(&own<ClusterIndexFactoryT<VectorIndexDefinition>>(
+          server, engine, catalog.vector())) {}
+
+IndexTypeFactory const& ClusterIndexFactory::factoryFor(
+    IndexType type) const noexcept {
+  switch (type) {
+    case IndexType::Primary:
+      return *_primary;
+    case IndexType::Edge:
+      return *_edge;
+    case IndexType::Geo:
+      return *_geo;
+    case IndexType::Geo1:
+      return *_geo1;
+    case IndexType::Geo2:
+      return *_geo2;
+    case IndexType::Hash:
+      return *_hash;
+    case IndexType::Persistent:
+      return *_persistent;
+    case IndexType::Skiplist:
+      return *_skiplist;
+    case IndexType::TTL:
+      return *_ttl;
+    case IndexType::Fulltext:
+      return *_fulltext;
+    case IndexType::Zkd:
+      return *_zkd;
+    case IndexType::MDI:
+      return *_mdi;
+    case IndexType::MDIPrefixed:
+      return *_mdiPrefixed;
+    case IndexType::Vector:
+      return *_vector;
+    case IndexType::Inverted:
+      return *_inverted;
+    case IndexType::IResearchLink:
+      return linkFactory();
+    case IndexType::Unknown:
+    case IndexType::NoAccess:
+      return invalidFactory();
+  }
+  return invalidFactory();
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

@@ -793,7 +793,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   VPackSlice indexes = collectionFromTarget.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::compare(engine, index, other,
+    if (arangodb::Index::compare(engine.indexTypeCatalog(), index, other,
                                  collection.vocbase().name())) {
       VPackBuilder resultBuilder;
       {  // found an existing index... Copy over all elements in slice.
@@ -1000,7 +1000,7 @@ Result ensureIndexCoordinatorInner(
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::compare(engine, slice, other,
+    if (arangodb::Index::compare(engine.indexTypeCatalog(), slice, other,
                                  collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);

@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 #include "IResearch/IResearchCommon.h"
 
 #include <absl/strings/str_cat.h>
@@ -43,27 +44,29 @@ IndexTypeCatalog::IndexTypeCatalog(
       _mdi(IndexType::MDI),
       _vector(IndexType::Vector, vectorIndexProvider),
       _inverted(server) {
-  auto reg = [&](std::string_view name, IndexDefinition const& definition) {
-    _byName.try_emplace(std::string{name}, &definition);
+  // a definition is registered under its persisted name, see Index::oldtypeName
+  auto reg = [&](IndexDefinition const& definition) {
+    _byName.try_emplace(std::string{Index::oldtypeName(definition._type)},
+                        &definition);
   };
 
-  reg("edge", _edge);
-  reg("fulltext", _fulltext);
-  reg("geo", _geo);
-  reg("geo1", _geo1);
-  reg("geo2", _geo2);
-  reg("hash", _hash);
-  reg("persistent", _persistent);
-  // legacy alias
-  reg("rocksdb", _persistent);
-  reg("skiplist", _skiplist);
-  reg("primary", _primary);
-  reg("ttl", _ttl);
-  reg("zkd", _zkd);
-  reg("mdi", _mdi);
-  reg("mdi-prefixed", _mdiPrefixed);
-  reg("vector", _vector);
-  reg(iresearch::IRESEARCH_INVERTED_INDEX_TYPE, _inverted);
+  reg(_edge);
+  reg(_fulltext);
+  reg(_geo);
+  reg(_geo1);
+  reg(_geo2);
+  reg(_hash);
+  reg(_persistent);
+  reg(_skiplist);
+  reg(_primary);
+  reg(_ttl);
+  reg(_zkd);
+  reg(_mdi);
+  reg(_mdiPrefixed);
+  reg(_vector);
+  reg(_inverted);
+  // legacy alias of persistent
+  _byName.try_emplace("rocksdb", &_persistent);
 }
 
 IndexType IndexTypeCatalog::resolve(std::string_view name) const noexcept {

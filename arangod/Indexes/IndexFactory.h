@@ -124,8 +124,11 @@ class IndexFactory {
 
   IndexTypeCatalog const& catalog() const noexcept { return _catalog; }
 
-  /// @brief returns if 'factory' for 'type' was added successfully
-  Result emplace(std::string const& type, IndexTypeFactory const& factory);
+  /// @brief the factory that creates indexes of the given type
+  virtual IndexTypeFactory const& factoryFor(IndexType type) const noexcept = 0;
+
+  /// @brief sets the arangosearch link factory, called by IResearchFeature
+  void setLinkFactory(std::shared_ptr<IndexTypeFactory> factory);
 
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
@@ -138,10 +141,6 @@ class IndexFactory {
   virtual void finalizeDefinition(velocypack::Builder& normalized,
                                   velocypack::Slice definition,
                                   bool isCreation) const {}
-
-  /// @brief returns factory for the specified type or a failing placeholder if
-  /// no such type
-  IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
   /// @brief returns the index created from the definition
   /// will throw if an error occurs
@@ -263,8 +262,11 @@ class IndexFactory {
                                        bool create);
 
  protected:
-  /// @brief clear internal factory/normalizer maps
-  void clear();
+  /// @brief the factory for a type that has none; it fails when used
+  IndexTypeFactory const& invalidFactory() const noexcept { return *_invalid; }
+
+  /// @brief the arangosearch link factory, or the failing placeholder if unset
+  IndexTypeFactory const& linkFactory() const noexcept;
 
   static IndexId validateSlice(velocypack::Slice info, bool generateKey,
                                bool isClusterConstructor);
@@ -280,8 +282,8 @@ class IndexFactory {
  protected:
   application_features::ApplicationServer& _server;
   IndexTypeCatalog const& _catalog;
-  std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
+  std::shared_ptr<IndexTypeFactory> _linkFactory;
   std::vector<std::unique_ptr<IndexTypeFactory>> _owned;
 };
 

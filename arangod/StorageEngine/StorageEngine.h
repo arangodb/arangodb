@@ -326,6 +326,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // of the IndexFactory. This is used to validate
   // information about indexes.
   virtual IndexFactory const& indexFactory() const;
+  IndexFactory& mutableIndexFactory() noexcept;
 
   IndexTypeCatalog const& indexTypeCatalog() const noexcept;
   IndexTypeCatalog& indexTypeCatalog() noexcept;

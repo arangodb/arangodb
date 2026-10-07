@@ -62,12 +62,11 @@ using namespace arangodb;
 // be "geojson" objects like polygons. Simplified a lot, the index then allows
 // to quickly find stuff which is "close to the indexed geo content" on earth.
 //
-// This works by configuring an "index factory" in
-// `arangod/Indexes/IndexFactor.cpp` via the `IndexFactory::emplace` method.
-// This is done in `arangod/RocksDBEngine/RocksDBIndexFactor.cpp` in the
-// constructor of `RocksDBIndexFactory` for RocksDB and in
-// `arangod/ClusterEngine/ClusterIndexFactor.cpp` in
-// `ClusterIndexFactory::linkIndexFactories` for the cluster engine.
+// This works by an "index factory" that `factoryFor()` returns for the geo
+// index types: `RocksDBIndexFactory` in
+// `arangod/RocksDBEngine/RocksDBIndexFactory.cpp` for RocksDB and
+// `ClusterIndexFactory` in `arangod/ClusterEngine/ClusterIndexFactory.cpp`
+// for the cluster engine.
 // These factories are implemented in the same file, for example
 // as `GeoIndexFactory` for RocksDB. This index factory produces then
 // an object of type `RocksDBGeoIndex` and this is responsible for

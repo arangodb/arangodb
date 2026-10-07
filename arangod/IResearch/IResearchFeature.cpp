@@ -1031,18 +1031,6 @@ void IResearchFeature::registerIndexFactory() {
   }
   auto& engine = server().getFeature<StorageEngine>();
 
-  auto emplace = [&](IndexFactory const& target) {
-    auto r = const_cast<IndexFactory&>(target).emplace(
-        std::string{StaticStrings::ViewArangoSearchType}, *_factory);
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          r.errorNumber(),
-          absl::StrCat("failure registering IResearch link factory with "
-                       "index factory from feature '",
-                       engine.name(), "': ", r.errorMessage()));
-    }
-  };
-
   auto addDefinition = [&]() {
     _linkDefinition = std::make_unique<IResearchLinkDefinition>(server());
     auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
@@ -1058,11 +1046,11 @@ void IResearchFeature::registerIndexFactory() {
 
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
     _factory = IResearchLinkCoordinator::createFactory(server());
-    emplace(clusterEngine->indexFactory());
+    engine.mutableIndexFactory().setLinkFactory(_factory);
     addDefinition();
   } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
     _factory = IResearchRocksDBLink::createFactory(server());
-    emplace(rocksDBEngine->indexFactory());
+    engine.mutableIndexFactory().setLinkFactory(_factory);
     addDefinition();
   }
 }

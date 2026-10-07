@@ -47,6 +47,26 @@ class RocksDBIndexFactory final : public IndexFactory {
   void prepareIndexes(
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
+
+  IndexTypeFactory const& factoryFor(IndexType type) const noexcept override;
+
+ private:
+  // one factory per type, owned by IndexFactory::_owned
+  IndexTypeFactory const* const _edge;
+  IndexTypeFactory const* const _fulltext;
+  IndexTypeFactory const* const _geo;
+  IndexTypeFactory const* const _geo1;
+  IndexTypeFactory const* const _geo2;
+  IndexTypeFactory const* const _hash;
+  IndexTypeFactory const* const _persistent;
+  IndexTypeFactory const* const _primary;
+  IndexTypeFactory const* const _skiplist;
+  IndexTypeFactory const* const _ttl;
+  IndexTypeFactory const* const _zkd;
+  IndexTypeFactory const* const _mdi;
+  IndexTypeFactory const* const _mdiPrefixed;
+  IndexTypeFactory const* const _vector;
+  IndexTypeFactory const* const _inverted;
 };
 
 }  // namespace arangodb

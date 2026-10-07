@@ -569,27 +569,12 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(IndexTypeCatalog const& catalog, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto typeSlice = lhs.get(arangodb::StaticStrings::IndexType);
-  if (!typeSlice.isString()) {
+  if (!lhs.get(arangodb::StaticStrings::IndexType).isString()) {
     return false;
   }
-  // "zkd" is the old naming for "mdi", so we have to treat these
-  // two type names as identical.
-  std::string_view typeName = typeSlice.stringView() == "zkd"
-                                  ? std::string_view{"mdi"}
-                                  : typeSlice.stringView();
-
-  auto const& catalog = engine.indexTypeCatalog();
-  if (catalog.resolve(typeName) != IndexType::Unknown) {
-    return catalog.equal(lhs, rhs, dbname);
-  }
-  // not a built-in type (e.g. the arangosearch link): fall back to this
-  // engine's own registry
-  return engine.indexFactory()
-      .factory(std::string{typeName})
-      .equal(lhs, rhs, dbname);
+  return catalog.equal(lhs, rhs, dbname);
 }
 
 /// @brief return a contextual string for logging

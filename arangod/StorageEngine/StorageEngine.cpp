@@ -116,6 +116,11 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
+IndexFactory& StorageEngine::mutableIndexFactory() noexcept {
+  TRI_ASSERT(_indexFactory != nullptr);
+  return *_indexFactory;
+}
+
 IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
   return *_indexTypeCatalog;
 }

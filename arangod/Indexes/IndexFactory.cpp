@@ -127,33 +127,14 @@ IndexFactory::IndexFactory(application_features::ApplicationServer& server,
                            IndexTypeCatalog const& catalog)
     : _server(server),
       _catalog(catalog),
-      _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
 
-void IndexFactory::clear() { _factories.clear(); }
+void IndexFactory::setLinkFactory(std::shared_ptr<IndexTypeFactory> factory) {
+  _linkFactory = std::move(factory);
+}
 
-Result IndexFactory::emplace(std::string const& type,
-                             IndexTypeFactory const& factory) {
-  if (_server.hasFeature<BootstrapFeature>()) {
-    auto& feature = _server.getFeature<BootstrapFeature>();
-    // ensure new factories are not added at runtime since that would require
-    // additional locks
-    if (feature.isReady()) {
-      return Result(TRI_ERROR_INTERNAL,
-                    std::string("index factory registration is only "
-                                "allowed during server startup"));
-    }
-  }
-
-  if (!_factories.try_emplace(type, &factory).second) {
-    return Result(
-        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-        std::string("index factory previously registered during index factory "
-                    "registration for index type '") +
-            type + "'");
-  }
-
-  return Result();
+IndexTypeFactory const& IndexFactory::linkFactory() const noexcept {
+  return _linkFactory ? *_linkFactory : *_invalid;
 }
 
 Result IndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -203,15 +184,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
 
-    // the catalog only knows the built-in types; anything a feature or a
-    // test registered directly with this engine (e.g. the arangosearch
-    // link) is only known to this engine's own registry
-    Result res =
-        _catalog.resolve(type.stringView()) != IndexType::Unknown
-            ? _catalog.normalizeType(type.stringView(), normalized, definition,
-                                     isCreation, vocbase)
-            : factory(type.copyString())
-                  .normalize(normalized, definition, isCreation, vocbase);
+    Result res = _catalog.normalizeType(type.stringView(), normalized,
+                                        definition, isCreation, vocbase);
     if (res.fail()) {
       return res;
     }
@@ -227,17 +201,6 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
   }
 }
 
-IndexTypeFactory const& IndexFactory::factory(
-    std::string const& type) const noexcept {
-  auto itr = _factories.find(type);
-  TRI_ASSERT(
-      itr == _factories.end() ||
-      false ==
-          !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
-
-  return itr == _factories.end() ? *_invalid : *(itr->second);
-}
-
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
     velocypack::Slice definition, bool generateKey,
     LogicalCollection& collection, bool isClusterConstructor) const {
@@ -249,7 +212,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
+  auto& factory = factoryFor(Index::type(type.stringView()));
   std::shared_ptr<Index> index =
       factory.instantiate(collection, definition, id, isClusterConstructor);
 
