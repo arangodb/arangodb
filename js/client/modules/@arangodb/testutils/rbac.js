@@ -95,6 +95,7 @@ function runnerArgs (options, instanceManager) {
       'instanceManager.jwt_secret is empty - cannot sign RBAC tokens. ' +
       '--rbac requires authentication to be enabled on the server.');
   }
+  fs.makeDirectoryRecursive(instanceManager.rootDir);
   fs.write(secretFile, secret);
   return [
     fs.join(rbacDir(options), 'run_scenarios.py'),
