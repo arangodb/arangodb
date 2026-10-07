@@ -159,6 +159,10 @@
             suffix: http
       - hot_backup:
           args:
+            extraArgs:use-splice-syscall: false
+            suffix: no_splice
+      - hot_backup:
+          args:
             extraArgs:experimental-vector-index: true
       - hot_backup_views:
           args:
