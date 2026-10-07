@@ -42,6 +42,7 @@
 #include "Logger/LogMacros.h"
 #include "Indexes/Index.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"

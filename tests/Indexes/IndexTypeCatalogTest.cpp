@@ -80,10 +80,9 @@ TEST_F(IndexTypeCatalogTest, unknownNamesResolveToUnknown) {
 
 TEST_F(IndexTypeCatalogTest, aliasesForApiVersion0) {
   using Alias = std::pair<std::string_view, std::string_view>;
-  EXPECT_EQ(catalog.aliases(0),
-            (std::vector<Alias>{{"hash", "persistent"},
-                                {"skiplist", "persistent"},
-                                {"zkd", "mdi"}}));
+  EXPECT_EQ(catalog.aliases(0), (std::vector<Alias>{{"hash", "persistent"},
+                                                    {"skiplist", "persistent"},
+                                                    {"zkd", "mdi"}}));
 }
 
 TEST_F(IndexTypeCatalogTest, aliasesForApiVersion1) {

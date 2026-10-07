@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TruncateGuard.h"
 #include "StorageEngine/TransactionState.h"
 
 #include "store/directory_attributes.hpp"

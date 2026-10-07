@@ -41,45 +41,38 @@ class Slice;
 struct IIndexFactory {
   virtual ~IIndexFactory() = default;
 
-  virtual std::shared_ptr<Index> createPrimary(LogicalCollection& collection,
-                                               velocypack::Slice definition,
-                                               IndexId id,
-                                               bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createEdge(LogicalCollection& collection,
-                                            velocypack::Slice definition,
-                                            IndexId id,
-                                            bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createPrimary(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createEdge(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
   virtual std::shared_ptr<Index> createGeo(LogicalCollection& collection,
                                            velocypack::Slice definition,
                                            IndexId id,
                                            bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createGeo1(LogicalCollection& collection,
-                                            velocypack::Slice definition,
-                                            IndexId id,
-                                            bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createGeo2(LogicalCollection& collection,
-                                            velocypack::Slice definition,
-                                            IndexId id,
-                                            bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createHash(LogicalCollection& collection,
-                                            velocypack::Slice definition,
-                                            IndexId id,
-                                            bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createGeo1(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createGeo2(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createHash(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
   virtual std::shared_ptr<Index> createPersistent(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createSkiplist(LogicalCollection& collection,
-                                                velocypack::Slice definition,
-                                                IndexId id,
-                                                bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createSkiplist(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
   virtual std::shared_ptr<Index> createTtl(LogicalCollection& collection,
                                            velocypack::Slice definition,
                                            IndexId id,
                                            bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createFulltext(LogicalCollection& collection,
-                                                velocypack::Slice definition,
-                                                IndexId id,
-                                                bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createFulltext(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
   virtual std::shared_ptr<Index> createZkd(LogicalCollection& collection,
                                            velocypack::Slice definition,
                                            IndexId id,
@@ -91,14 +84,12 @@ struct IIndexFactory {
   virtual std::shared_ptr<Index> createMdiPrefixed(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createVector(LogicalCollection& collection,
-                                              velocypack::Slice definition,
-                                              IndexId id,
-                                              bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createInverted(LogicalCollection& collection,
-                                                velocypack::Slice definition,
-                                                IndexId id,
-                                                bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createVector(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> createInverted(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
 
   // the arangosearch link is added by a feature at startup (see
   // IndexFactory::setLinkCreator), not implemented by the engines directly -
