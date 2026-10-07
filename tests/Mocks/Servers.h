@@ -38,7 +38,6 @@ namespace arangodb {
 
 class LogicalCollection;
 class Scheduler;
-struct IndexTypeFactory;
 
 namespace network {
 class ConnectionPool;
@@ -306,7 +305,6 @@ class MockClusterServer
   bool _useAgencyMockPool;
   int _dummy;
   ServerID _serverId;
-  std::shared_ptr<IndexTypeFactory> _iresearchLinkFactory;
 };
 
 class MockDBServer : public MockClusterServer {

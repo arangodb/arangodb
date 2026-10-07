@@ -62,17 +62,17 @@ using namespace arangodb;
 // be "geojson" objects like polygons. Simplified a lot, the index then allows
 // to quickly find stuff which is "close to the indexed geo content" on earth.
 //
-// This works by an "index factory" that `factoryFor()` returns for the geo
-// index types: `RocksDBIndexFactory` in
-// `arangod/RocksDBEngine/RocksDBIndexFactory.cpp` for RocksDB and
+// This works by an "index factory" that implements `createGeo()`/
+// `createGeo1()`/`createGeo2()` for the geo index types: `RocksDBIndexFactory`
+// in `arangod/RocksDBEngine/RocksDBIndexFactory.cpp` for RocksDB and
 // `ClusterIndexFactory` in `arangod/ClusterEngine/ClusterIndexFactory.cpp`
-// for the cluster engine.
-// These factories are implemented in the same file, for example
-// as `GeoIndexFactory` for RocksDB. This index factory produces then
-// an object of type `RocksDBGeoIndex` and this is responsible for
-// storing stuff in RocksDB for the indexed data. The corresponding
-// methods can be found in this file here. This is how we produce the
-// indexed data.
+// for the cluster engine. The matching
+// `GeoIndexDefinition`/`Geo1IndexDefinition`/ `Geo2IndexDefinition::create()`
+// (in `arangod/Indexes/IndexDefinitions.cpp`) is what calls the right one of
+// those. This index factory produces then an object of type `RocksDBGeoIndex`
+// and this is responsible for storing stuff in RocksDB for the indexed data.
+// The corresponding methods can be found in this file here. This is how we
+// produce the indexed data.
 //
 // The `LogicalCollection` object knows about its indexes, and so the query
 // optimizer for AQL can know about them.

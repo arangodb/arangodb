@@ -1045,12 +1045,10 @@ void IResearchFeature::registerIndexFactory() {
   };
 
   if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
-    _factory = IResearchLinkCoordinator::createFactory(server());
-    engine.mutableIndexFactory().setLinkFactory(_factory);
+    engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
     addDefinition();
   } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
-    _factory = IResearchRocksDBLink::createFactory(server());
-    engine.mutableIndexFactory().setLinkFactory(_factory);
+    engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
     addDefinition();
   }
 }

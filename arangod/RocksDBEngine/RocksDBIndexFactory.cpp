@@ -52,228 +52,118 @@
 
 using namespace arangodb;
 
-namespace {
-
-struct EdgeIndexFactory : public DelegatingIndexFactory<EdgeIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const override {
-    if (!isClusterConstructor) {
-      // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot create edge index");
-    }
-
-    auto fields = definition.get(StaticStrings::IndexFields);
-    TRI_ASSERT(fields.isArray() && fields.length() == 1);
-    auto direction = fields.at(0).copyString();
-    TRI_ASSERT(direction == StaticStrings::FromString ||
-               direction == StaticStrings::ToString);
-
-    return std::make_shared<RocksDBEdgeIndex>(id, collection, definition,
-                                              direction);
-  }
-};
-
-struct FulltextIndexFactory
-    : public DelegatingIndexFactory<FulltextIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBFulltextIndex>(id, collection, definition);
-  }
-};
-
-struct GeoIndexFactory : public DelegatingIndexFactory<GeoIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
-  }
-};
-
-struct Geo1IndexFactory : public DelegatingIndexFactory<Geo1IndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
-                                             "geo1");
-  }
-};
-
-struct Geo2IndexFactory : public DelegatingIndexFactory<Geo2IndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
-                                             "geo2");
-  }
-};
-
-template<typename F>
-struct SecondaryIndexFactory
-    : public DelegatingIndexFactory<SecondaryIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<F>(id, collection, definition);
-  }
-};
-
-struct MdiIndexFactory : public DelegatingIndexFactory<MdiIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<arangodb::Index> instantiate(
-      arangodb::LogicalCollection& collection,
-      arangodb::velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
-        isUnique) {
-      return std::make_shared<RocksDBUniqueMdiIndex>(id, collection,
-                                                     definition);
-    }
-
-    return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
-  }
-};
-
-struct MdiPrefixedIndexFactory
-    : public DelegatingIndexFactory<MdiPrefixedIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<arangodb::Index> instantiate(
-      arangodb::LogicalCollection& collection,
-      arangodb::velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
-        isUnique) {
-      return std::make_shared<RocksDBUniqueMdiIndex>(id, collection,
-                                                     definition);
-    }
-
-    return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
-  }
-};
-
-struct VectorIndexFactory
-    : public DelegatingIndexFactory<VectorIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<arangodb::Index> instantiate(
-      arangodb::LogicalCollection& collection,
-      arangodb::velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
-  }
-};
-
-struct TtlIndexFactory : public DelegatingIndexFactory<TtlIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBTtlIndex>(id, collection, definition);
-  }
-};
-
-struct PrimaryIndexFactory
-    : public DelegatingIndexFactory<PrimaryIndexDefinition> {
-  using DelegatingIndexFactory::DelegatingIndexFactory;
-
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition,
-                                     IndexId /*id*/,
-                                     bool isClusterConstructor) const override {
-    if (!isClusterConstructor) {
-      // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot create primary index");
-    }
-
-    return std::make_shared<RocksDBPrimaryIndex>(collection, definition);
-  }
-};
-
-}  // namespace
-
 RocksDBIndexFactory::RocksDBIndexFactory(
     application_features::ApplicationServer& server,
     IndexTypeCatalog const& catalog)
-    : IndexFactory(server, catalog),
-      _edge(&own<EdgeIndexFactory>(server, catalog.edge())),
-      _fulltext(&own<FulltextIndexFactory>(server, catalog.fulltext())),
-      _geo(&own<GeoIndexFactory>(server, catalog.geo())),
-      _geo1(&own<Geo1IndexFactory>(server, catalog.geo1())),
-      _geo2(&own<Geo2IndexFactory>(server, catalog.geo2())),
-      _hash(&own<SecondaryIndexFactory<RocksDBHashIndex>>(server,
-                                                          catalog.hash())),
-      _persistent(&own<SecondaryIndexFactory<RocksDBPersistentIndex>>(
-          server, catalog.persistent())),
-      _primary(&own<PrimaryIndexFactory>(server, catalog.primary())),
-      _skiplist(&own<SecondaryIndexFactory<RocksDBSkiplistIndex>>(
-          server, catalog.skiplist())),
-      _ttl(&own<TtlIndexFactory>(server, catalog.ttl())),
-      _zkd(&own<MdiIndexFactory>(server, catalog.zkd())),
-      _mdi(&own<MdiIndexFactory>(server, catalog.mdi())),
-      _mdiPrefixed(
-          &own<MdiPrefixedIndexFactory>(server, catalog.mdiPrefixed())),
-      _vector(&own<VectorIndexFactory>(server, catalog.vector())),
-      _inverted(&own<iresearch::IResearchRocksDBInvertedIndexFactory>(
-          server, catalog.inverted())) {}
+    : IndexFactory(server, catalog) {}
 
-IndexTypeFactory const& RocksDBIndexFactory::factoryFor(
-    IndexType type) const noexcept {
-  switch (type) {
-    case IndexType::Primary:
-      return *_primary;
-    case IndexType::Edge:
-      return *_edge;
-    case IndexType::Geo:
-      return *_geo;
-    case IndexType::Geo1:
-      return *_geo1;
-    case IndexType::Geo2:
-      return *_geo2;
-    case IndexType::Hash:
-      return *_hash;
-    case IndexType::Persistent:
-      return *_persistent;
-    case IndexType::Skiplist:
-      return *_skiplist;
-    case IndexType::TTL:
-      return *_ttl;
-    case IndexType::Fulltext:
-      return *_fulltext;
-    case IndexType::Zkd:
-      return *_zkd;
-    case IndexType::MDI:
-      return *_mdi;
-    case IndexType::MDIPrefixed:
-      return *_mdiPrefixed;
-    case IndexType::Vector:
-      return *_vector;
-    case IndexType::Inverted:
-      return *_inverted;
-    case IndexType::IResearchLink:
-      return linkFactory();
-    case IndexType::Unknown:
-    case IndexType::NoAccess:
-      return invalidFactory();
+std::shared_ptr<Index> RocksDBIndexFactory::createPrimary(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId,
+    bool isClusterConstructor) const {
+  if (!isClusterConstructor) {
+    // this index type cannot be created directly
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot create primary index");
   }
-  return invalidFactory();
+  return std::make_shared<RocksDBPrimaryIndex>(collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createEdge(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  auto fields = definition.get(StaticStrings::IndexFields);
+  TRI_ASSERT(fields.isArray() && fields.length() == 1);
+  auto direction = fields.at(0).copyString();
+  TRI_ASSERT(direction == StaticStrings::FromString ||
+             direction == StaticStrings::ToString);
+
+  return std::make_shared<RocksDBEdgeIndex>(id, collection, definition,
+                                            direction);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createGeo(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createGeo1(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo1");
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createGeo2(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo2");
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createHash(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBHashIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createPersistent(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBPersistentIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createSkiplist(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBSkiplistIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createTtl(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBTtlIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createFulltext(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBFulltextIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createZkd(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool isClusterConstructor) const {
+  return createMdi(collection, definition, id, isClusterConstructor);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createMdi(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  if (definition.get(StaticStrings::IndexUnique).isTrue()) {
+    return std::make_shared<RocksDBUniqueMdiIndex>(id, collection, definition);
+  }
+  return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createMdiPrefixed(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  if (definition.get(StaticStrings::IndexUnique).isTrue()) {
+    return std::make_shared<RocksDBUniqueMdiIndex>(id, collection, definition);
+  }
+  return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createVector(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
+}
+
+std::shared_ptr<Index> RocksDBIndexFactory::createInverted(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool isClusterConstructor) const {
+  return iresearch::createRocksDBInvertedIndex(collection, definition, id,
+                                               isClusterConstructor);
 }
 
 void RocksDBIndexFactory::finalizeDefinition(velocypack::Builder& normalized,

@@ -30,8 +30,6 @@
 
 namespace arangodb {
 
-struct IndexTypeFactory;
-
 namespace iresearch {
 
 class IResearchViewCoordinator;
@@ -107,35 +105,15 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
   char const* typeName() const final { return oldtypeName(); }
 
   void unload() final /*noexcept*/ { _asyncSelf->reset(); }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearchLinkCoordinator-specific implementation of an
-  ///        IndexTypeFactory
-  ////////////////////////////////////////////////////////////////////////////////
-  class IndexFactory final : public IndexTypeFactory {
-    friend class IResearchLinkCoordinator;
-
-   public:
-    explicit IndexFactory(application_features::ApplicationServer& server);
-
-    [[nodiscard]] bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-                             std::string const& dbname) const final;
-
-    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       velocypack::Slice definition, IndexId id,
-                                       bool isClusterConstructor) const final;
-
-    Result normalize(velocypack::Builder& normalized,
-                     velocypack::Slice definition, bool isCreation,
-                     TRI_vocbase_t const& vocbase) const final;
-
-   private:
-    IResearchLinkDefinition _definition;
-  };
-
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
 };
+
+// construction logic for a coordinator-side arangosearch link; registered
+// with IndexFactory::setLinkCreator by
+// IResearchFeature::registerIndexFactory
+std::shared_ptr<Index> createLinkCoordinator(LogicalCollection& collection,
+                                             velocypack::Slice definition,
+                                             IndexId id,
+                                             bool isClusterConstructor);
 
 }  // namespace iresearch
 }  // namespace arangodb

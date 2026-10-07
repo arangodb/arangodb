@@ -55,38 +55,6 @@
 #include <regex>
 #include <string_view>
 
-namespace {
-
-using namespace arangodb;
-
-struct InvalidIndexFactory : public IndexTypeFactory {
-  InvalidIndexFactory(application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
-
-  bool equal(velocypack::Slice, velocypack::Slice,
-             std::string const&) const override {
-    return false;  // invalid definitions are never equal
-  }
-
-  std::shared_ptr<Index> instantiate(LogicalCollection&,
-                                     velocypack::Slice definition, IndexId,
-                                     bool) const override {
-    std::string type = basics::VelocyPackHelper::getStringValue(
-        definition, StaticStrings::IndexType, "");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid index type '" + type + "'");
-  }
-
-  Result normalize(velocypack::Builder&, velocypack::Slice definition, bool,
-                   Database const&) const override {
-    std::string type = basics::VelocyPackHelper::getStringValue(
-        definition, StaticStrings::IndexType, "");
-    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
-  }
-};
-
-}  // namespace
-
 namespace arangodb {
 namespace helpers {
 
@@ -119,22 +87,24 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
-IndexTypeFactory::IndexTypeFactory(
-    application_features::ApplicationServer& server)
-    : _server(server) {}
-
 IndexFactory::IndexFactory(application_features::ApplicationServer& server,
                            IndexTypeCatalog const& catalog)
-    : _server(server),
-      _catalog(catalog),
-      _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
+    : _server(server), _catalog(catalog) {}
 
-void IndexFactory::setLinkFactory(std::shared_ptr<IndexTypeFactory> factory) {
-  _linkFactory = std::move(factory);
+void IndexFactory::setLinkCreator(LinkCreator creator) {
+  _linkCreator = std::move(creator);
 }
 
-IndexTypeFactory const& IndexFactory::linkFactory() const noexcept {
-  return _linkFactory ? *_linkFactory : *_invalid;
+std::shared_ptr<Index> IndexFactory::createIResearchLink(
+    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+    bool isClusterConstructor) const {
+  if (!_linkCreator) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid index type '" +
+            std::string{StaticStrings::ViewArangoSearchType} + "'");
+  }
+  return _linkCreator(collection, definition, id, isClusterConstructor);
 }
 
 Result IndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -164,7 +134,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     if (name.empty()) {
       // we should set the name for special types explicitly elsewhere,
       // but just in case...
-      if (auto t = Index::type(type.stringView()); t == IndexType::Primary) {
+      if (auto t = _catalog.resolve(type.stringView());
+          t == IndexType::Primary) {
         name = StaticStrings::IndexNamePrimary;
       } else if (t == IndexType::Edge) {
         name = StaticStrings::IndexNameEdge;
@@ -212,9 +183,15 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  auto& factory = factoryFor(Index::type(type.stringView()));
+  auto const* def = _catalog.definitionFor(type.stringView());
+  if (def == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("invalid index type '", type.stringView(), "'"));
+  }
+
   std::shared_ptr<Index> index =
-      factory.instantiate(collection, definition, id, isClusterConstructor);
+      def->create(*this, collection, definition, id, isClusterConstructor);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

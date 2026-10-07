@@ -94,10 +94,40 @@ struct IndexFactoryMock : private MockIndexTypeCatalogHolder,
     TRI_ASSERT(!injectClusterIndexes);
   }
 
-  arangodb::IndexTypeFactory const& factoryFor(
-      arangodb::IndexType) const noexcept override {
-    return invalidFactory();
+  // there is only ever one StorageEngine slot and StorageEngineMock always
+  // occupies it, so none of these are expected to actually be called in
+  // tests that use this mock; each one throws the same way the real
+  // engines' factories do for a type they can't create
+  std::shared_ptr<arangodb::Index> invalid(char const* name) const {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string{"invalid index type '"} + name + "'");
   }
+
+#define MOCK_CREATE(name, label)                                 \
+  std::shared_ptr<arangodb::Index> name(                         \
+      arangodb::LogicalCollection&, arangodb::velocypack::Slice, \
+      arangodb::IndexId, bool) const override {                  \
+    return invalid(label);                                       \
+  }
+
+  MOCK_CREATE(createPrimary, "primary")
+  MOCK_CREATE(createEdge, "edge")
+  MOCK_CREATE(createGeo, "geo")
+  MOCK_CREATE(createGeo1, "geo1")
+  MOCK_CREATE(createGeo2, "geo2")
+  MOCK_CREATE(createHash, "hash")
+  MOCK_CREATE(createPersistent, "persistent")
+  MOCK_CREATE(createSkiplist, "skiplist")
+  MOCK_CREATE(createTtl, "ttl")
+  MOCK_CREATE(createFulltext, "fulltext")
+  MOCK_CREATE(createZkd, "zkd")
+  MOCK_CREATE(createMdi, "mdi")
+  MOCK_CREATE(createMdiPrefixed, "mdi-prefixed")
+  MOCK_CREATE(createVector, "vector")
+  MOCK_CREATE(createInverted, "inverted")
+
+#undef MOCK_CREATE
 
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
                                  std::vector<std::shared_ptr<arangodb::Index>>&

@@ -625,13 +625,10 @@ void MockClusterServer::startFeatures() {
   agencyTrx("/arango/Current/ServersKnown", st);
   ServerState::instance()->setRebootId(RebootId{1});
 
-  // register factories & normalizers
+  // register the arangosearch link creator, same as
+  // IResearchFeature::registerIndexFactory does for a real ClusterEngine
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  _iresearchLinkFactory =
-      iresearch::IResearchLinkCoordinator::createFactory(server());
-  indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType},
-      *_iresearchLinkFactory);
+  indexFactory.setLinkCreator(&iresearch::createLinkCoordinator);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 

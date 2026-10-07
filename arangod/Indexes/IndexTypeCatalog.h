@@ -55,6 +55,11 @@ class IndexTypeCatalog final {
 
   IndexType resolve(std::string_view name) const noexcept;
 
+  // the definition registered under this name, or nullptr if unknown; used
+  // by IndexFactory::prepareIndexFromSlice to dispatch create() without a
+  // second, independent name->IndexType mapping
+  IndexDefinition const* definitionFor(std::string_view name) const noexcept;
+
   Result normalizeType(std::string_view name, velocypack::Builder& normalized,
                        velocypack::Slice definition, bool isCreation,
                        Database const& vocbase) const;

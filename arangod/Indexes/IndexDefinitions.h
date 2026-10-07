@@ -34,6 +34,11 @@ struct EdgeIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override;
 };
 
 struct FulltextIndexDefinition : public IndexDefinition {
@@ -42,6 +47,14 @@ struct FulltextIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createFulltext(collection, definition, id,
+                                  isClusterConstructor);
+  }
 };
 
 struct GeoIndexDefinition : public IndexDefinition {
@@ -50,6 +63,13 @@ struct GeoIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createGeo(collection, definition, id, isClusterConstructor);
+  }
 };
 
 struct Geo1IndexDefinition : public IndexDefinition {
@@ -58,6 +78,13 @@ struct Geo1IndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createGeo1(collection, definition, id, isClusterConstructor);
+  }
 };
 
 struct Geo2IndexDefinition : public IndexDefinition {
@@ -66,22 +93,43 @@ struct Geo2IndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createGeo2(collection, definition, id, isClusterConstructor);
+  }
 };
 
+// shared by Hash/Persistent/Skiplist: identical normalize() rules, but each
+// one is a different RocksDB/ClusterIndex class, so create() still needs to
+// pick the right createXxx() by the instance's own _type
 struct SecondaryIndexDefinition : public IndexDefinition {
   explicit SecondaryIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override;
 };
 
+// shared by Zkd/MDI for the same reason as SecondaryIndexDefinition
 struct MdiIndexDefinition : public IndexDefinition {
   explicit MdiIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override;
 };
 
 struct MdiPrefixedIndexDefinition : public IndexDefinition {
@@ -90,6 +138,14 @@ struct MdiPrefixedIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createMdiPrefixed(collection, definition, id,
+                                     isClusterConstructor);
+  }
 };
 
 struct VectorIndexDefinition : public IndexDefinition {
@@ -101,6 +157,14 @@ struct VectorIndexDefinition : public IndexDefinition {
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createVector(collection, definition, id,
+                                isClusterConstructor);
+  }
+
  protected:
   IVectorIndexProvider const& _vectorIndexProvider;
 };
@@ -111,6 +175,13 @@ struct TtlIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override {
+    return factory.createTtl(collection, definition, id, isClusterConstructor);
+  }
 };
 
 struct PrimaryIndexDefinition : public IndexDefinition {
@@ -119,6 +190,11 @@ struct PrimaryIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
+
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const override;
 };
 
 }  // namespace arangodb

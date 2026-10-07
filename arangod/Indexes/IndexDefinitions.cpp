@@ -22,6 +22,7 @@
 
 #include "IndexDefinitions.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
@@ -47,6 +48,17 @@ Result EdgeIndexDefinition::normalize(velocypack::Builder& normalized,
                  velocypack::Value(Index::oldtypeName(IndexType::Edge)));
 
   return TRI_ERROR_INTERNAL;
+}
+
+std::shared_ptr<Index> EdgeIndexDefinition::create(
+    IIndexFactory const& factory, LogicalCollection& collection,
+    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
+  if (!isClusterConstructor) {
+    // this index type cannot be created directly
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot create edge index");
+  }
+  return factory.createEdge(collection, definition, id, isClusterConstructor);
 }
 
 Result FulltextIndexDefinition::normalize(velocypack::Builder& normalized,
@@ -115,6 +127,27 @@ Result SecondaryIndexDefinition::normalize(velocypack::Builder& normalized,
                                                isCreation);
 }
 
+std::shared_ptr<Index> SecondaryIndexDefinition::create(
+    IIndexFactory const& factory, LogicalCollection& collection,
+    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
+  // this class backs three IndexType values that share one set of
+  // normalize()/equal() rules but each need a different concrete Index class
+  switch (_type) {
+    case IndexType::Hash:
+      return factory.createHash(collection, definition, id,
+                                isClusterConstructor);
+    case IndexType::Persistent:
+      return factory.createPersistent(collection, definition, id,
+                                      isClusterConstructor);
+    case IndexType::Skiplist:
+      return factory.createSkiplist(collection, definition, id,
+                                    isClusterConstructor);
+    default:
+      TRI_ASSERT(false) << "SecondaryIndexDefinition used for " << int(_type);
+      return nullptr;
+  }
+}
+
 Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
                                      velocypack::Slice definition,
                                      bool isCreation,
@@ -132,6 +165,17 @@ Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
   return IndexFactory::enhanceJsonIndexMdi(definition, normalized, isCreation);
+}
+
+std::shared_ptr<Index> MdiIndexDefinition::create(
+    IIndexFactory const& factory, LogicalCollection& collection,
+    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
+  // this class backs both Zkd (legacy name) and MDI
+  if (_type == IndexType::Zkd) {
+    return factory.createZkd(collection, definition, id, isClusterConstructor);
+  }
+  TRI_ASSERT(_type == IndexType::MDI);
+  return factory.createMdi(collection, definition, id, isClusterConstructor);
 }
 
 Result MdiPrefixedIndexDefinition::normalize(
@@ -202,4 +246,16 @@ Result PrimaryIndexDefinition::normalize(velocypack::Builder& normalized,
                  velocypack::Value(Index::oldtypeName(IndexType::Primary)));
 
   return TRI_ERROR_INTERNAL;
+}
+
+std::shared_ptr<Index> PrimaryIndexDefinition::create(
+    IIndexFactory const& factory, LogicalCollection& collection,
+    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
+  if (!isClusterConstructor) {
+    // this index type cannot be created directly
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot create primary index");
+  }
+  return factory.createPrimary(collection, definition, id,
+                               isClusterConstructor);
 }

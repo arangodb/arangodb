@@ -32,7 +32,7 @@ class ClusterIndexFactory final : public IndexFactory {
  public:
   ClusterIndexFactory(application_features::ApplicationServer&,
                       ClusterEngine& engine, IndexTypeCatalog const& catalog);
-  ~ClusterIndexFactory() = default;
+  ~ClusterIndexFactory() override = default;
 
   void fillSystemIndexes(
       LogicalCollection& col,
@@ -43,27 +43,61 @@ class ClusterIndexFactory final : public IndexFactory {
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
 
-  IndexTypeFactory const& factoryFor(IndexType type) const noexcept override;
+  std::shared_ptr<Index> createPrimary(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createEdge(LogicalCollection& collection,
+                                    velocypack::Slice definition, IndexId id,
+                                    bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createGeo(LogicalCollection& collection,
+                                   velocypack::Slice definition, IndexId id,
+                                   bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createGeo1(LogicalCollection& collection,
+                                    velocypack::Slice definition, IndexId id,
+                                    bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createGeo2(LogicalCollection& collection,
+                                    velocypack::Slice definition, IndexId id,
+                                    bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createHash(LogicalCollection& collection,
+                                    velocypack::Slice definition, IndexId id,
+                                    bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createPersistent(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createSkiplist(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createTtl(LogicalCollection& collection,
+                                   velocypack::Slice definition, IndexId id,
+                                   bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createFulltext(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createZkd(LogicalCollection& collection,
+                                   velocypack::Slice definition, IndexId id,
+                                   bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createMdi(LogicalCollection& collection,
+                                   velocypack::Slice definition, IndexId id,
+                                   bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createMdiPrefixed(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createVector(LogicalCollection& collection,
+                                      velocypack::Slice definition, IndexId id,
+                                      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createInverted(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
 
  private:
-  ClusterEngine& _engine;
+  // generic path shared by every type that just becomes a ClusterIndex of
+  // the given IndexType; Edge/Primary/Inverted override this behavior
+  std::shared_ptr<Index> createGeneric(IndexType type,
+                                       LogicalCollection& collection,
+                                       velocypack::Slice definition,
+                                       IndexId id) const;
 
-  // one factory per type, owned by IndexFactory::_owned
-  IndexTypeFactory const* const _edge;
-  IndexTypeFactory const* const _fulltext;
-  IndexTypeFactory const* const _geo;
-  IndexTypeFactory const* const _geo1;
-  IndexTypeFactory const* const _geo2;
-  IndexTypeFactory const* const _hash;
-  IndexTypeFactory const* const _persistent;
-  IndexTypeFactory const* const _primary;
-  IndexTypeFactory const* const _skiplist;
-  IndexTypeFactory const* const _ttl;
-  IndexTypeFactory const* const _zkd;
-  IndexTypeFactory const* const _mdi;
-  IndexTypeFactory const* const _mdiPrefixed;
-  IndexTypeFactory const* const _inverted;
-  IndexTypeFactory const* const _vector;
+  ClusterEngine& _engine;
 };
 
 }  // namespace arangodb

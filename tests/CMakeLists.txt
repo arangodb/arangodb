@@ -234,7 +234,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Indexes/DelegatingIndexFactoryTest.cpp
   Indexes/IndexTypeCatalogTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp

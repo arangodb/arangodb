@@ -34,18 +34,12 @@ struct ResourceMonitor;
 
 namespace iresearch {
 
-class IResearchRocksDBInvertedIndexFactory
-    : public DelegatingIndexFactory<IResearchInvertedIndexDefinition> {
- public:
-  IResearchRocksDBInvertedIndexFactory(
-      application_features::ApplicationServer& server,
-      IResearchInvertedIndexDefinition const& definition);
-
-  /// @brief instantiate an Index definition
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const final;
-};
+// construction logic for a RocksDB inverted index; called from
+// RocksDBIndexFactory::createInverted (IIndexFactory visitor)
+std::shared_ptr<Index> createRocksDBInvertedIndex(LogicalCollection& collection,
+                                                  velocypack::Slice definition,
+                                                  IndexId id,
+                                                  bool isClusterConstructor);
 
 class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
                                             public IResearchInvertedIndex {

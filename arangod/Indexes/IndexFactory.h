@@ -23,10 +23,12 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Indexes/IIndexFactory.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexDefinition.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <functional>
 #include <utility>
 
 namespace arangodb {
@@ -55,80 +57,23 @@ std::string_view extractName(velocypack::Slice slice) noexcept;
 
 }  // namespace helpers
 
-/// @brief factory for comparing/instantiating/normalizing a definition for a
-///        specific Index type
-struct IndexTypeFactory {
-  explicit IndexTypeFactory(application_features::ApplicationServer& server);
-  virtual ~IndexTypeFactory() = default;  // define to silence warning
-
-  /// @brief determine if the two Index definitions will result in the same
-  ///        index once instantiated
-  virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-                     std::string const& dbname) const = 0;
-
-  /// @brief instantiate an Index definition
-  virtual std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation,
-                           Database const& vocbase) const = 0;
-
-  /// @brief the order of attributes matters by default
-  virtual bool attributeOrderMatters() const {
-    // can be overridden by specific indexes
-    return true;
-  }
-
- protected:
-  application_features::ApplicationServer& _server;
-};
-
-// turns an IndexDefinition into a full IndexTypeFactory by composing it
-// rather than inheriting it; the subclass only has to implement instantiate().
-// the Definition itself lives in the IndexTypeCatalog (shared by both
-// engines), so this only ever holds a reference to it, never a copy
-template<typename Definition>
-class DelegatingIndexFactory : public IndexTypeFactory {
- public:
-  DelegatingIndexFactory(application_features::ApplicationServer& server,
-                         Definition const& definition)
-      : IndexTypeFactory(server), _definition(definition) {}
-
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const override {
-    return _definition.equal(lhs, rhs, dbname);
-  }
-
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   Database const& vocbase) const override {
-    return _definition.normalize(normalized, definition, isCreation, vocbase);
-  }
-
-  bool attributeOrderMatters() const override {
-    return _definition.attributeOrderMatters();
-  }
-
- protected:
-  Definition const& _definition;
-};
-
-class IndexFactory {
+class IndexFactory : public IIndexFactory {
  public:
   IndexFactory(application_features::ApplicationServer&,
                IndexTypeCatalog const& catalog);
-  virtual ~IndexFactory() = default;
+  ~IndexFactory() override = default;
 
   IndexTypeCatalog const& catalog() const noexcept { return _catalog; }
 
-  /// @brief the factory that creates indexes of the given type
-  virtual IndexTypeFactory const& factoryFor(IndexType type) const noexcept = 0;
-
-  /// @brief sets the arangosearch link factory, called by IResearchFeature
-  void setLinkFactory(std::shared_ptr<IndexTypeFactory> factory);
+  // the arangosearch link is created by a function IResearchFeature injects
+  // at startup, not by the engines directly - see the comment on
+  // IIndexFactory::createIResearchLink
+  using LinkCreator = std::function<std::shared_ptr<Index>(
+      LogicalCollection&, velocypack::Slice, IndexId, bool)>;
+  void setLinkCreator(LinkCreator creator);
+  std::shared_ptr<Index> createIResearchLink(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const override;
 
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
@@ -262,29 +207,13 @@ class IndexFactory {
                                        bool create);
 
  protected:
-  /// @brief the factory for a type that has none; it fails when used
-  IndexTypeFactory const& invalidFactory() const noexcept { return *_invalid; }
-
-  /// @brief the arangosearch link factory, or the failing placeholder if unset
-  IndexTypeFactory const& linkFactory() const noexcept;
-
   static IndexId validateSlice(velocypack::Slice info, bool generateKey,
                                bool isClusterConstructor);
-
-  // the registry holds raw pointers, so the factory must be owned here
-  template<typename F, typename... Args>
-  F const& own(Args&&... args) {
-    auto& owned =
-        _owned.emplace_back(std::make_unique<F>(std::forward<Args>(args)...));
-    return static_cast<F const&>(*owned);
-  }
 
  protected:
   application_features::ApplicationServer& _server;
   IndexTypeCatalog const& _catalog;
-  std::unique_ptr<IndexTypeFactory> _invalid;
-  std::shared_ptr<IndexTypeFactory> _linkFactory;
-  std::vector<std::unique_ptr<IndexTypeFactory>> _owned;
+  LinkCreator _linkCreator;
 };
 
 }  // namespace arangodb

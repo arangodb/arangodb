@@ -74,6 +74,12 @@ IndexType IndexTypeCatalog::resolve(std::string_view name) const noexcept {
   return it == _byName.end() ? IndexType::Unknown : it->second->_type;
 }
 
+IndexDefinition const* IndexTypeCatalog::definitionFor(
+    std::string_view name) const noexcept {
+  auto it = _byName.find(std::string{name});
+  return it == _byName.end() ? nullptr : it->second;
+}
+
 Result IndexTypeCatalog::normalizeType(std::string_view name,
                                        velocypack::Builder& normalized,
                                        velocypack::Slice definition,

@@ -2488,12 +2488,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>()
       .enableUpgrade();  // skip IResearchView validation
 
-  auto factory = arangodb::iresearch::IResearchLinkCoordinator::createFactory(
-      server.server());
   const_cast<arangodb::IndexFactory&>(_engine.indexFactory())
-      .emplace(
-          std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
-          *factory);
+      .setLinkCreator(&arangodb::iresearch::createLinkCoordinator);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 

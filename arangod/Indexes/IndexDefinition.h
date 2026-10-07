@@ -23,13 +23,17 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Indexes/IIndexFactory.h"
 #include "Indexes/IndexType.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #include <velocypack/Slice.h>
 
 namespace arangodb {
 
 struct Database;
+class Index;
+class LogicalCollection;
 
 namespace velocypack {
 
@@ -41,8 +45,10 @@ class Builder;
 bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
                            velocypack::Slice rhs, bool attributeOrderMatters);
 
-// deliberately not related to IndexTypeFactory (IndexFactory.h) by
-// inheritance: a definition can never instantiate an index
+// the engine-agnostic rules of an index type: name/normalize/equal are
+// shared by both engines (see IndexTypeCatalog); create() is the "accept"
+// side of the visitor in IIndexFactory.h - it knows which of the engine's
+// createXxx() methods matches its own type, the engine only knows how
 struct IndexDefinition {
   explicit IndexDefinition(IndexType type) : _type(type) {}
   virtual ~IndexDefinition() = default;
@@ -64,6 +70,14 @@ struct IndexDefinition {
     // can be overridden by specific indexes
     return true;
   }
+
+  /// @brief dispatch to the matching create*() method on the engine's
+  ///        IIndexFactory implementation
+  virtual std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                        LogicalCollection& collection,
+                                        velocypack::Slice definition,
+                                        IndexId id,
+                                        bool isClusterConstructor) const = 0;
 
   IndexType const _type;
 };

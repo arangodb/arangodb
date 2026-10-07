@@ -40,11 +40,6 @@ IResearchInvertedIndexDefinition::IResearchInvertedIndexDefinition(
     application_features::ApplicationServer& server)
     : IndexDefinition(IndexType::Inverted), _server(server) {}
 
-IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
-    application_features::ApplicationServer& server,
-    IResearchInvertedIndexDefinition const& definition)
-    : DelegatingIndexFactory(server, definition) {}
-
 bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
                                              velocypack::Slice rhs,
                                              std::string const& dbname) const {
@@ -75,9 +70,10 @@ bool IResearchInvertedIndexDefinition::equal(velocypack::Slice lhs,
   return lhsFieldsMeta == rhsFieldsMeta;
 }
 
-std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool isClusterConstructor) const {
+std::shared_ptr<Index> createRocksDBInvertedIndex(LogicalCollection& collection,
+                                                  velocypack::Slice definition,
+                                                  IndexId id,
+                                                  bool isClusterConstructor) {
   auto const clusterWideIndex =
       collection.id() == collection.planId() && collection.isAStub();
   auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);

@@ -39,7 +39,6 @@
 namespace arangodb {
 struct Database;
 class DatabasePathFeature;
-struct IndexTypeFactory;
 namespace metrics {
 struct IRegistry;
 }  // namespace metrics
@@ -181,7 +180,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   irs::IResourceManager& _columnsCacheMemoryUsed;
 #endif
 
-  std::shared_ptr<IndexTypeFactory> _factory;
   // owned here because the catalog keeps a pointer to it
   std::unique_ptr<IResearchLinkDefinition> _linkDefinition;
 

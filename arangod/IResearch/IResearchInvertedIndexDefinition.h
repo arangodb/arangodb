@@ -43,6 +43,14 @@ class IResearchInvertedIndexDefinition : public IndexDefinition {
 
   bool attributeOrderMatters() const final { return false; }
 
+  std::shared_ptr<Index> create(IIndexFactory const& factory,
+                                LogicalCollection& collection,
+                                velocypack::Slice definition, IndexId id,
+                                bool isClusterConstructor) const final {
+    return factory.createInverted(collection, definition, id,
+                                  isClusterConstructor);
+  }
+
  private:
   // needed by IResearchInvertedIndexMeta
   application_features::ApplicationServer& _server;
