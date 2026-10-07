@@ -117,6 +117,7 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
+    this.forceJWT = false;
     this.jwt_secret = "";
     this.JWT = "";
     this.handleJWT();
@@ -133,6 +134,10 @@ class instanceManager {
   }
 
   handleJWT() {
+    if (this.addArgs.hasOwnProperty('server.failure-point')) {
+      // failurepoints may do fancy stuff. be sure to use the sys-auth JWT.
+      this.forceJWT = true;
+    }
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = this.addArgs['server.jwt-secret'];
     } else if (this.options.hasOwnProperty('jwtSecret')) {
@@ -1554,7 +1559,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:undefined;
-    if (this.jwt_secret !== '' && privileged) {
+    if (this.jwt_secret !== ''  && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
