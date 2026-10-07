@@ -236,6 +236,7 @@
     args:
       test: 050,100,400,500,580,607,612
       oneTestTimeout: 5350
+      extremeVerbosity: true
 
 # with coverage we need to have several jobs:
 - rta_makedata:
