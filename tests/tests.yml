@@ -202,18 +202,21 @@
       - rta_makedata:
           args:
             suffix: single
+            extremeVerbosity: true
       - rta_makedata:
           args:
             cluster: true
             suffix: cluster
             encryptionAtRest: true
             ssl: true
+            extremeVerbosity: true
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+            extremeVerbosity: true 
 
 - rta_makedata_rbac:
     job: run-rbac-tests
