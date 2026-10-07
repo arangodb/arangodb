@@ -33,11 +33,11 @@
 #include <utility>
 #include <vector>
 
+namespace arangodb {
+
 namespace application_features {
 class ApplicationServer;
 }  // namespace application_features
-
-namespace arangodb {
 
 struct Database;
 struct IVectorIndexProvider;
