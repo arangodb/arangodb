@@ -34,6 +34,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
+const pm = require('@arangodb/testutils/portmanager');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
@@ -122,10 +123,19 @@ class instanceManager {
     this.handleJWT();
     this.expectAsserts = false;
     this.hasSetPassvoid = false;
+    this.pm = pm.getPortManager(options);
+    // Only when the built-in dummy will actually be launched (same condition as
+    // launchInstance). findFreePort() probes ports, which throws under
+    // --javascript.allow-port-testing false - see tests/js/client/permissions/ports.js.
+    this.rbacPort = (this.options.rbac && typeof this.options.rbac !== "string")
+          ? this.pm.findFreePort(this.options.minPort, this.options.maxPort)
+          : null;
+    this.rbacInstance = null;
   }
 
   handleJWT() {
-    this.forceJWT = this.addArgs.hasOwnProperty('server.jwt-secret') && this.addArgs.hasOwnProperty('server.authentication');
+    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
+                     this.addArgs.hasOwnProperty('server.authentication'));
     if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = this.addArgs['server.jwt-secret'];
     } else if (this.options.hasOwnProperty('jwtSecret')) {
@@ -135,19 +145,22 @@ class instanceManager {
     if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
-      this.jwt_secret = fs.read(fs.join(this.addArgs['server.jwt-secret-folder'], this.options.jwtFiles[0]));
+      this.jwt_secret = inst.loadJWTKeyFile(fs.join(this.addArgs['server.jwt-secret-folder'],
+                                                    this.options.jwtFiles[0]));
+    } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
+      this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
     } else if (this.options.encryptionAtRest &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      this.jwt_secret = fs.read(this.restKeyFile);
+      this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
       this.addArgs['server.jwt-secret-keyfile'] = this.restKeyFile;
     } else if (this.options.cluster && (this.jwt_secret === "") &&
                !this.addArgs.hasOwnProperty('server.jwt-secret')) {
       this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
       this.addArgs['server.jwt-secret'] = this.jwt_secret;
-      //this.addArgs['server.jwt-key'] = encodeJWTSecret(this.jwt_secret);
     }
     this.agencyMgr.jwt_secret = this.jwt_secret;
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
@@ -199,6 +212,7 @@ class instanceManager {
       jwt_secret: this.jwt_secret,
       tcpdump: this.tcpdump,
       cleanup: this.cleanup,
+      rbacPort: this.rbacPort,
     };
   }
   setFromStructure(struct) {
@@ -219,6 +233,7 @@ class instanceManager {
     this.jwt_secret = struct['jwt_secret'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
+    this.rbacPort = struct['rbacPort'];
     struct['arangods'].forEach(arangodStruct => {
       let oneArangod = new inst.instance(this.options, '', 'tcp',
                                          this.agencyMgr, {},
@@ -541,7 +556,7 @@ class instanceManager {
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.agent + "_" + count),
             this.tmpDir, this.restKeyFile,
-            this.jwt_secret, this.memlayout[instanceRole.agent]));
+            this.jwt_secret, this.memlayout[instanceRole.agent], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.agent);
       }
@@ -555,7 +570,7 @@ class instanceManager {
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
             this.tmpDir, this.restKeyFile,
-            this.jwt_secret, this.memlayout[instanceRole.dbServer]));
+            this.jwt_secret, this.memlayout[instanceRole.dbServer], this.rbacPort));
         }
         this.instanceRoles.push(instanceRole.dbServer);
 
@@ -567,7 +582,7 @@ class instanceManager {
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
             this.tmpDir, this.restKeyFile,
-            this.jwt_secret, this.memlayout[instanceRole.coordinator]));
+            this.jwt_secret, this.memlayout[instanceRole.coordinator], this.rbacPort));
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.coordinator);
@@ -581,7 +596,7 @@ class instanceManager {
             this.agencyMgr, this.addArgs,
             fs.join(this.rootDir, instanceRole.single + "_" + count),
             this.tmpDir, this.restKeyFile,
-            this.jwt_secret, this.memlayout[instanceRole.single]));
+            this.jwt_secret, this.memlayout[instanceRole.single], this.rbacPort));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
           this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
@@ -613,6 +628,18 @@ class instanceManager {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
+    }
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
+      if (this.options.extremeVerbosity) {
+        print(`Launching RBAC dummy [
+          '--port', '${this.rbacPort}',
+          '--jwtstr', ${this.JWT},]`
+        );
+      }
+      this.rbacInstance = executeExternal('utils/rbac_dummy.py', [
+        '--port', `${this.rbacPort}`,
+        '--jwtstr', this.JWT,
+      ]);
     }
     const startTime = time();
     try {
@@ -815,6 +842,10 @@ class instanceManager {
   shutdownInstance (forceTerminate, moreReason="") {
     if (forceTerminate === undefined) {
       forceTerminate = false;
+    }
+    if (this.options.rbac && typeof this.options.rbac !== "string") {
+      killExternal(this.rbacInstance.pid);
+      statusExternal(this.rbacInstance.pid, true);
     }
     let timeoutReached = SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
@@ -1073,7 +1104,7 @@ class instanceManager {
     if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0])).trim();
     }
 
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
@@ -1515,7 +1546,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:'';
-    if (this.JWT !== null && (privileged || this.forceJWT)) {
+    if (this.jwt_secret !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
@@ -1904,6 +1935,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
+    'rbac': false,
     'sniff': false,
     'sniffAgency': true,
     'sniffDBServers': true,
@@ -1927,6 +1959,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    '   - `rbac`: whether to launch the SUT with a dummy RBAC server, or the URL of the RBAC server to connect to',
     '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',

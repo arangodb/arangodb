@@ -253,7 +253,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
   if (res.fail()) {
@@ -1560,7 +1560,7 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   VPackBuilder builder;
   engine.getCapabilities(builder, 0);
 
@@ -1579,7 +1579,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   VPackBuilder builder;
   engine.getStatistics(builder);
 
@@ -1615,7 +1615,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
 
   TRI_V8_RETURN_STD_STRING(engine.databasePath());
   TRI_V8_TRY_CATCH_END
@@ -1889,8 +1889,6 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->server().hasFeature<HttpEndpointProvider>());
-  auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1900,13 +1898,15 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : endpoints.httpEndpoints()) {
-    v8::Handle<v8::Object> item = v8::Object::New(isolate);
-    item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
-              TRI_V8_STD_STRING(isolate, it))
-        .FromMaybe(false);
+  if (v8g->_endpoints != nullptr) {
+    for (auto const& it : v8g->_endpoints->httpEndpoints()) {
+      v8::Handle<v8::Object> item = v8::Object::New(isolate);
+      item->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
+                TRI_V8_STD_STRING(isolate, it))
+          .FromMaybe(false);
 
-    result->Set(context, j++, item).FromMaybe(false);
+      result->Set(context, j++, item).FromMaybe(false);
+    }
   }
 
   TRI_V8_RETURN(result);
@@ -2037,31 +2037,6 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END;
 }
 
-/// @brief return a list of all wal files (empty list if not rocksdb)
-static void JS_CurrentWalFiles(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-
-  TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
-  std::vector<std::string> names = engine.currentWalFiles();
-  std::sort(names.begin(), names.end());
-
-  // already create an array of the correct size
-  uint32_t const n = static_cast<uint32_t>(names.size());
-  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
-
-  for (uint32_t i = 0; i < n; ++i) {
-    result->Set(context, i, TRI_V8_STD_STRING(isolate, names[i]))
-        .FromMaybe(false);
-  }
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_SystemStatistics(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2127,38 +2102,6 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef USE_ENTERPRISE
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this is rotates the encryption keys, only for testing
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EncryptionKeyReload(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
-  }
-
-  TRI_GET_GLOBALS();
-  auto* engine = dynamic_cast<RocksDBEngine*>(
-      &v8g->server().getFeature<DatabaseFeature>().engine());
-  if (engine == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto res = engine->rotateUserEncryptionKeys();
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2212,9 +2155,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_path"),
                        JS_PathDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS,
-                       TRI_V8_ASCII_STRING(isolate, "_currentWalFiles"),
-                       JS_CurrentWalFiles, true);
-  TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING(isolate, "_versionFilename"),
                        JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
@@ -2254,7 +2194,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8cursor(context, v8g);
 
-  StorageEngine& engine = server.getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server.getFeature<StorageEngine>();
   engine.addV8Functions();
 
   // .............................................................................
@@ -2359,15 +2299,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYSTEM_STATISTICS"),
       JS_SystemStatistics, true);
 
-#ifdef USE_ENTERPRISE
-  if (server.hasFeature<V8DealerFeature>() &&
-      server.getFeature<V8DealerFeature>().allowAdminExecute()) {
-    TRI_AddGlobalFunctionVocbase(
-        isolate, TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
-        JS_EncryptionKeyReload, true);
-  }
-#endif
-
   // .............................................................................
   // create global variables
   // .............................................................................
@@ -2405,13 +2336,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
           v8::Number::New(isolate, (double)threadNumber), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 
-  // whether or not statistics are enabled
+  bool const statisticsEnabled =
+      server.hasFeature<StatisticsFeature>() &&
+      server.getFeature<StatisticsFeature>().isEnabled();
   context->Global()
-      ->DefineOwnProperty(
-          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-          v8::Boolean::New(isolate,
-                           server.getFeature<StatisticsFeature>().isEnabled()),
-          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
+                          v8::Boolean::New(isolate, statisticsEnabled),
+                          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // replication factors

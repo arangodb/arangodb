@@ -142,6 +142,11 @@ function makeAuthorizationHeaders (options, jwtSecret=false) {
   }
 }
 
+function loadJWTKeyFile(fn) {
+  // must remove whitespace - as in the server
+  return fs.read(fn).trim();
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts endpoints to URL
 // //////////////////////////////////////////////////////////////////////////////
@@ -164,10 +169,15 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
+  // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
+  // point --server.external-rbac-service at the locally launched dummy. The
+  // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
+  // gone on purpose - the instance now derives JWT from moreArgs itself (see
+  // the jwt-secret handling further down), so passing them in was redundant.
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
               rootDir, tmpDir, restKeyFile,
-              jwt_secret, mem) {
+              jwt_secret, mem, rbacPort) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -175,6 +185,7 @@ class instance {
     this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
+    this.rbacPort = rbacPort;
 
     this.moreArgs = {};
     this.args = {};
@@ -263,6 +274,7 @@ class instance {
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
+      rbacPort: this.rbacPort,
       port: this.port,
       url: this.url,
       endpoint: this.endpoint,
@@ -292,6 +304,7 @@ class instance {
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
+    this.rbacPort = struct['rbacPort'];
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -459,6 +472,14 @@ class instance {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
 
+    if (this.options.rbac) {
+      if (typeof this.options.rbac !== "string") {
+        this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      } else {
+        this.args["server.external-rbac-service"] = this.options.rbac;
+      }
+      this.args["server.harden"] = true;
+    }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
@@ -594,14 +615,6 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _executeArangod (moreArgs, instanceJson) {
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-    }
-
     let cmd = pu.ARANGOD_BIN;
     // the binary set may have changed since the constructor ran
     Object.assign(this.args, this._makeConfigArgs());
@@ -696,15 +709,6 @@ class instance {
   };
   restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-      this.jwt_secret = this.JWT;
-    }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
@@ -833,8 +837,9 @@ class instance {
       return;
     }
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
-    httpOptions.method = 'POST';
+    httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+
     while (true) {
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
@@ -849,9 +854,9 @@ class instance {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
-                                 this.isFrontend() ? `${this.options.username}` : undefined,
-                                 this.isFrontend() ? this.options.password : undefined,
-                                 true,
+                                 undefined,
+                                 undefined,
+                                 false,
                                  this.jwt_secret)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
@@ -921,7 +926,7 @@ class instance {
       }
     }
     if (this.jwt_secret) {
-      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.JWT}`);
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.jwt_secret}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
                                    this.isFrontend() ? this.options.password : undefined,
@@ -1277,6 +1282,35 @@ class instance {
     return true;
   }
 
+  encryptionKeyReload() {
+    return this.toThisInstance(() => {
+      return arango.POST_RAW('/_admin/server/encryption', {});
+    }, true);
+  }
+  setLogLevel(logLevel) {
+    return this.toThisInstance(() => {
+      return arango.PUT_RAW('/_admin/log/level', JSON.stringify(logLevel));
+    }, true);
+  }
+
+  getCurrentWalFiles() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/server/wal-files');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return ret.parsedBody.result;
+    });
+  }
+  recoveryStartSequence() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/wal/recovery_start_sequence');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return `${ret.parsedBody}`;
+    });
+  }
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1836,6 +1870,7 @@ class instance {
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.encodeJWTSecret = encodeJWTSecret;
+exports.loadJWTKeyFile = loadJWTKeyFile;
 exports.instance = instance;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;

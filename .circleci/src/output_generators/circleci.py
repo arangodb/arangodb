@@ -796,6 +796,8 @@ class CircleCIGenerator(OutputGenerator):
 
             job_dict["driver-git-repo"] = job.repository.git_repo
             job_dict["driver-git-branch"] = job.repository.git_branch or "main"
+            if job.repository.maven_cache:
+                job_dict["maven-cache"] = True
             # Add init_command if the field exists (even if empty string)
             if job.repository.init_command is not None:
                 job_dict["init_command"] = job.repository.init_command

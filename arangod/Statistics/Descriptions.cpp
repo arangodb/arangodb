@@ -28,7 +28,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -431,15 +430,10 @@ stats::Descriptions::Descriptions(
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-#ifdef USE_V8
-  auto& dealer = _server.getFeature<V8DealerFeature>();
-#endif
-
   b.add("uptime", VPackValue(metrics::MetricsFeature::serverUptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
-  auto const& ts =
-      _server.getFeature<DatabaseFeature>().engine().transactionStatistics();
+  auto const& ts = _server.getFeature<StorageEngine>().transactionStatistics();
   b.add("transactions", VPackValue(VPackValueType::Object));
   b.add("started", VPackValue(ts._transactionsStarted.load()));
   b.add("aborted", VPackValue(ts._transactionsAborted.load()));
@@ -450,7 +444,9 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.close();
 
 #ifdef USE_V8
-  if (dealer.isEnabled()) {
+  if (_server.hasFeature<V8DealerFeature>() &&
+      _server.getFeature<V8DealerFeature>().isEnabled()) {
+    auto& dealer = _server.getFeature<V8DealerFeature>();
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentExecutorStatistics();
     auto memoryStatistics = dealer.getCurrentExecutorDetails();

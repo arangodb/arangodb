@@ -111,6 +111,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -294,7 +295,7 @@ RocksDBEngine::RocksDBEngine(
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
-          server, kEngineName, name(), typeid(RocksDBEngine),
+          server, kEngineName, name(),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
           databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
@@ -1070,11 +1071,16 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   }
 }
 
+uint64_t RocksDBEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId != 0 ? storage.objectId : TRI_NewTickServer();
+}
+
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice info) {
+    LogicalCollection& collection, LocalStorageProperties const& storage) {
   return std::make_unique<RocksDBCollection>(
-      collection, info, _cacheManagerProvider.manager(), _readWriteMetrics);
+      collection, storage, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality
@@ -3343,6 +3349,10 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
     // update metric for released tick
     _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
+}
+
+RocksDBIndexFactory const& RocksDBEngine::indexFactory() const {
+  return static_cast<RocksDBIndexFactory const&>(StorageEngine::indexFactory());
 }
 
 HealthData RocksDBEngine::healthCheck() {

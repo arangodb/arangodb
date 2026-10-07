@@ -79,14 +79,6 @@
       buckets: 8
       size: small
 
-- recovery_server:
-    options:
-      priority: 2000
-      buckets: 2
-      parallelity: 3
-      size: small
-      type: single
-
 - shell_api_multi_permissions:
     options:
       priority: 500
@@ -228,6 +220,23 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+
+- rta_makedata_rbac:
+    job: run-rbac-tests
+    suites:
+      - rta_makedata
+    options:
+      type: single
+      size: medium
+      timeLimit: 5400
+    requires:
+      coverage: false
+      v8: true
+      arch: x64
+    args:
+      test: 050,100,400,500,580,607,612
+      oneTestTimeout: 5350
+
 # with coverage we need to have several jobs:
 - rta_makedata:
     options:
@@ -709,6 +718,14 @@
     options:
       type: cluster
       priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- wal_cleanup:
+    options:
+      type: cluster
+      priority: 2500
     requires:
       full: true
     args:

@@ -27,6 +27,7 @@
 
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Properties/CollectionCreateOptions.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -69,6 +70,8 @@ struct CreateCollectionBody : public UserInputCollectionProperties,
 
   // Temporary method to handOver information from
   [[nodiscard]] arangodb::velocypack::Builder toCollectionsCreate() const;
+
+  [[nodiscard]] CollectionDescriptor toDescriptor() const;
 };
 
 template<class Inspector>

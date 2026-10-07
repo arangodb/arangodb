@@ -599,6 +599,22 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     }
   }
   size_t const n = root->numMembers();
+  // comparison nodes record whether their AND branch rules out null for the
+  // compared attribute. the DNF transformation shares these nodes between OR
+  // branches, so give every branch except the first its own copies.
+  for (size_t i = 1; i < n; ++i) {
+    auto andNode = root->getMemberUnchecked(i);
+    TEMPORARILY_UNLOCK_NODE(andNode);
+    for (size_t j = 0; j < andNode->numMembers(); ++j) {
+      auto op = andNode->getMemberUnchecked(j);
+      if (op->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+          op->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+          op->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        andNode->changeMember(j, ast->shallowCopyForModify(op));
+      }
+    }
+  }
+
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced
     // index hints if no index can be found for _any_ condition part.
