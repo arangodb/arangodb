@@ -249,6 +249,12 @@ function optimizerRuleTestSuite() {
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);
+
+      // values differ only in grouping; neither filter covers the other
+      query = "FOR x IN [ { i: 3, j: 1, k: 1 } ] FOR v IN " + colName +
+              " FILTER v.d == (x.i - x.j) - x.k FILTER v.d == x.i - (x.j - x.k) RETURN v";
+      let opts = { optimizer: { rules: [ "-remove-redundant-calculations" ] } };
+      assertEqual([ ], db._query(query, { }, opts).toArray(), query);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
