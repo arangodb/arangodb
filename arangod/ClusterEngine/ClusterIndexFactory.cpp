@@ -159,20 +159,21 @@ std::shared_ptr<Index> ClusterIndexFactory::createInverted(
     LogicalCollection& collection, velocypack::Slice definition, IndexId id,
     bool /*isClusterConstructor*/) const {
   using namespace arangodb::iresearch;
-  auto nameSlice = definition.get(StaticStrings::IndexName);
+  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
   std::string indexName;
   if (!nameSlice.isNone()) {
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
       LOG_TOPIC("91ebe", ERR, TOPIC)
           << "failed to initialize index from definition, error in attribute "
              "'" +
-                 StaticStrings::IndexName + "': " + definition.toString();
+                 arangodb::StaticStrings::IndexName +
+                 "': " + definition.toString();
       return nullptr;
     }
     indexName = nameSlice.copyString();
   }
   auto objectId = basics::VelocyPackHelper::stringUInt64(
-      definition, StaticStrings::ObjectId);
+      definition, arangodb::StaticStrings::ObjectId);
   auto index = std::make_shared<IResearchInvertedClusterIndex>(
       id, objectId, collection, indexName);
   bool pathExists = false;
