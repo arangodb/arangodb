@@ -64,6 +64,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewSort.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
@@ -2430,6 +2431,44 @@ TEST_F(IResearchViewNodeTest, clone) {
       auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
+    }
+  }
+
+  // primary sort condition
+  {
+    arangodb::iresearch::IResearchViewSort sort;
+    sort.emplace_back({{std::string_view("a"), false}}, true);
+    sort.emplace_back({{std::string_view("b"), false}}, false);
+
+    arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), arangodb::aql::ExecutionNodeId{42},
+        vocbase,      // database
+        logicalView,  // view
+        outVariable,
+        nullptr,  // no filter condition
+        nullptr,  // no options
+        {});      // no scorers
+    node.setSort(sort, 1);
+    ASSERT_EQ(&sort, node.sort().first);
+    ASSERT_EQ(1, node.sort().second);
+
+    // clone into the same plan
+    {
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(query.plan(), true));
+      EXPECT_EQ(node.sort(), cloned.sort());
+    }
+    // clone into another plan
+    {
+      MockQuery otherQuery(
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(std::string_view("RETURN 1")));
+      arangodb::tests::waitForAsync(otherQuery.prepareQuery());
+
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(otherQuery.plan(), true));
+      EXPECT_EQ(node.sort(), cloned.sort());
     }
   }
 }
