@@ -297,6 +297,12 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
     return false;
   }
 
+  // JoinExecutor evaluates constant expressions once per input row, and
+  // without a V8 context.
+  if (!node->isDeterministic() || node->willUseV8()) {
+    return false;
+  }
+
   VarSet result;
   Ast::getReferencedVariables(node, result);
 
