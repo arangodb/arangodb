@@ -832,7 +832,7 @@ class instance {
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
-          if (this.jwt_secret) {
+          if (this.jwt_secret !== '') {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
@@ -907,7 +907,7 @@ class instance {
         }
       }
     }
-    if (this.jwt_secret) {
+    if (this.jwt_secret !== '') {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.jwt_secret}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
@@ -1099,8 +1099,8 @@ class instance {
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
-        try {
-          if (!this.toThisInstance(() => {
+        if (!this.toThisInstance(() => {
+          try {
             arango.timeout(5);
             let reply = arango.DELETE_RAW('/_admin/shutdown', '');
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
@@ -1118,18 +1118,18 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          }, false, false)) { // the primary connection may not be restored - we don't care.
-            if (!this.options.noStartStopLogs) {
-              print(sockStat);
-            }
+          } catch (ex) {
+            print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
+            this.exitStatus = killExternal(this.pid);
+            this._disconnect();
+            this.pid = null;
+          } finally {
+            arango.timeout(oldTimeout);
           }
-        } catch (ex) {
-          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
-          this.exitStatus = killExternal(this.pid);
-          this._disconnect();
-          this.pid = null;
-        } finally {
-          arango.timeout(oldTimeout);
+        }, false, false)) { // the primary connection may not be restored - we don't care.
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
       }  
     } else {
@@ -1584,6 +1584,8 @@ class instance {
         throw caughtEx;
       }
       throw new Error(`failed to restore connection to ${handle}`);
+    } else if (!reconnected && this.options.extremeVerbosity) {
+      print(`${CYAN}${Date()} ignoring reconnect error as you requested: ${caughtEx}${RESET}`);
     }
     return ret;
   }

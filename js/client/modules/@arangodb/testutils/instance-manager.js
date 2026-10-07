@@ -168,8 +168,8 @@ class instanceManager {
     this.agencyMgr.jwt_secret = this.jwt_secret;
     this.JWT = inst.encodeJWTSecret(this.jwt_secret);
   }
-  
-  destructor(cleanup) {
+
+  disconnect() {
     if (this.connectionHandle) {
       arango.disconnectHandle(this.connectionHandle);
     }
@@ -177,8 +177,16 @@ class instanceManager {
       arango.disconnectHandle(this.privConnectionHandle);
     }
     this.arangods.forEach(arangod => {
-      arangod.pm.deregister(arangod.port);
       arangod._disconnect();
+    });
+    if (this.options.extremeVerbosity) {
+      this.arangods[0].dumpConnectionTable(true);
+    }
+  }
+  destructor(cleanup) {
+    this.disconnect();
+    this.arangods.forEach(arangod => {
+      arangod.pm.deregister(arangod.port);
       if (arangod.serverCrashedLocal) {
         cleanup = false;
       }
@@ -1546,7 +1554,7 @@ class instanceManager {
   reconnect(privileged)
   {
     let passvoid = this.hasSetPassvoid ? this.options.password:undefined;
-    if (this.jwt_secret !== null && privileged) {
+    if (this.jwt_secret !== '' && privileged) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
