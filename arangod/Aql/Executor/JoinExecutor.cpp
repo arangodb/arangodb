@@ -504,27 +504,27 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 void JoinExecutor::resetStrategyForCurrentRow() {
   _constantBuilder.clear();
   _constantSlices.clear();
-  _constantBuilder.openArray();
+  {
+    VPackArrayBuilder arrayGuard(&_constantBuilder);
+    for (auto const& idx : _infos.indexes) {
+      if (!idx.constantExpressions.empty()) {
+        for (auto& expr : idx.constantExpressions) {
+          bool mustDestroy = false;
+          ExecutorExpressionContext ctx{_trx,
+                                        *_infos.query,
+                                        _functionsCache,
+                                        _currentRow,
+                                        idx.expressionVarsToRegs,
+                                        _infos.query->resourceMonitor()};
 
-  for (auto const& idx : _infos.indexes) {
-    if (!idx.constantExpressions.empty()) {
-      for (auto& expr : idx.constantExpressions) {
-        bool mustDestroy = false;
-        ExecutorExpressionContext ctx{_trx,
-                                      *_infos.query,
-                                      _functionsCache,
-                                      _currentRow,
-                                      idx.expressionVarsToRegs,
-                                      _infos.query->resourceMonitor()};
-
-        aql::AqlValue res = expr->execute(&ctx, mustDestroy);
-        aql::AqlValueGuard guard{res, mustDestroy};
-        LOG_JOIN << "Expression result: " << res.slice().toJson();
-        _constantBuilder.add(res.slice());
+          aql::AqlValue res = expr->execute(&ctx, mustDestroy);
+          aql::AqlValueGuard guard{res, mustDestroy};
+          LOG_JOIN << "Expression result: " << res.slice().toJson();
+          _constantBuilder.add(res.slice());
+        }
       }
     }
   }
-  _constantBuilder.close();  // array
 
   for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
     _constantSlices.push_back(it);
