@@ -57,6 +57,18 @@ function aqlMatchStatementTestSuite() {
         }
     };
 
+    const assertRejected = function (query, bindVars, error, message) {
+        try {
+            db._query(query, bindVars, options);
+            fail();
+        } catch (err) {
+            assertEqual(err.errorNum, error.code, err.errorMessage);
+            if (message !== undefined) {
+                assertEqual(err.errorMessage, message);
+            }
+        }
+    };
+
     return {
 
         setUpAll: function () {
@@ -116,6 +128,8 @@ function aqlMatchStatementTestSuite() {
             for (let i = 0; i < 10; i++) {
                 db.ec_cross.save({_key: `x${i}`, _from: `vc/v${i}`, _to: `vc_other/o${i}`});
             }
+
+            db._createView("vw", "arangosearch", {});
         },
 
         tearDownAll: function () {
@@ -1368,6 +1382,146 @@ function aqlMatchStatementTestSuite() {
                 `FOR x IN vc FILTER x._key == "v1"
                  MATCH (v :vc) -[e :ec]-> (x)
                  RETURN [v._key, e._key, x._key]`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, [["v0", "e0", "v1"]]);
+        },
+
+        testRejectViewAsVertexLabel: function () {
+            assertRejected("MATCH (v :vw) RETURN v", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsVertexLabelBindParameter: function () {
+            assertRejected("MATCH (v :@@c) RETURN v", {"@c": "vw"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vw]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewInEdgeLabelList: function () {
+            assertRejected("MATCH (v :vc) -[e :ec|vw]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsVariableLengthEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vw * 1..2]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectEdgeCollectionAsVertexLabel: function () {
+            assertRejected("MATCH (e :ec) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsVertexLabelBindParameter: function () {
+            assertRejected("MATCH (e :@@c) RETURN e", {"@c": "ec"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsTargetVertexLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :ec]-> (w :ec) RETURN w", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsVariableLengthTargetVertexLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :ec * 1..2]-> (w :ec) RETURN w", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectDocumentCollectionAsEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vc]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionAsEdgeLabelBindParameter: function () {
+            assertRejected("MATCH (v :vc) -[e :@@c]-> (w :vc) RETURN e", {"@c": "vc"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionInEdgeLabelList: function () {
+            assertRejected("MATCH (v :vc) -[e :ec|vc]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionAsVariableLengthEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vc * 1..2]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectArrayLiteralAsLabel: function () {
+            assertRejected("MATCH (v :[1, 2]) RETURN v", {},
+                errors.ERROR_QUERY_PARSE);
+        },
+
+        testRejectSubqueryAsLabel: function () {
+            assertRejected("MATCH (v :(FOR d IN vc RETURN d)) RETURN v", {},
+                errors.ERROR_QUERY_PARSE);
+        },
+
+        testRejectLetVariableAsVertexLabel: function () {
+            assertRejected("LET arr = [1, 2] MATCH (v :arr) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'arr' refers to a variable; labels must name a collection");
+        },
+
+        testRejectSubqueryVariableAsVertexLabel: function () {
+            assertRejected("LET sq = (FOR d IN vc RETURN d) MATCH (v :sq) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'sq' refers to a variable; labels must name a collection");
+        },
+
+        testRejectForVariableAsVertexLabel: function () {
+            assertRejected("FOR d IN vc MATCH (v :d) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'd' refers to a variable; labels must name a collection");
+        },
+
+        testRejectVariableShadowingCollectionAsVertexLabel: function () {
+            assertRejected("LET vc = [1] MATCH (v :vc) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'vc' refers to a variable; labels must name a collection");
+        },
+
+        testRejectEarlierPatternVariableAsVertexLabel: function () {
+            assertRejected("MATCH (a :vc) -[e :ec]-> (w :a) RETURN w", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'a' refers to a variable; labels must name a collection");
+        },
+
+        testRejectLetVariableAsEdgeLabel: function () {
+            assertRejected("LET arr = [1, 2] MATCH (v :vc) -[e :ec|arr]-> (w :vc) RETURN e", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'arr' refers to a variable; labels must name a collection");
+        },
+
+        testAllowVertexVariableNamedLikeItsLabel: function () {
+            const result = db._query(
+                `MATCH (vc :vc {_key: "v0"}) RETURN vc._key`, {}, options).toArray();
+            assertEqual(result, ["v0"]);
+        },
+
+        testAllowEdgeVariableNamedLikeItsLabel: function () {
+            const result = db._query(
+                `MATCH (v :vc {_key: "v0"}) -[ec :ec]-> (w :vc)
+                 RETURN [v._key, ec._key, w._key]`,
                 {},
                 options
             ).toArray();
