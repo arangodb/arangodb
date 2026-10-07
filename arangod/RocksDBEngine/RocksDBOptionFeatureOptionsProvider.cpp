@@ -186,7 +186,7 @@ performance, especially for bulk loads.)");
   opts->addOption(
           "--rocksdb.max-write-buffer-number",
           "The maximum number of write buffers that build up in memory "
-          "(default: number of column families + 2 = 12 write buffers). "
+          "(default: number of column families + 2). "
           "You can only increase the number.",
           new UInt64Parameter(&options.maxWriteBufferNumber),
           arangodb::options::makeFlags(
