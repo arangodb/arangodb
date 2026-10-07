@@ -156,7 +156,9 @@ V8DealerFeature::V8DealerFeature(
 
   if (!_options.enableJS) {
     disable();
-    server.disableFeatures<ActionFeature>();
+    if (server.hasFeature<ActionFeature>()) {
+      server.disableFeatures<ActionFeature>();
+    }
     return;
   }
 }
