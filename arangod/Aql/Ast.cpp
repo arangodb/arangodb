@@ -2054,6 +2054,11 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 AstNode const* filterExpression,
                                 AstNode const* rangeExpression, bool isInbound,
                                 bool isOutbound, AstNode const* projections) {
+  if (label != nullptr && label->type == NODE_TYPE_ARRAY) {
+    for (size_t i = 0; i < label->numMembers(); ++i) {
+      rejectVariableAsPatternLabel(outVariable, label->getMember(i));
+    }
+  }
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(label ? label : createNodeValueNull());
@@ -2077,6 +2082,7 @@ AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
                                        AstNode const* properties,
                                        AstNode const* filterExpression,
                                        AstNode const* projections) {
+  rejectVariableAsPatternLabel(outVariable, labels);
   auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(labels ? labels : createNodeValueNull());
@@ -2084,6 +2090,30 @@ AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
   node->addMember(filterExpression ? filterExpression : createNodeNop());
   node->addMember(projections ? projections : createNodeNop());
   return node;
+}
+
+// Labels should resolve only as collection names. A variable in scope having
+// the same name as the label is ambiguous and rejected. The element's own
+// variable is the only exemption, as in `(vc :vc)`.
+void Ast::rejectVariableAsPatternLabel(AstNode const* outVariable,
+                                       AstNode const* label) const {
+  if (label == nullptr || label->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+    return;
+  }
+  TRI_ASSERT(label->type == NODE_TYPE_COLLECTION ||
+             label->type == NODE_TYPE_VIEW);
+
+  auto const* variable = _scopes.getVariable(label->getStringView());
+  if (variable == nullptr ||
+      (outVariable != nullptr && outVariable->type == NODE_TYPE_VARIABLE &&
+       outVariable->getData() == variable)) {
+    return;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_PARSE,
+      absl::StrCat("MATCH label '", label->getStringView(),
+                   "' refers to a variable; labels must name a collection"));
 }
 
 AstNode* Ast::createPatternSegment(AstNode const* edge, AstNode const* node) {
