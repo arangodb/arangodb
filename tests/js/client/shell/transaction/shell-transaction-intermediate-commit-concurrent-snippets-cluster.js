@@ -38,8 +38,6 @@ const numberOfShards = 4;
 function transactionIntermediateCommitConcurrentSnippetsSuite() {
   'use strict';
 
-  const failurePoint = 'RocksDBTrxBaseMethods::sleepAfterIntermediateCommitReBegin';
-
   return {
     setUp: function () {
       db._create(srcName, { numberOfShards, replicationFactor: 2 })
