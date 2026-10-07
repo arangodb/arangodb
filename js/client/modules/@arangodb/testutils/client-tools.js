@@ -759,8 +759,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     options, instanceManager,
     // waitData needs JWT access for the _users collection;
     // old arangosh (< 3.12.6) has no --server.jwt-token
-    (writeReadClean === 2 && instanceManager.options.cluster &&
-     !(options.oldSource !== undefined && pu.currentBinarySet === 0))
+    writeReadClean === 2 &&
+      !(options.oldSource !== undefined && pu.currentBinarySet === 0)
   ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
