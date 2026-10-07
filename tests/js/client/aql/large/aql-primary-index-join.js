@@ -151,6 +151,14 @@ const IndexPrimaryJoinTestSuite = function () {
     return result.toArray();
   };
 
+  // The primary index returns its keys in byte order, persistent indexes in
+  // VelocyPack order, so joins between them must not use a JoinNode.
+  const executeWithoutJoin = (query) => {
+    const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
+    assertEqual(-1, plan.nodes.map(n => n.type).indexOf("JoinNode"));
+    return db._createStatement({query, bindVars: null, options: queryOptions}).execute().toArray();
+  };
+
   const databaseName = "IndexJoinDB";
 
   return {
@@ -219,18 +227,14 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
-      let expectedStats = {
-        documentLookups: 10,
-        filtered: 0
-      };
-      const result = executeBothJoinStrategies(`
+      const result = executeWithoutJoin(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN [doc1, doc2]
-      `, expectedStats);
+      `);
 
       assertEqual(result.length, 5);
       for (const [a, b] of result) {
@@ -258,19 +262,14 @@ const IndexPrimaryJoinTestSuite = function () {
 
 
       // First run without projections
-      let expectedStats = {
-        documentLookups: 40,
-        filtered: 0
-      };
-
-      let result = executeBothJoinStrategies(`
+      let result = executeWithoutJoin(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN [doc1, doc2]
-      `, expectedStats);
+      `);
 
       assertEqual(result.length, 20);
       for (const [a, b] of result) {
@@ -278,19 +277,14 @@ const IndexPrimaryJoinTestSuite = function () {
       }
 
       // Second run with projections
-      expectedStats = {
-        documentLookups: 0,
-        filtered: 0
-      };
-
-      result = executeBothJoinStrategies(`
+      result = executeWithoutJoin(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN [doc1.x, doc2._key]
-      `, expectedStats);
+      `);
 
       assertEqual(result.length, 20);
       for (const [a, b] of result) {
@@ -310,11 +304,7 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
 
-      let expectedStats = {
-        documentLookups: 6,
-        filtered: 2
-      };
-      const result = executeBothJoinStrategies(`
+      const result = executeWithoutJoin(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
@@ -322,7 +312,7 @@ const IndexPrimaryJoinTestSuite = function () {
               FILTER doc1.y % 4 == 0
               SORT doc2._key
               RETURN [doc1, doc2]
-      `, expectedStats);
+      `);
 
       assertEqual(result.length, 3);
       for (const [a, b] of result) {
@@ -342,18 +332,14 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
-      let expectedStats = {
-        documentLookups: 0,
-        filtered: 0
-      };
-      const result = executeBothJoinStrategies(`
+      const result = executeWithoutJoin(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN doc2._key
-      `, expectedStats);
+      `);
       assertEqual(result.length, documentsB.length);
       assertEqual(result.length, 5);
 
