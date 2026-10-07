@@ -1,6 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
+  correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
+
 * AQL `DATE_ROUND` does not crash with a SIGFPE anymore due to integer overflow and division by 0
+
 * AQL `DATE_ROUND` rounds down correctly for dates before the epoch
 
 * AQL `DATE_ISO8601` applies negative offset correctly to minutes as well
