@@ -279,7 +279,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
+  let childEnv = sh.getSanOptions();
+  // make the tool use the ICU data of the build it comes from
+  childEnv.push(`ICU_DATA=${binaries[currentBinarySet].BIN_DIR}`);
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, childEnv);
 
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
@@ -415,6 +418,7 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => binaries[currentBina
 Object.defineProperty(exports, 'BIN_DIR', {get: () => binaries[currentBinarySet].BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => binaries[currentBinarySet].CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => binaries[currentBinarySet].CONFIG_RELATIVE_DIR});
+Object.defineProperty(exports, 'currentBinarySet', {get: () => currentBinarySet});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
