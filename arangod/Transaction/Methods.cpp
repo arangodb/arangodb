@@ -456,6 +456,16 @@ struct GenericProcessor {
       co_return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
+    if constexpr (Derived::accessMode() == AccessMode::Type::WRITE) {
+      if (collection->replicationVersion() != replication::Version::TWO) {
+        auto res =
+            co_await methods.state()->performIntermediateCommitIfRequired(cid);
+        if (res.fail()) {
+          co_return res;
+        }
+      }
+    }
+
     try {
       co_return Derived(methods, *trxColl, *collection, value, options,
                         std::forward<Args>(args)...);
@@ -797,10 +807,12 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
             });
       }
 
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          this->_methods.state()->performIntermediateCommitIfRequired(
-              this->_collection.id());
+      if (_replicationVersion == replication::Version::TWO) {
+        // execute a deferred intermediate commit, if required.
+        intermediateCommit =
+            this->_methods.state()->performIntermediateCommitIfRequired(
+                this->_collection.id());
+      }
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -3564,13 +3576,6 @@ Future<Result> Methods::replicateOperations(
     }
   }
 
-  auto state = _state;
-  auto res =
-      co_await _state->performIntermediateCommitIfRequired(collection->id());
-  if (res.fail()) {
-    co_return res;
-  }
-
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
@@ -3633,6 +3638,8 @@ Future<Result> Methods::replicateOperations(
   }
 
   // keep the shared_ptr alive
+  auto state = _state;
+
   auto responses = co_await futures::collectAll(std::move(futures));
 
   auto duration = std::chrono::steady_clock::now() - startTimeReplication;
@@ -3768,8 +3775,7 @@ Future<Result> Methods::replicateOperations(
   if (didRefuse) {  // case (1), caller may abort this transaction
     co_return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
   }
-
-  co_return res;
+  co_return Result{};
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
