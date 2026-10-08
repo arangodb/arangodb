@@ -127,6 +127,14 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   /// See RocksDBTrxBaseMethods.
   virtual Result setWriteTimestamp(uint64_t /*ts*/) { return {}; }
 
+  /// @brief the timestamp recorded by setWriteTimestamp(), or nullopt if
+  /// this transaction has not written to a time-travel collection. Lets an
+  /// operation that has no new document version to read it back from - a
+  /// remove - still learn the instant it happens at.
+  virtual std::optional<std::uint64_t> writeTimestamp() const noexcept {
+    return std::nullopt;
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds,
                             bool isElementInRange = false);
