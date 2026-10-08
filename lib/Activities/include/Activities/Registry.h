@@ -21,18 +21,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Activities/Activity.h"
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityId.h"
 #include "Activities/CurrentlyExecuting.h"
 #include "Containers/Concurrent/metrics.h"
-#include "Activities/Activity.h"
 
 #include "Basics/ErrorT.h"
 #include "Basics/Guarded.h"
 #include "Containers/Concurrent/Registry.h"
 
-#include "Inspection/Status.h"
 #include "Containers/Concurrent/ThreadOwnedList.h"
+#include "Inspection/Status.h"
 
 #include <velocypack/SharedSlice.h>
 
@@ -66,12 +66,7 @@ struct Registry : containers::Registry<ActivityPtr> {
     // create the node - which is a specific activity of type T at the same time
     auto node =
         std::make_unique<T>(id, std::move(parent), std::forward<Args>(args)...);
-    auto* const rawNode = node.get();
-    this->get_thread_registry().add(std::move(node));
-    // The deleter must not free the activity itself, since the registry owns
-    // it, but marks it for deletion. Then it can be deleted in a gc-run.
-    return std::shared_ptr<T>(rawNode,
-                              [](T* item) { item->mark_for_deletion(); });
+    return this->get_thread_registry().add(std::move(node));
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> typename T::HandleType {
@@ -117,7 +112,7 @@ auto withCurrentlyExecutingActivity(Func&& func) {
     activity = Registry::currentlyExecutingActivity()
   ]<typename... Args,
     typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+      Args&&... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };

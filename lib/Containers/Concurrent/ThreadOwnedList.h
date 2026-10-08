@@ -152,11 +152,17 @@ struct ThreadOwnedList
   /**
    Adds a node to the list.
 
-   Can only be called on the owning thread, crashes otherwise. Overwrites next
-   and list properties of the node. Can be used to reduce allocations for the
-   list.
+   Can only be called on the owning thread, crashes otherwise. The node can be
+   of any type derived from Node, so additional data can live in the node
+   without an extra allocation. Overwrites the next property of the node.
+
+   When the last handle is dropped, the node is marked for deletion and is
+   deleted in a followingg gc-run. Every handle shares ownership of the list,
+   the list therefore lives at least as long as its last handle.
  */
-  auto add(std::unique_ptr<Node> node) noexcept -> void {
+  template<std::derived_from<Node> DerivedNode>
+  auto add(std::unique_ptr<DerivedNode> node) noexcept
+      -> std::shared_ptr<DerivedNode> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::add was called from thread "
@@ -167,17 +173,26 @@ struct ThreadOwnedList
         << "ThreadOwnedList::add was called for a node with an incorrect "
            "list.";
     auto current_head = _head.load(std::memory_order_relaxed);
-    node->next = current_head;
+    auto* const raw_node = node.release();
+    raw_node->next = current_head;
     if (current_head != nullptr) {
       // (6) - this store synchronizes with the load in (7) and (9)
-      current_head->previous.store(node.get(), std::memory_order_release);
+      current_head->previous.store(raw_node, std::memory_order_release);
     }
     // (1) - this store synchronizes with load in (2)
-    _head.store(node.release(), std::memory_order_release);
+    _head.store(raw_node, std::memory_order_release);
     if (_metrics) {
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
     }
+    // The handle must not free the node itself, since the list owns
+    // it, but marks it for deletion. The captured list pointer keeps the list
+    // alive as long as the handle exists, so marking never hits a destoryed
+    // list.
+    return std::shared_ptr<DerivedNode>(
+        raw_node, [list = this->shared_from_this()](DerivedNode* item) {
+          item->mark_for_deletion();
+        });
   }
 
   /**
@@ -244,7 +259,7 @@ struct ThreadOwnedList
     // be running a cleanup and node might be deleted.
 
     if (_metrics) {
-      _metrics->decrement_registered_nodes();
+      _metrics->decrement_registered_nodes();  // crash here
       _metrics->increment_ready_for_deletion_nodes();
     }
   }
