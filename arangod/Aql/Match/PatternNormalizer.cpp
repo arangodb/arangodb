@@ -24,6 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Match/MatchOptions.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -60,6 +61,7 @@ PatternNormalizer::PatternNormalizer(Ast& ast) noexcept : _ast{ast} {}
 NormalizedStatement PatternNormalizer::normalize(
     ast::MatchNode matchNode) const {
   NormalizedStatement statement;
+  statement.options = MatchOptions::fromAstNode(matchNode.options());
   statement.patterns.reserve(matchNode.numPatterns());
 
   for (size_t i = 0; i < matchNode.numPatterns(); ++i) {
