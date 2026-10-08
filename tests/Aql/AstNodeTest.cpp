@@ -1615,4 +1615,77 @@ TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
+// Temporary benchmark: mirrors the remove-redundant-calculations loop.
+class RemoveRedundantCalculationsBench : public CompareAstNodesTest {
+ protected:
+  // ((((x op k) op 1) op 2) ... op (depth - 1)); k sits at the deepest leaf
+  AstNode* chain(Variable* x, AstNodeType op, int64_t k, int depth) {
+    AstNode* node = createBinaryOp(op, createRefNode(x), intVal(k));
+    for (int i = 1; i < depth; ++i) {
+      node = createBinaryOp(op, node, intVal(i));
+    }
+    return node;
+  }
+
+  double timeStringify(std::vector<AstNode*> const& exprs, size_t& matches) {
+    std::string buffer;
+    auto start = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < exprs.size(); ++i) {
+      buffer.clear();
+      exprs[i]->stringify(buffer, true);
+      std::string const reference(std::move(buffer));
+      for (size_t j = 0; j < i; ++j) {
+        buffer.clear();
+        exprs[j]->stringify(buffer, true);
+        if (buffer == reference) {
+          ++matches;
+        }
+      }
+    }
+    return std::chrono::duration<double, std::milli>(
+               std::chrono::steady_clock::now() - start)
+        .count();
+  }
+
+  double timeCompare(std::vector<AstNode*> const& exprs, size_t& matches) {
+    auto start = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < exprs.size(); ++i) {
+      for (size_t j = 0; j < i; ++j) {
+        if (compare(exprs[j], exprs[i]) == 0) {
+          ++matches;
+        }
+      }
+    }
+    return std::chrono::duration<double, std::milli>(
+               std::chrono::steady_clock::now() - start)
+        .count();
+  }
+
+  void runCase(char const* label, AstNodeType op, bool identical) {
+    constexpr size_t kCalculations = 1000;
+    constexpr int kDepth = 20;
+    auto* x = makeVar("x");
+    std::vector<AstNode*> exprs;
+    for (size_t k = 0; k < kCalculations; ++k) {
+      exprs.push_back(chain(x, op, identical ? 0 : k, kDepth));
+    }
+    size_t stringifyMatches = 0;
+    size_t compareMatches = 0;
+    double stringifyMs = timeStringify(exprs, stringifyMatches);
+    double compareMs = timeCompare(exprs, compareMatches);
+    EXPECT_EQ(stringifyMatches, compareMatches) << label;
+    std::cout << label << ": stringify " << stringifyMs
+              << " ms, compareAstNodes " << compareMs << " ms\n";
+  }
+};
+
+TEST_F(RemoveRedundantCalculationsBench, DISABLED_compareSpeed) {
+  runCase("minus, differ at deepest leaf", NODE_TYPE_OPERATOR_BINARY_MINUS,
+          false);
+  runCase("minus, all identical", NODE_TYPE_OPERATOR_BINARY_MINUS, true);
+  runCase("plus, differ at deepest leaf", NODE_TYPE_OPERATOR_BINARY_PLUS,
+          false);
+  runCase("plus, all identical", NODE_TYPE_OPERATOR_BINARY_PLUS, true);
+}
+
 }  // namespace
