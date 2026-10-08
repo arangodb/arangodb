@@ -145,7 +145,7 @@ arangodb.acquireHostList=true
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "javaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
-      if (rc.exit !== 0) {
+      if (!rc.status) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
       }
@@ -240,7 +240,7 @@ class runInKafkaTest extends runWithAllureReport {
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "kafkaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
-      if (rc.exit !== 0) {
+      if (!rc.status) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
       }
@@ -321,7 +321,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "sparkdriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
-      if (rc.exit !== 0) {
+      if (!rc.status) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
       }
@@ -399,7 +399,7 @@ class runInSpringDataTest extends runWithAllureReport {
     SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "SpringDataDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
-      if (rc.exit !== 0) {
+      if (!rc.status) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
       }
@@ -486,7 +486,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     SetGlobalExecutionDeadlineTo(deadline);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "TinkerpopDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
-      if (rc.exit !== 0) {
+      if (!rc.status) {
         print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
         status = false;
       }
