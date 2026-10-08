@@ -456,7 +456,8 @@ struct GenericProcessor {
       co_return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    static_assert(Derived::accessMode() == AccessMode::Type::READ || Derived::accessMode() == AccessMode::Type::WRITE);
+    static_assert(Derived::accessMode() == AccessMode::Type::READ ||
+                  Derived::accessMode() == AccessMode::Type::WRITE);
     if constexpr (Derived::accessMode() == AccessMode::Type::WRITE) {
       auto res =
           co_await methods.state()->performIntermediateCommitIfRequired(cid);
