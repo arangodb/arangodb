@@ -202,21 +202,18 @@
       - rta_makedata:
           args:
             suffix: single
-            extremeVerbosity: true
       - rta_makedata:
           args:
             cluster: true
             suffix: cluster
             encryptionAtRest: true
             ssl: true
-            extremeVerbosity: true
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
-            extremeVerbosity: true 
 
 - rta_makedata_rbac:
     job: run-rbac-tests
@@ -233,7 +230,6 @@
     args:
       test: 050,100,400,500,580,607,612
       oneTestTimeout: 5350
-      extremeVerbosity: true
 
 # with coverage we need to have several jobs:
 - rta_makedata:
