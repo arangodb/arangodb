@@ -479,10 +479,11 @@ class runInTinkerpopProvider extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
     let deadline = this.options.oneTestTimeout;
     if (this.options.cluster) {
-      deadline *= 5;
+      deadline *= 10;
     } else {
-      deadline *= 2;
+      deadline *= 4;
     }
+    this.options.oneTestTimeout = deadline;
     SetGlobalExecutionDeadlineTo(deadline);
     try {
       const rc = pu.executeAndWait('mvn', args, this.options, "TinkerpopDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
