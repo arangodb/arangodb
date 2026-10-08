@@ -150,9 +150,15 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nightly') !== -1 && options.skipNightly && !options.onlyNightly) {
-    whichFilter.filter = 'skip nightly';
-    return false;
+  if (testname.indexOf('-nightly') !== -1) {
+    if (options.skipNightly && !options.onlyNightly) {
+      whichFilter.filter = 'skip nightly';
+      return false;
+    }
+    if (options.onlyNightly) {
+      whichFilter.filter = 'only nightly';
+      return false;
+    }
   }
 
   if (testname.indexOf('-geo') !== -1 && options.skipGeo) {
@@ -162,16 +168,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
     whichFilter.filter = 'nondeterministic';
-    return false;
-  }
-
-  if (testname.indexOf('-grey') !== -1 && options.skipGrey) {
-    whichFilter.filter = 'grey';
-    return false;
-  }
-
-  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
-    whichFilter.filter = 'grey';
     return false;
   }
 
@@ -191,11 +187,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nightly') === -1 && options.onlyNightly) {
-    whichFilter.filter = 'only nightly';
-    return false;
-  }
-
   if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
     whichFilter.filter = 'skip in valgrind';
     return false;
@@ -203,6 +194,16 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-noarm') !== -1) && versionHas("arm")) {
     whichFilter.filter = 'skip on AArch64 targets';
+    return false;
+  }
+
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
+    whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
@@ -226,15 +227,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
-    whichFilter.filter = 'skip when built with asan or tsan';
-    return false;
-  }
-
-  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
-    whichFilter.filter = 'skip when built with coverage';
-    return false;
-  }
 
   if ((testname.indexOf('-sjs') !== -1) && (options.skipServerJS)) {
     whichFilter.filter = 'skip when running the server without javascript enabled';
