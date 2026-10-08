@@ -457,12 +457,10 @@ struct GenericProcessor {
     }
 
     if constexpr (Derived::accessMode() == AccessMode::Type::WRITE) {
-      if (collection->replicationVersion() != replication::Version::TWO) {
-        auto res =
-            co_await methods.state()->performIntermediateCommitIfRequired(cid);
-        if (res.fail()) {
-          co_return res;
-        }
+      auto res =
+          co_await methods.state()->performIntermediateCommitIfRequired(cid);
+      if (res.fail()) {
+        co_return res;
       }
     }
 
@@ -768,7 +766,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
 
     auto resDocs = this->_resultBuilder.steal();
-    auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       StorageEngine& engine = this->_collection.vocbase().engine();
@@ -806,13 +803,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                                      std::move(options), std::move(errs));
             });
       }
-
-      if (_replicationVersion == replication::Version::TWO) {
-        // execute a deferred intermediate commit, if required.
-        intermediateCommit =
-            this->_methods.state()->performIntermediateCommitIfRequired(
-                this->_collection.id());
-      }
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -820,13 +810,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       resDocs->clear();
     }
 
-    return std::move(intermediateCommit)
-        .thenValue([options = this->_options,
-                    errorCounter = std::move(errorCounter),
-                    resDocs = std::move(resDocs)](auto&& res) mutable {
-          return OperationResult(res, std::move(resDocs), options,
-                                 std::move(errorCounter));
-        });
+    return OperationResult(std::move(res), std::move(resDocs), this->_options,
+                           std::move(errorCounter));
   }
 
  protected:
