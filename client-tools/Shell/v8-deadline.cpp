@@ -79,7 +79,7 @@ static void JS_SetExecutionDeadlineTo(
   TRI_V8_TRY_CATCH_END
 }
 
-bool isExecutionDeadlineReached() {
+bool isExecutionDeadlineReachedPlain() {
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
@@ -94,7 +94,7 @@ bool isExecutionDeadlineReached() {
 }
 
 bool isExecutionDeadlineReached(v8::Isolate* isolate) {
-  if (isExecutionDeadlineReached()) {
+  if (isExecutionDeadlineReachedPlain()) {
     if (offending_PID._pid == 0) {
       TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
     } else {
