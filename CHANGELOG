@@ -1,5 +1,7 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1082 / github issue #23425:
+  Fixed the incorrect usage of released pool analyzer.
 
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
