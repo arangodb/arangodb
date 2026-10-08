@@ -35,7 +35,6 @@
 
 namespace {
 constexpr size_t maxUncompressedSize = 512 * 1024 * 1024;
-constexpr size_t maxLz4UncompressedSize = 1024 * 1024 * 1024;
 constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
 
 template<typename T>
@@ -204,7 +203,8 @@ ErrorCode encoding::zlibInflate(uint8_t const* compressed,
 
 template<typename T>
 ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
-                                  size_t compressedLength, T& uncompressed) {
+                                  size_t compressedLength, T& uncompressed,
+                                  size_t maxUncompressedSize) {
   if (compressedLength <= ::lz4HeaderLength) {
     // empty/bad input.
     return TRI_ERROR_BAD_PARAMETER;
@@ -222,7 +222,7 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
     return TRI_ERROR_BAD_PARAMETER;
   }
   // reject before reserving
-  if (uncompressedLength > ::maxLz4UncompressedSize) {
+  if (uncompressedLength > maxUncompressedSize) {
     return TRI_ERROR_RESOURCE_LIMIT;
   }
 
@@ -429,11 +429,12 @@ template ErrorCode encoding::zlibInflate<std::string>(
 template ErrorCode
 encoding::lz4Uncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+    arangodb::velocypack::Buffer<uint8_t>& uncompressed,
+    size_t maxUncompressedSize);
 
 template ErrorCode encoding::lz4Uncompress<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
 
 // compression methods
 template ErrorCode

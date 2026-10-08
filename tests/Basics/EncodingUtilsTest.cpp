@@ -65,11 +65,14 @@ void setDeclaredSize(arangodb::basics::StringBuffer& compressed,
   memcpy(compressed.begin() + 1, &encoded, sizeof(encoded));
 }
 
-ErrorCode lz4Uncompress(arangodb::basics::StringBuffer const& compressed,
-                        arangodb::basics::StringBuffer& uncompressed) {
+ErrorCode lz4Uncompress(
+    arangodb::basics::StringBuffer const& compressed,
+    arangodb::basics::StringBuffer& uncompressed,
+    size_t maxUncompressedSize =
+        arangodb::encoding::defaultMaxUncompressedSize) {
   return arangodb::encoding::lz4Uncompress(
       reinterpret_cast<uint8_t const*>(compressed.data()), compressed.size(),
-      uncompressed);
+      uncompressed, maxUncompressedSize);
 }
 
 ErrorCode lz4Compress(std::string_view input,
@@ -507,12 +510,20 @@ TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooLarge) {
 TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeOverLimit) {
   basics::StringBuffer compressed;
   ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
-  ::setDeclaredSize(compressed, 1024 * 1024 * 1024 + 1);
+
+  size_t limit = strlen(::shortString);
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit + 1));
 
   basics::StringBuffer uncompressed;
   EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT,
-            ::lz4Uncompress(compressed, uncompressed));
+            ::lz4Uncompress(compressed, uncompressed, limit));
   EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit));
+  EXPECT_EQ(TRI_ERROR_NO_ERROR,
+            ::lz4Uncompress(compressed, uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
 }
 
 TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooSmall) {

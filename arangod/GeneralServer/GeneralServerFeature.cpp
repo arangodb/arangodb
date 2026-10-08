@@ -499,6 +499,10 @@ uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
   return _options.compressResponseThreshold;
 }
 
+uint64_t GeneralServerFeature::maxUncompressedRequestBodySize() const noexcept {
+  return _options.maxUncompressedRequestBodySize;
+}
+
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
     const {
   return std::atomic_load_explicit(&_handlerFactory, std::memory_order_relaxed);

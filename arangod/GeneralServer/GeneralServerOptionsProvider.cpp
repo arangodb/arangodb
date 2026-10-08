@@ -129,6 +129,22 @@ original response body size.
 
 Using the value `0` disables the automatic response compression.)");
 
+  opts->addOption(
+          "--http.max-decompressed-request-body-size",
+          "The maximum size of a compressed HTTP request body after "
+          "decompression (in bytes).",
+          new UInt64Parameter(&options.maxUncompressedRequestBodySize))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(A compressed request body declares how large it
+will be once decompressed, and the server allocates that much before unpacking
+it. This option caps that value, so a small request cannot force a large
+allocation.
+
+Requests exceeding the limit are rejected with HTTP 413.
+
+Note that this limits the body size *after* decompression. The size of the
+request as it arrives on the wire is limited separately.)");
+
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",

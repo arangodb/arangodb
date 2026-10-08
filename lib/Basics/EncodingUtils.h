@@ -38,9 +38,15 @@ template<typename T>
 [[nodiscard]] ErrorCode zlibInflate(uint8_t const* compressed,
                                     size_t compressedLength, T& uncompressed);
 
+// ceiling for a decompressed body when the caller does not supply one
+inline constexpr size_t defaultMaxUncompressedSize = 1024 * 1024 * 1024;
+
+// rejects with TRI_ERROR_RESOURCE_LIMIT if the declared uncompressed size
+// exceeds maxUncompressedSize, before anything is allocated for it
 template<typename T>
-[[nodiscard]] ErrorCode lz4Uncompress(uint8_t const* compressed,
-                                      size_t compressedLength, T& uncompressed);
+[[nodiscard]] ErrorCode lz4Uncompress(
+    uint8_t const* compressed, size_t compressedLength, T& uncompressed,
+    size_t maxUncompressedSize = defaultMaxUncompressedSize);
 
 template<typename T>
 [[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,

@@ -993,7 +993,9 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       return {};
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
       VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
+      if (ErrorCode r = arangodb::encoding::lz4Uncompress(
+              src, len, dst,
+              _generalServerFeature.maxUncompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
