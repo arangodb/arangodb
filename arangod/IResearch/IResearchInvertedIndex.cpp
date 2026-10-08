@@ -350,14 +350,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx,
-      aql::QueryContext const* query)
+      CancellationToken const* token)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _memory(monitor),
         _snapshot(state),
         _indexMeta(meta),
         _variable(variable),
         _mutableConditionIdx(mutableConditionIdx),
-        _filterCtx(nullptr, query) {
+        _filterCtx(nullptr, token) {
     resetFilter(condition);
   }
 
@@ -467,10 +467,10 @@ class IResearchInvertedIndexIterator final
                                  IResearchInvertedIndexMeta const* meta,
                                  aql::Variable const* variable,
                                  int mutableConditionIdx,
-                                 aql::QueryContext const* query)
+                                 CancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx, query),
+                                           mutableConditionIdx, token),
         _projections(*meta) {}
 
   std::string_view typeName() const noexcept override {
@@ -623,10 +623,10 @@ class IResearchInvertedIndexMergeIterator final
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx,
-      aql::QueryContext const* query)
+      CancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx, query),
+                                           mutableConditionIdx, token),
         _heap_it{meta->_sort, meta->_sort.size()},
         _projectionsPrototype(*meta) {}
 
@@ -1047,14 +1047,14 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
         return std::make_unique<
             IResearchInvertedIndexIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx, opts.query);
+            mutableConditionIdx, opts.token);
       });
     } else {
       return resolveLateMaterialization([&]<bool LateMaterialization>() {
         return std::make_unique<
             IResearchInvertedIndexMergeIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx, opts.query);
+            mutableConditionIdx, opts.token);
       });
     }
   } else {
@@ -1065,7 +1065,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       return std::make_unique<
           IResearchInvertedIndexMergeIterator<LateMaterialization>>(
           monitor, collection, state, trx, node, &_meta, reference,
-          transaction::Methods::kNoMutableConditionIdx, opts.query);
+          transaction::Methods::kNoMutableConditionIdx, opts.token);
     });
   }
 }

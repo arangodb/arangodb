@@ -33,6 +33,10 @@
 #include <unicode/umachine.h>
 #include <unicode/regex.h>
 
+namespace arangodb {
+struct CancellationToken;
+}
+
 namespace arangodb::basics {
 
 enum class LanguageType { INVALID, DEFAULT, ICU };
@@ -195,6 +199,12 @@ class Utf8Helper {
  private:
   std::unique_ptr<icu_64_64::Collator> _coll;
 };
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief For regex, abort the matching process if the query is killed
+//////////////////////////////////////////////////////////////////////////////
+void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
+                          arangodb::CancellationToken const* token);
 
 }  // namespace arangodb::basics
 

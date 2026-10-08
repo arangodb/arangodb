@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/CancellationToken.h"
 #include "Basics/ErrorCode.h"
 
 #include <string_view>
@@ -42,7 +43,7 @@ namespace aql {
 struct AqlValue;
 struct Variable;
 
-class ExpressionContext {
+class ExpressionContext : public arangodb::CancellationToken {
  public:
   ExpressionContext() = default;
 
@@ -65,7 +66,7 @@ class ExpressionContext {
 
   virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
-  virtual bool killed() const = 0;
+  bool killed() const override = 0;
 
   // register a temporary variable in the ExpressionContext. the
   // slice used here is not owned by the QueryExpressionContext!

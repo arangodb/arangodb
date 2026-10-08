@@ -97,7 +97,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  functions::abortMatchWhenKilled(*matcher, expressionContext);
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
@@ -192,7 +192,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  functions::abortMatchWhenKilled(*matcher, expressionContext);
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
@@ -298,7 +298,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  functions::abortMatchWhenKilled(*matcher, expressionContext);
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -346,7 +346,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  functions::abortMatchWhenKilled(*matcher, expressionContext);
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();

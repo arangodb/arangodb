@@ -28,7 +28,6 @@
 
 #include <span>
 #include <string_view>
-#include <unicode/regex.h>
 
 namespace arangodb {
 class Result;
@@ -81,19 +80,6 @@ std::string extractCollectionName(transaction::Methods* trx,
 template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
-
-template<typename Context>
-void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
-                          Context const* context) {
-  UErrorCode status = U_ZERO_ERROR;
-  matcher.setMatchCallback(
-      // This lambda (callback) is called every 10,000 steps of the regex
-      // matching process.
-      [](void const* ctx, int32_t /*steps*/) -> UBool {
-        return !static_cast<Context const*>(ctx)->killed();
-      },
-      context, status);
-}
 
 void throwIfKilled(ExpressionContext const* context);
 

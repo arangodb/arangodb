@@ -23,6 +23,7 @@
 #include "Utf8Helper.h"
 
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "Basics/CancellationToken.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
@@ -56,6 +57,14 @@
 
 using namespace arangodb::basics;
 using namespace icu_64_64;
+
+namespace {
+UBool continueUnlessKilled(void const* context, int32_t /*steps*/) {
+  // This callback is called every 10,000 steps of the regex
+  // matching process.
+  return !static_cast<arangodb::CancellationToken const*>(context)->killed();
+}
+}  // namespace
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(0);
 
@@ -899,4 +908,11 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength,
   }
 
   return utf8Dest;
+}
+
+void arangodb::basics::abortMatchWhenKilled(
+    icu_64_64::RegexMatcher& matcher,
+    arangodb::CancellationToken const* token) {
+  UErrorCode status = U_ZERO_ERROR;
+  matcher.setMatchCallback(continueUnlessKilled, token, status);
 }

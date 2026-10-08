@@ -203,7 +203,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _oneIndexCondition(oneIndexCondition),
       _readOwnWrites(readOwnWrites),
       _perIndexCovering(std::move(perIndexCovering)) {
-  _options.query = &query;
+  _options.token = &query;
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
