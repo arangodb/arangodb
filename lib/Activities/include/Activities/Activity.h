@@ -69,8 +69,7 @@ struct ActivityPtr {
   auto snapshot() const -> Snapshot;
 };
 
-struct Activity : std::enable_shared_from_this<Activity>,
-                  containers::ThreadOwnedList<ActivityPtr>::Node {
+struct Activity : containers::ThreadOwnedList<ActivityPtr>::Node {
   using Snapshot = Snapshot;
   using ThreadList = std::list<containers::SharedPtr<basics::ThreadInfo>>;
   using ThreadListIterator = ThreadList::iterator;
