@@ -2354,14 +2354,6 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   // failIfLong is set to true!
   constexpr size_t kTooLongThreshold = 80;
 
-  // appends parentheses to distinguish different grouping
-  // e.g. (a - b) - c vs. a - (b - c)
-  auto parenthesize = [&buffer](auto&& body) {
-    buffer.push_back('(');
-    body();
-    buffer.push_back(')');
-  };
-
   if (type == NODE_TYPE_VALUE) {
     // must be JavaScript-compatible!
     appendValue(buffer);
@@ -2567,11 +2559,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     TRI_ASSERT(numMembers() == 1);
     auto it = kOperators.find(static_cast<int>(type));
     TRI_ASSERT(it != kOperators.end());
-    parenthesize([&] {
-      buffer.push_back(' ');
-      buffer.append((*it).second);
-      getMember(0)->stringify(buffer, failIfLong);
-    });
+    buffer.push_back(' ');
+    buffer.append((*it).second);
+
+    getMember(0)->stringify(buffer, failIfLong);
     return;
   }
 
@@ -2595,13 +2586,11 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     auto it = kOperators.find(type);
     TRI_ASSERT(it != kOperators.end());
 
-    parenthesize([&] {
-      getMember(0)->stringify(buffer, failIfLong);
-      buffer.push_back(' ');
-      buffer.append((*it).second);
-      buffer.push_back(' ');
-      getMember(1)->stringify(buffer, failIfLong);
-    });
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(' ');
+    buffer.append((*it).second);
+    buffer.push_back(' ');
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
@@ -2618,32 +2607,28 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     auto it = kOperators.find(type);
     TRI_ASSERT(it != kOperators.end());
 
-    parenthesize([&] {
-      getMember(0)->stringify(buffer, failIfLong);
-      buffer.push_back(' ');
-      buffer.append(Quantifier::stringify(
-          static_cast<Quantifier::Type>(getMember(2)->getIntValue(true))));
-      buffer.push_back(' ');
-      buffer.append((*it).second);
-      buffer.push_back(' ');
-      getMember(1)->stringify(buffer, failIfLong);
-    });
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(' ');
+    buffer.append(Quantifier::stringify(
+        static_cast<Quantifier::Type>(getMember(2)->getIntValue(true))));
+    buffer.push_back(' ');
+    buffer.append((*it).second);
+    buffer.push_back(' ');
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
   if (type == NODE_TYPE_OPERATOR_TERNARY) {
-    parenthesize([&] {
-      getMember(0)->stringify(buffer, failIfLong);
-      buffer.push_back('?');
-      if (numMembers() == 3) {
-        getMember(1)->stringify(buffer, failIfLong);
-        buffer.push_back(':');
-        getMember(2)->stringify(buffer, failIfLong);
-      } else {
-        buffer.push_back(':');
-        getMember(1)->stringify(buffer, failIfLong);
-      }
-    });
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back('?');
+    if (numMembers() == 3) {
+      getMember(1)->stringify(buffer, failIfLong);
+      buffer.push_back(':');
+      getMember(2)->stringify(buffer, failIfLong);
+    } else {
+      buffer.push_back(':');
+      getMember(1)->stringify(buffer, failIfLong);
+    }
     return;
   }
 
@@ -2651,29 +2636,25 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
       type == NODE_TYPE_OPERATOR_NARY_OR) {
     // not used by V8
     size_t const n = numMembers();
-    parenthesize([&] {
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          if (type == NODE_TYPE_OPERATOR_NARY_AND) {
-            buffer.append(" AND ");
-          } else {
-            buffer.append(" OR ");
-          }
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        if (type == NODE_TYPE_OPERATOR_NARY_AND) {
+          buffer.append(" AND ");
+        } else {
+          buffer.append(" OR ");
         }
-        getMember(i)->stringify(buffer, failIfLong);
       }
-    });
+      getMember(i)->stringify(buffer, failIfLong);
+    }
     return;
   }
 
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
-    parenthesize([&] {
-      getMember(0)->stringify(buffer, failIfLong);
-      buffer.append("..");
-      getMember(1)->stringify(buffer, failIfLong);
-    });
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.append("..");
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
