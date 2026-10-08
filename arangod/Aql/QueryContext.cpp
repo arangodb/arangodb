@@ -64,8 +64,6 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase,
       !AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
-  resetRuntimeClock();
 }
 
 /// @brief destroys a query
