@@ -88,7 +88,8 @@ struct IndexFactoryMock : private MockIndexTypeCatalogHolder,
                           public arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
                    bool injectClusterIndexes)
-      : MockIndexTypeCatalogHolder(server), IndexFactory(server, catalog) {
+      : MockIndexTypeCatalogHolder(server),
+        IndexFactory(server, MockIndexTypeCatalogHolder::catalog) {
     // there is only a single StorageEngine slot now, and StorageEngineMock
     // always occupies it, so a real ClusterEngine can never be fetched here.
     TRI_ASSERT(!injectClusterIndexes);
