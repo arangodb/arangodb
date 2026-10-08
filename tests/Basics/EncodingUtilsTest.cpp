@@ -65,11 +65,10 @@ void setDeclaredSize(arangodb::basics::StringBuffer& compressed,
   memcpy(compressed.begin() + 1, &encoded, sizeof(encoded));
 }
 
-ErrorCode lz4Uncompress(
-    arangodb::basics::StringBuffer const& compressed,
-    arangodb::basics::StringBuffer& uncompressed,
-    size_t maxUncompressedSize =
-        arangodb::encoding::defaultMaxUncompressedSize) {
+ErrorCode lz4Uncompress(arangodb::basics::StringBuffer const& compressed,
+                        arangodb::basics::StringBuffer& uncompressed,
+                        size_t maxUncompressedSize =
+                            arangodb::encoding::defaultMaxUncompressedSize) {
   return arangodb::encoding::lz4Uncompress(
       reinterpret_cast<uint8_t const*>(compressed.data()), compressed.size(),
       uncompressed, maxUncompressedSize);
@@ -558,4 +557,28 @@ TEST(EncodingUtilsTest, testStringBufferLz4TruncatedInput) {
                 reinterpret_cast<uint8_t const*>(compressed.data()),
                 compressed.size() / 2, uncompressed));
   EXPECT_EQ(0, uncompressed.size());
+}
+
+// gzip and deflate stop once the output outgrows the limit, rather than
+// checking a declared size up front like lz4 does
+TEST(EncodingUtilsTest, testStringBufferGzipOutputOverLimit) {
+  basics::StringBuffer buffer(1024, true);
+  buffer.appendText(::mediumString);
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, buffer.gzipCompress(false));
+
+  size_t limit = strlen(::mediumString);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(
+      TRI_ERROR_RESOURCE_LIMIT,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit - 1));
+  EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  EXPECT_EQ(
+      TRI_ERROR_NO_ERROR,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
 }

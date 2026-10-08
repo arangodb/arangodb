@@ -29,20 +29,22 @@
 
 namespace arangodb::encoding {
 
-template<typename T>
-[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
-                                       size_t compressedLength,
-                                       T& uncompressed);
-
-template<typename T>
-[[nodiscard]] ErrorCode zlibInflate(uint8_t const* compressed,
-                                    size_t compressedLength, T& uncompressed);
-
 // ceiling for a decompressed body when the caller does not supply one
-inline constexpr size_t defaultMaxUncompressedSize = 1024 * 1024 * 1024;
+inline constexpr size_t defaultMaxUncompressedSize = 512 * 1024 * 1024;
 
-// rejects with TRI_ERROR_RESOURCE_LIMIT if the declared uncompressed size
-// exceeds maxUncompressedSize, before anything is allocated for it
+// the uncompress functions reject with TRI_ERROR_RESOURCE_LIMIT once the
+// output exceeds maxUncompressedSize
+template<typename T>
+[[nodiscard]] ErrorCode gzipUncompress(
+    uint8_t const* compressed, size_t compressedLength, T& uncompressed,
+    size_t maxUncompressedSize = defaultMaxUncompressedSize);
+
+template<typename T>
+[[nodiscard]] ErrorCode zlibInflate(
+    uint8_t const* compressed, size_t compressedLength, T& uncompressed,
+    size_t maxUncompressedSize = defaultMaxUncompressedSize);
+
+// lz4 rejects before allocating, since the size is declared in the header
 template<typename T>
 [[nodiscard]] ErrorCode lz4Uncompress(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,

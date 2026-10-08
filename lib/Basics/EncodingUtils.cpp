@@ -34,17 +34,12 @@
 #include <zlib.h>
 
 namespace {
-constexpr size_t maxUncompressedSize = 512 * 1024 * 1024;
 constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
 
 template<typename T>
-int uncompressStream(z_stream& strm, T& uncompressed) noexcept {
+ErrorCode uncompressStream(z_stream& strm, T& uncompressed,
+                           size_t maxUncompressedSize) noexcept {
   TRI_ASSERT(strm.opaque == Z_NULL);
-
-  // check that uncompressed size will be in the allowed range
-  if (strm.total_out > ::maxUncompressedSize) {
-    return Z_MEM_ERROR;
-  }
 
   char outbuffer[32768];
   int ret = Z_DATA_ERROR;
@@ -54,7 +49,7 @@ int uncompressStream(z_stream& strm, T& uncompressed) noexcept {
       // non-throwing variant of reserve(): check return value
       auto res = uncompressed.reserve(static_cast<size_t>(strm.total_out));
       if (res != TRI_ERROR_NO_ERROR) {
-        return Z_MEM_ERROR;
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
     } else {
       // throwing variant of reserve()
@@ -72,20 +67,26 @@ int uncompressStream(z_stream& strm, T& uncompressed) noexcept {
       if (uncompressed.size() < strm.total_out) {
         uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
       }
-      if (uncompressed.size() > ::maxUncompressedSize) {
-        // should not happen
+      if (uncompressed.size() > maxUncompressedSize) {
         uncompressed.clear();
-        return Z_DATA_ERROR;
+        return TRI_ERROR_RESOURCE_LIMIT;
       }
     } while (ret == Z_OK);
   } catch (...) {
     // we can get here only if uncompressed.reserve() or uncompressed.append()
     // throw
     uncompressed.clear();
-    ret = Z_MEM_ERROR;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  return ret;
+  switch (ret) {
+    case Z_STREAM_END:
+      return TRI_ERROR_NO_ERROR;
+    case Z_MEM_ERROR:
+      return TRI_ERROR_OUT_OF_MEMORY;
+    default:
+      return TRI_ERROR_INTERNAL;
+  }
 }
 
 template<typename T>
@@ -138,6 +139,7 @@ int compressStream(z_stream& strm, T& compressed) noexcept {
 template<typename T>
 ErrorCode uncompressWrapper(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
+    size_t maxUncompressedSize,
     std::function<ErrorCode(z_stream& strm)> const& initCb) {
   uncompressed.clear();
 
@@ -151,17 +153,10 @@ ErrorCode uncompressWrapper(
     return res;
   }
 
-  int ret = uncompressStream(strm, uncompressed);
+  ErrorCode ret = uncompressStream(strm, uncompressed, maxUncompressedSize);
   inflateEnd(&strm);
 
-  switch (ret) {
-    case Z_STREAM_END:
-      return TRI_ERROR_NO_ERROR;
-    case Z_MEM_ERROR:
-      return TRI_ERROR_OUT_OF_MEMORY;
-    default:
-      return TRI_ERROR_INTERNAL;
-  }
+  return ret;
 }
 
 template<typename T>
@@ -173,14 +168,15 @@ namespace arangodb {
 
 template<typename T>
 ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
-                                   size_t compressedLength, T& uncompressed) {
+                                   size_t compressedLength, T& uncompressed,
+                                   size_t maxUncompressedSize) {
   if (compressedLength == 0) {
     // empty input
     return TRI_ERROR_NO_ERROR;
   }
 
   return ::uncompressWrapper<T>(
-      compressed, compressedLength, uncompressed,
+      compressed, compressedLength, uncompressed, maxUncompressedSize,
       [](z_stream& strm) -> ErrorCode {
         if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -191,8 +187,10 @@ ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
 
 template<typename T>
 ErrorCode encoding::zlibInflate(uint8_t const* compressed,
-                                size_t compressedLength, T& uncompressed) {
+                                size_t compressedLength, T& uncompressed,
+                                size_t maxUncompressedSize) {
   return ::uncompressWrapper<T>(compressed, compressedLength, uncompressed,
+                                maxUncompressedSize,
                                 [](z_stream& strm) -> ErrorCode {
                                   if (inflateInit(&strm) != Z_OK) {
                                     return TRI_ERROR_OUT_OF_MEMORY;
@@ -404,27 +402,29 @@ ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
 template ErrorCode
 encoding::gzipUncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+    arangodb::velocypack::Buffer<uint8_t>& uncompressed,
+    size_t maxUncompressedSize);
 
 template ErrorCode encoding::gzipUncompress<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
 
 template ErrorCode encoding::gzipUncompress<std::string>(
     uint8_t const* compressed, size_t compressedLength,
-    std::string& uncompressed);
+    std::string& uncompressed, size_t maxUncompressedSize);
 
 template ErrorCode encoding::zlibInflate<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+    arangodb::velocypack::Buffer<uint8_t>& uncompressed,
+    size_t maxUncompressedSize);
 
 template ErrorCode encoding::zlibInflate<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
 
 template ErrorCode encoding::zlibInflate<std::string>(
     uint8_t const* compressed, size_t compressedLength,
-    std::string& uncompressed);
+    std::string& uncompressed, size_t maxUncompressedSize);
 
 template ErrorCode
 encoding::lz4Uncompress<arangodb::velocypack::Buffer<uint8_t>>(

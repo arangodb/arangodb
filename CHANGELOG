@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Add `--http.max-decompression-request-body-size` startup option, which limits
+  how large a compressed HTTP request body may be after decompression. The default
+  is 512 GiB.
+
 * Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
   correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
 

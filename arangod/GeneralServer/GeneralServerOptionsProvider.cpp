@@ -129,11 +129,10 @@ original response body size.
 
 Using the value `0` disables the automatic response compression.)");
 
-  opts->addOption(
-          "--http.max-decompressed-request-body-size",
-          "The maximum size of a compressed HTTP request body after "
-          "decompression (in bytes).",
-          new UInt64Parameter(&options.maxUncompressedRequestBodySize))
+  opts->addOption("--http.max-decompressed-request-body-size",
+                  "The maximum size of a compressed HTTP request body after "
+                  "decompression (in bytes).",
+                  new UInt64Parameter(&options.maxUncompressedRequestBodySize))
       .setIntroducedIn(31213)
       .setLongDescription(R"(A compressed request body declares how large it
 will be once decompressed, and the server allocates that much before unpacking
