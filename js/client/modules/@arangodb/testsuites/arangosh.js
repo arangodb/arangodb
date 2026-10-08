@@ -639,7 +639,7 @@ function arangosh (options) {
   let sh = new sanHandler(pu.ARANGOSH_BIN, options);
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
   let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, sh.getSanOptions());
-  const deltaTime = time() - startTime;
+  let deltaTime = time() - startTime;
 
   let output = '';
   let pipeError = null;
@@ -676,7 +676,7 @@ function arangosh (options) {
   let failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   failSuccess = failSuccess && success;
   // has to be measured here: the spawn above is not what we are timing
-  const deltaTime = time() - startTime;
+  deltaTime = time() - startTime;
   if (options.extremeVerbosity) {
       print(toArgv(args));
       print(rc);
