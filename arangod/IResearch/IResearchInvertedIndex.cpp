@@ -350,7 +350,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx,
-      CancellationToken const* token)
+      ICancellationToken const* token)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _memory(monitor),
         _snapshot(state),
@@ -467,7 +467,7 @@ class IResearchInvertedIndexIterator final
                                  IResearchInvertedIndexMeta const* meta,
                                  aql::Variable const* variable,
                                  int mutableConditionIdx,
-                                 CancellationToken const* token)
+                                 ICancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
                                            mutableConditionIdx, token),
@@ -623,7 +623,7 @@ class IResearchInvertedIndexMergeIterator final
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx,
-      CancellationToken const* token)
+      ICancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
                                            mutableConditionIdx, token),

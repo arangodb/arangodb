@@ -27,7 +27,7 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
-#include "Basics/CancellationToken.h"
+#include "Basics/ICancellationToken.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"
@@ -60,7 +60,7 @@ namespace aql {
 class Ast;
 
 /// @brief an AQL query basic interface
-class QueryContext : public arangodb::CancellationToken {
+class QueryContext : public arangodb::ICancellationToken {
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;

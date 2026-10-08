@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Basics/CancellationToken.h"
+#include "Basics/ICancellationToken.h"
 #include "Basics/ErrorCode.h"
 
 #include <string_view>
@@ -43,7 +43,7 @@ namespace aql {
 struct AqlValue;
 struct Variable;
 
-class ExpressionContext : public arangodb::CancellationToken {
+class ExpressionContext : public arangodb::ICancellationToken {
  public:
   ExpressionContext() = default;
 

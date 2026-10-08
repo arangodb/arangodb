@@ -73,13 +73,13 @@ struct CancellationAttribute final : irs::attribute {
   static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::CancellationAttribute";
   }
-  CancellationToken const* token{};
+  ICancellationToken const* token{};
 };
 
 // Provides the attributes filters may need at execution time.
 struct FilterCtx final : irs::attribute_provider {
   FilterCtx(ViewExpressionContextBase* ctx,
-            CancellationToken const* token) noexcept {
+            ICancellationToken const* token) noexcept {
     _execCtx.ctx = ctx;
     _cancellation.token = token;
   }

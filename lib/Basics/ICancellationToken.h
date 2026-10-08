@@ -25,8 +25,8 @@
 namespace arangodb {
 // Lets long running code (intense regex matching, for example) stop
 // cooperatively
-struct CancellationToken {
-  virtual ~CancellationToken() = default;
+struct ICancellationToken {
+  virtual ~ICancellationToken() = default;
   virtual bool killed() const = 0;
 };
 }  // namespace arangodb

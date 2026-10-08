@@ -23,7 +23,7 @@
 #include "Utf8Helper.h"
 
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "Basics/CancellationToken.h"
+#include "Basics/ICancellationToken.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
@@ -62,7 +62,7 @@ namespace {
 UBool continueUnlessKilled(void const* context, int32_t /*steps*/) {
   // This callback is called every 10,000 steps of the regex
   // matching process.
-  return !static_cast<arangodb::CancellationToken const*>(context)->killed();
+  return !static_cast<arangodb::ICancellationToken const*>(context)->killed();
 }
 }  // namespace
 
@@ -912,7 +912,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength,
 
 void arangodb::basics::abortMatchWhenKilled(
     icu_64_64::RegexMatcher& matcher,
-    arangodb::CancellationToken const* token) {
+    arangodb::ICancellationToken const* token) {
   UErrorCode status = U_ZERO_ERROR;
   matcher.setMatchCallback(continueUnlessKilled, token, status);
 }

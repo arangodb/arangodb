@@ -34,7 +34,7 @@
 #include <unicode/regex.h>
 
 namespace arangodb {
-struct CancellationToken;
+struct ICancellationToken;
 }
 
 namespace arangodb::basics {
@@ -204,7 +204,7 @@ class Utf8Helper {
 /// @brief For regex, abort the matching process if the query is killed
 //////////////////////////////////////////////////////////////////////////////
 void abortMatchWhenKilled(icu_64_64::RegexMatcher& matcher,
-                          arangodb::CancellationToken const* token);
+                          arangodb::ICancellationToken const* token);
 
 }  // namespace arangodb::basics
 

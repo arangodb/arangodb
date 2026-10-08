@@ -35,7 +35,7 @@ namespace arangodb::iresearch::wildcard {
 
 class Iterator : public irs::doc_iterator {
  public:
-  Iterator(icu_64_64::RegexMatcher* matcher, CancellationToken const* token,
+  Iterator(icu_64_64::RegexMatcher* matcher, ICancellationToken const* token,
            doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt)
       : _approx{std::move(approx)}, _columnIt{std::move(columnIt)} {
     TRI_ASSERT(_approx);
@@ -150,7 +150,7 @@ class Query : public irs::filter::prepared {
     if (column == nullptr) {
       return irs::doc_iterator::empty();
     }
-    CancellationToken const* token = nullptr;
+    ICancellationToken const* token = nullptr;
     if (ctx.ctx) {
       if (auto const* cancellation =
               irs::get<CancellationAttribute>(*ctx.ctx)) {

@@ -61,7 +61,7 @@
 namespace arangodb {
 class Index;
 class LogicalCollection;
-struct CancellationToken;
+struct ICancellationToken;
 
 namespace aql {
 struct AstNode;
@@ -466,7 +466,7 @@ struct IndexIteratorOptions {
   /// unique one
   bool pushDownMaterialization{false};
   /// @brief used to abort long regex matches when it is killed
-  arangodb::CancellationToken const* token{nullptr};
+  arangodb::ICancellationToken const* token{nullptr};
 };
 
 /// index estimate map, defined here because it was convenient
