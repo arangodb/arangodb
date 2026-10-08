@@ -143,6 +143,71 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testMatchOptionsEmpty: function () {
+            const result = db._query(
+                "MATCH (v :vc) OPTIONS {} RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+        },
+
+        testMatchOptionsEmptyAfterEdgePattern: function () {
+            const result = db._query(
+                "MATCH (a :vc)-[:ec]->(b :vc) OPTIONS {} RETURN b",
+                {},
+                options
+            ).toArray();
+            assertTrue(result.length > 0);
+        },
+
+        testMatchOptionsUnknownField: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc) OPTIONS {foo: 123} RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(
+                    err.errorNum,
+                    errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code
+                );
+            }
+        },
+
+        testMatchOptionsNonObjectNumber: function () {
+            try {
+                db._query("MATCH (v :vc) OPTIONS 123 RETURN v", {}, options);
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testMatchOptionsNonObjectArray: function () {
+            try {
+                db._query("MATCH (v :vc) OPTIONS [] RETURN v", {}, options);
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testMatchOptionsDuplicate: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc) OPTIONS {} OPTIONS {} RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
         testSelectVertices: function () {
             const result = db._query("MATCH (v :vc) RETURN v", {}, options).toArray();
             assertEqual(result.length, 100);

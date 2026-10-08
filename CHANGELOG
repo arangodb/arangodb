@@ -1,6 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-843: Create a OPTIONS field for MATCH
+  The MATCH statement now supports an optional OPTIONS clause 
+  at the end of the statement. 
+  MATCH <pattern_expression_list> [OPTIONS {...}]
+  The OPTIONS value must be an object and can only appear once 
+  at the end of the MATCH statement. Unknown options are rejecte
+  
 * Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
