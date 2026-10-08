@@ -24,9 +24,6 @@
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
-const { instanceRole } = require('@arangodb/testutils/instance');
-
-const IM = global.instanceManager;
 
 const srcName = 'UnitTestsIntermediateCommitSrc';
 const dstName = 'UnitTestsIntermediateCommitDst';
@@ -52,8 +49,6 @@ function transactionIntermediateCommitConcurrentSnippetsSuite() {
     },
 
     testCopyWithIntermediateCommitsAndReplication: function () {
-      const shards = db._collection(dstName).shards(true);
-
       db._query(`FOR d IN ${srcName} FILTER d.value >= 0 INSERT d INTO ${dstName}`, {},
                 { intermediateCommitCount: 100 });
       assertEqual(numDocs, db._collection(dstName).count());
