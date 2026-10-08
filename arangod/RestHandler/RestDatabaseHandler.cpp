@@ -27,7 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
@@ -60,6 +60,22 @@ RestStatus RestDatabaseHandler::execute() {
 
     return RestStatus::DONE;
   }
+}
+
+async<Result> RestDatabaseHandler::checkDatabaseAccess() const {
+  constexpr std::string_view pathApiDatabaseUser("/_api/database/user");
+
+  auto const& path = _request->requestPath();
+
+  if (_request->authenticated() && path == pathApiDatabaseUser) {
+    // This is the route the UI uses to list the databases a user has access to,
+    // directly after login to bring up a dialog to let the user choose a
+    // database. Therefore, we must allow this, even if the user has no access
+    // to the _system database.
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -153,7 +169,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   Result res = methods::Databases::create(server(), engine, _context, dbName,
                                           users, options);
   if (res.ok()) {

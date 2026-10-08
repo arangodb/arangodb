@@ -35,7 +35,6 @@
 #include "Basics/application-exit.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -52,7 +51,6 @@
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
@@ -261,8 +259,6 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
@@ -271,34 +267,11 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), *this,
-      /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()),
+      server().getFeature<StorageEngine>(), *this, /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
-  // scan all databases
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-
-  TRI_ASSERT(builder.slice().isArray());
-
-  auto res = iterateDatabases(builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
-        << "could not iterate over all databases: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  // Update metadata metrics after databases are loaded
-  updateMetadataMetrics();
-
-  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
-    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
-
   // start database manager thread
   _databaseManager =
       std::make_unique<DatabaseManagerThread>(server(), *this, *_engine);
@@ -353,6 +326,24 @@ void DatabaseFeature::stop() {
   // i am here for debugging only.
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
+
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
+  // delete the database manager thread
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
+
+    while (_databaseManager->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
 
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
@@ -438,24 +429,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // delete the IO checker thread
-  if (_ioHeartbeatThread != nullptr) {
-    _ioHeartbeatThread->beginShutdown();
-
-    while (_ioHeartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
-  // delete the database manager thread
-  if (_databaseManager != nullptr) {
-    _databaseManager->beginShutdown();
-
-    while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
   try {
     closeDroppedDatabases();
   } catch (...) {
@@ -476,24 +449,7 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (_engine == nullptr) {
-    // engine not injected by test code, inject it now
-#endif
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ce = server().getFeature<ClusterEngine>();
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.disable();
-      ce.setActualEngine(&rocksdb);
-      _engine = &ce;
-    } else {
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.enable();
-      _engine = &rocksdb;
-    }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  }
-#endif
+  _engine = &server().getFeature<StorageEngine>();
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();
@@ -505,11 +461,32 @@ void DatabaseFeature::prepare() {
   }
 }
 
+void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
+  TRI_ASSERT(databases.isArray());
+
+  auto res = iterateDatabases(databases);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
+        << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
+    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void DatabaseFeature::recoveryDone() {
-  TRI_ASSERT(!_engine->inRecovery());
+  TRI_ASSERT(_engine->isReady());
 
   // '_pendingRecoveryCallbacks' will not change because
-  // !StorageEngine.inRecovery()
+  // StorageEngine.isReady()
   // It's single active thread before recovery done,
   // so we could use general purpose thread pool for this
   std::vector<futures::Future<Result>> futures;
@@ -536,8 +513,8 @@ void DatabaseFeature::recoveryDone() {
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  if (!_engine->inRecovery()) {
-    return callback();  // if no engine then can't be in recovery
+  if (_engine->isReady()) {
+    return callback();  // engine ready, execute immediately
   }
 
   // do not need a lock since single-thread access during recovery
@@ -604,7 +581,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     vocbase = _engine->createDatabase(std::move(info));
     TRI_ASSERT(vocbase != nullptr);
 
-    if (!_engine->inRecovery()) {
+    if (_engine->isReady()) {
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);
@@ -623,7 +600,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!_engine->inRecovery()) {
+  if (_engine->isReady()) {
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 

@@ -45,16 +45,7 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class RecoveryState : uint32_t {
-  /// @brief recovery is not yet started
-  BEFORE = 0,
-
-  /// @brief recovery is in progress
-  IN_PROGRESS,
-
-  /// @brief recovery is done
-  DONE
-};
+enum class EngineState : uint32_t { kPreRecovery = 0, kRecovering, kRunning };
 
 namespace aql {
 class OptimizerRulesFeature;
@@ -69,6 +60,7 @@ class TransactionCollection;
 class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
+struct IDatabaseBootstrap;
 
 namespace rest {
 class RestHandlerFactory;
@@ -106,9 +98,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory,
-                IDatabaseProvider& databaseProvider);
+                IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap);
 
   virtual HealthData healthCheck() = 0;
 
@@ -223,14 +215,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
-  /// @brief is database in recovery
-  bool inRecovery();
+  /// @brief true once recovery has finished and the engine is running
+  bool isReady();
 
   /// @brief current recovery state
-  virtual RecoveryState recoveryState() = 0;
+  virtual EngineState engineState() noexcept = 0;
 
   /// @brief current recovery tick
-  virtual TRI_voc_tick_t recoveryTick() = 0;
+  virtual TRI_voc_tick_t recoveryTick() noexcept = 0;
 
   virtual auto dropReplicatedState(
       TRI_vocbase_t&,
@@ -323,7 +315,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const;
+  virtual IndexFactory const& indexFactory() const;
 
   // AQL functions
   // -------------
@@ -384,6 +376,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // provides access to the database catalog (database objects, version tracker,
   // name settings).
   IDatabaseProvider& _databaseProvider;
+
+  // startup-lifecycle hooks called as the engine opens.
+  IDatabaseBootstrap& _databaseBootstrap;
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

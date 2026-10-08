@@ -232,14 +232,15 @@ ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
 
   if (not ServerState::instance()->isDBServer()) {
     if (auth::isNameAndNoId(cName).fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
     if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cName,
                                                          AccessLevel::Read);
         r.fail()) {
-      return Result{TRI_ERROR_FORBIDDEN};
+      return r;
     }
   }
+
   if (ServerState::instance()->isCoordinator()) {
     auto coll =
         _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(), cName);
@@ -897,8 +898,7 @@ async<void> RestIndexHandler::createIndex() {
 
   auto collRes = collection(cName);
   if (collRes.fail()) {
-    events::CreateIndexEnd(_vocbase.name(), cName, body,
-                           TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    events::CreateIndexEnd(_vocbase.name(), cName, body, collRes.errorNumber());
     generateError(collRes.result());
     co_return;
   }

@@ -63,6 +63,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Sharding/ShardingFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -700,11 +701,11 @@ TEST_F(IResearchAnalyzerFeatureTest,
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
-  // add valid inRecovery (failure)
+  // add valid !isReady() (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   auto feature = createAnalyzerFeature();
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -1441,7 +1442,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     };
     static const IndexTypeFactory indexTypeFactory(server.server());
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.getFeature<arangodb::DatabaseFeature>().engine().indexFactory());
+        server.getFeature<arangodb::StorageEngine>().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
   }
 
@@ -2494,7 +2495,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     feature.unprepare();
   }
 
-  // remove existing (inRecovery) single-server
+  // remove existing (engine !isReady()) single-server
   {
     auto feature = createAnalyzerFeature();
 
@@ -2517,8 +2518,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2553,8 +2553,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2567,8 +2565,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                 arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
                     metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-    StorageEngineMock engine(newServer);
-    dbFeature.setEngineTesting(&engine);
+    newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
     newServer.addFeature<
@@ -2636,7 +2633,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // remove existing (inRecovery) dbserver
+  // remove existing (engine !isReady()) dbserver
   {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
@@ -2651,8 +2648,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2665,8 +2660,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                 arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
                     metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-    StorageEngineMock engine(newServer);
-    dbFeature.setEngineTesting(&engine);
+    newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
     newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -2727,8 +2721,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2857,7 +2850,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
   };
@@ -2899,8 +2892,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   auto vocbase = _systemDatabaseFeature.use();
 
-  // test feature start load configuration (inRecovery, no configuration
-  // collection)
+  // test feature start load configuration (!isReady(), no config collection)
   {
     // ensure no configuration collection
     {
@@ -2918,8 +2910,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2960,8 +2951,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     feature.unprepare();
   }
 
-  // test feature start load configuration (inRecovery, with configuration
-  // collection)
+  // test feature start load configuration (!isReady(), with config collection)
   {
     // ensure there is an empty configuration collection
     {
@@ -2997,8 +2987,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3170,14 +3159,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // features cannot use the existing server since its features already have
   // some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-  StorageEngineMock engine(newServer);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  dbfeature.setEngineTesting(&engine);
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
-          newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
@@ -4250,12 +4236,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
-      dbFeature,
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4593,12 +4577,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
-          newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
@@ -4741,12 +4722,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  StorageEngineMock engine(newServer);
-  dbFeature.setEngineTesting(&engine);
+  newServer.addFeature<arangodb::StorageEngine, StorageEngineMock>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
-          newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),

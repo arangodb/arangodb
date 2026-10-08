@@ -312,20 +312,24 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
+function makeArgsArangosh (options, instanceManager, force_jwt) {
   let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
-  if (options.hasOwnProperty('username')) {
-    args['server.username'] = options.username;
-  }
-  if (options.hasOwnProperty('password')) {
-    args['server.password'] = options.password;
-  }
 
+  if (force_jwt) {
+    args['server.jwt-token'] = instanceManager.JWT;
+  } else {
+    if (options.hasOwnProperty('username')) {
+      args['server.username'] = options.username;
+    }
+    if (options.hasOwnProperty('password')) {
+      args['server.password'] = options.password;
+    }
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -743,7 +747,11 @@ function readRtaErrorLog(logFile) {
 }
 
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
-  let args = Object.assign(makeArgsArangosh(options), {
+  let args = Object.assign(makeArgsArangosh(
+    options, instanceManager,
+    // waitData needs JWT access for the _users collection
+    writeReadClean === 2
+  ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
@@ -769,6 +777,9 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', 'true',
                        '--oldVersion', require('internal').db._version()
                      ]);
+  if (options.password) {
+    argv = argv.concat(['--passvoid', options.password]);
+  }
   if (options.rtaNegFilter !== '') {
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
@@ -927,6 +938,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -939,6 +951,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };

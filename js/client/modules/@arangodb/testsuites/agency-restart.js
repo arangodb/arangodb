@@ -73,16 +73,17 @@ function runArangodRecovery (params, agencyMgr) {
     // enable development debugging if extremeVerbosity is set
     let args = Object.assign({
       'javascript.script': params.script,
-      'log.output': 'file://' + params.crashLog
+      'log.output': 'file://' + params.crashLog,
     }, params.options.extraArgs);
 
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
-    params['instance'] = new inst.instance(params.options,
-                                           inst.instanceRole.agent,
-                                           args, {}, {}, 'tcp', params.rootDir, '',
-                                           agencyMgr);
+    params['instance'] = new inst.instance(
+      params.options, inst.instanceRole.agent, 'tcp',
+      agencyMgr, args,
+      params.rootDir, '', '',
+      '', 0);
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {

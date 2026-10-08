@@ -104,7 +104,9 @@ RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
       timeout, std::forward<F>(fn));
 }
 
-RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
+RocksDBMetaCollection::~RocksDBMetaCollection() {
+  RocksDBMetaCollection::freeMemory();
+}
 
 void RocksDBMetaCollection::freeMemory() noexcept {
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
@@ -1263,7 +1265,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_engine.inRecovery());
+    TRI_ASSERT(!_engine.isReady());
     return;
   }
 
