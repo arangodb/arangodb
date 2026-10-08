@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Basics/EncodingUtils.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -37,6 +39,8 @@ struct GeneralServerOptions {
   bool returnQueueTimeHeader = true;
   bool permanentRootRedirect = true;
   uint64_t compressResponseThreshold = 0;
+  uint64_t maxUncompressedRequestBodySize =
+      arangodb::encoding::defaultMaxUncompressedSize;
   std::vector<std::string> trustedProxies;
   std::vector<std::string> accessControlAllowOrigins;
   std::string redirectRootTo = "/_admin/aardvark/index.html";

@@ -66,10 +66,12 @@ void setDeclaredSize(arangodb::basics::StringBuffer& compressed,
 }
 
 ErrorCode lz4Uncompress(arangodb::basics::StringBuffer const& compressed,
-                        arangodb::basics::StringBuffer& uncompressed) {
+                        arangodb::basics::StringBuffer& uncompressed,
+                        size_t maxUncompressedSize =
+                            arangodb::encoding::defaultMaxUncompressedSize) {
   return arangodb::encoding::lz4Uncompress(
       reinterpret_cast<uint8_t const*>(compressed.data()), compressed.size(),
-      uncompressed);
+      uncompressed, maxUncompressedSize);
 }
 
 ErrorCode lz4Compress(std::string_view input,
@@ -503,6 +505,26 @@ TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooLarge) {
   EXPECT_EQ(0, uncompressed.size());
 }
 
+// one byte over maxLz4UncompressedSize, rejected before anything is reserved
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeOverLimit) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+
+  size_t limit = strlen(::shortString);
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit + 1));
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT,
+            ::lz4Uncompress(compressed, uncompressed, limit));
+  EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit));
+  EXPECT_EQ(TRI_ERROR_NO_ERROR,
+            ::lz4Uncompress(compressed, uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
+}
+
 TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooSmall) {
   basics::StringBuffer compressed;
   ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
@@ -535,4 +557,28 @@ TEST(EncodingUtilsTest, testStringBufferLz4TruncatedInput) {
                 reinterpret_cast<uint8_t const*>(compressed.data()),
                 compressed.size() / 2, uncompressed));
   EXPECT_EQ(0, uncompressed.size());
+}
+
+// gzip and deflate stop once the output outgrows the limit, rather than
+// checking a declared size up front like lz4 does
+TEST(EncodingUtilsTest, testStringBufferGzipOutputOverLimit) {
+  basics::StringBuffer buffer(1024, true);
+  buffer.appendText(::mediumString);
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, buffer.gzipCompress(false));
+
+  size_t limit = strlen(::mediumString);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(
+      TRI_ERROR_RESOURCE_LIMIT,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit - 1));
+  EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  EXPECT_EQ(
+      TRI_ERROR_NO_ERROR,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
 }
