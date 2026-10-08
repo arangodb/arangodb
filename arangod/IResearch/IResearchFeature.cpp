@@ -49,6 +49,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -1044,10 +1045,10 @@ void IResearchFeature::registerIndexFactory() {
     }
   };
 
-  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
+  if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
     engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
     addDefinition();
-  } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
     addDefinition();
   }
