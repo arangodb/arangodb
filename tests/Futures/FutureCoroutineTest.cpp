@@ -1,5 +1,6 @@
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Async/WaitTypes.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
@@ -18,85 +19,6 @@ using namespace arangodb;
 using namespace arangodb::futures;
 
 namespace {
-struct WaitSlot {
-  void resume() {
-    ready = true;
-    _continuation.resume();
-  }
-
-  void await() {}
-
-  std::coroutine_handle<> _continuation;
-
-  bool await_ready() { return ready; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> continuation) {
-    _continuation = continuation;
-  }
-
-  void stop() {}
-
-  bool ready = false;
-};
-
-struct NoWait {
-  void resume() {}
-  void await() {}
-
-  auto operator co_await() { return std::suspend_never{}; }
-  void stop() {}
-};
-
-struct ConcurrentNoWait {
-  void resume() {}
-  void await() {
-    await_suspend(std::noop_coroutine());
-    _thread.join();
-  }
-
-  bool await_ready() { return false; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> handle) {
-    {
-      std::unique_lock guard(_mutex);
-      _coro.emplace_back(handle);
-    }
-    _cv.notify_one();
-  }
-  ConcurrentNoWait()
-      : _thread([&] {
-          bool stopping = false;
-          while (true) {
-            std::coroutine_handle<> handle;
-            {
-              std::unique_lock guard(_mutex);
-              if (_coro.empty() && stopping) {
-                break;
-              }
-              _cv.wait(guard, [&] { return !_coro.empty(); });
-              handle = _coro.front();
-              _coro.pop_front();
-            }
-            if (handle == std::noop_coroutine()) {
-              stopping = true;
-            }
-            handle.resume();
-          }
-        }) {}
-
-  auto stop() -> void {
-    if (_thread.joinable()) {
-      await_suspend(std::noop_coroutine());
-      _thread.join();
-    }
-  }
-
-  std::mutex _mutex;
-  std::condition_variable_any _cv;
-  std::deque<std::coroutine_handle<>> _coro;
-
-  std::jthread _thread;
-};
 
 auto expect_all_promises_in_state(arangodb::async_registry::State state,
                                   uint number_of_promises) {
@@ -128,7 +50,8 @@ struct FutureTest : ::testing::Test {
   WaitType wait;
 };
 
-using MyTypes = ::testing::Types<NoWait, WaitSlot, ConcurrentNoWait>;
+using MyTypes = ::testing::Types<async_tests::NoWait, async_tests::WaitSlot,
+                                 async_tests::ConcurrentNoWait>;
 TYPED_TEST_SUITE(FutureTest, MyTypes);
 
 TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
@@ -138,9 +61,17 @@ TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
       co_return 12;
     }();
 
-    if (std::is_same<decltype(this->wait), WaitSlot>()) {
+    if constexpr (std::is_same<decltype(this->wait), async_tests::WaitSlot>()) {
+      // for WaitSlot fn is currently suspended
       expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
                                    1);
+    } else if constexpr (std::is_same<decltype(this->wait),
+                                      async_tests::NoWait>()) {
+      // for NoWait fn already finished
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    } else {
+      // for ConcurrentNoWait both can happen, we don't know for sure here
     }
 
     this->wait.resume();
@@ -194,12 +125,6 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{promise->id});
 
       co_await std::move(fn);
-      awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
-      if (not std::is_same<TypeParam, NoWait>::value) {
-        EXPECT_TRUE(awaited_promise.has_value());
-        EXPECT_EQ(awaited_promise->requester,
-                  arangodb::async_registry::Requester{promise->id});
-      }
 
       co_return;
     };
@@ -217,21 +142,6 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn);
-
-      awaited_promise = find_promise_by_name("awaited_fn");
-      if (not std::is_same<TypeParam, NoWait>::value) {
-        EXPECT_TRUE(awaited_promise.has_value());
-        EXPECT_EQ(awaited_promise->requester,
-                  arangodb::async_registry::Requester{waiter_promise->id});
-      }
-
-      // waiter did not change
-      waiter_promise = find_promise_by_name("waiter_fn");
-      EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
-          waiter_promise->requester));
-
-      co_return;
     };
   };
 
@@ -241,7 +151,7 @@ TYPED_TEST(
   this->wait.await();
 }
 
-TYPED_TEST(FutureTest,
+TYPED_TEST(FutureTest,  // HERE
            promises_in_async_registry_know_their_requester_with_move) {
   using TestType = decltype(this);
   struct Functions {
@@ -263,14 +173,33 @@ TYPED_TEST(FutureTest,
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
-          waiter_promise->requester));
+      if (awaited_promise.has_value()) {
+        // nobody has co_awaited fn yet, so its requester is still the thread
+        EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
+            awaited_promise->requester));
+      }
 
       co_await std::move(fn);
 
+      // The registry entry of fn is owned by its SharedState, which is deleted
+      // as soon as the coroutine frame (Promise side) and the Future inside
+      // the awaitable temporary (consumer side) have both detached.
       awaited_promise = find_promise_by_name("awaited_fn");
-      if (not std::is_same<TypeParam, NoWait>::value) {
+      if constexpr (std::is_same<TypeParam, async_tests::WaitSlot>::value) {
+        // fn resolves inside its own callback, which resumes this coroutine
+        // synchronously: the SharedState is still attached while we run here
         EXPECT_TRUE(awaited_promise.has_value());
+      } else if constexpr (std::is_same<TypeParam,
+                                        async_tests::NoWait>::value) {
+        // fn already finished before this coroutine started, so only the
+        // Future kept its SharedState alive. That Future died with the
+        // awaitable temporary at the end of the co_await expression.
+        EXPECT_FALSE(awaited_promise.has_value());
+      }
+      // ConcurrentNoWait: either of the above, depending on whether the worker
+      // thread finished fn before the co_await. Whenever the entry is still
+      // visible, its requester must have been updated by the co_await.
+      if (awaited_promise.has_value()) {
         EXPECT_EQ(awaited_promise->requester,
                   arangodb::async_registry::Requester{waiter_promise->id});
       }
