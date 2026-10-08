@@ -105,6 +105,7 @@ Currently implemented flags:
 | -r2                    | skip when running without replication 2                                                                                                                               |
 | -sjs                   | skip when running the SUT without javascript enabled                                                                                                                  |
 | _DISABLED              | should be added *after* .js to stop a test from being executed                                                                                                        |
+when `--extremeVerbosity` is set, the filter responsible for skipping a test is printed.
 
 # test lifecycle management
 The test lifecycle management should be utilized to maintain the SUT, iterate over the tests. 
