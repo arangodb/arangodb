@@ -102,7 +102,7 @@ std::shared_ptr<Index> IndexFactory::createIResearchLink(
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "invalid index type '" +
-            std::string{StaticStrings::ViewArangoSearchType} + "'");
+            std::string{iresearch::StaticStrings::ViewArangoSearchType} + "'");
   }
   return _linkCreator(collection, definition, id, isClusterConstructor);
 }
