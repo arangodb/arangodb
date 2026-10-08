@@ -96,7 +96,7 @@ function runScenarioDriver (options, instanceManager, argv) {
     sh.detectLogfiles(instanceManager.rootDir, instanceManager.rootDir);
   }
   const rc = executeExternalAndWait('python3', argv, false, 0,
-                                    sh ? sh.getSanOptions() : undefined);
+                                    sh ? sh.getSanOptions() : []);
   if (sh) {
     collectReports(options, sh, instanceManager.rootDir);
   }
