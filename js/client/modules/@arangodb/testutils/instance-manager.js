@@ -102,7 +102,6 @@ class instanceManager {
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
-    this.JWT = null;
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
@@ -798,7 +797,7 @@ class instanceManager {
                                  { "server": dbServer.shortName, "undoMoves": false });
         // BTS-2329: is 500 a valid code here? and what to do?
         if (result.code !== 500) {
-          print(`${Date()} retrying resign leadership - ${result.code} - ${result.parsedBody}`);
+          print(`${Date()} retrying resign leadership - ${result.code} - ${JSON.stringify(result.parsedBody)}`);
           break;
         }
       }
@@ -1423,7 +1422,7 @@ class instanceManager {
   }
 
   waitForAllShardsInSync() {
-    if (!this.isCluster) {
+    if (!this.options.cluster) {
       return true;
     }
     print(`${CYAN}${Date()} waitForAllShardsInSync${RESET}`);
