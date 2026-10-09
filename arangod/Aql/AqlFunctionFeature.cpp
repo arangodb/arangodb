@@ -160,7 +160,8 @@ void AqlFunctionFeature::addTypeCastFunctions() {
 
   // type cast functions
   add({"TO_NUMBER", ".", flags, &functions::ToNumber});
-  add({"TO_STRING", ".", flags, &functions::adapt<&functions::toString>});
+  add({"TO_STRING", ".", flags,
+       &functions::adapt<&functions::toString, "TO_STRING">});
   add({"TO_BOOL", ".", flags, &functions::ToBool});
   add({"TO_ARRAY", ".", flags, &functions::ToArray});
   // TO_LIST is an alias for TO_ARRAY
@@ -174,32 +175,37 @@ void AqlFunctionFeature::addStringFunctions() {
       FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
 
   // string functions
-  add({"CONCAT", ".|+", flags, &functions::adapt<&functions::concat>});
+  add({"CONCAT", ".|+", flags,
+       &functions::adapt<&functions::concat, "CONCAT">});
   add({"CONCAT_SEPARATOR", ".,.|+", flags,
-       &functions::adapt<&functions::concatSeparator>});
-  add({"CHAR_LENGTH", ".", flags, &functions::adapt<&functions::charLength>});
-  add({"LOWER", ".", flags, &functions::adapt<&functions::lower>});
-  add({"UPPER", ".", flags, &functions::adapt<&functions::upper>});
-  add({"SUBSTRING", ".,.|.", flags, &functions::adapt<&functions::substring>});
+       &functions::adapt<&functions::concatSeparator, "CONCAT_SEPARATOR">});
+  add({"CHAR_LENGTH", ".", flags,
+       &functions::adapt<&functions::charLength, "CHAR_LENGTH">});
+  add({"LOWER", ".", flags, &functions::adapt<&functions::lower, "LOWER">});
+  add({"UPPER", ".", flags, &functions::adapt<&functions::upper, "UPPER">});
+  add({"SUBSTRING", ".,.|.", flags,
+       &functions::adapt<&functions::substring, "SUBSTRING">});
   add({"SUBSTRING_BYTES", ".,.|.,.,.", flags,
-       &functions::adapt<&functions::substringBytes>});
-  add({"CONTAINS", ".,.|.", flags, &functions::adapt<&functions::contains>});
-  add({"LIKE", ".,.|.", flags, &functions::adapt<&functions::like>});
+       &functions::adapt<&functions::substringBytes, "SUBSTRING_BYTES">});
+  add({"CONTAINS", ".,.|.", flags,
+       &functions::adapt<&functions::contains, "CONTAINS">});
+  add({"LIKE", ".,.|.", flags, &functions::adapt<&functions::like, "LIKE">});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
   add({"REGEX_SPLIT", ".,.|.,.", flags, &functions::RegexSplit});
   add({"REGEX_TEST", ".,.|.", flags, &functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", flags, &functions::RegexReplace});
-  add({"LEFT", ".,.", flags, &functions::adapt<&functions::left>});
-  add({"RIGHT", ".,.", flags, &functions::adapt<&functions::right>});
-  add({"TRIM", ".|.", flags, &functions::adapt<&functions::trim>});
-  add({"LTRIM", ".|.", flags, &functions::adapt<&functions::ltrim>});
-  add({"RTRIM", ".|.", flags, &functions::adapt<&functions::rtrim>});
+  add({"LEFT", ".,.", flags, &functions::adapt<&functions::left, "LEFT">});
+  add({"RIGHT", ".,.", flags, &functions::adapt<&functions::right, "RIGHT">});
+  add({"TRIM", ".|.", flags, &functions::adapt<&functions::trim, "TRIM">});
+  add({"LTRIM", ".|.", flags, &functions::adapt<&functions::ltrim, "LTRIM">});
+  add({"RTRIM", ".|.", flags, &functions::adapt<&functions::rtrim, "RTRIM">});
   add({"FIND_FIRST", ".,.|.,.", flags,
-       &functions::adapt<&functions::findFirst>});
-  add({"FIND_LAST", ".,.|.,.", flags, &functions::adapt<&functions::findLast>});
-  add({"SPLIT", ".|.,.", flags, &functions::adapt<&functions::split>});
+       &functions::adapt<&functions::findFirst, "FIND_FIRST">});
+  add({"FIND_LAST", ".,.|.,.", flags,
+       &functions::adapt<&functions::findLast, "FIND_LAST">});
+  add({"SPLIT", ".|.,.", flags, &functions::adapt<&functions::split, "SPLIT">});
   add({"SUBSTITUTE", ".,.|.,.", flags,
-       &functions::adapt<&functions::substitute>});
+       &functions::adapt<&functions::substitute, "SUBSTITUTE">});
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
@@ -211,8 +217,10 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &functions::Hash});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
-  add({"TO_CHAR", ".", flags, &functions::adapt<&functions::toChar>});
-  add({"REPEAT", ".,.|.", flags, &functions::adapt<&functions::repeat>});
+  add({"TO_CHAR", ".", flags,
+       &functions::adapt<&functions::toChar, "TO_CHAR">});
+  add({"REPEAT", ".,.|.", flags,
+       &functions::adapt<&functions::repeat, "REPEAT">});
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &functions::LevenshteinDistance});

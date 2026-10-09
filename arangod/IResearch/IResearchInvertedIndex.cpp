@@ -304,12 +304,6 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     TRI_ASSERT(false);
     return nullptr;
   }
-  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                             velocypack::Options const* opts,
-                                             bool& isEmptyExpression) final {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
 
   arangodb::ValidatorBase* buildValidator(velocypack::Slice) final {
     TRI_ASSERT(false);
