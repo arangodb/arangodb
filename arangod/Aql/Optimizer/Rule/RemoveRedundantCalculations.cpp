@@ -22,6 +22,7 @@
 
 #include "RemoveRedundantCalculations.h"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/CollectNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
@@ -46,7 +47,6 @@ void removeRedundantCalculationsRule(Optimizer* opt,
     return;
   }
 
-  std::string buffer;
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -57,15 +57,7 @@ void removeRedundantCalculationsRule(Optimizer* opt,
     }
 
     arangodb::aql::Variable const* outvar = nn->outVariable();
-
-    try {
-      buffer.clear();
-      nn->expression()->stringifyIfNotTooLong(buffer);
-    } catch (...) {
-      continue;
-    }
-
-    std::string const referenceExpression(std::move(buffer));
+    AstNode const* reference = nn->expression()->node();
 
     std::vector<ExecutionNode*> stack;
     n->dependencies(stack);
@@ -75,35 +67,29 @@ void removeRedundantCalculationsRule(Optimizer* opt,
       stack.pop_back();
 
       if (current->getType() == EN::CALCULATION) {
-        try {
-          buffer.clear();
-          ExecutionNode::castTo<CalculationNode const*>(current)
-              ->expression()
-              ->stringifyIfNotTooLong(buffer);
+        auto const* other =
+            ExecutionNode::castTo<CalculationNode const*>(current)
+                ->expression()
+                ->node();
+        if (areNodesIdentical(other, reference)) {
+          auto target = ExecutionNode::castTo<CalculationNode const*>(current)
+                            ->outVariable();
+          while (target != nullptr) {
+            auto it = replacements.find(target->id);
 
-          if (buffer == referenceExpression) {
-            auto target = ExecutionNode::castTo<CalculationNode const*>(current)
-                              ->outVariable();
-            while (target != nullptr) {
-              auto it = replacements.find(target->id);
-
-              if (it != replacements.end()) {
-                target = (*it).second;
-              } else {
-                break;
-              }
-            }
-            replacements.emplace(outvar->id, target);
-
-            for (auto it = replacements.begin(); it != replacements.end();
-                 ++it) {
-              if ((*it).second == outvar) {
-                (*it).second = target;
-              }
+            if (it != replacements.end()) {
+              target = (*it).second;
+            } else {
+              break;
             }
           }
-        } catch (...) {
-          continue;
+          replacements.emplace(outvar->id, target);
+
+          for (auto it = replacements.begin(); it != replacements.end(); ++it) {
+            if ((*it).second == outvar) {
+              (*it).second = target;
+            }
+          }
         }
       }
 

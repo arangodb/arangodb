@@ -74,7 +74,12 @@ function optimizerRuleTestSuite () {
         ["FOR i IN [ " + collection + " ] LET a = MAX(i.a) RETURN MIN(i.a)", true],
         ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = RAND(), b = RAND() RETURN [ a, b ]", false],
         ["FOR i IN [ " + collection + " ] LET c = MAX(i.a) COLLECT d = c LET i = RAND() LET b = i.a RETURN d", true],
-        ["LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')", true]
+        ["LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')", true],
+        ["FOR i IN [ { a: 1, b: 0, c: 1, d: 'D', e: 'E' } ] LET p = (i.a ? i.b : i.c) ? i.d : i.e LET r = i.a ? i.b : (i.c ? i.d : i.e) RETURN [ p, r ]", true],
+        ["FOR i IN [ { a: 100, b: 100, c: 5 } ] LET p = (i.a - i.b) - i.c LET r = i.a - (i.b - i.c) RETURN [ p, r ]", true],
+        ["FOR i IN [ { a: 0.1, b: 0.2, c: 0.3 } ] LET p = (i.a + i.b) + i.c LET r = i.a + (i.b + i.c) RETURN [ p, r ]", true],
+        ["FOR i IN [ { a: 1, b: 2, c: 3 } ] LET p = (i.a + i.b) * i.c LET r = i.a + (i.b * i.c) RETURN [ p, r ]", true],
+        ["FOR i IN [ { a: true, b: false, c: false } ] LET p = (i.a OR i.b) AND i.c LET r = i.a OR (i.b AND i.c) RETURN [ p, r ]", true]
       ];
 
       queryList.forEach(function(query) {
@@ -108,7 +113,9 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = IS_NUMBER(i), b = IS_NUMBER(i) RETURN [ a, b ]",
         "FOR i IN [ " + collection + " ] LET a = MAX(i.a) COLLECT x = a LET i = x.a, j = x.a RETURN [ i, j ]",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.a RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a SORT i.a RETURN x"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a SORT i.a RETURN x",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = (i.a - 1) - 2, b = (i.a - 1) - 2 RETURN [ a, b ]",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MERGE(i, { x: 1 }), b = MERGE(i, { x: 1 }) RETURN [ a, b ]",
       ];
 
       queries.forEach(function(query) {
@@ -177,7 +184,8 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET r = MAX([ i.a ]) == 3 RETURN MAX([ i.a ]) == 3", [ false, false, true ] ],
         [ "LET v = [ { a: 1 }, { a: 2 }, { a: 3 } ] FOR i IN v LET r = MAX(v[*].a) == 3 RETURN MAX(v[*].a) == 3", [ true, true, true ] ],
         [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a), b = LENGTH(i.a) RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
-        [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a) SORT a LET b = LENGTH(i.a) SORT b RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ]
+        [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a) SORT a LET b = LENGTH(i.a) SORT b RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
+        [ "LET a = {} LET b = {x: null} RETURN b", [ { x: null } ] ],
       ];
 
       queries.forEach(function(query) {
