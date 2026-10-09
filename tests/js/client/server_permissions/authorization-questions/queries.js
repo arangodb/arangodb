@@ -25,7 +25,7 @@
 
 // Authorization questions asked by GET /_api/query/current, GET /_api/query/slow,
 // DELETE /_api/query/{id} and DELETE /_api/query/slow when a query of another
-// user is involved (COR-1023).
+// user is involved, and by PUT /_api/query/properties (COR-1023).
 //
 // Handlers: arangod/RestHandler/RestQueryHandler.cpp,
 //           arangod/VocBase/Methods/Queries.cpp (ExecContext::canAccessQuery)
@@ -73,6 +73,10 @@ const baseQuestions = [
   `UseDatabase name=${DB} level=read`
 ];
 const foreignQueryQuestions = baseQuestions.concat(['AdminAqlQueries']);
+// PUT /_api/query/properties first asks for write access to the database
+const databaseWriteQuestions = baseQuestions.concat([
+  `UseDatabase name=${DB} level=write`
+]);
 
 const password = 'testi';
 const secret = 'alice-secret-4711';
@@ -153,18 +157,22 @@ function queryApiAuthzSuite () {
   return {
     setUpAll: function () {
       setUpApiTestData();
-      // alice and bob are plain read-only users of the test database;
-      // root keeps read-write access to _system and is therefore an admin
-      ['alice', 'bob'].forEach((user) => {
-        users.save(user, password);
-        users.grantDatabase(user, DB, 'ro');
-      });
+      // alice may write to the test database, bob may only read it; neither
+      // is an admin. carol is an admin (read-write access to _system) who may
+      // only read the test database. root is an admin with access everywhere.
+      users.save('alice', password);
+      users.grantDatabase('alice', DB, 'rw');
+      users.save('bob', password);
+      users.grantDatabase('bob', DB, 'ro');
+      users.save('carol', password);
+      users.grantDatabase('carol', '_system', 'rw');
+      users.grantDatabase('carol', DB, 'ro');
       arango.PUT(`${queryApi}/properties`, { slowQueryThreshold: 0.1 });
     },
 
     tearDownAll: function () {
       killAllSleepQueriesAsRoot();
-      ['alice', 'bob'].forEach((user) => {
+      ['alice', 'bob', 'carol'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -351,6 +359,45 @@ function queryApiAuthzSuite () {
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       assertEqual(0, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
+    },
+
+    // ── PUT /_api/query/properties ───────────────────────────────────────
+
+    // the tracking properties are per database, so changing them asks for
+    // write access to the database and, failing that, for
+    // AdminAqlQueries; once granted, the read-only gate is asked
+    testSetQueryPropertiesWithDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('alice', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(databaseWriteQuestions.concat(['IsReadOnly']), endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertEqual(48, res.json.maxSlowQueries);
+      arango.PUT(`${queryApi}/properties`, { maxSlowQueries: 64 });
+    },
+
+    testSetQueryPropertiesWithoutDatabaseWriteAccess: function () {
+      const before = arango.GET(`${queryApi}/properties`);
+
+      beginObserve();
+      const res = sendAs('bob', 'PUT', `${queryApi}/properties`, { enabled: false });
+      assertPermissions(databaseWriteQuestions.concat(['AdminAqlQueries']),
+                        endObserve());
+
+      assertEqual(403, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.error, JSON.stringify(res.json));
+      assertEqual(before.enabled, arango.GET(`${queryApi}/properties`).enabled);
+    },
+
+    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('carol', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(databaseWriteQuestions.concat(['AdminAqlQueries', 'IsReadOnly']),
+                        endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertEqual(48, res.json.maxSlowQueries);
+      arango.PUT(`${queryApi}/properties`, { maxSlowQueries: 64 });
     }
   };
 }

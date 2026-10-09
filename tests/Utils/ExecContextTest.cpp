@@ -343,4 +343,38 @@ TEST(ExecContextTest,
   EXPECT_FALSE(ctx->canAccessQuery("dummy").ok());
 }
 
+// --- canChangeQueryProperties ---
+
+TEST(ExecContextTest,
+     canChangeQueryProperties_database_write_access_is_enough) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
+
+  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+}
+
+TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
+  auto const cec =
+      makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
+
+  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+            TRI_ERROR_FORBIDDEN);
+}
+
+TEST(ExecContextTest,
+     canChangeQueryProperties_admin_may_without_database_write_access) {
+  // classic admin = read-write access to the _system database
+  auto const cec =
+      makeClassicExecContext("carol", "db", auth::Level::RW, auth::Level::RO);
+
+  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+}
+
+TEST(ExecContextTest, canChangeQueryProperties_superuser_may) {
+  auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
+                                           false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canChangeQueryProperties("db").ok());
+}
+
 }  // namespace arangodb::tests
