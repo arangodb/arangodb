@@ -155,12 +155,12 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
       whichFilter.filter = 'skip nightly';
       return false;
     }
+  } else {
     if (options.onlyNightly) {
       whichFilter.filter = 'only nightly';
       return false;
     }
   }
-
   if (testname.indexOf('-geo') !== -1 && options.skipGeo) {
     whichFilter.filter = 'geo';
     return false;
