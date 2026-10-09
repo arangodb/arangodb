@@ -19,7 +19,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override {
     _isDone = false;
-    _startVertex = source;
+    _startVertex = _graph.vertex(VertexIdLabel{source.getID().toString()});
   }
   void resetManyStartVertices(
       std::vector<VertexDescription> const& vertices) override {
@@ -38,8 +38,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     // for an empty graph:
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
-        std::vector<std::optional<VertexRef>>{
-            _graph.vertex(_startVertex.value())},
+        std::vector<std::optional<VertexId>>{{_startVertex}},
         std::vector<Edge>{});
   };
 
@@ -92,7 +91,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
  private:
   IGraphView& _graph;
   bool _isDone = true;
-  std::optional<VertexRef> _startVertex;
-  std::deque<VertexRef> _queue;  // BFS
+  std::optional<VertexId> _startVertex;
+  std::deque<VertexId> _queue;  // BFS
 };
 }  // namespace arangodb::graph::experimental
