@@ -42,6 +42,17 @@ struct StringFunctionEnv {
 using PureStringFunction = ResultT<AqlValue> (*)(
     VPackFunctionParametersView parameters, StringFunctionEnv& env);
 
+// registers a failed result as a warning and returns null
+AqlValue callPure(ExpressionContext* ctx, AstNode const& node,
+                  PureStringFunction fn,
+                  VPackFunctionParametersView parameters);
+
+template<PureStringFunction F>
+AqlValue adapt(ExpressionContext* ctx, AstNode const& node,
+               VPackFunctionParametersView parameters) {
+  return callPure(ctx, node, F, parameters);
+}
+
 ResultT<AqlValue> toString(VPackFunctionParametersView parameters,
                            StringFunctionEnv& env);
 ResultT<AqlValue> toChar(VPackFunctionParametersView parameters,
