@@ -44,12 +44,12 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -68,7 +68,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -79,6 +78,8 @@
 #include "VocBase/LogicalView.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <type_traits>
 
 using namespace std::chrono_literals;
 
@@ -1031,25 +1032,25 @@ void IResearchFeature::registerIndexFactory() {
   }
   auto& engine = server().getFeature<StorageEngine>();
 
-  auto emplace = [&](IndexFactory const& target) {
-    auto r = const_cast<IndexFactory&>(target).emplace(
-        std::string{StaticStrings::ViewArangoSearchType}, *_factory);
+  auto addDefinition = [&]() {
+    _linkDefinition = std::make_unique<IResearchLinkDefinition>(server());
+    auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
+                                           *_linkDefinition);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
-          absl::StrCat("failure registering IResearch link factory with "
-                       "index factory from feature '",
+          absl::StrCat("failure registering IResearch link definition with "
+                       "index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
   };
 
-  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
-    _factory = IResearchLinkCoordinator::createFactory(server());
-    emplace(clusterEngine->indexFactory());
-    emplace(clusterEngine->indexFactory().rocksDBIndexFactory());
-  } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
-    _factory = IResearchRocksDBLink::createFactory(server());
-    emplace(rocksDBEngine->indexFactory());
+  if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
+    engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
+    addDefinition();
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
+    engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
+    addDefinition();
   }
 }
 

@@ -1,7 +1,10 @@
 add_library(arango_indexes STATIC
   Index.cpp
+  IndexDefinition.cpp
+  IndexDefinitions.cpp
   IndexFactory.cpp
   IndexIterator.cpp
+  IndexTypeCatalog.cpp
   SimpleAttributeEqualityMatcher.cpp
   SortedIndexAttributeMatcher.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Index.cpp

@@ -32,8 +32,8 @@
 #include "Metrics/Fwd.h"
 
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TruncateGuard.h"
 #include "StorageEngine/TransactionState.h"
-#include "RocksDBEngine/RocksDBIndex.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"

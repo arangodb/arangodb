@@ -22,11 +22,10 @@
 
 #pragma once
 
-#include "ClusterEngine/Common.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
+#include "ClusterEngine/Common.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

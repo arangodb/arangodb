@@ -93,18 +93,9 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(
-    application_features::ApplicationServer& server)
-    : IndexTypeFactory(server) {}
-
-bool IResearchRocksDBLink::IndexFactory::equal(
-    VPackSlice lhs, VPackSlice rhs, std::string const& dbname) const {
-  return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
-}
-
-std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice definition, IndexId id,
-    bool isOpening) const {
+std::shared_ptr<Index> createRocksDBLink(LogicalCollection& collection,
+                                         VPackSlice definition, IndexId id,
+                                         bool isOpening) {
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
@@ -140,20 +131,4 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   return link;
 }
 
-Result IResearchRocksDBLink::IndexFactory::normalize(
-    VPackBuilder& normalized, VPackSlice definition, bool isCreation,
-    TRI_vocbase_t const& vocbase) const {
-  // no attribute set in a definition -> old version
-  constexpr LinkVersion defaultVersion = LinkVersion::MIN;
-
-  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
-                                        vocbase, defaultVersion);
-}
-
-std::shared_ptr<IResearchRocksDBLink::IndexFactory>
-IResearchRocksDBLink::createFactory(
-    application_features::ApplicationServer& server) {
-  return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
-      new IResearchRocksDBLink::IndexFactory(server));
-}
 }  // namespace arangodb::iresearch
