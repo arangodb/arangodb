@@ -203,6 +203,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _oneIndexCondition(oneIndexCondition),
       _readOwnWrites(readOwnWrites),
       _perIndexCovering(std::move(perIndexCovering)) {
+  // IndexIteratorOptions only sees killed() func, not the query itself here
+  _options.token = &query;
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
