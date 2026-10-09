@@ -28,7 +28,9 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/QueryWarnings.h"
 #include "Aql/TypedAstNodes.h"
+#include "Basics/voc-errors.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
 
@@ -163,4 +165,30 @@ TEST_F(BuilderTest, inPatternProjectionAddsCalculation) {
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_GE(countNodesOfType(*plan, ExecutionNode::CALCULATION), 1U);
+}
+
+TEST_F(BuilderTest, excludedProjectionAttributeAccessWarns) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v.age");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  auto warnings = parsed.queryContext->warnings().all();
+  ASSERT_EQ(1U, warnings.size());
+  EXPECT_EQ(TRI_ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE, warnings.front().first);
+  EXPECT_NE(std::string::npos, warnings.front().second.find("age"));
+  EXPECT_NE(std::string::npos, warnings.front().second.find("v"));
+}
+
+TEST_F(BuilderTest, keptProjectionAttributeAccessDoesNotWarn) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v._key");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, mandatoryProjectionAttributeAccessDoesNotWarn) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v._id");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
 }

@@ -220,6 +220,30 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testExcludedProjectionAttributeAccessWarns: function () {
+            const cursor = db._query("MATCH (v :vc RETURN _key) RETURN v.j", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("j"));
+            assertTrue(warnings[0].message.includes("v"));
+        },
+
+        testKeptProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query("MATCH (v :vc RETURN _key) RETURN v._key", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "string");
+            }
+        },
+
         testSelectVerticesWithSystemAttributeProjection: function () {
             const result = db._query("MATCH (v :vc RETURN _key, i) RETURN v", {}, options).toArray();
             assertEqual(result.length, 100);
