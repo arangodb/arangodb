@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+
 * COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
   `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
 
