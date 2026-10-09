@@ -74,6 +74,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;
+  aql::AqlFunctionsInternalCache& functionsCache() override final;
 
   Database& vocbase() const override final;
   /// may be inaccessible on some platforms

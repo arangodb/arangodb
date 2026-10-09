@@ -62,6 +62,10 @@ arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
+AqlFunctionsInternalCache& QueryExpressionContext::functionsCache() {
+  return _aqlFunctionsInternalCache;
+}
+
 Database& QueryExpressionContext::vocbase() const { return _trx.vocbase(); }
 
 transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
