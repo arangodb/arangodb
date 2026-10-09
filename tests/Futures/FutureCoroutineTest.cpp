@@ -142,6 +142,8 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn);
+
+      co_return;
     };
   };
 
@@ -151,7 +153,7 @@ TYPED_TEST(
   this->wait.await();
 }
 
-TYPED_TEST(FutureTest,  // HERE
+TYPED_TEST(FutureTest,
            promises_in_async_registry_know_their_requester_with_move) {
   using TestType = decltype(this);
   struct Functions {
