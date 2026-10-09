@@ -5,6 +5,26 @@
 
 namespace arangodb::graph::experimental {
 
+/**
+   Uniquely identifies a vertex
+ */
+struct VertexIdLabel {
+  std::string label;
+  bool operator==(VertexIdLabel const&) const = default;
+};
+
+/**
+   Internal handler of an vertex
+ */
+struct VertexId {
+  size_t id;
+  bool operator==(VertexId const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, VertexId& x) {
+  return f.object(x).fields(f.field("id", x.id));
+}
+
 // Q: what to use here?
 struct EdgeId {
   size_t id;
@@ -12,8 +32,8 @@ struct EdgeId {
 };
 
 struct Edge {
-  VertexRef from;
-  VertexRef to;
+  VertexId from;
+  VertexId to;
   bool operator==(Edge const& other) const {
     return (from == other.from && to == other.to);
   }
@@ -54,10 +74,11 @@ struct IGraphView {
   // Q: use VertexRef or using VertexId = std::string (as defined in
   //    SingleServerPathResult.h)
   // Q: return Edge or Step?
-  virtual auto outEdges(VertexRef vertex) -> std::vector<Edge> = 0;
+  virtual auto outEdges(VertexId vertex) -> std::vector<Edge> = 0;
 
   // TODO needs to return at some point Vertex data
-  virtual auto vertex(VertexRef vertex) -> std::optional<VertexRef> = 0;
+  virtual auto vertex(VertexIdLabel const& vertex)
+      -> std::optional<VertexId> = 0;
 
   // -----------------------------
   // // Hausmeisterschrott
