@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global print, runSetup, assertEqual, assertFalse, fail */
+/* global print, runSetup, assertEqual, assertFalse, assertTrue, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -67,32 +67,35 @@ const recoverySuite = function () {
   jsunity.jsUnity.attachAssertions();
 
   const c = db._collection(colName);
+  const docsWithEqHash = 20000 / 250;
+  const docsWithEqSkip = 20000 / 100;
 
   return {
 
 
-    // Test that count of collection remains unmodified.
-    // We crashed after all commits, before return
+    // We crashed after all removals, before the last intermediate commit
     testCollectionCount: () => {
-      assertEqual(c.count(), 0);
+      assertEqual(c.count(), 10000);
     },
 
-    // Test that the HashIndex remains intact but empty.
     testPrimaryIndex: () => {
       let q = `FOR x IN @@c RETURN x._key`;
       let res = db._query(q, {"@c": colName}).toArray();
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 10000);
     },
 
 
-    // Test that the HashIndex remains intact but empty.
+    // Test that the HashIndex remains intact.
     testHashIndex: () => {
+      let sum = 0;
       let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
       for (let i = 0; i < 250; ++i) {
         // This validates that all documents can be found again
         let res = db._query(q, {"@c": colName, i: i}).toArray();
-        assertEqual(res.length, 0);
+        assertTrue(res.length < docsWithEqHash);
+        sum += res.length;
       }
+      assertEqual(sum, 10000);
 
       // just validate that no other values are inserted.
       let res2 = db._query(q, {"@c": colName, i: 251}).toArray();
@@ -101,12 +104,15 @@ const recoverySuite = function () {
 
     // Test that the SkiplistIndex remains intact.
     testSkiplistIndex: () => {
+      let sum = 0;
       let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
       for (let i = 0; i < 100; ++i) {
         // This validates that all documents can be found again
         let res = db._query(q, {"@c": colName, i: i}).toArray();
-        assertEqual(res.length, 0);
+        assertTrue(res.length < docsWithEqSkip);
+        sum += res.length;
       }
+      assertEqual(sum, 10000);
 
       // just validate that no other values are inserted.
       let res2 = db._query(q, {"@c": colName, i: 101}).toArray();
@@ -122,10 +128,10 @@ const recoverySuite = function () {
             assertEqual(i.selectivityEstimate, 1);
             break;
           case 'hash':
-            assertEqual(i.selectivityEstimate, 1);
+            assertEqual(i.selectivityEstimate, 0.025);
             break;
           case 'skiplist':
-            assertEqual(i.selectivityEstimate, 1);
+            assertEqual(i.selectivityEstimate, 0.01);
             break;
           default:
             fail();

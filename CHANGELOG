@@ -1,6 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. We commit first and then replicate.
+
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
 
