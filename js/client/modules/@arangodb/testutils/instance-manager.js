@@ -161,7 +161,7 @@ class instanceManager {
       if (this.addArgs.hasOwnProperty('rocksdb.encryption-keyfile')) {
         this.restKeyFile = this.addArgs['rocksdb.encryption-keyfile'];
       } else if (this.addArgs.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-        this.options.restKeyFile = fs.list(this.addArgs['rocksdb.encryption-keyfolder'])[0];
+        this.restKeyFile = fs.join(this.rootDir, fs.list(this.addArgs['rocksdb.encryption-keyfolder'])[0]);
       } else {
         fs.makeDirectoryRecursive(this.rootDir);
         this.restKeyFile = fs.join(this.rootDir, 'openDiskSesame.txt');
