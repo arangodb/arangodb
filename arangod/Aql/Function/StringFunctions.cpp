@@ -115,9 +115,11 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
   }  // for
 }
 
-AqlValue callPure(ExpressionContext* ctx, std::string_view functionName,
-                  functions::PureStringFunction fn,
-                  functions::VPackFunctionParametersView parameters) {
+}  // namespace
+
+AqlValue functions::callPure(ExpressionContext* ctx, AstNode const& node,
+                             PureStringFunction fn,
+                             VPackFunctionParametersView parameters) {
   // reserved up front so the slices handed out below stay valid
   std::vector<velocypack::Builder> sanitized;
   sanitized.reserve(parameters.size());
@@ -136,7 +138,7 @@ AqlValue callPure(ExpressionContext* ctx, std::string_view functionName,
     args.emplace_back(AqlValueHintSliceNoCopy{builder.slice()});
   }
 
-  functions::StringFunctionEnv env{
+  StringFunctionEnv env{
       ctx->trx().vocbase().server().getFeature<LanguageFeature>().getLocale(),
       ctx->functionsCache()};
   auto result = fn(args, env);
@@ -147,14 +149,12 @@ AqlValue callPure(ExpressionContext* ctx, std::string_view functionName,
   if (result.errorNumber() == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH ||
       result.errorNumber() ==
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
-    functions::registerWarning(ctx, functionName, result.errorNumber());
+    registerWarning(ctx, getFunctionName(node), result.errorNumber());
   } else {
-    functions::registerWarning(ctx, functionName, result.result());
+    registerWarning(ctx, getFunctionName(node), result.result());
   }
   return AqlValue(AqlValueHintNull());
 }
-
-}  // namespace
 
 /// @brief function TO_STRING
 ResultT<AqlValue> functions::toString(VPackFunctionParametersView parameters,
@@ -166,11 +166,6 @@ ResultT<AqlValue> functions::toString(VPackFunctionParametersView parameters,
 
   appendAsString(velocypack::Options::Defaults, adapter, value);
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
-}
-
-AqlValue functions::ToString(ExpressionContext* ctx, AstNode const&,
-                             VPackFunctionParametersView parameters) {
-  return callPure(ctx, "TO_STRING", &toString, parameters);
 }
 
 ResultT<AqlValue> functions::toChar(VPackFunctionParametersView parameters,
@@ -191,11 +186,6 @@ ResultT<AqlValue> functions::toChar(VPackFunctionParametersView parameters,
   U8_APPEND_UNSAFE(&buffer[0], offset, c);
 
   return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
-}
-
-AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  return callPure(ctx, "TO_CHAR", &toChar, parameters);
 }
 
 ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
@@ -241,11 +231,6 @@ ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
 
   // hand over string to AqlValue
   return AqlValue(std::string_view(buffer->data(), buffer->size()));
-}
-
-AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  return callPure(ctx, "REPEAT", &repeat, parameters);
 }
 
 /// @brief function FIND_FIRST
@@ -316,11 +301,6 @@ ResultT<AqlValue> functions::findFirst(VPackFunctionParametersView parameters,
     return icuError(status);
   }
   return AqlValue(AqlValueHintInt(-1));
-}
-
-AqlValue functions::FindFirst(ExpressionContext* ctx, AstNode const&,
-                              VPackFunctionParametersView parameters) {
-  return callPure(ctx, "FIND_FIRST", &findFirst, parameters);
 }
 
 /// @brief function FIND_LAST
@@ -396,11 +376,6 @@ ResultT<AqlValue> functions::findLast(VPackFunctionParametersView parameters,
   return AqlValue(AqlValueHintInt(foundPos));
 }
 
-AqlValue functions::FindLast(ExpressionContext* ctx, AstNode const&,
-                             VPackFunctionParametersView parameters) {
-  return callPure(ctx, "FIND_LAST", &findLast, parameters);
-}
-
 /// @brief function CONCAT_SEPARATOR
 ResultT<AqlValue> functions::concatSeparator(
     VPackFunctionParametersView parameters, StringFunctionEnv& env) {
@@ -465,11 +440,6 @@ ResultT<AqlValue> functions::concatSeparator(
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
-AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
-                                    VPackFunctionParametersView parameters) {
-  return callPure(ctx, "CONCAT_SEPARATOR", &concatSeparator, parameters);
-}
-
 /// @brief function CHAR_LENGTH
 ResultT<AqlValue> functions::charLength(VPackFunctionParametersView parameters,
                                         StringFunctionEnv& env) {
@@ -518,11 +488,6 @@ ResultT<AqlValue> functions::charLength(VPackFunctionParametersView parameters,
   return AqlValue(AqlValueHintUInt(length));
 }
 
-AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
-                               VPackFunctionParametersView parameters) {
-  return callPure(ctx, "CHAR_LENGTH", &charLength, parameters);
-}
-
 /// @brief function LOWER
 ResultT<AqlValue> functions::lower(VPackFunctionParametersView parameters,
                                    StringFunctionEnv& env) {
@@ -544,11 +509,6 @@ ResultT<AqlValue> functions::lower(VPackFunctionParametersView parameters,
   return AqlValue(utf8);
 }
 
-AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "LOWER", &lower, parameters);
-}
-
 /// @brief function UPPER
 ResultT<AqlValue> functions::upper(VPackFunctionParametersView parameters,
                                    StringFunctionEnv& env) {
@@ -568,11 +528,6 @@ ResultT<AqlValue> functions::upper(VPackFunctionParametersView parameters,
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
-}
-
-AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "UPPER", &upper, parameters);
 }
 
 /// @brief function SUBSTRING
@@ -612,11 +567,6 @@ ResultT<AqlValue> functions::substring(VPackFunctionParametersView parameters,
       .toUTF8String(utf8);
 
   return AqlValue(utf8);
-}
-
-AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
-                              VPackFunctionParametersView parameters) {
-  return callPure(ctx, "SUBSTRING", &substring, parameters);
 }
 
 ResultT<AqlValue> functions::substringBytes(
@@ -702,11 +652,6 @@ ResultT<AqlValue> functions::substringBytes(
 
   return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
                                    reinterpret_cast<char const*>(rhsIt)}};
-}
-
-AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const&,
-                                   VPackFunctionParametersView parameters) {
-  return callPure(ctx, "SUBSTRING_BYTES", &substringBytes, parameters);
 }
 
 ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
@@ -930,11 +875,6 @@ ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
   return AqlValue(utf8);
 }
 
-AqlValue functions::Substitute(ExpressionContext* ctx, AstNode const&,
-                               VPackFunctionParametersView parameters) {
-  return callPure(ctx, "SUBSTITUTE", &substitute, parameters);
-}
-
 /// @brief function LEFT str, length
 ResultT<AqlValue> functions::left(VPackFunctionParametersView parameters,
                                   StringFunctionEnv& env) {
@@ -956,11 +896,6 @@ ResultT<AqlValue> functions::left(VPackFunctionParametersView parameters,
 
   left.toUTF8String(utf8);
   return AqlValue(utf8);
-}
-
-AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  return callPure(ctx, "LEFT", &left, parameters);
 }
 
 /// @brief function RIGHT
@@ -985,11 +920,6 @@ ResultT<AqlValue> functions::right(VPackFunctionParametersView parameters,
 
   right.toUTF8String(utf8);
   return AqlValue(utf8);
-}
-
-AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "RIGHT", &right, parameters);
 }
 
 /// @brief function TRIM
@@ -1053,11 +983,6 @@ ResultT<AqlValue> functions::trim(VPackFunctionParametersView parameters,
   return AqlValue(utf8);
 }
 
-AqlValue functions::Trim(ExpressionContext* ctx, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  return callPure(ctx, "TRIM", &trim, parameters);
-}
-
 /// @brief function LTRIM
 ResultT<AqlValue> functions::ltrim(VPackFunctionParametersView parameters,
                                    StringFunctionEnv& env) {
@@ -1101,11 +1026,6 @@ ResultT<AqlValue> functions::ltrim(VPackFunctionParametersView parameters,
   return AqlValue(utf8);
 }
 
-AqlValue functions::LTrim(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "LTRIM", &ltrim, parameters);
-}
-
 /// @brief function RTRIM
 ResultT<AqlValue> functions::rtrim(VPackFunctionParametersView parameters,
                                    StringFunctionEnv& env) {
@@ -1147,11 +1067,6 @@ ResultT<AqlValue> functions::rtrim(VPackFunctionParametersView parameters,
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
-}
-
-AqlValue functions::RTrim(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "RTRIM", &rtrim, parameters);
 }
 
 /// @brief function CONTAINS
@@ -1221,11 +1136,6 @@ ResultT<AqlValue> functions::contains(VPackFunctionParametersView parameters,
   return AqlValue(AqlValueHintBool(result != -1));
 }
 
-AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
-                             VPackFunctionParametersView parameters) {
-  return callPure(ctx, "CONTAINS", &contains, parameters);
-}
-
 /// @brief function CONCAT
 ResultT<AqlValue> functions::concat(VPackFunctionParametersView parameters,
                                     StringFunctionEnv& env) {
@@ -1268,11 +1178,6 @@ ResultT<AqlValue> functions::concat(VPackFunctionParametersView parameters,
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
-AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  return callPure(ctx, "CONCAT", &concat, parameters);
-}
-
 /// @brief function LIKE
 ResultT<AqlValue> functions::like(VPackFunctionParametersView parameters,
                                   StringFunctionEnv& env) {
@@ -1311,11 +1216,6 @@ ResultT<AqlValue> functions::like(VPackFunctionParametersView parameters,
   }
 
   return AqlValue(AqlValueHintBool(result));
-}
-
-AqlValue functions::Like(ExpressionContext* ctx, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  return callPure(ctx, "LIKE", &like, parameters);
 }
 
 /// @brief function SPLIT
@@ -1449,11 +1349,6 @@ ResultT<AqlValue> functions::split(VPackFunctionParametersView parameters,
 
   result->close();
   return AqlValue(result->slice(), result->size());
-}
-
-AqlValue functions::Split(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  return callPure(ctx, "SPLIT", &split, parameters);
 }
 
 }  // namespace arangodb::aql

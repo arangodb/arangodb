@@ -102,18 +102,12 @@ AqlValue Typename(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue ToNumber(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
-AqlValue ToString(arangodb::aql::ExpressionContext*, AstNode const&,
-                  VPackFunctionParametersView);
 AqlValue ToBool(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
 AqlValue ToArray(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
 AqlValue Length(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
-AqlValue FindFirst(arangodb::aql::ExpressionContext*, AstNode const&,
-                   VPackFunctionParametersView);
-AqlValue FindLast(arangodb::aql::ExpressionContext*, AstNode const&,
-                  VPackFunctionParametersView);
 AqlValue Reverse(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
 AqlValue First(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -122,38 +116,6 @@ AqlValue Last(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
 AqlValue Nth(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
-AqlValue Contains(arangodb::aql::ExpressionContext*, AstNode const&,
-                  VPackFunctionParametersView);
-AqlValue Concat(arangodb::aql::ExpressionContext*, AstNode const&,
-                VPackFunctionParametersView);
-AqlValue ConcatSeparator(arangodb::aql::ExpressionContext*, AstNode const&,
-                         VPackFunctionParametersView);
-AqlValue CharLength(arangodb::aql::ExpressionContext*, AstNode const&,
-                    VPackFunctionParametersView);
-AqlValue Lower(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue Upper(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue Substring(arangodb::aql::ExpressionContext*, AstNode const&,
-                   VPackFunctionParametersView);
-AqlValue SubstringBytes(arangodb::aql::ExpressionContext*, AstNode const&,
-                        VPackFunctionParametersView);
-AqlValue Substitute(arangodb::aql::ExpressionContext*, AstNode const&,
-                    VPackFunctionParametersView);
-AqlValue Left(arangodb::aql::ExpressionContext*, AstNode const&,
-              VPackFunctionParametersView);
-AqlValue Right(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue Trim(arangodb::aql::ExpressionContext*, AstNode const&,
-              VPackFunctionParametersView);
-AqlValue LTrim(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue RTrim(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue Split(arangodb::aql::ExpressionContext*, AstNode const&,
-               VPackFunctionParametersView);
-AqlValue Like(arangodb::aql::ExpressionContext*, AstNode const&,
-              VPackFunctionParametersView);
 AqlValue RegexMatches(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue RegexTest(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -166,10 +128,6 @@ AqlValue ToBase64(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue ToHex(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
-AqlValue ToChar(arangodb::aql::ExpressionContext*, AstNode const&,
-                VPackFunctionParametersView);
-AqlValue Repeat(arangodb::aql::ExpressionContext*, AstNode const&,
-                VPackFunctionParametersView);
 AqlValue EncodeURIComponent(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView);
 AqlValue Uuid(arangodb::aql::ExpressionContext*, AstNode const&,
