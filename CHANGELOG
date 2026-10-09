@@ -1,6 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Fixed a cluster race where a database could be dropped while it was
+  still being created. Now databases remain hidden while building
+  and cannot be deleted until creation completes.
+
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
 
