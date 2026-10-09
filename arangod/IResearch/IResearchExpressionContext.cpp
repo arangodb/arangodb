@@ -66,6 +66,11 @@ arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
+aql::AqlFunctionsInternalCache& ViewExpressionContextBase::functionsCache() {
+  TRI_ASSERT(_aqlFunctionsInternalCache != nullptr);
+  return *_aqlFunctionsInternalCache;
+}
+
 Database& ViewExpressionContextBase::vocbase() const { return _trx->vocbase(); }
 
 transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }

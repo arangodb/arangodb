@@ -91,6 +91,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
                                              bool& isEmptyExpression) override;
 
   ValidatorBase* buildValidator(velocypack::Slice params) override;
+  aql::AqlFunctionsInternalCache& functionsCache() override;
 
   Database& vocbase() const override;
 

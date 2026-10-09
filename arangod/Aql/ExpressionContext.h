@@ -39,6 +39,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+class AqlFunctionsInternalCache;
 struct AqlValue;
 struct Variable;
 
@@ -62,6 +63,7 @@ class ExpressionContext {
       AqlValue splitExpression, velocypack::Options const* opts,
       bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
+  virtual AqlFunctionsInternalCache& functionsCache() = 0;
 
   virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;

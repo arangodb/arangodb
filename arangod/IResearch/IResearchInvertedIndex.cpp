@@ -282,6 +282,8 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     return _cache.buildLikeMatcher(expr, caseInsensitive);
   }
 
+  aql::AqlFunctionsInternalCache& functionsCache() final { return _cache; }
+
  private:
   aql::AqlValue getVariableValue(aql::Variable const*, bool,
                                  bool&) const final {
