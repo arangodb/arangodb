@@ -22,10 +22,12 @@
 
 #include "AqlFunctionsInternalCache.h"
 
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/tryEmplaceHelper.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -39,6 +41,13 @@ void AqlFunctionsInternalCache::clear() noexcept {
   _regexCache.clear();
   _likeCache.clear();
   _validatorCache.clear();
+}
+
+icu_64_64::Locale const& AqlFunctionsInternalCache::locale(Database& vocbase) {
+  if (_locale == nullptr) {
+    _locale = &vocbase.server().getFeature<LanguageFeature>().getLocale();
+  }
+  return *_locale;
 }
 
 icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(
