@@ -646,6 +646,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
+    this.instanceManager.disconnect();
     this.instanceManager.reconnect();
     return true;
   }

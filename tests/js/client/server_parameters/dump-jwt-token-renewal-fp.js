@@ -98,24 +98,18 @@ function dumpJwtTokenRenewalSuite() {
           docs = [];
         }
       }
-      if (IM.debugCanUseFailAt()) {
-        IM.debugSetFailAt(slowFetchFailurePoint);
-      }
+      IM.debugSetFailAt(slowFetchFailurePoint);
     },
 
     // the collection is deliberately not dropped: the aborted dump leaves a
     // server-side dump context behind that pins the collection until its
     // time-to-live expires, and the instance is discarded after this file anyway
     tearDownAll: function () {
-      if (IM.debugCanUseFailAt()) {
-        IM.debugClearFailAt(slowFetchFailurePoint);
-      }
+      IM.debugClearFailAt(slowFetchFailurePoint);
+      IM.reconnect(false);
     },
 
     testDumpSurvivesTokenExpiry: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
       const outputDirectory = fs.getTempFile();
       fs.makeDirectory(outputDirectory);
       try {
@@ -136,9 +130,6 @@ function dumpJwtTokenRenewalSuite() {
     // renews it by logging in again; as HTTP basic authentication would pass
     // this dump as well, the arangodump log has to prove that a JWT was renewed
     testDumpWithCredentialsSurvivesTokenExpiry: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
       const outputDirectory = fs.getTempFile();
       fs.makeDirectory(outputDirectory);
       const logFile = fs.getTempFile();
@@ -163,9 +154,6 @@ function dumpJwtTokenRenewalSuite() {
     // with a threshold of 0 the token is only renewed once it has expired,
     // which the server refuses; this proves the dump really outlives the token
     testDumpAbortsWithoutRenewal: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
       const outputDirectory = fs.getTempFile();
       fs.makeDirectory(outputDirectory);
       try {
