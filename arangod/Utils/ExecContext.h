@@ -243,6 +243,8 @@ class ExecContext {
   /// @brief returns true if the user can be read
   Result canReadUser(std::string_view userName) const;
 
+  [[nodiscard]] Result canAccessQuery(std::string_view queryUser) const;
+
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
   // MAX: I do not think so, it is used only once to filter the visible

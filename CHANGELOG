@@ -3,6 +3,12 @@
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
   when n exceeds array's length.
 
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+
+* COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
+  `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
+
 * Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
   correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
 
