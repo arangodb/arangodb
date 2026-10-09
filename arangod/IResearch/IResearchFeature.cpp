@@ -36,6 +36,7 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
+#include "Aql/Function/StringFunctions.h"
 #include "Aql/Functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -791,7 +792,8 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &aql::functions::GeoIntersects ||
          func.implementation == &aql::functions::GeoDistance ||
          func.implementation == &aql::functions::LevenshteinMatch ||
-         func.implementation == &aql::functions::Like ||
+         func.implementation ==
+             &aql::functions::adapt<&aql::functions::like, "LIKE"> ||
          func.implementation == &aql::functions::NgramMatch ||
          func.implementation == &aql::functions::InRange;
 }
