@@ -253,7 +253,7 @@ class instanceManager {
       let oneArangod = new inst.instance(this.options, '', 'tcp',
                                          this.agencyMgr, {},
                                          this.tmpDir, this.tmpDir,
-                                         '', 0, this.rbacPort);
+                                         this.jwt_secret, 0, this.rbacPort);
       oneArangod.setFromStructure(arangodStruct);
       this.arangods.push(oneArangod);
       if (oneArangod.isAgent()) {
