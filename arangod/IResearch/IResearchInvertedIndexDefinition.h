@@ -26,6 +26,10 @@
 
 namespace arangodb {
 
+namespace application_features {
+class ApplicationServer;
+}  // namespace application_features
+
 namespace iresearch {
 
 class IResearchInvertedIndexDefinition : public IndexDefinition {
