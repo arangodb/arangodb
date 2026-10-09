@@ -81,6 +81,50 @@ function applyServerOptions (options, serverOptions) {
   serverOptions['network.compression-method'] = 'none';
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / Run the python scenario driver with the sanitizers set up around it.
+// / The equivalent of test-helper.js' executeExternalAndWaitWithSanitizer,
+// / but it cannot be used here because it collects by PID
+// //////////////////////////////////////////////////////////////////////////////
+function runScenarioDriver (options, instanceManager, argv) {
+  const sanHandler = require('@arangodb/testutils/san-file-handler').sanHandler;
+  const enabled = options.isSan || options.isCov;
+
+  let sh = null;
+  if (enabled) {
+    sh = new sanHandler('arangosh', options);
+    sh.detectLogfiles(instanceManager.rootDir, instanceManager.rootDir);
+  }
+  const rc = executeExternalAndWait('python3', argv, false, 0,
+                                    sh ? sh.getSanOptions() : []);
+  if (sh) {
+    collectReports(options, sh, instanceManager.rootDir);
+  }
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / Harvest the sanitizer reports the arangosh grandchildren left behind.
+// //////////////////////////////////////////////////////////////////////////////
+function collectReports (options, sh, rootDir) {
+  const sanHandler = require('@arangodb/testutils/san-file-handler').sanHandler;
+  const handlers = { 'arangosh': sh };
+  let found = false;
+  fs.list(rootDir).forEach(name => {
+    const m = name.match(/^(?:tsan|alubsan)\.log\.(.+)\.(\d+)$/);
+    if (m === null) {
+      return;
+    }
+    const exe = m[1];
+    if (!handlers.hasOwnProperty(exe)) {
+      handlers[exe] = new sanHandler(exe, options);
+      handlers[exe].detectLogfiles(rootDir, rootDir);
+    }
+    found = handlers[exe].fetchSanFileAfterExit(parseInt(m[2], 10)) || found;
+  });
+  return found;
+}
+
 // Flags common to every run_scenarios.py invocation.
 function runnerArgs (options, instanceManager) {
   const secretFile = fs.join(instanceManager.rootDir, 'rta_rbac_jwt_secret');
@@ -123,7 +167,7 @@ function bootstrapUser (options, instanceManager, remove) {
   }
   const flag = remove ? '--remove-bootstrap-user' : '--bootstrap-user';
   const argv = runnerArgs(options, instanceManager).concat([flag, options.username]);
-  const rc = executeExternalAndWait('python3', argv);
+  const rc = runScenarioDriver(options, instanceManager, argv);
   if (rc.exit !== 0 && !remove) {
     print(`${RED}${(new Date()).toISOString()} could not give ` +
           `'${options.username}' an RBAC binding; the workload cannot run ` +
@@ -152,6 +196,7 @@ function checkSuiteSupported (options, suiteName, verified) {
     `pass --rbacUnverified true to try it anyway.`;
 }
 
+exports.runScenarioDriver = runScenarioDriver;
 exports.usesRealSidecar = usesRealSidecar;
 exports.applyServerOptions = applyServerOptions;
 exports.runnerArgs = runnerArgs;
