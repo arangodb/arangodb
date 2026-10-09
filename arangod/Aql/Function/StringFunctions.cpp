@@ -23,7 +23,6 @@
 #include "Aql/Function/StringFunctions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -34,7 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ThreadLocalLeaser.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Helpers.h"
@@ -117,31 +116,14 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
 
 }  // namespace
 
-AqlValue functions::callPure(ExpressionContext* ctx, AstNode const& node,
+AqlValue functions::callPure(ExpressionContext* ctx,
+                             std::string_view functionName,
                              PureStringFunction fn,
                              VPackFunctionParametersView parameters) {
-  // reserved up front so the slices handed out below stay valid
-  std::vector<velocypack::Builder> sanitized;
-  sanitized.reserve(parameters.size());
-  std::vector<AqlValue> args;
-  args.reserve(parameters.size());
-  for (auto const& parameter : parameters) {
-    if (parameter.isRange() ||
-        !basics::VelocyPackHelper::hasNonClientTypes(parameter.slice())) {
-      args.push_back(parameter);
-      continue;
-    }
-    auto& builder = sanitized.emplace_back();
-    basics::VelocyPackHelper::sanitizeNonClientTypes(
-        parameter.slice(), VPackSlice::noneSlice(), builder,
-        ctx->trx().vpackOptions(), /*allowUnindexed*/ true);
-    args.emplace_back(AqlValueHintSliceNoCopy{builder.slice()});
-  }
-
-  StringFunctionEnv env{
-      ctx->trx().vocbase().server().getFeature<LanguageFeature>().getLocale(),
-      ctx->functionsCache()};
-  auto result = fn(args, env);
+  auto& trx = ctx->trx();
+  auto& cache = ctx->functionsCache();
+  StringFunctionEnv env{trx.vpackOptions(), cache.locale(trx.vocbase()), cache};
+  auto result = fn(parameters, env);
   if (result.ok()) {
     return std::move(*result);
   }
@@ -149,27 +131,27 @@ AqlValue functions::callPure(ExpressionContext* ctx, AstNode const& node,
   if (result.errorNumber() == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH ||
       result.errorNumber() ==
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
-    registerWarning(ctx, getFunctionName(node), result.errorNumber());
+    registerWarning(ctx, functionName, result.errorNumber());
   } else {
-    registerWarning(ctx, getFunctionName(node), result.result());
+    registerWarning(ctx, functionName, result.result());
   }
   return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function TO_STRING
 ResultT<AqlValue> functions::toString(VPackFunctionParametersView parameters,
-                                      StringFunctionEnv& env) {
+                                      StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
-  appendAsString(velocypack::Options::Defaults, adapter, value);
+  appendAsString(env.vopts, adapter, value);
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
 ResultT<AqlValue> functions::toChar(VPackFunctionParametersView parameters,
-                                    StringFunctionEnv& env) {
+                                    StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   int64_t v = -1;
@@ -189,7 +171,7 @@ ResultT<AqlValue> functions::toChar(VPackFunctionParametersView parameters,
 }
 
 ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
-                                    StringFunctionEnv& env) {
+                                    StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   AqlValue const& repetitions = extractFunctionParameterValue(parameters, 1);
@@ -208,7 +190,7 @@ ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
   std::string_view separator;
   if (parameters.size() > 2) {
     // separator
-    appendAsString(velocypack::Options::Defaults, sepAdapter,
+    appendAsString(env.vopts, sepAdapter,
                    extractFunctionParameterValue(parameters, 2));
     separator = {sepBuffer->data(), sepBuffer->size()};
   }
@@ -221,7 +203,7 @@ ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
     if (i > 0 && !separator.empty()) {
       buffer->append(separator);
     }
-    appendAsString(velocypack::Options::Defaults, adapter, value);
+    appendAsString(env.vopts, adapter, value);
     if (adapter.overflowed()) {
       return Result{
           TRI_ERROR_RESOURCE_LIMIT,
@@ -236,8 +218,8 @@ ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
 /// @brief function FIND_FIRST
 /// FIND_FIRST(text, search, start, end) → position
 ResultT<AqlValue> functions::findFirst(VPackFunctionParametersView parameters,
-                                       StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                       StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue =
@@ -287,9 +269,8 @@ ResultT<AqlValue> functions::findFirst(VPackFunctionParametersView parameters,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto const& locale = env.locale;
   UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, env.locale, nullptr, status);
 
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
@@ -306,8 +287,8 @@ ResultT<AqlValue> functions::findFirst(VPackFunctionParametersView parameters,
 /// @brief function FIND_LAST
 /// FIND_FIRST(text, search, start, end) → position
 ResultT<AqlValue> functions::findLast(VPackFunctionParametersView parameters,
-                                      StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                      StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue =
@@ -359,9 +340,8 @@ ResultT<AqlValue> functions::findLast(VPackFunctionParametersView parameters,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto const& locale = env.locale;
   UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, env.locale, nullptr, status);
 
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -378,8 +358,8 @@ ResultT<AqlValue> functions::findLast(VPackFunctionParametersView parameters,
 
 /// @brief function CONCAT_SEPARATOR
 ResultT<AqlValue> functions::concatSeparator(
-    VPackFunctionParametersView parameters, StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+    VPackFunctionParametersView parameters, StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
@@ -442,8 +422,8 @@ ResultT<AqlValue> functions::concatSeparator(
 
 /// @brief function CHAR_LENGTH
 ResultT<AqlValue> functions::charLength(VPackFunctionParametersView parameters,
-                                        StringFunctionEnv& env) {
-  auto* vopts = &velocypack::Options::Defaults;
+                                        StringFunctionEnv const& env) {
+  auto* vopts = &env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   size_t length = 0;
@@ -490,9 +470,9 @@ ResultT<AqlValue> functions::charLength(VPackFunctionParametersView parameters,
 
 /// @brief function LOWER
 ResultT<AqlValue> functions::lower(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
+                                   StringFunctionEnv const& env) {
   std::string utf8;
-  auto const& vopts = velocypack::Options::Defaults;
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -511,9 +491,9 @@ ResultT<AqlValue> functions::lower(VPackFunctionParametersView parameters,
 
 /// @brief function UPPER
 ResultT<AqlValue> functions::upper(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
+                                   StringFunctionEnv const& env) {
   std::string utf8;
-  auto const& vopts = velocypack::Options::Defaults;
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -532,8 +512,8 @@ ResultT<AqlValue> functions::upper(VPackFunctionParametersView parameters,
 
 /// @brief function SUBSTRING
 ResultT<AqlValue> functions::substring(VPackFunctionParametersView parameters,
-                                       StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                       StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -570,7 +550,7 @@ ResultT<AqlValue> functions::substring(VPackFunctionParametersView parameters,
 }
 
 ResultT<AqlValue> functions::substringBytes(
-    VPackFunctionParametersView parameters, StringFunctionEnv& env) {
+    VPackFunctionParametersView parameters, StringFunctionEnv const& env) {
   auto const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -655,8 +635,8 @@ ResultT<AqlValue> functions::substringBytes(
 }
 
 ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
-                                        StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                        StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& search =
       aql::functions::extractFunctionParameterValue(parameters, 1);
   int64_t limit = -1;
@@ -774,7 +754,6 @@ ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
-  auto const& locale = env.locale;
   // we can't copy the search instances, thus use pointers.
   // ICU's StringSearch rejects empty patterns and texts
   std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
@@ -786,7 +765,7 @@ ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
       continue;
     }
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
-        searchStr, unicodeStr, locale, nullptr, status));
+        searchStr, unicodeStr, env.locale, nullptr, status));
     if (U_FAILURE(status)) {
       return icuError(status);
     }
@@ -877,8 +856,8 @@ ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
 
 /// @brief function LEFT str, length
 ResultT<AqlValue> functions::left(VPackFunctionParametersView parameters,
-                                  StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue value = aql::functions::extractFunctionParameterValue(parameters, 0);
   uint32_t length = static_cast<int32_t>(
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
@@ -900,8 +879,8 @@ ResultT<AqlValue> functions::left(VPackFunctionParametersView parameters,
 
 /// @brief function RIGHT
 ResultT<AqlValue> functions::right(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue value = aql::functions::extractFunctionParameterValue(parameters, 0);
   uint32_t length = static_cast<int32_t>(
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
@@ -924,8 +903,8 @@ ResultT<AqlValue> functions::right(VPackFunctionParametersView parameters,
 
 /// @brief function TRIM
 ResultT<AqlValue> functions::trim(VPackFunctionParametersView parameters,
-                                  StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -985,8 +964,8 @@ ResultT<AqlValue> functions::trim(VPackFunctionParametersView parameters,
 
 /// @brief function LTRIM
 ResultT<AqlValue> functions::ltrim(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -1028,8 +1007,8 @@ ResultT<AqlValue> functions::ltrim(VPackFunctionParametersView parameters,
 
 /// @brief function RTRIM
 ResultT<AqlValue> functions::rtrim(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -1071,8 +1050,8 @@ ResultT<AqlValue> functions::rtrim(VPackFunctionParametersView parameters,
 
 /// @brief function CONTAINS
 ResultT<AqlValue> functions::contains(VPackFunctionParametersView parameters,
-                                      StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                      StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& search =
@@ -1138,8 +1117,8 @@ ResultT<AqlValue> functions::contains(VPackFunctionParametersView parameters,
 
 /// @brief function CONCAT
 ResultT<AqlValue> functions::concat(VPackFunctionParametersView parameters,
-                                    StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                    StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
@@ -1180,8 +1159,8 @@ ResultT<AqlValue> functions::concat(VPackFunctionParametersView parameters,
 
 /// @brief function LIKE
 ResultT<AqlValue> functions::like(VPackFunctionParametersView parameters,
-                                  StringFunctionEnv& env) {
-  auto const& vopts = velocypack::Options::Defaults;
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
@@ -1220,8 +1199,8 @@ ResultT<AqlValue> functions::like(VPackFunctionParametersView parameters,
 
 /// @brief function SPLIT
 ResultT<AqlValue> functions::split(VPackFunctionParametersView parameters,
-                                   StringFunctionEnv& env) {
-  auto* vopts = &velocypack::Options::Defaults;
+                                   StringFunctionEnv const& env) {
+  auto* vopts = &env.vopts;
   // cheapest parameter checks first:
   int64_t limitNumber = -1;
   if (parameters.size() == 3) {
