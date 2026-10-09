@@ -71,7 +71,7 @@ void removeRedundantCalculationsRule(Optimizer* opt,
             ExecutionNode::castTo<CalculationNode const*>(current)
                 ->expression()
                 ->node();
-        if (compareAstNodes<false>(other, reference, false) == 0) {
+        if (areNodesIdentical(other, reference)) {
           auto target = ExecutionNode::castTo<CalculationNode const*>(current)
                             ->outVariable();
           while (target != nullptr) {

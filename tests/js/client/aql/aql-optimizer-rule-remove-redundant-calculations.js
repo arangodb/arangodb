@@ -115,6 +115,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a SORT i.a RETURN x",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = (i.a - 1) - 2, b = (i.a - 1) - 2 RETURN [ a, b ]",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MERGE(i, { x: 1 }), b = MERGE(i, { x: 1 }) RETURN [ a, b ]",
       ];
 
       queries.forEach(function(query) {
@@ -183,7 +184,8 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET r = MAX([ i.a ]) == 3 RETURN MAX([ i.a ]) == 3", [ false, false, true ] ],
         [ "LET v = [ { a: 1 }, { a: 2 }, { a: 3 } ] FOR i IN v LET r = MAX(v[*].a) == 3 RETURN MAX(v[*].a) == 3", [ true, true, true ] ],
         [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a), b = LENGTH(i.a) RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
-        [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a) SORT a LET b = LENGTH(i.a) SORT b RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ]
+        [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a) SORT a LET b = LENGTH(i.a) SORT b RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
+        [ "LET a = {} LET b = {x: null} RETURN b", [ { x: null } ] ],
       ];
 
       queries.forEach(function(query) {

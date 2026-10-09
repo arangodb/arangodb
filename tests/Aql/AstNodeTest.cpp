@@ -1579,6 +1579,38 @@ TEST_F(CompareAstNodesTest, objectsWithComputedKeyNotReordered) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
+// == treats a missing key as null, but a value that has the key differs from
+// one that doesn't, so replacing one with the other is not allowed
+TEST_F(CompareAstNodesTest, missingKeyEqualsNullButIsNotIdentical) {
+  auto* null = _ast->createNodeValueNull();
+  auto* x = makeVar("x");
+
+  auto* empty = object({});
+  auto* withNull = object({{"x", null}});
+  EXPECT_EQ(0, compare(empty, withNull));
+  EXPECT_FALSE(areNodesIdentical(empty, withNull));
+
+  // nested in an array
+  EXPECT_FALSE(
+      areNodesIdentical(array({object({})}), array({object({{"x", null}})})));
+
+  // nested in an object
+  EXPECT_FALSE(areNodesIdentical(object({{"a", object({})}}),
+                                 object({{"a", object({{"b", null}})}})));
+
+  // nested in a non-constant object
+  EXPECT_FALSE(areNodesIdentical(
+      object({{"v", createRefNode(x)}, {"meta", object({})}}),
+      object({{"v", createRefNode(x)}, {"meta", object({{"x", null}})}})));
+}
+
+TEST_F(CompareAstNodesTest, sameConstantObjectsAreIdentical) {
+  EXPECT_TRUE(areNodesIdentical(object({{"x", intVal(1)}}),
+                                object({{"x", intVal(1)}})));
+  EXPECT_TRUE(areNodesIdentical(object({{"a", object({{"b", intVal(1)}})}}),
+                                object({{"a", object({{"b", intVal(1)}})}})));
+}
+
 // mustCheckUniqueness() skips it, but one member has nothing to reorder
 TEST_F(CompareAstNodesTest, singleComputedKeyMemberSameKeyAndValueEqual) {
   auto* doc = makeVar("doc");

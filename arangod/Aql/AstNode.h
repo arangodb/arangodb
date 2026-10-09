@@ -664,6 +664,10 @@ struct AstNode {
 template<bool resolveAttributeAccess = true>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
+/// @brief whether both nodes always produce the same value; unlike
+/// compareAstNodes, `{}` and `{x: null}` are not identical
+bool areNodesIdentical(AstNode const* lhs, AstNode const* rhs);
+
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;
 };
