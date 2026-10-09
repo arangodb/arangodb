@@ -24,6 +24,7 @@
 
 #include "Aql/Match/PatternBuildState.h"
 #include "Aql/Match/PatternNormalizer.h"
+#include "Aql/Match/ProjectionAccessChecker.h"
 
 namespace arangodb::aql::match {
 
@@ -67,6 +68,7 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
     sharedScope = std::move(state.variableScope);
   }
 
+  warnExcludedAttributeAccesses(*_ast, statement);
   return en;
 }
 
