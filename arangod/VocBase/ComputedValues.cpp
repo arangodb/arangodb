@@ -136,6 +136,11 @@ ValidatorBase* ComputedValuesExpressionContext::buildValidator(
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
+aql::AqlFunctionsInternalCache&
+ComputedValuesExpressionContext::functionsCache() {
+  return _aqlFunctionsInternalCache;
+}
+
 aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
     aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
   auto it = _variables.find(variable);
