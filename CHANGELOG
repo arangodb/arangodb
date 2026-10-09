@@ -3,6 +3,20 @@
 * COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
   `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
 
+* Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
+  correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
+
+* AQL `DATE_ROUND` does not crash with a SIGFPE anymore due to integer overflow and division by 0
+
+* AQL `DATE_ROUND` rounds down correctly for dates before the epoch
+
+* AQL `DATE_ISO8601` applies negative offset correctly to minutes as well
+
+* Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
+  starts right after a replaced match. This fixes issue #23399.
+
+* Upgraded OpenSSL to 3.5.9.
+
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278
@@ -35,6 +49,12 @@
   This fixes issue #23360.
 
 * Updated ArangoDB Starter to v0.19.28.
+
+* The AQL optimizer uses a sparse index for a branch of an `OR` condition
+  only if that branch itself rules out `null` for the indexed attribute.
+  For example, `FILTER doc.b < 5 AND (doc.b >= 0 OR doc.a == 1)` returns
+  documents in which `doc.b` is `null` and `doc.a` is `1`.
+  This fixes issue #23396.
 
 * Fix AQL SUBSTITUTE() with an empty search string. It previously returned
   null with a warning; it now matches at every character position, e.g.
@@ -84,6 +104,19 @@
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
+* AQL index joins with constant index fields return the correct rows for
+  queries that skip rows, such as `LIMIT offset, count`, instead of crashing
+  the server.
+
+* AQL index joins whose post-filters only read stored index values work in
+  clusters with more than one shard of the joined collections per DB server.
+
+* AQL index joins honor the `forceOneShardAttributeValue` query option and
+  only read the shard that the option selects.
+
+* The `join-index-nodes` optimizer rule no longer uses non-deterministic
+  expressions or expressions that need V8, such as user-defined AQL
+  functions, as constant index lookup values.
 
 3.12.12 (2026-09-21)
 --------------------

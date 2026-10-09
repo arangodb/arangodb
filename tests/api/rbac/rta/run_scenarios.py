@@ -31,6 +31,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.error
@@ -244,6 +245,17 @@ class Config:
         env.setdefault("ARANGODB_SRC", SOURCE_ROOT)
         env.setdefault("ARANGOSH", self.arangosh)
         env.setdefault("ARANGOD", self.arangod)
+        return env
+
+    def client_env(self):
+        env = dict(os.environ)
+        options = env.get("TSAN_OPTIONS")
+        if not options:
+            return env
+        combined = _combined_tsan_suppressions(options)
+        if combined is None:
+            return env
+        env["TSAN_OPTIONS"] = _replace_tsan_suppressions(options, combined)
         return env
 
 
@@ -705,6 +717,60 @@ def wait_until_visible(config, sidecar, scenario):
 
 
 # ---------------------------------------------------------------------------
+# ThreadSanitizer suppressions for the client processes
+# ---------------------------------------------------------------------------
+
+CLIENT_SUPPRESSIONS = os.path.join(HERE, "tsan_client_suppressions.txt")
+
+
+def _tsan_option(options, name):
+    """Value of one `key=value` in a colon-separated TSAN_OPTIONS string."""
+    for item in options.split(":"):
+        key, sep, value = item.partition("=")
+        if sep and key == name:
+            return value
+    return None
+
+
+def _replace_tsan_suppressions(options, path):
+    """Return TSAN_OPTIONS with `suppressions=` pointing at `path`."""
+    parts = []
+    replaced = False
+    for item in options.split(":"):
+        key, sep, _ = item.partition("=")
+        if sep and key == "suppressions":
+            parts.append(f"suppressions={path}")
+            replaced = True
+        else:
+            parts.append(item)
+    if not replaced:
+        parts.append(f"suppressions={path}")
+    return ":".join(parts)
+
+
+def _combined_tsan_suppressions(options):
+    """Project suppressions plus the client-only ones, in one file.
+    """
+    if not os.path.exists(CLIENT_SUPPRESSIONS):
+        return None
+    text = ""
+    existing = _tsan_option(options, "suppressions")
+    if existing:
+        try:
+            with open(existing, encoding="utf-8") as handle:
+                text += handle.read()
+        except OSError:
+            return None
+        text += "\n"
+    with open(CLIENT_SUPPRESSIONS, encoding="utf-8") as handle:
+        text += handle.read()
+    combined = os.path.join(tempfile.gettempdir(), "rta_rbac_tsan_suppressions.txt")
+    with open(combined, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    return combined
+
+
+# ---------------------------------------------------------------------------
 # running a phase
 # ---------------------------------------------------------------------------
 
@@ -770,7 +836,8 @@ def run_phase(config, tokens, phase, token, assume=None, suite_filter=None):
         return assume or PASS, "", ""
     try:
         result = subprocess.run(
-            argv, capture_output=True, text=True, timeout=config.timeout, check=False
+            argv, capture_output=True, text=True, timeout=config.timeout,
+            check=False, env=config.client_env()
         )
     except subprocess.TimeoutExpired as expired:
         return ERROR, "", f"timed out after {config.timeout}s\n{expired.output or ''}"

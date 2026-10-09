@@ -146,6 +146,9 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  // evaluates the constant expressions for _currentRow and resets the
+  // strategy with their values
+  void resetStrategyForCurrentRow();
   void clearProjectionsBuilder() noexcept;
   [[nodiscard]] ResourceMonitor& resourceMonitor();
 
