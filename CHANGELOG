@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+  
 * Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
   correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
 
