@@ -66,7 +66,7 @@ struct Registry : containers::Registry<ActivityPtr> {
     // create the node - which is a specific activity of type T at the same time
     auto node =
         std::make_unique<T>(id, std::move(parent), std::forward<Args>(args)...);
-    return this->get_thread_registry().add(std::move(node));
+    return std::shared_ptr<T>(this->get_thread_registry().add(std::move(node)));
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> typename T::HandleType {

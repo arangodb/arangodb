@@ -40,9 +40,10 @@ namespace arangodb::containers {
    deletion. The list exists as long a the owning thread lives or a node is
    referenced somewhere.
 
-   Nodes have to manually be marked for deletion. Garbage collection for these
-   marked nodes can run either on the owning thread (via garbage_collect()) or
-   on another thread (via garbage_collect_external()).
+   Nodes are automatically marked for deletion when they go out of scope.
+   Garbage collection for these marked nodes has to be manually started either
+   on the owning thread (via garbage_collect()) or on another thread (via
+   garbage_collect_external()).
 
    A thread owned list contains an atomic list of nodes. If a node is marked
    for deletion, it stays in this list, but is additionally added to the atomic
@@ -57,7 +58,10 @@ struct ThreadOwnedList
   using Item = T;
   basics::ThreadId const thread;
 
+  struct MarkForDeletion;
+
   struct Node {
+    friend MarkForDeletion;
     T data;
     Node* next = nullptr;
     // this needs to be an atomic because it is accessed during garbage
@@ -89,6 +93,7 @@ struct ThreadOwnedList
 
     virtual ~Node() = default;
 
+   private:
     auto mark_for_deletion() -> void { list.mark_for_deletion(*this); }
   };
 
@@ -117,6 +122,25 @@ struct ThreadOwnedList
   }
 
   /**
+     Deleter for references to nodes in the list.
+
+     Nodes are owned by the list, therefore only the list can delete them in a
+     garbage collection. The last reference to a node marks the node for
+     deletion such that the next garbage collection will delete it. This deleter
+     makes sure that the list is still alive when mark_for_deletion is called on
+     the node.
+   */
+  struct MarkForDeletion {
+    // keeps list alive until mark_for_deletion is called
+    std::shared_ptr<ThreadOwnedList> list;
+    auto operator()(Node* node) const noexcept -> void {
+      node->mark_for_deletion();
+    }
+  };
+  template<std::derived_from<Node> NodeType = Node>
+  using Handle = std::unique_ptr<NodeType, MarkForDeletion>;
+
+  /**
      Adds a node to the list with data that is created in the closure.
 
      Can only be called on the owning thread, crashes otherwise. Input data
@@ -127,7 +151,7 @@ struct ThreadOwnedList
   requires requires(F f) {
     { f() } -> std::same_as<T>;
   }
-  auto add(F&& create_data) noexcept -> std::shared_ptr<Node> {
+  auto add(F&& create_data) noexcept -> Handle<> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::add was called from thread "
@@ -146,7 +170,7 @@ struct ThreadOwnedList
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
     }
-    return std::shared_ptr<Node>{this->shared_from_this(), node};
+    return Handle<>{node, MarkForDeletion{this->shared_from_this()}};
   }
 
   /**
@@ -154,15 +178,10 @@ struct ThreadOwnedList
 
    Can only be called on the owning thread, crashes otherwise. The node can be
    of any type derived from Node, so additional data can live in the node
-   without an extra allocation. Overwrites the next property of the node.
-
-   When the last handle is dropped, the node is marked for deletion and is
-   deleted in a followingg gc-run. Every handle shares ownership of the list,
-   the list therefore lives at least as long as its last handle.
+   without an extra allocation.
  */
   template<std::derived_from<Node> DerivedNode>
-  auto add(std::unique_ptr<DerivedNode> node) noexcept
-      -> std::shared_ptr<DerivedNode> {
+  auto add(std::unique_ptr<DerivedNode> node) noexcept -> Handle<DerivedNode> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::add was called from thread "
@@ -185,14 +204,8 @@ struct ThreadOwnedList
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
     }
-    // The handle must not free the node itself, since the list owns
-    // it, but marks it for deletion. The captured list pointer keeps the list
-    // alive as long as the handle exists, so marking never hits a destoryed
-    // list.
-    return std::shared_ptr<DerivedNode>(
-        raw_node, [list = this->shared_from_this()](DerivedNode* item) {
-          item->mark_for_deletion();
-        });
+    return Handle<DerivedNode>{raw_node,
+                               MarkForDeletion{this->shared_from_this()}};
   }
 
   /**
@@ -210,10 +223,10 @@ struct ThreadOwnedList
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
       if (not current->is_marked_for_deletion.load(std::memory_order_relaxed)) {
-        // this can still execute function when the node was just marked for
-        // deletion which can result in slightly inconsistent results but cannot
+        // This can still execute 'function' when the node was just marked for
+        // deletion, leading to slightly inconsistent results. But this cannot
         // lead to any errors because garbage collection cannot run at the same
-        // time as this for_node function
+        // time as this 'for_node' function.
         function(current->data.snapshot());
       }
     }
@@ -228,40 +241,6 @@ struct ThreadOwnedList
       count++;
     }
     return count;
-  }
-
-  /**
-     Marks a node in the list for deletion.
-
-     Can be called from any thread. The node needs to be part of the list,
-     crashes otherwise.
-     Caller needs to make sure that this is not called twice: otherwise there
-     will be a double free.
-   */
-  auto mark_for_deletion(Node& node) noexcept -> void {
-    // makes sure that node is really in this list
-    ADB_PROD_ASSERT(&node.list == this);
-    bool was_marked = false;
-    node.is_marked_for_deletion.compare_exchange_strong(
-        was_marked, true, std::memory_order_relaxed, std::memory_order_relaxed);
-    ADB_PROD_ASSERT(not was_marked)
-        << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
-           "deletion more than once";
-
-    auto current_head = _free_head.load(std::memory_order_relaxed);
-    do {
-      node.next_to_free = current_head;
-      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
-    } while (not _free_head.compare_exchange_weak(current_head, &node,
-                                                  std::memory_order_release,
-                                                  std::memory_order_acquire));
-    // DO NOT access node after this line. The owner thread might already
-    // be running a cleanup and node might be deleted.
-
-    if (_metrics) {
-      _metrics->decrement_registered_nodes();  // crash here
-      _metrics->increment_ready_for_deletion_nodes();
-    }
   }
 
   /**
@@ -342,6 +321,40 @@ struct ThreadOwnedList
     if (_metrics) {
       _metrics->increment_total_lists();
       _metrics->increment_existing_lists();
+    }
+  }
+
+  /**
+     Marks a node in the list for deletion.
+
+     Can be called from any thread. The node needs to be part of the list,
+     crashes otherwise.
+     Caller needs to make sure that this is not called twice: otherwise there
+     will be a double free.
+   */
+  auto mark_for_deletion(Node& node) noexcept -> void {
+    // makes sure that node is really in this list
+    ADB_PROD_ASSERT(&node.list == this);
+    bool was_marked = false;
+    node.is_marked_for_deletion.compare_exchange_strong(
+        was_marked, true, std::memory_order_relaxed, std::memory_order_relaxed);
+    ADB_PROD_ASSERT(not was_marked)
+        << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
+           "deletion more than once";
+
+    auto current_head = _free_head.load(std::memory_order_relaxed);
+    do {
+      node.next_to_free = current_head;
+      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
+    } while (not _free_head.compare_exchange_weak(current_head, &node,
+                                                  std::memory_order_release,
+                                                  std::memory_order_acquire));
+    // DO NOT access node after this line. The owner thread might already
+    // be running a cleanup and node might be deleted.
+
+    if (_metrics) {
+      _metrics->decrement_registered_nodes();  // crash here
+      _metrics->increment_ready_for_deletion_nodes();
     }
   }
 

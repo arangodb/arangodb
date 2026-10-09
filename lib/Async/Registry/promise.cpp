@@ -51,11 +51,6 @@ AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
         return Promise{*get_current_coroutine(), std::move(loc)};
       })} {}
 
-AddToAsyncRegistry::~AddToAsyncRegistry() {
-  if (node_in_registry != nullptr) {
-    node_in_registry->mark_for_deletion();
-  }
-}
 auto AddToAsyncRegistry::update_requester(std::optional<PromiseId> requester)
     -> void {
   if (node_in_registry != nullptr && requester.has_value()) {
