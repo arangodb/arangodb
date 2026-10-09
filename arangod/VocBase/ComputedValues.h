@@ -86,10 +86,6 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                             bool caseInsensitive) override;
 
-  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                             velocypack::Options const* opts,
-                                             bool& isEmptyExpression) override;
-
   ValidatorBase* buildValidator(velocypack::Slice params) override;
   aql::AqlFunctionsInternalCache& functionsCache() override;
 
