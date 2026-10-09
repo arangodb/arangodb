@@ -1429,7 +1429,6 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
                             node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
 
-  bool overallResult = true;
   size_t matches = 0;
   size_t numLeft = n;
 
@@ -1483,24 +1482,28 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     if (result) {
       ++matches;
       if (matches > requiredMatches.second) {
-        // too many matches
-        overallResult = false;
+        // too many matches; no further element can bring us back in range
         break;
       }
       if (matches >= requiredMatches.first &&
           matches + numLeft <= requiredMatches.second) {
-        // enough matches
-        overallResult = true;
+        // already enough matches, and no remaining element can push us
+        // out of range either
         break;
       }
     } else {
       if (matches + numLeft < requiredMatches.first) {
-        // too few matches
-        overallResult = false;
+        // too few matches: even if every remaining element matched, we
+        // still couldn't reach the required minimum
         break;
       }
     }
   }
+
+  // recompute unconditionally: a fully-matching array can exhaust the loop
+  // without ever hitting a break above
+  bool const overallResult =
+      matches >= requiredMatches.first && matches <= requiredMatches.second;
 
   TRI_ASSERT(!mustDestroy);
   return AqlValue(AqlValueHintBool(overallResult));

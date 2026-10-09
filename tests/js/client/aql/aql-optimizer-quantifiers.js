@@ -189,6 +189,27 @@ function optimizerQuantifiersTestSuite () {
       });
    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (n) where n exceeds the array's length
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastExceedsArrayLength : function () {
+      var queries = [
+        [ "[] AT LEAST (1) == 0", false ],
+        [ "[1] AT LEAST (2) == 1", false ],
+        [ "[1, 1] AT LEAST (3) == 1", false ],
+        [ "[1, 1] AT LEAST (2) == 1", true ],
+        [ "[] AT LEAST (0) == 1", true ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query("RETURN (" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+
+        result = db._query("RETURN NOOPT(" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+      });
+    },
 
   };
 }
