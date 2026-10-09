@@ -2128,6 +2128,21 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
   return createNodeVariable(name, true);
 }
 
+AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // Reject a pre-existing edge variable with a specific message.
+  if (_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("MATCH edge variable '", name, "' is already bound"));
+  }
+
+  return createNodeVariable(name, true);
+}
+
 AstNode* Ast::createNodeMatch() {
   if (not query().queryOptions().isMatchStatementEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3762,6 +3777,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
       // NOT IN with no members returns true
       return createNodeValueBool(node->type == NODE_TYPE_OPERATOR_BINARY_NIN);
     } else if (rhs->numMembers() == 1) {
+      // ARRAY_SPLICE is expanded at runtime, so one AST member
+      // does not necessarily mean there is only one IN value.
+      // Keep the expression unchanged in this case.
+      if (rhs->getMember(0)->type == NODE_TYPE_ARRAY_SPLICE) {
+        return node;
+      }
       // IN with a single member becomes equality
       // NOT IN with a single members becomes unequality
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {

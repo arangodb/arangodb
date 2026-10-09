@@ -1328,6 +1328,13 @@ pattern_out_variable:
     }
   | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
 
+%type <node> pattern_edge_out_variable;
+pattern_edge_out_variable:
+    variable_name {
+      $$ = parser->ast()->createPatternEdgeVariable({$1.value, $1.length});
+    }
+  | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
+
 %type <boolval> pattern_open_relation;
 pattern_open_relation:
     T_MINUS T_ARRAY_OPEN { $$ = false; }
@@ -1338,7 +1345,7 @@ pattern_close_relation:
   | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
 
 %type <node> pattern_edge;
-pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
+pattern_edge: pattern_open_relation[inbound] pattern_edge_out_variable[variable]
               pattern_edge_label[label]
               pattern_maybe_property_key_value_expression[kv_expr]
               pattern_maybe_where_expression[where]
@@ -1348,7 +1355,7 @@ pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
                                               nullptr, $inbound, $outbound,
                                               $projection);
     }
-    | pattern_open_relation pattern_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
+    | pattern_open_relation pattern_edge_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
     }
 
