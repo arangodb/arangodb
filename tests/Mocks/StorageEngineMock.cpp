@@ -72,24 +72,11 @@ struct NoVectorIndexProvider : arangodb::IVectorIndexProvider {
   bool isVectorIndexEnabled() const noexcept override { return false; }
 };
 
-// constructed as a base of IndexFactoryMock (in listed order, before
-// IndexFactory) so its `catalog` is already alive when IndexFactory's
-// reference member binds to it
-struct MockIndexTypeCatalogHolder {
-  explicit MockIndexTypeCatalogHolder(
-      arangodb::application_features::ApplicationServer& server)
-      : catalog(server, vectorIndexProvider) {}
-
-  NoVectorIndexProvider vectorIndexProvider;
-  arangodb::IndexTypeCatalog catalog;
-};
-
-struct IndexFactoryMock : private MockIndexTypeCatalogHolder,
-                          public arangodb::IndexFactory {
+struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
-                   bool injectClusterIndexes)
-      : MockIndexTypeCatalogHolder(server),
-        IndexFactory(server, MockIndexTypeCatalogHolder::catalog) {
+                   bool injectClusterIndexes,
+                   arangodb::IndexTypeCatalog const& catalog)
+      : IndexFactory(server, catalog) {
     // there is only a single StorageEngine slot now, and StorageEngineMock
     // always occupies it, so a real ClusterEngine can never be fetched here.
     TRI_ASSERT(!injectClusterIndexes);
@@ -258,7 +245,7 @@ StorageEngineMock::StorageEngineMock(
       vocbaseCount(1),
       _releasedTick(0) {
   setIndexFactory(std::unique_ptr<arangodb::IndexFactory>(
-      new IndexFactoryMock(server, injectClusterIndexes)));
+      new IndexFactoryMock(server, injectClusterIndexes, indexTypeCatalog())));
   initTransactionStatistics(_mockRegistry);
   ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }
