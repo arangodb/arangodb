@@ -39,7 +39,7 @@ namespace graph::experimental {
 class SingleServerPathResult : public IPathResult {
  public:
   SingleServerPathResult() {}
-  SingleServerPathResult(std::vector<std::optional<VertexRef>> vertices,
+  SingleServerPathResult(std::vector<std::optional<VertexId>> vertices,
                          std::vector<Edge> edges)
       : _vertices{std::move(vertices)}, _edges{std::move(edges)} {}
   ~SingleServerPathResult() = default;
@@ -56,7 +56,7 @@ class SingleServerPathResult : public IPathResult {
   auto lastVertexToVelocyPack(velocypack::Builder& builder) -> void override{};
   auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void override{};
 
-  std::vector<std::optional<VertexRef>> _vertices;
+  std::vector<std::optional<VertexId>> _vertices;
   std::vector<Edge> _edges;
 };
 template<typename Inspector>
