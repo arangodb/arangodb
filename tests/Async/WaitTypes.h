@@ -19,7 +19,9 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <coroutine>
 #include <deque>
+#include <thread>
 
 namespace arangodb::async_tests {
 struct WaitSlot {
