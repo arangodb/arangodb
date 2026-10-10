@@ -8,6 +8,11 @@
 ## IResearch
 ################################################################################
 
+# When ArangoDB GTests are enabled, build IResearch's standalone unit tests
+# (lib/iresearch/tests) unless USE_TESTS was set explicitly in the cache.
+if (USE_GOOGLE_TESTS AND NOT DEFINED CACHE{USE_TESTS})
+  set(USE_TESTS ON CACHE BOOL "Build IResearch unit tests (lib/iresearch/tests)")
+endif ()
 
 add_subdirectory(iresearch)
 
