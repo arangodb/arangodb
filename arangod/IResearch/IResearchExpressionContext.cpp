@@ -54,16 +54,14 @@ icu_64_64::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
   return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu_64_64::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,
-                                                       isEmptyExpression);
-}
-
 arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
     arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
+}
+
+aql::AqlFunctionsInternalCache& ViewExpressionContextBase::functionsCache() {
+  TRI_ASSERT(_aqlFunctionsInternalCache != nullptr);
+  return *_aqlFunctionsInternalCache;
 }
 
 Database& ViewExpressionContextBase::vocbase() const { return _trx->vocbase(); }

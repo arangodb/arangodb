@@ -68,12 +68,10 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
       std::string_view expr, bool caseInsensitive) override final;
   icu_64_64::RegexMatcher* buildLikeMatcher(
       std::string_view expr, bool caseInsensitive) override final;
-  icu_64_64::RegexMatcher* buildSplitMatcher(
-      aql::AqlValue splitExpression, velocypack::Options const* opts,
-      bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;
+  aql::AqlFunctionsInternalCache& functionsCache() override final;
 
   Database& vocbase() const override final;
   /// may be inaccessible on some platforms

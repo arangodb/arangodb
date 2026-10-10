@@ -20,8 +20,10 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Function/StringFunctions.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/LanguageFeature.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
@@ -31,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ThreadLocalLeaser.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Helpers.h"
@@ -42,8 +45,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
-
-#include <absl/strings/str_cat.h>
 
 #include <utils/utf8_utils.hpp>
 
@@ -63,12 +64,10 @@ using namespace arangodb;
 namespace arangodb::aql {
 namespace {
 
-void registerICUWarning(ExpressionContext* expressionContext,
-                        std::string_view functionName, UErrorCode status) {
-  std::string msg = absl::StrCat("in function '", functionName, "()': ");
-  msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
-                                                    u_errorName_64_64(status)));
-  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
+Result icuError(UErrorCode status) {
+  return Result{TRI_ERROR_ARANGO_ICU_ERROR,
+                basics::Exception::FillExceptionString(
+                    TRI_ERROR_ARANGO_ICU_ERROR, u_errorName_64_64(status))};
 }
 
 void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
@@ -117,22 +116,42 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
 
 }  // namespace
 
-/// @brief function TO_STRING
-AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
+AqlValue functions::callPure(ExpressionContext* ctx,
+                             std::string_view functionName,
+                             PureStringFunction fn,
                              VPackFunctionParametersView parameters) {
-  auto& trx = expr->trx();
+  auto& trx = ctx->trx();
+  auto& cache = ctx->functionsCache();
+  StringFunctionEnv env{trx.vpackOptions(), cache.locale(trx.vocbase()), cache};
+  auto result = fn(parameters, env);
+  if (result.ok()) {
+    return std::move(*result);
+  }
+  // the ErrorCode overload formats mismatch messages with the function name
+  if (result.errorNumber() == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH ||
+      result.errorNumber() ==
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
+    registerWarning(ctx, functionName, result.errorNumber());
+  } else {
+    registerWarning(ctx, functionName, result.result());
+  }
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function TO_STRING
+ResultT<AqlValue> functions::toString(VPackFunctionParametersView parameters,
+                                      StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
-  appendAsString(trx.vpackOptions(), adapter, value);
+  appendAsString(env.vopts, adapter, value);
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
-AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  static char const* AFN = "TO_CHAR";
+ResultT<AqlValue> functions::toChar(VPackFunctionParametersView parameters,
+                                    StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   int64_t v = -1;
@@ -140,8 +159,7 @@ AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
     v = value.toInt64();
   }
   if (v < 0) {
-    registerInvalidArgumentWarning(ctx, AFN);
-    return aql::AqlValue{aql::AqlValueHintNull{}};
+    return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
   }
 
   UChar32 c = static_cast<uint32_t>(v);
@@ -152,9 +170,8 @@ AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
   return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
 }
 
-AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  static char const* AFN = "REPEAT";
+ResultT<AqlValue> functions::repeat(VPackFunctionParametersView parameters,
+                                    StringFunctionEnv const& env) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   AqlValue const& repetitions = extractFunctionParameterValue(parameters, 1);
@@ -165,18 +182,15 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
   }
   if (r < 0) {
     // negative number of repetitions
-    registerInvalidArgumentWarning(ctx, AFN);
-    return aql::AqlValue{aql::AqlValueHintNull{}};
+    return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
   }
-
-  auto& trx = ctx->trx();
 
   auto sepBuffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink sepAdapter(sepBuffer.get());
   std::string_view separator;
   if (parameters.size() > 2) {
     // separator
-    appendAsString(trx.vpackOptions(), sepAdapter,
+    appendAsString(env.vopts, sepAdapter,
                    extractFunctionParameterValue(parameters, 2));
     separator = {sepBuffer->data(), sepBuffer->size()};
   }
@@ -189,13 +203,11 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
     if (i > 0 && !separator.empty()) {
       buffer->append(separator);
     }
-    appendAsString(trx.vpackOptions(), adapter, value);
+    appendAsString(env.vopts, adapter, value);
     if (adapter.overflowed()) {
-      registerWarning(
-          ctx, AFN,
-          Result{TRI_ERROR_RESOURCE_LIMIT,
-                 "Output string of AQL REPEAT function was limited to 16MB."});
-      return AqlValue(AqlValueHintNull());
+      return Result{
+          TRI_ERROR_RESOURCE_LIMIT,
+          "Output string of AQL REPEAT function was limited to 16MB."};
     }
   }
 
@@ -205,13 +217,9 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
 
 /// @brief function FIND_FIRST
 /// FIND_FIRST(text, search, start, end) → position
-AqlValue functions::FindFirst(ExpressionContext* expressionContext,
-                              AstNode const&,
-                              VPackFunctionParametersView parameters) {
-  static char const* AFN = "FIND_FIRST";
-
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::findFirst(VPackFunctionParametersView parameters,
+                                       StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue =
@@ -261,10 +269,8 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, env.locale, nullptr, status);
 
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
@@ -273,21 +279,16 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
     }
   }
   if (U_FAILURE(status)) {
-    registerICUWarning(expressionContext, AFN, status);
-    return AqlValue(AqlValueHintNull());
+    return icuError(status);
   }
   return AqlValue(AqlValueHintInt(-1));
 }
 
 /// @brief function FIND_LAST
 /// FIND_FIRST(text, search, start, end) → position
-AqlValue functions::FindLast(ExpressionContext* expressionContext,
-                             AstNode const&,
-                             VPackFunctionParametersView parameters) {
-  static char const* AFN = "FIND_LAST";
-
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::findLast(VPackFunctionParametersView parameters,
+                                      StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue =
@@ -339,10 +340,8 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintInt(-1));
   }
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, env.locale, nullptr, status);
 
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -352,17 +351,15 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
   if (U_FAILURE(status)) {
-    registerICUWarning(expressionContext, AFN, status);
-    return AqlValue(AqlValueHintNull());
+    return icuError(status);
   }
   return AqlValue(AqlValueHintInt(foundPos));
 }
 
 /// @brief function CONCAT_SEPARATOR
-AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
-                                    VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::concatSeparator(
+    VPackFunctionParametersView parameters, StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
@@ -424,10 +421,9 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function CHAR_LENGTH
-AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
-                               VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto* vopts = &trx->vpackOptions();
+ResultT<AqlValue> functions::charLength(VPackFunctionParametersView parameters,
+                                        StringFunctionEnv const& env) {
+  auto* vopts = &env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   size_t length = 0;
@@ -473,11 +469,10 @@ AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function LOWER
-AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
+ResultT<AqlValue> functions::lower(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
   std::string utf8;
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -495,11 +490,10 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function UPPER
-AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
+ResultT<AqlValue> functions::upper(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
   std::string utf8;
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -517,10 +511,9 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function SUBSTRING
-AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
-                              VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::substring(VPackFunctionParametersView parameters,
+                                       StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
@@ -556,14 +549,13 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
   return AqlValue(utf8);
 }
 
-AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
-                                   VPackFunctionParametersView parameters) {
+ResultT<AqlValue> functions::substringBytes(
+    VPackFunctionParametersView parameters, StringFunctionEnv const& env) {
   auto const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
   if (!value.isString()) {
-    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
-    return AqlValue{AqlValueHintNull{}};
+    return Result{TRI_ERROR_BAD_PARAMETER};
   }
 
   auto const str = value.slice().stringView();
@@ -619,8 +611,7 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
 
   if ((lhsIt != end && (*lhsIt & kMaskBits) == kHelpByte) ||
       (rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte)) {
-    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
-    return AqlValue{AqlValueHintNull{}};
+    return Result{TRI_ERROR_BAD_PARAMETER};
   }
 
   auto shift = [&](auto limit, auto& it, auto to, auto update) {
@@ -643,13 +634,9 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
                                    reinterpret_cast<char const*>(rhsIt)}};
 }
 
-AqlValue functions::Substitute(ExpressionContext* expressionContext,
-                               AstNode const&,
-                               VPackFunctionParametersView parameters) {
-  static char const* AFN = "SUBSTITUTE";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::substitute(VPackFunctionParametersView parameters,
+                                        StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& search =
       aql::functions::extractFunctionParameterValue(parameters, 1);
   int64_t limit = -1;
@@ -660,9 +647,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 
   if (search.isObject()) {
     if (parameters.size() > 3) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH};
     }
     if (parameters.size() == 3) {
       limit = aql::functions::extractFunctionParameterValue(parameters, 2)
@@ -687,15 +672,12 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
             icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
         // non strings
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
+        return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
       }
     }
   } else {
     if (parameters.size() < 2) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH};
     }
     if (parameters.size() == 4) {
       limit = aql::functions::extractFunctionParameterValue(parameters, 3)
@@ -711,14 +693,12 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
           matchPatterns.push_back(
               icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
         } else {
-          registerInvalidArgumentWarning(expressionContext, AFN);
-          return AqlValue(AqlValueHintNull());
+          return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
         }
       }
     } else {
       if (!search.isString()) {
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
+        return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
       }
       velocypack::ValueLength length;
 
@@ -742,8 +722,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
             replacePatterns.push_back(
                 icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
           } else {
-            registerInvalidArgumentWarning(expressionContext, AFN);
-            return AqlValue(AqlValueHintNull());
+            return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
           }
         }
       } else if (replace.isString()) {
@@ -755,8 +734,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
         replacePatterns.push_back(
             icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
+        return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
       }
     }
   }
@@ -776,8 +754,6 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
   // we can't copy the search instances, thus use pointers.
   // ICU's StringSearch rejects empty patterns and texts
   std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
@@ -789,10 +765,9 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       continue;
     }
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
-        searchStr, unicodeStr, locale, nullptr, status));
+        searchStr, unicodeStr, env.locale, nullptr, status));
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
 
@@ -835,8 +810,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     // We now find the first hit for each search string.
     srchResultPtrs.push_back(firstMatch(i));
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
 
@@ -870,8 +844,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       }
     }
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
   // Append from the last found:
@@ -882,10 +855,9 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 }
 
 /// @brief function LEFT str, length
-AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::left(VPackFunctionParametersView parameters,
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue value = aql::functions::extractFunctionParameterValue(parameters, 0);
   uint32_t length = static_cast<int32_t>(
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
@@ -906,10 +878,9 @@ AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function RIGHT
-AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::right(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue value = aql::functions::extractFunctionParameterValue(parameters, 0);
   uint32_t length = static_cast<int32_t>(
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
@@ -931,13 +902,9 @@ AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function TRIM
-AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  // cppcheck-suppress variableScope
-  static char const* AFN = "TRIM";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::trim(VPackFunctionParametersView parameters,
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -973,8 +940,7 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
   if (U_FAILURE(errorCode)) {
-    registerICUWarning(expressionContext, AFN, errorCode);
-    return AqlValue(AqlValueHintNull());
+    return icuError(errorCode);
   }
 
   int32_t startOffset = 0, endOffset = unicodeStr.length();
@@ -997,13 +963,9 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function LTRIM
-AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  // cppcheck-suppress variableScope
-  static char const* AFN = "LTRIM";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::ltrim(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -1028,8 +990,7 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
   if (U_FAILURE(errorCode)) {
-    registerICUWarning(expressionContext, AFN, errorCode);
-    return AqlValue(AqlValueHintNull());
+    return icuError(errorCode);
   }
 
   int32_t startOffset = 0, endOffset = unicodeStr.length();
@@ -1045,13 +1006,9 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function RTRIM
-AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  // cppcheck-suppress variableScope
-  static char const* AFN = "RTRIM";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::rtrim(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   auto buffer = ThreadLocalStringLeaser::lease();
@@ -1076,8 +1033,7 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
   if (U_FAILURE(errorCode)) {
-    registerICUWarning(expressionContext, AFN, errorCode);
-    return AqlValue(AqlValueHintNull());
+    return icuError(errorCode);
   }
 
   int32_t startOffset = 0, endOffset = unicodeStr.length();
@@ -1093,10 +1049,9 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function CONTAINS
-AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
-                             VPackFunctionParametersView parameters) {
-  auto* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::contains(VPackFunctionParametersView parameters,
+                                      StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& search =
@@ -1161,10 +1116,9 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function CONCAT
-AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
-                           VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::concat(VPackFunctionParametersView parameters,
+                                    StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
@@ -1204,12 +1158,9 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function LIKE
-AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
-                         VPackFunctionParametersView parameters) {
-  static char const* AFN = "LIKE";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
+ResultT<AqlValue> functions::like(VPackFunctionParametersView parameters,
+                                  StringFunctionEnv const& env) {
+  auto const& vopts = env.vopts;
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
@@ -1221,12 +1172,11 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildLikeMatcher(*buffer, caseInsensitive);
+      env.cache.buildLikeMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(AqlValueHintNull());
+    return Result{TRI_ERROR_QUERY_INVALID_REGEX};
   }
 
   // extract value
@@ -1241,20 +1191,16 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
 
   if (error) {
     // compiling regular expression failed
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(AqlValueHintNull());
+    return Result{TRI_ERROR_QUERY_INVALID_REGEX};
   }
 
   return AqlValue(AqlValueHintBool(result));
 }
 
 /// @brief function SPLIT
-AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
-                          VPackFunctionParametersView parameters) {
-  static char const* AFN = "SPLIT";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  auto* vopts = &trx->vpackOptions();
+ResultT<AqlValue> functions::split(VPackFunctionParametersView parameters,
+                                   StringFunctionEnv const& env) {
+  auto* vopts = &env.vopts;
   // cheapest parameter checks first:
   int64_t limitNumber = -1;
   if (parameters.size() == 3) {
@@ -1263,8 +1209,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     if (aqlLimit.isNumber()) {
       limitNumber = aqlLimit.toInt64();
     } else {
-      registerInvalidArgumentWarning(expressionContext, AFN);
-      return AqlValue(AqlValueHintNull());
+      return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
     }
 
     // these are edge cases which are documented to have these return values:
@@ -1282,8 +1227,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     aqlSeparatorExpression =
         aql::functions::extractFunctionParameterValue(parameters, 1);
     if (aqlSeparatorExpression.isObject()) {
-      registerInvalidArgumentWarning(expressionContext, AFN);
-      return AqlValue(AqlValueHintNull());
+      return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
     }
   }
 
@@ -1308,13 +1252,12 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   bool isEmptyExpression = false;
 
   // the matcher is owned by the context!
-  icu_64_64::RegexMatcher* matcher = expressionContext->buildSplitMatcher(
-      aqlSeparatorExpression, &trx->vpackOptions(), isEmptyExpression);
+  icu_64_64::RegexMatcher* matcher = env.cache.buildSplitMatcher(
+      aqlSeparatorExpression, vopts, isEmptyExpression);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(AqlValueHintNull());
+    return Result{TRI_ERROR_QUERY_INVALID_REGEX};
   }
 
   auto result = ThreadLocalBuilderLeaser::lease();
@@ -1337,8 +1280,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
-      registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
-      return AqlValue(AqlValueHintNull());
+      return Result{TRI_ERROR_QUERY_INVALID_REGEX};
     }
 
     if (copyThisTime > nrResults) {

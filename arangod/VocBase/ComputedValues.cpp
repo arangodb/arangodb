@@ -124,16 +124,14 @@ icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
   return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
-    aql::AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                      isEmptyExpression);
-}
-
 ValidatorBase* ComputedValuesExpressionContext::buildValidator(
     velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
+}
+
+aql::AqlFunctionsInternalCache&
+ComputedValuesExpressionContext::functionsCache() {
+  return _aqlFunctionsInternalCache;
 }
 
 aql::AqlValue ComputedValuesExpressionContext::getVariableValue(

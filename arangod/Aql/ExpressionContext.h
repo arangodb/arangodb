@@ -39,6 +39,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+class AqlFunctionsInternalCache;
 struct AqlValue;
 struct Variable;
 
@@ -58,10 +59,8 @@ class ExpressionContext {
                                                      bool caseInsensitive) = 0;
   virtual icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                                     bool caseInsensitive) = 0;
-  virtual icu_64_64::RegexMatcher* buildSplitMatcher(
-      AqlValue splitExpression, velocypack::Options const* opts,
-      bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
+  virtual AqlFunctionsInternalCache& functionsCache() = 0;
 
   virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;

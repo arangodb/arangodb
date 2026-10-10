@@ -282,6 +282,8 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     return _cache.buildLikeMatcher(expr, caseInsensitive);
   }
 
+  aql::AqlFunctionsInternalCache& functionsCache() final { return _cache; }
+
  private:
   aql::AqlValue getVariableValue(aql::Variable const*, bool,
                                  bool&) const final {
@@ -299,12 +301,6 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
 
   icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                              bool caseInsensitive) final {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                             velocypack::Options const* opts,
-                                             bool& isEmptyExpression) final {
     TRI_ASSERT(false);
     return nullptr;
   }
