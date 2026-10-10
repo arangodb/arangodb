@@ -63,8 +63,13 @@ void QueryRegistryOptionsProvider::declareOptionsImpl(
       .setIntroducedIn(30800)
       .setLongDescription(R"(You can use this option to set a limit on the
 combined estimated memory usage of all AQL queries (in bytes). If this option
-has a value of `0`, then no global memory limit is in place. This is also the
-default value and the same behavior as in version 3.7 and older.
+has a value of `0`, then no global memory limit is in place.
+
+The default value depends on the amount of available RAM: 90% of the memory
+that remains after subtracting a reserve of 10% of the RAM (at least 256 MiB),
+but no less than 25% of the RAM. This is about 81% of the RAM for systems with
+more than 2.5 GiB. If the amount of available RAM cannot be determined, the
+default value is `0`.
 
 If you set this option to a value greater than zero, then the total memory usage
 of all AQL queries is limited approximately to the configured value. The limit
