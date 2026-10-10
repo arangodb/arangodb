@@ -15,8 +15,9 @@ prof_dump_open_file_intercept(const char *filename, int mode) {
 
 static void
 set_prof_active(bool active) {
-	expect_d_eq(mallctl("prof.active", NULL, NULL, (void *)&active,
-	    sizeof(active)), 0, "Unexpected mallctl failure");
+	expect_d_eq(
+	    mallctl("prof.active", NULL, NULL, (void *)&active, sizeof(active)),
+	    0, "Unexpected mallctl failure");
 }
 
 static size_t
@@ -32,25 +33,26 @@ get_lg_prof_sample(void) {
 static void
 do_prof_reset(size_t lg_prof_sample_input) {
 	expect_d_eq(mallctl("prof.reset", NULL, NULL,
-	    (void *)&lg_prof_sample_input, sizeof(size_t)), 0,
-	    "Unexpected mallctl failure while resetting profile data");
+	                (void *)&lg_prof_sample_input, sizeof(size_t)),
+	    0, "Unexpected mallctl failure while resetting profile data");
 	expect_zu_eq(lg_prof_sample_input, get_lg_prof_sample(),
 	    "Expected profile sample rate change");
 }
 
 TEST_BEGIN(test_prof_reset_basic) {
-	size_t lg_prof_sample_orig, lg_prof_sample_cur, lg_prof_sample_next;
-	size_t sz;
+	size_t   lg_prof_sample_orig, lg_prof_sample_cur, lg_prof_sample_next;
+	size_t   sz;
 	unsigned i;
 
 	test_skip_if(!config_prof);
 
 	sz = sizeof(size_t);
 	expect_d_eq(mallctl("opt.lg_prof_sample", (void *)&lg_prof_sample_orig,
-	    &sz, NULL, 0), 0,
+	                &sz, NULL, 0),
+	    0,
 	    "Unexpected mallctl failure while reading profiling sample rate");
-	expect_zu_eq(lg_prof_sample_orig, 0,
-	    "Unexpected profiling sample rate");
+	expect_zu_eq(
+	    lg_prof_sample_orig, 0, "Unexpected profiling sample rate");
 	lg_prof_sample_cur = get_lg_prof_sample();
 	expect_zu_eq(lg_prof_sample_orig, lg_prof_sample_cur,
 	    "Unexpected disagreement between \"opt.lg_prof_sample\" and "
@@ -110,23 +112,24 @@ TEST_BEGIN(test_prof_reset_cleanup) {
 }
 TEST_END
 
-#define NTHREADS		4
-#define NALLOCS_PER_THREAD	(1U << 13)
-#define OBJ_RING_BUF_COUNT	1531
-#define RESET_INTERVAL		(1U << 10)
-#define DUMP_INTERVAL		3677
+#define NTHREADS 4
+#define NALLOCS_PER_THREAD (1U << 13)
+#define OBJ_RING_BUF_COUNT 1531
+#define RESET_INTERVAL (1U << 10)
+#define DUMP_INTERVAL 3677
 static void *
 thd_start(void *varg) {
 	unsigned thd_ind = *(unsigned *)varg;
 	unsigned i;
-	void *objs[OBJ_RING_BUF_COUNT];
+	void    *objs[OBJ_RING_BUF_COUNT];
 
 	memset(objs, 0, sizeof(objs));
 
 	for (i = 0; i < NALLOCS_PER_THREAD; i++) {
 		if (i % RESET_INTERVAL == 0) {
 			expect_d_eq(mallctl("prof.reset", NULL, NULL, NULL, 0),
-			    0, "Unexpected error while resetting heap profile "
+			    0,
+			    "Unexpected error while resetting heap profile "
 			    "data");
 		}
 
@@ -141,9 +144,9 @@ thd_start(void *varg) {
 				dallocx(*pp, 0);
 				*pp = NULL;
 			}
-			*pp = btalloc(1, thd_ind*NALLOCS_PER_THREAD + i);
-			expect_ptr_not_null(*pp,
-			    "Unexpected btalloc() failure");
+			*pp = btalloc(1, thd_ind * NALLOCS_PER_THREAD + i);
+			expect_ptr_not_null(
+			    *pp, "Unexpected btalloc() failure");
 		}
 	}
 
@@ -160,17 +163,16 @@ thd_start(void *varg) {
 }
 
 TEST_BEGIN(test_prof_reset) {
-	size_t lg_prof_sample_orig;
-	thd_t thds[NTHREADS];
+	size_t   lg_prof_sample_orig;
+	thd_t    thds[NTHREADS];
 	unsigned thd_args[NTHREADS];
 	unsigned i;
-	size_t bt_count, tdata_count;
+	size_t   bt_count, tdata_count;
 
 	test_skip_if(!config_prof);
 
 	bt_count = prof_bt_count();
-	expect_zu_eq(bt_count, 0,
-	    "Unexpected pre-existing tdata structures");
+	expect_zu_eq(bt_count, 0, "Unexpected pre-existing tdata structures");
 	tdata_count = prof_tdata_count();
 
 	lg_prof_sample_orig = get_lg_prof_sample();
@@ -186,8 +188,8 @@ TEST_BEGIN(test_prof_reset) {
 		thd_join(thds[i], NULL);
 	}
 
-	expect_zu_eq(prof_bt_count(), bt_count,
-	    "Unexpected bactrace count change");
+	expect_zu_eq(
+	    prof_bt_count(), bt_count, "Unexpected bactrace count change");
 	expect_zu_eq(prof_tdata_count(), tdata_count,
 	    "Unexpected remaining tdata structures");
 
@@ -205,9 +207,9 @@ TEST_END
 /* Test sampling at the same allocation site across resets. */
 #define NITER 10
 TEST_BEGIN(test_xallocx) {
-	size_t lg_prof_sample_orig;
+	size_t   lg_prof_sample_orig;
 	unsigned i;
-	void *ptrs[NITER];
+	void    *ptrs[NITER];
 
 	test_skip_if(!config_prof);
 
@@ -218,7 +220,7 @@ TEST_BEGIN(test_xallocx) {
 	do_prof_reset(0);
 
 	for (i = 0; i < NITER; i++) {
-		void *p;
+		void  *p;
 		size_t sz, nsz;
 
 		/* Reset profiling. */
@@ -233,13 +235,13 @@ TEST_BEGIN(test_xallocx) {
 
 		/* Perform successful xallocx(). */
 		sz = sallocx(p, 0);
-		expect_zu_eq(xallocx(p, sz, 0, 0), sz,
-		    "Unexpected xallocx() failure");
+		expect_zu_eq(
+		    xallocx(p, sz, 0, 0), sz, "Unexpected xallocx() failure");
 
 		/* Perform unsuccessful xallocx(). */
-		nsz = nallocx(sz+1, 0);
-		expect_zu_eq(xallocx(p, nsz, 0, 0), sz,
-		    "Unexpected xallocx() success");
+		nsz = nallocx(sz + 1, 0);
+		expect_zu_eq(
+		    xallocx(p, nsz, 0, 0), sz, "Unexpected xallocx() success");
 	}
 
 	for (i = 0; i < NITER; i++) {
@@ -258,9 +260,6 @@ main(void) {
 	/* Intercept dumping prior to running any tests. */
 	prof_dump_open_file = prof_dump_open_file_intercept;
 
-	return test_no_reentrancy(
-	    test_prof_reset_basic,
-	    test_prof_reset_cleanup,
-	    test_prof_reset,
-	    test_xallocx);
+	return test_no_reentrancy(test_prof_reset_basic,
+	    test_prof_reset_cleanup, test_prof_reset, test_xallocx);
 }

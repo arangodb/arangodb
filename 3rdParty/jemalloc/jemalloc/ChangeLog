@@ -4,6 +4,154 @@ brevity.  Much more detail can be found in the git revision history:
 
     https://github.com/jemalloc/jemalloc
 
+* 5.3.1 (Apr 13, 2026)
+
+This release includes over 390 commits spanning bug fixes, new features,
+performance optimizations, and portability improvements.  Multiple percent
+of system-level metric improvements were measured in tested production
+workloads.  The release has gone through large-scale production testing
+at Meta.
+
+New features:
+  - Support pvalloc.  (@Lapenkov: 5b1f2cc5)
+  - Add double free detection for the debug build.  (@izaitsevfb:
+    36366f3c, @guangli-dai: 42daa1ac, @divanorama: 1897f185)
+  - Add compile-time option `--enable-pageid` to enable memory mapping
+    annotation.  (@devnexen: 4fc5c4fb)
+  - Add runtime option `prof_bt_max` to control the max stack depth for
+    profiling.  (@guangli-dai: a0734fd6)
+  - Add compile-time option `--enable-force-getenv` to use `getenv` instead
+    of `secure_getenv`.  (@interwq: 481bbfc9)
+  - Add compile-time option `--disable-dss` to disable the usage of
+    `sbrk(2)`.  (@Svetlitski: ea5b7bea)
+  - Add runtime option `tcache_ncached_max` to control the number of items
+    in each size bin in the thread cache.  (@guangli-dai: 8a22d10b)
+  - Add runtime option `calloc_madvise_threshold` to determine if kernel or
+    memset is used to zero the allocations for calloc.  (@nullptr0-0:
+    5081c16b)
+  - Add compile-time option `--disable-user-config` to disable reading the
+    runtime configurations from `/etc/malloc.conf` or environment variable
+    `MALLOC_CONF`.  (@roblabla: c17bf8b3)
+  - Add runtime option `disable_large_size_classes` to guard the new usable
+    size calculation, which minimizes the memory overhead for large
+    allocations, i.e., >= 4 * PAGE.  (@guangli-dai: c067a55c, 8347f104)
+  - Enable process_madvise usage, add runtime option
+    `process_madvise_max_batch` to control the max # of regions in each
+    madvise batch.  (@interwq: 22440a02, @spredolac: 4246475b)
+  - Add mallctl interfaces:
+    + `opt.prof_bt_max`  (@guangli-dai: a0734fd6)
+    + `arena.<i>.name` to set and get arena names.  (@guangli-dai: ba19d2cb)
+    + `thread.tcache.max` to set and get the `tcache_max` of the current
+      thread.  (@guangli-dai: a442d9b8)
+    + `thread.tcache.ncached_max.write` and
+      `thread.tcache.ncached_max.read_sizeclass` to set and get the
+      `ncached_max` setup of the current thread.  (@guangli-dai: 630f7de9,
+      6b197fdd)
+    + `arenas.hugepage` to return the hugepage size used, also exported to
+      malloc stats.  (@ilvokhin: 90c627ed)
+    + `approximate_stats.active` to return an estimate of the current active
+      bytes, which should not be compared with other stats retrieved.
+      (@guangli-dai: 0988583d)
+
+Bug fixes:
+  - Prevent potential deadlocks in decaying during reentrancy.  (@interwq:
+    434a68e2)
+  - Fix segfault in extent coalescing.  (@Svetlitski: 12311fe6)
+  - Add null pointer detections in mallctl calls.  (@Svetlitski: dc0a184f,
+    0288126d)
+  - Make mallctl `arenas.lookup` triable without crashing on invalid
+    pointers.  (@auxten: 019cccc2, 5bac3849)
+  - Demote sampled allocations for proper deallocations during
+    `arena_reset`.  (@Svetlitski: 62648c88)
+  - Fix jemalloc's `read(2)` and `write(2)`.  (@Svetlitski: d2c9ed3d, @lexprfuncall:
+    9fdc1160)
+  - Fix the pkg-config metadata file.  (@BtbN: ed7e6fe7, ce8ce99a)
+  - Fix the autogen.sh so that it accepts quoted extra options.
+    (@honggyukim: f6fe6abd)
+  - Fix `rallocx()` to set errno to ENOMEM upon OOMing.  (@arter97: 38056fea,
+    @interwq: 83b07578)
+  - Avoid stack overflow for internal variable array usage.  (@nullptr0-0:
+    47c9bcd4, 48f66cf4, @xinydev: 9169e927)
+  - Fix background thread initialization race.  (@puzpuzpuz: 4d0ffa07)
+  - Guard os_page_id against a NULL address.  (@lexprfuncall: 79cc7dcc)
+  - Handle tcache init failures gracefully.  (@lexprfuncall: a056c20d)
+  - Fix missing release of acquired neighbor edata in
+    extent_try_coalesce_impl.  (@spredolac: 675ab079)
+  - Fix memory leak of old curr_reg on san_bump_grow_locked failure.
+    (@spredolac: 5904a421)
+  - Fix large alloc nrequests under-counting on cache misses.  (@spredolac:
+    3cc56d32)
+
+Portability improvements:
+  - Fix the build in C99.  (@abaelhe: 56ddbea2)
+  - Add `pthread_setaffinity_np` detection for non Linux/BSD platforms.
+    (@devnexen: 4c95c953)
+  - Make `VARIABLE_ARRAY` compatible with compilers not supporting VLA,
+    i.e., Visual Studio C compiler in C11 or C17 modes.  (@madscientist:
+    be65438f)
+  - Fix the build on Linux using musl library.  (@marv: aba1645f, 45249cf5)
+  - Reduce the memory overhead in small allocation sampling for systems
+    with larger page sizes, e.g., ARM.  (@Svetlitski: 5a858c64)
+  - Add C23's `free_sized` and `free_aligned_sized`.  (@Svetlitski:
+    cdb2c0e0)
+  - Enable heap profiling on MacOS.  (@nullptr0-0: 4b555c11)
+  - Fix incorrect printing on 32bit.  (@sundb: 630434bb)
+  - Make `JEMALLOC_CXX_THROW` compatible with C++ versions newer than
+    C++17.  (@r-barnes, @guangli-dai: 21bcc0a8)
+  - Fix mmap tag conflicts on MacOS.  (@kdrag0n: c893fcd1)
+  - Fix monotonic timer assumption for win32.  (@burtonli: 8dc97b11)
+  - Fix VM over-reservation on systems with larger pages, e.g., aarch64.
+    (@interwq: cd05b19f)
+  - Remove `unreachable()` macro conditionally to prevent definition
+    conflicts for C23+.  (@appujee: d8486b26, 4b88bddb)
+  - Fix dlsym failure observed on FreeBSD.  (@rhelmot: 86bbabac)
+  - Change the default page size to 64KB on aarch64 Linux.  (@lexprfuncall:
+    9442300c)
+  - Update config.guess and config.sub to the latest version.
+    (@lexprfuncall: c51949ea)
+  - Determine the page size on Android from NDK header files.
+    (@lexprfuncall: c51abba1)
+  - Improve the portability of grep patterns in configure.ac.
+    (@lexprfuncall: 365747bc)
+  - Add compile-time option `--with-cxx-stdlib` to specify the C++ standard
+    library.  (@yuxuanchen1997: a10ef3e1)
+
+Optimizations and refactors:
+  - Enable tcache for deallocation-only threads.  (@interwq: 143e9c4a)
+  - Inline to accelerate operator delete.  (@guangli-dai: e8f9f138)
+  - Optimize pairing heap's performance.  (@deadalnix: 5266152d, be6da4f6,
+    543e2d61, 10d71315, 92aa52c0, @Svetlitski: 36ca0c1b)
+  - Inline the storage for thread name in the profiling data.  (@interwq:
+    ce0b7ab6, e62aa478)
+  - Optimize a hot function `edata_cmp_summary_comp` to accelerate it.
+    (@Svetlitski: 6841110b, @guangli-dai: 0181aaa4)
+  - Allocate thread cache using the base allocator, which enables thread
+    cache to use thp when `metadata_thp` is turned on.  (@interwq:
+    72cfdce7)
+  - Allow oversize arena not to purge immediately when background threads
+    are enabled, although the default decay time is 0 to be back compatible.
+    (@interwq: d1313313)
+  - Optimize thread-local storage implementation on Windows.  (@mcfi:
+    9e123a83, 3a0d9cda)
+  - Optimize fast path to allow static size class computation.  (@interwq:
+    323ed2e3)
+  - Redesign tcache GC to regulate the frequency and make it
+    locality-aware. The new design is default on, guarded by option
+    `experimental_tcache_gc`.  (@nullptr0-0: 0c88be9e, e2c9f3a9,
+    14d5dc13, @deadalnix: 5afff2e4)
+  - Reduce the arena switching overhead by avoiding forced purging when
+    background thread is enabled.  (@interwq: a3910b98)
+  - Improve the reuse efficiency by limiting the maximum coalesced size for
+    large extents.  (@jiebinn: 3c14707b)
+  - Refactor thread events to allow registration of users' thread events
+    and remove prof_threshold as the built-in event.  (@spredolac: e6864c60,
+    015b0179, 34ace916)
+
+Documentation:
+  - Update Windows building instructions.  (@Lapenkov: 37139328)
+  - Add vcpkg installation instructions.  (@LilyWangLL: c0c9783e)
+  - Update profiling internals with an example.  (@jordalgo: b04e7666)
+
 * 5.3.0 (May 6, 2022)
 
   This release contains many speed and space optimizations, from micro

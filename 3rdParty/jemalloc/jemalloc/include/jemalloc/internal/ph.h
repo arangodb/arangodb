@@ -75,6 +75,16 @@ struct ph_s {
 	size_t auxcount;
 };
 
+typedef struct ph_enumerate_vars_s ph_enumerate_vars_t;
+struct ph_enumerate_vars_s {
+	uint16_t front;
+	uint16_t rear;
+	uint16_t queue_size;
+	uint16_t visited_num;
+	uint16_t max_visit_num;
+	uint16_t max_queue_size;
+};
+
 JEMALLOC_ALWAYS_INLINE phn_link_t *
 phn_link_get(void *phn, size_t offset) {
 	return (phn_link_t *)(((char *)phn) + offset);
@@ -119,8 +129,7 @@ phn_prev_set(void *phn, void *prev, size_t offset) {
 }
 
 JEMALLOC_ALWAYS_INLINE void
-phn_merge_ordered(void *phn0, void *phn1, size_t offset,
-    ph_cmp_t cmp) {
+phn_merge_ordered(void *phn0, void *phn1, size_t offset, ph_cmp_t cmp) {
 	void *phn0child;
 
 	assert(phn0 != NULL);
@@ -162,6 +171,10 @@ phn_merge_siblings(void *phn, size_t offset, ph_cmp_t cmp) {
 	void *phn0 = phn;
 	void *phn1 = phn_next_get(phn0, offset);
 
+	if (phn1 == NULL) {
+		return phn0;
+	}
+
 	/*
 	 * Multipass merge, wherein the first two elements of a FIFO
 	 * are repeatedly merged, and each result is appended to the
@@ -170,62 +183,61 @@ phn_merge_siblings(void *phn, size_t offset, ph_cmp_t cmp) {
 	 * its tail, so we do a single pass over the sibling list to
 	 * populate the FIFO.
 	 */
-	if (phn1 != NULL) {
-		void *phnrest = phn_next_get(phn1, offset);
-		if (phnrest != NULL) {
-			phn_prev_set(phnrest, NULL, offset);
-		}
-		phn_prev_set(phn0, NULL, offset);
-		phn_next_set(phn0, NULL, offset);
-		phn_prev_set(phn1, NULL, offset);
-		phn_next_set(phn1, NULL, offset);
-		phn0 = phn_merge(phn0, phn1, offset, cmp);
-		head = tail = phn0;
-		phn0 = phnrest;
-		while (phn0 != NULL) {
-			phn1 = phn_next_get(phn0, offset);
-			if (phn1 != NULL) {
-				phnrest = phn_next_get(phn1, offset);
-				if (phnrest != NULL) {
-					phn_prev_set(phnrest, NULL, offset);
-				}
-				phn_prev_set(phn0, NULL, offset);
-				phn_next_set(phn0, NULL, offset);
-				phn_prev_set(phn1, NULL, offset);
-				phn_next_set(phn1, NULL, offset);
-				phn0 = phn_merge(phn0, phn1, offset, cmp);
-				/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
-				phn_next_set(tail, phn0, offset);
-				tail = phn0;
-				phn0 = phnrest;
-			} else {
-				/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
-				phn_next_set(tail, phn0, offset);
-				tail = phn0;
-				phn0 = NULL;
-			}
-		}
-		phn0 = head;
+	void *phnrest = phn_next_get(phn1, offset);
+	if (phnrest != NULL) {
+		phn_prev_set(phnrest, NULL, offset);
+	}
+	phn_prev_set(phn0, NULL, offset);
+	phn_next_set(phn0, NULL, offset);
+	phn_prev_set(phn1, NULL, offset);
+	phn_next_set(phn1, NULL, offset);
+	phn0 = phn_merge(phn0, phn1, offset, cmp);
+	head = tail = phn0;
+	phn0 = phnrest;
+	while (phn0 != NULL) {
 		phn1 = phn_next_get(phn0, offset);
 		if (phn1 != NULL) {
-			while (true) {
-				head = phn_next_get(phn1, offset);
-				assert(phn_prev_get(phn0, offset) == NULL);
-				phn_next_set(phn0, NULL, offset);
-				assert(phn_prev_get(phn1, offset) == NULL);
-				phn_next_set(phn1, NULL, offset);
-				phn0 = phn_merge(phn0, phn1, offset, cmp);
-				if (head == NULL) {
-					break;
-				}
-				/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
-				phn_next_set(tail, phn0, offset);
-				tail = phn0;
-				phn0 = head;
-				phn1 = phn_next_get(phn0, offset);
+			phnrest = phn_next_get(phn1, offset);
+			if (phnrest != NULL) {
+				phn_prev_set(phnrest, NULL, offset);
 			}
+			phn_prev_set(phn0, NULL, offset);
+			phn_next_set(phn0, NULL, offset);
+			phn_prev_set(phn1, NULL, offset);
+			phn_next_set(phn1, NULL, offset);
+			phn0 = phn_merge(phn0, phn1, offset, cmp);
+			/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
+			phn_next_set(tail, phn0, offset);
+			tail = phn0;
+			phn0 = phnrest;
+		} else {
+			/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
+			phn_next_set(tail, phn0, offset);
+			tail = phn0;
+			phn0 = NULL;
 		}
 	}
+	phn0 = head;
+	phn1 = phn_next_get(phn0, offset);
+	if (phn1 != NULL) {
+		while (true) {
+			head = phn_next_get(phn1, offset);
+			assert(phn_prev_get(phn0, offset) == NULL);
+			phn_next_set(phn0, NULL, offset);
+			assert(phn_prev_get(phn1, offset) == NULL);
+			phn_next_set(phn1, NULL, offset);
+			phn0 = phn_merge(phn0, phn1, offset, cmp);
+			if (head == NULL) {
+				break;
+			}
+			/* NOLINTNEXTLINE(readability-suspicious-call-argument) */
+			phn_next_set(tail, phn0, offset);
+			tail = phn0;
+			phn0 = head;
+			phn1 = phn_next_get(phn0, offset);
+		}
+	}
+
 	return phn0;
 }
 
@@ -239,7 +251,7 @@ ph_merge_aux(ph_t *ph, size_t offset, ph_cmp_t cmp) {
 		phn_prev_set(phn, NULL, offset);
 		phn = phn_merge_siblings(phn, offset, cmp);
 		assert(phn_next_get(phn, offset) == NULL);
-		ph->root = phn_merge(ph->root, phn, offset, cmp);
+		phn_merge_ordered(ph->root, phn, offset, cmp);
 	}
 }
 
@@ -348,15 +360,14 @@ ph_insert(ph_t *ph, void *phn, size_t offset, ph_cmp_t cmp) {
 
 	phn_next_set(phn, phn_next_get(ph->root, offset), offset);
 	if (phn_next_get(ph->root, offset) != NULL) {
-		phn_prev_set(phn_next_get(ph->root, offset), phn,
-		    offset);
+		phn_prev_set(phn_next_get(ph->root, offset), phn, offset);
 	}
 	phn_prev_set(phn, ph->root, offset);
 	phn_next_set(ph->root, phn, offset);
 
 	ph->auxcount++;
 	unsigned nmerges = ffs_zu(ph->auxcount);
-	bool done = false;
+	bool     done = false;
 	for (unsigned i = 0; i < nmerges && !done; i++) {
 		done = ph_try_aux_merge_pair(ph, offset, cmp);
 	}
@@ -374,33 +385,21 @@ ph_remove_first(ph_t *ph, size_t offset, ph_cmp_t cmp) {
 	ph->root = ph_merge_children(ph->root, offset, cmp);
 
 	return ret;
-
 }
 
 JEMALLOC_ALWAYS_INLINE void
 ph_remove(ph_t *ph, void *phn, size_t offset, ph_cmp_t cmp) {
 	if (ph->root == phn) {
-		/*
-		 * We can delete from aux list without merging it, but we need
-		 * to merge if we are dealing with the root node and it has
-		 * children.
-		 */
-		if (phn_lchild_get(phn, offset) == NULL) {
-			ph->root = phn_next_get(phn, offset);
-			return;
-		}
 		ph_merge_aux(ph, offset, cmp);
-		if (ph->root == phn) {
-			ph->root = ph_merge_children(ph->root, offset, cmp);
-			return;
-		}
+		ph->root = ph_merge_children(phn, offset, cmp);
+		return;
 	}
 
-	void* prev = phn_prev_get(phn, offset);
-	void* next = phn_next_get(phn, offset);
+	void *prev = phn_prev_get(phn, offset);
+	void *next = phn_next_get(phn, offset);
 
 	/* If we have children, then we integrate them back in the heap. */
-	void* replace = ph_merge_children(phn, offset, cmp);
+	void *replace = ph_merge_children(phn, offset, cmp);
 	if (replace != NULL) {
 		phn_next_set(replace, next, offset);
 		if (next != NULL) {
@@ -422,83 +421,174 @@ ph_remove(ph_t *ph, void *phn, size_t offset, ph_cmp_t cmp) {
 	}
 }
 
-#define ph_structs(a_prefix, a_type)					\
-typedef struct {							\
-	phn_link_t link;						\
-} a_prefix##_link_t;							\
-									\
-typedef struct {							\
-	ph_t ph;							\
-} a_prefix##_t;
+JEMALLOC_ALWAYS_INLINE void
+ph_enumerate_vars_init(ph_enumerate_vars_t *vars, uint16_t max_visit_num,
+    uint16_t max_queue_size) {
+	vars->queue_size = 0;
+	vars->visited_num = 0;
+	vars->front = 0;
+	vars->rear = 0;
+	vars->max_visit_num = max_visit_num;
+	vars->max_queue_size = max_queue_size;
+	assert(vars->max_visit_num > 0);
+	/*
+	 * max_queue_size must be able to support max_visit_num, which means
+	 * the queue will not overflow before reaching max_visit_num.
+	 */
+	assert(vars->max_queue_size >= (vars->max_visit_num + 1) / 2);
+}
+
+JEMALLOC_ALWAYS_INLINE void
+ph_enumerate_queue_push(
+    void *phn, void **bfs_queue, ph_enumerate_vars_t *vars) {
+	assert(vars->queue_size < vars->max_queue_size);
+	bfs_queue[vars->rear] = phn;
+	vars->rear = (vars->rear + 1) % vars->max_queue_size;
+	(vars->queue_size)++;
+}
+
+JEMALLOC_ALWAYS_INLINE void *
+ph_enumerate_queue_pop(void **bfs_queue, ph_enumerate_vars_t *vars) {
+	assert(vars->queue_size > 0);
+	assert(vars->queue_size <= vars->max_queue_size);
+	void *ret = bfs_queue[vars->front];
+	vars->front = (vars->front + 1) % vars->max_queue_size;
+	(vars->queue_size)--;
+	return ret;
+}
+
+/*
+ * The two functions below offer a solution to enumerate the pairing heap.
+ * Whe enumerating, always call ph_enumerate_prepare first to prepare the queue
+ * needed for BFS.  Next, call ph_enumerate_next to get the next element in
+ * the enumeration.  When enumeration ends, ph_enumerate_next returns NULL and
+ * should not be called again.  Enumeration ends when all elements in the heap
+ * has been enumerated or the number of visited elements exceed
+ * max_visit_num.
+ */
+JEMALLOC_ALWAYS_INLINE void
+ph_enumerate_prepare(ph_t *ph, void **bfs_queue, ph_enumerate_vars_t *vars,
+    uint16_t max_visit_num, uint16_t max_queue_size) {
+	ph_enumerate_vars_init(vars, max_visit_num, max_queue_size);
+	ph_enumerate_queue_push(ph->root, bfs_queue, vars);
+}
+
+JEMALLOC_ALWAYS_INLINE void *
+ph_enumerate_next(
+    ph_t *ph, size_t offset, void **bfs_queue, ph_enumerate_vars_t *vars) {
+	if (vars->queue_size == 0) {
+		return NULL;
+	}
+
+	(vars->visited_num)++;
+	if (vars->visited_num > vars->max_visit_num) {
+		return NULL;
+	}
+
+	void *ret = ph_enumerate_queue_pop(bfs_queue, vars);
+	assert(ret != NULL);
+	void *left = phn_lchild_get(ret, offset);
+	void *right = phn_next_get(ret, offset);
+	if (left) {
+		ph_enumerate_queue_push(left, bfs_queue, vars);
+	}
+	if (right) {
+		ph_enumerate_queue_push(right, bfs_queue, vars);
+	}
+	return ret;
+}
+
+#define ph_structs(a_prefix, a_type, a_max_queue_size)                         \
+	typedef struct {                                                       \
+		phn_link_t link;                                               \
+	} a_prefix##_link_t;                                                   \
+                                                                               \
+	typedef struct {                                                       \
+		ph_t ph;                                                       \
+	} a_prefix##_t;                                                        \
+                                                                               \
+	typedef struct {                                                       \
+		void               *bfs_queue[a_max_queue_size];               \
+		ph_enumerate_vars_t vars;                                      \
+	} a_prefix##_enumerate_helper_t;
 
 /*
  * The ph_proto() macro generates function prototypes that correspond to the
  * functions generated by an equivalently parameterized call to ph_gen().
  */
-#define ph_proto(a_attr, a_prefix, a_type)				\
-									\
-a_attr void a_prefix##_new(a_prefix##_t *ph);				\
-a_attr bool a_prefix##_empty(a_prefix##_t *ph);				\
-a_attr a_type *a_prefix##_first(a_prefix##_t *ph);			\
-a_attr a_type *a_prefix##_any(a_prefix##_t *ph);			\
-a_attr void a_prefix##_insert(a_prefix##_t *ph, a_type *phn);		\
-a_attr a_type *a_prefix##_remove_first(a_prefix##_t *ph);		\
-a_attr void a_prefix##_remove(a_prefix##_t *ph, a_type *phn);		\
-a_attr a_type *a_prefix##_remove_any(a_prefix##_t *ph);
+#define ph_proto(a_attr, a_prefix, a_type)                                     \
+                                                                               \
+	a_attr void    a_prefix##_new(a_prefix##_t *ph);                       \
+	a_attr bool    a_prefix##_empty(a_prefix##_t *ph);                     \
+	a_attr a_type *a_prefix##_first(a_prefix##_t *ph);                     \
+	a_attr a_type *a_prefix##_any(a_prefix##_t *ph);                       \
+	a_attr void    a_prefix##_insert(a_prefix##_t *ph, a_type *phn);       \
+	a_attr a_type *a_prefix##_remove_first(a_prefix##_t *ph);              \
+	a_attr void    a_prefix##_remove(a_prefix##_t *ph, a_type *phn);       \
+	a_attr a_type *a_prefix##_remove_any(a_prefix##_t *ph);                \
+	a_attr void    a_prefix##_enumerate_prepare(a_prefix##_t *ph,          \
+	       a_prefix##_enumerate_helper_t *helper, uint16_t max_visit_num,  \
+	       uint16_t max_queue_size);                                       \
+	a_attr a_type *a_prefix##_enumerate_next(                              \
+	    a_prefix##_t *ph, a_prefix##_enumerate_helper_t *helper);
 
 /* The ph_gen() macro generates a type-specific pairing heap implementation. */
-#define ph_gen(a_attr, a_prefix, a_type, a_field, a_cmp)		\
-JEMALLOC_ALWAYS_INLINE int						\
-a_prefix##_ph_cmp(void *a, void *b) {					\
-	return a_cmp((a_type *)a, (a_type *)b);				\
-}									\
-									\
-a_attr void								\
-a_prefix##_new(a_prefix##_t *ph) {					\
-	ph_new(&ph->ph);						\
-}									\
-									\
-a_attr bool								\
-a_prefix##_empty(a_prefix##_t *ph) {					\
-	return ph_empty(&ph->ph);					\
-}									\
-									\
-a_attr a_type *								\
-a_prefix##_first(a_prefix##_t *ph) {					\
-	return ph_first(&ph->ph, offsetof(a_type, a_field),		\
-	    &a_prefix##_ph_cmp);					\
-}									\
-									\
-a_attr a_type *								\
-a_prefix##_any(a_prefix##_t *ph) {					\
-	return ph_any(&ph->ph, offsetof(a_type, a_field));		\
-}									\
-									\
-a_attr void								\
-a_prefix##_insert(a_prefix##_t *ph, a_type *phn) {			\
-	ph_insert(&ph->ph, phn, offsetof(a_type, a_field),		\
-	    a_prefix##_ph_cmp);						\
-}									\
-									\
-a_attr a_type *								\
-a_prefix##_remove_first(a_prefix##_t *ph) {				\
-	return ph_remove_first(&ph->ph, offsetof(a_type, a_field),	\
-	    a_prefix##_ph_cmp);						\
-}									\
-									\
-a_attr void								\
-a_prefix##_remove(a_prefix##_t *ph, a_type *phn) {			\
-	ph_remove(&ph->ph, phn, offsetof(a_type, a_field),		\
-	    a_prefix##_ph_cmp);						\
-}									\
-									\
-a_attr a_type *								\
-a_prefix##_remove_any(a_prefix##_t *ph) {				\
-	a_type *ret = a_prefix##_any(ph);				\
-	if (ret != NULL) {						\
-		a_prefix##_remove(ph, ret);				\
-	}								\
-	return ret;							\
-}
+#define ph_gen(a_attr, a_prefix, a_type, a_field, a_cmp)                       \
+	JEMALLOC_ALWAYS_INLINE int a_prefix##_ph_cmp(void *a, void *b) {       \
+		return a_cmp((a_type *)a, (a_type *)b);                        \
+	}                                                                      \
+                                                                               \
+	a_attr void a_prefix##_new(a_prefix##_t *ph) {                         \
+		ph_new(&ph->ph);                                               \
+	}                                                                      \
+                                                                               \
+	a_attr bool a_prefix##_empty(a_prefix##_t *ph) {                       \
+		return ph_empty(&ph->ph);                                      \
+	}                                                                      \
+                                                                               \
+	a_attr a_type *a_prefix##_first(a_prefix##_t *ph) {                    \
+		return ph_first(                                               \
+		    &ph->ph, offsetof(a_type, a_field), &a_prefix##_ph_cmp);   \
+	}                                                                      \
+                                                                               \
+	a_attr a_type *a_prefix##_any(a_prefix##_t *ph) {                      \
+		return ph_any(&ph->ph, offsetof(a_type, a_field));             \
+	}                                                                      \
+                                                                               \
+	a_attr void a_prefix##_insert(a_prefix##_t *ph, a_type *phn) {         \
+		ph_insert(&ph->ph, phn, offsetof(a_type, a_field),             \
+		    a_prefix##_ph_cmp);                                        \
+	}                                                                      \
+                                                                               \
+	a_attr a_type *a_prefix##_remove_first(a_prefix##_t *ph) {             \
+		return ph_remove_first(                                        \
+		    &ph->ph, offsetof(a_type, a_field), a_prefix##_ph_cmp);    \
+	}                                                                      \
+                                                                               \
+	a_attr void a_prefix##_remove(a_prefix##_t *ph, a_type *phn) {         \
+		ph_remove(&ph->ph, phn, offsetof(a_type, a_field),             \
+		    a_prefix##_ph_cmp);                                        \
+	}                                                                      \
+                                                                               \
+	a_attr a_type *a_prefix##_remove_any(a_prefix##_t *ph) {               \
+		a_type *ret = a_prefix##_any(ph);                              \
+		if (ret != NULL) {                                             \
+			a_prefix##_remove(ph, ret);                            \
+		}                                                              \
+		return ret;                                                    \
+	}                                                                      \
+                                                                               \
+	a_attr void a_prefix##_enumerate_prepare(a_prefix##_t *ph,             \
+	    a_prefix##_enumerate_helper_t *helper, uint16_t max_visit_num,     \
+	    uint16_t max_queue_size) {                                         \
+		ph_enumerate_prepare(&ph->ph, helper->bfs_queue,               \
+		    &helper->vars, max_visit_num, max_queue_size);             \
+	}                                                                      \
+                                                                               \
+	a_attr a_type *a_prefix##_enumerate_next(                              \
+	    a_prefix##_t *ph, a_prefix##_enumerate_helper_t *helper) {         \
+		return ph_enumerate_next(&ph->ph, offsetof(a_type, a_field),   \
+		    helper->bfs_queue, &helper->vars);                         \
+	}
 
 #endif /* JEMALLOC_INTERNAL_PH_H */

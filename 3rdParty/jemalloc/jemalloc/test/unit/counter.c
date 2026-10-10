@@ -11,7 +11,7 @@ TEST_BEGIN(test_counter_accum) {
 	counter_accum_init(&c, interval);
 
 	tsd_t *tsd = tsd_fetch();
-	bool trigger;
+	bool   trigger;
 	for (unsigned i = 0; i < n; i++) {
 		trigger = counter_accum(tsd_tsdn(tsd), &c, increment);
 		accum += increment;
@@ -39,8 +39,8 @@ static void *
 thd_start(void *varg) {
 	counter_accum_t *c = (counter_accum_t *)varg;
 
-	tsd_t *tsd = tsd_fetch();
-	bool trigger;
+	tsd_t    *tsd = tsd_fetch();
+	bool      trigger;
 	uintptr_t n_triggered = 0;
 	for (unsigned i = 0; i < N_ITER_THD; i++) {
 		trigger = counter_accum(tsd_tsdn(tsd), c, ITER_INCREMENT);
@@ -50,12 +50,11 @@ thd_start(void *varg) {
 	return (void *)n_triggered;
 }
 
-
 TEST_BEGIN(test_counter_mt) {
 	counter_accum_t shared_c;
 	counter_accum_init(&shared_c, interval);
 
-	thd_t thds[N_THDS];
+	thd_t    thds[N_THDS];
 	unsigned i;
 	for (i = 0; i < N_THDS; i++) {
 		thd_create(&thds[i], thd_start, (void *)&shared_c);
@@ -74,7 +73,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_counter_accum,
-	    test_counter_mt);
+	return test(test_counter_accum, test_counter_mt);
 }

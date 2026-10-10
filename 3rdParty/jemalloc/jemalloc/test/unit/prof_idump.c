@@ -13,8 +13,9 @@ prof_dump_open_file_intercept(const char *filename, int mode) {
 	did_prof_dump_open = true;
 
 	const char filename_prefix[] = TEST_PREFIX ".";
-	expect_d_eq(strncmp(filename_prefix, filename, sizeof(filename_prefix)
-	    - 1), 0, "Dump file name should start with \"" TEST_PREFIX ".\"");
+	expect_d_eq(
+	    strncmp(filename_prefix, filename, sizeof(filename_prefix) - 1), 0,
+	    "Dump file name should start with \"" TEST_PREFIX ".\"");
 
 	fd = open("/dev/null", O_WRONLY);
 	assert_d_ne(fd, -1, "Unexpected open() failure");
@@ -23,7 +24,7 @@ prof_dump_open_file_intercept(const char *filename, int mode) {
 }
 
 TEST_BEGIN(test_idump) {
-	bool active;
+	bool  active;
 	void *p;
 
 	const char *test_prefix = TEST_PREFIX;
@@ -33,12 +34,12 @@ TEST_BEGIN(test_idump) {
 	active = true;
 
 	expect_d_eq(mallctl("prof.prefix", NULL, NULL, (void *)&test_prefix,
-	    sizeof(test_prefix)), 0,
-	    "Unexpected mallctl failure while overwriting dump prefix");
+	                sizeof(test_prefix)),
+	    0, "Unexpected mallctl failure while overwriting dump prefix");
 
-	expect_d_eq(mallctl("prof.active", NULL, NULL, (void *)&active,
-	    sizeof(active)), 0,
-	    "Unexpected mallctl failure while activating profiling");
+	expect_d_eq(
+	    mallctl("prof.active", NULL, NULL, (void *)&active, sizeof(active)),
+	    0, "Unexpected mallctl failure while activating profiling");
 
 	prof_dump_open_file = prof_dump_open_file_intercept;
 
@@ -52,6 +53,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_idump);
+	return test(test_idump);
 }

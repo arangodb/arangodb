@@ -6,8 +6,8 @@
 
 static void
 verify_extent_guarded(tsdn_t *tsdn, void *ptr) {
-	expect_true(extent_is_guarded(tsdn, ptr),
-	    "All extents should be guarded.");
+	expect_true(
+	    extent_is_guarded(tsdn, ptr), "All extents should be guarded.");
 }
 
 #define MAX_SMALL_ALLOCATIONS 4096
@@ -21,13 +21,13 @@ void *small_alloc[MAX_SMALL_ALLOCATIONS];
 TEST_BEGIN(test_guarded_small) {
 	test_skip_if(opt_prof);
 
-	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+	tsdn_t  *tsdn = tsd_tsdn(tsd_fetch());
 	unsigned npages = 16, pages_found = 0, ends_found = 0;
 	VARIABLE_ARRAY(uintptr_t, pages, npages);
 
 	/* Allocate to get sanitized pointers. */
-	size_t slab_sz = PAGE;
-	size_t sz = slab_sz / 8;
+	size_t   slab_sz = PAGE;
+	size_t   sz = slab_sz / 8;
 	unsigned n_alloc = 0;
 	while (n_alloc < MAX_SMALL_ALLOCATIONS) {
 		void *ptr = malloc(sz);
@@ -54,8 +54,9 @@ TEST_BEGIN(test_guarded_small) {
 	/* Verify the pages are not continuous, i.e. separated by guards. */
 	for (unsigned i = 0; i < npages - 1; i++) {
 		for (unsigned j = i + 1; j < npages; j++) {
-			uintptr_t ptr_diff = pages[i] > pages[j] ?
-			    pages[i] - pages[j] : pages[j] - pages[i];
+			uintptr_t ptr_diff = pages[i] > pages[j]
+			    ? pages[i] - pages[j]
+			    : pages[j] - pages[i];
 			expect_zu_ge((size_t)ptr_diff, slab_sz + PAGE,
 			    "There should be at least one pages between "
 			    "guarded slabs");
@@ -69,7 +70,7 @@ TEST_BEGIN(test_guarded_small) {
 TEST_END
 
 TEST_BEGIN(test_guarded_large) {
-	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+	tsdn_t  *tsdn = tsd_tsdn(tsd_fetch());
 	unsigned nlarge = 32;
 	VARIABLE_ARRAY(uintptr_t, large, nlarge);
 
@@ -85,8 +86,9 @@ TEST_BEGIN(test_guarded_large) {
 	/* Verify the pages are not continuous, i.e. separated by guards. */
 	for (unsigned i = 0; i < nlarge; i++) {
 		for (unsigned j = i + 1; j < nlarge; j++) {
-			uintptr_t ptr_diff = large[i] > large[j] ?
-			    large[i] - large[j] : large[j] - large[i];
+			uintptr_t ptr_diff = large[i] > large[j]
+			    ? large[i] - large[j]
+			    : large[j] - large[i];
 			expect_zu_ge((size_t)ptr_diff, large_sz + 2 * PAGE,
 			    "There should be at least two pages between "
 			    " guarded large allocations");
@@ -102,15 +104,13 @@ TEST_END
 static void
 verify_pdirty(unsigned arena_ind, uint64_t expected) {
 	uint64_t pdirty = get_arena_pdirty(arena_ind);
-	expect_u64_eq(pdirty, expected / PAGE,
-	    "Unexpected dirty page amount.");
+	expect_u64_eq(pdirty, expected / PAGE, "Unexpected dirty page amount.");
 }
 
 static void
 verify_pmuzzy(unsigned arena_ind, uint64_t expected) {
 	uint64_t pmuzzy = get_arena_pmuzzy(arena_ind);
-	expect_u64_eq(pmuzzy, expected / PAGE,
-	    "Unexpected muzzy page amount.");
+	expect_u64_eq(pmuzzy, expected / PAGE, "Unexpected muzzy page amount.");
 }
 
 TEST_BEGIN(test_guarded_decay) {
@@ -140,7 +140,7 @@ TEST_BEGIN(test_guarded_decay) {
 	verify_pmuzzy(arena_ind, 0);
 
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
-	int flags = MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE;
+	int     flags = MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE;
 
 	/* Should reuse dirty extents for the two mallocx. */
 	void *p1 = do_mallocx(sz1, flags);
@@ -200,8 +200,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_guarded_small,
-	    test_guarded_large,
-	    test_guarded_decay);
+	return test(test_guarded_small, test_guarded_large, test_guarded_decay);
 }

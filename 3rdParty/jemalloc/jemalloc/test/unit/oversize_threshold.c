@@ -5,7 +5,7 @@
 static void
 arena_mallctl(const char *mallctl_str, unsigned arena, void *oldp,
     size_t *oldlen, void *newp, size_t newlen) {
-	int err;
+	int  err;
 	char buf[100];
 	malloc_snprintf(buf, sizeof(buf), mallctl_str, arena);
 
@@ -14,13 +14,13 @@ arena_mallctl(const char *mallctl_str, unsigned arena, void *oldp,
 }
 
 TEST_BEGIN(test_oversize_threshold_get_set) {
-	int err;
+	int    err;
 	size_t old_threshold;
 	size_t new_threshold;
 	size_t threshold_sz = sizeof(old_threshold);
 
 	unsigned arena;
-	size_t arena_sz = sizeof(arena);
+	size_t   arena_sz = sizeof(arena);
 	err = mallctl("arenas.create", (void *)&arena, &arena_sz, NULL, 0);
 	expect_d_eq(0, err, "Arena creation failed");
 
@@ -38,13 +38,14 @@ TEST_BEGIN(test_oversize_threshold_get_set) {
 	/* Just a read */
 	arena_mallctl("arena.%u.oversize_threshold", arena, &old_threshold,
 	    &threshold_sz, NULL, 0);
-	expect_zu_eq(2 * 1024 * 1024, old_threshold, "Should have read old value");
+	expect_zu_eq(
+	    2 * 1024 * 1024, old_threshold, "Should have read old value");
 }
 TEST_END
 
 static size_t max_purged = 0;
 static bool
-purge_forced_record_max(extent_hooks_t* hooks, void *addr, size_t sz,
+purge_forced_record_max(extent_hooks_t *hooks, void *addr, size_t sz,
     size_t offset, size_t length, unsigned arena_ind) {
 	if (length > max_purged) {
 		max_purged = length;
@@ -73,7 +74,7 @@ TEST_BEGIN(test_oversize_threshold) {
 	int err;
 
 	unsigned arena;
-	size_t arena_sz = sizeof(arena);
+	size_t   arena_sz = sizeof(arena);
 	err = mallctl("arenas.create", (void *)&arena, &arena_sz, NULL, 0);
 	expect_d_eq(0, err, "Arena creation failed");
 	arena_mallctl("arena.%u.extent_hooks", arena, NULL, NULL, &extent_hooks,
@@ -121,8 +122,8 @@ TEST_BEGIN(test_oversize_threshold) {
 	ptr = mallocx(2 * 1024 * 1024, MALLOCX_ARENA(arena));
 	dallocx(ptr, MALLOCX_TCACHE_NONE);
 	if (!is_background_thread_enabled()) {
-		expect_zu_ge(max_purged, 2 * 1024 * 1024,
-		    "Expected a 2MB purge");
+		expect_zu_ge(
+		    max_purged, 2 * 1024 * 1024, "Expected a 2MB purge");
 	}
 }
 TEST_END
@@ -130,7 +131,5 @@ TEST_END
 int
 main(void) {
 	return test_no_reentrancy(
-	    test_oversize_threshold_get_set,
-	    test_oversize_threshold);
+	    test_oversize_threshold_get_set, test_oversize_threshold);
 }
-

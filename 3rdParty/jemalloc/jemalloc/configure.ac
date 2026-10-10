@@ -92,6 +92,32 @@ AC_LANG_POP([C++])
 JE_CONCAT_VVV(CXXFLAGS, CONFIGURE_CXXFLAGS, SPECIFIED_CXXFLAGS)
 ])
 
+CONFIGURE_LDFLAGS=
+SPECIFIED_LDFLAGS="${LDFLAGS}"
+dnl JE_LDFLAGS_ADD(ldflag)
+dnl
+dnl LDFLAGS is the concatenation of CONFIGURE_LDFLAGS and SPECIFIED_LDFLAGS
+dnl This macro appends to CONFIGURE_LDFLAGS and regenerates LDFLAGS.
+AC_DEFUN([JE_LDFLAGS_ADD],
+[
+AC_MSG_CHECKING([whether linker supports $1])
+T_CONFIGURE_LDFLAGS="${CONFIGURE_LDFLAGS}"
+JE_APPEND_VS(CONFIGURE_LDFLAGS, $1)
+JE_CONCAT_VVV(LDFLAGS, CONFIGURE_LDFLAGS, SPECIFIED_LDFLAGS)
+AC_LINK_IFELSE([AC_LANG_PROGRAM(
+[[
+]], [[
+    return 0;
+]])],
+              [je_cv_ldflags_added=$1]
+              AC_MSG_RESULT([yes]),
+              [je_cv_ldflags_added=]
+              AC_MSG_RESULT([no])
+              [CONFIGURE_LDFLAGS="${T_CONFIGURE_LDFLAGS}"]
+)
+JE_CONCAT_VVV(LDFLAGS, CONFIGURE_LDFLAGS, SPECIFIED_LDFLAGS)
+])
+
 dnl JE_COMPILABLE(label, hcode, mcode, rvar)
 dnl
 dnl Use AC_LINK_IFELSE() rather than AC_COMPILE_IFELSE() so that linker errors
@@ -298,6 +324,15 @@ fi
 ,
 enable_cxx="1"
 )
+AC_ARG_WITH([cxx_stdlib],
+  [AS_HELP_STRING([--with-cxx-stdlib=<libstdc++|libcxx>],
+  [Specify the C++ standard library to link (default: probe for libstdc++)])],
+  [case "${with_cxx_stdlib}" in
+    libstdc++|libcxx) ;;
+    *) AC_MSG_ERROR([bad value ${with_cxx_stdlib} for --with-cxx-stdlib]) ;;
+  esac],
+  [with_cxx_stdlib=""]
+)
 if test "x$enable_cxx" = "x1" ; then
   dnl Require at least c++14, which is the first version to support sized
   dnl deallocation.  C++ support is not compiled otherwise.
@@ -312,17 +347,28 @@ if test "x$enable_cxx" = "x1" ; then
     JE_CXXFLAGS_ADD([-g3])
 
     SAVED_LIBS="${LIBS}"
-    JE_APPEND_VS(LIBS, -lstdc++)
-    JE_COMPILABLE([libstdc++ linkage], [
+    case "${with_cxx_stdlib}" in
+      libstdc++)
+        JE_APPEND_VS(LIBS, -lstdc++)
+        ;;
+      libcxx)
+        JE_APPEND_VS(LIBS, -lc++)
+        ;;
+      *)
+        dnl Probe for libstdc++ (the default when --with-cxx-stdlib is not given).
+        JE_APPEND_VS(LIBS, -lstdc++)
+        JE_COMPILABLE([libstdc++ linkage], [
 #include <stdlib.h>
 ], [[
 	int *arr = (int *)malloc(sizeof(int) * 42);
 	if (arr == NULL)
 		return 1;
 ]], [je_cv_libstdcxx])
-    if test "x${je_cv_libstdcxx}" = "xno" ; then
-      LIBS="${SAVED_LIBS}"
-    fi
+        if test "x${je_cv_libstdcxx}" = "xno" ; then
+          LIBS="${SAVED_LIBS}"
+        fi
+        ;;
+    esac
   else
     enable_cxx="0"
   fi
@@ -562,6 +608,21 @@ AC_CACHE_CHECK([asm volatile support],
 if test "x${je_cv_asm_volatile}" = "xyes"; then
   AC_DEFINE([JEMALLOC_HAVE_ASM_VOLATILE], [ ], [ ])
 fi
+AC_CACHE_CHECK([__int128 support],
+               [je_cv_int128],
+               AC_RUN_IFELSE([AC_LANG_PROGRAM(
+[[
+]],
+[[
+      __int128 temp = 0;
+      return temp;
+]])],
+[je_cv_int128=yes],
+[je_cv_int128=no],
+[je_cv_int128=no]))
+if test "x${je_cv_int128}" = "xyes"; then
+  AC_DEFINE([JEMALLOC_HAVE_INT128], [ ], [ ])
+fi
 
 LD_PRELOAD_VAR="LD_PRELOAD"
 so="so"
@@ -611,7 +672,7 @@ AC_ARG_WITH([version],
   [AS_HELP_STRING([--with-version=<major>.<minor>.<bugfix>-<nrev>-g<gid>],
    [Version string])],
   [
-    echo "${with_version}" | grep ['^[0-9]\+\.[0-9]\+\.[0-9]\+-[0-9]\+-g[0-9a-f]\+$'] 2>&1 1>/dev/null
+    echo "${with_version}" | grep ['^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}-[0-9]\{1,\}-g[0-9a-f]\{1,\}$'] 2>&1 1>/dev/null
     if test $? -eq 0 ; then
       echo "$with_version" > "${objroot}VERSION"
     else
@@ -878,11 +939,26 @@ AC_SUBST([DUMP_SYMS])
 AC_SUBST([CC_MM])
 
 dnl Determine whether libm must be linked to use e.g. log(3).
-AC_SEARCH_LIBS([log], [m], , [AC_MSG_ERROR([Missing math functions])])
-if test "x$ac_cv_search_log" != "xnone required" ; then
-  LM="$ac_cv_search_log"
-else
+
+# On MSVC, log is an intrinsic that doesn't require libm. However,
+# AC_SEARCH_LIBS does not successfully detect this, as it will try to compile
+# a program using the wrong signature for log. Newer versions of MSVC CL detects
+# this and rejects the program with the following messages.
+#
+# conftest.c(40): warning C4391: 'char log()': incorrect return type for intrinsic function, expected 'double'
+# conftest.c(44): error C2168: 'log': too few actual parameters for intrinsic function
+#
+# Since log is always available on MSVC (it's been around since the dawn of
+# time), we simply always assume it's there if MSVC is detected.
+if test "x$je_cv_msvc" = "xyes" ; then
   LM=
+else
+  AC_SEARCH_LIBS([log], [m], , [AC_MSG_ERROR([Missing math functions])])
+    if test "x$ac_cv_search_log" != "xnone required" ; then
+      LM="$ac_cv_search_log"
+    else
+      LM=
+    fi
 fi
 AC_SUBST(LM)
 
@@ -1345,6 +1421,23 @@ if test "x$enable_stats" = "x1" ; then
 fi
 AC_SUBST([enable_stats])
 
+dnl Disable reading configuration from file and environment variable
+AC_ARG_ENABLE([user_config],
+  [AS_HELP_STRING([--disable-user-config],
+  [Do not read malloc config from /etc/malloc.conf or MALLOC_CONF])],
+[if test "x$enable_user_config" = "xno" ; then
+  enable_user_config="0"
+else
+  enable_user_config="1"
+fi
+],
+[enable_user_config="1"]
+)
+if test "x$enable_user_config" = "x1" ; then
+  AC_DEFINE([JEMALLOC_CONFIG_ENV], [ ], [ ])
+  AC_DEFINE([JEMALLOC_CONFIG_FILE], [ ], [ ])
+fi
+
 dnl Do not enable smallocx by default.
 AC_ARG_ENABLE([experimental_smallocx],
   [AS_HELP_STRING([--enable-experimental-smallocx], [Enable experimental smallocx API])],
@@ -1416,6 +1509,33 @@ if test "x$backtrace_method" = "x" -a "x$enable_prof_libunwind" = "x1" ; then
     backtrace_method="libunwind"
     AC_DEFINE([JEMALLOC_PROF_LIBUNWIND], [ ], [ ])
   fi
+fi
+
+if test `uname -s` = "Linux"
+then
+  AC_ARG_ENABLE([prof-frameptr],
+    [AS_HELP_STRING([--enable-prof-frameptr], [Use optimized frame pointer unwinder for backtracing (Linux only)])],
+  [if test "x$enable_prof_frameptr" = "xno" ; then
+    enable_prof_frameptr="0"
+  else
+    enable_prof_frameptr="1"
+    if test "x$enable_prof" = "x0" ; then
+      AC_MSG_ERROR([--enable-prof-frameptr should only be used with --enable-prof])
+    fi
+  fi
+  ],
+  [enable_prof_frameptr="0"]
+  )
+  if test "x$backtrace_method" = "x" -a "x$enable_prof_frameptr" = "x1" \
+      -a "x$GCC" = "xyes" ; then
+    JE_CFLAGS_ADD([-fno-omit-frame-pointer])
+    backtrace_method="frame pointer linux"
+    AC_DEFINE([JEMALLOC_PROF_FRAME_POINTER], [ ], [ ])
+  else
+    enable_prof_frameptr="0"
+  fi
+else
+  enable_prof_frameptr="0"
 fi
 
 AC_ARG_ENABLE([prof-libgcc],
@@ -1580,6 +1700,55 @@ else
   fi
 fi
 AC_SUBST([enable_utrace])
+
+dnl Disable experimental sdt tracing by default.
+AC_ARG_ENABLE([experimental-sdt],
+  [AS_HELP_STRING([--enable-experimental-sdt], [Enable systemtap USDT probes])],
+[if test "x$enable_experimental_sdt" = "xno" ; then
+  enable_experimental_sdt="0"
+else
+	JE_COMPILABLE([systemtap sdt], [
+#include <sys/sdt.h>
+	], [
+void foo(int i, void *p) { STAP_PROBE2(jemalloc, test, i, p); }
+  	],
+	[je_cv_stap_sdt])
+
+	if test "x${je_cv_stap_sdt}" = "xyes" ; then
+	   enable_experimental_sdt="1"
+	elif test "x${abi}" = "xelf" ; then
+	     case "${host}" in
+	     	  *-*-linux-android*)
+			case "${host_cpu}" in aarch64|x86_64)
+			     enable_experimental_sdt="2"
+			     ;;
+			esac
+			;;
+		  *-*-linux*)
+			case "${host_cpu}" in x86_64|aarch64|arm*)
+			      enable_experimental_sdt="2"
+			      ;;
+			esac
+		        ;;
+		  *)
+			enable_experimental_sdt="0"
+			AC_MSG_ERROR([Unsupported sdt on this platform])
+			;;
+	     esac
+	else
+	   AC_MSG_ERROR([Unsupported sdt on this platform])
+   	fi
+fi
+],
+[enable_experimental_sdt="0"]
+)
+
+if test "x$enable_experimental_sdt" = "x1" ; then
+    AC_DEFINE([JEMALLOC_EXPERIMENTAL_USDT_STAP], [ ], [ ])
+elif test "x$enable_experimental_sdt" = "x2"; then
+    AC_DEFINE([JEMALLOC_EXPERIMENTAL_USDT_CUSTOM], [ ], [ ])
+fi
+AC_SUBST([enable_experimental_sdt])
 
 dnl Do not support the xmalloc option by default.
 AC_ARG_ENABLE([xmalloc],
@@ -1811,6 +1980,16 @@ case "${host}" in
         LG_PAGE=14
       fi
       ;;
+  *-*-linux-android)
+      if test "x$LG_PAGE" = "xdetect"; then
+	AC_CHECK_DECLS([PAGE_SIZE], [LG_PAGE=12], [LG_PAGE=14], [#include <sys/user.h>])
+      fi
+      ;;
+  aarch64-unknown-linux-*)
+      if test "x$LG_PAGE" = "xdetect"; then
+        LG_PAGE=16
+      fi
+      ;;
 esac
 if test "x$LG_PAGE" = "xdetect"; then
   AC_CACHE_CHECK([LG_PAGE],
@@ -1875,7 +2054,7 @@ if test "x${je_cv_lg_hugepage}" = "x" ; then
   dnl   Hugepagesize:       2048 kB
   if test -e "/proc/meminfo" ; then
     hpsk=[`cat /proc/meminfo 2>/dev/null | \
-          grep -e '^Hugepagesize:[[:space:]]\+[0-9]\+[[:space:]]kB$' | \
+          grep '^Hugepagesize:[[:space:]]\{1,\}[0-9]\{1,\}[[:space:]]kB$' | \
           awk '{print $2}'`]
     if test "x${hpsk}" != "x" ; then
       je_cv_lg_hugepage=10
@@ -2067,6 +2246,16 @@ JE_COMPILABLE([clock_gettime(CLOCK_REALTIME, ...)], [
 ], [je_cv_clock_realtime])
 if test "x${je_cv_clock_realtime}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_HAVE_CLOCK_REALTIME], [ ], [ ])
+fi
+
+dnl Check for clock_gettime_nsec_np().
+JE_COMPILABLE([clock_gettime_nsec_np()], [
+#include <time.h>
+], [
+	clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+], [je_cv_clock_gettime_nsec_np])
+if test "x${je_cv_clock_gettime_nsec_np}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_CLOCK_GETTIME_NSEC_NP], [ ], [ ])
 fi
 
 dnl Use syscall(2) (if available) by default.
@@ -2347,6 +2536,13 @@ if test "x${je_cv_osatomic}" = "xyes" ; then
 fi
 
 dnl ============================================================================
+
+AC_ARG_WITH([experimental_sys_process_madvise],
+  [AS_HELP_STRING([--with-experimental-sys-process-madvise=<experimental-sys-process-madvise>],
+   [Force process_madvise and use experimental-sys-process-madvise number when making syscall])],
+  [je_cv_sys_pmadv_nr="${with_experimental_sys_process_madvise}"],
+  [je_cv_sys_pmadv_nr=""])
+
 dnl Check for madvise(2).
 
 JE_COMPILABLE([madvise(2)], [
@@ -2404,6 +2600,16 @@ if test "x${je_cv_madvise}" = "xyes" ; then
 	madvise((void *)0, 0, MADV_HUGEPAGE);
 	madvise((void *)0, 0, MADV_NOHUGEPAGE);
 ], [je_cv_thp])
+  case "${host_cpu}" in
+    arm*)
+      ;;
+    *)
+    if test "x${je_cv_thp}" = "xyes" ; then
+      AC_DEFINE([JEMALLOC_HAVE_MADVISE_HUGE], [ ], [ ])
+    fi
+    ;;
+  esac
+
   dnl Check for madvise(..., MADV_[NO]CORE).
   JE_COMPILABLE([madvise(..., MADV_[[NO]]CORE)], [
 #include <sys/mman.h>
@@ -2414,15 +2620,35 @@ if test "x${je_cv_madvise}" = "xyes" ; then
   if test "x${je_cv_madv_nocore}" = "xyes" ; then
     AC_DEFINE([JEMALLOC_MADVISE_NOCORE], [ ], [ ])
   fi
-case "${host_cpu}" in
-  arm*)
-    ;;
-  *)
-  if test "x${je_cv_thp}" = "xyes" ; then
-    AC_DEFINE([JEMALLOC_HAVE_MADVISE_HUGE], [ ], [ ])
+
+  dnl Check for madvise(..., MADV_COLLAPSE).
+  JE_COMPILABLE([madvise(..., MADV_COLLAPSE)], [
+#include <sys/mman.h>
+], [
+	madvise((void *)0, 0, MADV_COLLAPSE);
+], [je_cv_madv_collapse])
+  if test "x${je_cv_madv_collapse}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_HAVE_MADVISE_COLLAPSE], [ ], [ ])
   fi
-  ;;
-esac
+
+  dnl Check for process_madvise
+  JE_COMPILABLE([process_madvise(2)], [
+#include <sys/pidfd.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+], [
+	syscall(SYS_process_madvise, PIDFD_SELF, (void *)0, 0, 0, 0);
+], [je_cv_process_madvise])
+  if test "x${je_cv_process_madvise}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_HAVE_PROCESS_MADVISE], [ ], [ ])
+  else
+    if test "x${je_cv_sys_pmadv_nr}" != "x" ; then
+      dnl Forcing experimental usage of process_madvise
+      AC_MSG_RESULT([Forcing usage of process_madvise with syscall nr=${je_cv_sys_pmadv_nr}])
+      AC_DEFINE([JEMALLOC_HAVE_PROCESS_MADVISE], [ ], [ ])
+      AC_DEFINE_UNQUOTED([EXPERIMENTAL_SYS_PROCESS_MADVISE_NR], [${je_cv_sys_pmadv_nr}], [ ])
+    fi
+  fi
 else
   dnl Check for posix_madvise.
   JE_COMPILABLE([posix_madvise], [
@@ -2569,6 +2795,40 @@ if test "x$enable_pageid" = "x1" ; then
   AC_DEFINE([JEMALLOC_PAGEID], [ ], [ ])
 fi
 
+AC_ARG_ENABLE([tsan],
+  [AS_HELP_STRING([--enable-tsan],
+                  [Enable thread sanitizer])],
+[if test "x$enable_tsan" = "xno" ; then
+  enable_tsan="0"
+else
+  enable_tsan="1"
+fi
+],
+[enable_tsan="0"]
+)
+if test "x$enable_tsan" = "x1" ; then
+  JE_CFLAGS_ADD([-fsanitize=thread])
+  JE_CXXFLAGS_ADD([-fsanitize=thread])
+  JE_LDFLAGS_ADD([-fsanitize=thread])
+fi
+
+AC_ARG_ENABLE([ubsan],
+  [AS_HELP_STRING([--enable-ubsan],
+                  [Enable undefined behavior sanitizer])],
+[if test "x$enable_ubsan" = "xno" ; then
+  enable_ubsan="0"
+else
+  enable_ubsan="1"
+fi
+],
+[enable_ubsan="0"]
+)
+if test "x$enable_ubsan" = "x1" ; then
+  JE_CFLAGS_ADD([-fsanitize=undefined])
+  JE_CXXFLAGS_ADD([-fsanitize=undefined])
+  JE_LDFLAGS_ADD([-fsanitize=undefined])
+fi
+
 dnl ============================================================================
 dnl Enable background threads if possible.
 
@@ -2628,6 +2888,15 @@ if test "x${je_cv_pthread_mutex_adaptive_np}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_HAVE_PTHREAD_MUTEX_ADAPTIVE_NP], [ ], [ ])
 fi
 
+JE_COMPILABLE([gettid], [
+#include <unistd.h>
+], [
+  int tid = gettid();
+], [je_cv_gettid])
+if test "x${je_cv_gettid}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_GETTID], [ ], [ ])
+fi
+
 JE_CFLAGS_SAVE()
 JE_CFLAGS_ADD([-D_GNU_SOURCE])
 JE_CFLAGS_ADD([-Werror])
@@ -2642,9 +2911,19 @@ JE_COMPILABLE([strerror_r returns char with gnu source], [
   char *error = strerror_r(EINVAL, buffer, 100);
   printf("%s\n", error);
 ], [je_cv_strerror_r_returns_char_with_gnu_source])
+if test "x${je_cv_strerror_r_returns_char_with_gnu_source}" = "xno" ; then
+  JE_COMPILABLE([strerror_r header only], [
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+], [], [je_cv_strerror_r_header_pass])
+fi
 JE_CFLAGS_RESTORE()
 if test "x${je_cv_strerror_r_returns_char_with_gnu_source}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_STRERROR_R_RETURNS_CHAR_WITH_GNU_SOURCE], [ ], [ ])
+elif test "x${je_cv_strerror_r_header_pass}" = "xno" ; then
+  AC_MSG_ERROR([cannot determine return type of strerror_r])
 fi
 
 dnl ============================================================================
@@ -2782,7 +3061,8 @@ AC_MSG_RESULT([CXX                : ${CXX}])
 AC_MSG_RESULT([CONFIGURE_CXXFLAGS : ${CONFIGURE_CXXFLAGS}])
 AC_MSG_RESULT([SPECIFIED_CXXFLAGS : ${SPECIFIED_CXXFLAGS}])
 AC_MSG_RESULT([EXTRA_CXXFLAGS     : ${EXTRA_CXXFLAGS}])
-AC_MSG_RESULT([LDFLAGS            : ${LDFLAGS}])
+AC_MSG_RESULT([CONFIGURE_LDFLAGS  : ${CONFIGURE_LDFLAGS}])
+AC_MSG_RESULT([SPECIFIED_LDFLAGS  : ${SPECIFIED_LDFLAGS}])
 AC_MSG_RESULT([EXTRA_LDFLAGS      : ${EXTRA_LDFLAGS}])
 AC_MSG_RESULT([DSO_LDFLAGS        : ${DSO_LDFLAGS}])
 AC_MSG_RESULT([LIBS               : ${LIBS}])
@@ -2797,6 +3077,8 @@ AC_MSG_RESULT([DATADIR            : ${DATADIR}])
 AC_MSG_RESULT([INCLUDEDIR         : ${INCLUDEDIR}])
 AC_MSG_RESULT([LIBDIR             : ${LIBDIR}])
 AC_MSG_RESULT([MANDIR             : ${MANDIR}])
+AC_MSG_RESULT([])
+AC_MSG_RESULT([LG_PAGE            : ${LG_PAGE}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([srcroot            : ${srcroot}])
 AC_MSG_RESULT([abs_srcroot        : ${abs_srcroot}])
@@ -2814,9 +3096,11 @@ AC_MSG_RESULT([static libs        : ${enable_static}])
 AC_MSG_RESULT([autogen            : ${enable_autogen}])
 AC_MSG_RESULT([debug              : ${enable_debug}])
 AC_MSG_RESULT([stats              : ${enable_stats}])
+AC_MSG_RESULT([user_config        : ${enable_user_config}])
 AC_MSG_RESULT([experimental_smallocx : ${enable_experimental_smallocx}])
 AC_MSG_RESULT([prof               : ${enable_prof}])
 AC_MSG_RESULT([prof-libunwind     : ${enable_prof_libunwind}])
+AC_MSG_RESULT([prof-frameptr      : ${enable_prof_frameptr}])
 AC_MSG_RESULT([prof-libgcc        : ${enable_prof_libgcc}])
 AC_MSG_RESULT([prof-gcc           : ${enable_prof_gcc}])
 AC_MSG_RESULT([fill               : ${enable_fill}])
@@ -2828,4 +3112,6 @@ AC_MSG_RESULT([cache-oblivious    : ${enable_cache_oblivious}])
 AC_MSG_RESULT([pageid             : ${enable_pageid}])
 AC_MSG_RESULT([cxx                : ${enable_cxx}])
 AC_MSG_RESULT([dss                : ${enable_dss}])
+AC_MSG_RESULT([tsan               : ${enable_tsan}])
+AC_MSG_RESULT([ubsan              : ${enable_ubsan}])
 AC_MSG_RESULT([===============================================================================])

@@ -5,25 +5,24 @@
 #define STR(x) STR_HELPER(x)
 
 #ifndef JEMALLOC_VERSION_GID_IDENT
-  #error "JEMALLOC_VERSION_GID_IDENT not defined"
+#	error "JEMALLOC_VERSION_GID_IDENT not defined"
 #endif
 
-#define JOIN(x, y) x ## y
+#define JOIN(x, y) x##y
 #define JOIN2(x, y) JOIN(x, y)
 #define smallocx JOIN2(smallocx_, JEMALLOC_VERSION_GID_IDENT)
 
 typedef struct {
-	void *ptr;
+	void  *ptr;
 	size_t size;
 } smallocx_return_t;
 
-extern smallocx_return_t
-smallocx(size_t size, int flags);
+extern smallocx_return_t smallocx(size_t size, int flags);
 
 static unsigned
 get_nsizes_impl(const char *cmd) {
 	unsigned ret;
-	size_t z;
+	size_t   z;
 
 	z = sizeof(unsigned);
 	expect_d_eq(mallctl(cmd, (void *)&ret, &z, NULL, 0), 0,
@@ -45,12 +44,12 @@ get_size_impl(const char *cmd, size_t ind) {
 	size_t miblen = 4;
 
 	z = sizeof(size_t);
-	expect_d_eq(mallctlnametomib(cmd, mib, &miblen),
-	    0, "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
+	expect_d_eq(mallctlnametomib(cmd, mib, &miblen), 0,
+	    "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
 	mib[2] = ind;
 	z = sizeof(size_t);
-	expect_d_eq(mallctlbymib(mib, miblen, (void *)&ret, &z, NULL, 0),
-	    0, "Unexpected mallctlbymib([\"%s\", %zu], ...) failure", cmd, ind);
+	expect_d_eq(mallctlbymib(mib, miblen, (void *)&ret, &z, NULL, 0), 0,
+	    "Unexpected mallctlbymib([\"%s\", %zu], ...) failure", cmd, ind);
 
 	return ret;
 }
@@ -84,36 +83,37 @@ JEMALLOC_DIAGNOSTIC_IGNORE_ALLOC_SIZE_LARGER_THAN
 TEST_BEGIN(test_overflow) {
 	size_t largemax;
 
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 
-	expect_ptr_null(smallocx(largemax+1, 0).ptr,
-	    "Expected OOM for smallocx(size=%#zx, 0)", largemax+1);
+	expect_ptr_null(smallocx(largemax + 1, 0).ptr,
+	    "Expected OOM for smallocx(size=%#zx, 0)", largemax + 1);
 
-	expect_ptr_null(smallocx(ZU(PTRDIFF_MAX)+1, 0).ptr,
-	    "Expected OOM for smallocx(size=%#zx, 0)", ZU(PTRDIFF_MAX)+1);
+	expect_ptr_null(smallocx(ZU(PTRDIFF_MAX) + 1, 0).ptr,
+	    "Expected OOM for smallocx(size=%#zx, 0)", ZU(PTRDIFF_MAX) + 1);
 
 	expect_ptr_null(smallocx(SIZE_T_MAX, 0).ptr,
 	    "Expected OOM for smallocx(size=%#zx, 0)", SIZE_T_MAX);
 
-	expect_ptr_null(smallocx(1, MALLOCX_ALIGN(ZU(PTRDIFF_MAX)+1)).ptr,
+	expect_ptr_null(smallocx(1, MALLOCX_ALIGN(ZU(PTRDIFF_MAX) + 1)).ptr,
 	    "Expected OOM for smallocx(size=1, MALLOCX_ALIGN(%#zx))",
-	    ZU(PTRDIFF_MAX)+1);
+	    ZU(PTRDIFF_MAX) + 1);
 }
 TEST_END
 
 static void *
 remote_alloc(void *arg) {
 	unsigned arena;
-	size_t sz = sizeof(unsigned);
+	size_t   sz = sizeof(unsigned);
 	expect_d_eq(mallctl("arenas.create", (void *)&arena, &sz, NULL, 0), 0,
 	    "Unexpected mallctl() failure");
 	size_t large_sz;
 	sz = sizeof(size_t);
-	expect_d_eq(mallctl("arenas.lextent.0.size", (void *)&large_sz, &sz,
-	    NULL, 0), 0, "Unexpected mallctl failure");
+	expect_d_eq(
+	    mallctl("arenas.lextent.0.size", (void *)&large_sz, &sz, NULL, 0),
+	    0, "Unexpected mallctl failure");
 
-	smallocx_return_t r
-	    = smallocx(large_sz, MALLOCX_ARENA(arena) | MALLOCX_TCACHE_NONE);
+	smallocx_return_t r = smallocx(
+	    large_sz, MALLOCX_ARENA(arena) | MALLOCX_TCACHE_NONE);
 	void *ptr = r.ptr;
 	expect_zu_eq(r.size,
 	    nallocx(large_sz, MALLOCX_ARENA(arena) | MALLOCX_TCACHE_NONE),
@@ -138,16 +138,16 @@ TEST_BEGIN(test_remote_free) {
 TEST_END
 
 TEST_BEGIN(test_oom) {
-	size_t largemax;
-	bool oom;
-	void *ptrs[3];
+	size_t   largemax;
+	bool     oom;
+	void    *ptrs[3];
 	unsigned i;
 
 	/*
 	 * It should be impossible to allocate three objects that each consume
 	 * nearly half the virtual address space.
 	 */
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 	oom = false;
 	for (i = 0; i < sizeof(ptrs) / sizeof(void *); i++) {
 		ptrs[i] = smallocx(largemax, 0).ptr;
@@ -167,10 +167,11 @@ TEST_BEGIN(test_oom) {
 
 #if LG_SIZEOF_PTR == 3
 	expect_ptr_null(smallocx(0x8000000000000000ULL,
-	    MALLOCX_ALIGN(0x8000000000000000ULL)).ptr,
+	                    MALLOCX_ALIGN(0x8000000000000000ULL))
+	                    .ptr,
 	    "Expected OOM for smallocx()");
-	expect_ptr_null(smallocx(0x8000000000000000ULL,
-	    MALLOCX_ALIGN(0x80000000)).ptr,
+	expect_ptr_null(
+	    smallocx(0x8000000000000000ULL, MALLOCX_ALIGN(0x80000000)).ptr,
 	    "Expected OOM for smallocx()");
 #else
 	expect_ptr_null(smallocx(0x80000000UL, MALLOCX_ALIGN(0x80000000UL)).ptr,
@@ -188,15 +189,15 @@ TEST_BEGIN(test_basic) {
 
 	for (sz = 1; sz < MAXSZ; sz = nallocx(sz, 0) + 1) {
 		smallocx_return_t ret;
-		size_t nsz, rsz, smz;
-		void *p;
+		size_t            nsz, rsz, smz;
+		void             *p;
 		nsz = nallocx(sz, 0);
 		expect_zu_ne(nsz, 0, "Unexpected nallocx() error");
 		ret = smallocx(sz, 0);
 		p = ret.ptr;
 		smz = ret.size;
-		expect_ptr_not_null(p,
-		    "Unexpected smallocx(size=%zx, flags=0) error", sz);
+		expect_ptr_not_null(
+		    p, "Unexpected smallocx(size=%zx, flags=0) error", sz);
 		rsz = sallocx(p, 0);
 		expect_zu_ge(rsz, sz, "Real size smaller than expected");
 		expect_zu_eq(nsz, rsz, "nallocx()/sallocx() size mismatch");
@@ -206,8 +207,8 @@ TEST_BEGIN(test_basic) {
 		ret = smallocx(sz, 0);
 		p = ret.ptr;
 		smz = ret.size;
-		expect_ptr_not_null(p,
-		    "Unexpected smallocx(size=%zx, flags=0) error", sz);
+		expect_ptr_not_null(
+		    p, "Unexpected smallocx(size=%zx, flags=0) error", sz);
 		dallocx(p, 0);
 
 		nsz = nallocx(sz, MALLOCX_ZERO);
@@ -230,58 +231,61 @@ TEST_END
 
 TEST_BEGIN(test_alignment_and_size) {
 	const char *percpu_arena;
-	size_t sz = sizeof(percpu_arena);
+	size_t      sz = sizeof(percpu_arena);
 
-	if(mallctl("opt.percpu_arena", (void *)&percpu_arena, &sz, NULL, 0) ||
-	    strcmp(percpu_arena, "disabled") != 0) {
-		test_skip("test_alignment_and_size skipped: "
+	if (mallctl("opt.percpu_arena", (void *)&percpu_arena, &sz, NULL, 0)
+	    || strcmp(percpu_arena, "disabled") != 0) {
+		test_skip(
+		    "test_alignment_and_size skipped: "
 		    "not working with percpu arena.");
 	};
 #define MAXALIGN (((size_t)1) << 23)
 #define NITER 4
-	size_t nsz, rsz, smz, alignment, total;
+	size_t   nsz, rsz, smz, alignment, total;
 	unsigned i;
-	void *ps[NITER];
+	void    *ps[NITER];
 
 	for (i = 0; i < NITER; i++) {
 		ps[i] = NULL;
 	}
 
-	for (alignment = 8;
-	    alignment <= MAXALIGN;
-	    alignment <<= 1) {
+	for (alignment = 8; alignment <= MAXALIGN; alignment <<= 1) {
 		total = 0;
-		for (sz = 1;
-		    sz < 3 * alignment && sz < (1U << 31);
-		    sz += (alignment >> (LG_SIZEOF_PTR-1)) - 1) {
+		for (sz = 1; sz < 3 * alignment && sz < (1U << 31);
+		     sz += (alignment >> (LG_SIZEOF_PTR - 1)) - 1) {
 			for (i = 0; i < NITER; i++) {
-				nsz = nallocx(sz, MALLOCX_ALIGN(alignment) |
-				    MALLOCX_ZERO);
+				nsz = nallocx(sz,
+				    MALLOCX_ALIGN(alignment) | MALLOCX_ZERO);
 				expect_zu_ne(nsz, 0,
 				    "nallocx() error for alignment=%zu, "
-				    "size=%zu (%#zx)", alignment, sz, sz);
-				smallocx_return_t ret
-				    = smallocx(sz, MALLOCX_ALIGN(alignment) | MALLOCX_ZERO);
+				    "size=%zu (%#zx)",
+				    alignment, sz, sz);
+				smallocx_return_t ret = smallocx(sz,
+				    MALLOCX_ALIGN(alignment) | MALLOCX_ZERO);
 				ps[i] = ret.ptr;
 				expect_ptr_not_null(ps[i],
 				    "smallocx() error for alignment=%zu, "
-				    "size=%zu (%#zx)", alignment, sz, sz);
+				    "size=%zu (%#zx)",
+				    alignment, sz, sz);
 				rsz = sallocx(ps[i], 0);
 				smz = ret.size;
 				expect_zu_ge(rsz, sz,
 				    "Real size smaller than expected for "
-				    "alignment=%zu, size=%zu", alignment, sz);
+				    "alignment=%zu, size=%zu",
+				    alignment, sz);
 				expect_zu_eq(nsz, rsz,
 				    "nallocx()/sallocx() size mismatch for "
-				    "alignment=%zu, size=%zu", alignment, sz);
+				    "alignment=%zu, size=%zu",
+				    alignment, sz);
 				expect_zu_eq(nsz, smz,
 				    "nallocx()/smallocx() size mismatch for "
-				    "alignment=%zu, size=%zu", alignment, sz);
-				expect_ptr_null(
-				    (void *)((uintptr_t)ps[i] & (alignment-1)),
-				    "%p inadequately aligned for"
-				    " alignment=%zu, size=%zu", ps[i],
+				    "alignment=%zu, size=%zu",
 				    alignment, sz);
+				expect_ptr_null((void *)((uintptr_t)ps[i]
+				                    & (alignment - 1)),
+				    "%p inadequately aligned for"
+				    " alignment=%zu, size=%zu",
+				    ps[i], alignment, sz);
 				total += rsz;
 				if (total >= (MAXALIGN << 1)) {
 					break;
@@ -303,10 +307,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_overflow,
-	    test_oom,
-	    test_remote_free,
-	    test_basic,
+	return test(test_overflow, test_oom, test_remote_free, test_basic,
 	    test_alignment_and_size);
 }
