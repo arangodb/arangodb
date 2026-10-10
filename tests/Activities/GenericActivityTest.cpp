@@ -36,7 +36,7 @@ struct GenericActivityTest : ::testing::Test {
   GenericActivityTest() {
     Registry::setCurrentlyExecutingActivity(activities::Root);
   }
-  void TearDown() override { registry.garbageCollect(); }
+  void TearDown() override { get_thread_registry().garbage_collect(); }
 };
 
 TEST_F(GenericActivityTest, metadata_is_set) {

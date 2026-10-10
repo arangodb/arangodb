@@ -30,10 +30,17 @@
 
 using namespace arangodb;
 
+namespace {
+auto garbageCollectAllOnCurrentThread() -> void {
+  size_t deletedCount = 0;
+  do {
+    deletedCount = activities::get_thread_registry().garbage_collect();
+  } while (deletedCount > 0);
+}
+}  // namespace
+
 struct ActivitiesSchedulerTest : ::testing::Test {
-  static void SetUpTestSuite() {
-    arangodb::activities::registry.garbageCollectAll();
-  }
+  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
 
   ActivitiesSchedulerTest()
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
@@ -57,7 +64,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   }
 
   ~ActivitiesSchedulerTest() {
-    arangodb::activities::registry.garbageCollectAll();
+    garbageCollectAllOnCurrentThread();
     EXPECT_EQ(arangodb::activities::registry.size(), 0);
   }
 

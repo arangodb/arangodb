@@ -1,6 +1,20 @@
 #include "Activities/Activity.h"
 
+#include "Activities/RegistryGlobalVariable.h"
+
 namespace arangodb::activities {
+
+auto arangodb::activities::ActivityPtr::snapshot() const -> Snapshot {
+  return a->snapshot();
+}
+
+Activity::Activity(ActivityId id, ActivityHandle parent, ActivityType type)
+    : Node{ActivityPtr{this}, registry.get_thread_registry()},
+      _id(std::move(id)),
+      _parent(std::move(parent)),
+      _type(std::move(type)),
+      _created(std::chrono::system_clock::now()),
+      _threads{} {}
 
 auto Activity::parentId() const noexcept -> std::optional<ActivityId> {
   if (_parent == nullptr) {

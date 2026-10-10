@@ -54,12 +54,19 @@ std::vector<velocypack::Slice> compactionActivities(
   }
   return out;
 }
+
+auto garbageCollectAllOnCurrentThread() -> void {
+  size_t deletedCount = 0;
+  do {
+    deletedCount = activities::get_thread_registry().garbage_collect();
+  } while (deletedCount > 0);
+}
 }  // namespace
 
 struct RocksDBActivitiesListenerTest : public ::testing::Test {
-  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
   void TearDown() override {
-    activities::registry.garbageCollectAll();
+    garbageCollectAllOnCurrentThread();
     EXPECT_EQ(activities::registry.size(), 0);
   }
   RocksDBActivitiesListener listener;
