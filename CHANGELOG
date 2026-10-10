@@ -3,6 +3,10 @@
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
   when n exceeds array's length.
 
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. We commit first and then replicate.
+
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
 

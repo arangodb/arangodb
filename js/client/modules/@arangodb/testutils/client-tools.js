@@ -744,7 +744,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   let args = Object.assign(makeArgsArangosh(
     options, instanceManager,
     // waitData needs JWT access for the _users collection
-    writeReadClean === 2
+    (writeReadClean === 2 && instanceManager.options.cluster)
   ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
