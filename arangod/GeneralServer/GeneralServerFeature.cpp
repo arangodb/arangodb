@@ -361,6 +361,7 @@ void GeneralServerFeature::countHttpResponseCode(
 }
 
 void GeneralServerFeature::prepare() {
+  ADB_PROD_CRASH();
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
 
   _jobManager = std::make_unique<AsyncJobManager>();
