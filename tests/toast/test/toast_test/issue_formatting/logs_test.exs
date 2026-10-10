@@ -173,7 +173,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
     test "timeout default window" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
-      issue = %{type: :timeout, time_bounds: {ts, ts}}
+      issue = %{type: :infrastructure, time_bounds: {ts, ts}}
       {start_us, end_us} = IssueStreams.display_window(issue, nil)
       assert ts - start_us == 5 * @usec_per_sec
       assert end_us - ts == 0

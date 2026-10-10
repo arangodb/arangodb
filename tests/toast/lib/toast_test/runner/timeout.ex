@@ -94,7 +94,7 @@ defmodule ToastTest.Runner.Timeout do
 
   def check_suite_deadline!(%{timeout_settings: %{suite_deadline: deadline}}) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort_with_timeout(:test_timeout, "Suite timeout exceeded")
+      abort_with_timeout(:suite, "Suite timeout exceeded")
     end
   end
 
@@ -102,7 +102,7 @@ defmodule ToastTest.Runner.Timeout do
 
   def check_global_deadline!(deadline) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort_with_timeout(:global_timeout, "Global execution timeout exceeded")
+      abort_with_timeout(:global, "Global execution timeout exceeded")
     end
   end
 
@@ -131,8 +131,10 @@ defmodule ToastTest.Runner.Timeout do
   defp resolve_source(timeout), do: {timeout, :test}
 
   defp abort_with_timeout(source, reason) do
-    Logger.warning("#{reason} — aborting suite")
-    EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
-    Abort.abort!({:timeout, reason})
+    if is_nil(Abort.reason()) do
+      Logger.warning("#{reason} — aborting suite")
+      EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
+      Abort.abort!({:timeout, reason})
+    end
   end
 end

@@ -147,10 +147,10 @@ defmodule ToastTest.Formatting.Issues do
 
   def attach_test_location(issue, _modules), do: issue
 
-  def timeout_source_label(:startup_timeout), do: "Startup Timeout"
-  def timeout_source_label(:shutdown_timeout), do: "Shutdown Timeout"
-  def timeout_source_label(:test_timeout), do: "Test Timeout"
-  def timeout_source_label(:global_timeout), do: "Global Timeout"
+  def timeout_source_label(:startup), do: "Startup Timeout"
+  def timeout_source_label(:shutdown), do: "Shutdown Timeout"
+  def timeout_source_label(:suite), do: "Suite Timeout"
+  def timeout_source_label(:global), do: "Global Timeout"
   def timeout_source_label(other), do: "Timeout: #{other}"
 
   def truncate(nil, _max), do: nil

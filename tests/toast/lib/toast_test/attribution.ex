@@ -49,9 +49,9 @@ defmodule ToastTest.Attribution do
   def resolve_crash_timestamps(crash_events, artifacts) do
     Enum.map(crash_events, fn event ->
       server_artifacts = Map.get(artifacts, event.server_id)
-      {crash_entries, _log_file} = extract_crash_log(server_artifacts)
+      {error_entries, _log_file} = extract_server_errors(server_artifacts)
 
-      case crash_log_timestamp(crash_entries) do
+      case extract_crash_timestamp(error_entries) do
         nil -> event
         log_ts -> put_in(event.crash_info.timestamp, log_ts)
       end
@@ -111,10 +111,10 @@ defmodule ToastTest.Attribution do
     {issues, coredump_reports} =
       Enum.reduce(crash_events, {[], []}, fn event, {issues_acc, dumps_acc} ->
         server_artifacts = Map.get(artifacts, event.server_id)
-        {crash_entries, log_file} = extract_crash_log(server_artifacts)
+        {crash_entries, log_file} = extract_server_errors(server_artifacts)
 
         effective_timestamp =
-          crash_log_timestamp(crash_entries) || event.crash_info.timestamp
+          extract_crash_timestamp(crash_entries) || event.crash_info.timestamp
 
         {scope, confidence, phase} = TimeWindows.attribute(effective_timestamp, windows)
 
@@ -204,15 +204,19 @@ defmodule ToastTest.Attribution do
 
   # --- Crash log helpers ---
 
-  defp extract_crash_log(nil), do: {[], nil}
-  defp extract_crash_log(%{server: %{log_file: nil}}), do: {[], nil}
+  defp extract_server_errors(nil), do: {[], nil}
+  defp extract_server_errors(%{server: %{log_file: nil}}), do: {[], nil}
 
-  defp extract_crash_log(%{server: %{log_file: log_file}}) do
-    {Enrichment.Logs.extract_crash_lines(log_file), log_file}
+  defp extract_server_errors(%{server: %{log_file: log_file}}) do
+    {Enrichment.Logs.extract_trailing_errors(log_file), log_file}
   end
 
-  defp crash_log_timestamp([%{time: time} | _]), do: time
-  defp crash_log_timestamp(_), do: nil
+  defp extract_crash_timestamp(entries) do
+    case Enum.find(entries, &(&1[:topic] == :crash)) do
+      %{time: time} -> time
+      nil -> nil
+    end
+  end
 
   defp format_crash_entries([]), do: nil
 
@@ -237,10 +241,11 @@ defmodule ToastTest.Attribution do
         end)
 
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
         detail: %{
+          subtype: :timeout,
           source: kill.source,
           reason: kill.reason,
           timestamp: kill.timestamp,

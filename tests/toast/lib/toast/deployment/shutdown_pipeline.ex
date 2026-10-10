@@ -87,25 +87,6 @@ defmodule Toast.Deployment.ShutdownPipeline do
     {killed_servers, %{state | expected_crashes: expected_crashes}}
   end
 
-  @spec handle_deploy_failure(State.t(), term()) :: State.t()
-  def handle_deploy_failure(state, reason) do
-    Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
-    {killed_servers, state} = abort_all(state)
-
-    if reason == :timeout do
-      state.event_listener.on_event(%{
-        event: :timeout_kill,
-        deployment_id: state.id,
-        source: :startup_timeout,
-        reason: "Startup timeout — deployment did not become ready in time",
-        servers: killed_servers,
-        timestamp: Toast.get_timestamp()
-      })
-    end
-
-    rollback(state, reason)
-  end
-
   # --- Internal ---
 
   defp shutdown_servers(state, timeout) do
@@ -195,7 +176,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
     listener.on_event(%{
       event: :timeout_kill,
       deployment_id: id,
-      source: :shutdown_timeout,
+      source: :shutdown,
       reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
       servers: escalated,
       timestamp: Toast.get_timestamp()
