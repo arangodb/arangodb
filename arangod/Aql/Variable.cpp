@@ -179,7 +179,9 @@ AqlValue Variable::extractOwnedConstantValue() {
 
 void Variable::setConstantBlockReference(velocypack::Slice slice) {
   TRI_ASSERT(!slice.isNone());
-  _constantValue = AqlValue(AqlValueHintSliceNoCopy{slice});
+  // points into AqlItemBlockManager's const value block, which lives as long
+  // as the query
+  _constantValue = AqlValue::staticSlice(slice.begin());
 }
 
 std::string_view Variable::bindParameterName() const noexcept {
