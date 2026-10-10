@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,13 +20,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabaseConfiguration.h"
+#pragma once
 
-using namespace arangodb;
+namespace arangodb {
 
-DatabaseConfiguration::DatabaseConfiguration(
-    std::function<DataSourceId()> _idGenerator,
-    std::function<ResultT<CollectionDescriptor>(std::string const&)>
-        _getCollectionGroupSharding)
-    : idGenerator{std::move(_idGenerator)},
-      getCollectionGroupSharding{std::move(_getCollectionGroupSharding)} {}
+class Result;
+struct CollectionDescriptor;
+struct DatabaseConfiguration;
+
+[[nodiscard]] Result applyDefaultsAndValidate(
+    CollectionDescriptor& d, DatabaseConfiguration const& config);
+
+#ifdef USE_ENTERPRISE
+[[nodiscard]] Result validateOrSetDefaultShardingStrategyEE(
+    CollectionDescriptor& d);
+void setDefaultShardKeysEE(CollectionDescriptor& d);
+[[nodiscard]] Result validateOrSetShardingStrategyEE(
+    CollectionDescriptor& d, CollectionDescriptor const& leadingCollection);
+[[nodiscard]] Result validateSmartJoinEE(CollectionDescriptor& d);
+[[nodiscard]] Result validateOrSetSmartEdgeValidators(CollectionDescriptor& d);
+#endif
+
+}  // namespace arangodb

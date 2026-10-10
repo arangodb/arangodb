@@ -33,7 +33,7 @@ template<typename T>
 class ResultT;
 
 class DataSourceId;
-struct UserInputCollectionProperties;
+struct CollectionDescriptor;
 
 struct OneShardDatabaseConfiguration {
   std::string defaultDistributeShardsLike = "";
@@ -41,7 +41,7 @@ struct OneShardDatabaseConfiguration {
 struct DatabaseConfiguration {
   DatabaseConfiguration(
       std::function<DataSourceId()> idGenerator,
-      std::function<ResultT<UserInputCollectionProperties>(std::string const&)>
+      std::function<ResultT<CollectionDescriptor>(std::string const&)>
           getCollectionGroupSharding);
 
   bool isSystemDB = false;
@@ -60,7 +60,7 @@ struct DatabaseConfiguration {
   replication::Version replicationVersion = replication::Version::ONE;
 
   std::function<DataSourceId()> idGenerator;
-  std::function<ResultT<UserInputCollectionProperties>(std::string const&)>
+  std::function<ResultT<CollectionDescriptor>(std::string const&)>
       getCollectionGroupSharding;
 };
 }  // namespace arangodb

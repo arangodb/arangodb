@@ -27,7 +27,8 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include "InspectTestHelperMakros.h"
@@ -36,11 +37,23 @@
 
 namespace arangodb::tests {
 
+namespace {
+ResultT<CollectionDescriptor> parseBody(VPackSlice body,
+                                        DatabaseConfiguration const& config) {
+  auto request =
+      CreateCollectionRequest::fromCreateAPIBody(body, config, false);
+  if (request.fail()) {
+    return request.result();
+  }
+  return std::move(request->descriptor);
+}
+}  // namespace
+
 /**********************
  * TEST SECTION
  *********************/
 
-class CreateCollectionBodyTest : public ::testing::Test {
+class CreateCollectionRequestTest : public ::testing::Test {
  protected:
   // The backwards compatible retry asks for the server role, which has no
   // default. Tests that need a different one call setRole().
@@ -82,49 +95,71 @@ class CreateCollectionBodyTest : public ::testing::Test {
     return body;
   }
 
-  static VPackBuilder serialize(CreateCollectionBody testee) {
+  static VPackBuilder serialize(CollectionDescriptor const& testee) {
     VPackBuilder result;
     velocypack::serializeWithContext(result, testee, InspectUserContext{});
     return result;
   }
 
   static DatabaseConfiguration defaultDBConfig(
-      std::unordered_map<std::string, UserInputCollectionProperties> lookupMap =
-          {}) {
+      std::unordered_map<std::string, CollectionDescriptor> lookupMap = {}) {
+    // Leaders are looked up by name on a create and by id afterwards, because
+    // validation rewrites distributeShardsLike to the leader's id. The
+    // resolver behind this in production takes either.
+    std::unordered_map<std::string, CollectionDescriptor> byId;
+    for (auto const& [name, props] : lookupMap) {
+      byId.emplace(std::to_string(props.internal.id.id()), props);
+    }
+    lookupMap.merge(byId);
+
     return DatabaseConfiguration{
         []() { return DataSourceId(42); },
         [lookupMap = std::move(lookupMap)](
-            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+            std::string const& nameOrId) -> ResultT<CollectionDescriptor> {
           // Set a lookup method
-          if (!lookupMap.contains(name)) {
+          if (!lookupMap.contains(nameOrId)) {
             return {TRI_ERROR_INTERNAL};
           }
-          return lookupMap.at(name);
+          return lookupMap.at(nameOrId);
         }};
   }
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<CreateCollectionBody> parse(
+  static ResultT<CollectionDescriptor> parse(
       VPackSlice body,
       DatabaseConfiguration const& config = defaultDBConfig()) {
-    return CreateCollectionBody::fromCreateAPIBody(body, config, false);
+    return parseBody(body, config);
   }
 
   // Same as parse() except activateBackwardsCompatibility = true;
   // this is prod behavior
-  static ResultT<CreateCollectionBody> parseCompatible(VPackSlice body) {
-    return CreateCollectionBody::fromCreateAPIBody(body, defaultDBConfig());
+  static ResultT<CollectionDescriptor> parseCompatible(VPackSlice body) {
+    auto request =
+        CreateCollectionRequest::fromCreateAPIBody(body, defaultDBConfig());
+    if (request.fail()) {
+      return request.result();
+    }
+    return std::move(request->descriptor);
   }
 
   // name and type are arguments of the V8 API, not part of the body
-  static ResultT<CreateCollectionBody> parseV8(VPackSlice body) {
-    return CreateCollectionBody::fromCreateAPIV8(
+  static ResultT<CollectionDescriptor> parseV8(VPackSlice body) {
+    auto request = CreateCollectionRequest::fromCreateAPIV8(
         body, "test", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
+    if (request.fail()) {
+      return request.result();
+    }
+    return std::move(request->descriptor);
   }
 
-  static ResultT<CreateCollectionBody> parseRestore(VPackSlice body) {
-    return CreateCollectionBody::fromRestoreAPIBody(body, defaultDBConfig());
+  static ResultT<CollectionDescriptor> parseRestore(VPackSlice body) {
+    auto request =
+        CreateCollectionRequest::fromRestoreAPIBody(body, defaultDBConfig());
+    if (request.fail()) {
+      return request.result();
+    }
+    return std::move(request->descriptor);
   }
 
   static VPackBuilder keyOptionsBody(std::string_view generatorType) {
@@ -161,7 +196,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
     return body;
   }
 
-  static void expectRejected(ResultT<CreateCollectionBody> const& testee,
+  static void expectRejected(ResultT<CollectionDescriptor> const& testee,
                              std::string_view attributeName,
                              VPackBuilder const& body) {
     EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
@@ -174,21 +209,21 @@ class CreateCollectionBodyTest : public ::testing::Test {
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
-    auto p = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                     defaultDBConfig(), false);
+    auto p = parse(body.slice());
     EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 
   /// @brief the sharding leader of a oneShard database, which is the only way
   /// to get a default distributeShardsLike. Hence it has to have one shard.
-  static UserInputCollectionProperties defaultLeaderProps() {
-    UserInputCollectionProperties res;
-    res.numberOfShards = 1;
-    res.replicationFactor = 3;
-    res.writeConcern = 2;
-    res.id = DataSourceId{42};
-    res.shardingStrategy = "hash";
-    res.shardKeys = std::vector<std::string>{StaticStrings::KeyString};
+  static CollectionDescriptor defaultLeaderProps() {
+    CollectionDescriptor res;
+    res.clusteringConstant.numberOfShards = 1;
+    res.clusteringMutable.replicationFactor = 3;
+    res.clusteringMutable.writeConcern = 2;
+    res.internal.id = DataSourceId{42};
+    res.clusteringConstant.shardingStrategy = "hash";
+    res.clusteringConstant.shardKeys =
+        std::vector<std::string>{StaticStrings::KeyString};
     return res;
   }
 };
@@ -196,8 +231,8 @@ class CreateCollectionBodyTest : public ::testing::Test {
 // A wrong type is dropped by the retry, so compat accepts it while the strict
 // parse rejects it. The valid value is there to show the case under test is
 // the only thing failing.
-#define GenerateBoolPropertyTest(attributeName)                              \
-  TEST_F(CreateCollectionBodyTest,                                           \
+#define GenerateBoolPropertyTest(group, attributeName)                       \
+  TEST_F(CreateCollectionRequestTest,                                        \
          test_##attributeName##WrongTypeIsAcceptedWithCompatibility) {       \
     auto missing = createMinimumBodyWithOneValue("name", "test");            \
     auto valid = parseCompatible(missing.slice());                           \
@@ -205,10 +240,10 @@ class CreateCollectionBodyTest : public ::testing::Test {
     auto body = createMinimumBodyWithOneValue(#attributeName, "yes");        \
     auto testee = parseCompatible(body.slice());                             \
     ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();                \
-    EXPECT_EQ(testee->attributeName, valid->attributeName)                   \
+    EXPECT_EQ(testee->group.attributeName, valid->group.attributeName)       \
         << " On body " << body.toJson();                                     \
   }                                                                          \
-  TEST_F(CreateCollectionBodyTest,                                           \
+  TEST_F(CreateCollectionRequestTest,                                        \
          test_##attributeName##WrongTypeIsRejectedWithoutCompatibility) {    \
     auto valid = createMinimumBodyWithOneValue(#attributeName, true);        \
     EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson(); \
@@ -218,7 +253,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
 
 // The retry hands these back unchanged, so a wrong type is rejected either way.
 #define GenerateKeptPropertyTest(testName, attributeName, validValue)         \
-  TEST_F(CreateCollectionBodyTest,                                            \
+  TEST_F(CreateCollectionRequestTest,                                         \
          test_##testName##WrongTypeIsRejectedWithCompatibility) {             \
     auto valid = createMinimumBodyWithOneValue(attributeName, validValue);    \
     EXPECT_TRUE(parseCompatible(valid.slice()).ok())                          \
@@ -227,7 +262,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
                                               VPackSlice::emptyArraySlice()); \
     expectRejected(parseCompatible(body.slice()), attributeName, body);       \
   }                                                                           \
-  TEST_F(CreateCollectionBodyTest,                                            \
+  TEST_F(CreateCollectionRequestTest,                                         \
          test_##testName##WrongTypeIsRejectedWithoutCompatibility) {          \
     auto valid = createMinimumBodyWithOneValue(attributeName, validValue);    \
     EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson();  \
@@ -239,13 +274,13 @@ class CreateCollectionBodyTest : public ::testing::Test {
 // globallyUniqueId and deleted are ignored by the parser itself, so any value
 // is accepted and dropped either way.
 #define GenerateIgnoredPropertyTest(testName, attributeName)               \
-  TEST_F(CreateCollectionBodyTest,                                         \
+  TEST_F(CreateCollectionRequestTest,                                      \
          test_##testName##IsDroppedWithCompatibility) {                    \
     auto body = createMinimumBodyWithOneValue(attributeName, "anything");  \
     EXPECT_TRUE(parseCompatible(body.slice()).ok())                        \
         << " On body " << body.toJson();                                   \
   }                                                                        \
-  TEST_F(CreateCollectionBodyTest,                                         \
+  TEST_F(CreateCollectionRequestTest,                                      \
          test_##testName##IsDroppedWithoutCompatibility) {                 \
     auto body = createMinimumBodyWithOneValue(attributeName, "anything");  \
     EXPECT_TRUE(parse(body.slice()).ok()) << " On body " << body.toJson(); \
@@ -254,13 +289,13 @@ class CreateCollectionBodyTest : public ::testing::Test {
 // cid and planId are not part of the create API. The retry drops them, the
 // strict parse rejects them as unknown attributes.
 #define GenerateUnknownPropertyTest(testName, attributeName)         \
-  TEST_F(CreateCollectionBodyTest,                                   \
+  TEST_F(CreateCollectionRequestTest,                                \
          test_##testName##IsDroppedWithCompatibility) {              \
     auto body = createMinimumBodyWithOneValue(attributeName, "123"); \
     EXPECT_TRUE(parseCompatible(body.slice()).ok())                  \
         << " On body " << body.toJson();                             \
   }                                                                  \
-  TEST_F(CreateCollectionBodyTest,                                   \
+  TEST_F(CreateCollectionRequestTest,                                \
          test_##testName##IsRejectedWithoutCompatibility) {          \
     auto body = createMinimumBodyWithOneValue(attributeName, "123"); \
     expectRejected(parse(body.slice()), attributeName, body);        \
@@ -273,32 +308,54 @@ class CreateCollectionBodyTest : public ::testing::Test {
 // parseCompatible() is prod behavior: a value the parse rejects can still be
 // dropped or corrected by retry; parse() is the same call without that retry
 
-TEST_F(CreateCollectionBodyTest, test_requires_some_input) {
+TEST_F(CreateCollectionRequestTest, test_requires_some_input) {
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   assertParsingThrows(body);
 }
 
-TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
+TEST_F(CreateCollectionRequestTest,
+       test_rejectedAttributesKeepTheirErrorCodes) {
+  auto fails = [&](std::string const& attribute, auto value, ErrorCode code) {
+    auto body = createMinimumBodyWithOneValue(attribute, value);
+    auto testee = parse(body.slice());
+    ASSERT_TRUE(testee.fail()) << " On body " << body.toJson();
+    EXPECT_EQ(testee.errorNumber(), code) << " On body " << body.toJson();
+  };
+
+  fails("name", "", TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  fails("type", 0, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  fails("type", 1, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  fails("type", 4, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  fails("smartJoinAttribute", "", TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE);
+  fails("smartGraphAttribute", "", TRI_ERROR_BAD_PARAMETER);
+  fails("schema", 5, TRI_ERROR_VALIDATION_BAD_PARAMETER);
+  fails("numberOfShards", 0, TRI_ERROR_BAD_PARAMETER);
+  fails("shardingStrategy", "dogfather", TRI_ERROR_BAD_PARAMETER);
+  fails("distributeShardsLike", "", TRI_ERROR_BAD_PARAMETER);
+  fails("writeConcern", 0, TRI_ERROR_BAD_PARAMETER);
+}
+
+TEST_F(CreateCollectionRequestTest, test_minimal_user_input) {
   std::string colName = "test";
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
     body.add("name", VPackValue(colName));
   }
-  auto testee = CreateCollectionBody::fromCreateAPIBody(
+  auto testee = CreateCollectionRequest::fromCreateAPIBody(
       body.slice(), defaultDBConfig(), false);
 
   ASSERT_TRUE(testee.ok()) << testee.errorMessage();
   // Test Default values
 
   // This covers only non-documented APIS
-  EXPECT_TRUE(testee->avoidServers.empty());
+  EXPECT_TRUE(testee->options.avoidServers.empty());
 
-  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+  __HELPER_equalsAfterSerializeParseCircle(testee->descriptor);
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_writeConcernWinsVersusminReplicationFactor) {
   std::string colName = "test";
   {
@@ -312,12 +369,11 @@ TEST_F(CreateCollectionBodyTest,
       body.add("replicationFactor", VPackValue(4));
     }
 
-    auto testee = CreateCollectionBody::fromCreateAPIBody(
-        body.slice(), defaultDBConfig(), false);
+    auto testee = parse(body.slice(), defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    ASSERT_TRUE(testee->writeConcern.has_value());
-    EXPECT_EQ(testee->writeConcern.value(), 3ul);
+    ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 3ul);
   }
   {
     // We change order of attributes in the input vpack
@@ -332,47 +388,45 @@ TEST_F(CreateCollectionBodyTest,
       body.add("writeConcern", VPackValue(3));
     }
 
-    auto testee = CreateCollectionBody::fromCreateAPIBody(
-        body.slice(), defaultDBConfig(), false);
+    auto testee = parse(body.slice(), defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    ASSERT_TRUE(testee->writeConcern.has_value());
-    EXPECT_EQ(testee->writeConcern.value(), 3ul);
+    ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 3ul);
   }
 }
 
 // writeConcern 0 needs a satellite, so a cluster rejects it either way
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_writeConcernZeroIsRejectedWithCompatibility) {
   EXPECT_TRUE(parseCompatible(writeConcernZeroBody().slice()).fail());
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_writeConcernZeroIsRejectedWithoutCompatibility) {
   EXPECT_TRUE(parse(writeConcernZeroBody().slice()).fail());
 }
 
 // a single server has no write concern, so the retry drops the attribute
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_writeConcernZeroIsDroppedOnSingleServerWithCompatibility) {
   setRole(ServerState::ROLE_SINGLE);
   EXPECT_TRUE(parseCompatible(writeConcernZeroBody().slice()).ok());
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_writeConcernZeroIsRejectedOnSingleServerWithoutCompatibility) {
   setRole(ServerState::ROLE_SINGLE);
   EXPECT_TRUE(parse(writeConcernZeroBody().slice()).fail());
 }
 
-TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
+TEST_F(CreateCollectionRequestTest, test_satelliteReplicationFactor) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
-    auto testee = CreateCollectionBody::fromCreateAPIBody(
-        body.slice(), defaultDBConfig(), false);
+    auto testee = parse(body.slice(), defaultDBConfig());
 #ifdef USE_ENTERPRISE
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    ASSERT_TRUE(testee->replicationFactor.has_value());
-    EXPECT_EQ(testee->replicationFactor.value(), number)
+    ASSERT_TRUE(testee->clusteringMutable.replicationFactor.has_value());
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(), number)
         << "Parsing error in " << body.toJson();
 #else
     ASSERT_FALSE(testee.ok()) << "Created a satellite collection without "
@@ -389,27 +443,27 @@ TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
 
 #ifdef USE_ENTERPRISE
 // "satellite" needs no repair, so it is taken either way
-TEST_F(CreateCollectionBodyTest, test_replicationFactorSatelliteIsKept) {
+TEST_F(CreateCollectionRequestTest, test_replicationFactorSatelliteIsKept) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ReplicationFactor,
                                             StaticStrings::Satellite);
   for (auto const& valid :
        {parseCompatible(body.slice()), parse(body.slice())}) {
     ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(valid->replicationFactor, 0u);
+    EXPECT_EQ(valid->clusteringMutable.replicationFactor, 0u);
   }
 }
 
 // only the retry turns a numeric 0 into a satellite
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_replicationFactorZeroBecomesSatelliteWithCompatibility) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::ReplicationFactor, 0);
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor, 0u);
+  EXPECT_EQ(testee->clusteringMutable.replicationFactor, 0u);
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_replicationFactorZeroIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::ReplicationFactor,
                                              StaticStrings::Satellite);
@@ -421,7 +475,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 #endif
 
-TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
+TEST_F(CreateCollectionRequestTest, test_configureMaxNumberOfShards) {
   auto body = createMinimumBodyWithOneValue("numberOfShards", 1024);
 
   DatabaseConfiguration config = defaultDBConfig();
@@ -434,11 +488,10 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     // effect
     for (uint32_t maxShards : std::vector<uint32_t>{0, 16, 1023, 1024, 1025}) {
       config.maxNumberOfShards = maxShards;
-      auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+      auto testee = parse(body.slice(), config);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-      ASSERT_TRUE(testee->numberOfShards.has_value());
-      EXPECT_EQ(testee->numberOfShards, 1024ul)
+      ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+      EXPECT_EQ(testee->clusteringConstant.numberOfShards, 1024ul)
           << "Parsing error in " << body.toJson();
     }
   }
@@ -452,37 +505,35 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     // 1025 >= 1024 should be okay
     for (uint32_t maxShards : std::vector<uint32_t>{0, 1024, 1025}) {
       config.maxNumberOfShards = maxShards;
-      auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+      auto testee = parse(body.slice(), config);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-      ASSERT_TRUE(testee->numberOfShards.has_value());
-      EXPECT_EQ(testee->numberOfShards, 1024ul)
+      ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+      EXPECT_EQ(testee->clusteringConstant.numberOfShards, 1024ul)
           << "Parsing error in " << body.toJson();
     }
     {
       // 16 < 1024 should fail
       config.maxNumberOfShards = 16;
-      auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+      auto testee = parse(body.slice(), config);
       EXPECT_FALSE(testee.ok())
           << "Configured " << config.maxNumberOfShards << " but "
-          << testee->numberOfShards.value() << "passed.";
+          << testee->clusteringConstant.numberOfShards.value() << "passed.";
     }
   }
 }
 
 // numberOfShards: a positive number is kept
-TEST_F(CreateCollectionBodyTest, test_numberOfShardsIsKept) {
+TEST_F(CreateCollectionRequestTest, test_numberOfShardsIsKept) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
   for (auto const& valid :
        {parseCompatible(body.slice()), parse(body.slice())}) {
     ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(valid->numberOfShards, 3u);
+    EXPECT_EQ(valid->clusteringConstant.numberOfShards, 3u);
   }
 }
 
 // the retry drops the null, so the default applies
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_numberOfShardsNullIsAcceptedWithCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
   EXPECT_TRUE(parseCompatible(valid.slice()).ok())
@@ -493,12 +544,12 @@ TEST_F(CreateCollectionBodyTest,
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
   EXPECT_EQ(
-      testee->numberOfShards,
+      testee->clusteringConstant.numberOfShards,
       parseCompatible(createMinimumBodyWithOneValue("name", "test").slice())
-          ->numberOfShards);
+          ->clusteringConstant.numberOfShards);
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_numberOfShardsNullIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
   EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson();
@@ -509,7 +560,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // the retry keeps the zero, so it is rejected on the second parse
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_numberOfShardsZeroIsRejectedWithCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
   EXPECT_TRUE(parseCompatible(valid.slice()).ok())
@@ -520,7 +571,7 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_numberOfShardsZeroIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 3);
   EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson();
@@ -529,7 +580,7 @@ TEST_F(CreateCollectionBodyTest,
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
+TEST_F(CreateCollectionRequestTest, test_isSmartCannotBeSatellite) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -540,26 +591,25 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   }
 
   // Note: We can also make this parsing fail in the first place.
-  auto testee = CreateCollectionBody::fromCreateAPIBody(
-      body.slice(), defaultDBConfig(), false);
+  auto testee = parse(body.slice(), defaultDBConfig());
   EXPECT_FALSE(testee.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
 // a smart document collection has to name its shardKeys
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_isSmartWithoutShardKeysIsRejectedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::IsSmart, true);
   EXPECT_TRUE(parseCompatible(body.slice()).fail())
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_isSmartWithoutShardKeysIsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::IsSmart, true);
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeys) {
+TEST_F(CreateCollectionRequestTest, test_isSmartWithShardKeys) {
   auto body = smartCollectionBody();
   for (auto const& testee :
        {parseCompatible(body.slice()), parse(body.slice())}) {
@@ -567,7 +617,7 @@ TEST_F(CreateCollectionBodyTest, test_isSmartWithShardKeys) {
   }
 }
 
-TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
+TEST_F(CreateCollectionRequestTest, test_distributeShardsLike_default) {
   // We do not need any special configuration
   // default is good enough
   std::string defaultShardBy = "_graphs";
@@ -585,14 +635,18 @@ TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
   auto testee = parse(body.slice(), config);
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
-  EXPECT_EQ(testee->numberOfShards.value(), leader.numberOfShards.value());
-  EXPECT_EQ(testee->replicationFactor.value(),
-            leader.replicationFactor.value());
-  EXPECT_EQ(testee->writeConcern.value(), leader.writeConcern.value());
+  // the name the caller gave is replaced by the leader's id
+  EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
+            std::to_string(leader.internal.id.id()));
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
+            leader.clusteringConstant.numberOfShards.value());
+  EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+            leader.clusteringMutable.replicationFactor.value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(),
+            leader.clusteringMutable.writeConcern.value());
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_distributeShardsLike_default_other_values) {
   // We do not need any special configuration
   // default is good enough
@@ -614,7 +668,7 @@ TEST_F(CreateCollectionBodyTest,
   }
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_distributeShardsLike_default_same_values) {
   // We do not need any special configuration
   // default is good enough
@@ -628,22 +682,30 @@ TEST_F(CreateCollectionBodyTest,
   {
     VPackObjectBuilder bodyBuilder{&body};
     body.add("name", VPackValue("test"));
-    body.add("numberOfShards", VPackValue(leader.numberOfShards.value()));
-    body.add("replicationFactor", VPackValue(leader.replicationFactor.value()));
-    body.add("writeConcern", VPackValue(leader.writeConcern.value()));
+    body.add("numberOfShards",
+             VPackValue(leader.clusteringConstant.numberOfShards.value()));
+    body.add("replicationFactor",
+             VPackValue(leader.clusteringMutable.replicationFactor.value()));
+    body.add("writeConcern",
+             VPackValue(leader.clusteringMutable.writeConcern.value()));
   }
 
   auto testee = parse(body.slice(), config);
   // Default value should be taken if none is set
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
-  EXPECT_EQ(testee->numberOfShards.value(), leader.numberOfShards.value());
-  EXPECT_EQ(testee->replicationFactor.value(),
-            leader.replicationFactor.value());
-  EXPECT_EQ(testee->writeConcern.value(), leader.writeConcern.value());
+  // the name the caller gave is replaced by the leader's id
+  EXPECT_EQ(testee->clusteringConstant.distributeShardsLike.value(),
+            std::to_string(leader.internal.id.id()));
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(),
+            leader.clusteringConstant.numberOfShards.value());
+  EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+            leader.clusteringMutable.replicationFactor.value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(),
+            leader.clusteringMutable.writeConcern.value());
 }
 
-TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default_ownValue) {
+TEST_F(CreateCollectionRequestTest,
+       test_distributeShardsLike_default_ownValue) {
   // We do not need any special configuration
   // default is good enough
   std::string defaultShardBy = "_graphs";
@@ -658,7 +720,7 @@ TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default_ownValue) {
       << "Managed to set own distributeShardsLike and override DB setting";
 }
 
-TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
+TEST_F(CreateCollectionRequestTest, test_oneShard_forcesDistributeShardsLike) {
   // We do not need any special configuration
   // default is good enough
   std::string defaultShardBy = "_graphs";
@@ -673,7 +735,7 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
       << "Distribute shards like violates oneShard database";
 }
 
-TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
+TEST_F(CreateCollectionRequestTest, test_oneShard_moreShards) {
   // Configure oneShardDB properly
   std::string defaultShardBy = "_graphs";
   auto config = defaultDBConfig();
@@ -687,23 +749,23 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
 }
 
 // the retry drops the null, so the attribute stays unset
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_distributeShardsLikeNullIsAcceptedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DistributeShardsLike,
                                             VPackSlice::nullSlice());
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->distributeShardsLike.has_value());
+  EXPECT_FALSE(testee->clusteringConstant.distributeShardsLike.has_value());
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_distributeShardsLikeNullIsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DistributeShardsLike,
                                             VPackSlice::nullSlice());
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
+TEST_F(CreateCollectionRequestTest, test_isSmartChildCannotBeSatellite) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -714,8 +776,7 @@ TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
   }
 
   // Note: We can also make this parsing fail in the first place.
-  auto testee = CreateCollectionBody::fromCreateAPIBody(
-      body.slice(), defaultDBConfig(), false);
+  auto testee = parse(body.slice(), defaultDBConfig());
   EXPECT_FALSE(testee.ok())
       << "Configured smartChild collection as 'satellite'.";
 }
@@ -723,26 +784,25 @@ TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
 // a wrong type is handed back to the parser and rejected on either path
 GenerateKeptPropertyTest(isSmartChild, StaticStrings::IsSmartChild, true);
 
-TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
+TEST_F(CreateCollectionRequestTest, test_smartJoinAttribute_cannot_be_empty) {
   auto config = defaultDBConfig();
 
   // Specific shardKey is disallowed
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::SmartJoinAttribute, "");
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parse(body.slice(), config);
   // This could already fail, as soon as we have a context
   EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
 }
 
-TEST_F(CreateCollectionBodyTest, test_smartGraphAttribtueRequiresIsSmart) {
+TEST_F(CreateCollectionRequestTest, test_smartGraphAttribtueRequiresIsSmart) {
   // Setting only SmartGraphAttribut is disallowed
   __HELPER_assertParsingThrows(smartGraphAttribute, "test");
 }
 
 #ifdef USE_ENTERPRISE
 // smartGraphAttribute must not be empty
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_smartGraphAttributeEmptyIsRejectedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(
       StaticStrings::GraphSmartGraphAttribute, "");
@@ -750,13 +810,165 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_smartGraphAttributeEmptyIsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(
       StaticStrings::GraphSmartGraphAttribute, "");
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 #endif
+
+TEST_F(CreateCollectionRequestTest, test_oneShardDBCannotBeSatellite) {
+  auto body = createMinimumBodyWithOneValue("replicationFactor", "satellite");
+
+  auto config = defaultDBConfig();
+  config.oneShardDBConfiguration = OneShardDatabaseConfiguration{};
+
+  auto testee = parse(body.slice(), config);
+  EXPECT_FALSE(testee.ok())
+      << "Configured a oneShardDB collection as 'satellite'.";
+}
+
+TEST_F(CreateCollectionRequestTest, test_satelliteAcceptsOnlyKeyAsShardKey) {
+  auto satelliteWithShardKeys = [&](std::vector<std::string> const& keys) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        for (auto const& key : keys) {
+          body.add(VPackValue(key));
+        }
+      }
+    }
+    return body;
+  };
+
+  // Sharding by a specific shardKey, or by a prefix/postfix of _key, is not
+  // allowed for satellites
+  for (auto const& key : {"testKey", "a", ":_key", "_key:"}) {
+    auto body = satelliteWithShardKeys({key});
+    EXPECT_FALSE(parse(body.slice()).ok())
+        << "Created a satellite collection with a shardkey: " << key;
+  }
+
+  {
+    // Sharding by _key is the only allowed value
+    auto body = satelliteWithShardKeys({StaticStrings::KeyString});
+    auto result = parse(body.slice()).result();
+#ifdef USE_ENTERPRISE
+    EXPECT_TRUE(result.ok())
+        << "Failed to create a satellite collection with default sharding "
+        << result.errorMessage();
+#else
+    EXPECT_FALSE(result.ok())
+        << "Created a 'satellite' collection in community edition. "
+        << result.errorMessage();
+#endif
+  }
+
+  {
+    // _key plus something else is not allowed either
+    auto body = satelliteWithShardKeys({StaticStrings::KeyString, "testKey"});
+    EXPECT_FALSE(parse(body.slice()).ok())
+        << "Created a satellite collection with shardKeys [_key, testKey]";
+  }
+}
+
+TEST_F(CreateCollectionRequestTest,
+       test_satelliteDefaultsToOneShardAndWriteConcernOne) {
+  auto body = createMinimumBodyWithOneValue("replicationFactor", "satellite");
+  auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+  ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+#else
+  EXPECT_FALSE(testee.ok())
+      << "Created a 'satellite' collection in community edition.";
+#endif
+}
+
+TEST_F(CreateCollectionRequestTest, test_satelliteRejectsMoreThanOneShard) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(3));
+  }
+  EXPECT_FALSE(parse(body.slice()).ok())
+      << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(CreateCollectionRequestTest, test_satelliteAcceptsNumberOfShardsOne) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(1));
+  }
+  auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+  ASSERT_TRUE(testee->clusteringMutable.writeConcern.has_value());
+  EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+#else
+  EXPECT_FALSE(testee.ok())
+      << "Created a 'satellite' collection in community edition.";
+#endif
+}
+
+TEST_F(CreateCollectionRequestTest, test_satelliteRejectsWriteConcernAboveOne) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("writeConcern", VPackValue(3));
+  }
+  EXPECT_FALSE(parse(body.slice()).ok())
+      << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(CreateCollectionRequestTest,
+       test_satelliteAcceptsWriteConcernZeroAndOne) {
+  // As satellite is replicationFactor 0, writeConcern 0 and 1 are both
+  // accepted: writeConcern is defined to be at most replicationFactor, and
+  // some APIs pass 1.
+  for (auto writeConcern : {0, 1}) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add("writeConcern", VPackValue(writeConcern));
+    }
+    auto testee = parse(body.slice());
+#ifdef USE_ENTERPRISE
+    ASSERT_TRUE(testee.ok()) << "Did not allow legal body: " << body.toJson()
+                             << " -- " << testee.result().errorMessage();
+    EXPECT_TRUE(testee->clusteringMutable.isSatellite());
+    ASSERT_TRUE(testee->clusteringConstant.numberOfShards.has_value());
+    EXPECT_EQ(testee->clusteringConstant.numberOfShards.value(), 1ull);
+#else
+    EXPECT_FALSE(testee.ok())
+        << "Created a 'satellite' collection in community edition.";
+#endif
+  }
+}
 
 // Tests for generic attributes without special needs
 
@@ -841,15 +1053,15 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
   bool isAllowed =
       !isDisAllowedInGeneral() && !requiresSystem() && !requiresExtendedNames();
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProps.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -865,14 +1077,14 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral() && !requiresExtendedNames();
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProps.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -887,14 +1099,14 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral() && !requiresSystem();
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProps.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -911,14 +1123,14 @@ TEST_P(PlanCollectionNamesTest,
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral();
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProps.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -969,8 +1181,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
 
   config.enforceReplicationFactor = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -978,8 +1189,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   bool isAllowed = writeConcern() <= replicationFactor();
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
-    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+              replicationFactor());
 
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
@@ -996,8 +1208,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.maxReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -1006,8 +1217,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
                    replicationFactor() <= config.maxReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
-    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+              replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -1023,8 +1235,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.minReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -1033,8 +1244,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
                    replicationFactor() >= config.minReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
-    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+              replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << "False positive on " << body.toJson();
   }
@@ -1051,8 +1263,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   config.minReplicationFactor = 2;
   config.maxReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
+  auto testee = parseBody(body.slice(), config);
   auto result = testee.result();
 
   // Without enforcing you can do what you want, including illegal combinations
@@ -1061,15 +1272,16 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   isAllowed = writeConcern() <= replicationFactor();
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
-    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
+    EXPECT_EQ(testee->clusteringMutable.writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor.value(),
+              replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << "False positive on " << body.toJson();
   }
 }
 
 // name must not be empty
-TEST_F(CreateCollectionBodyTest, test_nameEmptyIsRejectedWithCompatibility) {
+TEST_F(CreateCollectionRequestTest, test_nameEmptyIsRejectedWithCompatibility) {
   auto valid =
       createMinimumBodyWithOneValue(StaticStrings::DataSourceName, "test");
   EXPECT_TRUE(parseCompatible(valid.slice()).ok())
@@ -1080,7 +1292,8 @@ TEST_F(CreateCollectionBodyTest, test_nameEmptyIsRejectedWithCompatibility) {
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_nameEmptyIsRejectedWithoutCompatibility) {
+TEST_F(CreateCollectionRequestTest,
+       test_nameEmptyIsRejectedWithoutCompatibility) {
   auto valid =
       createMinimumBodyWithOneValue(StaticStrings::DataSourceName, "test");
   EXPECT_TRUE(parse(valid.slice()).ok()) << " On body " << valid.toJson();
@@ -1090,7 +1303,7 @@ TEST_F(CreateCollectionBodyTest, test_nameEmptyIsRejectedWithoutCompatibility) {
 }
 
 // schema must be an object; an empty one removes the schema
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_schemaNotAnObjectIsRejectedWithCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::Schema,
                                              VPackSlice::emptyObjectSlice());
@@ -1102,7 +1315,7 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_schemaNotAnObjectIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::Schema,
                                              VPackSlice::emptyObjectSlice());
@@ -1113,26 +1326,26 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // a valid type is taken as it is
-TEST_F(CreateCollectionBodyTest, test_typeIsKept) {
+TEST_F(CreateCollectionRequestTest, test_typeIsKept) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType,
                                             TRI_COL_TYPE_EDGE);
   for (auto const& valid :
        {parseCompatible(body.slice()), parse(body.slice())}) {
     ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(valid->getType(), TRI_COL_TYPE_EDGE);
+    EXPECT_EQ(valid->constant.getType(), TRI_COL_TYPE_EDGE);
   }
 }
 
 // the retry rewrites anything that is not an edge type to document
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_typeUnknownNumberBecomesDocumentWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_typeUnknownNumberIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::DataSourceType,
                                              TRI_COL_TYPE_EDGE);
@@ -1142,15 +1355,16 @@ TEST_F(CreateCollectionBodyTest,
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_typeStringBecomesEdgeWithCompatibility) {
+TEST_F(CreateCollectionRequestTest,
+       test_typeStringBecomesEdgeWithCompatibility) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_EDGE);
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_EDGE);
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_typeStringIsRejectedWithoutCompatibility) {
   auto valid = createMinimumBodyWithOneValue(StaticStrings::DataSourceType,
                                              TRI_COL_TYPE_EDGE);
@@ -1162,7 +1376,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // the "upgrade" key generator is for the load path only
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_keyOptionsUpgradeIsRejectedWithCompatibility) {
   auto valid = keyOptionsBody("traditional");
   EXPECT_TRUE(parseCompatible(valid.slice()).ok())
@@ -1173,67 +1387,69 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_keyOptionsUpgradeIsRejectedWithoutCompatibility) {
   auto valid = keyOptionsBody("traditional");
   auto testee = parse(valid.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << valid.toJson();
   EXPECT_TRUE(std::holds_alternative<TraditionalKeyGeneratorProperties>(
-      testee->keyOptions));
+      testee->constant.keyOptions));
 
   auto body = keyOptionsBody("upgrade");
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
 // shadowCollections is written by the server; the parser drops user input
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shadowCollectionsIsDroppedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ShadowCollections,
                                             std::vector<std::string>{"1", "2"});
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->shadowCollections.has_value());
+  EXPECT_FALSE(testee->constant.shadowCollections.has_value());
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shadowCollectionsIsDroppedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ShadowCollections,
                                             std::vector<std::string>{"1", "2"});
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->shadowCollections.has_value());
+  EXPECT_FALSE(testee->constant.shadowCollections.has_value());
 }
 
 // groupId and shardsR2 are written by the server; the retry drops user input,
 // the strict parse rejects it as an unknown attribute
-TEST_F(CreateCollectionBodyTest, test_groupIdIsDroppedWithCompatibility) {
+TEST_F(CreateCollectionRequestTest, test_groupIdIsDroppedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->groupId.has_value());
+  EXPECT_FALSE(testee->clusteringConstant.groupId.has_value());
 }
 
-TEST_F(CreateCollectionBodyTest, test_groupIdIsRejectedWithoutCompatibility) {
+TEST_F(CreateCollectionRequestTest,
+       test_groupIdIsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest, test_shardsR2IsDroppedWithCompatibility) {
+TEST_F(CreateCollectionRequestTest, test_shardsR2IsDroppedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(
       "shardsR2", std::vector<std::string>{"s100001"});
   auto testee = parseCompatible(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->shardsR2.has_value());
+  EXPECT_FALSE(testee->clusteringConstant.shardsR2.has_value());
 }
 
-TEST_F(CreateCollectionBodyTest, test_shardsR2IsRejectedWithoutCompatibility) {
+TEST_F(CreateCollectionRequestTest,
+       test_shardsR2IsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(
       "shardsR2", std::vector<std::string>{"s100001"});
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
 // a known strategy is taken either way
-TEST_F(CreateCollectionBodyTest, test_shardingStrategyIsKept) {
+TEST_F(CreateCollectionRequestTest, test_shardingStrategyIsKept) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "hash");
   for (auto const& valid :
@@ -1243,7 +1459,7 @@ TEST_F(CreateCollectionBodyTest, test_shardingStrategyIsKept) {
 }
 
 // a cluster keeps an unknown strategy, so it is rejected either way
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shardingStrategyUnknownIsRejectedWithCompatibility) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "bogus");
@@ -1251,7 +1467,7 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shardingStrategyUnknownIsRejectedWithoutCompatibility) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "bogus");
@@ -1259,7 +1475,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // a single server has no sharding, so the retry drops the attribute
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shardingStrategyUnknownIsDroppedOnSingleServerWithCompatibility) {
   setRole(ServerState::ROLE_SINGLE);
   auto body =
@@ -1269,7 +1485,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 TEST_F(
-    CreateCollectionBodyTest,
+    CreateCollectionRequestTest,
     test_shardingStrategyUnknownIsRejectedOnSingleServerWithoutCompatibility) {
   setRole(ServerState::ROLE_SINGLE);
   auto body =
@@ -1277,11 +1493,11 @@ TEST_F(
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
 }
 
-GenerateBoolPropertyTest(isSystem);
-GenerateBoolPropertyTest(isDisjoint);
-GenerateBoolPropertyTest(cacheEnabled);
-GenerateBoolPropertyTest(waitForSync);
-GenerateBoolPropertyTest(syncByRevision);
+GenerateBoolPropertyTest(constant, isSystem);
+GenerateBoolPropertyTest(constant, isDisjoint);
+GenerateBoolPropertyTest(mutableProps, cacheEnabled);
+GenerateBoolPropertyTest(clusteringMutable, waitForSync);
+GenerateBoolPropertyTest(internal, syncByRevision);
 
 GenerateKeptPropertyTest(usesRevisionsAsDocumentIds,
                          StaticStrings::UsesRevisionsAsDocumentIds, true);
@@ -1295,34 +1511,35 @@ GenerateUnknownPropertyTest(cid, StaticStrings::DataSourceCid);
 GenerateUnknownPropertyTest(planId, StaticStrings::DataSourcePlanId);
 
 // id is user input on the create API, it travels as a string
-TEST_F(CreateCollectionBodyTest, test_id) {
+TEST_F(CreateCollectionRequestTest, test_id) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::Id, "123");
   for (auto const& valid :
        {parseCompatible(body.slice()), parse(body.slice())}) {
     ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(valid->id, DataSourceId{123});
+    EXPECT_EQ(valid->internal.id, DataSourceId{123});
   }
 }
 
 // shardKeys must be an array
-TEST_F(CreateCollectionBodyTest, test_shardKeysIsKept) {
+TEST_F(CreateCollectionRequestTest, test_shardKeysIsKept) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ShardKeys,
                                             std::vector<std::string>{"a"});
   for (auto const& valid :
        {parseCompatible(body.slice()), parse(body.slice())}) {
     ASSERT_TRUE(valid.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(valid->shardKeys.value(), (std::vector<std::string>{"a"}));
+    EXPECT_EQ(valid->clusteringConstant.shardKeys.value(),
+              (std::vector<std::string>{"a"}));
   }
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shardKeysNotAnArrayIsRejectedWithCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ShardKeys, "a");
   EXPECT_TRUE(parseCompatible(body.slice()).fail())
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_shardKeysNotAnArrayIsRejectedWithoutCompatibility) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::ShardKeys, "a");
   EXPECT_TRUE(parse(body.slice()).fail()) << " On body " << body.toJson();
@@ -1336,27 +1553,27 @@ TEST_F(CreateCollectionBodyTest,
 // are accepted and corrected. name and type arrive as arguments.
 
 // name and type are taken from the arguments when the body has neither
-TEST_F(CreateCollectionBodyTest, test_v8_nameAndTypeComeFromArguments) {
+TEST_F(CreateCollectionRequestTest, test_v8_nameAndTypeComeFromArguments) {
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   auto testee = parseV8(body.slice());
   ASSERT_TRUE(testee.ok()) << testee.errorMessage();
-  EXPECT_EQ(testee->name, "test");
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_EQ(testee->mutableProps.name, "test");
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
 }
 
 // an empty name argument is rejected before the body is parsed
-TEST_F(CreateCollectionBodyTest, test_v8_nameArgumentCannotBeEmpty) {
+TEST_F(CreateCollectionRequestTest, test_v8_nameArgumentCannotBeEmpty) {
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
-  auto testee = CreateCollectionBody::fromCreateAPIV8(
+  auto testee = CreateCollectionRequest::fromCreateAPIV8(
       body.slice(), "", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
   ASSERT_TRUE(testee.fail());
   EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ARANGO_ILLEGAL_NAME);
 }
 
 // numberOfShards: null is accepted as absent, 0 is rejected
-TEST_F(CreateCollectionBodyTest, test_v8NumberOfShardsNullIsAccepted) {
+TEST_F(CreateCollectionRequestTest, test_v8NumberOfShardsNullIsAccepted) {
   VPackBuilder empty;
   { VPackObjectBuilder guard(&empty); }
   auto missing = parseV8(empty.slice());
@@ -1366,32 +1583,33 @@ TEST_F(CreateCollectionBodyTest, test_v8NumberOfShardsNullIsAccepted) {
                                             VPackSlice::nullSlice());
   auto testee = parseV8(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->numberOfShards, missing->numberOfShards);
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards,
+            missing->clusteringConstant.numberOfShards);
 }
 
-TEST_F(CreateCollectionBodyTest, test_v8NumberOfShardsZeroIsRejected) {
+TEST_F(CreateCollectionRequestTest, test_v8NumberOfShardsZeroIsRejected) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
   EXPECT_TRUE(parseV8(body.slice()).fail()) << " On body " << body.toJson();
 }
 
 // an unknown type becomes document, "edge" becomes edge
-TEST_F(CreateCollectionBodyTest, test_v8TypeUnknownNumberBecomesDocument) {
+TEST_F(CreateCollectionRequestTest, test_v8TypeUnknownNumberBecomesDocument) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
   auto testee = parseV8(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
 }
 
-TEST_F(CreateCollectionBodyTest, test_v8TypeStringBecomesEdge) {
+TEST_F(CreateCollectionRequestTest, test_v8TypeStringBecomesEdge) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
   auto testee = parseV8(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_EDGE);
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_EDGE);
 }
 
 // the "upgrade" key generator is for the load path only
-TEST_F(CreateCollectionBodyTest, test_v8_keyOptions_upgradeIsNotUserInput) {
+TEST_F(CreateCollectionRequestTest, test_v8_keyOptions_upgradeIsNotUserInput) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -1409,15 +1627,16 @@ TEST_F(CreateCollectionBodyTest, test_v8_keyOptions_upgradeIsNotUserInput) {
 // other two APIs use. It is forever backwards compatible.
 
 // the id in the body is never taken, a fresh one is generated
-TEST_F(CreateCollectionBodyTest, test_restore_generatesFreshId) {
+TEST_F(CreateCollectionRequestTest, test_restore_generatesFreshId) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::Id, "123");
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->id, DataSourceId{42}) << " the fixture id generator";
+  EXPECT_EQ(testee->internal.id, DataSourceId{42})
+      << " the fixture id generator";
 }
 
 // numberOfShards: null is accepted as absent, 0 is rejected
-TEST_F(CreateCollectionBodyTest, test_restoreNumberOfShardsNullIsAccepted) {
+TEST_F(CreateCollectionRequestTest, test_restoreNumberOfShardsNullIsAccepted) {
   auto missing =
       parseRestore(createMinimumBodyWithOneValue("name", "test").slice());
   ASSERT_TRUE(missing.ok()) << missing.errorMessage();
@@ -1426,10 +1645,11 @@ TEST_F(CreateCollectionBodyTest, test_restoreNumberOfShardsNullIsAccepted) {
                                             VPackSlice::nullSlice());
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->numberOfShards, missing->numberOfShards);
+  EXPECT_EQ(testee->clusteringConstant.numberOfShards,
+            missing->clusteringConstant.numberOfShards);
 }
 
-TEST_F(CreateCollectionBodyTest, test_restoreNumberOfShardsZeroIsRejected) {
+TEST_F(CreateCollectionRequestTest, test_restoreNumberOfShardsZeroIsRejected) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
   EXPECT_TRUE(parseRestore(body.slice()).fail())
       << " On body " << body.toJson();
@@ -1437,23 +1657,23 @@ TEST_F(CreateCollectionBodyTest, test_restoreNumberOfShardsZeroIsRejected) {
 
 // restore keeps numbers as they are, so an unknown type is rejected instead
 // of being corrected
-TEST_F(CreateCollectionBodyTest, test_restoreTypeUnknownNumberIsRejected) {
+TEST_F(CreateCollectionRequestTest, test_restoreTypeUnknownNumberIsRejected) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
   EXPECT_TRUE(parseRestore(body.slice()).fail())
       << " On body " << body.toJson();
 }
 
 // a string type is dropped, so the default applies
-TEST_F(CreateCollectionBodyTest, test_restoreTypeStringBecomesDocument) {
+TEST_F(CreateCollectionRequestTest, test_restoreTypeStringBecomesDocument) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
 }
 
 // a cluster keeps an unknown strategy, a single server drops it
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_restoreShardingStrategyUnknownIsRejected) {
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::ShardingStrategy, "bogus");
@@ -1461,7 +1681,7 @@ TEST_F(CreateCollectionBodyTest,
       << " On body " << body.toJson();
 }
 
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_restoreShardingStrategyUnknownIsDroppedOnSingleServer) {
   setRole(ServerState::ROLE_SINGLE);
   auto body =
@@ -1470,7 +1690,7 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // replicationFactor: 0 is rewritten to satellite, "satellite" is kept
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_restore_replicationFactor_zeroBecomesSatellite) {
 #ifdef USE_ENTERPRISE
   for (auto value : {VPackValue(0), VPackValue(StaticStrings::Satellite)}) {
@@ -1482,13 +1702,14 @@ TEST_F(CreateCollectionBodyTest,
     }
     auto testee = parseRestore(body.slice());
     ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-    EXPECT_EQ(testee->replicationFactor, 0u) << " On body " << body.toJson();
+    EXPECT_EQ(testee->clusteringMutable.replicationFactor, 0u)
+        << " On body " << body.toJson();
   }
 #endif
 }
 
 // the "upgrade" key generator is for the load path only
-TEST_F(CreateCollectionBodyTest,
+TEST_F(CreateCollectionRequestTest,
        test_restore_keyOptions_upgradeIsNotUserInput) {
   VPackBuilder body;
   {
@@ -1502,19 +1723,19 @@ TEST_F(CreateCollectionBodyTest,
 }
 
 // groupId and shardsR2 are written by the server; user input is dropped
-TEST_F(CreateCollectionBodyTest, test_restoreGroupIdIsDropped) {
+TEST_F(CreateCollectionRequestTest, test_restoreGroupIdIsDropped) {
   auto body = createMinimumBodyWithOneValue(StaticStrings::GroupId, 1234);
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->groupId.has_value());
+  EXPECT_FALSE(testee->clusteringConstant.groupId.has_value());
 }
 
-TEST_F(CreateCollectionBodyTest, test_restoreShardsR2IsDropped) {
+TEST_F(CreateCollectionRequestTest, test_restoreShardsR2IsDropped) {
   auto body = createMinimumBodyWithOneValue(
       "shardsR2", std::vector<std::string>{"s100001"});
   auto testee = parseRestore(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_FALSE(testee->shardsR2.has_value());
+  EXPECT_FALSE(testee->clusteringConstant.shardsR2.has_value());
 }
 
 }  // namespace arangodb::tests

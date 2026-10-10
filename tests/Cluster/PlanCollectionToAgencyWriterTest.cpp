@@ -29,7 +29,7 @@
 #include "Cluster/Utils/EvenDistribution.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
@@ -45,13 +45,13 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
  protected:
   std::string const& dbName() { return databaseName; }
 
-  std::string collectionPlanPath(CreateCollectionBody const& col) {
+  std::string collectionPlanPath(CollectionDescriptor const& col) {
     return cluster::paths::root()
         ->arango()
         ->plan()
         ->collections()
         ->database(dbName())
-        ->collection(std::to_string(col.id.id()))
+        ->collection(std::to_string(col.internal.id.id()))
         ->str();
   }
 
@@ -87,16 +87,16 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
   }
 
   PlanCollectionToAgencyWriter createWriterWithTestSharding(
-      CreateCollectionBody col) {
-    auto numberOfShards = col.numberOfShards.value();
+      CollectionDescriptor col) {
+    auto numberOfShards = col.clusteringConstant.numberOfShards.value();
     auto distribution = std::make_shared<EvenDistribution>(
-        numberOfShards, col.replicationFactor.value(), std::vector<ServerID>{},
-        false);
+        numberOfShards, col.clusteringMutable.replicationFactor.value(),
+        std::vector<ServerID>{}, false);
     auto shards = generateShardNames(numberOfShards);
 
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
         shardDistributionsUsed;
-    shardDistributionsUsed.emplace(col.name, distribution);
+    shardDistributionsUsed.emplace(col.mutableProps.name, distribution);
 
     ShardDistribution dist{shards, distribution};
     AgencyIsBuildingFlags buildingFlags;
@@ -108,13 +108,13 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
         std::move(shardDistributionsUsed)};
   }
 
-  static CreateCollectionBody prepareMinimalCollection(
+  static CollectionDescriptor prepareMinimalCollection(
       uint64_t nrShards, uint64_t replicationFactor) {
-    CreateCollectionBody col{};
-    col.name = "test";
-    col.id = DataSourceId(123);
-    col.numberOfShards = nrShards;
-    col.replicationFactor = replicationFactor;
+    CollectionDescriptor col{};
+    col.mutableProps.name = "test";
+    col.internal.id = DataSourceId(123);
+    col.clusteringConstant.numberOfShards = nrShards;
+    col.clusteringMutable.replicationFactor = replicationFactor;
     return col;
   }
 

@@ -23,7 +23,7 @@
 #include "CollectionGroupUpdates.h"
 
 #include "Basics/debugging.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -35,20 +35,22 @@ CollectionID toCollectionIdString(arangodb::DataSourceId const& cid) {
 }  // namespace
 
 agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
-    UserInputCollectionProperties const& collection,
+    CollectionDescriptor const& collection,
     std::function<uint64_t()> const& generateId) {
   auto newId = agency::CollectionGroupId(generateId());
   agency::CollectionGroupTargetSpecification g;
   g.id = newId;
-  g.groupLeader = ::toCollectionIdString(collection.id);
+  g.groupLeader = ::toCollectionIdString(collection.internal.id);
   g.version = 1;
-  g.attributes.mutableAttributes.waitForSync = collection.waitForSync;
-  g.attributes.mutableAttributes.writeConcern = collection.writeConcern.value();
+  g.attributes.mutableAttributes.waitForSync =
+      collection.clusteringMutable.waitForSync;
+  g.attributes.mutableAttributes.writeConcern =
+      collection.clusteringMutable.writeConcern.value();
   g.attributes.mutableAttributes.replicationFactor =
-      collection.replicationFactor.value();
+      collection.clusteringMutable.replicationFactor.value();
   g.attributes.immutableAttributes.numberOfShards =
-      collection.numberOfShards.value();
-  g.collections.emplace(::toCollectionIdString(collection.id),
+      collection.clusteringConstant.numberOfShards.value();
+  g.collections.emplace(::toCollectionIdString(collection.internal.id),
                         agency::CollectionGroup::Collection{});
   newGroups.emplace_back(std::move(g));
   return newId;

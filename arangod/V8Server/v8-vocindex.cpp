@@ -53,7 +53,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -268,7 +269,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto config = vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection = CreateCollectionBody::fromCreateAPIV8(
+  auto planCollection = CreateCollectionRequest::fromCreateAPIV8(
       propSlice, name, collectionType, config);
 
   if (planCollection.fail()) {
@@ -277,18 +278,18 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(planCollection.result());
   }
 
-  std::vector<CreateCollectionBody> collections{
-      std::move(planCollection.get())};
+  std::vector<CollectionDescriptor> collections{
+      std::move(planCollection->descriptor)};
 
+  // isNewDatabase, allowEnterpriseCollectionsOnSingleServer and isRestore keep
+  // their defaults
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.waitForSyncReplication = createWaitsForSyncReplication;
+  internalOptions.enforceReplicationFactor = enforceReplicationFactor;
   OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
-      vocbase,  // collection vocbase
-      options, collections,
-      createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,       // replication factor flag
-      /*isNewDatabase*/ false         // here always false
-  );
+      vocbase, options, collections, internalOptions, planCollection->options);
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());

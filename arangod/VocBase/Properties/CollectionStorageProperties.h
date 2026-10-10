@@ -25,6 +25,8 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
 #include <string>
@@ -55,10 +57,18 @@ struct CollectionStorageProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
   return f.object(props).fields(
+      // objectId is assigned by the storage engine. Reject keeps the create
+      // API answering with an unexpected-attribute error, which is what
+      // leaving the field undeclared did.
       f.field(StaticStrings::ObjectId, props.objectId)
           .transformWith(
               CollectionStorageProperties::Transformers::ObjectIdAsString{})
-          .fallback(f.keep()));
+          .fallback(f.keep())
+          .when([]() {
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Reject;
+          }));
 }
 
 }  // namespace arangodb

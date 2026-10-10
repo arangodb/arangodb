@@ -98,7 +98,6 @@ struct DatabaseJavaScriptCache;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -428,7 +427,7 @@ struct Database {
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
@@ -451,10 +450,16 @@ struct Database {
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
 
-  /// @brief validate a collection descriptor before it is used to create a
-  /// collection.
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
   arangodb::Result validateCollectionDescriptor(
-      arangodb::CollectionDescriptor const& descriptor);
+      CollectionDescriptor const& descriptor);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
@@ -512,11 +517,6 @@ struct Database {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
-
-  /// @brief checks the licence for SmartGraph collections. does nothing in
-  /// community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateEnterpriseLicense(
-      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.

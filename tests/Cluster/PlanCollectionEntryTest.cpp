@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/Utils/PlanCollectionEntry.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
@@ -97,22 +97,22 @@ class PlanCollectionEntryTest : public ::testing::Test {
     return result;
   }
 
-  static CreateCollectionBody prepareMinimalCollection(
+  static CollectionDescriptor prepareMinimalCollection(
       uint64_t nrShards, uint64_t replicationFactor) {
-    CreateCollectionBody col{};
-    col.name = "test";
-    col.id = DataSourceId(123);
-    col.numberOfShards = nrShards;
-    col.replicationFactor = replicationFactor;
+    CollectionDescriptor col{};
+    col.mutableProps.name = "test";
+    col.internal.id = DataSourceId(123);
+    col.clusteringConstant.numberOfShards = nrShards;
+    col.clusteringMutable.replicationFactor = replicationFactor;
     return col;
   }
 };
 
 TEST_F(PlanCollectionEntryTest, default_values) {
   auto col = prepareMinimalCollection(1, 1);
-  auto numberOfShards = col.numberOfShards.value();
+  auto numberOfShards = col.clusteringConstant.numberOfShards.value();
   auto distProto = std::make_shared<TestShardDistribution>(
-      numberOfShards, col.replicationFactor.value());
+      numberOfShards, col.clusteringMutable.replicationFactor.value());
   auto shards = generateShardNames(numberOfShards);
   ShardDistribution dist{shards, distProto};
   AgencyIsBuildingFlags buildingFlags;
