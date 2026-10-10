@@ -126,6 +126,9 @@
   expressions or expressions that need V8, such as user-defined AQL
   functions, as constant index lookup values.
 
+* AQL Index Join no longer mixed primary indexes and persistent indexes.
+  This caused wrong results previously.
+
 3.12.12 (2026-09-21)
 --------------------
 

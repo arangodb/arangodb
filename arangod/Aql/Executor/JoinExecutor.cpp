@@ -29,7 +29,11 @@
 #include "Basics/system-compiler.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+
+#include <algorithm>
 
 namespace arangodb::aql {
 
@@ -733,12 +737,31 @@ void JoinExecutor::constructStrategy() {
     desc.iter = std::move(stream);
   }
 
+  // The primary index orders its keys byte-wise, persistent indexes use the
+  // storage engine's sorting method. The join-index-nodes optimizer rule does
+  // not join the primary index with other indexes.
+  bool const usesPrimaryIndex =
+      _infos.indexes[0].index->type() == IndexType::Primary;
+  TRI_ASSERT(std::all_of(
+      _infos.indexes.begin(), _infos.indexes.end(), [&](auto const& idx) {
+        return (idx.index->type() == IndexType::Primary) == usesPrimaryIndex;
+      }));
+  auto const keyOrder = [&] {
+    if (usesPrimaryIndex) {
+      return IndexJoinKeyOrder::kBinary;
+    }
+    return _trx.vocbase().engine<RocksDBEngine>().currentSortingMethod() ==
+                   basics::VelocyPackHelper::SortingMethod::Legacy
+               ? IndexJoinKeyOrder::kVPackLegacy
+               : IndexJoinKeyOrder::kVPack;
+  }();
+
   // TODO actually we want to have different strategies, like hash join and
   // special implementations for n = 2, 3, ...
   // TODO maybe make this a template parameter
   _strategy = IndexJoinStrategyFactory{}.createStrategy(
       std::move(indexDescription),
-      _infos.query->queryOptions().desiredJoinStrategy);
+      _infos.query->queryOptions().desiredJoinStrategy, keyOrder);
 }
 
 template class ExecutionBlockImpl<JoinExecutor>;

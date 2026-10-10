@@ -651,6 +651,22 @@ bool checkCandidateEligibleForAdvancedJoin(
 
 std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan, std::span<IndexNode*> candidates) {
+  // Do not join the primary index with other indexes. The primary index
+  // returns its keys in byte order, the other indexes in VelocyPack order.
+  auto usesPrimaryIndex = [](IndexNode const* node) {
+    return node->getIndexes()[0]->type() == IndexType::Primary;
+  };
+  if (!candidates.empty() &&
+      !std::all_of(candidates.begin(), candidates.end(),
+                   [&](IndexNode const* node) {
+                     return usesPrimaryIndex(node) ==
+                            usesPrimaryIndex(candidates.front());
+                   })) {
+    LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: mixes the "
+                               "primary index with other indexes";
+    return {false, {}};
+  }
+
   IndicesOffsets indicesOffsets = {};
   // Variables available on the JoinNode *input* row when JoinExecutor
   // evaluates constantExpressions. JoinNode replaces the first candidate, so
