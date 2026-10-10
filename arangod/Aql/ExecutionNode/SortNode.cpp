@@ -165,8 +165,11 @@ SortInformation SortNode::getSortInformation() const {
 /// @brief clone ExecutionNode recursively
 ExecutionNode* SortNode::clone(ExecutionPlan* plan,
                                bool withDependencies) const {
-  return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
-                     withDependencies);
+  auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
+  c->_numberOfTopGroupedElements = _numberOfTopGroupedElements;
+  c->_reinsertInCluster = _reinsertInCluster;
+  c->_limit = _limit;
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief creates corresponding ExecutionBlock
