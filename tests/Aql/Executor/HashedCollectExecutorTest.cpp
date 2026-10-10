@@ -47,6 +47,18 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+namespace {
+/// @brief build the register info for a single aggregate. MaxRegisterId means
+/// the aggregator takes no arguments at all, as COUNT/LENGTH do.
+AggregateRegisters aggRegs(RegisterId out, RegisterId in) {
+  std::vector<RegisterId> inRegs;
+  if (in != RegisterPlan::MaxRegisterId) {
+    inRegs.emplace_back(in);
+  }
+  return AggregateRegisters{out, std::move(inRegs)};
+}
+}  // namespace
+
 using HashedCollectInputParam = std::tuple<SplitType, bool>;
 
 class HashedCollectExecutorTest
@@ -66,7 +78,7 @@ class HashedCollectExecutorTest
       RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
       RegisterId collectRegister = RegisterPlan::MaxRegisterId,
-      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
+      std::vector<AggregateRegisters> aggregateRegisters = {})
       -> RegisterInfos {
     RegIdSet registersToClear{};
     RegIdSetStack registersToKeep{{}};
@@ -86,11 +98,11 @@ class HashedCollectExecutorTest
     if (collectRegister != RegisterPlan::MaxRegisterId) {
       writeableOutputRegisters.emplace(collectRegister);
     }
-    for (auto const& [out, in] : aggregateRegisters) {
-      if (in != RegisterPlan::MaxRegisterId) {
+    for (auto const& agg : aggregateRegisters) {
+      for (auto const& in : agg.inRegs) {
         readableInputRegisters.emplace(in);
       }
-      writeableOutputRegisters.emplace(out);
+      writeableOutputRegisters.emplace(agg.outReg);
     }
 
     return RegisterInfos{std::move(readableInputRegisters),
@@ -106,7 +118,7 @@ class HashedCollectExecutorTest
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
       RegisterId collectRegister = RegisterPlan::MaxRegisterId,
       std::vector<std::string> aggregateTypes = {},
-      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
+      std::vector<AggregateRegisters> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
     return HashedCollectExecutorInfos{std::move(groupRegisters),
                                       RegisterPlan::MaxRegisterId,
@@ -424,12 +436,12 @@ TEST_P(HashedCollectExecutorTest, collect_only_multiple_values) {
 
 // Collect with multiple aggregators
 TEST_P(HashedCollectExecutorTest, many_aggregators) {
-  auto registerInfos =
-      buildRegisterInfos(2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId,
-                         {{3, RegisterPlan::MaxRegisterId}, {4, 1}});
+  auto registerInfos = buildRegisterInfos(
+      2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId,
+      {aggRegs(3, RegisterPlan::MaxRegisterId), aggRegs(4, 1)});
   auto executorInfos = buildExecutorInfos(
       2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId, {"LENGTH", "SUM"},
-      {{3, RegisterPlan::MaxRegisterId}, {4, 1}});
+      {aggRegs(3, RegisterPlan::MaxRegisterId), aggRegs(4, 1)});
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper<2, 3>()
@@ -567,8 +579,7 @@ class HashedCollectExecutorTestAggregate
     }
 
     auto agg = getAggregator();
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{
-        {3, agg.inReg}};
+    std::vector<AggregateRegisters> aggregateRegisters{aggRegs(3, agg.inReg)};
     if (agg.inReg != RegisterPlan::MaxRegisterId) {
       readableInputRegisters.emplace(agg.inReg);
     }
@@ -590,8 +601,7 @@ class HashedCollectExecutorTestAggregate
 
     auto agg = getAggregator();
     std::vector<std::string> aggregateTypes{agg.name};
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{
-        {3, agg.inReg}};
+    std::vector<AggregateRegisters> aggregateRegisters{aggRegs(3, agg.inReg)};
 
     auto infos = HashedCollectExecutorInfos(
         std::move(groupRegisters), collectRegister, RegisterPlan::MaxRegisterId,

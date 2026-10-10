@@ -41,7 +41,8 @@ const checkOptimization = function (plan) {
 
   const [aggregate] = collect.aggregates;
   assertEqual(aggregate.type, "MERGE_LISTS");
-  assertEqual(aggregate.inVariable.id, dbCollect.outVariable.id);
+  assertEqual(aggregate.inVariables.length, 1);
+  assertEqual(aggregate.inVariables[0].id, dbCollect.outVariable.id);
 };
 
 const checkNotOptimized = function (plan) {

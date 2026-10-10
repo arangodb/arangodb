@@ -972,6 +972,15 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
+  // an aggregate has one input variable per argument of its call. Servers from
+  // before multi-argument aggregates emit a single "inVariable" instead.
+  const aggregateArguments = function (node) {
+    if (node.inVariables) {
+      return node.inVariables.map(function (variable) { return variableName(variable); }).join(', ');
+    }
+    return node.inVariable ? variableName(node.inVariable) : '';
+  };
+
   const lateVariableCallback = function () {
     return (node) => variableName(node);
   };
@@ -1871,14 +1880,6 @@ function processQuery(query, explain, planIndex) {
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */') + variablesUsed() + constNess();
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
-      case 'AggregateNode': /* old-style COLLECT node */
-        return keyword('COLLECT') + ' ' + node.aggregates.map(function (node) {
-          return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
-        }).join(', ') +
-          (node.count ? ' ' + keyword('WITH COUNT') : '') +
-          (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
-          (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable); }).join(', ') : '') +
-          '   ' + annotation('/* ' + node.aggregationOptions.method + ' */');
       case 'CollectNode':
         var collect = keyword('COLLECT') + ' ' +
           node.groups.map(function (node) {
@@ -1891,7 +1892,7 @@ function processQuery(query, explain, planIndex) {
           }
           collect += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + (node.inVariable ? variableName(node.inVariable) : '') + ')';
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + aggregateArguments(node) + ')';
             }).join(', ');
         }
         collect +=
@@ -2186,12 +2187,7 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
-              if (node.inVariable !== undefined) {
-                aggregateString += variableName(node.inVariable);
-              }
-              aggregateString += ')';
-              return aggregateString;
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + aggregateArguments(node) + ')';
             }).join(', ');
         }
         return window;
