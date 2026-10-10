@@ -195,11 +195,58 @@ function optimizerQuantifiersTestSuite () {
 
     testAtLeastExceedsArrayLength : function () {
       var queries = [
+        // full match with n > length used to fall through to the stale default "true"
         [ "[] AT LEAST (1) == 0", false ],
         [ "[1] AT LEAST (2) == 1", false ],
         [ "[1, 1] AT LEAST (3) == 1", false ],
+        [ "[1, 2] AT LEAST (3) IN [1, 2]", false ],
+        [ "[1, 2] AT LEAST (3) NOT IN [9]", false ],
+        // n == length with a full match already worked (break on the last element)
         [ "[1, 1] AT LEAST (2) == 1", true ],
+        [ "[1, 1, 1] AT LEAST (3) == 1", true ],
         [ "[] AT LEAST (0) == 1", true ],
+        // any mismatch breaks early regardless of n, so these were never actually broken
+        [ "[1, 2] AT LEAST (2) == 1", false ],
+        [ "[1, 1, 2] AT LEAST (3) == 1", false ],
+        [ "[1, 2, 3, 4, 5] AT LEAST (100) == 1", false ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query("RETURN (" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+
+        result = db._query("RETURN NOOPT(" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (n) exceeding array length via FOR/FILTER
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastInExceedsArrayLength : function () {
+      var queries = [
+        // doc.value 1 full-matches both elements, reproducing the bug through FOR/FILTER
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 1 ] AT LEAST (3) IN [ doc.value ] SORT doc.value RETURN doc.value", [ ] ],
+        // a single doc.value can only match one distinct element, never a full match
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] AT LEAST (4) == doc.value SORT doc.value RETURN doc.value", [ ] ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query(query[0]).toArray();
+        assertEqual(query[1], result, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (0) and AT LEAST (negative)
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastZeroOrNegative : function () {
+      var queries = [
+        // required minimum of 0 never breaks early either, same fall-through path as the fix
+        [ "[1, 2] AT LEAST (0) == 99", true ],
+        [ "[1, 2] AT LEAST (-1) == 99", true ],
       ];
 
       queries.forEach(function(query) {
