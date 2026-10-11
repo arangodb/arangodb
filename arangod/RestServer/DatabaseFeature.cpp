@@ -119,7 +119,9 @@ DatabaseManagerThread::DatabaseManagerThread(
       _engine(engine)
 #ifdef USE_V8
       ,
-      _dealer(server.getFeature<V8DealerFeature>())
+      _dealer(server.hasFeature<V8DealerFeature>()
+                  ? &server.getFeature<V8DealerFeature>()
+                  : nullptr)
 #endif
 {
 }
@@ -169,7 +171,8 @@ void DatabaseManagerThread::run() {
 
         auto* queryRegistry = QueryRegistryFeature::registry();
 #ifdef USE_V8
-        if (_dealer.isEnabled() || queryRegistry != nullptr) {
+        if ((_dealer != nullptr && _dealer->isEnabled()) ||
+            queryRegistry != nullptr) {
 #else
         if (queryRegistry != nullptr) {
 #endif
@@ -181,8 +184,8 @@ void DatabaseManagerThread::run() {
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
 #ifdef USE_V8
-            if (_dealer.isEnabled()) {
-              _dealer.cleanupDatabase(*database);
+            if (_dealer != nullptr && _dealer->isEnabled()) {
+              _dealer->cleanupDatabase(*database);
             }
 #endif
             if (queryRegistry != nullptr) {
@@ -290,9 +293,8 @@ void DatabaseFeature::initCalculationVocbase() {
 
 void DatabaseFeature::start() {
 #ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
-    dealer.verifyAppPaths();
+  if (_dealer != nullptr && _dealer->isEnabled()) {
+    _dealer->verifyAppPaths();
   }
 #endif
 
@@ -474,6 +476,11 @@ void DatabaseFeature::unprepare() {
 
 void DatabaseFeature::prepare() {
   _engine = &server().getFeature<StorageEngine>();
+#ifdef USE_V8
+  _dealer = server().hasFeature<V8DealerFeature>()
+                ? &server().getFeature<V8DealerFeature>()
+                : nullptr;
+#endif
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();
@@ -607,9 +614,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
     if (!ServerState::instance()->isCoordinator()) {
 #ifdef USE_V8
-      auto& dealer = server().getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        auto r = dealer.createDatabase(name, std::to_string(dbId), true);
+      if (_dealer != nullptr && _dealer->isEnabled()) {
+        auto r = _dealer->createDatabase(name, std::to_string(dbId), true);
         if (r != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(r);
         }
@@ -1006,12 +1012,6 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
-#ifdef USE_V8
-  auto* dealer = server().hasFeature<V8DealerFeature>()
-                     ? &server().getFeature<V8DealerFeature>()
-                     : nullptr;
-#endif
-
   auto r = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
@@ -1040,9 +1040,9 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto name = it.get("name").stringView();
 #ifdef USE_V8
-    if (dealer != nullptr && dealer->isEnabled()) {
+    if (_dealer != nullptr && _dealer->isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer->createDatabase(name, id, false);
+      r = _dealer->createDatabase(name, id, false);
       if (r != TRI_ERROR_NO_ERROR) {
         break;
       }

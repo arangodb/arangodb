@@ -54,7 +54,8 @@ function isBucketized(testBuckets) {
 exports.sutFilters = {
   checkUsers: ["users"],
   checkCollections: ["tasks-sjs", "collections", "views", "graphs"],
-  checkDBs: ["databases"]
+  checkDBs: ["databases"],
+  checkAnalyzers: ["analyzers"]
 };
 class testRunner {
   constructor(options, testname, serverOptions = {}, disableChecks=[]) {
@@ -315,6 +316,15 @@ class testRunner {
       };
     }
 
+    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
+      return {
+        setup: {
+          status: false,
+          message: 'could not bootstrap the RBAC binding for the workload user'
+        }
+      };
+    }
+
     this.instanceManager.launchTcpDump("");
     if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
@@ -326,16 +336,6 @@ class testRunner {
       };
     }
     this.instanceManager.reconnect(false);
-    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
-      let shutdownStatus = this.instanceManager.shutdownInstance();
-      return {
-        setup: {
-          status: false,
-          message: 'could not bootstrap the RBAC binding for the workload user',
-          shutdown: shutdownStatus
-        }
-      };
-    }
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;

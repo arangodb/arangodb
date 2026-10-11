@@ -28,6 +28,7 @@
 #include <velocypack/String.h>
 
 #include <atomic>
+#include <functional>
 #include <list>
 #include <memory>
 #include <unordered_map>
@@ -35,7 +36,8 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 class QueryRegistryFeature;
 class Result;
 
@@ -115,8 +117,12 @@ class QueryList {
   /// @brief insert query into slow query list
   void trackSlow(std::shared_ptr<velocypack::String> query);
 
-  /// @brief kills a query
+  /// @brief kills the query with the given id (no authorization check)
   Result kill(TRI_voc_tick_t id);
+
+  /// @brief kills the query with the given id if `authorize` permits it
+  Result kill(TRI_voc_tick_t id,
+              std::function<Result(Query const&)> const& authorize);
 
   /// @brief kills all currently running queries that match the filter function
   /// (i.e. the filter should return true for a queries to be killed)
@@ -132,8 +138,8 @@ class QueryList {
   /// the query information.
   std::vector<std::shared_ptr<velocypack::String>> listSlow() const;
 
-  /// @brief clear the list of slow queries
-  void clearSlow();
+  /// @brief removes the slow queries for which `shouldClear` returns true
+  void clearSlow(std::function<bool(velocypack::Slice)> const& shouldClear);
 
   /// @brief return the number of currently executing queries
   size_t count() const;

@@ -324,20 +324,32 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    bool const allowedPath =
+        path == "/" || path.starts_with(::pathPrefixAdmin) ||
+        path.starts_with(::pathPrefixApi) || path.starts_with(::pathPrefixOpen);
+    if (!allowedPath) {
+      bool foxxRegistered = false;
+      bool foxxEnabled = false;
 #ifdef USE_V8
-    auto& ff = _server.server().getFeature<FoxxFeature>();
-    bool foxxEnabled = ff.foxxEnabled();
-#else
-    constexpr bool foxxEnabled = false;
+      auto& server = _server.server();
+      foxxRegistered = server.hasFeature<FoxxFeature>();
+      foxxEnabled =
+          foxxRegistered && server.getFeature<FoxxFeature>().foxxEnabled();
 #endif
-    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-                          path.starts_with(::pathPrefixApi) ||
-                          path.starts_with(::pathPrefixOpen))) {
-      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "access to Foxx apps is turned off on this instance");
-      return Flow::Abort;
+      if (!foxxRegistered) {
+        sendErrorResponse(rest::ResponseCode::NOT_IMPLEMENTED,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_NOT_IMPLEMENTED,
+                          "Foxx apps are not supported on this instance");
+        return Flow::Abort;
+      }
+      if (!foxxEnabled) {
+        sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_FORBIDDEN,
+                          "access to Foxx apps is turned off on this instance");
+        return Flow::Abort;
+      }
     }
   }
 
