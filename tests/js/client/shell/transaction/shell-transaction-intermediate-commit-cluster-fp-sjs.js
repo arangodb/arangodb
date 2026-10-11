@@ -136,7 +136,7 @@ function transactionIntermediateCommitsSingleSuite() {
         // unless they are replicated from the leader.
         assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
       } else {
-        assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
+        assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
       }
       
       assertInSync(leader, follower, shardId);
@@ -178,7 +178,7 @@ function transactionIntermediateCommitsSingleSuite() {
         // unless they are replicated from the leader.
         assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
       } else {
-        assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
+        assertEqual(intermediateCommitsBefore + 8, intermediateCommitsAfter);
       }
 
       assertInSync(leader, follower, shardId);
@@ -225,7 +225,7 @@ function transactionIntermediateCommitsSingleSuite() {
         // unless they are replicated from the leader.
         assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
       } else {
-        assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
+        assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
       }
       
       assertInSync(leader, follower, shardId);
@@ -286,8 +286,9 @@ function transactionIntermediateCommitsSingleSuite() {
         // unless they are replicated from the leader.
         assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
       } else {
-        // By coming back in sync the follower removes 10000 entries which results in another intermediate commit
-        assertEqual(intermediateCommitsBefore + 10 + 1, intermediateCommitsAfter);
+        // By coming back in sync the follower removes 9000 entries, which is below the
+        // syncer's intermediate commit count, so no further intermediate commit happens
+        assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
       }
 
       follower.debugClearFailAt("logAfterIntermediateCommit");

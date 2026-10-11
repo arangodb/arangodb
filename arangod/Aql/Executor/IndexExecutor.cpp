@@ -687,7 +687,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
-#ifdef USE_v8
+#ifdef USE_V8
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {

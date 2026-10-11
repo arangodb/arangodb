@@ -650,6 +650,33 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ { a: 1, b: 'foo', c: null } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\": \\"foo\\", \\"c\\": null }')`));
     },
 
+    // https://github.com/arangodb/arangodb/issues/23349
+    testJsonParseTopLevelFraction: function () {
+      assertEqual([ 0.3 ], getQueryResults("RETURN JSON_PARSE('0.3')"));
+      assertEqual([ [ true, true, true, true, true ] ], getQueryResults(
+        "RETURN [JSON_PARSE('0.3') == 0.3, JSON_PARSE('0.7') == 0.7, JSON_PARSE('0.1234567') == 0.1234567, " +
+        "JSON_PARSE('[0.3]')[0] == 0.3, JSON_PARSE('{\"a\": 0.3}').a == 0.3]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23386
+    testJsonParseExactlyRepresentableFractions: function () {
+      assertEqual([ [ 0.375, 0.015625 ] ], getQueryResults("RETURN [JSON_PARSE('0.375'), JSON_PARSE('0.015625')]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23386
+    testJsonParseIntegersBeyondUint64: function () {
+      assertEqual([ [ 391249510134149350000, 100000000000000010000 ] ],
+                  getQueryResults("RETURN [JSON_PARSE('391249510134149350000'), JSON_PARSE('100000000000000010000')]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23385
+    testJsonParseExponentIsStable: function () {
+      const actual = getQueryResults(
+        "FOR i IN 1..2000 LET a = JSON_PARSE('2.5e-3') LET b = JSON_PARSE('-3.5767597641555764e+16') " +
+        "FILTER a != 0.0025 OR b != -3.5767597641555764e+16 RETURN [i, a, b]");
+      assertEqual([], actual);
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test regex function, invalid arguments
 // //////////////////////////////////////////////////////////////////////////////

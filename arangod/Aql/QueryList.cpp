@@ -204,6 +204,12 @@ void QueryList::remove(Query& query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
+  return kill(id, [](Query const&) { return Result{}; });
+}
+
+/// @brief kills a query if `authorize` permits it
+Result QueryList::kill(TRI_voc_tick_t id,
+                       std::function<Result(Query const&)> const& authorize) {
   // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
   // because this can result in a deadlock since the Query dtor tries to
   // remove itself from this list which acquires the write `_lock`
@@ -217,6 +223,9 @@ Result QueryList::kill(TRI_voc_tick_t id) {
     queryPtr = it->second.lock();
   }
   if (queryPtr) {
+    if (auto const authorization = authorize(*queryPtr); authorization.fail()) {
+      return authorization;
+    }
     auto const length = _maxQueryStringLength.load(std::memory_order_relaxed);
     killQuery(*queryPtr, length, false);
   }
@@ -322,10 +331,13 @@ std::vector<std::shared_ptr<velocypack::String>> QueryList::listSlow() const {
   return result;
 }
 
-/// @brief clear the list of slow queries
-void QueryList::clearSlow() {
+/// @brief removes the matching entries from the list of slow queries
+void QueryList::clearSlow(
+    std::function<bool(velocypack::Slice)> const& shouldClear) {
   WRITE_LOCKER(writeLocker, _lock);
-  _slow.clear();
+  _slow.remove_if([&shouldClear](auto const& entry) {
+    return shouldClear(entry->slice());
+  });
 }
 
 size_t QueryList::count() const {
