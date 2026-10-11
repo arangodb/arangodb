@@ -1228,6 +1228,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -1240,6 +1241,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
       matcher, buffer->data(), buffer->length(), false, error);
 
   if (error) {
+    functions::throwIfKilled(expressionContext);
     // compiling regular expression failed
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
@@ -1316,6 +1318,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
@@ -1334,6 +1337,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
     auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    functions::throwIfKilled(expressionContext);
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
