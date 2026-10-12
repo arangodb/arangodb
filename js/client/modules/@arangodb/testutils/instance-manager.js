@@ -1160,7 +1160,10 @@ class instanceManager {
             sleep(1);
           }
           print(`${Date()} upgrading ${arangod.name}`);
-          arangod.runUpgrade(JSON.stringify(this.getStructure()));
+          if (!arangod.runUpgrade(JSON.stringify(this.getStructure()))) {
+            print(`${RED}aborting upgrade cycle after fatal failure${RESET}`);
+            throw new Error(`failed to upgrade cycle ${arangod.name} - it crashed`);
+          }
           print(`${Date()} relaunching ${arangod.name}`);
           arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {

@@ -754,7 +754,22 @@ class instance {
       print(".");
       sleep(1);
     }
-    print(`${Date()} upgrade of ${this.name} finished.`);
+    print(`${Date()} upgrade of ${this.name} finished: ${this.exitStatus}`);
+    if (this.exitStatus('signal') &&
+        ((this.exitStatus === 11) ||
+         (this.exitStatus === 6))) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+      this.analyzeServerCrash(msg);
+      this.serverCrashedLocal = true;
+      this.message += msg;
+      msg = " runUpgrade: Marking crashy";
+      pu.serverCrashed = true;
+      this.message += msg;
+      print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+      this.pid = null;
+      return false;
+    }
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
