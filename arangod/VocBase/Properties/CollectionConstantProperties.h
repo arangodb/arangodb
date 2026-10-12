@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/UtilityInvariants.h"
@@ -51,7 +52,6 @@ struct CollectionConstantProperties {
   bool isSmart = false;
   bool isDisjoint = false;
 
-  inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
   inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
       std::nullopt;
 
@@ -60,40 +60,32 @@ struct CollectionConstantProperties {
     return TRI_col_type_e(type);
   }
 
-  bool operator==(CollectionConstantProperties const&) const;
+  bool operator==(CollectionConstantProperties const&) const = default;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
-  auto shadowCollectionsField = std::invoke([&]() {
-    if constexpr (!Inspector::isLoading) {
-      // Write out the shadowCollections
-      return f.field(StaticStrings::ShadowCollections, props.shadowCollections);
-    } else {
-      // Ignore the shadowCollections on input, this is not a user-modifyable
-      // value
-      return f.ignoreField(StaticStrings::ShadowCollections);
-    }
-  });
-
   return f.object(props).fields(
       f.field(StaticStrings::DataSourceSystem, props.isSystem)
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::GraphSmartGraphAttribute,
-              props.smartGraphAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field(StaticStrings::DataSourceType, props.type)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isValidCollectionType),
+      userInvariant(
+          f,
+          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+          UtilityInvariants::isNonEmptyIfPresent),
+      userInvariant(
+          f,
+          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
+          UtilityInvariants::isValidCollectionType),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      std::move(shadowCollectionsField));
+      // Written by the server. Not user-modifyable, so the attribute is
+      // accepted and dropped on input while still being written out.
+      f.field(StaticStrings::ShadowCollections, props.shadowCollections)
+          .whenLoading([]() { return inspection::FieldCondition::Ignore; }));
 }
 
 }  // namespace arangodb

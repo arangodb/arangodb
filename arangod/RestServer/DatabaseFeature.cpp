@@ -450,6 +450,11 @@ void DatabaseFeature::unprepare() {
 
 void DatabaseFeature::prepare() {
   _engine = &server().getFeature<StorageEngine>();
+#ifdef USE_V8
+  _dealer = server().hasFeature<V8DealerFeature>()
+                ? &server().getFeature<V8DealerFeature>()
+                : nullptr;
+#endif
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase();

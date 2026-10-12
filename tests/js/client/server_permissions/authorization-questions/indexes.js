@@ -129,6 +129,7 @@ function indexApiAuthzSuite () {
         "UseApiVersion version=1",
         "UseDatabase name=d level=read",
         "IsReadOnly",
+        "UseCollection db=d name=c level=read",
         "UseCollection db=d name=c level=writemeta",
         "UseCollection db=d name=c level=read",
         ...singleOnly([

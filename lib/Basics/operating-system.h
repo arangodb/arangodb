@@ -130,7 +130,6 @@
 #define TRI_CLOSE ::close
 #define TRI_CREATE(a, b, c) ::open((a), (b), (c))
 #define TRI_FSTAT ::fstat
-#define TRI_GETCWD ::getcwd
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
@@ -278,7 +277,6 @@
 #define TRI_CLOSE ::close
 #define TRI_CREATE(a, b, c) ::open((a), (b), (c))
 #define TRI_FSTAT ::fstat
-#define TRI_GETCWD ::getcwd
 #define TRI_LSEEK ::lseek
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))

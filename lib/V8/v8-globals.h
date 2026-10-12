@@ -825,7 +825,8 @@ struct TRI_v8_global_t {
   arangodb::application_features::ApplicationServer& _server;
 
   arangodb::V8SecurityFeature& _v8security;
-  arangodb::HttpEndpointProvider& _endpoints;
+  // null when REST is off and the feature was never registered
+  arangodb::HttpEndpointProvider* _endpoints;
 #ifdef USE_ENTERPRISE
   arangodb::EncryptionFeature& _encryption;
 #endif
@@ -835,7 +836,7 @@ struct TRI_v8_global_t {
   TRI_v8_global_t(
       arangodb::application_features::ApplicationServer& server,
       arangodb::V8SecurityFeature& v8security,
-      arangodb::HttpEndpointProvider& endpoints,
+      arangodb::HttpEndpointProvider* endpoints,
       arangodb::application_features::CommunicationFeaturePhase& comm,
 #ifdef USE_ENTERPRISE
       arangodb::EncryptionFeature& encryption,

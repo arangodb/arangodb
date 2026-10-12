@@ -100,6 +100,27 @@ class runInPythonTest extends runWithAllureReport {
       '--alluredir', testResultsDir
     ];
 
+    // The drivers default --foxx-path to /tests/static/service.zip, which only
+    // exists inside their own docker containers, and use it both verbatim
+    // (arangod reads it server-side) and '.'-prefixed relative to the checkout
+    // (pytest uploads it), so overriding it with an absolute path would break
+    // the upload subtests. Instead make the default resolvable by symlinking
+    // /tests/static to the checkout; fall back to --foxx-path if that fails.
+    const foxxStaticDir = fs.join(fs.normalize(fs.makeAbsolute(this.options.pythonsource)),
+                                  'tests', 'static');
+    if (fs.exists(fs.join(foxxStaticDir, 'service.zip')) &&
+        !fs.exists(fs.join('/tests', 'static', 'service.zip'))) {
+      try {
+        if (!fs.isDirectory('/tests')) {
+          fs.makeDirectory('/tests');
+        }
+        fs.linkFile(foxxStaticDir, fs.join('/tests', 'static'));
+      } catch (ex) {
+        print(RED + 'cannot provide /tests/static (' + ex + '), falling back to --foxx-path' + RESET);
+        args.push('--foxx-path', fs.join(foxxStaticDir, 'service.zip'));
+      }
+    }
+
     let testSkipList = [];
     if (!this.options.cluster) {
       testSkipList.push('backup');

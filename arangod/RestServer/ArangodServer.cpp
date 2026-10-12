@@ -29,6 +29,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/ISortingPolicy.h"
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -39,22 +40,23 @@ namespace arangodb {
 using namespace arangodb::application_features;
 
 namespace {
+// the rest of what this used to list is now conditionally registered instead
 auto const kNonServerFeatures =
-    std::array{std::type_index(typeid(AgencyFeature)),
-               std::type_index(typeid(ClusterFeature)),
-#ifdef ARANGODB_HAVE_FORK
-               std::type_index(typeid(SupervisorFeature)),
-               std::type_index(typeid(DaemonFeature)),
-#endif
-               std::type_index(typeid(GeneralServerFeature)),
-               std::type_index(typeid(GreetingsFeature)),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-               std::type_index(typeid(ProcessEnvironmentFeature)),
-#endif
-               std::type_index(typeid(HttpEndpointProvider)),
-               std::type_index(typeid(LogBufferFeature)),
-               std::type_index(typeid(ServerFeature)),
-               std::type_index(typeid(SslServerFeature))};
+    std::array{std::type_index(typeid(ClusterFeature))};
+
+// decouples RocksDBEngine from needing AgencyFeature to exist
+struct SortingPolicy final : public ISortingPolicy {
+  explicit SortingPolicy(bool agencyActivated)
+      : _agencyActivated(agencyActivated) {}
+
+  basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept override {
+    return _agencyActivated ? basics::VelocyPackHelper::SortingMethod::Correct
+                            : basics::VelocyPackHelper::SortingMethod::Legacy;
+  }
+
+  bool _agencyActivated;
+};
 
 void applyAgencyRocksDBMemoryLimits(
     options::ProgramOptions::ProcessingResult const& result,
@@ -184,6 +186,7 @@ void ArangodServer::addFeatures() {
       getOptions<metrics::MetricsOptionsProvider>());
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
+  bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -211,28 +214,51 @@ void ArangodServer::addFeatures() {
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
   addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
-
+  // init-db/restore-admin/check-version/upgrade don't need a real server
+  bool const initDatabase =
+      getOptions<InitDatabaseOptionsProvider>().initDatabase ||
+      getOptions<InitDatabaseOptionsProvider>().restoreAdmin;
+  bool const checkVersion =
+      getOptions<check_version::CheckVersionOptionsProvider>().checkVersion;
+  bool const upgrade = getOptions<UpgradeOptionsProvider>().upgrade;
+  bool const isCoordinator = ServerState::instance()->isCoordinator();
+  bool const auxMode = initDatabase || checkVersion || upgrade;
+  bool const skipBootstrap = upgrade && !isCoordinator;
+  // coordinator upgrade only sheds Daemon/Supervisor/Greetings, not more
+  bool const skipNonServerFeatures =
+      initDatabase || checkVersion || skipBootstrap;
+  bool const enableDaemonSupervisor = !auxMode;
   addFeature<CpuUsageFeature>();
   auto& databasePath = addFeature<DatabasePathFeature>(
       getOptions<DatabasePathOptionsProvider>());
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
-  addFeature<HttpEndpointProvider, EndpointFeature>(
-      getOptions<EndpointOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<HttpEndpointProvider, EndpointFeature>(
+        getOptions<EndpointOptionsProvider>());
+  }
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
-  addFeature<GeneralServerFeature>(metrics,
-                                   getOptions<GeneralServerOptionsProvider>(),
-                                   getOptions<LogApiOptionsProvider>());
-  addFeature<GreetingsFeature>();
+  auto& generalServer = addFeature<GeneralServerFeature>(
+      metrics, getOptions<GeneralServerOptionsProvider>(),
+      getOptions<LogApiOptionsProvider>());
+  if (skipNonServerFeatures) {
+    generalServer.disable();
+  }
+  if (!auxMode) {
+    addFeature<GreetingsFeature>();
+  }
   addFeature<LanguageCheckFeature>();
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<LogBufferFeature>(metrics,
+                                 getOptions<LogBufferOptionsProvider>());
+  }
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());
@@ -257,15 +283,21 @@ void ArangodServer::addFeatures() {
   addFeature<VectorIndexFeature>(database,
                                  getOptions<vector_index::OptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(
-      std::string{_binaryName},
-      getOptions<ProcessEnvironmentOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<ProcessEnvironmentFeature>(
+        std::string{_binaryName},
+        getOptions<ProcessEnvironmentOptionsProvider>());
+  }
 #endif
-
-  addFeature<BootstrapFeature>(
-      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature,
-      getOptions<bootstrap::BootstrapOptionsProvider>());
-  addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
+  if (!skipBootstrap) {
+    addFeature<BootstrapFeature>(
+        clusterFeature, database, &systemDatabaseFeature,
+        &clusterUpgradeFeature,
+        getOptions<bootstrap::BootstrapOptionsProvider>());
+  }
+  if (!skipNonServerFeatures) {
+    addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
+  }
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>(
       getOptions<security::ServerSecurityOptionsProvider>());
@@ -294,8 +326,10 @@ void ArangodServer::addFeatures() {
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 #ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
-  addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
+  if (enableDaemonSupervisor) {
+    addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
+    addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
+  }
 #endif
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
@@ -304,25 +338,33 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
   addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
-  addFeature<SslServerFeature, SslServerFeatureEE>(
-      getOptions<SslServerOptionsProvider>(),
-      getOptions<SslServerEEOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<SslServerFeature, SslServerFeatureEE>(
+        getOptions<SslServerOptionsProvider>(),
+        getOptions<SslServerEEOptionsProvider>());
+  }
 #else
-  addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+  if (!skipNonServerFeatures) {
+    addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+  }
 #endif
   addFeature<RbacFeature>(authentication);
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-  addFeature<iresearch::IResearchFeature>(
-      metrics, getOptions<iresearch::IResearchOptionsProvider>());
-  auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  if (agencyActivated) {
+    addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
+  } else {
+    addFeature<iresearch::IResearchAnalyzerFeature>(
+        iresearch::IResearchAnalyzerFeature::Dependencies{
+            .databaseFeature = database,
+            .systemDatabase = systemDatabaseFeature,
+            .networkFeature = &networkFeature,
+            .clusterFeature = &clusterFeature,
+            .schedulerFeature = &scheduler,
+            .aqlFunctionFeature = &aqlFunctionFeature,
+        });
+    // an agency has no need for ArangoSearch
+    addFeature<iresearch::IResearchFeature>(
+        metrics, getOptions<iresearch::IResearchOptionsProvider>());
+  }
   addFeature<CheckVersionFeature>(
       _ret, kNonServerFeatures,
       getOptions<check_version::CheckVersionOptionsProvider>());
@@ -337,11 +379,12 @@ void ArangodServer::addFeatures() {
       return addFeature<StorageEngine, ClusterEngine>(clusterFeature, database,
                                                       metrics);
     } else {
+      static SortingPolicy const sortingPolicy(agencyActivated);
       return addFeature<StorageEngine, RocksDBEngine>(
           rocksdbOption, metrics, databasePath, flush, dumpLimits,
           replication2::EnableReplication2 ? &replicatedLogFeature : nullptr,
           scheduler, database, database, rocksdbCacheRefill, cacheManager,
-          agency, getOptions<RocksDBEngineOptionsProvider>());
+          sortingPolicy, getOptions<RocksDBEngineOptionsProvider>());
     }
   });
   addFeature<transaction::ManagerFeature>(

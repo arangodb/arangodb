@@ -31,7 +31,7 @@
 
 namespace arangodb::async_registry {
 
-auto all_undeleted_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
+auto all_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
 
 VPackBuilder serialize(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);

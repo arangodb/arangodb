@@ -321,6 +321,14 @@ size_t getParallelism(velocypack::Slice slice) {
       IndexFactory::kDefaultParallelism);
 }
 
+// A cache is meaningless without a manager, and is never built for system
+// collections, for coordinator stubs, or on a coordinator at all.
+bool canEnableCache(cache::Manager const* cacheManager,
+                    LogicalCollection const& collection) {
+  return cacheManager != nullptr && !collection.system() &&
+         !collection.isAStub() && !ServerState::instance()->isCoordinator();
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -329,22 +337,18 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, velocypack::Slice info,
+    LogicalCollection& collection, LocalStorageProperties const& storage,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, info),
+    : RocksDBMetaCollection(collection, storage),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)),
-      _timeTravelEnabled(basics::VelocyPackHelper::getBooleanValue(
-          info, StaticStrings::EnableTimeTravel, false)) {
+      _cacheEnabled(canEnableCache(cacheManager, collection) &&
+                    storage.cacheEnabled),
+      _timeTravelEnabled(collection.timeTravelEnabled()) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -416,18 +420,13 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  bool cacheEnabled = _cacheManager != nullptr &&
-                      !_logicalCollection.system() &&
-                      !_logicalCollection.isAStub() &&
-                      !ServerState::instance()->isCoordinator() &&
-                      basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed));
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
-  primaryIndex()->setCacheEnabled(cacheEnabled);
+Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
+  bool enable =
+      canEnableCache(_cacheManager, _logicalCollection) && cacheEnabled;
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(enable);
 
-  if (cacheEnabled) {
+  if (enable) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
@@ -435,7 +434,6 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
     destroyCache();
     primaryIndex()->destroyCache();
   }
-
   // nothing else to do
   // Changes to immutable properties are simply ignored here. This could be
   // unexpected - we should consider returning an error instead.

@@ -43,7 +43,6 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -186,7 +185,7 @@ function makeDataWrapper(options) {
       print(`\n${(new Date()).toISOString()}${GREEN}[============] RBAC scenarios: ` +
             `${argv.join(' ')}${RESET}`);
       const start = time();
-      const rc = executeExternalAndWait('python3', argv);
+      const rc = rbac.runScenarioDriver(this.options, this.instanceManager, argv);
       res[whichRTA].duration = time() - start;
       res.total += 1;
       res.duration += res[whichRTA].duration;
@@ -459,6 +458,7 @@ function makeDataWrapper(options) {
       localOptions.dbServers = 3;
     }
     localOptions.password = "cluster";
+    localOptions.jwtSecret = "makedata_jwt_secret"; // cluster Waitdata needs JWT to access _users
   } else {
     localOptions.password = "single";
   }
