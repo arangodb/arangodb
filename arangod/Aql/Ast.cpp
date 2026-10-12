@@ -2054,10 +2054,9 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 AstNode const* filterExpression,
                                 AstNode const* rangeExpression, bool isInbound,
                                 bool isOutbound, AstNode const* projections) {
-  if (label != nullptr && label->type == NODE_TYPE_ARRAY) {
-    for (size_t i = 0; i < label->numMembers(); ++i) {
-      rejectVariableAsPatternLabel(outVariable, label->getMember(i));
-    }
+  TRI_ASSERT(label != nullptr && label->type == NODE_TYPE_ARRAY);
+  for (size_t i = 0; i < label->numMembers(); ++i) {
+    rejectVariableAsPatternLabel(outVariable, label->getMember(i));
   }
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
