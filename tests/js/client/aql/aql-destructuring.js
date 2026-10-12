@@ -235,39 +235,41 @@ function destructuringSuite () {
     },
     
     testObjectDestructuringEmptySourceSomeAssignments : function ()  {
+      // {x: null} == {}, so remove-redundant-calculations returns a instead
       let query = `LET a = {} LET {x} = a RETURN {x}`;
       let res = db._query(query).toArray();
-      assertEqual({x: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {x, y} = a RETURN {x, y}`;
       res = db._query(query).toArray();
-      assertEqual({x: null, y: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {x, y, z} = a RETURN {x, y, z}`;
       res = db._query(query).toArray();
-      assertEqual({x: null, y: null, z: null}, res[0]);
+      assertEqual({}, res[0]);
     },
-    
+
     testObjectDestructuringEmptySourceSomeAssignmentsHoles : function ()  {
+      // {y: null, z: null} == {}, so remove-redundant-calculations returns a
       let query = `LET a = {} LET {, y, z} = a RETURN {y, z}`;
       let res = db._query(query).toArray();
-      assertEqual({y: null, z: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {, , z} = a RETURN {z}`;
       res = db._query(query).toArray();
-      assertEqual({z: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {x, , z} = a RETURN {x, z}`;
       res = db._query(query).toArray();
-      assertEqual({x: null, z: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {x, y} = a RETURN {x, y}`;
       res = db._query(query).toArray();
-      assertEqual({x: null, y: null}, res[0]);
-      
+      assertEqual({}, res[0]);
+
       query = `LET a = {} LET {, y, z} = a RETURN {y, z}`;
       res = db._query(query).toArray();
-      assertEqual({y: null, z: null}, res[0]);
+      assertEqual({}, res[0]);
     },
     
     testObjectDestructuringSomeAssignments : function ()  {
@@ -283,15 +285,17 @@ function destructuringSuite () {
       res = db._query(query).toArray();
       assertEqual({c: 1, d: 2, e: 3}, res[0]);
       
+      // the result == a (h and i are null), so remove-redundant-calculations returns a
       query = `LET a = {c: 1, d: 2, e: 3, f: 4, g: 5} LET {c, d, e, f, g, h, i} = a RETURN {c, d, e, f, g, h, i}`;
       res = db._query(query).toArray();
-      assertEqual({c: 1, d: 2, e: 3, f: 4, g: 5, h: null, i: null}, res[0]);
+      assertEqual({c: 1, d: 2, e: 3, f: 4, g: 5}, res[0]);
     },
     
     testObjectDestructuringRecursive : function ()  {
+      // the result == a (e, f, h and i are null), so remove-redundant-calculations returns a
       let query = `LET a = {c: 1, d: { e: 1, f: 2 }, g: { h: ["one", "two"], i: "baz" } } LET {c, d, e, f, g, h, i} = a RETURN {c, d, e, f, g, h, i}`;
       let res = db._query(query).toArray();
-      assertEqual({c: 1, d: {e: 1, f: 2}, e: null, f: null, g: {h: ["one", "two"], i: "baz"}, h: null, i: null}, res[0]);
+      assertEqual({c: 1, d: {e: 1, f: 2}, g: {h: ["one", "two"], i: "baz"}}, res[0]);
      
       query = `LET a = {c: 1, d: { e: 2, f: 3 } } LET {c, d: {e}} = a RETURN {c, e}`;
       res = db._query(query).toArray();

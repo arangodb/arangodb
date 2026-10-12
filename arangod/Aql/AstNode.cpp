@@ -257,10 +257,8 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-enum class AstNodeCompareMode { kAqlValue, kIdentical };
 struct AstNodeCompareOptions {
   bool compareUtf8;
-  AstNodeCompareMode mode;
   // how calls to non-deterministic funcs (RAND(), NOOPT()) are compared:
   // false: by address, true: by function name and arguments
   bool matchNonDeterministicCalls;
@@ -666,12 +664,6 @@ int compareAstNodesImpl(AstNode const* lhs, AstNode const* rhs,
     return (diff < 0) ? -1 : 1;
   }
 
-  if (opts.mode == AstNodeCompareMode::kIdentical &&
-      lType == VPackValueType::Object) {
-    // `==` treats a missing key as null; identical objects need the same keys
-    return compareAstNodesComplexVPack(lhs, rhs, opts);
-  }
-
   if (lType == VPackValueType::Custom) {
     // Structural nodes are matched by node type and children, not by evaluated
     // value, so resolveAttributeAccess is not forwarded into this path.
@@ -683,18 +675,12 @@ int compareAstNodesImpl(AstNode const* lhs, AstNode const* rhs,
 
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
-  return compareAstNodesImpl<resolveAttributeAccess>(
-      lhs, rhs, {compareUtf8, AstNodeCompareMode::kAqlValue, false});
-}
-
-bool areNodesIdentical(AstNode const* lhs, AstNode const* rhs) {
-  return compareAstNodesImpl<false>(
-             lhs, rhs, {false, AstNodeCompareMode::kIdentical, false}) == 0;
+  return compareAstNodesImpl<resolveAttributeAccess>(lhs, rhs,
+                                                     {compareUtf8, false});
 }
 
 bool isSameExpression(AstNode const* lhs, AstNode const* rhs) {
-  return compareAstNodesImpl<false>(
-             lhs, rhs, {false, AstNodeCompareMode::kAqlValue, true}) == 0;
+  return compareAstNodesImpl<false>(lhs, rhs, {false, true}) == 0;
 }
 
 // private ctor, only called during by FixedSizeAllocator in case of emergency

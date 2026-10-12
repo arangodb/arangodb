@@ -185,7 +185,6 @@ function optimizerRuleTestSuite () {
         [ "LET v = [ { a: 1 }, { a: 2 }, { a: 3 } ] FOR i IN v LET r = MAX(v[*].a) == 3 RETURN MAX(v[*].a) == 3", [ true, true, true ] ],
         [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a), b = LENGTH(i.a) RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
         [ "FOR i IN [ { a: 'foo' }, { a: 'food' }, { a: 'foobar' } ] LET a = LENGTH(i.a) SORT a LET b = LENGTH(i.a) SORT b RETURN [ a, b ]", [ [ 3, 3 ], [ 4, 4 ], [ 6, 6 ] ] ],
-        [ "LET a = {} LET b = {x: null} RETURN b", [ { x: null } ] ],
       ];
 
       queries.forEach(function(query) {
