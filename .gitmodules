@@ -4,7 +4,7 @@
 [submodule "3rdParty/rocksdb"]
 	path = 3rdParty/rocksdb
 	url = https://github.com/arangodb/rocksdb.git
-	branch = 11.11
+	branch = update-to-10.11
 [submodule "3rdParty/gtest"]
 	path = 3rdParty/gtest
 	url = https://github.com/arangodb/googletest.git
