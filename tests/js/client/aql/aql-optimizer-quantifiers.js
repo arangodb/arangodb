@@ -195,17 +195,23 @@ function optimizerQuantifiersTestSuite () {
 
     testAtLeastExceedsArrayLength : function () {
       var queries = [
-        // full match with n > length used to fall through to the stale default "true"
+        // full match, n greater than array length
         [ "[] AT LEAST (1) == 0", false ],
         [ "[1] AT LEAST (2) == 1", false ],
         [ "[1, 1] AT LEAST (3) == 1", false ],
         [ "[1, 2] AT LEAST (3) IN [1, 2]", false ],
         [ "[1, 2] AT LEAST (3) NOT IN [9]", false ],
-        // n == length with a full match already worked (break on the last element)
+        // same scenario, different operators
+        [ "[1, 1] AT LEAST (3) != 2", false ],
+        [ "[5, 5] AT LEAST (3) > 1", false ],
+        [ "[5, 5] AT LEAST (3) >= 5", false ],
+        [ "[1, 1] AT LEAST (3) < 5", false ],
+        [ "[1, 1] AT LEAST (3) <= 1", false ],
+        // full match, n equal to array length
         [ "[1, 1] AT LEAST (2) == 1", true ],
         [ "[1, 1, 1] AT LEAST (3) == 1", true ],
         [ "[] AT LEAST (0) == 1", true ],
-        // any mismatch breaks early regardless of n, so these were never actually broken
+        // a mismatch, regardless of n
         [ "[1, 2] AT LEAST (2) == 1", false ],
         [ "[1, 1, 2] AT LEAST (3) == 1", false ],
         [ "[1, 2, 3, 4, 5] AT LEAST (100) == 1", false ],
@@ -226,9 +232,9 @@ function optimizerQuantifiersTestSuite () {
 
     testAtLeastInExceedsArrayLength : function () {
       var queries = [
-        // doc.value 1 full-matches both elements, reproducing the bug through FOR/FILTER
+        // same scenario through FOR/FILTER
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 1 ] AT LEAST (3) IN [ doc.value ] SORT doc.value RETURN doc.value", [ ] ],
-        // a single doc.value can only match one distinct element, never a full match
+        // doc.value can only ever match one element, so never a full match
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] AT LEAST (4) == doc.value SORT doc.value RETURN doc.value", [ ] ],
       ];
 
@@ -244,7 +250,7 @@ function optimizerQuantifiersTestSuite () {
 
     testAtLeastZeroOrNegative : function () {
       var queries = [
-        // required minimum of 0 never breaks early either, same fall-through path as the fix
+        // n <= 0
         [ "[1, 2] AT LEAST (0) == 99", true ],
         [ "[1, 2] AT LEAST (-1) == 99", true ],
       ];

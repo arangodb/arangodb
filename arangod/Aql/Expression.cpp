@@ -1482,26 +1482,23 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     if (result) {
       ++matches;
       if (matches > requiredMatches.second) {
-        // too many matches; no further element can bring us back in range
+        // too many matches now, no way back into range
         break;
       }
       if (matches >= requiredMatches.first &&
           matches + numLeft <= requiredMatches.second) {
-        // already enough matches, and no remaining element can push us
-        // out of range either
+        // already enough matches
         break;
       }
     } else {
       if (matches + numLeft < requiredMatches.first) {
-        // too few matches: even if every remaining element matched, we
-        // still couldn't reach the required minimum
+        // can't reach the minimum even if everything left matched
         break;
       }
     }
   }
 
-  // recompute unconditionally: a fully-matching array can exhaust the loop
-  // without ever hitting a break above
+  // a full match can run the whole loop without ever breaking above
   bool const overallResult =
       matches >= requiredMatches.first && matches <= requiredMatches.second;
 
