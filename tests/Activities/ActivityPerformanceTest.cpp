@@ -51,7 +51,7 @@ TEST_F(ActivityPerformanceTest,
                 std::chrono::steady_clock::now() - before_creation;
             creation_counter++;
 
-            std::this_thread::sleep_for(0us);
+            std::this_thread::sleep_for(1us);
 
             auto now = std::chrono::steady_clock::now();
             if (now - last >= 1s) {

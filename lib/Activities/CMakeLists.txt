@@ -10,7 +10,6 @@ target_include_directories(arango_activities PUBLIC
 target_link_libraries(arango_activities
 PUBLIC
   arango_thread_owning_list
-  arango_thread_owning_list
   arango_shared
   arango_inspection)
 
