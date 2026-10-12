@@ -1125,23 +1125,8 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
 
       if (found != nullptr) {
         if (willReturnIndex) {
-          // find offset into string
-          int bytePosition = static_cast<int>(found - buffer->data());
-          char const* p = buffer->data();
-          int pos = 0;
-          while (pos < bytePosition) {
-            unsigned char c = static_cast<unsigned char>(*p);
-            if (c < 128) {
-              ++pos;
-            } else if (c < 224) {
-              pos += 2;
-            } else if (c < 240) {
-              pos += 3;
-            } else if (c < 248) {
-              pos += 4;
-            }
-          }
-          result = pos;
+          result = static_cast<int>(
+              TRI_CharLengthUtf8String(buffer->data(), found - buffer->data()));
         } else {
           // fake result position, but it does not matter as it will
           // only be compared to -1 later
