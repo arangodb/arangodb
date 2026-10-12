@@ -1256,9 +1256,10 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testContainsCanonicallyEquivalent: function () {
-      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("café", "é", true)`));
-      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("café", "é", true)`));
-      assertEqual([ -1 ], getQueryResults(`RETURN CONTAINS("café", "e", true)`));
+      // e\u0301 and /u00e9 are both é encoded differently
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("caf\u00e9", "e\u0301", true)`));
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("cafe\u0301", "\u00e9", true)`));
+      assertEqual([ -1 ], getQueryResults(`RETURN CONTAINS("cafe\u0301", "e", true)`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
