@@ -1,6 +1,12 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
-* COR-1082 / github issue #23425:
+
+* Updated ArangoDB Starter to v0.19.29.
+
+* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
+* COR-1083 / github issue #23425:
   Fixed the incorrect usage of released pool analyzer.
 
 * BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
@@ -57,8 +63,6 @@
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
   This fixes issue #23360.
-
-* Updated ArangoDB Starter to v0.19.28.
 
 * The AQL optimizer uses a sparse index for a branch of an `OR` condition
   only if that branch itself rules out `null` for the indexed attribute.
