@@ -103,7 +103,7 @@ function CommonStatisticsSuite() {
 
     testIntermediateCommitsCommit: function () {
       let stats1 = internal.serverStatistics();
-      db._query(`FOR i IN 1..3 INSERT { "ulf" : i } IN ${c.name()}`, {}, { "intermediateCommitCount" : 2});
+      db._query(`FOR i IN 1..1001 INSERT { "ulf" : i } IN ${c.name()}`, {}, { "intermediateCommitCount" : 2});
       let stats2 = internal.serverStatistics();
 
       if (!internal.isCluster()) {
