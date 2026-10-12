@@ -1095,6 +1095,8 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function CONTAINS
 AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
                              VPackFunctionParametersView parameters) {
+  static char const* AFN = "CONTAINS";
+
   auto* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
@@ -1106,33 +1108,32 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
 
   bool const willReturnIndex = returnIndex.toBoolean();
 
-  int result = -1;  // default is "not found"
-  {
-    auto buffer = ThreadLocalStringLeaser::lease();
-    velocypack::StringSink adapter(buffer.get());
+  auto buf1 = ThreadLocalStringLeaser::lease();
+  velocypack::StringSink adapter(buf1.get());
+  appendAsString(vopts, adapter, value);
+  icu_64_64::UnicodeString uBuf(buf1->data(),
+                                static_cast<int32_t>(buf1->length()));
 
-    appendAsString(vopts, adapter, value);
-    size_t const valueLength = buffer->length();
+  auto buf2 = ThreadLocalStringLeaser::lease();
+  velocypack::StringSink adapter2(buf2.get());
+  appendAsString(vopts, adapter2, search);
+  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
+                                      static_cast<int32_t>(buf2->length()));
 
-    size_t const searchOffset = buffer->length();
-    appendAsString(vopts, adapter, search);
-    size_t const searchLength = buffer->length() - valueLength;
-
-    if (searchLength > 0) {
-      char const* found = static_cast<char const*>(
-          memmem(buffer->data(), valueLength, buffer->data() + searchOffset,
-                 searchLength));
-
-      if (found != nullptr) {
-        if (willReturnIndex) {
-          result = static_cast<int>(
-              TRI_CharLengthUtf8String(buffer->data(), found - buffer->data()));
-        } else {
-          // fake result position, but it does not matter as it will
-          // only be compared to -1 later
-          result = 0;
-        }
-      }
+  int32_t result = -1;  // default is "not found"
+  if (uSearchBuf.length() > 0 && uBuf.length() > 0) {
+    auto locale =
+        trx->vocbase().server().getFeature<LanguageFeature>().getLocale();
+    UErrorCode status = U_ZERO_ERROR;
+    icu_64_64::StringSearch stringSearch(uSearchBuf, uBuf, locale, nullptr,
+                                         status);
+    int32_t const pos = stringSearch.first(status);
+    if (U_FAILURE(status)) {
+      registerICUWarning(ctx, AFN, status);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (pos != USEARCH_DONE) {
+      result = pos;
     }
   }
 
