@@ -25,17 +25,92 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Functions.h"
 #include "Basics/ResultT.h"
+#include "Basics/system-compiler.h"
 
 #include <unicode/locid.h>
 
-#include <algorithm>
-#include <cstddef>
 #include <string_view>
+
+namespace arangodb {
+struct ICancellationToken;
+}
 
 namespace arangodb::aql {
 class AqlFunctionsInternalCache;
 
 namespace functions {
+
+enum class StringFunctionsName {
+  kSubstitute,
+  kToString,
+  kToChar,
+  kRepeat,
+  kFindFirst,
+  kFindLast,
+  kConcatSeparator,
+  kCharLength,
+  kLower,
+  kUpper,
+  kSubstring,
+  kSubstringBytes,
+  kLeft,
+  kRight,
+  kTrim,
+  kLTrim,
+  kRTrim,
+  kConcat,
+  kContains,
+  kLike,
+  kSplit,
+};
+
+constexpr std::string_view functionName(StringFunctionsName name) noexcept {
+  switch (name) {
+    case StringFunctionsName::kSubstitute:
+      return "SUBSTITUTE";
+    case StringFunctionsName::kToString:
+      return "TO_STRING";
+    case StringFunctionsName::kToChar:
+      return "TO_CHAR";
+    case StringFunctionsName::kRepeat:
+      return "REPEAT";
+    case StringFunctionsName::kFindFirst:
+      return "FIND_FIRST";
+    case StringFunctionsName::kFindLast:
+      return "FIND_LAST";
+    case StringFunctionsName::kConcatSeparator:
+      return "CONCAT_SEPARATOR";
+    case StringFunctionsName::kCharLength:
+      return "CHAR_LENGTH";
+    case StringFunctionsName::kLower:
+      return "LOWER";
+    case StringFunctionsName::kUpper:
+      return "UPPER";
+    case StringFunctionsName::kSubstring:
+      return "SUBSTRING";
+    case StringFunctionsName::kSubstringBytes:
+      return "SUBSTRING_BYTES";
+    case StringFunctionsName::kLeft:
+      return "LEFT";
+    case StringFunctionsName::kRight:
+      return "RIGHT";
+    case StringFunctionsName::kTrim:
+      return "TRIM";
+    case StringFunctionsName::kLTrim:
+      return "LTRIM";
+    case StringFunctionsName::kRTrim:
+      return "RTRIM";
+    case StringFunctionsName::kConcat:
+      return "CONCAT";
+    case StringFunctionsName::kContains:
+      return "CONTAINS";
+    case StringFunctionsName::kLike:
+      return "LIKE";
+    case StringFunctionsName::kSplit:
+      return "SPLIT";
+  }
+  ADB_UNREACHABLE;
+}
 
 struct StringFunctionContext {
   // the transaction's options resolve custom types (e.g. _id) and translated
@@ -44,72 +119,24 @@ struct StringFunctionContext {
   icu_64_64::Locale const& locale;
   // like and split string function save their built regexes into a cache
   AqlFunctionsInternalCache& cache;
+  // lets long regex matches stop when the query is killed
+  ICancellationToken const* cancellationToken = nullptr;
 };
 
-using PureStringFunction = ResultT<AqlValue> (*)(
-    VPackFunctionParametersView parameters, StringFunctionContext const& env);
+ResultT<AqlValue> runStringFunction(StringFunctionsName name,
+                                    VPackFunctionParametersView parameters,
+                                    StringFunctionContext const& env);
 
 // registers a failed result as a warning and returns null
-AqlValue callPure(ExpressionContext* ctx, std::string_view functionName,
-                  PureStringFunction fn,
-                  VPackFunctionParametersView parameters);
-
-// lets a string literal be passed as a template argument
-template<std::size_t N>
-struct FunctionName {
-  constexpr FunctionName(char const (&name)[N]) { std::copy_n(name, N, value); }
-  char value[N];
-};
+AqlValue callStringFunction(ExpressionContext* ctx, StringFunctionsName name,
+                            VPackFunctionParametersView parameters);
 
 // explicit name: under CALL/APPLY the node is the CALL/APPLY node
-template<PureStringFunction F, FunctionName Name>
+template<StringFunctionsName Name>
 AqlValue adapt(ExpressionContext* ctx, AstNode const&,
                VPackFunctionParametersView parameters) {
-  return callPure(ctx, {Name.value, sizeof(Name.value) - 1}, F, parameters);
+  return callStringFunction(ctx, Name, parameters);
 }
-
-ResultT<AqlValue> toString(VPackFunctionParametersView parameters,
-                           StringFunctionContext const& env);
-ResultT<AqlValue> toChar(VPackFunctionParametersView parameters,
-                         StringFunctionContext const& env);
-ResultT<AqlValue> repeat(VPackFunctionParametersView parameters,
-                         StringFunctionContext const& env);
-ResultT<AqlValue> findFirst(VPackFunctionParametersView parameters,
-                            StringFunctionContext const& env);
-ResultT<AqlValue> findLast(VPackFunctionParametersView parameters,
-                           StringFunctionContext const& env);
-ResultT<AqlValue> concatSeparator(VPackFunctionParametersView parameters,
-                                  StringFunctionContext const& env);
-ResultT<AqlValue> charLength(VPackFunctionParametersView parameters,
-                             StringFunctionContext const& env);
-ResultT<AqlValue> lower(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
-ResultT<AqlValue> upper(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
-ResultT<AqlValue> substring(VPackFunctionParametersView parameters,
-                            StringFunctionContext const& env);
-ResultT<AqlValue> substringBytes(VPackFunctionParametersView parameters,
-                                 StringFunctionContext const& env);
-ResultT<AqlValue> substitute(VPackFunctionParametersView parameters,
-                             StringFunctionContext const& env);
-ResultT<AqlValue> left(VPackFunctionParametersView parameters,
-                       StringFunctionContext const& env);
-ResultT<AqlValue> right(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
-ResultT<AqlValue> trim(VPackFunctionParametersView parameters,
-                       StringFunctionContext const& env);
-ResultT<AqlValue> ltrim(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
-ResultT<AqlValue> rtrim(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
-ResultT<AqlValue> contains(VPackFunctionParametersView parameters,
-                           StringFunctionContext const& env);
-ResultT<AqlValue> concat(VPackFunctionParametersView parameters,
-                         StringFunctionContext const& env);
-ResultT<AqlValue> like(VPackFunctionParametersView parameters,
-                       StringFunctionContext const& env);
-ResultT<AqlValue> split(VPackFunctionParametersView parameters,
-                        StringFunctionContext const& env);
 
 }  // namespace functions
 }  // namespace arangodb::aql
