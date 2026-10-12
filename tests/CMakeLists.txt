@@ -167,6 +167,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
   Aql/Function/RangeFunctionTest.cpp
+  Aql/Function/StringFunctions/SubstituteFunctionTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
