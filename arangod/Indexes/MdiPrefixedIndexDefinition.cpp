@@ -32,14 +32,12 @@
 
 using namespace arangodb;
 
-Result MdiPrefixedIndexDefinition::normalize(velocypack::Builder& normalized,
-                                             velocypack::Slice definition,
-                                             bool isCreation,
-                                             Database const& /*vocbase*/) const {
+Result MdiPrefixedIndexDefinition::normalize(
+    velocypack::Builder& normalized, velocypack::Slice definition,
+    bool isCreation, Database const& /*vocbase*/) const {
   TRI_ASSERT(normalized.isOpenObject());
-  normalized.add(
-      StaticStrings::IndexType,
-      velocypack::Value(Index::oldtypeName(IndexType::MDIPrefixed)));
+  normalized.add(StaticStrings::IndexType,
+                 velocypack::Value(Index::oldtypeName(IndexType::MDIPrefixed)));
 
   if (isCreation) {
     bool est = basics::VelocyPackHelper::getBooleanValue(
