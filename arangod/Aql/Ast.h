@@ -654,8 +654,7 @@ class Ast {
       std::string_view name);
 
  private:
-  void rejectVariableAsPatternLabel(AstNode const* outVariable,
-                                    AstNode const* label) const;
+  void rejectVariableAsPatternLabel(AstNode const* label) const;
 
   /// @brief replace a bind parameter with its value equivalent.
   AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);

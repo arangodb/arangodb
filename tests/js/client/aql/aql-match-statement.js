@@ -1479,53 +1479,49 @@ function aqlMatchStatementTestSuite() {
         testRejectLetVariableAsVertexLabel: function () {
             assertRejected("LET arr = [1, 2] MATCH (v :arr) RETURN v", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'arr' refers to a variable; labels must name a collection");
+                "MATCH label 'arr' has the same name as a variable in scope; labels must name a collection");
         },
 
         testRejectSubqueryVariableAsVertexLabel: function () {
             assertRejected("LET sq = (FOR d IN vc RETURN d) MATCH (v :sq) RETURN v", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'sq' refers to a variable; labels must name a collection");
+                "MATCH label 'sq' has the same name as a variable in scope; labels must name a collection");
         },
 
         testRejectForVariableAsVertexLabel: function () {
             assertRejected("FOR d IN vc MATCH (v :d) RETURN v", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'd' refers to a variable; labels must name a collection");
+                "MATCH label 'd' has the same name as a variable in scope; labels must name a collection");
         },
 
         testRejectVariableShadowingCollectionAsVertexLabel: function () {
             assertRejected("LET vc = [1] MATCH (v :vc) RETURN v", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'vc' refers to a variable; labels must name a collection");
+                "MATCH label 'vc' has the same name as a variable in scope; labels must name a collection");
         },
 
         testRejectEarlierPatternVariableAsVertexLabel: function () {
             assertRejected("MATCH (a :vc) -[e :ec]-> (w :a) RETURN w", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'a' refers to a variable; labels must name a collection");
+                "MATCH label 'a' has the same name as a variable in scope; labels must name a collection");
         },
 
         testRejectLetVariableAsEdgeLabel: function () {
             assertRejected("LET arr = [1, 2] MATCH (v :vc) -[e :ec|arr]-> (w :vc) RETURN e", {},
                 errors.ERROR_QUERY_PARSE,
-                "MATCH label 'arr' refers to a variable; labels must name a collection");
+                "MATCH label 'arr' has the same name as a variable in scope; labels must name a collection");
         },
 
-        testAllowVertexVariableNamedLikeItsLabel: function () {
-            const result = db._query(
-                `MATCH (vc :vc {_key: "v0"}) RETURN vc._key`, {}, options).toArray();
-            assertEqual(result, ["v0"]);
+        testRejectOwnVertexVariableAsLabel: function () {
+            assertRejected(`MATCH (vc :vc {_key: "v0"}) RETURN vc._key`, {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'vc' has the same name as a variable in scope; labels must name a collection");
         },
 
-        testAllowEdgeVariableNamedLikeItsLabel: function () {
-            const result = db._query(
-                `MATCH (v :vc {_key: "v0"}) -[ec :ec]-> (w :vc)
-                 RETURN [v._key, ec._key, w._key]`,
-                {},
-                options
-            ).toArray();
-            assertEqual(result, [["v0", "e0", "v1"]]);
+        testRejectOwnEdgeVariableAsLabel: function () {
+            assertRejected(`MATCH (v :vc) -[ec :ec]-> (w :vc) RETURN ec`, {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'ec' has the same name as a variable in scope; labels must name a collection");
         },
 
     };
