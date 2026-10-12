@@ -20,8 +20,8 @@
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
 
-* COR-1105: Fixed AQL `CONTAINS(..., true)` returning a wrong index for
-  strings with multi-byte UTF-8 characters.
+* COR-1105: AQL `CONTAINS()` now matches strings using ICU like
+  `FIND_FIRST()`, fixing wrong indexes for multi-byte UTF-8 characters.
 
 * Updated ArangoDB Starter to v0.19.29.
 
