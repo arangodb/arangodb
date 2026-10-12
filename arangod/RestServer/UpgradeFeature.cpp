@@ -22,13 +22,11 @@
 
 #include "UpgradeFeature.h"
 
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Auth/UserManager.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/SupervisorFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -82,19 +80,17 @@ UpgradeFeature::UpgradeFeature(
 
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
-  if (ServerState::instance()->isCoordinator()) {
-#ifdef ARANGODB_HAVE_FORK
-    server.forceDisableFeatures<DaemonFeature>();
-    server.forceDisableFeatures<SupervisorFeature>();
-#endif
-    std::array greetingsFeature{std::type_index(typeid(GreetingsFeature))};
-    server.forceDisableFeatures(greetingsFeature);
-  } else {
+  if (!ServerState::instance()->isCoordinator()) {
     server.forceDisableFeatures(_nonServerFeatures);
-    std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
-                                 std::type_index(typeid(HttpEndpointProvider))};
-    server.forceDisableFeatures(bootstrapFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
+    TRI_ASSERT(!server.hasFeature<ActionFeature>());
+    if (server.hasFeature<BootstrapFeature>()) {
+      server.forceDisableFeatures<BootstrapFeature>();
+    }
   }
+  // a coordinator has nothing left to disable here: already unregistered
 
   DatabaseFeature& database = server.getFeature<DatabaseFeature>();
   database.enableUpgrade();
@@ -298,7 +294,7 @@ Result UpgradeFeature::performFullCompaction() {
   LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
 
   // Perform full compaction with both changeLevel and compactBottomMostLevel
   // enabled This matches the behavior of the /_admin/compact API with

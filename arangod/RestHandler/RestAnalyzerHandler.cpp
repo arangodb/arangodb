@@ -209,6 +209,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
     return arangodb::RestStatus::DONE;
   }
 
+  TRI_ASSERT(server().hasFeature<IResearchAnalyzerFeature>());
   auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
 
   auto& suffixes = _request->suffixes();

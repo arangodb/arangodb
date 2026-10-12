@@ -41,6 +41,7 @@ class ShellConsoleFeature final
   void start() override final;
   void unprepare() override final;
 
+  bool shouldConnect() const { return _options.connect; }
   bool quiet() const { return _options.quiet; }
   void setQuiet(bool value) { _options.quiet = value; }
   bool colors() const { return _options.colors; }

@@ -43,8 +43,6 @@ struct ActivitiesSchedulerTest : ::testing::Test {
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::DatabaseFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr))),

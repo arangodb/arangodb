@@ -113,7 +113,7 @@ class StorageEngineMock : private StorageEngineMockBase,
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
-  static arangodb::RecoveryState recoveryStateResult;
+  static arangodb::EngineState recoveryStateResult;
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
@@ -139,7 +139,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection,
-      arangodb::velocypack::Slice /*info*/) override;
+      arangodb::LocalStorageProperties const& /*storage*/) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -170,8 +170,8 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection& col,
                                   std::string const& keysId) override;
-  arangodb::RecoveryState recoveryState() override;
-  TRI_voc_tick_t recoveryTick() override;
+  arangodb::EngineState engineState() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                               bool isUpgrade) override;

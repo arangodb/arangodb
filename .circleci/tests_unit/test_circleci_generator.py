@@ -1302,3 +1302,79 @@ class TestJobLevelArchitectureFiltering:
         assert (
             len(workflow_aarch64["jobs"]) > 0
         ), "Job should appear in aarch64 workflow"
+
+
+class TestAddOptionalJobs:
+    """Test the optional cppcheck / clang-tidy jobs."""
+
+    def create_generator(self, clang_tidy=False):
+        """Helper to create generator with the clang-tidy opt-in set."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(clang_tidy=clang_tidy))
+        return CircleCIGenerator(config, base_config={})
+
+    def job_names(self, workflow):
+        return [name for job in workflow["jobs"] for name in job]
+
+    def test_clang_tidy_scheduled_when_requested(self):
+        """clang-tidy is added for a non-instrumented x64 build when opted in."""
+        gen = self.create_generator(clang_tidy=True)
+        workflow = {"jobs": []}
+
+        gen._add_optional_jobs(
+            workflow, BuildConfig(architecture=Architecture.X64), ["build-x64"]
+        )
+
+        assert "run-clang-tidy" in self.job_names(workflow)
+
+    def test_clang_tidy_not_scheduled_by_default(self):
+        """Without the opt-in the job is absent, even though cppcheck is not."""
+        gen = self.create_generator(clang_tidy=False)
+        workflow = {"jobs": []}
+
+        gen._add_optional_jobs(
+            workflow, BuildConfig(architecture=Architecture.X64), ["build-x64"]
+        )
+
+        names = self.job_names(workflow)
+        assert "run-clang-tidy" not in names
+        assert "run-cppcheck" in names
+
+    def test_clang_tidy_not_scheduled_for_full_run_alone(self):
+        """A full (nightly) run no longer implies clang-tidy."""
+        gen = self.create_generator(clang_tidy=False)
+        gen.config.filter_criteria.full = True
+        workflow = {"jobs": []}
+
+        gen._add_optional_jobs(
+            workflow,
+            BuildConfig(architecture=Architecture.X64, nightly=True),
+            ["build-x64"],
+        )
+
+        assert "run-clang-tidy" not in self.job_names(workflow)
+
+    def test_clang_tidy_skipped_on_aarch64(self):
+        """clang-tidy is x64 only."""
+        gen = self.create_generator(clang_tidy=True)
+        workflow = {"jobs": []}
+
+        gen._add_optional_jobs(
+            workflow, BuildConfig(architecture=Architecture.AARCH64), ["build-aarch64"]
+        )
+
+        assert "run-clang-tidy" not in self.job_names(workflow)
+
+    def test_clang_tidy_skipped_for_instrumented_build(self):
+        """Sanitizer builds carry different flags; clang-tidy skips them."""
+        gen = self.create_generator(clang_tidy=True)
+        workflow = {"jobs": []}
+
+        gen._add_optional_jobs(
+            workflow,
+            BuildConfig(
+                architecture=Architecture.X64, build_variant=BuildVariant.TSAN
+            ),
+            ["build-x64"],
+        )
+
+        assert "run-clang-tidy" not in self.job_names(workflow)

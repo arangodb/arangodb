@@ -24,10 +24,12 @@
 
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
+#include "Auth/Rbac/Service.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
 
 #include <memory>
+#include <span>
 #include <string>
 
 using namespace arangodb;
@@ -267,6 +269,78 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
   }
 
   EXPECT_EQ(ExecContext::currentAsShared(), original);
+}
+
+// --- canAccessQuery ---
+
+/**
+ * RBAC service that denies every question and counts how often it was asked
+ */
+struct DenyingRbacService final : rbac::Service {
+  int checkCalls = 0;
+
+  auto check(rbac::JwtToken const& /*token*/,
+             std::span<rbac::ActionResource const> /*queries*/)
+      -> Result override {
+    ++checkCalls;
+    return {TRI_ERROR_FORBIDDEN, "denied by test service"};
+  }
+};
+
+TEST(ExecContextTest, canAccessQuery_own_query_is_allowed) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
+
+  EXPECT_TRUE(cec.execContext->canAccessQuery("alice").ok());
+}
+
+TEST(ExecContextTest, canAccessQuery_foreign_query_requires_admin) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
+
+  auto const result = cec.execContext->canAccessQuery("bob");
+  // FakeGeneralRequest is API v0, so classic admin checks report HTTP_FORBIDDEN
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN);
+}
+
+TEST(ExecContextTest, canAccessQuery_system_read_only_is_not_admin) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::RO, auth::Level::RO);
+
+  EXPECT_FALSE(cec.execContext->canAccessQuery("bob").ok());
+}
+
+TEST(ExecContextTest, canAccessQuery_admin_may_access_foreign_query) {
+  // classic admin = read-write access to the _system database
+  auto const cec =
+      makeClassicExecContext("root", "db", auth::Level::RW, auth::Level::RO);
+
+  EXPECT_TRUE(cec.execContext->canAccessQuery("bob").ok());
+  // queries without a user (internal ones)
+  EXPECT_TRUE(cec.execContext->canAccessQuery("").ok());
+}
+
+TEST(ExecContextTest, canAccessQuery_superuser_may_access_any_query) {
+  auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
+                                           false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canAccessQuery("bob").ok());
+  EXPECT_TRUE(ctx->canAccessQuery("").ok());
+}
+
+TEST(ExecContextTest, canAccessQuery_disabled_auth_may_access_any_query) {
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Disabled{"dummy"}}, false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canAccessQuery("bob").ok());
+}
+
+TEST(ExecContextTest,
+     canAccessQuery_unauthenticated_is_denied_even_for_own_name) {
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
+
+  EXPECT_FALSE(ctx->canAccessQuery("dummy").ok());
 }
 
 }  // namespace arangodb::tests

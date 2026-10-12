@@ -302,6 +302,14 @@ size_t getParallelism(velocypack::Slice slice) {
       IndexFactory::kDefaultParallelism);
 }
 
+// A cache is meaningless without a manager, and is never built for system
+// collections, for coordinator stubs, or on a coordinator at all.
+bool canEnableCache(cache::Manager const* cacheManager,
+                    LogicalCollection const& collection) {
+  return cacheManager != nullptr && !collection.system() &&
+         !collection.isAStub() && !ServerState::instance()->isCoordinator();
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -310,20 +318,17 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, velocypack::Slice info,
+    LogicalCollection& collection, LocalStorageProperties const& storage,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, info),
+    : RocksDBMetaCollection(collection, storage),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)) {
+      _cacheEnabled(canEnableCache(cacheManager, collection) &&
+                    storage.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -395,18 +400,13 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  bool cacheEnabled = _cacheManager != nullptr &&
-                      !_logicalCollection.system() &&
-                      !_logicalCollection.isAStub() &&
-                      !ServerState::instance()->isCoordinator() &&
-                      basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed));
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
-  primaryIndex()->setCacheEnabled(cacheEnabled);
+Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
+  bool enable =
+      canEnableCache(_cacheManager, _logicalCollection) && cacheEnabled;
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(enable);
 
-  if (cacheEnabled) {
+  if (enable) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
@@ -414,7 +414,6 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
     destroyCache();
     primaryIndex()->destroyCache();
   }
-
   // nothing else to do
   return {};
 }
@@ -553,7 +552,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
         getParallelism(info));
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
       key.constructCollection(vocbase.id(), _logicalCollection.id());
@@ -655,7 +654,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 6. persist in rocksdb
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
@@ -693,7 +692,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(engine.isReady());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path", "statusString"},
