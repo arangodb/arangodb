@@ -1,7 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
-  when n exceeds array's length.
+  when n exceeds array's length. Also emmitting a warning if n is
+  negative, non-numeric or not an integer.
 
 * Updated ArangoDB Starter to v0.19.29.
 
