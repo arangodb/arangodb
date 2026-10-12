@@ -793,7 +793,8 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &aql::functions::GeoDistance ||
          func.implementation == &aql::functions::LevenshteinMatch ||
          func.implementation ==
-             &aql::functions::adapt<&aql::functions::like, "LIKE"> ||
+             &aql::functions::adapt<
+                 aql::functions::StringFunctionsName::kLike> ||
          func.implementation == &aql::functions::NgramMatch ||
          func.implementation == &aql::functions::InRange;
 }
