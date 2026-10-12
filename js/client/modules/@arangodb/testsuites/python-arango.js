@@ -65,7 +65,7 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
-    let this.jwt_secret_file = fs.join(fs.getTempPath(), "python_jwt.txt")
+    let this.jwt_secret_file = fs.join(fs.getTempPath(), "python_jwt.txt");
     fs.write(this.jwt_secret_file, "watch my eyes Mogli watch my eye");
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
