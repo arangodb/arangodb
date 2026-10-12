@@ -1359,6 +1359,34 @@ AqlValue Expression::executeSimpleExpressionComparison(ExpressionContext& ctx,
   }
 }
 
+int64_t Expression::sanitizeAtLeastValue(ExpressionContext& ctx,
+                                         AqlValue const& value) {
+  bool failed = false;
+  double d = value.toDouble(failed);
+  if (failed) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        "AT LEAST expects a non-negative integer, got a non-numeric value; "
+        "treating it as 0");
+    return 0;
+  }
+  if (d < 0) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        absl::StrCat("AT LEAST expects a non-negative integer, got ", d,
+                     "; treating it as 0"));
+    return 0;
+  }
+  int64_t truncated = static_cast<int64_t>(d);
+  if (d != truncated) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        absl::StrCat("AT LEAST expects a non-negative integer, got ", d,
+                     "; truncating it to ", truncated));
+  }
+  return truncated;
+}
+
 // execute an expression of type ExpressionType::kSimple with ARRAY COMPARISON
 AqlValue Expression::executeSimpleExpressionArrayComparison(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) {
@@ -1413,11 +1441,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     AqlValue atLeastValue =
         executeSimpleExpression(ctx, q->getMember(0), mustDestroy, false);
     AqlValueGuard guard(atLeastValue, mustDestroy);
-    atLeast = atLeastValue.toInt64();
-    if (atLeast < 0) {
-      atLeast = 0;
-    }
-    TRI_ASSERT(atLeast >= 0);
+    atLeast = sanitizeAtLeastValue(ctx, atLeastValue);
   }
 
   std::pair<size_t, size_t> requiredMatches =
@@ -1768,11 +1792,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         AqlValue atLeastValue = executeSimpleExpression(
             ctx, quantifier.getValue(), mustDestroy, false);
         AqlValueGuard guard(atLeastValue, mustDestroy);
-        atLeast = atLeastValue.toInt64();
-        if (atLeast < 0) {
-          atLeast = 0;
-        }
-        TRI_ASSERT(atLeast >= 0);
+        atLeast = sanitizeAtLeastValue(ctx, atLeastValue);
       }
       std::tie(minRequiredItems, maxRequiredItems) =
           Quantifier::requiredMatches(n, quantifierNode,
