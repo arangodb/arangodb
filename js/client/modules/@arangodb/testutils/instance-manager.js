@@ -166,10 +166,9 @@ class instanceManager {
     } else if (this.addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
       this.restKeyFile = this.addArgs['server.jwt-secret-keyfile'];
       this.jwt_secret = inst.loadJWTKeyFile(this.restKeyFile);
-    } else if (this.options.cluster && (this.jwt_secret === "") &&
-               !this.addArgs.hasOwnProperty('server.jwt-secret')) {
+    } else if (this.options.cluster && this.jwt_secret === "") {
       this.jwt_secret = "Open Sesame!Open Sesame!Open Ses";
-      this.addArgs['server.jwt-secret'] = this.jwt_secret;
+      this.addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, this.jwt_secret);
     }
 
     if (this.options.encryptionAtRest) {
