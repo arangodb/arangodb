@@ -183,17 +183,16 @@ buffer (backed by a log file) before closing the buffer and queuing it to be
 flushed to standard storage. Larger values than the default may improve
 performance, especially for bulk loads.)");
 
-  opts->addOption(
-          "--rocksdb.max-write-buffer-number",
-          "The maximum number of write buffers that build up in memory "
-          "(default: number of column families + 2). "
-          "You can only increase the number.",
-          new UInt64Parameter(&options.maxWriteBufferNumber),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
+  opts->addOption("--rocksdb.max-write-buffer-number",
+                  "The maximum number of write buffers that build up in memory "
+                  "(default: number of column families + 2). "
+                  "You can only increase the number.",
+                  new UInt64Parameter(&options.maxWriteBufferNumber),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(If this number is reached before the buffers can
 be flushed, writes are slowed or stalled.)");
 
