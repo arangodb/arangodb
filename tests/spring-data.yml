@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-spring:'
     second_repo: git@github.com:arangodb/spring-data.git
     branch: main

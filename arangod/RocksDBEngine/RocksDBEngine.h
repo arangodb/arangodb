@@ -52,6 +52,7 @@
 #include "RestServer/IFlushControl.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "VectorIndex/IVectorIndexProvider.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -207,6 +208,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
+  RocksDBIndexFactory const& indexFactory() const override;
+
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
@@ -214,7 +217,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) override;
+      LogicalCollection& collection,
+      LocalStorageProperties const& storage) override;
 
   void getCapabilities(velocypack::Builder& builder,
                        uint32_t apiVersion) const override;
@@ -347,6 +351,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
+  uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 

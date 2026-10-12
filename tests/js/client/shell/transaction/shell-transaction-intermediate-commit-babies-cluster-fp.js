@@ -87,8 +87,9 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
       
+      // no intermediate commit, because the only batch is committed at the end
       let intermediateCommitsAfter = leader.getMetric("arangodb_intermediate_commits_total");
-      assertEqual(intermediateCommitsBefore + 1, intermediateCommitsAfter);
+      assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
 
       assertEqual(1000, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
@@ -169,12 +170,12 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
         assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
     
-      // some intermediate commit must have happened (not 100, but 9, because AQL insert operates
-      // in batch sizes of 1000)
+      // some intermediate commit must have happened (not 100, but 8, because AQL insert operates
+      // in batch sizes of 1000 and commits before the next batch)
       let intermediateCommitsAfter = leader.getMetric("arangodb_intermediate_commits_total");
-      assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
+      assertEqual(intermediateCommitsBefore + 8, intermediateCommitsAfter);
       
-      assertEqual(9000, db._collection(cn).count());
+      assertEqual(8000, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
     },
   };

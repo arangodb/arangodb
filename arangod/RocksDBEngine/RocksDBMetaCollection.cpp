@@ -72,13 +72,12 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 
 }  // namespace
 
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             velocypack::Slice info)
+RocksDBMetaCollection::RocksDBMetaCollection(
+    LogicalCollection& collection, LocalStorageProperties const& storage)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
-      _objectId(basics::VelocyPackHelper::stringUInt64(
-          info, StaticStrings::ObjectId)),
+      _objectId(storage.objectId),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),

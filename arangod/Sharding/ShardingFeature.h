@@ -27,6 +27,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 namespace arangodb {
 
 class ShardingInfo;
@@ -48,6 +50,11 @@ class ShardingFeature : public application_features::ApplicationFeature {
 
   std::unique_ptr<ShardingStrategy> create(std::string const& name,
                                            ShardingInfo* sharding);
+
+  /// @brief creates the named strategy, or the default for an existing
+  /// collection when no name is given.
+  std::unique_ptr<ShardingStrategy> createOrDefault(
+      std::optional<std::string> const& name, ShardingInfo* sharding);
 
   /// @brief returns the name of the default sharding strategy for new
   /// collections

@@ -389,7 +389,8 @@ void RestTransactionHandler::generateTransactionResult(
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
 #ifdef USE_V8
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");
@@ -406,6 +407,7 @@ void RestTransactionHandler::executeJSTransaction() {
   std::string portType = _request->connectionInfo().portType();
 
   bool allowUseDatabase =
+      server().hasFeature<ActionFeature>() &&
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);

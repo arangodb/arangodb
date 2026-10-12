@@ -574,19 +574,6 @@ ExecutionStats& operator+=(ExecutionStats& executionStats,
 // avoid multiple access rights check! Adding buffering for
 // LateMaterializeExecutor!
 
-struct FilterCtx final : irs::attribute_provider {
-  explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
-      : _execCtx(ctx) {}
-
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
-               ? &_execCtx
-               : nullptr;
-  }
-
-  iresearch::ExpressionExecutionContext _execCtx;
-};
-
 inline constexpr irs::bytes_view kNullSlice{VPackSlice::nullSliceData, 1};
 
 template<bool copyStored, bool ordered, bool emitSearchDoc,
@@ -719,7 +706,7 @@ class IResearchViewExecutorBase {
   IRS_NO_UNIQUE_ADDRESS
   irs::utils::Need<isMaterialized, MultiGetContext> _context;
   iresearch::ViewExpressionContext _ctx;
-  FilterCtx _filterCtx;
+  iresearch::FilterCtx _filterCtx;
   iresearch::ViewSnapshotPtr _reader;
   irs::proxy_filter::cache_ptr _cache;
   irs::filter::prepared::ptr _filter;

@@ -237,7 +237,27 @@ function optimizerSparseTestSuite () {
       assertNotEqual(-1, index);
       assertTrue(nodes[index].indexes[0].sparse);
     },
-    
+
+    testSparseSkiplistLtWithNonNullInOtherOrBranch : function () {
+      const cn = "UnitTestsSparseOr";
+      db._drop(cn);
+      let sc = db._create(cn);
+      try {
+        sc.insert([{ value1: null, value2: 1 }, { value1: 7, value2: 1 }]);
+        sc.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+
+        // only one OR branch excludes null, the other one must still find the
+        // document with value1 == null
+        ["doc.value1 >= 0", "doc.value1 != null"].forEach((nonNull) => {
+          let query = "FOR doc IN " + cn + " FILTER doc.value1 < 5 && (" + nonNull + " || doc.value2 == 1) RETURN doc.value2";
+          assertEqual([1], db._query(query).toArray(), query);
+          assertEqual([1], db._query(query, null, { optimizer: { rules: ["-all"] } }).toArray(), query);
+        });
+      } finally {
+        db._drop(cn);
+      }
+    },
+
     testSparseSkiplistGeNullRange : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       

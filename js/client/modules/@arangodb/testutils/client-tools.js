@@ -744,7 +744,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   let args = Object.assign(makeArgsArangosh(
     options, instanceManager,
     // waitData needs JWT access for the _users collection
-    writeReadClean === 2
+    (writeReadClean === 2 && instanceManager.options.cluster)
   ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
@@ -956,6 +956,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -968,6 +969,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };

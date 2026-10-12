@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-spark:'
     second_repo: git@github.com:arangodb/arangodb-spark-datasource.git
     branch: main

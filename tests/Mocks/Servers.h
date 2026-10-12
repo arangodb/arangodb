@@ -38,6 +38,7 @@ namespace arangodb {
 
 class LogicalCollection;
 class Scheduler;
+struct IndexTypeFactory;
 
 namespace network {
 class ConnectionPool;
@@ -138,7 +139,7 @@ class MockServer {
   // raw pointes to, so they must live longer than _server.
   std::vector<std::shared_ptr<void>> _optionProviders;
   arangodb::application_features::ApplicationServer _server;
-  std::unique_ptr<StorageEngineMock> _engine;
+  StorageEngineMock* _engine = nullptr;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
   std::string _testFilesystemPath;
@@ -305,6 +306,7 @@ class MockClusterServer
   bool _useAgencyMockPool;
   int _dummy;
   ServerID _serverId;
+  std::shared_ptr<IndexTypeFactory> _iresearchLinkFactory;
 };
 
 class MockDBServer : public MockClusterServer {

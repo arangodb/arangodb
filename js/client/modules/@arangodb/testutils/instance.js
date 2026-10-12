@@ -142,6 +142,11 @@ function makeAuthorizationHeaders (options, jwtSecret=false) {
   }
 }
 
+function loadJWTKeyFile(fn) {
+  // must remove whitespace - as in the server
+  return fs.read(fn).trim();
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts endpoints to URL
 // //////////////////////////////////////////////////////////////////////////////
@@ -164,10 +169,15 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
+  // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
+  // point --server.external-rbac-service at the locally launched dummy. The
+  // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
+  // gone on purpose - the instance now derives JWT from moreArgs itself (see
+  // the jwt-secret handling further down), so passing them in was redundant.
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
-              rootDir, tmpDir, restKeyFile,
-              jwt_secret, mem) {
+              rootDir, tmpDir,
+              jwt_secret, mem, rbacPort) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -175,6 +185,7 @@ class instance {
     this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
+    this.rbacPort = rbacPort;
 
     this.moreArgs = {};
     this.args = {};
@@ -193,7 +204,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
@@ -221,6 +231,7 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
+    this.hasSetPassvoid = false;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -259,10 +270,10 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
+      rbacPort: this.rbacPort,
       port: this.port,
       url: this.url,
       endpoint: this.endpoint,
@@ -288,10 +299,10 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
+    this.rbacPort = struct['rbacPort'];
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -452,6 +463,14 @@ class instance {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
 
+    if (this.options.rbac) {
+      if (typeof this.options.rbac !== "string") {
+        this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      } else {
+        this.args["server.external-rbac-service"] = this.options.rbac;
+      }
+      this.args["server.harden"] = true;
+    }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
@@ -537,11 +556,6 @@ class instance {
         this.args['cluster.default-replication-factor'] = '2';
       }
     }
-    if (this.options.encryptionAtRest &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
-    }
     if (this.options.isInstrumented && this.instanceRole in [
       instanceRole.dbServer,
       instanceRole.coordinator,
@@ -587,14 +601,6 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _executeArangod (moreArgs, instanceJson) {
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.jwt_secret = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-    }
-
     let cmd = pu.ARANGOD_BIN;
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
@@ -685,15 +691,6 @@ class instance {
   };
   restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
-    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = moreArgs['server.jwt-secret'];
-      this.jwt_secret = moreArgs['server.jwt-secret'];
-    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(moreArgs['server.jwt-secret-folder']);
-      files = files.sort();
-      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
-      this.jwt_secret = this.JWT;
-    }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
@@ -822,8 +819,9 @@ class instance {
       return;
     }
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
-    httpOptions.method = 'POST';
+    httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+
     while (true) {
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
@@ -834,13 +832,13 @@ class instance {
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
-          if (this.jwt_secret) {
+          if (this.jwt_secret !== '') {
             print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
-                                 this.isFrontend() ? `${this.options.username}` : undefined,
-                                 this.isFrontend() ? this.options.password : undefined,
-                                 true,
+                                 undefined,
+                                 undefined,
+                                 false,
                                  this.jwt_secret)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
@@ -850,7 +848,7 @@ class instance {
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  `${this.options.username}`,
-                                 this.options.password,
+                                 this.hasSetPassvoid ? this.options.password: '',
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
@@ -909,8 +907,8 @@ class instance {
         }
       }
     }
-    if (this.jwt_secret) {
-      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.JWT}`);
+    if (this.jwt_secret !== '') {
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.jwt_secret}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
                                    this.isFrontend() ? this.options.password : undefined,
@@ -1101,8 +1099,8 @@ class instance {
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
-        try {
-          if (!this.toThisInstance(() => {
+        if (!this.toThisInstance(() => {
+          try {
             arango.timeout(5);
             let reply = arango.DELETE_RAW('/_admin/shutdown', '');
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
@@ -1120,18 +1118,18 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          }, false, false)) { // the primary connection may not be restored - we don't care.
-            if (!this.options.noStartStopLogs) {
-              print(sockStat);
-            }
+          } catch (ex) {
+            print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
+            this.exitStatus = killExternal(this.pid);
+            this._disconnect();
+            this.pid = null;
+          } finally {
+            arango.timeout(oldTimeout);
           }
-        } catch (ex) {
-          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
-          this.exitStatus = killExternal(this.pid);
-          this._disconnect();
-          this.pid = null;
-        } finally {
-          arango.timeout(oldTimeout);
+        }, false, false)) { // the primary connection may not be restored - we don't care.
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
       }  
     } else {
@@ -1266,10 +1264,39 @@ class instance {
     return true;
   }
 
+  encryptionKeyReload() {
+    return this.toThisInstance(() => {
+      return arango.POST_RAW('/_admin/server/encryption', {});
+    }, true);
+  }
+  setLogLevel(logLevel) {
+    return this.toThisInstance(() => {
+      return arango.PUT_RAW('/_admin/log/level', JSON.stringify(logLevel));
+    }, true);
+  }
+
+  getCurrentWalFiles() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/server/wal-files');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return ret.parsedBody.result;
+    });
+  }
+  recoveryStartSequence() {
+    return this.toThisInstance(() => {
+      let ret = arango.GET_RAW('/_admin/wal/recovery_start_sequence');
+      if (ret.code !== 200) {
+        throw new ArangoError(ret);
+      }
+      return `${ret.parsedBody}`;
+    });
+  }
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
-  /////////////                Utility functionality                             ////////////////////
+  /////////////                Utility functionality                   ////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1557,6 +1584,8 @@ class instance {
         throw caughtEx;
       }
       throw new Error(`failed to restore connection to ${handle}`);
+    } else if (!reconnected && this.options.extremeVerbosity) {
+      print(`${CYAN}${Date()} ignoring reconnect error as you requested: ${caughtEx}${RESET}`);
     }
     return ret;
   }
@@ -1825,6 +1854,7 @@ class instance {
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.encodeJWTSecret = encodeJWTSecret;
+exports.loadJWTKeyFile = loadJWTKeyFile;
 exports.instance = instance;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;

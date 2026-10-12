@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-java:'
     second_repo: git@github.com:arangodb/arangodb-java-driver.git
     branch: main

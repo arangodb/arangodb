@@ -50,6 +50,10 @@ struct ClientFeatureOptions {
   bool haveServerPassword{false};
 
   bool allowJwtSecret{false};
+  /// exchange --server.username/--server.password for a JWT via /_open/auth
+  /// at startup and renew it; off for arangosh, whose fuerte connection
+  /// performs its own login and follows credential changes at runtime
+  bool loginViaOpenAuth{true};
   size_t maxNumEndpoints{1};
 };
 

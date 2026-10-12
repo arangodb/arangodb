@@ -28,6 +28,7 @@
 // @brief common globals
 // //////////////////////////////////////////////////////////////////////////////
 
+global.SYS_IS_V8_BUILD = true;
 global.Buffer = require('buffer').Buffer;
 global.process = require('process');
 global.setInterval = global.setInterval || function () {};

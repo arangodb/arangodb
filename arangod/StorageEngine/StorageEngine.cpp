@@ -36,6 +36,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -46,11 +47,10 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory,
                              IDatabaseProvider& databaseProvider,
                              IDatabaseBootstrap& databaseBootstrap)
-    : ApplicationFeature{server, registration, featureName},
+    : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _databaseBootstrap(databaseBootstrap),
       _indexFactory(std::move(indexFactory)),
@@ -69,6 +69,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
+
+uint64_t StorageEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId;
+}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {

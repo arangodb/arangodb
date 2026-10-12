@@ -29,7 +29,6 @@
 #include "Basics/PhysicalMemory.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -126,10 +125,8 @@ static void JS_ServerStatistics(
       .FromMaybe(false);
 
   // transaction info
-  auto const& ts = v8g->server()
-                       .getFeature<DatabaseFeature>()
-                       .engine()
-                       .transactionStatistics();
+  auto const& ts =
+      v8g->server().getFeature<StorageEngine>().transactionStatistics();
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
   v8TransactionInfoObj
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "started"),

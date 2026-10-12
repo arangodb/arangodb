@@ -419,16 +419,16 @@ RocksDBVectorIndex::bruteForceSearch(
     return true;
   });
 
-  // Truncate labels and distances to min(topK, total_no_of_documents)
-  labels.resize(n);
-  distances.resize(n);
-
   // Reorder heap so results are sorted
   if (isDescending) {
     faiss::minheap_reorder(topK, distances.data(), labels.data());
   } else {
     faiss::maxheap_reorder(topK, distances.data(), labels.data());
   }
+
+  // Truncate labels and distances to min(topK, total_no_of_documents)
+  labels.resize(n);
+  distances.resize(n);
 
   // L2: fvec_L2sqr returns squared distances, take sqrt
   if (_definition.metric == vector::SimilarityMetric::kL2) {

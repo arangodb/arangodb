@@ -88,7 +88,6 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   AqlValue const& regex =
       aql::functions::extractFunctionParameterValue(parameters, 1);
   appendAsString(vopts, adapter, regex);
-  bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
@@ -98,6 +97,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
@@ -109,19 +109,12 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
 
-  if (!isEmptyExpression && (buffer->length() == 0)) {
-    // Edge case: splitting an empty string by non-empty expression produces an
-    // empty string again.
-    result->add(VPackValue(""));
-    result->close();
-    return AqlValue(result->slice(), result->size());
-  }
-
   UErrorCode status = U_ZERO_ERROR;
 
   matcher->reset(valueToMatch);
   bool find = matcher->find();
   if (!find) {
+    functions::throwIfKilled(expressionContext);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -199,6 +192,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
@@ -224,6 +218,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
     auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    functions::throwIfKilled(expressionContext);
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
@@ -303,6 +298,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -315,6 +311,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
       matcher, buffer->data(), buffer->length(), true, error);
 
   if (error) {
+    functions::throwIfKilled(expressionContext);
     // compiling regular expression failed
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
@@ -349,6 +346,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -365,6 +363,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   std::string result = basics::Utf8Helper::DefaultUtf8Helper.replace(
       matcher, buffer->data(), split, buffer->data() + split,
       buffer->length() - split, false, error);
+  functions::throwIfKilled(expressionContext);
 
   if (error) {
     // compiling regular expression failed

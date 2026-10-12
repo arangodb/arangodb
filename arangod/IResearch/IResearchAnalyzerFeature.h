@@ -49,6 +49,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 
 namespace arangodb {
@@ -585,7 +586,9 @@ class IResearchAnalyzerFeature final
   Result storeAnalyzer(AnalyzerPool& pool,
                        transaction::OperationOrigin operationOrigin);
 
-  StorageEngine& engine() const noexcept { return _databaseFeature.engine(); }
+  StorageEngine& engine() const noexcept {
+    return server().getFeature<StorageEngine>();
+  }
 
   /// @brief dangling analyzer revisions collector
   std::function<void(bool)> _gcfunc;

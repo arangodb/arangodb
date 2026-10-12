@@ -215,13 +215,17 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
+  auto headers = request()->headers();
+  headers.insert_or_assign(StaticStrings::Authorization,
+                           "SENSITIVE_DETAILS_HIDDEN");
+
   _activity = activities::make<arangodb::rest::RestHandlerActivity>(
       RestHandlerActivityData{
           .handler = name(),           //
           .url = _request->fullUrl(),  //
           .method = std::string{GeneralRequest::translateMethod(
               _request->requestType())},  //
-          .headers = request()->headers(),
+          .headers = std::move(headers),
           .connectionInfo = request()->connectionInfo()});
 }
 

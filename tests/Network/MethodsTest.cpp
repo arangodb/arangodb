@@ -26,6 +26,8 @@
 #include <fuerte/requests.h>
 #include <velocypack/Parser.h>
 
+#include <chrono>
+
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
@@ -49,6 +51,7 @@ struct DummyConnection final : public fuerte::Connection {
   void sendRequest(std::unique_ptr<fuerte::Request> r,
                    fuerte::RequestCallback cb) override {
     _sendRequestNum++;
+    _lastTimeout = r->timeout();
     cb(_err, std::move(r), std::move(_response));
     if (_err == fuerte::Error::WriteError ||
         _err == fuerte::Error::ConnectionClosed) {
@@ -71,6 +74,7 @@ struct DummyConnection final : public fuerte::Connection {
   fuerte::Error _err = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> _response;
   int _sendRequestNum = 0;
+  std::chrono::milliseconds _lastTimeout{0};
 };
 
 struct DummyPool : public network::ConnectionPool {
@@ -633,5 +637,48 @@ TEST_F(NetworkMethodsTest,
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
   auto res = std::move(f).waitAndGet();
+  assertIsPositiveResponse(res);
+}
+
+TEST_F(NetworkMethodsTest,
+       request_with_sub_millisecond_timeout_keeps_positive_timeout) {
+  // fuerte treats a 0ms timeout as "no timeout". a sub-millisecond timeout
+  // must therefore never be truncated to 0ms when it is handed to fuerte.
+  pool->prepareGoodConnection();
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(0.0005);
+
+  VPackBuffer<uint8_t> buffer;
+  auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
+                                fuerte::RestVerb::Get, "/", buffer, reqOpts);
+
+  auto res = std::move(f).waitAndGet();
+  ASSERT_EQ(pool->_conn->_sendRequestNum, 1);
+  ASSERT_GT(pool->_conn->_lastTimeout.count(), 0);
+  assertIsPositiveResponse(res);
+}
+
+TEST_F(NetworkMethodsTest,
+       retry_request_with_sub_millisecond_timeout_keeps_positive_timeout) {
+  // the retrying variant hands the time remaining until its deadline to
+  // fuerte. with less than 1ms left this must not be truncated to 0ms.
+  pool->prepareGoodConnection();
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(0.0005);
+
+  VPackBuffer<uint8_t> buffer;
+  auto f =
+      network::sendRequestRetry(pool.get(), "tcp://example.org:80",
+                                fuerte::RestVerb::Get, "/", buffer, reqOpts);
+
+  auto res = std::move(f).waitAndGet();
+  if (pool->_conn->_sendRequestNum == 0) {
+    // the deadline had already passed before the first attempt was made
+    ASSERT_EQ(res.error, fuerte::Error::RequestTimeout);
+    return;
+  }
+  ASSERT_GT(pool->_conn->_lastTimeout.count(), 0);
   assertIsPositiveResponse(res);
 }

@@ -75,6 +75,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### fast_float
+
+* Name: fast_float
+* Version: 8.3.1
+* Date: 2026-10-04 16:26:59Z
+* Project Home: https://github.com/fastfloat/fast_float
+* License: https://raw.githubusercontent.com/fastfloat/fast_float/main/LICENSE-MIT
+* License Name: MIT License (or Apache License 2.0, or Boost Software License 1.0)
+* License Id: MIT OR Apache-2.0 OR BSL-1.0
+
 ### fasthash
 
 * Name: fasthash
@@ -1102,7 +1112,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.9
+* Version: 5.0.12
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
@@ -1281,7 +1291,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.7
+* Version: 3.1.8
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License

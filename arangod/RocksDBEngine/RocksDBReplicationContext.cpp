@@ -119,7 +119,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine,
       // buggy clients may not send the serverId
       _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
-      _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
+      _ttl{replutils::BatchInfo::sanitizeTtl(ttl)},
       _expires{TRI_microtime() + _ttl} {
   TRI_ASSERT(_ttl > 0.0);
   TRI_ASSERT(_patchCount.empty());
@@ -1120,7 +1120,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 
   std::lock_guard locker{_contextLock};
 
-  ttl = std::max(_ttl, ttl);
+  ttl = replutils::BatchInfo::sanitizeTtl(std::max(_ttl, ttl));
   TRI_ASSERT(ttl > 0.0);
   _expires = now + ttl;
 
