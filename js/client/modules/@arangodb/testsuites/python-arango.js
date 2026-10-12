@@ -30,7 +30,6 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `pythonsource`: directory of the java driver',
   '   - `pythonOptions`: additional arguments to pass via the commandline',
-  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java',
 ];
 
 const internal = require('internal');
@@ -66,12 +65,15 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
+    let this.jwt_secret_file = fs.join(fs.getTempPath(), "python_jwt.txt")
+    fs.write(this.jwt_secret_file, "watch my eyes Mogli watch my eye");
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
     opts.extraArgs = {
       // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
       'server.authentication': 'true',
+      'server.jwt-secret-keyfile': this.jwt_secret_file,
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
@@ -90,7 +92,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.instanceManager.jwt_secret,
+      '--secret', this.jwt_secret_file,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',
