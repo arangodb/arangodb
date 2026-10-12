@@ -172,7 +172,9 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
-  bool timeTravelEnabled() const noexcept;
+  bool timeTravelEnabled() const noexcept {
+    return _invariants.timeTravelEnabled;
+  }
 #ifdef USE_ENTERPRISE
   bool isDisjoint() const noexcept { return _invariants.isDisjoint; }
   bool isSmart() const noexcept { return _invariants.isSmart; }

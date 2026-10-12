@@ -267,10 +267,6 @@ class PhysicalCollection {
 
   virtual bool cacheEnabled() const noexcept = 0;
 
-  // Whether this collection stores time-travel history. Only the RocksDB
-  // engine supports it; the default is "off" for every other implementation.
-  virtual bool timeTravelEnabled() const noexcept { return false; }
-
   // The timestamp at which the currently committed version of `key` was
   // created, i.e. what a new version has to be newer than. Read straight from
   // the primary index, whose entries are keyed by that timestamp. An unset

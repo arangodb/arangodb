@@ -347,8 +347,7 @@ RocksDBCollection::RocksDBCollection(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
       _cacheEnabled(canEnableCache(cacheManager, collection) &&
-                    storage.cacheEnabled),
-      _timeTravelEnabled(collection.timeTravelEnabled()) {
+                    storage.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -446,7 +445,6 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
   result.add(StaticStrings::CacheEnabled,
              VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
-  result.add(StaticStrings::EnableTimeTravel, VPackValue(_timeTravelEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
@@ -1340,7 +1338,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
 
 ResultT<std::optional<std::uint64_t>>
 RocksDBCollection::currentVersionTimestamp(std::string_view key) const {
-  TRI_ASSERT(timeTravelEnabled());
+  TRI_ASSERT(_logicalCollection.timeTravelEnabled());
   return primaryIndex()->currentVersionTimestamp(key);
 }
 
@@ -1845,7 +1843,7 @@ Result RocksDBCollection::modifyDocument(
   // key lock (see PhysicalCollection::setTimeTravelWriteTimestamp), so here it
   // is only read back out of the body.
   uint64_t writeTimestamp = 0;
-  if (timeTravelEnabled()) {
+  if (_logicalCollection.timeTravelEnabled()) {
     VPackSlice created = newDoc.get(StaticStrings::Created);
     TRI_ASSERT(created.isNumber());
     writeTimestamp = created.getNumber<uint64_t>();
@@ -1906,7 +1904,7 @@ Result RocksDBCollection::modifyDocument(
       RocksDBColumnFamilyManager::Family::Documents);
 
   rocksdb::Status s = std::invoke([&]() {
-    if (timeTravelEnabled()) {
+    if (_logicalCollection.timeTravelEnabled()) {
       // Time travel: the superseded version is kept so earlier read timestamps
       // can still resolve it, and is rewritten in place with the timestamp that
       // expired it. Its key holds the old LocalDocumentId, which the new
@@ -2055,7 +2053,7 @@ Result RocksDBCollection::modifyDocument(
       // Time travel: the previous version is retained in the Documents family,
       // so it stays part of the revision tree - removing it becomes the job of
       // the (not yet implemented) history GC.
-      if (!timeTravelEnabled()) {
+      if (!_logicalCollection.timeTravelEnabled()) {
         state->trackRemove(_logicalCollection.id(), oldRevisionId);
       }
       state->trackInsert(_logicalCollection.id(), newRevisionId);

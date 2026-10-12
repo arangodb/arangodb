@@ -125,6 +125,7 @@ arangodb::CollectionInvariants makeInvariants(
           .isSmart = descriptor.constant.isSmart,
           .isDisjoint = descriptor.constant.isDisjoint,
           .isSmartChild = descriptor.internal.isSmartChild,
+          .timeTravelEnabled = descriptor.constant.enableTimeTravel,
           .smartJoinAttribute = descriptor.constant.smartJoinAttribute};
 }
 
@@ -453,10 +454,6 @@ bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
 
-bool LogicalCollection::timeTravelEnabled() const noexcept {
-  return _physical->timeTravelEnabled();
-}
-
 /// TODO (COR-885): does not round-trip -- keyOptions is left at its default,
 /// so do not build a persisted marker from this.
 CollectionDescriptor LogicalCollection::properties() const {
@@ -467,6 +464,7 @@ CollectionDescriptor LogicalCollection::properties() const {
   d.constant.isSystem = system();
   d.constant.isSmart = _invariants.isSmart;
   d.constant.isDisjoint = _invariants.isDisjoint;
+  d.constant.enableTimeTravel = _invariants.timeTravelEnabled;
   if (auto const& sja = _invariants.smartJoinAttribute; sja.has_value()) {
     d.constant.smartJoinAttribute = *sja;
   }
@@ -992,6 +990,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   build.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
+  if (forPersistence) {
+    // internal for now, so users must not see it
+    build.add(StaticStrings::EnableTimeTravel, VPackValue(timeTravelEnabled()));
+  }
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
