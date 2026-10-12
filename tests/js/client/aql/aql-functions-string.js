@@ -1247,8 +1247,18 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("aäb", "b", true)`));
       assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("€x", "x", true)`));
       assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("a€b€", "€", true)`));
-      assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("😀x", "x", true)`));
-      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("😀😀x", "x", true)`));
+      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("😀x", "x", true)`));
+      assertEqual([ 4 ], getQueryResults(`RETURN CONTAINS("😀😀x", "x", true)`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test contains matches canonically equivalent characters
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsCanonicallyEquivalent: function () {
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("café", "é", true)`));
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("café", "é", true)`));
+      assertEqual([ -1 ], getQueryResults(`RETURN CONTAINS("café", "e", true)`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
