@@ -873,7 +873,7 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
           TRI_ERROR_TRANSACTION_NOT_FOUND,
           absl::StrCat("transaction ", tid.id(), " has already expired"));
     }
-    if (!isAuthorized(mtrx)) {
+    if (!canUse(mtrx)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_NOT_FOUND,
           absl::StrCat("not authorized to access transaction ", tid.id()));
@@ -980,7 +980,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
       return;
     }
 
-    if (!isAuthorized(it->second)) {
+    if (!canUse(it->second)) {
       LOG_TOPIC("93894", WARN, Logger::TRANSACTIONS)
           << "not authorized to access managed transaction " << tid;
       TRI_ASSERT(false);
@@ -1029,7 +1029,7 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !isAuthorized(it->second)) {
+  if (it == _transactions[bucket]._managed.end() || !canMonitor(it->second)) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -1135,8 +1135,13 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     }
 
     ManagedTrx& mtrx = it->second;
-    if (!::authorized(mtrx.user) ||
-        (!database.empty() && mtrx.db != database)) {
+    // aborting another user's transaction needs AdminKillTransactions,
+    // committing it is reserved to the owner (or the superuser)
+    bool const allowed = (status == transaction::Status::ABORTED)
+                             ? canKill(mtrx, database)
+                             : (::authorized(mtrx.user) &&
+                                (database.empty() || mtrx.db == database));
+    if (!allowed) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ true));
     }
@@ -1541,7 +1546,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
   iterateManagedTrx(
       [this, &builder, &database, details](TransactionId tid,
                                            ManagedTrx const& trx) {
-        bool authorized = isAuthorized(trx, database);
+        bool authorized = canMonitor(trx, database);
         if (details &&
             arangodb::ExecContext::current().isSuperuserOrDisabled()) {
           authorized = true;
@@ -1625,14 +1630,16 @@ Result Manager::abortAllManagedWriteTrx(std::string_view username,
     TRI_ASSERT(queryList != nullptr);
     queryList->kill(
         [](aql::Query& query) {
-          return ::authorized(query.user()) && query.isModificationQuery();
+          return ExecContext::current().canKillQuery(query.user()).ok() &&
+                 query.isModificationQuery();
         },
         false);
   });
 
   // abort local transactions
   abortManagedTrx([](TransactionState const& state, std::string const& user) {
-    return ::authorized(user) && !state.isReadOnlyTransaction();
+    return ExecContext::current().canKillTransaction(user).ok() &&
+           !state.isReadOnlyTransaction();
   });
 
   if (fanout && ServerState::instance()->isCoordinator()) {
@@ -1721,15 +1728,16 @@ bool Manager::storeManagedState(
   return it.second;
 }
 
-bool Manager::isAuthorized(ManagedTrx const& trx) const {
-  auto const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
-    // see the comment below, in isAuthorized(ManagedTrx const&,
-    // std::string_view)
-    return true;
+std::string Manager::contextDatabaseName() const {
+  auto db = ExecContext::current().vocbase();
+  if (!db.has_value()) {
+    // only the superuser acts without a request context: some internal code
+    // paths run after the request's ExecContext is gone (see the comment in
+    // canUse(ManagedTrx const&, std::string_view)), and the superuser
+    // is not restricted to a database anyway
+    TRI_ASSERT(ExecContext::current().isSuperuser());
+    return {};
   }
-  auto db = exec.vocbase();
-  TRI_ASSERT(db.has_value());
   auto const databaseName = db.value().get().name();
   TRI_ASSERT(!databaseName.empty())
       << "This function cannot be called when there's no database context";
@@ -1738,11 +1746,36 @@ bool Manager::isAuthorized(ManagedTrx const& trx) const {
         TRI_ERROR_INTERNAL,
         "Trying to access a transaction outside of a database context");
   }
-  return isAuthorized(trx, databaseName);
+  return databaseName;
 }
 
-bool Manager::isAuthorized(ManagedTrx const& trx,
-                           std::string_view database) const {
+bool Manager::canUse(ManagedTrx const& trx) const {
+  return canUse(trx, contextDatabaseName());
+}
+
+bool Manager::canMonitor(ManagedTrx const& trx) const {
+  return canMonitor(trx, contextDatabaseName());
+}
+
+bool Manager::canMonitor(ManagedTrx const& trx,
+                         std::string_view database) const {
+  auto const& exec = ExecContext::current();
+  if (exec.isSuperuser()) {
+    return true;
+  }
+  return trx.db == database && exec.canMonitorTransaction(trx.user).ok();
+}
+
+bool Manager::canKill(ManagedTrx const& trx, std::string_view database) const {
+  auto const& exec = ExecContext::current();
+  if (exec.isSuperuser()) {
+    return true;
+  }
+  return (database.empty() || trx.db == database) &&
+         exec.canKillTransaction(trx.user).ok();
+}
+
+bool Manager::canUse(ManagedTrx const& trx, std::string_view database) const {
   auto const& exec = arangodb::ExecContext::current();
   if (exec.isSuperuser()) {
     // if we are a superuser, we do not check the database.

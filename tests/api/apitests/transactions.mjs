@@ -8,13 +8,13 @@
 //
 // Auth model
 // ──────────
-//  GET    /_api/transaction          – list ongoing transactions        → AUTHEN (own user or SUPER)
-//  GET    /_api/transaction/{id}     – get transaction state            → AUTHEN
+//  GET    /_api/transaction          – list ongoing transactions        → AUTHEN (own user, AdminMonitorTransactions or SUPER)
+//  GET    /_api/transaction/{id}     – get transaction state            → AUTHEN (own user, AdminMonitorTransactions or SUPER)
 //  POST   /_api/transaction          – run JS transaction               → AUTHEN (V8 required)
 //  POST   /_api/transaction/begin    – begin stream transaction         → AUTHEN
 //  PUT    /_api/transaction/{id}     – commit stream transaction        → AUTHEN (same user or SUPER)
-//  DELETE /_api/transaction/{id}     – abort stream transaction         → AUTHEN (same user or SUPER)
-//  DELETE /_api/transaction/write    – abort all write transactions     → AUTHEN (same user or SUPER)
+//  DELETE /_api/transaction/{id}     – abort stream transaction         → AUTHEN (same user, AdminKillTransactions or SUPER)
+//  DELETE /_api/transaction/write    – abort all write transactions     → AUTHEN (same user, AdminKillTransactions or SUPER)
 // The following two have not been done because they are only in maintainer builds:
 //  GET    /_api/transaction/history  – transaction history              → SUPER (maintainer builds only)
 //  DELETE /_api/transaction/history  – clear transaction history        → SUPER (maintainer builds only)

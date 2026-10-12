@@ -113,6 +113,10 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
             os << "AdminMonitorAqlQueries";
           },
           [&](AdminKillAqlQueries const&) { os << "AdminKillAqlQueries"; },
+          [&](AdminMonitorTransactions const&) {
+            os << "AdminMonitorTransactions";
+          },
+          [&](AdminKillTransactions const&) { os << "AdminKillTransactions"; },
           [&](AdminShutdown const&) { os << "AdminShutdown"; },
           [&](AdminReadLogs const&) { os << "AdminReadLogs"; },
           [&](AdminSetLogLevel const&) { os << "AdminSetLogLevel"; },

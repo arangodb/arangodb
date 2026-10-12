@@ -72,6 +72,10 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminMonitorAqlQueries";
     case Action::AdminKillAqlQueries:
       return "db:AdminKillAqlQueries";
+    case Action::AdminMonitorTransactions:
+      return "db:AdminMonitorTransactions";
+    case Action::AdminKillTransactions:
+      return "db:AdminKillTransactions";
     case Action::AdminShutdown:
       return "db:AdminShutdown";
     case Action::AdminReadLogs:
@@ -189,6 +193,10 @@ auto describe(Action action) -> std::string_view {
       return "see the AQL queries of other users (as admin)";
     case Action::AdminKillAqlQueries:
       return "kill the AQL queries of other users (as admin)";
+    case Action::AdminMonitorTransactions:
+      return "see the transactions of other users (as admin)";
+    case Action::AdminKillTransactions:
+      return "abort the transactions of other users (as admin)";
     case Action::AdminShutdown:
       return "shut down the server (as admin)";
     case Action::AdminReadLogs:

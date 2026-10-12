@@ -319,8 +319,21 @@ class Manager final : public IManager {
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
 
-  bool isAuthorized(ManagedTrx const& trx) const;
-  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
+  /// @brief whether the current identity may use `trx`, i.e. operate inside
+  /// it (lease and return it)
+  bool canUse(ManagedTrx const& trx) const;
+  bool canUse(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief whether the current identity may see `trx` (list, state)
+  bool canMonitor(ManagedTrx const& trx) const;
+  bool canMonitor(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief whether the current identity may abort `trx`
+  bool canKill(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief name of the database of the current request context; empty when
+  /// the superuser acts without one
+  std::string contextDatabaseName() const;
 
   static std::string buildContextFromState(TransactionState& state,
                                            MetaType type);
