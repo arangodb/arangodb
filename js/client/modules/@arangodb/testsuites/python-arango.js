@@ -66,8 +66,8 @@ class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
     let jwt_secret_folder = fs.join(fs.getTempPath(), "python_jwt_dir");
-    fs.write(fs.join(jwt_secret_folder, "first_jwt", "watch my eyes Mogli watch my eye");
-    fs.write(fs.join(jwt_secret_folder, "second_jwt", "watch my eye watch my eyes Mogli");
+    fs.write(fs.join(jwt_secret_folder, "first_jwt", "watch my eyes Mogli watch my eye"));
+    fs.write(fs.join(jwt_secret_folder, "second_jwt", "watch my eye watch my eyes Mogli"));
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
