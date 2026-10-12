@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-18.
+
+* Upgraded included rclone to v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
 * Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
@@ -11,11 +16,6 @@
 * COR-1049: Disallow filters on references
   MATCH now rejects filters and attribute constraints applied to variables
   that reference documents defined outside the MATCH pattern.
-
-* Updated ArangoDB Starter to v0.20.0-preview-17.
-
-* Upgraded included rclone to v1.75.1 with go1.26.8 and non-vulnerable
-  dependencies.
 
 * Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
 
