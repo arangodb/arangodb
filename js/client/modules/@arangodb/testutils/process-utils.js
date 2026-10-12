@@ -78,6 +78,8 @@ function switchBinarySet(which) {
   currentBinarySet = which;
 }
 
+const CWD = fs.makeAbsolute(".");
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
@@ -227,6 +229,9 @@ function killRemainingProcesses(results) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}, cwd=undefined) {
+  if (cwd === undefined) {
+    cwd = CWD;
+  }
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
