@@ -754,7 +754,7 @@ class instance {
       print(".");
       sleep(1);
     }
-    print(`${Date()} upgrade of ${this.name} finished: ${this.exitStatus}`);
+    print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
     if (this.exitStatus('signal') &&
         ((this.exitStatus === 11) ||
          (this.exitStatus === 6))) {
