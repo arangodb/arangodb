@@ -65,15 +65,15 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
-    let this.jwt_secret_file = fs.join(fs.getTempPath(), "python_jwt.txt");
-    fs.write(this.jwt_secret_file, "watch my eyes Mogli watch my eye");
+    let jwt_secret_file = fs.join(fs.getTempPath(), "python_jwt.txt");
+    fs.write(jwt_secret_file, "watch my eyes Mogli watch my eye");
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
     opts.extraArgs = {
       // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
       'server.authentication': 'true',
-      'server.jwt-secret-keyfile': this.jwt_secret_file,
+      'server.jwt-secret-keyfile': jwt_secret_file,
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
@@ -82,6 +82,7 @@ class runInPythonTest extends runWithAllureReport {
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
     this.info = "runInPythonTest";
+    this.jwt_secret_file = jwt_secret_file;
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
