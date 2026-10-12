@@ -70,6 +70,8 @@ enum class Action {
   AdminWriteAqlFunctions,
   AdminQueryCache,
   AdminReadUsers,
+  AdminMonitorAqlQueries,
+  AdminKillAqlQueries,
 };
 
 namespace resources {

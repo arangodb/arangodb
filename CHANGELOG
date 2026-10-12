@@ -1,5 +1,7 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+  for more fine-grained permission setting for aql queries.
 
 * Updated ArangoDB Starter to v0.19.29.
 
