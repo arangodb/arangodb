@@ -46,7 +46,7 @@ IndexTypeCatalog::IndexTypeCatalog(
       _inverted(server) {
   // a definition is registered under its persisted name, see Index::oldtypeName
   auto reg = [&](IndexDefinition const& definition) {
-    _byName.try_emplace(std::string{Index::oldtypeName(definition._type)},
+    _byName.try_emplace(std::string{Index::oldtypeName(definition.type())},
                         &definition);
   };
 
@@ -71,7 +71,7 @@ IndexTypeCatalog::IndexTypeCatalog(
 
 IndexType IndexTypeCatalog::resolve(std::string_view name) const noexcept {
   auto it = _byName.find(std::string{name});
-  return it == _byName.end() ? IndexType::Unknown : it->second->_type;
+  return it == _byName.end() ? IndexType::Unknown : it->second->type();
 }
 
 IndexDefinition const* IndexTypeCatalog::definitionFor(

@@ -23,8 +23,18 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Indexes/IndexDefinitions.h"
+#include "Indexes/EdgeIndexDefinition.h"
+#include "Indexes/FulltextIndexDefinition.h"
+#include "Indexes/Geo1IndexDefinition.h"
+#include "Indexes/Geo2IndexDefinition.h"
+#include "Indexes/GeoIndexDefinition.h"
 #include "Indexes/IndexType.h"
+#include "Indexes/MdiIndexDefinition.h"
+#include "Indexes/MdiPrefixedIndexDefinition.h"
+#include "Indexes/PrimaryIndexDefinition.h"
+#include "Indexes/SecondaryIndexDefinition.h"
+#include "Indexes/TtlIndexDefinition.h"
+#include "Indexes/VectorIndexDefinition.h"
 #include "IResearch/IResearchInvertedIndexDefinition.h"
 
 #include <string>

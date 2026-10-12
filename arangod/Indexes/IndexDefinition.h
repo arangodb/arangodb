@@ -53,6 +53,8 @@ struct IndexDefinition {
   explicit IndexDefinition(IndexType type) : _type(type) {}
   virtual ~IndexDefinition() = default;
 
+  IndexType type() const noexcept { return _type; }
+
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -79,6 +81,7 @@ struct IndexDefinition {
                                         IndexId id,
                                         bool isClusterConstructor) const = 0;
 
+ protected:
   IndexType const _type;
 };
 

@@ -29,7 +29,6 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexDefinitions.h"
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchInvertedClusterIndex.h"

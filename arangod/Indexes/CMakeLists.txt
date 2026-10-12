@@ -1,12 +1,22 @@
 add_library(arango_indexes STATIC
+  EdgeIndexDefinition.cpp
+  FulltextIndexDefinition.cpp
+  Geo1IndexDefinition.cpp
+  Geo2IndexDefinition.cpp
+  GeoIndexDefinition.cpp
   Index.cpp
   IndexDefinition.cpp
-  IndexDefinitions.cpp
   IndexFactory.cpp
   IndexIterator.cpp
   IndexTypeCatalog.cpp
+  MdiIndexDefinition.cpp
+  MdiPrefixedIndexDefinition.cpp
+  PrimaryIndexDefinition.cpp
+  SecondaryIndexDefinition.cpp
   SimpleAttributeEqualityMatcher.cpp
   SortedIndexAttributeMatcher.cpp
+  TtlIndexDefinition.cpp
+  VectorIndexDefinition.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Index.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Covering.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp
