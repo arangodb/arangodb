@@ -26,15 +26,9 @@
 #include "Basics/voc-errors.h"
 #include "StringFunctionTestHelper.h"
 
-using namespace arangodb;
-using namespace arangodb::aql::functions;
-using namespace arangodb::tests::aql;
-
-namespace {
+namespace arangodb::tests::aql {
 
 constexpr auto kSubstitute = StringFunctionsName::kSubstitute;
-
-}  // namespace
 
 TEST(SubstituteFunctionTest, replaces_search_string_with_replacement) {
   expectResult(kSubstitute, R"(["the quick brown fox", "fox", "dog"])",
@@ -212,3 +206,5 @@ TEST(SubstituteFunctionTest, mapping_with_extra_arguments_is_number_mismatch) {
   expectError(kSubstitute, R"(["abc", {"a": "b"}, 1, 2])",
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
 }
+
+}  // namespace arangodb::tests::aql
