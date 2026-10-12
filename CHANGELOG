@@ -1,5 +1,7 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Fix compilation issues with missing headers for unit... and isatty.
+
 * COR-1082 / github issue #23425:
   Fixed the incorrect usage of released pool analyzer.
 
@@ -140,10 +142,17 @@
   now compared structurally, and two objects listing the same members in a
   different order compare as equal unless a key is duplicated or computed.
 
+<<<<<<< HEAD
+* COR-915: returnNew/returnOld are stored as document attributes in the _to_ shadow
+  collection of a non-disjoint SmartGraph.
+  Fix remote SmartGraph edge modifications so returnNew/returnOld response
+  data is not persisted in the _to shadow collection.
+=======
 * COR-915: returnNew/returnOld are stored as document attributes in the _to_
   shadow collection of a non-disjoint SmartGraph.
   Fix remote SmartGraph edge modifications so returnNew/returnOld response data
   is not persisted in the _to shadow collection.
+>>>>>>> e8846fa3478f5cf02c846d0b8b71746a2bacb7ca
 
 * arangodump, arangorestore and arangobackup now report the server's error (e.g.
   "HTTP 401 (Unauthorized): ArangoError 11: User not authenticated") together
@@ -204,9 +213,14 @@
   Fixed an issue where certain AQL queries using index joins across multiple 
   collections could cause the server to abort when a join condition referenced 
   a calculated expression based on a document from an earlier collection.
+<<<<<<< HEAD
+  Such queries are now handled safely without triggering an assertion failure or server crash.
+
+=======
   Such queries are now handled safely without triggering an assertion failure or
   server crash.
   
+>>>>>>> e8846fa3478f5cf02c846d0b8b71746a2bacb7ca
 * Upgraded OpenSSL to 3.5.8.
 
 

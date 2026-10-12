@@ -105,8 +105,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
     auto initRes = index->init(
         definition, pathExists, [&collection]() -> irs::directory_attributes {
           auto& engine = collection.vocbase().engine<RocksDBEngine>();
-          auto* encryption = engine.encryptionProvider();
-          if (encryption) {
+          if (auto* encryption = engine.encryptionProvider()) {
             return irs::directory_attributes{
                 std::make_unique<RocksDBEncryptionProvider>(
                     *encryption, engine.rocksDBOptions())};
@@ -333,6 +332,7 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
   bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
+
   VPackObjectBuilder objectBuilder(&builder);
   IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
                                        &collection().vocbase(), builder,

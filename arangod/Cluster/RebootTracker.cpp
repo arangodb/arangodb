@@ -157,18 +157,19 @@ void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
     return;
   }
   auto schedule = [&](auto&& batch) noexcept {
-    _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                      [batch = std::move(batch)]() mutable noexcept {
-                        // Reboot callbacks perform server-internal cleanup
-                        // (e.g. aborting transactions of failed servers) and
-                        // act as the server itself; they are queued from the
-                        // AgencyCache thread, which deliberately carries no
-                        // ExecContext.
-                        ExecContextSuperuserScope superuserScope;
-                        for (auto& callbacks : batch) {
-                          safeInvokes(callbacks);
-                        }
-                      });
+    _scheduler->queue(
+        RequestLane::CLUSTER_INTERNAL,
+        [batch = std::forward<decltype(batch)>(batch)]() mutable noexcept {
+          // Reboot callbacks perform server-internal cleanup
+          // (e.g. aborting transactions of failed servers) and
+          // act as the server itself; they are queued from the
+          // AgencyCache thread, which deliberately carries no
+          // ExecContext.
+          ExecContextSuperuserScope superuserScope;
+          for (auto& callbacks : batch) {
+            safeInvokes(callbacks);
+          }
+        });
   };
   auto& reboots = it->second;
   TRI_ASSERT(!reboots.empty());
