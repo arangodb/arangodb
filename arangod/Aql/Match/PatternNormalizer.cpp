@@ -24,9 +24,14 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Collection.h"
+#include "Aql/Collections.h"
+#include "Aql/QueryContext.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <cmath>
 #include <cstdint>
@@ -155,7 +160,7 @@ NormalizedVertex PatternNormalizer::normalizeVertex(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "match vertex without collection label");
   }
-  vertex.collection = normalizeDataSource(*label);
+  vertex.collection = normalizeDataSource(*label, TRI_COL_TYPE_DOCUMENT);
   vertex.properties = normalizeProperties(typed.getProperties());
   vertex.filter = normalizeFilter(typed.getFilter());
   vertex.projection = normalizeProjection(typed.getProjection());
@@ -168,7 +173,8 @@ NormalizedEdge PatternNormalizer::normalizeEdge(AstNode const& edge) const {
   NormalizedEdge result;
   result.variable = typed.getOutVariable();
   AstNode const* collectionsNode = typed.getCollections();
-  result.collections = normalizeDataSourceList(collectionsNode);
+  result.collections =
+      normalizeDataSourceList(collectionsNode, TRI_COL_TYPE_EDGE);
   if (collectionsNode != nullptr && collectionsNode->type == NODE_TYPE_ARRAY) {
     result.collectionAstNodes.reserve(collectionsNode->numMembers());
     for (size_t i = 0; i < collectionsNode->numMembers(); ++i) {
@@ -187,12 +193,19 @@ NormalizedEdge PatternNormalizer::normalizeEdge(AstNode const& edge) const {
   return result;
 }
 
-DataSource PatternNormalizer::normalizeDataSource(AstNode const& node) const {
+DataSource PatternNormalizer::normalizeDataSource(
+    AstNode const& node, TRI_col_type_e expectedType) const {
   switch (node.type) {
     case NODE_TYPE_COLLECTION:
+      requireCollectionType(node.getStringView(), expectedType);
       return DataSource::collection(std::string(node.getStringView()));
     case NODE_TYPE_PARAMETER_DATASOURCE:
       return DataSource::bindParameter(std::string(node.getStringView()));
+    case NODE_TYPE_VIEW:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+          absl::StrCat("MATCH label '", node.getStringView(),
+                       "' is a view; labels must name a collection"));
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -200,8 +213,35 @@ DataSource PatternNormalizer::normalizeDataSource(AstNode const& node) const {
   }
 }
 
+void PatternNormalizer::requireCollectionType(
+    std::string_view name, TRI_col_type_e expectedType) const {
+  auto const* collection = _ast.query().collections().get(name);
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                     ": ", name));
+  }
+  if (collection->type() == expectedType) {
+    return;
+  }
+
+  if (expectedType == TRI_COL_TYPE_EDGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+        absl::StrCat(
+            "MATCH edge label '", name,
+            "' is a document collection; expecting an edge collection"));
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+      absl::StrCat("MATCH vertex label '", name,
+                   "' is an edge collection; expecting a document collection"));
+}
+
 std::vector<DataSource> PatternNormalizer::normalizeDataSourceList(
-    AstNode const* node) const {
+    AstNode const* node, TRI_col_type_e expectedType) const {
   std::vector<DataSource> collections;
   if (node == nullptr || node->type == NODE_TYPE_VALUE) {
     return collections;
@@ -210,7 +250,8 @@ std::vector<DataSource> PatternNormalizer::normalizeDataSourceList(
   TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
   collections.reserve(node->numMembers());
   for (size_t i = 0; i < node->numMembers(); ++i) {
-    collections.push_back(normalizeDataSource(*node->getMember(i)));
+    collections.push_back(
+        normalizeDataSource(*node->getMember(i), expectedType));
   }
   return collections;
 }
