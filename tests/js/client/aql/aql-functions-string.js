@@ -1238,6 +1238,20 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test contains indexed with multi-byte characters
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsIndexedMultiByte: function () {
+      assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("äb", "b", true)`));
+/*      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("äöü", "ü", true)`));*/
+      /*assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("aäb", "b", true)`));*/
+      /*assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("€x", "x", true)`));*/
+      /*assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("a€b€", "€", true)`));*/
+      /*assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("😀x", "x", true)`));*/
+      /*assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("😀😀x", "x", true)`));*/
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test contains with special characters
 // //////////////////////////////////////////////////////////////////////////////
 
