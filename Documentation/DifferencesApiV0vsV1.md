@@ -142,32 +142,6 @@ information-disclosure hardening introduced with V1):
 > apply when RBAC is enabled. RBAC answers every denial with
 > `TRI_ERROR_FORBIDDEN` (403) regardless of API version.
 
-* **`UseDatabase` check** (line ~365): if the requested access level exceeds
-  what the user has, and the user has *no* access at all
-  (`effectiveLevel == auth::Level::NONE`):
-  * **V1**: returns `TRI_ERROR_ARANGO_DATABASE_NOT_FOUND` (HTTP 404,
-    errorNum 1228) instead of revealing that the database exists but access
-    is forbidden.
-  * **V0**: always returns `TRI_ERROR_FORBIDDEN` (HTTP 403, errorNum 11),
-    with a descriptive access-level-mismatch message — the database's
-    existence is implicitly confirmed.
-
-* **`UseCollection` check** (line ~429): analogous logic for collections.
-  If access is insufficient and the user has no access at all:
-  * **V1**: returns `TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND` (HTTP 404,
-    errorNum 1203) — with message `"collection not found"` in cluster mode,
-    or no extra message in single-server mode.
-  * **V0**: falls through to the generic mismatch handling, returning either
-    `TRI_ERROR_ARANGO_READ_ONLY` (HTTP 403, errorNum 1004, when RW was
-    requested but only RO is held) or `TRI_ERROR_FORBIDDEN` (HTTP 403,
-    errorNum 11) otherwise — the collection's existence is implicitly
-    confirmed in both cases.
-
-* **`ReadView` check** (line ~558): identical pattern to `UseDatabase` for
-  views: **V1** returns `TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND` (404) when
-  the user has no database access at all; **V0** returns `TRI_ERROR_FORBIDDEN`
-  (403).
-
 * **`DropCollection` check** (line ~640, two occurrences): when the
   underlying `UseDatabase`/`UseCollection` check fails, the code explicitly
   overrides the errorNum for **V0** to always be `TRI_ERROR_FORBIDDEN` (403,
@@ -194,12 +168,12 @@ information-disclosure hardening introduced with V1):
 ## `RestIndexHandler` (`arangod/RestHandler/RestIndexHandler.cpp`)
 
 * **Collection lookup access restriction** (`RestIndexHandler::collection`,
-  line ~231): when running on a coordinator, starting with **V1**, looking
-  up a collection by name additionally enforces a `Read` access check via
-  `ExecContext::current().canUseCollection(...)`; if this fails, the
-  collection is treated as not found (`nullptr`), which downstream
-  typically produces a `404`/`TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND`
-  response. Under **V0**, this extra access restriction is skipped
+  line ~231): when running on a coordinator or single-server, starting with
+  **V1**, looking up a collection inside the handler additionally enforces
+  the "collection" request value to be a name (and not an id) (otherwise 
+	fails with `TRI_ERROR_BAD_PARAMETER`) and executes
+  a `Read` access check via `ExecContext::current().canUseCollection(...)`;
+  Under **V0**, this extra access restriction is skipped
   entirely — any authenticated user reaching this code path can look up the
   collection regardless of their per-collection read access, relying only
   on the database-level check performed earlier.

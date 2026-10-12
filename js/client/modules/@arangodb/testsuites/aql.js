@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -117,7 +117,11 @@ function shellApiClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -140,7 +144,11 @@ function shellApiMulti (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -163,7 +171,11 @@ function shellClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -186,6 +198,9 @@ function shellClientLarge (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -209,7 +224,11 @@ function shellClientMulti (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -236,7 +255,9 @@ function shellServerOnly (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = new trs.runOnArangodRunner(opts, name, {}).run(testCases);
+  let rc = new trs.runOnArangodRunner(opts, name, {
+      "server.authentication": false
+  }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -252,7 +273,9 @@ function shellClientAql (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {
+    "server.authentication": false
+  }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -269,6 +292,9 @@ function shellClientAqlLarge (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -285,10 +311,11 @@ function shellClientAqlVector (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let moreOptions = {
-    "vector-index": "true",
-  };
+  let moreOptions = { };
 
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;

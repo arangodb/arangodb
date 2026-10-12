@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -687,8 +687,7 @@ void V8ClientConnection::reconnect() {
   try {
     createConnection();
   } catch (...) {
-    std::string errorMessage = "error in '" + _client.endpoint() + "'";
-    throw errorMessage;
+    throw std::runtime_error("error in '" + _client.endpoint() + "'");
   }
 
   if (isConnected() &&
@@ -705,13 +704,8 @@ void V8ClientConnection::reconnect() {
           << "' - Server message: " << _lastErrorMessage;
     }
 
-    std::string errorMsg = "could not connect";
-
-    if (!_lastErrorMessage.empty()) {
-      errorMsg = _lastErrorMessage;
-    }
-
-    throw errorMsg;
+    throw std::runtime_error(!_lastErrorMessage.empty() ? _lastErrorMessage
+                                                        : "could not connect");
   }
 }
 
@@ -745,10 +739,16 @@ void V8ClientConnection::getConnectionHandleTable(
         v8::Local<v8::Object> entry = v8::Object::New(isolate);
 
         setBool("active", isActive, entry);
-        setBool("connected", conn->state() == fu::Connection::State::Connected,
-                entry);
-        setString("endpoint", conn->endpoint(), entry);
-        setString("localPort", conn->localEndpoint(), entry);
+        if (conn) {
+          setBool("connected",
+                  conn->state() == fu::Connection::State::Connected, entry);
+          setString("endpoint", conn->endpoint(), entry);
+          setString("localPort", conn->localEndpoint(), entry);
+        } else {
+          setBool("connected", false, entry);
+          setString("endpoint", "N/A", entry);
+          setString("localPort", "N/A", entry);
+        }
         setString("username", builder.user(), entry);
         setString("password", builder.password(), entry);
         setString("jwtToken", builder.jwtToken(), entry);
@@ -795,7 +795,7 @@ void V8ClientConnection::connectHandle(
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   auto iit = _connectionBuilderCache.find(handle);
-  if (it != _connectionCache.end()) {
+  if (it != _connectionCache.end() && iit != _connectionBuilderCache.end()) {
     // cache hit. remove the connection from the cache and return it!
     std::shared_ptr<fu::Connection> oldConnection;
     std::string oldConnectionId = _currentConnectionId;
@@ -1112,8 +1112,8 @@ static void ClientConnection_reconnect(
 
   try {
     v8connection->reconnect();
-  } catch (std::string const& errorMessage) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER(ex.what());
   } catch (...) {
     std::string errorMessage = absl::StrCat("error in '", endpoint, "'");
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);

@@ -1099,67 +1099,42 @@ if(STATIC_EXECUTABLES)
   if(ARCH_AMD64)
     set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
-    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/x86_64-linux-gnu/13/libgomp.a")
   else()
     set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
-    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
   message(STATUS "LAPACK: ${LAPACK_LIBRARIES}")
   message(STATUS "BLAS: ${BLAS_LIBRARIES}")
 
-  # Setting this is necessary because we want to bind to gcc static library
-  # since the LLVM OpenMP implementation fails in our CI
-  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
-  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_C_LIB_NAMES "gomp;pthread")
-  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
+  # faiss must be built with LLVM's libomp: clang generates no OpenMP code for
+  # libgomp
+  # The build image provides a static libomp in /opt/omp
+  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+  if(NOT LIBOMP)
+    message(FATAL_ERROR "libomp.a not found in /opt/omp")
+  endif()
+  message(STATUS "Using static libomp: ${LIBOMP}")
+
+  set(OpenMP_C_FLAGS "-fopenmp=libomp")
+  set(OpenMP_CXX_FLAGS "-fopenmp=libomp")
+  set(OpenMP_C_LIB_NAMES "omp;pthread")
+  set(OpenMP_CXX_LIB_NAMES "omp;pthread")
+  set(OpenMP_omp_LIBRARY "${LIBOMP}")
   set(OpenMP_pthread_LIBRARY "pthread")
 
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -llapack -lgfortran")
-  message(STATUS "OpenMP version: " ${OpenMP_CXX_VERSION})
+  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
 
-  # Setting this is necessary because we want to bind to gcc library
-  # since the LLVM OpenMP implementation fails in our CI
-  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
-  # Dynamically find libgomp.so without hardcoding version
-  # First, try to get GCC's library directory
-  execute_process(
-    COMMAND gcc -print-file-name=libgomp.so
-    OUTPUT_VARIABLE LIBGOMP_PATH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-
-  if(EXISTS "${LIBGOMP_PATH}")
-    message(STATUS "Found libgomp: ${LIBGOMP_PATH}")
-    set(OpenMP_gomp_LIBRARY "${LIBGOMP_PATH}")
-  else()
-    # Fallback to find_library if gcc command didn't work
-    find_library(LIBGOMP_LIBRARY NAMES gomp REQUIRED)
-    message(STATUS "Found libgomp via find_library: ${LIBGOMP_LIBRARY}")
-    set(OpenMP_gomp_LIBRARY "${LIBGOMP_LIBRARY}")
-  endif()
-
-  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_C_LIB_NAMES "gomp;pthread")
-  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
-  set(OpenMP_pthread_LIBRARY "pthread")
-
+  # clang generates OpenMP code only for libomp, so let FindOpenMP pick the
   find_package(OpenMP REQUIRED)
 
   message(STATUS "OpenMP_CXX_VERSION: ${OpenMP_CXX_VERSION}")
   message(STATUS "OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
   message(STATUS "OpenMP_CXX_LIB_NAMES: ${OpenMP_CXX_LIB_NAMES}")
-  message(STATUS "OpenMP_gomp_LIBRARY: ${OpenMP_gomp_LIBRARY}")
   message(STATUS "OpenMP_omp_LIBRARY: ${OpenMP_omp_LIBRARY}")
-  message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
   message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
-
 
   find_package(LAPACK)
   find_package(BLAS)
@@ -1169,8 +1144,6 @@ else()
     message(STATUS "Using LAPACK library: ${lapack_lib}")
     set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
   endforeach()
-
-  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS}")
 endif()
 
 # It could be so easy if add_subdirectory allowed to pass variables

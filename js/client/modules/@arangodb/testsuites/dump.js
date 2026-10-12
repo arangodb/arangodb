@@ -175,8 +175,6 @@ function dump (options) {
   if (opts.cluster) {
     opts.dbServers = 3;
   }
-  opts.extraArgs['vector-index'] = true;
-  opts.extraArgs['vector-index-build-retry-backoff'] = 10;
 
   let c = getClusterStrings(opts);
   let tstFiles = {
@@ -196,12 +194,8 @@ function dumpMixedClusterSingle (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
-  clusterOptions.extraArgs['vector-index'] = true;
-  clusterOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
-  singleOptions.extraArgs['vector-index'] = true;
-  singleOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
@@ -218,22 +212,18 @@ function dumpMixedClusterSingle (options) {
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
                                       // BTS-1617: disable 404 for now.
-                                      // 120 (autoincrement key generator) is single-server-only: it is not
+                                      // 120, 052, 575, 585  are single-server-only: it is not
                                       // created on the cluster source, so it cannot be verified on the single
                                       // server destination.
-                                      '--skip', '404,120'], true);
+                                      '--skip', '404,120,052,575,585'], true);
 }
 
 function dumpMixedSingleCluster (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
-  clusterOptions.extraArgs['vector-index'] = true;
-  clusterOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
-  singleOptions.extraArgs['vector-index'] = true;
-  singleOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
@@ -253,7 +243,7 @@ function dumpMixedSingleCluster (options) {
                                       // created on the single server source but the cluster destination
                                       // check would need cluster support, so keep make/check symmetric by
                                       // skipping it in this mixed scenario as well.
-                                      '--skip', '550,900,960,120'], true);
+                                      '--skip', '550,900,960,120,052,575,585'], true);
 }
 
 function dumpMultipleTwo (options) {
@@ -264,7 +254,7 @@ function dumpMultipleTwo (options) {
     deactivateCompression: true,
     parallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -288,7 +278,7 @@ function dumpMultipleSame (options) {
     deactivateCompression: true,
     parallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -316,7 +306,7 @@ function dumpWithCrashes (options) {
     threads: 1,
     useParallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -342,7 +332,7 @@ function dumpWithCrashesNonParallel (options) {
     threads: 1,
     useParallelDump: false,
     splitFiles: false,
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -375,8 +365,6 @@ function dumpAuthentication (options) {
 
   _.defaults(dumpAuthOpts, options);
   _.defaults(restoreAuthOpts, options);
-  dumpAuthOpts.extraArgs['vector-index'] = true;
-  dumpAuthOpts.extraArgs['vector-index-build-retry-backoff'] = 10;
   dumpAuthOpts.dbServers = 3;
   dumpAuthOpts.useParallelDump = false;
   restoreAuthOpts.dbServers = 3;
@@ -417,7 +405,7 @@ function dumpJwt (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: { },
     multipleDumps: true,
     dbServers: 3
   });
@@ -438,8 +426,6 @@ function dumpEncrypted (options) {
   };
 
   let dumpOptions = _.clone(options);
-  dumpOptions.extraArgs['vector-index'] = true;
-  dumpOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   dumpOptions.dbServers = 3;
@@ -464,8 +450,6 @@ function dumpNonParallel (options) {
   dumpOptions.useParallelDump = false;
   dumpOptions.splitFiles = false;
   dumpOptions.dbServers = 3;
-  dumpOptions.extraArgs['vector-index'] = true;
-  dumpOptions.extraArgs['vector-index-build-retry-backoff'] = 10;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -490,7 +474,7 @@ function dumpMaskings (options) {
   };
 
   let dumpMaskingsOpts = {
-    extraArgs: { 'vector-index': true, 'vector-index-build-retry-backoff': 10 },
+    extraArgs: { },
     maskings: 'maskings1.json',
     dbServers: 3
   };

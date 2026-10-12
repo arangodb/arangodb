@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteForCurrentDB } from "../../../utils/arangoClient";
+import { useInferredRbacMode } from "../../../utils/usePermissions";
 
 export type PermissionType = "rw" | "ro" | "none" | "undefined";
 export const useUsername = () => {
@@ -17,8 +18,11 @@ type FullDatabasePermissionsType = {
 
 export const useFetchDatabasePermissions = () => {
   const { username } = useUsername();
+  const inferredRbacMode = useInferredRbacMode();
   const { data, refetch } = useQuery({
     queryKey: [username, "permissions"],
+    // Classic grants have no data source in RBAC mode.
+    enabled: !inferredRbacMode,
     queryFn: async () => {
       const url = `/_api/user/${username}/database`;
       const route = getRouteForCurrentDB(url);

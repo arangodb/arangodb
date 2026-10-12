@@ -333,10 +333,9 @@ void RocksDBVectorIndex::captureDocument(
     captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
   } else if (projectionMode == vector::ProjectionMode::kCovered &&
              hasStoredValues()) {
-    auto extracted =
-        transaction::extractAttributeValues(*trx, _storedValues, docSlice, true)
-            ->get();
-    captureSink->insert_or_assign(docId, extracted->sharedSlice());
+    auto extracted = transaction::extractAttributeValues(*trx, _storedValues,
+                                                         docSlice, true);
+    captureSink->insert_or_assign(docId, extracted->get()->sharedSlice());
   }
 }
 
@@ -658,9 +657,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   auto value = std::invoke([&]() {
     if (hasStoredValues()) {
       auto const extractedAttributeValues =
-          transaction::extractAttributeValues(trx, _storedValues, doc, true)
-              ->get();
-      auto storedValues = extractedAttributeValues->sharedSlice();
+          transaction::extractAttributeValues(trx, _storedValues, doc, true);
+      auto storedValues = extractedAttributeValues->get()->sharedSlice();
 
       if (_formatVersion == vector::FormatVersion::kV2) {
         return RocksDBValue::VectorIndexValueV2(

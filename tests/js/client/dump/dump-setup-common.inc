@@ -485,12 +485,6 @@ function createJobs() {
   }
   db._jobs.insert({_key: "test", status: "completed"});
 
-  // insert an entry into _queues collection
-  try {
-    db._queues.remove("test");
-  } catch (err) {
-  }
-  db._queues.insert({_key: "test"});
 }
 
 function createFoxx() {

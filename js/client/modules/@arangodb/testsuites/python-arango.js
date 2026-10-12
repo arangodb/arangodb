@@ -77,7 +77,6 @@ class runInPythonTest extends runWithAllureReport {
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
-      "vector-index": "true",
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
@@ -93,7 +92,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.instanceManager.JWT,
+      '--secret', this.instanceManager.jwt_secret,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',

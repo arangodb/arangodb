@@ -131,6 +131,12 @@ function arangoshTokenRenewalSuite() {
   'use strict';
   
   return {
+    setUpAll() {
+      IM.rememberConnection();
+    },
+    tearDownAll() {
+      IM.reconnectMe();
+    },
     testArangoshAutomaticRenewal: function() {
       const internal = require("internal");
       

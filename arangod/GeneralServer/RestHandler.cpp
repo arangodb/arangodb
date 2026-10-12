@@ -85,8 +85,8 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 RestHandler::~RestHandler() {
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
-               RequestPriority::LOW);
+    TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+    TRI_ASSERT(PriorityRequestLane(_lane) == RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }

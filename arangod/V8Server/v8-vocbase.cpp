@@ -351,6 +351,8 @@ static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
       icu_64_64::Locale::getAvailableLocales(count);
   if (locales) {
     for (int32_t i = 0; i < count; ++i) {
+      // That is how ICU forces us to do it, disable lint here.
+      // NOLINTNEXTLINE(bugprone-pointer-arithmetic-on-polymorphic-object)
       const icu_64_64::Locale* l = locales + i;
       char const* str = l->getBaseName();
 

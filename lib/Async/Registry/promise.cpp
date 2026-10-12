@@ -29,8 +29,8 @@ using namespace arangodb::async_registry;
 
 Promise::Promise(CurrentRequester requester, std::source_location entry_point)
     : owning_thread{basics::ThreadInfo::current()},
-      requester{
-          AtomicRequester::from(requester)},  // TODO hand this in via function
+      requester{AtomicRequester::from(
+          std::move(requester))},  // TODO hand this in via function
       state{State::Running},
       running_thread{basics::ThreadId::current()},
       source_location{entry_point.file_name(), entry_point.function_name(),

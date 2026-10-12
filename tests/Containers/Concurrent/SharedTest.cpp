@@ -58,6 +58,14 @@ template<typename Inspector>
 auto inspect(Inspector& f, MyStruct& x) {
   return f.object(x).fields(f.field("a", x.a));
 }
+TEST(SharedTest, shared_reference_can_be_copy_constructed_from_lvalue) {
+  auto original = SharedPtr<MyStruct>{"abcde"};
+  SharedPtr<MyStruct> copy{original};
+  EXPECT_EQ(original.ref_count(), 2);
+  EXPECT_EQ(copy.ref_count(), 2);
+  EXPECT_EQ(*copy.get(), MyStruct{"abcde"});
+}
+
 TEST(SharedTest, variant_ptr_can_include_a_copy_of_a_shared_reference) {
   auto ref = SharedPtr<MyStruct>{"abcde"};
   EXPECT_EQ(*ref.get(), MyStruct{"abcde"});

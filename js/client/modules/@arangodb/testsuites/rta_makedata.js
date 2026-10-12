@@ -98,9 +98,7 @@ function makeDataWrapper (options) {
     }
 
     postStart() {
-      if (!this.options.cluster) {
-        this.instanceManager.setPassvoid();
-      }
+      this.instanceManager.setPassvoid();
       return {
         message: '',
         state: true,
@@ -185,6 +183,16 @@ function makeDataWrapper (options) {
         let moreargv = [];
         count += 1;
         let whichRTA = `rta_${testCases[testCount]}_${count}`;
+        if (!this.continueTesting) {
+          res[whichRTA] = {
+            'status': true,
+            'skipped': true,
+            'failed': 0,
+            'duration': 0.0,
+            'message': `skipped ${messages[count-1]} due to a previous failure`
+          };
+          return;
+        }
         res[whichRTA] = { 'status': true, 'message': ''};
         if (this.options.cluster) {
           if (count === 2) {
@@ -368,7 +376,6 @@ function makeDataWrapper (options) {
   } else {
     localOptions.password = "single";
   }
-  localOptions.extraArgs['vector-index'] = true;
 
   if (!localOptions.isSan) {
     // don't have default values if non instrumented arangosh.

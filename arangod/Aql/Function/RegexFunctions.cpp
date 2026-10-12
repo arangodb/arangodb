@@ -231,7 +231,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+    if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent
       // invocation
       copyThisTime--;
@@ -239,7 +239,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
     if ((copyThisTime > 0) &&
         ((copyThisTime == nrResults) || isEmptyExpression)) {
-      // ICU will give us a traling empty string we don't care for if we split
+      // ICU will give us a trailing empty string we don't care for if we split
       // with empty strings.
       copyThisTime--;
     }
