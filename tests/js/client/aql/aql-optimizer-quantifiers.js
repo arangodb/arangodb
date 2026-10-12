@@ -189,6 +189,80 @@ function optimizerQuantifiersTestSuite () {
       });
    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (n) where n exceeds the array's length
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastExceedsArrayLength : function () {
+      var queries = [
+        // full match, n greater than array length
+        [ "[] AT LEAST (1) == 0", false ],
+        [ "[1] AT LEAST (2) == 1", false ],
+        [ "[1, 1] AT LEAST (3) == 1", false ],
+        [ "[1, 2] AT LEAST (3) IN [1, 2]", false ],
+        [ "[1, 2] AT LEAST (3) NOT IN [9]", false ],
+        // same scenario, different operators
+        [ "[1, 1] AT LEAST (3) != 2", false ],
+        [ "[5, 5] AT LEAST (3) > 1", false ],
+        [ "[5, 5] AT LEAST (3) >= 5", false ],
+        [ "[1, 1] AT LEAST (3) < 5", false ],
+        [ "[1, 1] AT LEAST (3) <= 1", false ],
+        // full match, n equal to array length
+        [ "[1, 1] AT LEAST (2) == 1", true ],
+        [ "[1, 1, 1] AT LEAST (3) == 1", true ],
+        [ "[] AT LEAST (0) == 1", true ],
+        // a mismatch, regardless of n
+        [ "[1, 2] AT LEAST (2) == 1", false ],
+        [ "[1, 1, 2] AT LEAST (3) == 1", false ],
+        [ "[1, 2, 3, 4, 5] AT LEAST (100) == 1", false ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query("RETURN (" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+
+        result = db._query("RETURN NOOPT(" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (n) exceeding array length via FOR/FILTER
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastInExceedsArrayLength : function () {
+      var queries = [
+        // same scenario through FOR/FILTER
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 1 ] AT LEAST (3) IN [ doc.value ] SORT doc.value RETURN doc.value", [ ] ],
+        // doc.value can only ever match one element, so never a full match
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] AT LEAST (4) == doc.value SORT doc.value RETURN doc.value", [ ] ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query(query[0]).toArray();
+        assertEqual(query[1], result, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test AT LEAST (0) and AT LEAST (negative)
+////////////////////////////////////////////////////////////////////////////////
+
+    testAtLeastZeroOrNegative : function () {
+      var queries = [
+        // n <= 0
+        [ "[1, 2] AT LEAST (0) == 99", true ],
+        [ "[1, 2] AT LEAST (-1) == 99", true ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._query("RETURN (" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+
+        result = db._query("RETURN NOOPT(" + query[0] + ")").toArray()[0];
+        assertEqual(query[1], result, query);
+      });
+    },
 
   };
 }
