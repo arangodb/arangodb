@@ -668,6 +668,10 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 /// compareAstNodes, `{}` and `{x: null}` are not identical
 bool areNodesIdentical(AstNode const* lhs, AstNode const* rhs);
 
+/// @brief whether both nodes are the same expression as written,
+/// not by the pointer address
+bool isSameExpression(AstNode const* lhs, AstNode const* rhs);
+
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;
 };

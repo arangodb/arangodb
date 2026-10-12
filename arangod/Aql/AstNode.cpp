@@ -261,6 +261,9 @@ enum class AstNodeCompareMode { kAqlValue, kIdentical };
 struct AstNodeCompareOptions {
   bool compareUtf8;
   AstNodeCompareMode mode;
+  // how calls to non-deterministic funcs (RAND(), NOOPT()) are compared:
+  // false: by address, true: by function name and arguments
+  bool matchNonDeterministicCalls;
 };
 
 template<bool resolveAttributeAccess>
@@ -435,9 +438,10 @@ int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
 /// @brief compare built-in function call nodes by name then arguments
 int compareFcall(AstNode const* lhs, AstNode const* rhs,
                  AstNodeCompareOptions opts) {
-  // Non-deterministic calls like RAND() are never equal to each other. Compare
-  // by pointer address to keep the ordering stable within a single query.
-  if (!lhs->isDeterministic() || !rhs->isDeterministic()) {
+  // Non-deterministic calls like RAND() are not equal to each other unless
+  // matchNonDeterministicCalls is set. By address keeps the ordering stable.
+  if (!opts.matchNonDeterministicCalls &&
+      (!lhs->isDeterministic() || !rhs->isDeterministic())) {
     return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
   }
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
@@ -680,12 +684,17 @@ int compareAstNodesImpl(AstNode const* lhs, AstNode const* rhs,
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return compareAstNodesImpl<resolveAttributeAccess>(
-      lhs, rhs, {compareUtf8, AstNodeCompareMode::kAqlValue});
+      lhs, rhs, {compareUtf8, AstNodeCompareMode::kAqlValue, false});
 }
 
 bool areNodesIdentical(AstNode const* lhs, AstNode const* rhs) {
   return compareAstNodesImpl<false>(
-             lhs, rhs, {false, AstNodeCompareMode::kIdentical}) == 0;
+             lhs, rhs, {false, AstNodeCompareMode::kIdentical, false}) == 0;
+}
+
+bool isSameExpression(AstNode const* lhs, AstNode const* rhs) {
+  return compareAstNodesImpl<false>(
+             lhs, rhs, {false, AstNodeCompareMode::kAqlValue, true}) == 0;
 }
 
 // private ctor, only called during by FixedSizeAllocator in case of emergency
