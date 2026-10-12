@@ -158,9 +158,6 @@
     options:
       priority: 250
       type: single
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - shell_client_aql_large:
     options:
@@ -169,9 +166,6 @@
       suffix: _large
       buckets: 2
       parallelity: 6
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - gtest_iresearch:
     options:
@@ -417,8 +411,6 @@
       buckets: 4
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client_aql_large:
     options:
       priority: 1000
@@ -429,8 +421,6 @@
       parallelity: 6
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500

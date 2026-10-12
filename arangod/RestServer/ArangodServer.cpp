@@ -207,9 +207,6 @@ void ArangodServer::addFeatures() {
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
   bool const agencyActivated = getOptions<AgencyOptionsProvider>().activated;
-  if (!agencyActivated) {
-    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
-  }
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
   addFeature<AqlFeature>();
@@ -246,14 +243,18 @@ void ArangodServer::addFeatures() {
   bool const upgrade = getOptions<UpgradeOptionsProvider>().upgrade;
   bool const isCoordinator = ServerState::instance()->isCoordinator();
   bool const auxMode = initDatabase || checkVersion || upgrade;
+  bool const skipBootstrap = upgrade && !isCoordinator;
   // coordinator upgrade only sheds Daemon/Supervisor/Greetings, not more
   bool const skipNonServerFeatures =
-      initDatabase || checkVersion || (upgrade && !isCoordinator);
+      initDatabase || checkVersion || skipBootstrap;
   bool const restServer = getOptions<ServerOptionsProvider>().restServer;
   OperationMode const operationMode =
       getOptions<ServerOptionsProvider>().operationMode;
   bool const enableDaemonSupervisor =
       !auxMode && restServer && operationMode != OperationMode::MODE_CONSOLE;
+  if (!agencyActivated && !skipNonServerFeatures) {
+    addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
+  }
 #ifdef USE_V8
   bool const enableJS = getOptions<V8DealerOptionsProvider>().enableJS;
   bool const enableFoxx = enableJS && !agencyActivated;
@@ -347,14 +348,16 @@ void ArangodServer::addFeatures() {
         metrics, getOptions<V8DealerOptionsProvider>());
   }
 #endif
-  addFeature<BootstrapFeature>(
-      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
+  if (!skipBootstrap) {
+    addFeature<BootstrapFeature>(
+        clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
-      ,
-      v8DealerFeature
+        ,
+        v8DealerFeature
 #endif
-      ,
-      getOptions<bootstrap::BootstrapOptionsProvider>());
+        ,
+        getOptions<bootstrap::BootstrapOptionsProvider>());
+  }
   if (!skipNonServerFeatures) {
     addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
   }

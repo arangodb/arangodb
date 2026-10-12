@@ -1,6 +1,29 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Updated ArangoDB Starter to v0.19.29.
+
+* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
+* COR-1083 / github issue #23425:
+  Fixed the incorrect usage of released pool analyzer.
+
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. We commit first and then replicate.
+
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+
+* COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
+  `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
+
+* Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
+  correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
+
 * AQL `DATE_ROUND` does not crash with a SIGFPE anymore due to integer overflow and division by 0
+
 * AQL `DATE_ROUND` rounds down correctly for dates before the epoch
 
 * AQL `DATE_ISO8601` applies negative offset correctly to minutes as well
@@ -40,8 +63,6 @@
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
   This fixes issue #23360.
-
-* Updated ArangoDB Starter to v0.19.28.
 
 * The AQL optimizer uses a sparse index for a branch of an `OR` condition
   only if that branch itself rules out `null` for the indexed attribute.
@@ -110,6 +131,9 @@
 * The `join-index-nodes` optimizer rule no longer uses non-deterministic
   expressions or expressions that need V8, such as user-defined AQL
   functions, as constant index lookup values.
+
+* AQL Index Join no longer mixed primary indexes and persistent indexes.
+  This caused wrong results previously.
 
 3.12.12 (2026-09-21)
 --------------------
