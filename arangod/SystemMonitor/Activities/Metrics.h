@@ -29,12 +29,20 @@
 namespace arangodb::activities {
 
 struct RegistryMetrics : arangodb::containers::Metrics {
-  RegistryMetrics(std::shared_ptr<arangodb::metrics::Counter> activities_total,
-                  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-                      existing_activities)
-
-      : activities_total{activities_total},
-        existing_activities{existing_activities} {}
+  RegistryMetrics(
+      std::shared_ptr<arangodb::metrics::Counter> activities_total,
+      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
+          existing_activities,
+      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
+          ready_for_deletion_activities,
+      std::shared_ptr<arangodb::metrics::Counter> thread_registries_total,
+      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
+          existing_thread_registries)
+      : activities_total{std::move(activities_total)},
+        existing_activities{std::move(existing_activities)},
+        ready_for_deletion_activities{std::move(ready_for_deletion_activities)},
+        thread_registries_total{std::move(thread_registries_total)},
+        existing_thread_registries{std::move(existing_thread_registries)} {}
   ~RegistryMetrics() = default;
   auto increment_total_nodes() -> void override;
   auto decrement_registered_nodes() -> void override;

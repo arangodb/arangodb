@@ -46,6 +46,16 @@ DECLARE_COUNTER(
 DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
               "Number of currently registered activities");
 
+DECLARE_GAUGE(arangodb_activities_ready_for_deletion, std::uint64_t,
+              "Number of activities waiting for garbage collection");
+
+DECLARE_COUNTER(arangodb_activities_thread_registries_total,
+                "Total number of threads that created activities since "
+                "database process start");
+
+DECLARE_GAUGE(arangodb_activities_existing_thread_registries, std::uint64_t,
+              "Number of currently existing activity thread registries");
+
 Feature::Feature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
@@ -65,8 +75,12 @@ auto Feature::create_metrics(metrics::IRegistry& registry)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       registry.addShared(arangodb_activities_total{}),
-      registry.addShared(arangodb_activities_existing{}));
+      registry.addShared(arangodb_activities_existing{}),
+      registry.addShared(arangodb_activities_ready_for_deletion{}),
+      registry.addShared(arangodb_activities_thread_registries_total{}),
+      registry.addShared(arangodb_activities_existing_thread_registries{}));
 }
+
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {

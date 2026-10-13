@@ -317,7 +317,6 @@ struct ThreadOwnedList
  private:
   ThreadOwnedList(std::shared_ptr<Metrics> metrics) noexcept
       : thread{basics::ThreadId::current()}, _metrics{metrics} {
-    // is now done in ListOfLists
     if (_metrics) {
       _metrics->increment_total_lists();
       _metrics->increment_existing_lists();
@@ -353,7 +352,7 @@ struct ThreadOwnedList
     // be running a cleanup and node might be deleted.
 
     if (_metrics) {
-      _metrics->decrement_registered_nodes();  // crash here
+      _metrics->decrement_registered_nodes();
       _metrics->increment_ready_for_deletion_nodes();
     }
   }

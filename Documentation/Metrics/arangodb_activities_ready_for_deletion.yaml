@@ -1,0 +1,14 @@
+name: arangodb_activities_ready_for_deletion
+introducedIn: "3.12.13"
+help: |
+  Number of activities waiting for garbage collection.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+description: |
+  Number of finished activities that are still registered because their garbage collection has not run yet. Garbage collection runs on the owning thread when it creates the next activity, or periodically from the activities feature's cleanup thread.
