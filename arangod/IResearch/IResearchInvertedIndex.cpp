@@ -278,11 +278,6 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
       transaction::Methods& trx, aql::AqlFunctionsInternalCache& cache) noexcept
       : _trx{trx}, _cache{cache} {}
 
-  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                            bool caseInsensitive) final {
-    return _cache.buildLikeMatcher(expr, caseInsensitive);
-  }
-
   aql::AqlFunctionsInternalCache& functionsCache() final { return _cache; }
 
  private:
@@ -298,12 +293,6 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
 
   void registerError(ErrorCode errorCode, std::string_view msg) final {
     TRI_ASSERT(false);
-  }
-
-  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                             bool caseInsensitive) final {
-    TRI_ASSERT(false);
-    return nullptr;
   }
 
   arangodb::ValidatorBase* buildValidator(velocypack::Slice) final {
