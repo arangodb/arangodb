@@ -27,62 +27,68 @@
 
 namespace arangodb::tests::aql {
 
-constexpr auto kToString = StringFunctionsName::kToString;
+using ToStringFunctionTest = StringFunctionTest;
+using arangodb::aql::functions::toString;
 
-TEST(ToStringFunctionTest, null_becomes_empty_string) {
-  expectResult(kToString, R"([null])", "");
+TEST_F(ToStringFunctionTest, null_becomes_empty_string) {
+  expectResult(toString(ctx, json("null")), "");
 }
 
-TEST(ToStringFunctionTest, booleans_become_their_names) {
-  expectResult(kToString, R"([true])", "true");
-  expectResult(kToString, R"([false])", "false");
+TEST_F(ToStringFunctionTest, booleans_become_their_names) {
+  expectResult(toString(ctx, json("true")), "true");
+  expectResult(toString(ctx, json("false")), "false");
 }
 
-TEST(ToStringFunctionTest, integers_are_printed_exactly) {
-  expectResult(kToString, R"([0])", "0");
-  expectResult(kToString, R"([-1])", "-1");
-  expectResult(kToString, R"([1152921504606846977])", "1152921504606846977");
-  expectResult(kToString, R"([-1152921504606846977])", "-1152921504606846977");
+TEST_F(ToStringFunctionTest, integers_are_printed_exactly) {
+  expectResult(toString(ctx, json("0")), "0");
+  expectResult(toString(ctx, json("-1")), "-1");
+  expectResult(toString(ctx, json("1152921504606846977")),
+               "1152921504606846977");
+  expectResult(toString(ctx, json("-1152921504606846977")),
+               "-1152921504606846977");
 }
 
-TEST(ToStringFunctionTest, doubles_are_printed_in_shortest_form) {
-  expectResult(kToString, R"([1.5])", "1.5");
-  expectResult(kToString, R"([-0.25])", "-0.25");
+TEST_F(ToStringFunctionTest, doubles_are_printed_in_shortest_form) {
+  expectResult(toString(ctx, json("1.5")), "1.5");
+  expectResult(toString(ctx, json("-0.25")), "-0.25");
   // 2^52 has no ".0", 2^53 keeps it, 2^64 cannot be printed exactly
-  expectResult(kToString, R"([4503599627370496.0])", "4503599627370496");
-  expectResult(kToString, R"([9007199254740992.0])", "9007199254740992.0");
-  expectResult(kToString, R"([18446744073709551616.0])",
+  expectResult(toString(ctx, json("4503599627370496.0")), "4503599627370496");
+  expectResult(toString(ctx, json("9007199254740992.0")), "9007199254740992.0");
+  expectResult(toString(ctx, json("18446744073709551616.0")),
                "18446744073709552000");
 }
 
-TEST(ToStringFunctionTest, strings_are_returned_unchanged) {
-  expectResult(kToString, R"([""])", "");
-  expectResult(kToString, R"([" "])", " ");
-  expectResult(kToString, R"(["1 "])", "1 ");
-  expectResult(kToString, R"(["öü/\n"])", "öü/\n");
+TEST_F(ToStringFunctionTest, strings_are_returned_unchanged) {
+  expectResult(toString(ctx, str("")), "");
+  expectResult(toString(ctx, str(" ")), " ");
+  expectResult(toString(ctx, str("1 ")), "1 ");
+  expectResult(toString(ctx, str("öü/\n")), "öü/\n");
 }
 
-TEST(ToStringFunctionTest, arrays_become_compact_json) {
-  expectResult(kToString, R"([[]])", "[]");
-  expectResult(kToString, R"([[0, 1, [1, 2], [[9, 4]]]])",
+TEST_F(ToStringFunctionTest, arrays_become_compact_json) {
+  expectResult(toString(ctx, json("[]")), "[]");
+  expectResult(toString(ctx, json("[0, 1, [1, 2], [[9, 4]]]")),
                "[0,1,[1,2],[[9,4]]]");
-  expectResult(kToString, R"([["", false, null, {}]])",
+  expectResult(toString(ctx, json(R"(["", false, null, {}])")),
                R"(["",false,null,{}])");
 }
 
-TEST(ToStringFunctionTest, objects_become_compact_json) {
-  expectResult(kToString, R"([{}])", "{}");
-  expectResult(kToString, R"([{"a": true, "b": 0}])", R"({"a":true,"b":0})");
-  expectResult(kToString, R"([{"a": {}, "b": []}])", R"({"a":{},"b":[]})");
+TEST_F(ToStringFunctionTest, objects_become_compact_json) {
+  expectResult(toString(ctx, json("{}")), "{}");
+  expectResult(toString(ctx, json(R"({"a": true, "b": 0})")),
+               R"({"a":true,"b":0})");
+  expectResult(toString(ctx, json(R"({"a": {}, "b": []})")),
+               R"({"a":{},"b":[]})");
 }
 
-TEST(ToStringFunctionTest, nested_strings_keep_unicode_and_slashes_unescaped) {
-  expectResult(kToString, R"([["ö/ü"]])", R"(["ö/ü"])");
-  expectResult(kToString, R"([{"ö": "a/b"}])", R"({"ö":"a/b"})");
+TEST_F(ToStringFunctionTest,
+       nested_strings_keep_unicode_and_slashes_unescaped) {
+  expectResult(toString(ctx, json(R"(["ö/ü"])")), R"(["ö/ü"])");
+  expectResult(toString(ctx, json(R"({"ö": "a/b"})")), R"({"ö":"a/b"})");
 }
 
-TEST(ToStringFunctionTest, nested_strings_escape_control_characters) {
-  expectResult(kToString, R"([["a\nb\"c"]])", R"(["a\nb\"c"])");
+TEST_F(ToStringFunctionTest, nested_strings_escape_control_characters) {
+  expectResult(toString(ctx, json(R"(["a\nb\"c"])")), R"(["a\nb\"c"])");
 }
 
 }  // namespace arangodb::tests::aql
