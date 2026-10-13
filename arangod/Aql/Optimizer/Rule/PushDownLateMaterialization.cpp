@@ -35,7 +35,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -65,8 +65,8 @@ bool extractRelevantAttributes(
 
     case arangodb::aql::ExecutionNode::SUBQUERY: {
       auto* sub = ExecutionNode::castTo<SubqueryNode*>(node);
-      return arangodb::aql::utils::findProjections(
-          sub->getSubquery()->getSingleton(), &var, "", false, attributes);
+      return optimizer::findProjections(sub->getSubquery()->getSingleton(),
+                                        &var, "", false, attributes);
     }
 
     case arangodb::aql::ExecutionNode::INDEX: {

@@ -198,24 +198,13 @@ bool VariableGenerator::isValidName(char const* p, char const* end) noexcept {
       }
     }
   }
-
-  // [a-zA-Z]+
-  char const* begin = p;
-  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'))) {
-    ++p;
-  }
-
-  if (begin == p) {
-    return false;
-  }
-
-  // [a-zA-Z0-9_]*
-  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-                      (*p >= '0' || *p <= '9') || *p == '_')) {
-    ++p;
-  }
-
-  return (p == end);
+  // We had a check here, that should check for '[a-zA-Z0-9_]*' but had a bug
+  // and was basically: '*'. Fixing this would break, at-least, some test we
+  // have. This then opens the question: If this is here since 2014: Will we
+  // break customer usage? So not worth the fix/risk. The loop that was here and
+  // was doing '[a-zA-Z]+' is now reduced to check whether the first char after
+  // '$' / '_' is a letter.
+  return p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'));
 }
 
 VariableId VariableGenerator::nextId() noexcept { return _id++; }

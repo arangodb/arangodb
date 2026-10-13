@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Types.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
 #include <variant>
@@ -117,10 +118,27 @@ auto inspect(Inspector& f, PaddedKeyGeneratorProperties& props) {
       f.field(StaticStrings::LastValue, props.lastValue).fallback(f.keep()));
 }
 
+/// @brief Only ever produced by the server itself, while running a database
+/// upgrade. Never accepted as user input: UpgradeKeyGenerator::generate()
+/// crashes by design, so it must not be reachable through the create API.
+struct UpgradeKeyGeneratorProperties {
+  bool allowUserKeys{false};
+
+  bool operator==(UpgradeKeyGeneratorProperties const&) const noexcept =
+      default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, UpgradeKeyGeneratorProperties& props) {
+  return f.object(props).fields(
+      f.field(StaticStrings::AllowUserKeys, props.allowUserKeys)
+          .fallback(f.keep()));
+}
+
 using KeyGeneratorProperties =
     std::variant<TraditionalKeyGeneratorProperties,
                  AutoIncrementGeneratorProperties, UUIDKeyGeneratorProperties,
-                 PaddedKeyGeneratorProperties>;
+                 PaddedKeyGeneratorProperties, UpgradeKeyGeneratorProperties>;
 
 template<class Inspector>
 auto inspect(Inspector& f, KeyGeneratorProperties& props) {
@@ -135,12 +153,28 @@ auto inspect(Inspector& f, KeyGeneratorProperties& props) {
       }
       return status;
     }
+
+    if constexpr (!isInternalContext<Inspector>) {
+      // "upgrade" is only ever written by the server itself, while a database
+      // upgrade is running. The internal path below has to read it back, but
+      // the create API must not accept it: UpgradeKeyGenerator::generate()
+      // crashes by design.
+      return f.variant(props).embedded("type").alternatives(
+          inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
+          inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
+          inspection::type<UUIDKeyGeneratorProperties>("uuid"),
+          inspection::type<PaddedKeyGeneratorProperties>("padded"));
+    }
   }
+
+  // Serialization always lists every alternative: the save inspector builds a
+  // visitor over the whole variant, so an unlisted type would not compile.
   return f.variant(props).embedded("type").alternatives(
       inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
       inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
       inspection::type<UUIDKeyGeneratorProperties>("uuid"),
-      inspection::type<PaddedKeyGeneratorProperties>("padded"));
+      inspection::type<PaddedKeyGeneratorProperties>("padded"),
+      inspection::type<UpgradeKeyGeneratorProperties>("upgrade"));
 }
 
 }  // namespace arangodb

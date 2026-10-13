@@ -33,7 +33,6 @@
 #include <variant>
 
 using namespace arangodb::replication2::agency;
-namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 

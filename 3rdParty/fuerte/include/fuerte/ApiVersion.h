@@ -54,6 +54,17 @@ constexpr auto to_string(ApiVersion v) -> std::string {
   }
 }
 
+constexpr auto from(uint32_t v) -> std::optional<ApiVersion> {
+  switch (v) {
+    case 1:
+      return ApiVersion::V1;
+    case 2:
+      return ApiVersion::Experimental;
+    default:
+      return std::nullopt;
+  }
+}
+
 // the inspector only works when we link with the inspector library
 template <typename Inspector>
 auto inspect(Inspector& f, ApiVersion& x) {

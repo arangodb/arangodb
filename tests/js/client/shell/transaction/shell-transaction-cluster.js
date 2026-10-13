@@ -36,6 +36,7 @@ const helper = require('@arangodb/test-helper');
 const internal = require('internal');
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const dh = require('@arangodb/testutils/document-state-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
@@ -136,8 +137,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
 
       let {shards, logs} = AM.getCollectionShardsAndLogs(db, c);
-      let servers = Object.assign({}, ...AM.getDbServers().map(
-        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
 
       for (let idx = 0; idx < logs.size; ++idx) {
         let log = logs[idx];
@@ -174,11 +174,13 @@ function transactionReplication2ReplicateOperationSuite() {
         for (const shard in shards) {
           for (const key in keysFound) {
             let localValues = {};
-            for (const [serverId, endpoint] of Object.entries(servers)) {
-              lh.waitFor(
-                dh.localKeyStatus(endpoint, dbn, shard, key, shard === shardId));
-              localValues[serverId] = dh.getLocalValue(endpoint, dbn, shard, key);
-            }
+            servers.forEach(server => {
+              server.toThisInstance(() => {
+                lh.waitFor(
+                  dh.localKeyStatus(dbn, shard, key, shard === shardId));
+                localValues[server.id] = dh.getLocalValue(dbn, shard, key);
+              });
+            });
             for (const [serverId, res] of Object.entries(localValues)) {
               if (shard === shardId) {
                 assertTrue(res.code === undefined,
@@ -280,14 +282,15 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       trx.abort();
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...AM.getDbServers().map(
-        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
       let localValues = {};
-      for (const [serverId, endpoint] of Object.entries(servers)) {
-        lh.waitFor(
-          dh.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
-        localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
-      }
+      servers.forEach(server => {
+        server.toThisInstance(() => {
+          lh.waitFor(
+            dh.localKeyStatus(dbn, shards[0], "foo", false));
+          localValues[server.id] = dh.getLocalValue(dbn, shards[0], "foo");
+        });
+      });
 
       let replication2Log = '';
       if (isReplication2) {
@@ -312,8 +315,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       };
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...AM.getDbServers().map(
-        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
 
       let trx;
       try {
@@ -325,11 +327,13 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       } finally {
         if (trx) {
           let localValues = {};
-          for (const [serverId, endpoint] of Object.entries(servers)) {
-            lh.waitFor(
-              dh.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
-            localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
-          }
+          servers.forEach(server  => {
+            server.toThisInstance(() => {
+              lh.waitFor(
+                dh.localKeyStatus(dbn, shards[0], "foo", false));
+              localValues[server.id] = dh.getLocalValue(dbn, shards[0], "foo");
+            });
+          });
 
           // Make sure nothing is committed just yet
           let replication2Log = '';
@@ -353,11 +357,13 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       }
 
       let localValues = {};
-      for (const [serverId, endpoint] of Object.entries(servers)) {
-        lh.waitFor(
-          dh.localKeyStatus(endpoint, dbn, shards[0], "foo", true));
-        localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
-      }
+      servers.forEach(server  => {
+        server.toThisInstance(() => {
+          lh.waitFor(
+            dh.localKeyStatus(dbn, shards[0], "foo", true));
+          localValues[server.id] = dh.getLocalValue(dbn, shards[0], "foo");
+        });
+      });
 
       let replication2Log = '';
       if (isReplication2) {
@@ -397,8 +403,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...AM.getDbServers().map(
-        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
 
       // Commit a transaction and expect everything to work
       let obj = {
@@ -432,11 +437,13 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       // Check that values are available on all followers
       for (let [shard, key] of shards) {
         let localValues = {};
-        for (const [serverId, endpoint] of Object.entries(servers)) {
-          lh.waitFor(
-            dh.localKeyStatus(endpoint, dbn, shard, key, true));
-          localValues[serverId] = dh.getLocalValue(endpoint, dbn, shard, key);
-        }
+        servers.forEach(server  => {
+          server.toThisInstance(() => {
+            lh.waitFor(
+              dh.localKeyStatus(dbn, shard, key, true));
+            localValues[server.id] = dh.getLocalValue(dbn, shard, key);
+          });
+        });
         for (const [serverId, res] of Object.entries(localValues)) {
           assertTrue(res.code === undefined,
             `Error while reading key ${key} from ${serverId}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
@@ -458,8 +465,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...AM.getDbServers().map(
-        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
 
       // Commit a transaction and expect everything to work
       let obj = {
@@ -493,11 +499,13 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       // Check that no documents were inserted
       for (let [shard, key] of shards) {
         let localValues = {};
-        for (const [serverId, endpoint] of Object.entries(servers)) {
-          lh.waitFor(
-            dh.localKeyStatus(endpoint, dbn, shard, key, false));
-          localValues[serverId] = dh.getLocalValue(endpoint, dbn, shard, key);
-        }
+        servers.forEach(server  => {
+          server.toThisInstance(() => {
+            lh.waitFor(
+              dh.localKeyStatus(dbn, shard, key, false));
+            localValues[server.id] = dh.getLocalValue(dbn, shard, key);
+          });
+        });
         for (const [serverId, res] of Object.entries(localValues)) {
         assertTrue(res.code === 404,
           `Expected 404 while reading key ${key} from ${serverId}/${dbn}/${shard}, ` +

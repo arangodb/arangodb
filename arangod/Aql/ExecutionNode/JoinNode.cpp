@@ -34,7 +34,6 @@
 #include "Aql/Executor/JoinExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/NonConstExpressionContainer.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -462,9 +461,11 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
                                        : nullptr,
         .index = it.index,
         .projections = it.projections,
+        .filterProjections = it.filterProjections,
         .usedAsSatellite = it.usedAsSatellite,
         .producesOutput = it.producesOutput,
         .isLateMaterialized = it.isLateMaterialized,
+        .isUniqueStream = it.isUniqueStream,
         .outDocIdVariable = it.outDocIdVariable,
         .expressions = std::move(clonedExpressions),
         .usedKeyFields = it.usedKeyFields,

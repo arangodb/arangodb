@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, SYS_IS_V8_BUILD */
+/* global print, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,6 @@ class runInPythonTest extends runWithAllureReport {
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
-      "vector-index": "true",
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
@@ -93,7 +92,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.instanceManager.JWT,
+      '--secret', this.instanceManager.jwt_secret,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',
@@ -101,13 +100,30 @@ class runInPythonTest extends runWithAllureReport {
       '--alluredir', testResultsDir
     ];
 
+    // The drivers default --foxx-path to /tests/static/service.zip, which only
+    // exists inside their own docker containers, and use it both verbatim
+    // (arangod reads it server-side) and '.'-prefixed relative to the checkout
+    // (pytest uploads it), so overriding it with an absolute path would break
+    // the upload subtests. Instead make the default resolvable by symlinking
+    // /tests/static to the checkout; fall back to --foxx-path if that fails.
+    const foxxStaticDir = fs.join(fs.normalize(fs.makeAbsolute(this.options.pythonsource)),
+                                  'tests', 'static');
+    if (fs.exists(fs.join(foxxStaticDir, 'service.zip')) &&
+        !fs.exists(fs.join('/tests', 'static', 'service.zip'))) {
+      try {
+        if (!fs.isDirectory('/tests')) {
+          fs.makeDirectory('/tests');
+        }
+        fs.linkFile(foxxStaticDir, fs.join('/tests', 'static'));
+      } catch (ex) {
+        print(RED + 'cannot provide /tests/static (' + ex + '), falling back to --foxx-path' + RESET);
+        args.push('--foxx-path', fs.join(foxxStaticDir, 'service.zip'));
+      }
+    }
+
     let testSkipList = [];
     if (!this.options.cluster) {
       testSkipList.push('backup');
-    }
-    if (true) { //!SYS_IS_V8_BUILD) {
-      //testSkipList.push('tasks');
-      testSkipList.push('js-transactions');
     }
     if (testSkipList.length > 0) {
       args = args.concat(['--skip'].concat(testSkipList));

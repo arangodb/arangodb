@@ -15,6 +15,7 @@ target_link_libraries(arango_shell
 )
 
 target_link_libraries(arango_shell v8_interface)
+target_link_libraries(arango_shell clienttools_utils)
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 

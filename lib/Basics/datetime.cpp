@@ -372,7 +372,7 @@ std::
                    year_month_day ymd{floor<date::days>(tp)};
                    month m = ymd.month();
                    uint64_t part =
-                       static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
+                       static_cast<uint64_t>(std::ceil(unsigned(m) / 3.0f));
                    TRI_ASSERT(part <= 4);
                    wrk.append(std::to_string(part));
                  }},
@@ -638,6 +638,7 @@ bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
       if (length == 0 || length > 2 || result.tzOffsetMinute > 59) {
         return false;
       }
+      result.tzOffsetMinute *= factor;
       dateTime = dateTime.substr(length);
     }
   }

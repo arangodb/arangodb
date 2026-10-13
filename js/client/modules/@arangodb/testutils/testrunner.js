@@ -28,6 +28,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const rbac = require('@arangodb/testutils/rbac');
 const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
@@ -53,7 +54,8 @@ function isBucketized(testBuckets) {
 exports.sutFilters = {
   checkUsers: ["users"],
   checkCollections: ["tasks-sjs", "collections", "views", "graphs"],
-  checkDBs: ["databases"]
+  checkDBs: ["databases"],
+  checkAnalyzers: ["analyzers"]
 };
 class testRunner {
   constructor(options, testname, serverOptions = {}, disableChecks=[]) {
@@ -68,6 +70,8 @@ class testRunner {
     if (this.serverOptions === undefined) {
       this.serverOptions = {};
     }
+    this.rbacVerified = false;
+    rbac.applyServerOptions(this.options, this.serverOptions);
     this.testList = [];
     this.customInstanceInfos = {};
     this.memProfCounter = 0;
@@ -288,6 +292,12 @@ class testRunner {
       };
     }
     
+    let unsupported = rbac.checkSuiteSupported(this.options, this.friendlyName,
+                                               this.rbacVerified);
+    if (unsupported !== null) {
+      return {setup: {status: false, message: unsupported}};
+    }
+
     let beforeStart = time();
 
     this.instanceManager = new im.instanceManager(this.options.protocol,
@@ -303,6 +313,15 @@ class testRunner {
           message: 'custom preStart failed!' + this.customInstanceInfos.preStart.message
         },
         shutdown: this.customInstanceInfos.preStart.shutdown
+      };
+    }
+
+    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
+      return {
+        setup: {
+          status: false,
+          message: 'could not bootstrap the RBAC binding for the workload user'
+        }
       };
     }
 
@@ -462,6 +481,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print(Date() + ' Shutting down...');
     }
+    rbac.bootstrapUser(this.options, this.instanceManager, true);
     this.customInstanceInfos.preStop = this.preStop();
     if (this.customInstanceInfos.preStop.state === false) {
       if (!this.results.hasOwnProperty('setup')) {

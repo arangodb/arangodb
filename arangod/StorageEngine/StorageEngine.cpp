@@ -32,9 +32,11 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -45,11 +47,12 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory,
-                             IDatabaseProvider& databaseProvider)
-    : ApplicationFeature{server, registration, featureName},
+                             IDatabaseProvider& databaseProvider,
+                             IDatabaseBootstrap& databaseBootstrap)
+    : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
+      _databaseBootstrap(databaseBootstrap),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
@@ -67,6 +70,11 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 
+uint64_t StorageEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId;
+}
+
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
   return std::make_unique<TRI_vocbase_t>(std::move(info), *this,
@@ -80,9 +88,7 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
-bool StorageEngine::inRecovery() {
-  return recoveryState() < RecoveryState::DONE;
-}
+bool StorageEngine::isReady() { return engineState() == EngineState::kRunning; }
 
 void StorageEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,

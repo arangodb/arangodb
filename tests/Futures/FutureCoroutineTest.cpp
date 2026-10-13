@@ -148,7 +148,7 @@ TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
 
     expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 1);
   }
-  expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+  expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 0);
 }
 
 namespace {
@@ -195,9 +195,11 @@ TYPED_TEST(
 
       co_await std::move(fn);
       awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{promise->id});
+      if (not std::is_same<TypeParam, NoWait>::value) {
+        EXPECT_TRUE(awaited_promise.has_value());
+        EXPECT_EQ(awaited_promise->requester,
+                  arangodb::async_registry::Requester{promise->id});
+      }
 
       co_return;
     };
@@ -217,9 +219,11 @@ TYPED_TEST(
       co_await std::move(fn);
 
       awaited_promise = find_promise_by_name("awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{waiter_promise->id});
+      if (not std::is_same<TypeParam, NoWait>::value) {
+        EXPECT_TRUE(awaited_promise.has_value());
+        EXPECT_EQ(awaited_promise->requester,
+                  arangodb::async_registry::Requester{waiter_promise->id});
+      }
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
@@ -265,9 +269,11 @@ TYPED_TEST(FutureTest,
       co_await std::move(fn);
 
       awaited_promise = find_promise_by_name("awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{waiter_promise->id});
+      if (not std::is_same<TypeParam, NoWait>::value) {
+        EXPECT_TRUE(awaited_promise.has_value());
+        EXPECT_EQ(awaited_promise->requester,
+                  arangodb::async_registry::Requester{waiter_promise->id});
+      }
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");

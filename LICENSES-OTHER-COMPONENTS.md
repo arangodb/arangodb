@@ -67,12 +67,22 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.2
-* Date: 2026-05-22
-* Project Home:https://github.com/facebookresearch/faiss/
+* Version: 1.15.0
+* Date: 2026-08-03
+* Project Home:https://github.com/facebookresearch/faiss
 * License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
+
+### fast_float
+
+* Name: fast_float
+* Version: 8.3.1
+* Date: 2026-10-04 16:26:59Z
+* Project Home: https://github.com/fastfloat/fast_float
+* License: https://raw.githubusercontent.com/fastfloat/fast_float/main/LICENSE-MIT
+* License Name: MIT License (or Apache License 2.0, or Boost Software License 1.0)
+* License Id: MIT OR Apache-2.0 OR BSL-1.0
 
 ### fasthash
 

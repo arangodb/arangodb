@@ -34,6 +34,8 @@ void ShellConsoleOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ShellConsoleFeatureOptions& options) {
   opts->addOption("--quiet", "Silent startup.",
                   new BooleanParameter(&options.quiet));
+  opts->addOption("--connect", "whether to attempt to connect the server.",
+                  new BooleanParameter(&options.connect));
 
   opts->addSection("console", "console");
 

@@ -39,6 +39,9 @@ std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite(bool timeTravel) {
   ON_CALL(suite->dbProvider, defaultReplicationVersion())
       .WillByDefault(Return(replication::Version::ONE));
 
+  // recovery would otherwise run helpers that point into the server of an
+  // earlier test suite
+  RocksDBEngine::cleanupStaleRecoveryHelpers();
   suite->engine.start();
   return suite;
 }

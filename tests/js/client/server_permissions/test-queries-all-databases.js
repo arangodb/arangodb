@@ -32,7 +32,8 @@ let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
-    'runSetup': true
+    'runSetup': true,
+    "server.authentication": false
   };
 }
 

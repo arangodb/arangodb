@@ -93,6 +93,7 @@ TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
   EXPECT_EQ(testee->id.id(), 0);
   EXPECT_FALSE(testee->isSmartChild);
   EXPECT_EQ(testee->internalValidatorType, 0);
+  EXPECT_FALSE(testee->smartGraphAttribute.has_value());
 }
 
 TEST_F(CollectionInternalPropertiesTest, test_id) {
@@ -132,4 +133,7 @@ GenerateBoolAttributeTest(CollectionInternalPropertiesTest,
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, isSmartChild);
 GenerateIntegerAttributeTest(CollectionInternalPropertiesTest,
                              internalValidatorType);
+
+GenerateOptionalStringAttributeTest(CollectionInternalPropertiesTest,
+                                    smartGraphAttribute);
 }  // namespace arangodb::tests

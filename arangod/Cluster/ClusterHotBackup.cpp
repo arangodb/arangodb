@@ -220,7 +220,12 @@ arangodb::Result hotBackupList(
     }
 
     if (valid) {  // backup is identical on all servers
-      BackupMeta& front = i.second.front();
+      // Prefer a piece with proper meta data (version, datetime, ...) over an
+      // error stub, so that the aggregated entry carries real information.
+      auto it =
+          std::find_if(i.second.begin(), i.second.end(),
+                       [](BackupMeta const& m) { return m._isAvailable; });
+      BackupMeta& front = it != i.second.end() ? *it : i.second.front();
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
       front._serverId = "";  // makes no sense for whole cluster
@@ -1556,9 +1561,12 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
                                   "hot backup timeout before locking phase");
         }
 
-        // kill all transactions
-        result =
-            mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        // kill all transactions, regardless of which user owns them
+        {
+          ExecContextSuperuserScope superuserScope;
+          result =
+              mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        }
         if (result.fail()) {
           events::CreateHotbackup(timeStamp + "_" + backupId,
                                   result.errorNumber());
@@ -1672,7 +1680,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       report.add("sizeInBytes", VPackValue(meta._sizeInBytes));
       report.add("nrFiles", VPackValue(meta._nrFiles));
       report.add("nrDBServers", VPackValue(meta._nrDBServers));
-      report.add("datetime", VPackValue(meta._datetime));
+      report.add("datetime",
+                 VPackValue(BackupMeta::normalizeDatetime(meta._datetime)));
       if (!gotLocks) {
         report.add("potentiallyInconsistent", VPackValue(true));
       }

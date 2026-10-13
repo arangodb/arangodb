@@ -1,3 +1,4 @@
+
 # Arango DB test infrastructure
 ## Philosophy
 All the code structure and the test infrastructure works in a way
@@ -78,7 +79,35 @@ Testing.js already filtered it, and split it to buckets (test-utils.js:`filterTe
 
 The testsuite then can use the default lifecycle management to launch these tests, or implement own logic, again best based on existing logic.
 
-## test lifecycle management
+### integration test file filtering
+Rather than adding filter conditions inside a test whether it should run or not (which usually breaks and then may stop the test silently from being ever executed at all)
+flags in filenames should be used so its obvious to everyone under which preconditions the test is executed or not.
+Currently implemented flags:
+
+| Flag                   | Meaning                                                                                                                                                               |
++------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| -cluster               | Test will only be executed if the SUT is a cluster                                                                                                                    |
+| -noncluster            | Test will only be executed if the SUT isn't a cluster                                                                                                                 |
+| -arangosearch          | Test will only be executed if the CLI option `--arangosearch` is `true`                                                                                               |
+| -timecritical          | Test can be filtered by `--skipTimeCritical` `true`                                                                                                                   |
+| -nightly               | Test has a long runtime by design. Its to bloated for regular CI runs, `full` runs in the CI will launch it; `--skipNightly` `false` or `--onlyNightly` can filter it |
+| -geo                   | tests can be skipped by `--skipGeo` `true`                                                                                                                            |
+| -nondeterministic      | testcase may not run reliable, it can be skipped by `--skipNondeterministic true`                                                                                     |
+| -graph                 | Test can be skipped by `--skipGraph` `true`                                                                                                                           |
+| -memoryintense         | test can be skipped by `skipMemoryIntense`. The flag may be set by resource limited hosts.                                                                            |
+| -novalgrind            | test cannot be ran with `--valgrind`                                                                                                                                  |
+| -noarm                 | test will be skipped if the host is of type AArch64                                                                                                                   |
+| -noasan                | skip when the SUT is instrumented for tsan/alubsan                                                                                                                    |
+| -nocov                 | skip when the SUT is instrumented for gcov                                                                                                                            |
+| -noinstr               | test will not be ran if the SUT has binaries with instrumentation of tsan/alubsan/gcov                                                                                |
+| -noinstr_or_noncluster | skip when built with an instrumented build and running in cluster mode                                                                                                |
+| -fp                    | if the SUT supports failurepoints                                                                                                                                     |
+| -r2                    | skip when running without replication 2                                                                                                                               |
+| -sjs                   | skip when running the SUT without javascript enabled                                                                                                                  |
+| _DISABLED              | should be added *after* .js to stop a test from being executed                                                                                                        |
+when `--extremeVerbosity` is set, the filter responsible for skipping a test is printed.
+
+# test lifecycle management
 The test lifecycle management should be utilized to maintain the SUT, iterate over the tests. 
 It is implemented in `testrunner.js`, and its modularity is intended to reuse it partially or completely.
 By default it comes without a way to launch an integration testsuite, this is implemented in the deriving classes. 

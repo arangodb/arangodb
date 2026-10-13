@@ -67,8 +67,7 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  // creation happens atm in engine->createCollection
-  virtual Result updateProperties(velocypack::Slice slice) = 0;
+  virtual Result setCacheEnabled(bool cacheEnabled) = 0;
 
   virtual RevisionId revision(transaction::Methods* trx) const = 0;
 
@@ -268,10 +267,6 @@ class PhysicalCollection {
 
   virtual bool cacheEnabled() const noexcept = 0;
 
-  // Whether this collection stores time-travel history. Only the RocksDB
-  // engine supports it; the default is "off" for every other implementation.
-  virtual bool timeTravelEnabled() const noexcept { return false; }
-
   // The timestamp at which the currently committed version of `key` was
   // created, i.e. what a new version has to be newer than. Read straight from
   // the primary index, whose entries are keyed by that timestamp. An unset
@@ -284,6 +279,8 @@ class PhysicalCollection {
         TRI_ERROR_NOT_IMPLEMENTED,
         "time travel is not supported by this storage engine");
   }
+
+  virtual uint64_t objectId() const noexcept { return 0; }
 
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);

@@ -272,8 +272,10 @@ const replicatedLogDeletePlan = function (database, logId) {
 };
 
 const replicatedLogDeleteTarget = function (database, logId) {
+  throw new Error("fixme: use agencymanager"); /*
   clientHelper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
   clientHelper.agency.increaseVersion(`Target/Version`);
+  */
 };
 
 const createReconfigureJob = function (database, logId, ops) {
@@ -373,36 +375,12 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     });
   }
 
-  if (requestResult.hasOwnProperty('error')) {
-    if (requestResult.error) {
-      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-        throw new TypeError(requestResult.errorMessage);
-      }
-
-      const error = new ArangoError(requestResult);
-      error.message = requestResult.message;
-      throw error;
-    }
-
-    // remove the property from the original object
-    delete requestResult.error;
-  }
-
-  if (requestResult.json === undefined) {
+  if (requestResult.error && !expectingError) {
     throw new ArangoError({
       'error': true,
-      'code': 4,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': JSON.stringify(requestResult)
-    });
-  }
-
-  if (requestResult.json.error && !expectingError) {
-    throw new ArangoError({
-      'error': true,
-      'code': requestResult.json.code,
-      'errorNum': requestResult.json.errorNum,
-      'errorMessage': requestResult.json.errorMessage,
+      'code': requestResult.code,
+      'errorNum': requestResult.errorNum,
+      'errorMessage': requestResult.errorMessage,
     });
   }
 

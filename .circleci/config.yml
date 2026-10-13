@@ -33,6 +33,10 @@ parameters:
     type: boolean
     default: false
     description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
+  with-clang-tidy:
+    type: boolean
+    default: false
+    description: "Run clang-tidy over the tree (slow)"
   config-definitions:
     type: string
     default: tests.yml
@@ -207,7 +211,7 @@ jobs:
       config-definitions-branches:
         type: string
         default: ""
-      
+
     steps:
       - run:
           name: Print pipeline parameters
@@ -288,6 +292,7 @@ jobs:
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
+              <<# pipeline.parameters.with-clang-tidy >> --clang-tidy <</ pipeline.parameters.with-clang-tidy >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \

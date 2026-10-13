@@ -321,6 +321,14 @@ size_t getParallelism(velocypack::Slice slice) {
       IndexFactory::kDefaultParallelism);
 }
 
+// A cache is meaningless without a manager, and is never built for system
+// collections, for coordinator stubs, or on a coordinator at all.
+bool canEnableCache(cache::Manager const* cacheManager,
+                    LogicalCollection const& collection) {
+  return cacheManager != nullptr && !collection.system() &&
+         !collection.isAStub() && !ServerState::instance()->isCoordinator();
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -329,22 +337,17 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, velocypack::Slice info,
+    LogicalCollection& collection, LocalStorageProperties const& storage,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, info),
+    : RocksDBMetaCollection(collection, storage),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)),
-      _timeTravelEnabled(basics::VelocyPackHelper::getBooleanValue(
-          info, StaticStrings::EnableTimeTravel, false)) {
+      _cacheEnabled(canEnableCache(cacheManager, collection) &&
+                    storage.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -416,18 +419,13 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  bool cacheEnabled = _cacheManager != nullptr &&
-                      !_logicalCollection.system() &&
-                      !_logicalCollection.isAStub() &&
-                      !ServerState::instance()->isCoordinator() &&
-                      basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed));
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
-  primaryIndex()->setCacheEnabled(cacheEnabled);
+Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
+  bool enable =
+      canEnableCache(_cacheManager, _logicalCollection) && cacheEnabled;
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(enable);
 
-  if (cacheEnabled) {
+  if (enable) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
@@ -435,7 +433,6 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
     destroyCache();
     primaryIndex()->destroyCache();
   }
-
   // nothing else to do
   // Changes to immutable properties are simply ignored here. This could be
   // unexpected - we should consider returning an error instead.
@@ -448,7 +445,6 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
   result.add(StaticStrings::CacheEnabled,
              VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
-  result.add(StaticStrings::EnableTimeTravel, VPackValue(_timeTravelEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
@@ -577,7 +573,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
         getParallelism(info));
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
       key.constructCollection(vocbase.id(), _logicalCollection.id());
@@ -679,7 +675,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 6. persist in rocksdb
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path"},
@@ -717,7 +713,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(engine.isReady());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
       {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
@@ -1342,7 +1338,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
 
 ResultT<std::optional<std::uint64_t>>
 RocksDBCollection::currentVersionTimestamp(std::string_view key) const {
-  TRI_ASSERT(timeTravelEnabled());
+  TRI_ASSERT(_logicalCollection.timeTravelEnabled());
   return primaryIndex()->currentVersionTimestamp(key);
 }
 
@@ -1847,7 +1843,7 @@ Result RocksDBCollection::modifyDocument(
   // key lock (see PhysicalCollection::setTimeTravelWriteTimestamp), so here it
   // is only read back out of the body.
   uint64_t writeTimestamp = 0;
-  if (timeTravelEnabled()) {
+  if (_logicalCollection.timeTravelEnabled()) {
     VPackSlice created = newDoc.get(StaticStrings::Created);
     TRI_ASSERT(created.isNumber());
     writeTimestamp = created.getNumber<uint64_t>();
@@ -1908,7 +1904,7 @@ Result RocksDBCollection::modifyDocument(
       RocksDBColumnFamilyManager::Family::Documents);
 
   rocksdb::Status s = std::invoke([&]() {
-    if (timeTravelEnabled()) {
+    if (_logicalCollection.timeTravelEnabled()) {
       // Time travel: the superseded version is kept so earlier read timestamps
       // can still resolve it, and is rewritten in place with the timestamp that
       // expired it. Its key holds the old LocalDocumentId, which the new
@@ -2057,7 +2053,7 @@ Result RocksDBCollection::modifyDocument(
       // Time travel: the previous version is retained in the Documents family,
       // so it stays part of the revision tree - removing it becomes the job of
       // the (not yet implemented) history GC.
-      if (!timeTravelEnabled()) {
+      if (!_logicalCollection.timeTravelEnabled()) {
         state->trackRemove(_logicalCollection.id(), oldRevisionId);
       }
       state->trackInsert(_logicalCollection.id(), newRevisionId);
