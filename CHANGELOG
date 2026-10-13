@@ -1,6 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1062: Fixed wrong AQL query results when two expressions differ only in
+  grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
+  `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
+  and `remove-filter-covered-by-index` treated such expressions as the same.
+
 * BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
   replicated AQL modification ran on a network thread while other snippets of
   the same query were executing. We commit first and then replicate.
