@@ -52,9 +52,9 @@ class ComputedValuesTest : public ::testing::Test {
   static void TearDownTestCase() { server.reset(); }
   void TearDown() override {
     auto& vocbase = server->getSystemDatabase();
-    auto c = vocbase.lookupCollection("test");
-    if (c != nullptr) {
-      vocbase.dropCollection(c->id(), false);
+    auto cResult = vocbase.lookupCollection("test");
+    if (cResult.ok()) {
+      vocbase.dropCollection(cResult.get()->id(), false);
     }
   }
 

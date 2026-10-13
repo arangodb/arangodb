@@ -259,7 +259,11 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
           vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       return ci.getCollectionNT(vocbase.name(), name);
     } else {
-      return vocbase.lookupCollection(name);
+      auto collectionResult = vocbase.lookupCollection(name);
+      if (collectionResult.fail()) {
+        return nullptr;
+      }
+      return collectionResult.get();
     }
   }
 

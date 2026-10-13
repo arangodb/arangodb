@@ -279,15 +279,16 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
 VPackSlice BaseEngine::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto col = _trx->vocbase().lookupCollection(idToken.cid());
-
-  if (col == nullptr) {
+  auto colResult = _trx->vocbase().lookupCollection(idToken.cid());
+  if (colResult.fail()) {
     // collection gone... should not happen
     LOG_TOPIC("3b2ba", ERR, arangodb::Logger::GRAPHS)
-        << "Could not extract indexed edge document. collection not found";
-    TRI_ASSERT(col != nullptr);  // for maintainer mode
+        << "Could not extract indexed edge document. collection not found: "
+        << colResult.errorMessage();
+    TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
+  auto col = colResult.get();
 
   _docBuilder.clear();
   auto cb = IndexIterator::makeDocumentCallback(_docBuilder);

@@ -271,7 +271,14 @@ IResearchRocksDBRecoveryHelper::lookupCollection(uint64_t objectId) {
   auto const [databaseName, collectionId] =
       _engine->mapObjectToCollection(objectId);
   auto vocbase = _dbFeature->useDatabase(databaseName);
-  return vocbase ? vocbase->lookupCollection(collectionId) : nullptr;
+  if (!vocbase) {
+    return nullptr;
+  }
+  auto collectionResult = vocbase->lookupCollection(collectionId);
+  if (collectionResult.fail()) {
+    return nullptr;
+  }
+  return collectionResult.get();
 }
 
 IResearchRocksDBRecoveryHelper::Ranges&

@@ -156,8 +156,8 @@ TEST_F(TraverserCacheTest,
   graph::MockGraph graph{};
   gdb.addGraph(graph);
 
-  std::shared_ptr<arangodb::LogicalCollection> col =
-      gdb.vocbase.lookupCollection("e");
+  auto colResult = gdb.vocbase.lookupCollection("e");
+  auto col = colResult.get();
   LocalDocumentId localDocumentId{1};    // invalid
   DataSourceId dataSourceId{col->id()};  // valid
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
@@ -299,8 +299,8 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::string edgeKey = "0-1";  // (EdgeKey format: <from>-<to>)
 
-  std::shared_ptr<arangodb::LogicalCollection> col =
-      gdb.vocbase.lookupCollection("e");
+  auto colResult = gdb.vocbase.lookupCollection("e");
+  auto col = colResult.get();
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
