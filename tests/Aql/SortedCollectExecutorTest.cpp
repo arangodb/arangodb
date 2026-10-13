@@ -37,12 +37,14 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortedCollectExecutor.h"
+#include "Basics/Exceptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
 #include "AqlItemBlockHelper.h"
 #include "Mocks/Servers.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <functional>
@@ -235,6 +237,40 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
     ASSERT_TRUE(x.isNumber());
     ASSERT_EQ(x.slice().getInt(), 2);
   }
+}
+
+TEST_F(SortedCollectExecutorTestRowsUpstream,
+       resource_limit_while_writing_group_value) {
+  // ResourceMonitor checks its limit only when usage crosses a chunk boundary,
+  // so the group value must be at least one chunk to throw deterministically.
+  std::string const json =
+      absl::StrCat("\"", std::string(ResourceMonitor::chunkSize, 'x'), "\"");
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{json.c_str()}});
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
+
+  auto const queryMemoryBefore = fakedQuery->resourceMonitor().current();
+  {
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+        itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
+    SortedCollectExecutor testee(fetcher, executorInfos);
+
+    monitor.memoryLimit(monitor.current() + 1);
+    bool threw = false;
+    try {
+      std::ignore = testee.produceRows(inputRange, result);
+    } catch (arangodb::basics::Exception const& ex) {
+      threw = true;
+      EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+    }
+    EXPECT_TRUE(threw);
+  }
+  EXPECT_EQ(queryMemoryBefore, fakedQuery->resourceMonitor().current());
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
