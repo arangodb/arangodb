@@ -36,50 +36,68 @@
 
 #include <unicode/locid.h>
 
+#include <deque>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace arangodb::tests::aql {
 
-using arangodb::aql::functions::StringFunctionsName;
+using arangodb::aql::AqlValue;
+using arangodb::aql::functions::VPackFunctionParametersView;
 
-inline ResultT<std::string> call(StringFunctionsName name,
-                                 velocypack::Slice argsSlice) {
-  std::vector<arangodb::aql::AqlValue> args;
-  for (auto slice : velocypack::ArrayIterator(argsSlice)) {
-    args.emplace_back(arangodb::aql::AqlValueHintSliceNoCopy{slice});
+class StringFunctionTest : public ::testing::Test {
+ protected:
+  // argument values live as long as the test
+  AqlValue const& json(std::string_view text) {
+    return keep(velocypack::Parser::fromJson(text))[0];
   }
+
+  AqlValue const& str(std::string_view text) {
+    auto builder = std::make_shared<velocypack::Builder>();
+    builder->add(velocypack::Value(std::string(text)));
+    return keep(builder)[0];
+  }
+
+  VPackFunctionParametersView values(std::string_view jsonArray) {
+    auto builder = velocypack::Parser::fromJson(jsonArray);
+    _builders.push_back(builder);
+    auto& values = _values.emplace_back();
+    for (auto slice : velocypack::ArrayIterator(builder->slice())) {
+      values.emplace_back(arangodb::aql::AqlValueHintSliceNoCopy{slice});
+    }
+    return values;
+  }
+
+  static void expectResult(ResultT<AqlValue> result,
+                           std::string_view expected) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    arangodb::aql::AqlValueGuard guard(*result, true);
+    EXPECT_EQ(result->slice().stringView(), expected);
+  }
+
+  static void expectError(ResultT<AqlValue> result, ErrorCode expected) {
+    if (result.ok()) {
+      result->destroy();
+    }
+    EXPECT_EQ(result.errorNumber(), expected);
+  }
+
   arangodb::aql::AqlFunctionsInternalCache cache;
-  arangodb::aql::functions::StringFunctionContext env{
+  arangodb::aql::functions::StringFunctionContext ctx{
       velocypack::Options::Defaults, icu_64_64::Locale::getRoot(), cache};
 
-  auto result = arangodb::aql::functions::runStringFunction(name, args, env);
-  if (result.fail()) {
-    return result.result();
+ private:
+  std::vector<AqlValue> const& keep(
+      std::shared_ptr<velocypack::Builder> builder) {
+    _builders.push_back(builder);
+    return _values.emplace_back(std::vector<AqlValue>{
+        AqlValue(arangodb::aql::AqlValueHintSliceNoCopy{builder->slice()})});
   }
-  arangodb::aql::AqlValueGuard guard(*result, true);
-  return result->slice().copyString();
-}
 
-inline ResultT<std::string> call(StringFunctionsName name,
-                                 std::string_view argsJson) {
-  auto builder = velocypack::Parser::fromJson(argsJson);
-  return call(name, builder->slice());
-}
-
-inline void expectResult(StringFunctionsName name, std::string_view argsJson,
-                         std::string_view expected) {
-  SCOPED_TRACE(argsJson);
-  auto result = call(name, argsJson);
-  ASSERT_TRUE(result.ok()) << result.errorMessage();
-  EXPECT_EQ(*result, expected);
-}
-
-inline void expectError(StringFunctionsName name, std::string_view argsJson,
-                        ErrorCode expected) {
-  SCOPED_TRACE(argsJson);
-  EXPECT_EQ(call(name, argsJson).errorNumber(), expected);
-}
+  std::deque<std::shared_ptr<velocypack::Builder>> _builders;
+  std::deque<std::vector<AqlValue>> _values;
+};
 
 }  // namespace arangodb::tests::aql
