@@ -58,6 +58,35 @@ function VectorIndexCreateAndRemoveTestSuite() {
     const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
+    const assertUsesVectorIndex = (query, bindVars) => {
+        const plan = db._createStatement({
+            query,
+            bindVars
+        }).explain().plan;
+        const indexNodes = plan.nodes.filter(
+            n => n.type === "EnumerateNearVectorNode");
+        assertEqual(1, indexNodes.length);
+    };
+
+    const assertSearchOnEmptyCollectionReturnsNothing = () => {
+        const query = "FOR d IN " +
+            collection.name() +
+            " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) " +
+            "LIMIT 5 RETURN d._key";
+        const bindVars = {
+            qp: randomPoint
+        };
+        assertUsesVectorIndex(query, bindVars);
+
+        assertEqual([], db._query(query, bindVars).toArray());
+
+        const withFullCount = db._query(query, bindVars, {
+            fullCount: true
+        });
+        assertEqual([], withFullCount.toArray());
+        assertEqual(0, withFullCount.getExtra().stats.fullCount);
+    };
+
     return {
         setUp: function() {
             db._useDatabase("_system");
@@ -205,6 +234,26 @@ function VectorIndexCreateAndRemoveTestSuite() {
             assertEqual(5, closesDocKeysPostRemove.length);
 
             assertNotEqual(closesDocKeysPreRemove, closesDocKeysPostRemove);
+        },
+
+        testSearchOnTruncatedCollectionKeepsReadyIndexAndReturnsNothing: function() {
+            collection.truncate();
+            assertEqual(0, collection.count());
+            assertTrue(waitForVectorIndexState(collection, "vector_l2",
+                VectorIndexTrainingState.kReady, 1));
+
+            assertSearchOnEmptyCollectionReturnsNothing();
+        },
+
+        testSearchAfterRemovingAllDocumentsReturnsNothing: function() {
+            collection.remove(insertedDocs.map(item => ({
+                "_key": item._key
+            })));
+            assertEqual(0, collection.count());
+            assertTrue(waitForVectorIndexState(collection, "vector_l2",
+                VectorIndexTrainingState.kReady, 1));
+
+            assertSearchOnEmptyCollectionReturnsNothing();
         },
     };
 }

@@ -28,6 +28,7 @@ namespace arangodb {
 
 struct ShellConsoleFeatureOptions {
   bool quiet = false;
+  bool connect = true;
   bool colors = true;
   bool useHistory = true;
   bool autoComplete = true;

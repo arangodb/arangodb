@@ -371,19 +371,28 @@ function captureSegment (state, start, end, checkJson) {
   }
 }
 
+function chargeMergeWork (state) {
+  state.totalMergeKeys++
+
+  if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+    throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')')
+  }
+}
+
 function mergeMappings (state, destination, source, overridableKeys) {
   if (!common.isObject(source)) {
     throwError(state, 'cannot merge mappings; the provided source object is unacceptable')
   }
+
+  // Count the source mapping itself to bound sequences of empty mappings.
+  chargeMergeWork(state)
 
   const sourceKeys = Object.keys(source)
 
   for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
     const key = sourceKeys[index]
 
-    if (state.maxTotalMergeKeys !== -1 && ++state.totalMergeKeys > state.maxTotalMergeKeys) {
-      throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')')
-    }
+    chargeMergeWork(state)
 
     if (!_hasOwnProperty.call(destination, key)) {
       setProperty(destination, key, source[key])
@@ -426,6 +435,10 @@ function storeMappingPair (state, _result, overridableKeys, keyTag, keyNode, val
 
   if (keyTag === 'tag:yaml.org,2002:merge') {
     if (Array.isArray(valueNode)) {
+      if (valueNode.length > 100) {
+        throwError(state, 'abnormal merge sequence size')
+      }
+
       for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {
         mergeMappings(state, _result, valueNode[index], overridableKeys)
       }

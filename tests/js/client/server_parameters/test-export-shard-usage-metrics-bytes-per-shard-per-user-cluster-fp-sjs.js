@@ -1560,10 +1560,10 @@ function TestUser1Suite() {
   const user = 'user1';
 
   const protocol = 'tcp';
-  let oldUser = arango.connectedUser();
 
   let suite = {
     setUpAll: function () {
+      IM.rememberConnection(true);
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1579,8 +1579,7 @@ function TestUser1Suite() {
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(IM.endpoint, '_system', oldUser, '');
-
+      IM.reconnectMe(true);
       db._useDatabase("_system");
       db._dropDatabase(name);
       users.remove(user);
@@ -1598,10 +1597,10 @@ function TestUser2Suite() {
   const user = 'user2';
 
   const protocol = 'tcp';
-  let oldUser = arango.connectedUser();
 
   let suite = {
     setUpAll: function () {
+      IM.rememberConnection(true);
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1617,7 +1616,7 @@ function TestUser2Suite() {
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(IM.endpoint, '_system', oldUser, '');
+      IM.reconnectMe(true);
 
       db._useDatabase("_system");
       db._dropDatabase(name);

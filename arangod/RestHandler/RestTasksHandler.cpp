@@ -153,7 +153,8 @@ void RestTasksHandler::registerTask(bool byId) {
   }
 
   bool allowTasks;
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     allowTasks = false;
   } else {
     V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();

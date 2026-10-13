@@ -83,6 +83,19 @@ this size.)");
       .setLongDescription(R"(Each dump action on a server can use at most
 this many parallel threads. Note that end users can still start multiple
 dump actions that run in parallel.)");
+
+  options
+      ->addOption("--dump.max-prefetch-count",
+                  "Maximum number of batches that can be prefetched in a dump.",
+                  new UInt64Parameter(&opts.prefetchCountUpperBound, 1,
+                                      /*minimum*/ opts.prefetchCountLowerBound),
+                  makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
+                            Flags::OnDBServer, Flags::OnSingle))
+      .setIntroducedIn(31212)
+      .setLongDescription(R"(Each dump action on a server keeps at most this
+many prepared batches around, waiting to be fetched by the client. The queue
+holding them is allocated upfront, so this value also bounds the memory a
+single dump request can reserve for it.)");
 }
 
 void DumpLimitsOptionsProvider::validateOptionsImpl(
@@ -99,6 +112,13 @@ void DumpLimitsOptionsProvider::validateOptionsImpl(
     LOG_TOPIC("f433c", FATAL, arangodb::Logger::CONFIG)
         << "invalid value for --dump.max-parallelism. Please use a value "
         << "of at least " << opts.parallelismLowerBound;
+    FATAL_ERROR_EXIT();
+  }
+
+  if (opts.prefetchCountLowerBound > opts.prefetchCountUpperBound) {
+    LOG_TOPIC("4a6d1", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --dump.max-prefetch-count. Please use a value "
+        << "of at least " << opts.prefetchCountLowerBound;
     FATAL_ERROR_EXIT();
   }
 }

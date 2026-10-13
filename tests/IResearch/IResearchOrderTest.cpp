@@ -275,7 +275,7 @@ class IResearchOrderTest
  protected:
   arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
@@ -284,19 +284,18 @@ class IResearchOrderTest
       : server(
             std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""),
             nullptr),
-        engine(server) {
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     arangodb::tests::init();
 
     // setup required application features
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(dbFeature, false);  // required for calculationVocbase
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        dbFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -353,7 +352,6 @@ class IResearchOrderTest
     arangodb::aql::AqlFunctionFeature(server)
         .unprepare();                     // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

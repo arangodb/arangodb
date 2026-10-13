@@ -89,6 +89,7 @@ auto describe(auth::perms::CreateGraph const& perm) -> std::string {
 // Admin permissions carry no resource, so each maps to a fixed phrase naming
 // the administrative action it guards.
 auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
+  // NOLINTNEXTLINE(misc-unused-alias-decls)
   namespace p = auth::perms;
   using T = std::remove_cvref_t<decltype(admin)>;
   if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
@@ -836,7 +837,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              if (_requestedApiVersion == 0) {
+                return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
+              }
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
           },
@@ -896,10 +900,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok() ? Result{}
-                : Result{TRI_ERROR_HTTP_FORBIDDEN,
-                         std::format("Failed admin-permission check: {}",
-                                     r.errorMessage())};
+  if (r.ok()) {
+    return Result{};
+  }
+
+  auto message =
+      std::format("Failed admin-permission check: {}", r.errorMessage());
+  if (_requestedApiVersion == 0) {
+    return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
+  }
+  return Result{TRI_ERROR_FORBIDDEN, message};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {

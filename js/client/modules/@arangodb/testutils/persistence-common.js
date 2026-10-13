@@ -182,7 +182,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
+      if (!fs.exists(this.keyDir)) {
         fs.makeDirectory(this.keyDir);
       }
       let keyFile = fs.join(this.keyDir, 'secret-for-dump');
@@ -646,6 +646,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
+    this.instanceManager.disconnect();
     this.instanceManager.reconnect();
     return true;
   }

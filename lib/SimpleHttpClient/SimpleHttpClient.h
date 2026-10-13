@@ -29,6 +29,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
@@ -119,6 +120,25 @@ struct SimpleHttpClientParams {
   void setUserNamePassword(std::string_view prefix, std::string_view username,
                            std::string_view password);
 
+  using JwtProvider = std::function<std::string()>;
+
+  /**
+   * Supplies the bearer token for every request
+   *
+   * Takes precedence over setJwt(). An empty result means "no JWT", so Basic
+   * auth is used if configured. Clients on several threads may share one
+   * provider, so it has to be thread-safe.
+   */
+  void setJwtProvider(JwtProvider provider) {
+    _jwtProvider = std::move(provider);
+  }
+
+  /**
+   * Token for the next request: the provider's result if set, else the
+   * fixed token
+   */
+  std::string currentJwt() const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
@@ -170,6 +190,8 @@ struct SimpleHttpClientParams {
   std::string _basicAuth;
 
   std::string _jwt;
+
+  JwtProvider _jwtProvider;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief struct for rewriting location URLs

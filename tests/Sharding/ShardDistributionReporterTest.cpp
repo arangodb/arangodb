@@ -124,7 +124,7 @@ class ShardDistributionReporterTest
  protected:
   arangodb::ExecContextSuperuserScope execContextScope;
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
@@ -169,7 +169,7 @@ class ShardDistributionReporterTest
 
   ShardDistributionReporterTest()
       : server(nullptr, nullptr),
-        engine(server),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()),
         ci(infoMock.get()),
         cicInst(infoCurrentMock.get()),
         cic(&cicInst, [](CollectionInfoCurrent*) {}),
@@ -195,14 +195,12 @@ class ShardDistributionReporterTest
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
         dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            dbFeature,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(

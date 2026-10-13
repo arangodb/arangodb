@@ -25,7 +25,6 @@
 #endif
 
 #include "v8-replication.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -53,7 +52,7 @@ static void JS_StateLoggerReplication(
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<StorageEngine>();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 

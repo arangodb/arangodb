@@ -30,7 +30,6 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
@@ -75,7 +74,7 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   auto const initialTick = engine.currentTick();
 
   size_t stale = 0;
