@@ -119,8 +119,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
       commits.emplace_back(
           leader->replicateOperation(operation, options)
-              .thenValue([&rtc, leader,
-                          tid, ec = ExecContext::currentAsShared()](auto&& res) -> ResultT<replication2::LogIndex> {
+              .thenValue([&rtc, leader, tid,
+                          ec = ExecContext::currentAsShared()](
+                             auto&& res) -> ResultT<replication2::LogIndex> {
                 // preserve the context. TODO: rewrite as a coroutine instead
                 auto scope = ExecContextScope(ec);
                 if (res.fail()) {
