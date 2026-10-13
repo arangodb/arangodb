@@ -160,7 +160,7 @@ if [ -z "$GO_BIN" ]; then
         mkdir -p "$(dirname "$GOROOT_DIR")"
 #        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
 #            || die "could not download the Go toolchain ($TARBALL).
-        wget -v -t 3 -S --limit-rate=300k -O "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
+        wget -v -S --no-dns-cache -O "/tmp/$TARBALL" "https://dl.google.com/go/$TARBALL" \
             || die "could not download the Go toolchain ($TARBALL).
  No usable Go is present and it cannot be fetched. Either run this on an image
  with Go >= 1.21, or pre-populate $GOROOT_DIR."
