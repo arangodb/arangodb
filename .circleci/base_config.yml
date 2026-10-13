@@ -438,7 +438,7 @@ commands:
           command: |
             set -eo pipefail
             missing=""
-            for tool in curl python3 tar unshare; do
+            for tool in wget curl python3 tar unshare; do
               command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
             done
             if [ -n "$missing" ]; then

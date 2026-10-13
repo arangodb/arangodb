@@ -151,14 +151,16 @@ if [ -n "$GO_BIN" ]; then
 fi
 
 if [ -z "$GO_BIN" ]; then
-    BOOTSTRAP_VER="${GO_BOOTSTRAP_VERSION:-1.25.1}"
+    BOOTSTRAP_VER="${GO_BOOTSTRAP_VERSION:-1.26.9}"
     GOROOT_DIR="${RBAC_OPERATOR_DIR:-/tmp/rbac-operator}/go"
     if [ ! -x "$GOROOT_DIR/bin/go" ]; then
         TARBALL="go${BOOTSTRAP_VER}.linux-${GOARCH}.tar.gz"
         log "downloading $TARBALL"
         rm -rf "$GOROOT_DIR"
         mkdir -p "$(dirname "$GOROOT_DIR")"
-        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
+#        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
+#            || die "could not download the Go toolchain ($TARBALL).
+        wget -t 5 -O "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
             || die "could not download the Go toolchain ($TARBALL).
  No usable Go is present and it cannot be fetched. Either run this on an image
  with Go >= 1.21, or pre-populate $GOROOT_DIR."
