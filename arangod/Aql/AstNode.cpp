@@ -244,6 +244,13 @@ int compareDoubleValues(double lhs, double rhs) {
   return 0;
 }
 
+// NOOPT() is flagged non-deterministic only to block optimizations; its value
+// is its argument
+bool isNooptOfDeterministic(AstNode const* node) {
+  auto func = static_cast<Function const*>(node->getData());
+  return func->name == "NOOPT" && node->getMember(0)->isDeterministic();
+}
+
 }  // namespace
 
 static_assert(AstNodeValueType::VALUE_TYPE_NULL == 0,
@@ -259,9 +266,10 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
 
 struct AstNodeCompareOptions {
   bool compareUtf8;
-  // how calls to non-deterministic funcs (RAND(), NOOPT()) are compared:
-  // false: by address, true: by function name and arguments
-  bool matchNonDeterministicCalls;
+  // how NOOPT() calls are compared:
+  // false: by address, like other non-deterministic calls
+  // true: by argument, since NOOPT(x) always returns x
+  bool matchNooptCalls;
 };
 
 template<bool resolveAttributeAccess>
@@ -436,12 +444,17 @@ int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
 /// @brief compare built-in function call nodes by name then arguments
 int compareFcall(AstNode const* lhs, AstNode const* rhs,
                  AstNodeCompareOptions opts) {
-  // Non-deterministic calls like RAND() are not equal to each other unless
-  // matchNonDeterministicCalls is set. By address keeps the ordering stable.
-  if (!opts.matchNonDeterministicCalls &&
-      (!lhs->isDeterministic() || !rhs->isDeterministic())) {
-    return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
+  // Non-deterministic calls like RAND() are never equal to each other. Compare
+  // by pointer address to keep the ordering stable within a single query.
+  if (!lhs->isDeterministic() || !rhs->isDeterministic()) {
+    bool const bothNoopt = opts.matchNooptCalls &&
+                           isNooptOfDeterministic(lhs) &&
+                           isNooptOfDeterministic(rhs);
+    if (!bothNoopt) {
+      return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
+    }
   }
+
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
   auto rhsFunc = static_cast<Function const*>(rhs->getData());
   if (lhsFunc != rhsFunc) {

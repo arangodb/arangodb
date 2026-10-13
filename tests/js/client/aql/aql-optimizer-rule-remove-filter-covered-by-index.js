@@ -482,7 +482,37 @@ function optimizerRuleTestSuite() {
       assertEqual(0, result.plan.nodes.filter(function(node) { return node.type === 'CalculationNode'; }).length);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
-    }
+    },
+
+    // NOOPT(x) always returns x, so its copy in the index condition covers the
+    // filter; RAND() can return a different value per call, so it never does
+    testFiltersWithNonDeterministicValues : function() {
+      // keep FilterNodes visible instead of merged into the IndexNode
+      const opts = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
+      const filterNodes = (query) => findExecutionNodes(
+        db._createStatement({query, bindVars: {}, options: opts}).explain(),
+        "FilterNode").length;
+      const loop = "FOR v IN " + colName + " ";
+
+      // NOOPT with a deterministic argument: covered, filter removed
+      assertEqual(0, filterNodes(loop + "FILTER v.d == NOOPT(1) RETURN v"));
+      assertEqual(0, filterNodes(loop + "FILTER NOOPT(1) == v.d RETURN v"));
+      assertEqual(0, filterNodes(loop + "FILTER v.d == NOOPT(1) FILTER v.d == NOOPT(1) RETURN v"));
+      assertEqual(0, filterNodes(loop + "FILTER v.d > NOOPT(1) FILTER v.d < NOOPT(5) RETURN v"));
+      assertEqual(0, filterNodes(
+        "FOR x IN [{k: 1}] " + loop + "FILTER v.d == NOOPT(x.k) RETURN v"));
+
+      // NOOPT with different arguments: only the one in the index condition goes
+      assertEqual(1, filterNodes(loop + "FILTER v.d == NOOPT(0) FILTER v.d == NOOPT(1) RETURN v"));
+
+      // value can change per call: never covered, filters kept
+      assertEqual(1, filterNodes(loop + "FILTER v.d == FLOOR(RAND() * 10) RETURN v"));
+      assertEqual(2, filterNodes(loop + "FILTER v.d == FLOOR(RAND() * 10) FILTER v.d == FLOOR(RAND() * 10) RETURN v"));
+      assertEqual(1, filterNodes(loop + "FILTER v.d == NOOPT(FLOOR(RAND() * 10)) RETURN v"));
+
+      // mixed: the NOOPT filter is covered, the RAND() one is not
+      assertEqual(1, filterNodes(loop + "FILTER v.d == NOOPT(1) FILTER v.d == FLOOR(RAND() * 10) RETURN v"));
+    },
 
   };
 }
