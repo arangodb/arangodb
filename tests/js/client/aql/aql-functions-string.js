@@ -1872,6 +1872,7 @@ function ahuacatlStringFunctionsTestSuite () {
     const decomposed = "한";
     assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("한", @s)`, { s: decomposed }));
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("x한y", @s, 0, 1)`, { s: decomposed }));
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_FIRST("café", "é", 0, 3)`));
     assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("한", @s, true)`, { s: decomposed }));
   },
 
