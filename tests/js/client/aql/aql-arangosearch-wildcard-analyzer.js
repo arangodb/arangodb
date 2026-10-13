@@ -247,7 +247,57 @@ function ArangoSearchWildcardAnalyzerHasPos() {
   return suite;
 }
 
+function ArangoSearchMaxRuntimeStopsSlowArangoSearchLike() {
+  const dbName = "ArangoSearchMaxRuntimeStopsSlowArangoSearchLike";
+  // middle "%" forces the ICU matcher; backtracks for tens of seconds on 160 chars
+  const pattern = "%aaaa%aaaa%aaaa%aaaa%bbbb%";
+
+  let assertKilled = function(q) {
+    try {
+      db._query(q, {}, { maxRuntime : 1 });
+      fail();
+    } catch (e) {
+      assertEqual(e.errorNum, arangodb.errors.ERROR_QUERY_KILLED.code, q);
+    }
+  };
+
+  return {
+    setUpAll: function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (err) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("w", "wildcard", { ngramSize: 4 }, []);
+      let c = db._create("c");
+      // leading "b" lets the doc pass the ngram pre filter, so the mather runs
+      c.insert({ s: "bbbb" + "a".repeat(160) });
+      db._createView("v1", "arangosearch",
+          { links: { c: { fields: {s: {}}, analyzers: ["w"] } } });
+      c.ensureIndex({name: "i", type: "inverted", fields: ["s"], analyzer: "w"});
+      db._createView("v2", "search-alias", { indexes: [ { collection: "c", index: "i" } ] });
+    },
+
+    tearDownAll: function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (err) {}
+    },
+
+    testSlowArangoSearchView: function() {
+      assertKilled(`FOR d IN v1 SEARCH ANALYZER(d.s LIKE '${pattern}', 'w') RETURN d.s`);
+    },
+
+    testSearchAliasView: function() {
+      assertKilled(`FOR d IN v2 SEARCH d.s LIKE '${pattern}' RETURN d.s`);
+    },
+
+    testInvertedIndex: function() {
+      assertKilled(`FOR d IN c OPTIONS { indexHint: 'i', forceIndexHint: true } FILTER d.s LIKE '${pattern}' RETURN d.s`);
+    },
+  };
+}
+
 jsunity.run(ArangoSearchWildcardAnalyzerNoPos);
 jsunity.run(ArangoSearchWildcardAnalyzerHasPos);
+jsunity.run(ArangoSearchMaxRuntimeStopsSlowArangoSearchLike);
 
 return jsunity.done();

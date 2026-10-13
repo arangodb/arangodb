@@ -1,5 +1,16 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
+  when n exceeds array's length. Also emmitting a warning if n is
+  negative, non-numeric or not an integer.
+
+* Updated ArangoDB Starter to v0.19.29.
+
+* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
+* COR-1083 / github issue #23425:
+  Fixed the incorrect usage of released pool analyzer.
 
 * COR-1062: Fixed wrong AQL query results when two expressions differ only in
   grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
@@ -60,8 +71,6 @@
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
   This fixes issue #23360.
-
-* Updated ArangoDB Starter to v0.19.28.
 
 * The AQL optimizer uses a sparse index for a branch of an `OR` condition
   only if that branch itself rules out `null` for the indexed attribute.
@@ -130,6 +139,9 @@
 * The `join-index-nodes` optimizer rule no longer uses non-deterministic
   expressions or expressions that need V8, such as user-defined AQL
   functions, as constant index lookup values.
+
+* AQL Index Join no longer mixed primary indexes and persistent indexes.
+  This caused wrong results previously.
 
 3.12.12 (2026-09-21)
 --------------------
