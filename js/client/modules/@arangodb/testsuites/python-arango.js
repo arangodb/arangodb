@@ -72,7 +72,7 @@ class runInPythonTest extends runWithAllureReport {
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
-    opts.extraArgs = {
+    let serverOptions = {
       // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
       'server.authentication': 'true',
       'server.jwt-secret-folder': jwt_secret_folder,
@@ -82,7 +82,7 @@ class runInPythonTest extends runWithAllureReport {
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
-    super(opts, testname, ...optionalArgs);
+    super(opts, testname, serverOptions, ...optionalArgs);
     this.info = "runInPythonTest";
     this.jwt_secret_folder = jwt_secret_folder;
   }
@@ -95,7 +95,7 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', this.jwt_secret_folder,
+      '--secret', this.instanceManager.jwt_secret,
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',
