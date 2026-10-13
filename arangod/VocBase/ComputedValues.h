@@ -80,12 +80,6 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                             bool caseInsensitive) override;
-
-  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                            bool caseInsensitive) override;
-
   ValidatorBase* buildValidator(velocypack::Slice params) override;
   aql::AqlFunctionsInternalCache& functionsCache() override;
 

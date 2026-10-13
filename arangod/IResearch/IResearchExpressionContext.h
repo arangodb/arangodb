@@ -64,11 +64,6 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                        std::string_view msg) override final;
   void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu_64_64::RegexMatcher* buildRegexMatcher(
-      std::string_view expr, bool caseInsensitive) override final;
-  icu_64_64::RegexMatcher* buildLikeMatcher(
-      std::string_view expr, bool caseInsensitive) override final;
-
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;
   aql::AqlFunctionsInternalCache& functionsCache() override final;

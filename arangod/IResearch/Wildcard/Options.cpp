@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/Wildcard/Options.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExpressionContext.h"
 #include "IResearch/Wildcard/Analyzer.h"
 #include "Basics/DownCast.h"
@@ -102,7 +103,7 @@ Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
   }
   if (needsMatcher || !hasPos) {
     TRI_ASSERT(ctx);
-    matcher = ctx->buildLikeMatcher(pattern, true);
+    matcher = ctx->functionsCache().buildLikeMatcher(pattern, true);
   }
 }
 
