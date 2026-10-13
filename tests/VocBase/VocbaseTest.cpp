@@ -28,6 +28,7 @@
 #include "Mocks/Servers.h"
 
 #include "Auth/Common.h"
+#include "Basics/voc-errors.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -253,11 +254,16 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
-    EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("100"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("testCollection"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("testCollectionGUID"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("100").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("testCollection").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("testCollectionGUID").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(
+        vocbase.lookupCollectionByUuid("testCollectionGUID").errorNumber(),
+        TRI_ERROR_FORBIDDEN);
 
     // The check belongs in lookupCollection, not in the shared lookupDataSource
     // (which also backs views/analyzers and is out of scope for the
@@ -276,18 +282,25 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
-    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("100"), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("testCollection"), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("testCollectionGUID"), nullptr);
-    EXPECT_NE(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+    EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
+    EXPECT_TRUE(vocbase.lookupCollection("100").ok());
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
+    EXPECT_TRUE(vocbase.lookupCollection("testCollectionGUID").ok());
+    EXPECT_TRUE(vocbase.lookupCollectionByUuid("testCollectionGUID").ok());
 
-    // fails for other collection with no permissions:
-    EXPECT_EQ(vocbase.lookupCollection(arangodb::DataSourceId{1}), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("324"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("anotherCollection"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("anotherCollectionGUID"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollectionByUuid("anotherCollectionGUID"), nullptr);
+    // collections that do not exist are reported as NOT_FOUND (distinct from
+    // the FORBIDDEN returned for a collection that exists but is not visible).
+    EXPECT_EQ(vocbase.lookupCollection(arangodb::DataSourceId{1}).errorNumber(),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    EXPECT_EQ(vocbase.lookupCollection("324").errorNumber(),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    EXPECT_EQ(vocbase.lookupCollection("anotherCollection").errorNumber(),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    EXPECT_EQ(vocbase.lookupCollection("anotherCollectionGUID").errorNumber(),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    EXPECT_EQ(
+        vocbase.lookupCollectionByUuid("anotherCollectionGUID").errorNumber(),
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // API version 0 keeps the legacy behaviour: the visibility check is not
@@ -301,9 +314,9 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         /*apiVersion*/ 0);
     arangodb::ExecContextScope scope(ctx.execContext);
 
-    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("testCollection"), nullptr);
-    EXPECT_NE(vocbase.lookupCollectionByUuid("testCollectionGUID"), nullptr);
+    EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
+    EXPECT_TRUE(vocbase.lookupCollectionByUuid("testCollectionGUID").ok());
   }
 
   EXPECT_TRUE(vocbase.dropCollection(cid, true).ok());
@@ -324,10 +337,10 @@ TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
   {
     arangodb::ExecContextSuperuserScope superuserScope;
 
-    EXPECT_NE(vocbase.lookupCollection(cid), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("_testSystem"), nullptr);
-    EXPECT_NE(vocbase.lookupCollection("testSystemGUID"), nullptr);
-    EXPECT_NE(vocbase.lookupCollectionByUuid("testSystemGUID"), nullptr);
+    EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
+    EXPECT_TRUE(vocbase.lookupCollection("_testSystem").ok());
+    EXPECT_TRUE(vocbase.lookupCollection("testSystemGUID").ok());
+    EXPECT_TRUE(vocbase.lookupCollectionByUuid("testSystemGUID").ok());
   }
 
   // API version 1: a regular user without any access must not have the system
@@ -340,10 +353,13 @@ TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
         /*apiVersion*/ 1);
     arangodb::ExecContextScope scope(ctx.execContext);
 
-    EXPECT_EQ(vocbase.lookupCollection(cid), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("_testSystem"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollection("testSystemGUID"), nullptr);
-    EXPECT_EQ(vocbase.lookupCollectionByUuid("testSystemGUID"), nullptr);
+    EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("_testSystem").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("testSystemGUID").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollectionByUuid("testSystemGUID").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
   }
 
   EXPECT_TRUE(vocbase.dropCollection(cid, true).ok());

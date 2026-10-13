@@ -79,11 +79,14 @@ IterateDocuments::Thread::~Thread() = default;
 void IterateDocuments::Thread::run() {
   // TODO - make more configurable
 
-  auto collection = _server.vocbase()->lookupCollection(_options.collection);
-  if (!collection) {
+  auto collectionResult =
+      _server.vocbase()->lookupCollection(_options.collection);
+  if (collectionResult.fail()) {
     throw std::runtime_error("Could not find collection " +
-                             _options.collection);
+                             _options.collection + ": " +
+                             std::string(collectionResult.errorMessage()));
   }
+  auto collection = collectionResult.get();
 
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(collection->getPhysical());
