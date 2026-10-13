@@ -1996,6 +1996,18 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with a match shorter than the pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastMatchShorterThanPattern: function () {
+    // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
+    const decomposed = "한";
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("한x한", @s)`, { s: decomposed }));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST("café", "é", 0, 3)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find_last function
 // //////////////////////////////////////////////////////////////////////////////
 
