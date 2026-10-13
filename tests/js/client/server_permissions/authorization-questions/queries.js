@@ -69,7 +69,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 const baseQuestions = [
-  'UseApiVersion version=0',
+  'UseApiVersion version=1',
   `UseDatabase name=${DB} level=read`
 ];
 const foreignQueryQuestions = baseQuestions.concat(['AdminAqlQueries']);

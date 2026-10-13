@@ -144,7 +144,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/dump/start`, { shards: [] });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=d level=read"
       ], endObserve());
       assertEqual(400, res.code, res);

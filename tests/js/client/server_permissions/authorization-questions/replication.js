@@ -176,7 +176,7 @@ function replicationApiAuthzSuite () {
         beginObserve();
         restoreCollection(`?overwrite=${overwrite}`);
         assertPermissions([
-          "UseApiVersion version=0",
+          "UseApiVersion version=1",
           "UseDatabase name=_system level=read",
           `RestoreCollection db=_system name=${cn} overwrite=true`,
           "IsReadOnly",
@@ -196,7 +196,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       restoreCollection();
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         // a coordinator cannot see the existing collection, see above
         ...singleOnly([`RestoreCollection db=_system name=${cn} overwrite=false`]),
@@ -214,7 +214,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       restoreCollection();
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=1",
         "UseDatabase name=_system level=read",
         `RestoreCollection db=_system name=${cn} overwrite=true`,
         "IsReadOnly",

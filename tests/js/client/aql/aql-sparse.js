@@ -244,7 +244,7 @@ function optimizerSparseTestSuite () {
       let sc = db._create(cn);
       try {
         sc.insert([{ value1: null, value2: 1 }, { value1: 7, value2: 1 }]);
-        sc.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        sc.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
 
         // only one OR branch excludes null, the other one must still find the
         // document with value1 == null
