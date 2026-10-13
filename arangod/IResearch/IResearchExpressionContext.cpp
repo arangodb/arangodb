@@ -44,16 +44,6 @@ void ViewExpressionContextBase::registerError(ErrorCode errorCode,
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu_64_64::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildRegexMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
-}
-
 arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
     arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
