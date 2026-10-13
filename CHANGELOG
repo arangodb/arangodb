@@ -20,11 +20,9 @@
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
 
-* COR-1105: AQL `CONTAINS()` now matches strings using ICU like
-  `FIND_FIRST()`, fixing wrong indexes for multi-byte UTF-8 characters.
-  An empty search string is now found at index 0. `FIND_FIRST()` no longer
-  misses matches at the end of the range that are shorter than the search
-  string, e.g. a precomposed character matched by its decomposed form.
+* COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
+  indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
+  matches of accented characters at the end of the search range.
 
 * Updated ArangoDB Starter to v0.19.29.
 
