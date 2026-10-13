@@ -286,7 +286,7 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
 }
 
 /// @brief function FIND_LAST
-/// FIND_FIRST(text, search, start, end) → position
+/// FIND_LAST(text, search, start, end) → position
 AqlValue functions::FindLast(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
@@ -294,23 +294,10 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
 
   auto* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-
-  auto buf1 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter(buf1.get());
-  appendAsString(vopts, adapter, value);
-  icu_64_64::UnicodeString uBuf(buf1->data(),
-                                static_cast<int32_t>(buf1->length()));
-
-  auto buf2 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter2(buf2.get());
-  appendAsString(vopts, adapter2, searchValue);
-  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
-                                      static_cast<int32_t>(buf2->length()));
-  auto searchLen = uSearchBuf.length();
+  auto const uBuf =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
+  auto const uSearchBuf =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
 
   int64_t startOffset = 0;
   int64_t maxEnd = -1;
@@ -338,10 +325,10 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  if (searchLen == 0) {
+  if (uSearchBuf.isEmpty()) {
     return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
   }
-  if (uBuf.length() == 0) {
+  if (uBuf.isEmpty()) {
     return AqlValue(AqlValueHintInt(-1));
   }
 
@@ -353,7 +340,8 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
-    if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
+    if ((pos >= startOffset) &&
+        ((pos + search.getMatchedLength() - 1) <= maxEnd)) {
       foundPos = pos;
     }
   }
