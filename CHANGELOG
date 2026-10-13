@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1137: Fixed a memory leak in the AQL analyzer when converting
+  non-string values to strings.
+
 * COR-1146: Fix AQL arithmetic operators losing precision on integers above
   2^53 when operands are not constant, e.g. document attributes. This fixes
   issue #23400.
