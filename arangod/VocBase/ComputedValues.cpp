@@ -114,16 +114,6 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
   return error;
 }
 
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
-}
-
 ValidatorBase* ComputedValuesExpressionContext::buildValidator(
     velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
