@@ -128,6 +128,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   Options _options;
   aql::AqlValue _valueBuffer;
+  std::string _stringBuffer;
   std::unique_ptr<aql::QueryContext> _query;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/Functions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser/Parser.h"
@@ -49,6 +50,7 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -58,6 +60,7 @@
 #include "utils/object_pool.hpp"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Sink.h>
 
 namespace {
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
@@ -355,16 +358,12 @@ bool AqlAnalyzer::next() {
                 std::get<2>(_attrs).value =
                     arangodb::iresearch::getBytesRef(value.slice());
               } else {
-                functions::VPackFunctionParameters params;
-                params.push_back(value);
-                aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
-                                                *_query,
-                                                _aqlFunctionsInternalCache);
-                _valueBuffer = aql::functions::ToString(
-                    &ctx, *_query->ast()->root(), params);
-                TRI_ASSERT(_valueBuffer.isString());
+                _stringBuffer.clear();
+                velocypack::StringSink sink(&_stringBuffer);
+                aql::functions::appendAsString(
+                    _query->trxForOptimization().vpackOptions(), sink, value);
                 std::get<2>(_attrs).value = irs::ViewCast<irs::byte_type>(
-                    _valueBuffer.slice().stringView());
+                    std::string_view{_stringBuffer});
               }
               break;
             case AnalyzerValueType::Number:
