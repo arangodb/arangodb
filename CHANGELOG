@@ -22,6 +22,9 @@
 
 * COR-1105: AQL `CONTAINS()` now matches strings using ICU like
   `FIND_FIRST()`, fixing wrong indexes for multi-byte UTF-8 characters.
+  An empty search string is now found at index 0. `FIND_FIRST()` no longer
+  misses matches at the end of the range that are shorter than the search
+  string, e.g. a precomposed character matched by its decomposed form.
 
 * Updated ArangoDB Starter to v0.19.29.
 
