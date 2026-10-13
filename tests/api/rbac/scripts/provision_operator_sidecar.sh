@@ -160,7 +160,11 @@ if [ -z "$GO_BIN" ]; then
         mkdir -p "$(dirname "$GOROOT_DIR")"
 #        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
 #            || die "could not download the Go toolchain ($TARBALL).
-        wget -v -S --no-dns-cache -O "/tmp/$TARBALL" "https://dl.google.com/go/$TARBALL" \
+        PUBLIC_IP=$(dig +short @8.8.8.8 dl.google.com | tail -n1)
+        if [ -n "$PUBLIC_IP" ]; then
+          echo "$PUBLIC_IP dl.google.com" | sudo tee -a /etc/hosts
+        fi
+        wget -v -S -O "/tmp/$TARBALL" "https://dl.google.com/go/$TARBALL" \
             || die "could not download the Go toolchain ($TARBALL).
  No usable Go is present and it cannot be fetched. Either run this on an image
  with Go >= 1.21, or pre-populate $GOROOT_DIR."
