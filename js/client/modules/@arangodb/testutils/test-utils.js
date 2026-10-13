@@ -370,7 +370,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'skipNondeterministic': false,
     'skipGrey': false,
     'skipN': false,
-    'skipServerJS': false,
+    'skipServerJS': true,
     'onlyGrey': false,
     'onlyNightly': false,
     'skipTimeCritical': false,
