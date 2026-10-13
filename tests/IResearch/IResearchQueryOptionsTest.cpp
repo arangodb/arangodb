@@ -80,9 +80,9 @@ class QueryOptions : public QueryTest {
   }
 
   void populateData0() {
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
+    auto logicalCollection1 = _vocbase.lookupCollection("collection_1").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
+    auto logicalCollection2 = _vocbase.lookupCollection("collection_2").get();
     ASSERT_TRUE(logicalCollection2);
 
     // populate view with the data
@@ -139,9 +139,9 @@ class QueryOptions : public QueryTest {
     }
   }
   void populateData1() {
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
+    auto logicalCollection1 = _vocbase.lookupCollection("collection_1").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
+    auto logicalCollection2 = _vocbase.lookupCollection("collection_2").get();
     ASSERT_TRUE(logicalCollection2);
 
     // populate view with the data
@@ -186,9 +186,9 @@ class QueryOptions : public QueryTest {
     }
   }
   void populateData2() {
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
+    auto logicalCollection1 = _vocbase.lookupCollection("collection_1").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
+    auto logicalCollection2 = _vocbase.lookupCollection("collection_2").get();
     ASSERT_TRUE(logicalCollection2);
 
     // populate view with the data
@@ -263,9 +263,9 @@ class QueryOptions : public QueryTest {
   }
 
   void queryTestCollections() {
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
+    auto logicalCollection1 = _vocbase.lookupCollection("collection_1").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
+    auto logicalCollection2 = _vocbase.lookupCollection("collection_2").get();
     ASSERT_TRUE(logicalCollection2);
 
     // ==, !=, <, <=, >, >=, range
@@ -1197,7 +1197,8 @@ class QueryOptionsSearch : public QueryOptions {
                ? R"("storedValues": [{"fields":["str"]}, {"fields":["value"]}, {"fields":["_id"]}],)"
                : "")));
       auto collection =
-          _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
+          _vocbase.lookupCollection(absl::Substitute("collection_$0", name))
+              .get();
       ASSERT_TRUE(collection);
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);

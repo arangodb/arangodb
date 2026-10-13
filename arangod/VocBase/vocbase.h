@@ -371,25 +371,28 @@ struct Database {
 
   /// @brief looks up a collection by identifier
   ///
-  /// Returns nullptr if the collection does not exist, or if the current
-  /// execution context may not even see it (canSeeCollection) - so that its
-  /// existence is not leaked.
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      arangodb::DataSourceId id) const;
+  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
+  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
+  /// may not even see it (canSeeCollection) - so that callers can distinguish
+  /// the two cases (and hide existence where required).
+  arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
+  lookupCollection(arangodb::DataSourceId id) const;
 
   /// @brief looks up a collection by name or stringified cid or uuid
   ///
-  /// Returns nullptr if the collection does not exist, or if the current
-  /// execution context may not even see it (canSeeCollection).
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      std::string_view nameOrId) const;
+  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
+  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
+  /// may not even see it (canSeeCollection).
+  arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
+  lookupCollection(std::string_view nameOrId) const;
 
   /// @brief looks up a collection by uuid
   ///
-  /// Returns nullptr if the collection does not exist, or if the current
-  /// execution context may not even see it (canSeeCollection).
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
-      std::string_view uuid) const;
+  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
+  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
+  /// may not even see it (canSeeCollection).
+  arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
+  lookupCollectionByUuid(std::string_view uuid) const;
 
   /// @brief looks up a data-source by identifier
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(

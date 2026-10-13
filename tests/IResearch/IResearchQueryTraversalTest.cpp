@@ -369,8 +369,9 @@ TEST_P(QueryTraversalSearch, Test) {
                "version": $0,
                "includeAllFields": true })",
         version()));
-    auto collection = _vocbase.lookupCollection("edges");
-    ASSERT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("edges");
+    ASSERT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }

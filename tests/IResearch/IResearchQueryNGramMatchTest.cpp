@@ -1237,8 +1237,9 @@ class QueryNGramMatchSearch : public QueryNGramMatch {
                "trackListPositions": true,
                "includeAllFields": true })",
         version(), toString(analyzer)));
-    auto collection = vocbase.lookupCollection("testCollection0");
-    ASSERT_TRUE(collection);
+    auto collectionResult = vocbase.lookupCollection("testCollection0");
+    ASSERT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
 

@@ -941,7 +941,7 @@ RestReplicationHandler::handleCommandRestoreCollection() {
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
 
   auto& exec = ExecContext::current();
-  if (overwrite || vocbase->lookupCollection(collectionName) == nullptr) {
+  if (overwrite || vocbase->lookupCollection(collectionName).fail()) {
     // 1.) re-create collection, means: overwrite=true (rw database)
     // OR 2.) not existing, new collection (rw database)
     if (auto r = exec.canRestoreCollection(dbName, collectionName, true);
@@ -1700,10 +1700,11 @@ Result RestReplicationHandler::processRestoreIndexes(
     return r;
   }
 
-  std::shared_ptr<LogicalCollection> coll = _vocbase.lookupCollection(name);
-  if (!coll) {
+  auto collResult = _vocbase.lookupCollection(name);
+  if (not collResult.ok()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+  std::shared_ptr<LogicalCollection> coll = collResult.get();
 
   // may be used for rebuilding index infos
   VPackBuilder rebuilder;
@@ -2076,8 +2077,13 @@ RestReplicationHandler::handleCommandAddFollower() {
     co_return;
   }
 
-  auto col = _vocbase.lookupCollection(shardSlice.stringView());
-  if (col == nullptr || col->deleted()) {
+  auto colResult = _vocbase.lookupCollection(shardSlice.stringView());
+  if (colResult.fail()) {
+    generateError(colResult.result());
+    co_return;
+  }
+  auto col = colResult.get();
+  if (col->deleted()) {
     generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     co_return;
   }
@@ -2300,14 +2306,14 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.stringView());
-
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  auto colResult = _vocbase.lookupCollection(shard.stringView());
+  if (colResult.fail()) {
+    generateError(
+        rest::ResponseCode::SERVER_ERROR, colResult.errorNumber(),
+        absl::StrCat("did not find collection: ", colResult.errorMessage()));
     return;
   }
+  auto col = colResult.get();
 
   Result res = col->followers()->remove(followerId.copyString());
 
@@ -2360,14 +2366,14 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   std::string leaderId = leaderIdSlice.copyString();
-  auto col = _vocbase.lookupCollection(shard.stringView());
-
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  auto colResult = _vocbase.lookupCollection(shard.stringView());
+  if (colResult.fail()) {
+    generateError(
+        rest::ResponseCode::SERVER_ERROR, colResult.errorNumber(),
+        absl::StrCat("did not find collection: ", colResult.errorMessage()));
     return;
   }
+  auto col = colResult.get();
 
   std::string const currentLeaderCopy = col->followers()->getLeader();
   std::string currentLeader = currentLeaderCopy;
@@ -2500,9 +2506,13 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TransactionId id = ExtractReadlockId(idSlice);
-  auto col = _vocbase.lookupCollection(collection.stringView());
-
-  if (col == nullptr || col->deleted()) {
+  auto colResult = _vocbase.lookupCollection(collection.stringView());
+  if (colResult.fail()) {
+    generateError(colResult.result());
+    co_return;
+  }
+  auto col = colResult.get();
+  if (col->deleted()) {
     generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     co_return;
   }
@@ -2780,12 +2790,14 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
     return false;
   }
 
-  ctx.collection = _vocbase.lookupCollection(ctx.cname);
-  if (!ctx.collection) {
+  auto ctxCollectionResult = _vocbase.lookupCollection(ctx.cname);
+  if (ctxCollectionResult.fail()) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                  ctxCollectionResult.errorNumber(),
+                  ctxCollectionResult.errorMessage());
     return false;
   }
+  ctx.collection = ctxCollectionResult.get();
   if (!ctx.collection->syncByRevision()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,

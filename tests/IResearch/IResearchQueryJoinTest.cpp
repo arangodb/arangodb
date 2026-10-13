@@ -66,9 +66,9 @@ class QueryJoin : public QueryTest {
   }
 
   void queryTests1() {
-    auto entities = _vocbase.lookupCollection("entities");
+    auto entities = _vocbase.lookupCollection("entities").get();
     ASSERT_TRUE(entities);
-    auto links = _vocbase.lookupCollection("links");
+    auto links = _vocbase.lookupCollection("links").get();
     ASSERT_TRUE(links);
 
     auto entities_view = _vocbase.lookupView("entities_view");
@@ -205,11 +205,14 @@ class QueryJoin : public QueryTest {
   void queryTests2() {
     static std::vector<std::string> const EMPTY;
 
-    auto logicalCollection1 = _vocbase.lookupCollection("testCollection0");
+    auto logicalCollection1 =
+        _vocbase.lookupCollection("testCollection0").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("testCollection1");
+    auto logicalCollection2 =
+        _vocbase.lookupCollection("testCollection1").get();
     ASSERT_TRUE(logicalCollection2);
-    auto logicalCollection3 = _vocbase.lookupCollection("testCollection2");
+    auto logicalCollection3 =
+        _vocbase.lookupCollection("testCollection2").get();
     ASSERT_TRUE(logicalCollection3);
     // add view
     auto view = _vocbase.lookupView("testView");
@@ -310,11 +313,14 @@ class QueryJoin : public QueryTest {
 
   void queryTests3() {
     static std::vector<std::string> const EMPTY;
-    auto logicalCollection1 = _vocbase.lookupCollection("testCollection0");
+    auto logicalCollection1 =
+        _vocbase.lookupCollection("testCollection0").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("testCollection1");
+    auto logicalCollection2 =
+        _vocbase.lookupCollection("testCollection1").get();
     ASSERT_TRUE(logicalCollection2);
-    auto logicalCollection3 = _vocbase.lookupCollection("testCollection2");
+    auto logicalCollection3 =
+        _vocbase.lookupCollection("testCollection2").get();
     ASSERT_TRUE(logicalCollection3);
     // add view
     auto view = _vocbase.lookupView("testView");
@@ -1770,7 +1776,7 @@ class QueryJoinSearch : public QueryJoin {
                "includeAllFields": true,
                "fields": [ { "name": "this_field_no_exist_just_stub_for_definition_parser" } ] })",
           version(), name));
-      auto collection = _vocbase.lookupCollection(name);
+      auto collection = _vocbase.lookupCollection(name).get();
       EXPECT_TRUE(collection);
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);

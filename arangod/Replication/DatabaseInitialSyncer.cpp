@@ -2270,7 +2270,8 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
 
     if (col == nullptr) {
       // not found...
-      col = vocbase().lookupCollection(leaderName);
+      auto colResult = vocbase().lookupCollection(leaderName);
+      col = colResult.ok() ? colResult.get() : nullptr;
 
       if (col != nullptr &&
           (col->name() != leaderName ||

@@ -117,16 +117,17 @@ bool EnsureIndex::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto col = vocbase->lookupCollection(shard);
-    if (col == nullptr) {
+    auto colResult = vocbase->lookupCollection(shard);
+    if (colResult.fail()) {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << " in database "
-            << database;
+            << database << ": " << colResult.errorMessage();
       LOG_TOPIC("12767", ERR, Logger::MAINTENANCE)
           << "EnsureIndex: " << error.str();
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(colResult.errorNumber(), error.str());
       return false;
     }
+    auto col = colResult.get();
 
     VPackBuilder body;
     {

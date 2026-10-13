@@ -74,10 +74,12 @@ class QueryNumericTerm : public QueryTest {
   }
 
   void populateData() {
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
-    ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
-    ASSERT_TRUE(logicalCollection2);
+    auto logicalCollection1Result = _vocbase.lookupCollection("collection_1");
+    ASSERT_TRUE(logicalCollection1Result.ok());
+    auto logicalCollection1 = logicalCollection1Result.get();
+    auto logicalCollection2Result = _vocbase.lookupCollection("collection_2");
+    ASSERT_TRUE(logicalCollection2Result.ok());
+    auto logicalCollection2 = logicalCollection2Result.get();
 
     // populate view with the data
     arangodb::OperationOptions opt;
@@ -3187,9 +3189,10 @@ class QueryNumericTermSearch : public QueryNumericTerm {
                "version": $1,
                "includeAllFields": true })",
           name, version()));
-      auto collection =
+      auto collectionResult =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
-      ASSERT_TRUE(collection);
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };

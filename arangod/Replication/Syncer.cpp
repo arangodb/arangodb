@@ -82,15 +82,27 @@ std::string getCName(arangodb::velocypack::Slice const& slice) {
 std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
     TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
     std::string const& name) {
-  auto idCol = vocbase.lookupCollection(cid);
+  auto idColResult = vocbase.lookupCollection(cid);
   std::shared_ptr<arangodb::LogicalCollection> nameCol;
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = vocbase.lookupCollection(name);
+    auto nameColResult = vocbase.lookupCollection(name);
+    if (not nameColResult.ok()) {
+      if (idColResult.fail()) {
+        return nullptr;
+      }
+      return idColResult.get();
+    }
+    nameCol = nameColResult.get();
   }
 
-  if (idCol != nullptr && nameCol != nullptr) {
+  if (idColResult.ok()) {
+    auto idCol = idColResult.get();
+    if (name.empty()) {
+      // only looked up by id, there is no collection by name to compare with
+      return idCol;
+    }
     if (idCol->id() == nameCol->id()) {
       // found collection by id and name, and both are identical!
       return idCol;
@@ -108,13 +120,8 @@ std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
     return nameCol;
   }
 
-  if (nameCol != nullptr) {
-    TRI_ASSERT(idCol == nullptr);
-    return nameCol;
-  }
-
-  // may be nullptr
-  return idCol;
+  TRI_ASSERT(idColResult.fail());
+  return nameCol;
 }
 
 /// @brief apply the data from a collection dump or the continuous log
@@ -653,9 +660,17 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   VPackSlice uuid;
 
   if ((uuid = slice.get(::cuidRef)).isString()) {
-    return vocbase.lookupCollectionByUuid(uuid.copyString());
+    auto result = vocbase.lookupCollectionByUuid(uuid.copyString());
+    if (result.fail()) {
+      return nullptr;
+    }
+    return result.get();
   } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
-    return vocbase.lookupCollectionByUuid(uuid.copyString());
+    auto result = vocbase.lookupCollectionByUuid(uuid.copyString());
+    if (result.fail()) {
+      return nullptr;
+    }
+    return result.get();
   }
 
   // extract "cid"
@@ -746,9 +761,10 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
-  col = vocbase.lookupCollection(name);
+  auto colResult = vocbase.lookupCollection(name);
 
-  if (col != nullptr) {
+  if (colResult.ok()) {
+    auto col = colResult.get();
     if (col->system()) {
       auto operationOrigin = transaction::OperationOriginInternal{
           "truncating collection for replication"};

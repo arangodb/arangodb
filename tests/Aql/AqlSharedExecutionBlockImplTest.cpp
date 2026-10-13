@@ -359,8 +359,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     // NOTE all LeftOverBlockExperiments use 3 documents for the collection.
     // If this ever changes this code needs to be adjusted or moved around
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      std::shared_ptr<arangodb::LogicalCollection> col =
+      auto colResult =
           server.getSystemDatabase().lookupCollection(collectionName);
+      auto col = colResult.get();
       auto docs = col->getPhysical()->numberDocuments(nullptr);
       EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
     }
@@ -431,8 +432,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     // NOTE all LeftOverBlockExperiments use 3 documents for the collection.
     // If this ever changes this code needs to be adjusted or moved around
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      std::shared_ptr<arangodb::LogicalCollection> col =
+      auto colResult =
           server.getSystemDatabase().lookupCollection(collectionName);
+      auto col = colResult.get();
       auto docs = col->getPhysical()->numberDocuments(nullptr);
       EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
     }

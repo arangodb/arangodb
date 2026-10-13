@@ -252,11 +252,7 @@ ResultT<std::shared_ptr<LogicalCollection>> RestIndexHandler::collection(
     return coll;
   }
 
-  auto coll = _vocbase.lookupCollection(cName);
-  if (coll == nullptr) {
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-  }
-  return coll;
+  return _vocbase.lookupCollection(cName);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

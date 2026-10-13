@@ -318,12 +318,13 @@ VPackBuilder createCollectionProperties(
         if (distributeShardsLikeSlice.isString()) {
           auto distributeShardsLikeColName =
               distributeShardsLikeSlice.copyString();
-          auto coll = vocbase.lookupCollection(distributeShardsLikeColName);
-          if (coll != nullptr && coll->isSatellite()) {
+          auto collResult =
+              vocbase.lookupCollection(distributeShardsLikeColName);
+          if (collResult.ok() && collResult.get()->isSatellite()) {
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(distributeShardsLikeColName));
             helper.add(StaticStrings::ReplicationFactor,
-                       VPackValue(coll->replicationFactor()));
+                       VPackValue(collResult.get()->replicationFactor()));
             distributionSet = true;
           }
         }
@@ -556,9 +557,9 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  auto coll = vocbase.lookupCollection(name);
-
-  if (coll != nullptr) {
+  auto collResult = vocbase.lookupCollection(name);
+  if (collResult.ok()) {
+    auto coll = collResult.get();
     // check authentication after ensuring the collection exists
     if (auto r = ExecContext::current().canUseCollection(
             vocbase.name(), coll->name(), AccessLevel::Read);

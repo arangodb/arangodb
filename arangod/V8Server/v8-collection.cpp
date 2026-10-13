@@ -89,10 +89,19 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     arangodb::DataSourceId cid{TRI_ObjectToUInt64(isolate, val, true)};
-    return vocbase.lookupCollection(cid);
+    auto collectionResult = vocbase.lookupCollection(cid);
+    if (collectionResult.fail()) {
+      return nullptr;
+    }
+    return collectionResult.get();
   }
 
-  return vocbase.lookupCollection(TRI_ObjectToString(isolate, val));
+  auto collectionResult =
+      vocbase.lookupCollection(TRI_ObjectToString(isolate, val));
+  if (collectionResult.fail()) {
+    return nullptr;
+  }
+  return collectionResult.get();
 }
 
 void addTransactionHints(arangodb::LogicalCollection& col,

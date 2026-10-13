@@ -51,8 +51,12 @@ class QueryFilter : public QueryTest {
     // ==, !=, <, <=, >, >=, range
     static std::vector<std::string> const EMPTY;
 
-    auto logicalCollection1 = _vocbase.lookupCollection("testCollection0");
-    auto logicalCollection2 = _vocbase.lookupCollection("testCollection1");
+    auto logicalCollection1Result =
+        _vocbase.lookupCollection("testCollection0");
+    auto logicalCollection1 = logicalCollection1Result.get();
+    auto logicalCollection2Result =
+        _vocbase.lookupCollection("testCollection1");
+    auto logicalCollection2 = logicalCollection2Result.get();
 
     std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         insertedDocs;

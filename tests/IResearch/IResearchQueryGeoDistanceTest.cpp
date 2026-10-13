@@ -74,8 +74,9 @@ class QueryGeoDistance : public QueryTest {
   void queryTests() {
     // populate collection
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
-      ASSERT_TRUE(collection);
+      auto collectionResult = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       auto docs = VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
         { "id": 2,  "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
@@ -195,8 +196,9 @@ class QueryGeoDistance : public QueryTest {
   void queryTestsGeoJson(bool isVPack, bool isInt = false) {
     // ensure presence of special a column for geo indices
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
-      ASSERT_TRUE(collection);
+      auto collectionResult = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
@@ -561,8 +563,9 @@ class QueryGeoDistanceSearch : public QueryGeoDistance {
                  "analyzer": "$1" }
              ] })",
         version(), analyzer));
-    auto collection = _vocbase.lookupCollection("testCollection0");
-    EXPECT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("testCollection0");
+    EXPECT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }

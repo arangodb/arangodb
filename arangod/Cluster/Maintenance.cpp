@@ -1374,17 +1374,16 @@ static ResultT<std::vector<ServerID>> getLocalFollowers(
   try {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
-    auto collection = vocbase->lookupCollection(shard);
-    if (collection == nullptr) {
-      auto res = Result{
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::format(
-              "Maintenance::getLocalFollowers: Failed to lookup collection {}",
-              shard)};
-      LOG_TOPIC("ce393", DEBUG, Logger::MAINTENANCE) << res;
-      return res;
+    auto collectionResult = vocbase->lookupCollection(shard);
+    if (collectionResult.fail()) {
+      auto message = std::format(
+          "Maintenance::getLocalFollowers: Failed to lookup "
+          "collection {}: {}",
+          shard, collectionResult.errorMessage());
+      LOG_TOPIC("ce393", DEBUG, Logger::MAINTENANCE) << message;
+      return Result{collectionResult.errorNumber(), message};
     }
-    return collection->followers()->getCopy();
+    return collectionResult.get()->followers()->getCopy();
   } catch (std::exception const& e) {
     auto res = Result{
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -1413,16 +1412,17 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     bool shardInSync;
     bool shardReplicated;
 
-    auto collection = vocbase->lookupCollection(shard);
-    if (collection == nullptr) {
-      std::string errorMsg(
+    auto collectionResult = vocbase->lookupCollection(shard);
+    if (collectionResult.fail()) {
+      auto message = std::format(
           "Maintenance::assembleLocalCollectionInfo: Failed to lookup "
-          "collection ");
-      errorMsg += shard;
-      LOG_TOPIC("33a3b", DEBUG, Logger::MAINTENANCE) << errorMsg;
+          "collection {}: {}",
+          shard, collectionResult.errorMessage());
+      LOG_TOPIC("33a3b", DEBUG, Logger::MAINTENANCE) << message;
       { VPackObjectBuilder o(&ret); }
       return {ret, true, true};
     }
+    auto collection = collectionResult.get();
 
     std::string errorKey = database + "/" +
                            std::to_string(collection->planId().id()) + "/" +

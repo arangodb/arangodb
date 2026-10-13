@@ -1526,7 +1526,9 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
                        .getCollectionNT(vocbase.name(), std::string(key));
     }
   } else {
-    collection = vocbase.lookupCollection(std::string_view(key, keyLength));
+    auto collectionResult =
+        vocbase.lookupCollection(std::string_view(key, keyLength));
+    collection = collectionResult.ok() ? collectionResult.get() : nullptr;
   }
 
   if (collection == nullptr) {

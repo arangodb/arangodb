@@ -1404,46 +1404,50 @@ void RocksDBEngine::processTreeRebuilds() {
         try {
           vocbase = _databaseProvider.useDatabase(candidate.first);
           if (vocbase != nullptr) {
-            auto collection = vocbase->lookupCollectionByUuid(candidate.second);
-            if (collection != nullptr && !collection->deleted()) {
-              LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
-                  << "starting background rebuild of revision tree for "
-                     "collection "
-                  << candidate.first << "/" << collection->name();
-              Result res =
-                  static_cast<RocksDBCollection*>(collection->getPhysical())
-                      ->rebuildRevisionTree()
-                      .waitAndGet();
-              if (res.ok()) {
-                ++_metricsTreeRebuildsSuccess;
-                LOG_TOPIC("2f997", INFO, Logger::ENGINES)
-                    << "successfully rebuilt revision tree for collection "
+            auto collectionResult =
+                vocbase->lookupCollectionByUuid(candidate.second);
+            if (collectionResult.ok()) {
+              auto collection = collectionResult.get();
+              if (!collection->deleted()) {
+                LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
+                    << "starting background rebuild of revision tree for "
+                       "collection "
                     << candidate.first << "/" << collection->name();
-              } else {
-                ++_metricsTreeRebuildsFailure;
-                if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
-                  LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
-                      << "failure during revision tree rebuilding for "
-                         "collection "
-                      << candidate.first << "/" << collection->name() << ": "
-                      << res.errorMessage();
+                Result res =
+                    static_cast<RocksDBCollection*>(collection->getPhysical())
+                        ->rebuildRevisionTree()
+                        .waitAndGet();
+                if (res.ok()) {
+                  ++_metricsTreeRebuildsSuccess;
+                  LOG_TOPIC("2f997", INFO, Logger::ENGINES)
+                      << "successfully rebuilt revision tree for collection "
+                      << candidate.first << "/" << collection->name();
                 } else {
-                  LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
-                      << "failure during revision tree rebuilding for "
-                         "collection "
-                      << candidate.first << "/" << collection->name() << ": "
-                      << res.errorMessage();
-                }
-                {
-                  // mark as to-be-done again
-                  std::lock_guard locker{_rebuildCollectionsLock};
-                  auto it = _rebuildCollections.find(candidate);
-                  if (it != _rebuildCollections.end()) {
-                    (*it).second = false;
+                  ++_metricsTreeRebuildsFailure;
+                  if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                    LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
+                        << "failure during revision tree rebuilding for "
+                           "collection "
+                        << candidate.first << "/" << collection->name() << ": "
+                        << res.errorMessage();
+                  } else {
+                    LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
+                        << "failure during revision tree rebuilding for "
+                           "collection "
+                        << candidate.first << "/" << collection->name() << ": "
+                        << res.errorMessage();
                   }
+                  {
+                    // mark as to-be-done again
+                    std::lock_guard locker{_rebuildCollectionsLock};
+                    auto it = _rebuildCollections.find(candidate);
+                    if (it != _rebuildCollections.end()) {
+                      (*it).second = false;
+                    }
+                  }
+                  // rethrow exception
+                  THROW_ARANGO_EXCEPTION(res);
                 }
-                // rethrow exception
-                THROW_ARANGO_EXCEPTION(res);
               }
             }
           }

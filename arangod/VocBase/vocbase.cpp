@@ -694,44 +694,44 @@ bool currentContextCanSeeCollection(std::string_view db,
 }
 }  // namespace
 
-std::shared_ptr<LogicalCollection> Database::lookupCollection(
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollection(
     DataSourceId id) const {
   auto ptr = lookupDataSource(id);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   if (!currentContextCanSeeCollection(name(), ptr->name())) {
-    return nullptr;
+    return Result{TRI_ERROR_FORBIDDEN};
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> Database::lookupCollection(
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollection(
     std::string_view nameOrId) const {
   auto ptr = lookupDataSource(nameOrId);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   if (!currentContextCanSeeCollection(name(), ptr->name())) {
-    return nullptr;
+    return Result{TRI_ERROR_FORBIDDEN};
   }
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollectionByUuid(
     std::string_view uuid) const {
   // otherwise we'll look up the collection by name
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto it = _dataSourceByUuid.find(uuid);
   if (it == _dataSourceByUuid.end()) {
-    return nullptr;
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   TRI_ASSERT(it->second);
   if (it->second->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   if (!currentContextCanSeeCollection(name(), it->second->name())) {
-    return nullptr;
+    return Result{TRI_ERROR_FORBIDDEN};
   }
   return basics::downCast<LogicalCollection>(it->second);
 }
@@ -1041,13 +1041,14 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
 }
 
 Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
-  auto collection = lookupCollection(cid);
   auto const& dbName = _info.getName();
 
-  if (!collection) {
-    events::DropCollection(dbName, "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    events::DropCollection(dbName, "", collectionResult.errorNumber());
+    return collectionResult.result();
   }
+  auto& collection = collectionResult.get();
 
   if (!allowDropSystem && collection->system() && _engine.isReady()) {
     // prevent dropping of system collections
@@ -1229,11 +1230,11 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
 }
 
 Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
-  auto collection = lookupCollection(cid);
-
-  if (!collection) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    return collectionResult.result();
   }
+  auto& collection = collectionResult.get();
 
   if (collection->system()) {
     return TRI_ERROR_FORBIDDEN;
@@ -1340,7 +1341,11 @@ Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
 
 std::shared_ptr<LogicalCollection> Database::useCollection(
     DataSourceId cid, bool checkPermissions) {
-  return useCollectionInternal(lookupCollection(cid), checkPermissions);
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionResult.result());
+  }
+  return useCollectionInternal(collectionResult.get(), checkPermissions);
 }
 
 std::shared_ptr<LogicalCollection> Database::useCollection(

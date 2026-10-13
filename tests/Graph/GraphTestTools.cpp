@@ -124,9 +124,9 @@ GraphTestSetup::~GraphTestSetup() {
 
 std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
     TRI_vocbase_t& vocbase, std::string const& edgeCollectionName) {
-  std::shared_ptr<arangodb::LogicalCollection> coll =
-      vocbase.lookupCollection(edgeCollectionName);
-  TRI_ASSERT(coll != nullptr);    // no edge collection of this name
+  auto collResult = vocbase.lookupCollection(edgeCollectionName);
+  TRI_ASSERT(collResult.ok());  // no edge collection of this name
+  auto coll = collResult.get();
   TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
   for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
     if (idx->type() == IndexType::Edge) {

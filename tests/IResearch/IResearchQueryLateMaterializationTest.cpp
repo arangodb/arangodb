@@ -419,9 +419,10 @@ class QueryLateMaterializationSearch : public QueryLateMaterialization {
           (sorted
                ? R"("primarySort": { "fields": [{"field": "value", "direction": "asc"}, {"field": "foo", "direction": "desc"}] },)"
                : "")));
-      auto collection =
+      auto collectionResult =
           vocbase().lookupCollection(absl::Substitute("collection_$0", name));
-      ASSERT_TRUE(collection);
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };

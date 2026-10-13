@@ -69,9 +69,9 @@ class QuerySelectAll : public QueryTest {
   void populateData() {
     _insertedDocs =
         std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>(101);
-    auto logicalCollection1 = _vocbase.lookupCollection("collection_1");
+    auto logicalCollection1 = _vocbase.lookupCollection("collection_1").get();
     ASSERT_TRUE(logicalCollection1);
-    auto logicalCollection2 = _vocbase.lookupCollection("collection_2");
+    auto logicalCollection2 = _vocbase.lookupCollection("collection_2").get();
     ASSERT_TRUE(logicalCollection2);
     arangodb::OperationOptions opt;
 
@@ -540,7 +540,8 @@ class QuerySelectAllSearch : public QuerySelectAll {
                "includeAllFields": true })",
           name, version()));
       auto collection =
-          _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
+          _vocbase.lookupCollection(absl::Substitute("collection_$0", name))
+              .get();
       ASSERT_TRUE(collection);
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);

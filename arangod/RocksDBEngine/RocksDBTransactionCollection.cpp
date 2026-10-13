@@ -490,11 +490,11 @@ Result RocksDBTransactionCollection::ensureCollection() {
     } else {
       // use without usage-lock (lock already set externally)
       TRI_ASSERT(!_usageLocked);
-      _collection = _transaction->vocbase().lookupCollection(_cid);
-
-      if (_collection == nullptr) {
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+      auto collectionResult = _transaction->vocbase().lookupCollection(_cid);
+      if (collectionResult.fail()) {
+        return collectionResult.result();
       }
+      _collection = collectionResult.get();
     }
   }
 

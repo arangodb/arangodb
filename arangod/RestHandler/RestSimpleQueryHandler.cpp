@@ -90,12 +90,11 @@ async<void> RestSimpleQueryHandler::allDocuments() {
     co_return;
   }
 
-  auto col = _vocbase.lookupCollection(collectionName);
-
-  if (col != nullptr && collectionName != col->name()) {
+  auto colResult = _vocbase.lookupCollection(collectionName);
+  if (colResult.ok() && collectionName != colResult.get()->name()) {
     // user has probably passed in a numeric collection id.
     // translate it into a "real" collection name
-    collectionName = col->name();
+    collectionName = colResult.get()->name();
   }
 
   VPackBuilder bindVars;
@@ -181,12 +180,11 @@ async<void> RestSimpleQueryHandler::allDocumentKeys() {
     co_return;
   }
 
-  auto col = _vocbase.lookupCollection(collectionName);
-
-  if (col != nullptr && collectionName != col->name()) {
+  auto colResult = _vocbase.lookupCollection(collectionName);
+  if (colResult.ok() && collectionName != colResult.get()->name()) {
     // user has probably passed in a numeric collection id.
     // translate it into a "real" collection name
-    collectionName = col->name();
+    collectionName = colResult.get()->name();
   }
 
   std::string returnType;
@@ -297,12 +295,11 @@ async<void> RestSimpleQueryHandler::byExample() {
     co_return;
   }
 
-  auto col = _vocbase.lookupCollection(cname);
-
-  if (col != nullptr && cname != col->name()) {
+  auto colResult = _vocbase.lookupCollection(cname);
+  if (colResult.ok() && cname != colResult.get()->name()) {
     // user has probably passed in a numeric collection id.
     // translate it into a "real" collection name
-    cname = col->name();
+    cname = colResult.get()->name();
   }
 
   VPackBuilder data;

@@ -220,8 +220,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (vocbase == nullptr) {
       return nullptr;
     }
-    return static_cast<RocksDBCollection*>(
-        vocbase->lookupCollection(dbColPair.second)->getPhysical());
+    auto collResult = vocbase->lookupCollection(dbColPair.second);
+    if (collResult.fail()) {
+      return nullptr;
+    }
+    return static_cast<RocksDBCollection*>(collResult.get()->getPhysical());
   }
 
   RocksDBIndex* findIndex(uint64_t objectId) {
@@ -235,11 +238,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    auto coll = vb->lookupCollection(std::get<1>(triple));
-
-    if (coll == nullptr) {
+    auto collResult = vb->lookupCollection(std::get<1>(triple));
+    if (collResult.fail()) {
       return nullptr;
     }
+    auto coll = collResult.get();
 
     std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
     if (index == nullptr) {

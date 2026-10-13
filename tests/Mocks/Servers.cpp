@@ -979,9 +979,10 @@ void MockDBServer::createShard(std::string const& dbName,
     auto& databaseFeature = _server.getFeature<DatabaseFeature>();
     auto vocbase = databaseFeature.lookupDatabase(dbName);
     TRI_ASSERT(vocbase);
-    auto col = vocbase->lookupCollection(shardName);
+    auto colResult = vocbase->lookupCollection(shardName);
     // We just created it...
-    TRI_ASSERT(col);
+    TRI_ASSERT(colResult.ok());
+    auto col = colResult.get();
 
     {
       bool created = false;

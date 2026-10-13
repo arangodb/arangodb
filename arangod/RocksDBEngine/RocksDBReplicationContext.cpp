@@ -62,11 +62,10 @@ namespace {
 DataSourceId normalizeIdentifier(TRI_vocbase_t& vocbase,
                                  std::string const& identifier) {
   DataSourceId id = DataSourceId::none();
-  std::shared_ptr<LogicalCollection> logical{
-      vocbase.lookupCollection(identifier)};
+  auto logicalResult = vocbase.lookupCollection(identifier);
 
-  if (logical) {
-    id = logical->id();
+  if (logicalResult.ok()) {
+    id = logicalResult.get()->id();
   }
 
   return id;
@@ -228,12 +227,12 @@ void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase,
 futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
 RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
                                                      std::string const& cname) {
-  std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cname)};
-
-  if (!logical) {
+  auto logicalResult = vocbase.lookupCollection(cname);
+  if (!logicalResult.ok()) {
     co_return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                               DataSourceId::none(), 0);
   }
+  std::shared_ptr<LogicalCollection> logical = logicalResult.get();
   DataSourceId cid = logical->id();
 
   LOG_TOPIC("71235", TRACE, Logger::REPLICATION)
@@ -479,10 +478,10 @@ Result RocksDBReplicationContext::getInventory(
   ExecContext const& exec = ExecContext::current();
   if (exec.canUseCollection(vocbase.name(), collectionName, AccessLevel::Read)
           .ok()) {
-    auto collection = vocbase.lookupCollection(collectionName);
-    if (collection != nullptr && !collection->deleted()) {
+    auto collectionResult = vocbase.lookupCollection(collectionName);
+    if (collectionResult.ok() && !collectionResult.get()->deleted()) {
       // dump inventory data for collection/shard into result
-      collection->toVelocyPackForInventory(result);
+      collectionResult.get()->toVelocyPackForInventory(result);
     }
   }
 
@@ -1282,12 +1281,11 @@ RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
     }
 
     // try to create one
-    std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cid)};
-
-    if (nullptr != logical) {
-      auto result =
-          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(
-                                          vocbase, logical, sorted, _snapshot));
+    auto logicalResult = vocbase.lookupCollection(cid);
+    if (logicalResult.ok()) {
+      auto result = _iterators.try_emplace(
+          cid, std::make_unique<CollectionIterator>(
+                   vocbase, logicalResult.get(), sorted, _snapshot));
 
       if (result.second) {
         cIter = result.first->second.get();

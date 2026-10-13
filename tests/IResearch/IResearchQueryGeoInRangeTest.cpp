@@ -104,7 +104,7 @@ class QueryGeoInRange : public QueryTest {
   void queryTests() {
     // populate collection
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
+      auto collection = _vocbase.lookupCollection("testCollection0").get();
       ASSERT_TRUE(collection);
       auto docs = VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
@@ -220,7 +220,7 @@ class QueryGeoInRange : public QueryTest {
   void queryTestsGeoJson(bool isVPack) {
     // ensure presence of special a column for geo indices
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
+      auto collection = _vocbase.lookupCollection("testCollection0").get();
       ASSERT_TRUE(collection);
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
@@ -420,7 +420,7 @@ class QueryGeoInRange : public QueryTest {
   void queryTestsMulti() {}
 
   void queryTests2() {
-    auto collection = _vocbase.lookupCollection("testCollection0");
+    auto collection = _vocbase.lookupCollection("testCollection0").get();
     ASSERT_TRUE(collection);
     // populate collection
     {
@@ -725,7 +725,7 @@ class QueryGeoInRange : public QueryTest {
   }
 
   void queryTests3() {
-    auto collection = _vocbase.lookupCollection("testCollection0");
+    auto collection = _vocbase.lookupCollection("testCollection0").get();
     ASSERT_TRUE(collection);
     // populate collection
     {
@@ -1058,7 +1058,7 @@ class QueryGeoInRangeSearch : public QueryGeoInRange {
              "fields": $1,
              "version": $0 })",
         version(), fields));
-    auto collection = _vocbase.lookupCollection("testCollection0");
+    auto collection = _vocbase.lookupCollection("testCollection0").get();
     EXPECT_TRUE(collection);
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);

@@ -967,9 +967,12 @@ std::string DatabaseFeature::translateCollectionName(
             collectionName.data(),
             collectionName.data() + collectionName.size())});
   } else {
-    auto collection = vocbase->lookupCollection(collectionName);
+    auto collectionResult = vocbase->lookupCollection(collectionName);
+    if (collectionResult.ok()) {
+      return collectionResult.get()->name();
+    }
 
-    return collection ? collection->name() : std::string();
+    return std::string();
   }
 }
 

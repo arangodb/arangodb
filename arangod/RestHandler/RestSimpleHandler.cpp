@@ -267,12 +267,12 @@ async<void> RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     collectionName = value.copyString();
 
     if (!collectionName.empty()) {
-      auto col = _vocbase.lookupCollection(collectionName);
+      auto colResult = _vocbase.lookupCollection(collectionName);
 
-      if (col != nullptr && collectionName != col->name()) {
+      if (colResult.ok() && collectionName != colResult.get()->name()) {
         // user has probably passed in a numeric collection id.
         // translate it into a "real" collection name
-        collectionName = col->name();
+        collectionName = colResult.get()->name();
       }
     }
   }
