@@ -39,25 +39,15 @@
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/StandaloneCalculation.h"
-#include "Basics/FunctionUtils.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
-#include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Sink.h>
