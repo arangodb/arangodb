@@ -2004,7 +2004,8 @@ function ahuacatlStringFunctionsTestSuite () {
     const decomposed = "한";
     assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("한x한", @s)`, { s: decomposed }));
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
-    assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST("café", "é", 0, 3)`));
+    // \u00e9 and e\u0301 are both represented as é 
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST(@t, @s, 0, 3)`, { t: "caf\u00e9", s: "e\u0301" }));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
