@@ -325,7 +325,10 @@ class Repeat {
   }
 
   ResultT<AqlValue> execute(StringFunctionContext const& env) const {
-    if (_repetitions == 0) {
+    bool const emptyValue =
+        _value->isNull(true) ||
+        (_value->isString() && _value->slice().getStringLength() == 0);
+    if (_repetitions == 0 || (emptyValue && _separator->empty())) {
       return AqlValue(std::string_view("", 0));
     }
 
@@ -336,7 +339,7 @@ class Repeat {
 
     for (int64_t i = 0; i < _repetitions; ++i) {
       if (i > 0 && !_separator->empty()) {
-        buffer->append(*_separator);
+        adapter.append(*_separator);
       }
       appendAsString(env.vopts, adapter, *_value);
       if (adapter.overflowed()) {
