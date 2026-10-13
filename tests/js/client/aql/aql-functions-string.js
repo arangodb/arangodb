@@ -1168,7 +1168,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test", "test", "test", "test")'); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS()'); 
       assertEqual([ -1 ], getQueryResults('RETURN CONTAINS("test", "test2", "test3")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, null)')); 
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS(null, null)'));
       assertEqual([ true ], getQueryResults('RETURN CONTAINS(4, 4)')); 
       assertEqual([ true ], getQueryResults('RETURN CONTAINS({ }, { })')); 
       assertEqual([ true ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
@@ -1177,7 +1177,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
       assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
       assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(3, null)')); 
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS(3, null)'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1205,11 +1205,14 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test contains false2
+// / @brief test contains with empty search string
 // //////////////////////////////////////////////////////////////////////////////
 
-    testContainsFalse2: function () {
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS("test123", "")'));
+    testContainsEmptySearch: function () {
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS("test123", "")'));
+      assertEqual([ 0 ], getQueryResults('RETURN CONTAINS("test123", "", true)'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS("", "")'));
+      assertEqual([ 0 ], getQueryResults('RETURN CONTAINS("", "", true)'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1858,6 +1861,18 @@ function ahuacatlStringFunctionsTestSuite () {
       var actual = getQueryResults(`RETURN FIND_FIRST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ', ' + v[3] + ', ' + (v[4] === undefined ? null : v[4]) + ')');
       assertEqual([ v[0] ], actual);
     });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first with a match shorter than the pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstMatchShorterThanPattern: function () {
+    // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
+    const decomposed = "한";
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("한", @s)`, { s: decomposed }));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("x한y", @s, 0, 1)`, { s: decomposed }));
+    assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("한", @s, true)`, { s: decomposed }));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
