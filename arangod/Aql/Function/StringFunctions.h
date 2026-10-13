@@ -25,11 +25,13 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Functions.h"
 #include "Basics/ResultT.h"
-#include "Basics/system-compiler.h"
 
 #include <unicode/locid.h>
 
+#include <algorithm>
+#include <concepts>
 #include <string_view>
+#include <utility>
 
 namespace arangodb {
 struct ICancellationToken;
@@ -39,78 +41,6 @@ namespace arangodb::aql {
 class AqlFunctionsInternalCache;
 
 namespace functions {
-
-enum class StringFunctionsName {
-  kSubstitute,
-  kToString,
-  kToChar,
-  kRepeat,
-  kFindFirst,
-  kFindLast,
-  kConcatSeparator,
-  kCharLength,
-  kLower,
-  kUpper,
-  kSubstring,
-  kSubstringBytes,
-  kLeft,
-  kRight,
-  kTrim,
-  kLTrim,
-  kRTrim,
-  kConcat,
-  kContains,
-  kLike,
-  kSplit,
-};
-
-constexpr std::string_view functionName(StringFunctionsName name) noexcept {
-  switch (name) {
-    case StringFunctionsName::kSubstitute:
-      return "SUBSTITUTE";
-    case StringFunctionsName::kToString:
-      return "TO_STRING";
-    case StringFunctionsName::kToChar:
-      return "TO_CHAR";
-    case StringFunctionsName::kRepeat:
-      return "REPEAT";
-    case StringFunctionsName::kFindFirst:
-      return "FIND_FIRST";
-    case StringFunctionsName::kFindLast:
-      return "FIND_LAST";
-    case StringFunctionsName::kConcatSeparator:
-      return "CONCAT_SEPARATOR";
-    case StringFunctionsName::kCharLength:
-      return "CHAR_LENGTH";
-    case StringFunctionsName::kLower:
-      return "LOWER";
-    case StringFunctionsName::kUpper:
-      return "UPPER";
-    case StringFunctionsName::kSubstring:
-      return "SUBSTRING";
-    case StringFunctionsName::kSubstringBytes:
-      return "SUBSTRING_BYTES";
-    case StringFunctionsName::kLeft:
-      return "LEFT";
-    case StringFunctionsName::kRight:
-      return "RIGHT";
-    case StringFunctionsName::kTrim:
-      return "TRIM";
-    case StringFunctionsName::kLTrim:
-      return "LTRIM";
-    case StringFunctionsName::kRTrim:
-      return "RTRIM";
-    case StringFunctionsName::kConcat:
-      return "CONCAT";
-    case StringFunctionsName::kContains:
-      return "CONTAINS";
-    case StringFunctionsName::kLike:
-      return "LIKE";
-    case StringFunctionsName::kSplit:
-      return "SPLIT";
-  }
-  ADB_UNREACHABLE;
-}
 
 struct StringFunctionContext {
   // the transaction's options resolve custom types (e.g. _id) and translated
@@ -123,19 +53,171 @@ struct StringFunctionContext {
   ICancellationToken const* cancellationToken = nullptr;
 };
 
-ResultT<AqlValue> runStringFunction(StringFunctionsName name,
-                                    VPackFunctionParametersView parameters,
-                                    StringFunctionContext const& env);
+// the AQL name each function reports its warnings under
+template<auto Fn>
+inline constexpr std::string_view kStringFunctionName = {};
+
+// optional arguments are nullptr when not passed
+ResultT<AqlValue> toString(StringFunctionContext const& ctx,
+                           AqlValue const& value);
+template<>
+inline constexpr std::string_view kStringFunctionName<toString> = "TO_STRING";
+
+ResultT<AqlValue> toChar(StringFunctionContext const& ctx,
+                         AqlValue const& codePoint);
+template<>
+inline constexpr std::string_view kStringFunctionName<toChar> = "TO_CHAR";
+
+ResultT<AqlValue> repeat(StringFunctionContext const& ctx,
+                         AqlValue const& value, AqlValue const& repetitions,
+                         AqlValue const* separator);
+template<>
+inline constexpr std::string_view kStringFunctionName<repeat> = "REPEAT";
+
+ResultT<AqlValue> findFirst(StringFunctionContext const& ctx,
+                            AqlValue const& text, AqlValue const& search,
+                            AqlValue const* start, AqlValue const* end);
+template<>
+inline constexpr std::string_view kStringFunctionName<findFirst> = "FIND_FIRST";
+
+ResultT<AqlValue> findLast(StringFunctionContext const& ctx,
+                           AqlValue const& text, AqlValue const& search,
+                           AqlValue const* start, AqlValue const* end);
+template<>
+inline constexpr std::string_view kStringFunctionName<findLast> = "FIND_LAST";
+
+ResultT<AqlValue> concatSeparator(StringFunctionContext const& ctx,
+                                  AqlValue const& separator,
+                                  VPackFunctionParametersView values);
+template<>
+inline constexpr std::string_view kStringFunctionName<concatSeparator> =
+    "CONCAT_SEPARATOR";
+
+ResultT<AqlValue> charLength(StringFunctionContext const& ctx,
+                             AqlValue const& value);
+template<>
+inline constexpr std::string_view kStringFunctionName<charLength> =
+    "CHAR_LENGTH";
+
+ResultT<AqlValue> lower(StringFunctionContext const& ctx,
+                        AqlValue const& value);
+template<>
+inline constexpr std::string_view kStringFunctionName<lower> = "LOWER";
+
+ResultT<AqlValue> upper(StringFunctionContext const& ctx,
+                        AqlValue const& value);
+template<>
+inline constexpr std::string_view kStringFunctionName<upper> = "UPPER";
+
+ResultT<AqlValue> substring(StringFunctionContext const& ctx,
+                            AqlValue const& value, AqlValue const& offset,
+                            AqlValue const* length);
+template<>
+inline constexpr std::string_view kStringFunctionName<substring> = "SUBSTRING";
+
+ResultT<AqlValue> substringBytes(StringFunctionContext const& ctx,
+                                 AqlValue const& value, AqlValue const& offset,
+                                 AqlValue const* length, AqlValue const* left,
+                                 AqlValue const* right);
+template<>
+inline constexpr std::string_view kStringFunctionName<substringBytes> =
+    "SUBSTRING_BYTES";
+
+ResultT<AqlValue> left(StringFunctionContext const& ctx, AqlValue const& value,
+                       AqlValue const& length);
+template<>
+inline constexpr std::string_view kStringFunctionName<left> = "LEFT";
+
+ResultT<AqlValue> right(StringFunctionContext const& ctx, AqlValue const& value,
+                        AqlValue const& length);
+template<>
+inline constexpr std::string_view kStringFunctionName<right> = "RIGHT";
+
+ResultT<AqlValue> trim(StringFunctionContext const& ctx, AqlValue const& value,
+                       AqlValue const* typeOrChars);
+template<>
+inline constexpr std::string_view kStringFunctionName<trim> = "TRIM";
+
+ResultT<AqlValue> ltrim(StringFunctionContext const& ctx, AqlValue const& value,
+                        AqlValue const* chars);
+template<>
+inline constexpr std::string_view kStringFunctionName<ltrim> = "LTRIM";
+
+ResultT<AqlValue> rtrim(StringFunctionContext const& ctx, AqlValue const& value,
+                        AqlValue const* chars);
+template<>
+inline constexpr std::string_view kStringFunctionName<rtrim> = "RTRIM";
+
+ResultT<AqlValue> concat(StringFunctionContext const& ctx,
+                         VPackFunctionParametersView values);
+template<>
+inline constexpr std::string_view kStringFunctionName<concat> = "CONCAT";
+
+ResultT<AqlValue> contains(StringFunctionContext const& ctx,
+                           AqlValue const& text, AqlValue const& search,
+                           AqlValue const* returnIndex);
+template<>
+inline constexpr std::string_view kStringFunctionName<contains> = "CONTAINS";
+
+ResultT<AqlValue> like(StringFunctionContext const& ctx, AqlValue const& text,
+                       AqlValue const& pattern,
+                       AqlValue const* caseInsensitive);
+template<>
+inline constexpr std::string_view kStringFunctionName<like> = "LIKE";
+
+ResultT<AqlValue> split(StringFunctionContext const& ctx, AqlValue const& value,
+                        AqlValue const* separator, AqlValue const* limit);
+template<>
+inline constexpr std::string_view kStringFunctionName<split> = "SPLIT";
+
+ResultT<AqlValue> substitute(StringFunctionContext const& ctx,
+                             AqlValue const& value, AqlValue const& search,
+                             AqlValue const* replace, AqlValue const* limit);
+template<>
+inline constexpr std::string_view kStringFunctionName<substitute> =
+    "SUBSTITUTE";
+
+StringFunctionContext makeStringFunctionContext(ExpressionContext* ctx);
 
 // registers a failed result as a warning and returns null
-AqlValue callStringFunction(ExpressionContext* ctx, StringFunctionsName name,
-                            VPackFunctionParametersView parameters);
+AqlValue toAqlResult(ExpressionContext* ctx, std::string_view name,
+                     ResultT<AqlValue>&& result);
+
+namespace detail {
+
+template<typename T>
+T stringFunctionArgument(VPackFunctionParametersView parameters, size_t index) {
+  if constexpr (std::same_as<T, AqlValue const&>) {
+    return extractFunctionParameterValue(parameters, index);
+  } else if constexpr (std::same_as<T, AqlValue const*>) {
+    return index < parameters.size() ? &parameters[index] : nullptr;
+  } else {
+    static_assert(std::same_as<T, VPackFunctionParametersView>);
+    return parameters.subspan(std::min(index, parameters.size()));
+  }
+}
+
+template<typename... Args>
+ResultT<AqlValue> invokeStringFunction(
+    ResultT<AqlValue> (*fn)(StringFunctionContext const&, Args...),
+    StringFunctionContext const& ctx, VPackFunctionParametersView parameters) {
+  return [&]<size_t... I>(std::index_sequence<I...>) {
+    return fn(ctx, stringFunctionArgument<Args>(parameters, I)...);
+  }
+  (std::index_sequence_for<Args...>{});
+}
+
+}  // namespace detail
 
 // explicit name: under CALL/APPLY the node is the CALL/APPLY node
-template<StringFunctionsName Name>
+template<auto Fn>
 AqlValue adapt(ExpressionContext* ctx, AstNode const&,
                VPackFunctionParametersView parameters) {
-  return callStringFunction(ctx, Name, parameters);
+  static_assert(!kStringFunctionName<Fn>.empty(),
+                "string function has no kStringFunctionName");
+  return toAqlResult(ctx, kStringFunctionName<Fn>,
+                     detail::invokeStringFunction(
+                         Fn, makeStringFunctionContext(ctx), parameters));
 }
 
 }  // namespace functions
