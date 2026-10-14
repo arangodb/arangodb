@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1062: Fixed wrong AQL query results when two expressions differ only in
+  grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
+  `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
+  and `remove-filter-covered-by-index` treated such expressions as the same.
+  This fixes issue #23397.
+
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
