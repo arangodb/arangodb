@@ -58,6 +58,9 @@ report_and_exit() {
     exit 0
 }
 
+docker create --name operator public.ecr.aws/arangodb-ci/release/cache/arangodb/kube-arangodb-enterprise:1.4.5
+docker cp operator:/usr/bin/arangodb_operator "$DEST"
+
 if [ "$FORCE" -eq 0 ] && usable "$DEST"; then
     log "reusing existing operator binary: $DEST"
     report_and_exit "$DEST"
@@ -158,14 +161,10 @@ if [ -z "$GO_BIN" ]; then
         log "downloading $TARBALL"
         rm -rf "$GOROOT_DIR"
         mkdir -p "$(dirname "$GOROOT_DIR")"
-#        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
-#            || die "could not download the Go toolchain ($TARBALL).
-        PUBLIC_IP=$(dig +short @8.8.8.8 dl.google.com | tail -n1)
-        if [ -n "$PUBLIC_IP" ]; then
-          echo "$PUBLIC_IP dl.google.com" | sudo tee -a /etc/hosts
-        fi
-        wget -v -S -O "/tmp/$TARBALL" "https://dl.google.com/go/$TARBALL" \
+        curl -sS -L -m 600 -o "/tmp/$TARBALL" "https://go.dev/dl/$TARBALL" \
             || die "could not download the Go toolchain ($TARBALL).
+#        wget -v -S -O "/tmp/$TARBALL" "https://dl.google.com/go/$TARBALL" \
+#            || die "could not download the Go toolchain ($TARBALL).
  No usable Go is present and it cannot be fetched. Either run this on an image
  with Go >= 1.21, or pre-populate $GOROOT_DIR."
         mkdir -p "$GOROOT_DIR"
