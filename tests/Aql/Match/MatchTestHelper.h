@@ -74,13 +74,16 @@ class MatchTestFixture : public ::testing::Test {
   static void SetUpTestCase() {
     server = std::make_unique<mocks::MockRestAqlServer>();
     createDocumentCollection("vc");
+    createDocumentCollection("vc1");
+    createDocumentCollection("vc2");
     createEdgeCollection("ec");
+    createEdgeCollection("ec1");
     createEdgeCollection("ec2");
     createDocumentCollection("resolved_vc");
-    createDocumentCollection("resolved_ec");
+    createEdgeCollection("resolved_ec");
     createDocumentCollection("mvc");
-    createDocumentCollection("mec1");
-    createDocumentCollection("mec2");
+    createEdgeCollection("mec1");
+    createEdgeCollection("mec2");
   }
 
   static void TearDownTestCase() { server.reset(); }
