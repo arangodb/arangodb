@@ -22,6 +22,10 @@
   replicated AQL modification ran on a network thread while other snippets of
   the same query were executing. We commit first and then replicate.
 
+* Fixed a cluster race where a database could be dropped while it was
+  still being created. Now databases remain hidden while building
+  and cannot be deleted until creation completes.
+
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
 
