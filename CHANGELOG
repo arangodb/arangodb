@@ -25,6 +25,10 @@
 * Hotbackups always produce a valid timestamps, even if META files are
   missing.
 
+* BTS-2483: The AQL optimizer rule `propagate-constant-attributes` ignores
+  comparisons on function or subquery results, such as
+  `FIRST(<subquery>).attr == 'value'`. Applying them led to wrong results.
+
 * COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
   `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
 
