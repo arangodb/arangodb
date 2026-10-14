@@ -58,8 +58,6 @@ report_and_exit() {
     exit 0
 }
 
-
-
 if [ "$FORCE" -eq 0 ] && usable "$DEST"; then
     log "reusing existing operator binary: $DEST"
     report_and_exit "$DEST"
