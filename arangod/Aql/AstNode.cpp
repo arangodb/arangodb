@@ -244,31 +244,6 @@ int compareDoubleValues(double lhs, double rhs) {
   return 0;
 }
 
-// NOOPT(), DOCUMENT(), and COLLECTION_COUNT() are flagged as non-deterministic,
-// but return the same value on every call within a query
-bool hasStableValue(AstNode const* node) {
-  if (node->isDeterministic()) {
-    return true;
-  }
-  if (node->type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function const*>(node->getData());
-    return (func->name == "NOOPT" || func->name == "DOCUMENT" ||
-            func->name == "COLLECTION_COUNT") &&
-           hasStableValue(node->getMember(0));
-  }
-  if (node->type == NODE_TYPE_FCALL_USER) {
-    return false;
-  }
-  // any other node is only non-deterministic because of its members
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto const* member = node->getMemberUnchecked(i);
-    if (member != nullptr && !hasStableValue(member)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 }  // namespace
 
 static_assert(AstNodeValueType::VALUE_TYPE_NULL == 0,
@@ -708,6 +683,31 @@ template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return compareAstNodesImpl<resolveAttributeAccess>(lhs, rhs,
                                                      {compareUtf8, false});
+}
+
+// NOOPT(), DOCUMENT(), and COLLECTION_COUNT() are flagged as non-deterministic,
+// but return the same value on every call within a query
+bool hasStableValue(AstNode const* node) {
+  if (node->isDeterministic()) {
+    return true;
+  }
+  if (node->type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function const*>(node->getData());
+    return (func->name == "NOOPT" || func->name == "DOCUMENT" ||
+            func->name == "COLLECTION_COUNT") &&
+           hasStableValue(node->getMember(0));
+  }
+  if (node->type == NODE_TYPE_FCALL_USER) {
+    return false;
+  }
+  // any other node is only non-deterministic because of its members
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto const* member = node->getMemberUnchecked(i);
+    if (member != nullptr && !hasStableValue(member)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool isSameExpression(AstNode const* lhs, AstNode const* rhs) {
