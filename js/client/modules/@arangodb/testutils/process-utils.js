@@ -78,6 +78,8 @@ function switchBinarySet(which) {
   currentBinarySet = which;
 }
 
+const CWD = fs.makeAbsolute(".");
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
@@ -226,7 +228,10 @@ function killRemainingProcesses(results) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}, cwd=undefined) {
+  if (cwd === undefined) {
+    cwd = CWD;
+  }
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -279,8 +284,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
-
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions(), cwd);
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
   const deltaTime = (time() - startTime) * 1000;
@@ -320,7 +324,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         timeout: false,
         status: true,
         message: '',
-        duration: deltaTime
+        duration: deltaTime,
+        exit: 0
       };
     } else {
       return {
@@ -329,6 +334,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
+        exit: instanceInfo.exitStatus.exit,
       };
     }
   } else if (instanceInfo.exitStatus.status === 'ABORTED') {
@@ -341,6 +347,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
@@ -364,6 +371,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: true,
       status: false,
       message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
@@ -380,6 +388,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
