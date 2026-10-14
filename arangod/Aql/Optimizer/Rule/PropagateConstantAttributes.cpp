@@ -51,7 +51,7 @@ struct Replacement {
 };
 
 struct VarAttributeAccess {
-  Variable const* var;
+  Variable const* var = nullptr;
   containers::SmallVector<std::string_view, 8> path;
 
   friend bool operator==(VarAttributeAccess const&,
@@ -91,7 +91,9 @@ bool getAttribute(AstNode const* attribute,
     return true;
   } else if (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     ast::AttributeAccessNode attrAccess(attribute);
-    getAttribute(attrAccess.getObject(), attributeAccess);
+    if (!getAttribute(attrAccess.getObject(), attributeAccess)) {
+      return false;
+    }
     attributeAccess.path.emplace_back(attrAccess.getAttributeName());
     return true;
   }
