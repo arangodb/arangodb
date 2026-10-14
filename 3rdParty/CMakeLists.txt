@@ -178,6 +178,13 @@ add_subdirectory(velocypack)
 
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
+# RocksDB 10.11+ enables benchmark tools by default, which pulls in its bundled
+# gtest and conflicts with ArangoDB's own gtest target.
+set(WITH_TESTS OFF CACHE BOOL "Build RocksDB tests" FORCE)
+set(WITH_BENCHMARK_TOOLS OFF CACHE BOOL "Build RocksDB benchmark tools" FORCE)
+set(WITH_TOOLS OFF CACHE BOOL "Build RocksDB tools" FORCE)
+set(WITH_CORE_TOOLS OFF CACHE BOOL "Build RocksDB core tools" FORCE)
+
 add_subdirectory(rocksdb)
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
