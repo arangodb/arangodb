@@ -153,6 +153,7 @@ arangodb.acquireHostList=true
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       status = false;
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
@@ -248,6 +249,7 @@ class runInKafkaTest extends runWithAllureReport {
       status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
@@ -329,6 +331,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
       status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
@@ -407,6 +410,7 @@ class runInSpringDataTest extends runWithAllureReport {
       status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
@@ -495,6 +499,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
       status = false;
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`

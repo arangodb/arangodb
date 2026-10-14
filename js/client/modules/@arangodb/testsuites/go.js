@@ -265,8 +265,10 @@ function goDriver (options) {
         let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${killResult}`;
         print(`${RED}${msg}${RESET}`);
         return {
+          timeout: timeout,
           status: false,
           failed: 1,
+          stack: ex.stack,
           message: msg
         };
       }
