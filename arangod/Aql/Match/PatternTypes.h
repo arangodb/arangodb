@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Aql/Match/MatchOptions.h"
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -199,6 +201,7 @@ struct NormalizedPattern {
 
 struct NormalizedStatement {
   std::vector<NormalizedPattern> patterns;
+  MatchOptions options;
 };
 
 }  // namespace arangodb::aql::match

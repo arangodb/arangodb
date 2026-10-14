@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Aql/Match/MatchOptions.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
@@ -1427,8 +1428,15 @@ match_statement:
     T_MATCH {
         auto node = parser->ast()->createNodeMatch();
         parser->pushStack(node);
-    } pattern_expression_list {
+    } pattern_expression_list options {
         auto node = static_cast<AstNode*>(parser->popStack());
+        // OPTIONS is optional and, when present, must be the last part of MATCH. 
+        // The shared options rule already validates that it is a constant object. 
+        // Parse it here so invalid or unknown options are reported immediately.
+        if ($4 != nullptr) {
+          arangodb::aql::match::MatchOptions::fromAstNode($4);
+          node->addMember($4);
+        }
         parser->ast()->addOperation(node);
     }
 

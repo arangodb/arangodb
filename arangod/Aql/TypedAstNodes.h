@@ -1071,15 +1071,32 @@ struct PatternMatchExpression : TypedAstNode {
 
 /// @brief NODE_TYPE_MATCH layout (from Ast::createNodeMatch /
 /// Parser::pushMatchExprNode):
-///   members are PATTERN_MATCH_EXPRESSION nodes (one per MATCH pattern)
+///   members are PATTERN_MATCH_EXPRESSION nodes (one per MATCH pattern),
+///   optionally followed by a final NODE_TYPE_OBJECT for MATCH OPTIONS.
 struct MatchNode : TypedAstNode {
   explicit MatchNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_MATCH) << node->getTypeString();
   }
 
-  size_t numPatterns() const { return _node->numMembers(); }
+  AstNode const* options() const noexcept {
+    size_t const n = _node->numMembers();
+    if (n == 0) {
+      return nullptr;
+    }
+    AstNode const* last = _node->getMemberUnchecked(n - 1);
+    if (last != nullptr && last->type == NODE_TYPE_OBJECT) {
+      return last;
+    }
+    return nullptr;
+  }
+
+  size_t numPatterns() const {
+    size_t const n = _node->numMembers();
+    return options() != nullptr ? n - 1 : n;
+  }
 
   PatternMatchExpression pattern(size_t i) const {
+    TRI_ASSERT(i < numPatterns());
     return PatternMatchExpression(_node->getMemberUnchecked(i));
   }
 

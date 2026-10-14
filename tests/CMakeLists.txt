@@ -104,6 +104,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Match/BuilderTest.cpp
   Aql/Match/CollectionAccessBuilderTest.cpp
   Aql/Match/FilterBuilderTest.cpp
+  Aql/Match/MatchOptionsTest.cpp
   Aql/Match/PathConstructionTest.cpp
   Aql/Match/PatternNormalizerTest.cpp
   Aql/Match/PatternTypesTest.cpp
