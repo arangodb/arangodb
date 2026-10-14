@@ -22,8 +22,13 @@
 
 #include "Arithmetic.h"
 
+#include "Aql/AstNode.h"
+#include "Basics/Arithmetic.h"
+#include "Basics/Exceptions.h"
+
 #include <cctype>
 #include <charconv>
+#include <cmath>
 #include <system_error>
 
 namespace {
@@ -88,6 +93,57 @@ double stringToNumber(std::string const& value, bool& failed) noexcept {
     }
   }
   return negative ? -v : v;
+}
+
+std::optional<int64_t> integerArithmetic(AstNodeType type, int64_t l,
+                                         int64_t r) noexcept {
+  switch (type) {
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+      if (isUnsafeAddition(l, r)) {
+        return std::nullopt;
+      }
+      return l + r;
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+      if (isUnsafeSubtraction(l, r)) {
+        return std::nullopt;
+      }
+      return l - r;
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+      if (isUnsafeMultiplication(l, r)) {
+        return std::nullopt;
+      }
+      return l * r;
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+      // other divisors may produce a fractional result
+      if ((r != 1 && r != -1) || isUnsafeDivision(l, r)) {
+        return std::nullopt;
+      }
+      return l / r;
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+      if (r == 0 || isUnsafeDivision(l, r)) {
+        return std::nullopt;
+      }
+      return l % r;
+    default:
+      return std::nullopt;
+  }
+}
+
+double doubleArithmetic(AstNodeType type, double l, double r) {
+  switch (type) {
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+      return l + r;
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+      return l - r;
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+      return l * r;
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+      return l / r;
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+      return std::fmod(l, r);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid operator");
+  }
 }
 
 }  // namespace arangodb::aql

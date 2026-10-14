@@ -26,6 +26,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/AstNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
@@ -36,7 +37,6 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -3651,144 +3651,35 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (lhs->isConstant() && rhs->isConstant()) {
-    // now calculate the expression result
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      // arithmetic +
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l + r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() +
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeSubtraction<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l - r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() -
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeMultiplication<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l * r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() *
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-
-        if (r == 0) {
-          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&_specialNodes.NullNode);
-        }
-
-        // check if the result would overflow
-        useDoublePrecision =
-            (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l / r);
-        }
-      }
-
-      if (right->getDoubleValue() == 0.0) {
-        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&_specialNodes.NullNode);
-      }
-
-      return createArithmeticResultNode(left->getDoubleValue() /
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-
-        if (r == 0) {
-          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&_specialNodes.NullNode);
-        }
-
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeDivision<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l % r);
-        }
-      }
-
-      if (right->getDoubleValue() == 0.0) {
-        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&_specialNodes.NullNode);
-      }
-
-      return createArithmeticResultNode(
-          fmod(left->getDoubleValue(), right->getDoubleValue()));
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid operator");
+  if (!lhs->isConstant() || !rhs->isConstant()) {
+    return node;
   }
 
-  return node;
+  AstNode const* left = lhs->castToNumber(this);
+  AstNode const* right = rhs->castToNumber(this);
+  bool const isDivision = node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+                          node->type == NODE_TYPE_OPERATOR_BINARY_MOD;
+
+  if (!left->isDoubleValue() && !right->isDoubleValue()) {
+    if (isDivision && right->getIntValue() == 0) {
+      _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      return const_cast<AstNode*>(&_specialNodes.NullNode);
+    }
+    if (auto result = integerArithmetic(node->type, left->getIntValue(),
+                                        right->getIntValue());
+        result.has_value()) {
+      return createArithmeticResultNode(*result);
+    }
+  }
+
+  double const l = left->getDoubleValue();
+  double const r = right->getDoubleValue();
+  if (isDivision && r == 0.0) {
+    _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+    return const_cast<AstNode*>(&_specialNodes.NullNode);
+  }
+
+  return createArithmeticResultNode(doubleArithmetic(node->type, l, r));
 }
 
 /// @brief optimizes the ternary operator
