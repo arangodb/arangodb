@@ -73,18 +73,31 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-std::optional<int64_t> toInt64IfInteger(AqlValue const& value) {
-  if (!value.isNumber()) {
+// mirrors AstNode::castToNumber(): nullopt where it produces a double
+std::optional<int64_t> castToInt64(AqlValue const& value) {
+  if (value.isNumber()) {
+    VPackSlice const s = value.slice();
+    if (s.isSmallInt() || s.isInt()) {
+      return s.getNumber<int64_t>();
+    }
+    if (s.isUInt() && s.getUInt() <= uint64_t(INT64_MAX)) {
+      return static_cast<int64_t>(s.getUInt());
+    }
     return std::nullopt;
   }
-  VPackSlice const s = value.slice();
-  if (s.isSmallInt() || s.isInt()) {
-    return s.getNumber<int64_t>();
+  if (value.isBoolean()) {
+    return value.toBoolean() ? 1 : 0;
   }
-  if (s.isUInt() && s.getUInt() <= uint64_t(INT64_MAX)) {
-    return static_cast<int64_t>(s.getUInt());
+  if (value.isString()) {
+    bool failed = false;
+    value.toDouble(failed);
+    return failed ? std::optional<int64_t>(0) : std::nullopt;
   }
-  return std::nullopt;
+  if (value.isArray() && value.length() == 1) {
+    bool mustDestroy = false;
+    return castToInt64(value.at(0, mustDestroy, false));
+  }
+  return 0;
 }
 
 }  // namespace
@@ -1922,8 +1935,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
 
   mustDestroy = false;
 
-  auto const lInt = toInt64IfInteger(lhs);
-  auto const rInt = toInt64IfInteger(rhs);
+  auto const lInt = castToInt64(lhs);
+  auto const rInt = castToInt64(rhs);
   if (lInt.has_value() && rInt.has_value()) {
     if (auto result = integerArithmetic(node->type, *lInt, *rInt);
         result.has_value()) {
