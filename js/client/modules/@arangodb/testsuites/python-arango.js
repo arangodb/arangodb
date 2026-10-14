@@ -159,6 +159,7 @@ class runInPythonTest extends runWithAllureReport {
         status = false;
       }
       results = {
+        message: '',
         status: status,
         failed: (status)?0:1,
       };
