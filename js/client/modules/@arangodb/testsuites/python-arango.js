@@ -165,8 +165,9 @@ class runInPythonTest extends runWithAllureReport {
       SetGlobalExecutionDeadlineTo(0.0);
     } catch (ex) {
       status = false;
-      SetGlobalExecutionDeadlineTo(0.0);
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
       results = {
+        timeout: timeout,
         status: false,
         failed: 1,
         message: `testrun has thrown ${ex.message} \n ${ex.stack}`
