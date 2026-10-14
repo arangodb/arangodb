@@ -48,7 +48,12 @@ AqlValue functions::Round(ExpressionContext*, AstNode const&,
   double input = value.toDouble();
 
   // Rounds down for < x.4999 and up for > x.50000
-  return numberValue(std::floor(input + 0.5), true);
+  // input - floor(input) is exact, unlike input + 0.5 for |input| >= 2^52
+  double rounded = std::floor(input);
+  if (input - rounded >= 0.5) {
+    rounded += 1.0;
+  }
+  return numberValue(rounded, true);
 }
 
 /// @brief function ABS
