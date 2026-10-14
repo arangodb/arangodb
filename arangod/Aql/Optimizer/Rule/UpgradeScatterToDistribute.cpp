@@ -278,10 +278,9 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
                         true);
 
   for (auto const node : nodes) {
+    // skip the Remote right after the Scatter
     auto const* remote = node->getFirstParent();
-    if (remote == nullptr || remote->getType() != ExecutionNode::REMOTE) {
-      continue;
-    }
+    TRI_ASSERT(remote != nullptr && remote->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = remote->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == ExecutionNode::INDEX ||
