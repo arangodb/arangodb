@@ -2314,15 +2314,17 @@ void RocksDBEngine::pruneWalFiles() {
           << "deleting RocksDB WAL file '" << (*it).first << "'";
       rocksdb::Status s;
       std::error_code existsEc;
-      if (std::filesystem::exists(
-              basics::FileUtils::buildFilename(_dbOptions.wal_dir, (*it).first),
-              existsEc)) {
+      std::string const fullPath =
+          basics::FileUtils::buildFilename(_dbOptions.wal_dir, (*it).first);
+      if (std::filesystem::exists(fullPath, existsEc)) {
         // only attempt file deletion if the file actually exists.
         // otherwise RocksDB may complain about non-existing files and log a
-        // big error message
-        s = _db->DeleteFile((*it).first);
+        // big error message.
+        // DB::DeleteFile() was removed from RocksDB. For archived WAL files it
+        // only forwarded to Env::DeleteFile(), so we call the Env directly.
+        s = _db->GetEnv()->DeleteFile(fullPath);
         LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
-            << "calling RocksDB DeleteFile for WAL file '" << (*it).first
+            << "calling RocksDB DeleteFile for WAL file '" << fullPath
             << "'. status: " << rocksutils::convertStatus(s).errorMessage();
       } else {
         LOG_TOPIC("c2cc9", DEBUG, Logger::ENGINES)
@@ -2332,7 +2334,7 @@ void RocksDBEngine::pruneWalFiles() {
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid
       // argument response.
-      if (s.ok() || s.IsInvalidArgument()) {
+      if (s.ok() || s.IsInvalidArgument() || s.IsPathNotFound()) {
         it = _prunableWalFiles.erase(it);
         continue;
       } else {
