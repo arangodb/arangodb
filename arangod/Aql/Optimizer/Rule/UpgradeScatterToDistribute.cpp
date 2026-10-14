@@ -278,7 +278,11 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
                         true);
 
   for (auto const node : nodes) {
-    ExecutionNode* current = node->getFirstParent();
+    auto const* remote = node->getFirstParent();
+    if (remote == nullptr || remote->getType() != ExecutionNode::REMOTE) {
+      continue;
+    }
+    ExecutionNode* current = remote->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == ExecutionNode::INDEX ||
           current->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
@@ -304,6 +308,14 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
         }
         // Only the first Index / Enumeration Parent-Node is relevant for us, we
         // can skip the rest
+        break;
+      }
+      // Any other node can end the snippet (Remote), read from another data
+      // source (views, vector search) or change the rows in a way the shard
+      // key check does not handle. Stop there so that a collection node
+      // further up can not decide where this Scatter sends its rows.
+      if (current->getType() != ExecutionNode::CALCULATION &&
+          current->getType() != ExecutionNode::FILTER) {
         break;
       }
       current = current->getFirstParent();
