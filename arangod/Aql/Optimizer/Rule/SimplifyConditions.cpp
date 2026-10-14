@@ -175,6 +175,17 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             return p->getAst()->createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
+          int64_t const n = accessed->numMembers();
+          // ARRAY_SPLICE is expanded at runtime, so the AST positions
+          // may not match the actual array element positions.
+          // Skip the optimization if the array contains an ARRAY_SPLICE.
+          for (int64_t i = 0; i < n; ++i) {
+            if (accessed->getMemberUnchecked(static_cast<size_t>(i))->type ==
+                NODE_TYPE_ARRAY_SPLICE) {
+              return node;
+            }
+          }
+
           int64_t position;
           if (indexValue->isStringValue()) {
             bool valid;
@@ -190,7 +201,6 @@ void simplifyConditionsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             TRI_ASSERT(indexValue->isNumericValue());
             position = indexValue->getIntValue();
           }
-          int64_t const n = accessed->numMembers();
           if (position < 0) {
             position = n + position;
           }

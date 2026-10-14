@@ -29,6 +29,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 
 #include <absl/strings/str_cat.h>
@@ -40,6 +41,17 @@
 #include <vector>
 
 namespace arangodb::aql::match {
+namespace {
+
+/// @brief Names an alias must not assign. Keep paths for these names are
+/// ignored separately to preserve the underlying system value.
+[[nodiscard]] bool isSystemAttribute(std::string_view name) noexcept {
+  return name == StaticStrings::IdString || name == StaticStrings::KeyString ||
+         name == StaticStrings::RevString ||
+         name == StaticStrings::FromString || name == StaticStrings::ToString;
+}
+
+}  // namespace
 
 ProjectionBuilder::ProjectionBuilder(ExecutionPlan& plan, Ast* ast)
     : _plan(plan), _ast(ast) {}
@@ -190,8 +202,11 @@ ExecutionNode* ProjectionBuilder::createPatternProjection(
   }
 
   for (auto const& alias : aliases) {
-    if (isReservedAttribute(alias.name)) {
-      continue;
+    if (isSystemAttribute(alias.name)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          absl::StrCat("cannot overwrite system attribute '", alias.name,
+                       "' in a MATCH projection"));
     }
     if (!usedTopLevelKeys.emplace(alias.name).second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(

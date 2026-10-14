@@ -2054,6 +2054,10 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 AstNode const* filterExpression,
                                 AstNode const* rangeExpression, bool isInbound,
                                 bool isOutbound, AstNode const* projections) {
+  TRI_ASSERT(label != nullptr && label->type == NODE_TYPE_ARRAY);
+  for (size_t i = 0; i < label->numMembers(); ++i) {
+    rejectVariableAsPatternLabel(label->getMember(i));
+  }
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(label ? label : createNodeValueNull());
@@ -2077,6 +2081,7 @@ AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
                                        AstNode const* properties,
                                        AstNode const* filterExpression,
                                        AstNode const* projections) {
+  rejectVariableAsPatternLabel(labels);
   auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(labels ? labels : createNodeValueNull());
@@ -2084,6 +2089,26 @@ AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
   node->addMember(filterExpression ? filterExpression : createNodeNop());
   node->addMember(projections ? projections : createNodeNop());
   return node;
+}
+
+// Labels should resolve only as collection names. A variable in scope having
+// the same name as the label is ambiguous and rejected.
+void Ast::rejectVariableAsPatternLabel(AstNode const* label) const {
+  if (label == nullptr || label->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+    return;
+  }
+  TRI_ASSERT(label->type == NODE_TYPE_COLLECTION ||
+             label->type == NODE_TYPE_VIEW);
+
+  if (!_scopes.existsVariable(label->getStringView())) {
+    return;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_PARSE,
+      absl::StrCat("MATCH label '", label->getStringView(),
+                   "' has the same name as a variable in scope; labels must "
+                   "name a collection"));
 }
 
 AstNode* Ast::createPatternSegment(AstNode const* edge, AstNode const* node) {
@@ -2123,6 +2148,21 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
         absl::StrCat("filters or constraints are not allowed on MATCH pattern "
                      "reference '",
                      name, "'"));
+  }
+
+  return createNodeVariable(name, true);
+}
+
+AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // Reject a pre-existing edge variable with a specific message.
+  if (_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("MATCH edge variable '", name, "' is already bound"));
   }
 
   return createNodeVariable(name, true);
@@ -3762,6 +3802,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
       // NOT IN with no members returns true
       return createNodeValueBool(node->type == NODE_TYPE_OPERATOR_BINARY_NIN);
     } else if (rhs->numMembers() == 1) {
+      // ARRAY_SPLICE is expanded at runtime, so one AST member
+      // does not necessarily mean there is only one IN value.
+      // Keep the expression unchanged in this case.
+      if (rhs->getMember(0)->type == NODE_TYPE_ARRAY_SPLICE) {
+        return node;
+      }
       // IN with a single member becomes equality
       // NOT IN with a single members becomes unequality
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
