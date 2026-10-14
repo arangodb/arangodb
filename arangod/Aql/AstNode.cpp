@@ -244,11 +244,29 @@ int compareDoubleValues(double lhs, double rhs) {
   return 0;
 }
 
-// NOOPT() is flagged non-deterministic only to block optimizations; its value
-// is its argument
-bool isNooptOfDeterministic(AstNode const* node) {
-  auto func = static_cast<Function const*>(node->getData());
-  return func->name == "NOOPT" && node->getMember(0)->isDeterministic();
+// NOOPT(), DOCUMENT(), and COLLECTION_COUNT() are flagged as non-deterministic,
+// but return the same value on every call within a query
+bool hasStableValue(AstNode const* node) {
+  if (node->isDeterministic()) {
+    return true;
+  }
+  if (node->type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function const*>(node->getData());
+    return (func->name == "NOOPT" || func->name == "DOCUMENT" ||
+            func->name == "COLLECTION_COUNT") &&
+           hasStableValue(node->getMember(0));
+  }
+  if (node->type == NODE_TYPE_FCALL_USER) {
+    return false;
+  }
+  // any other node is only non-deterministic because of its members
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto const* member = node->getMemberUnchecked(i);
+    if (member != nullptr && !hasStableValue(member)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace
@@ -266,10 +284,11 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
 
 struct AstNodeCompareOptions {
   bool compareUtf8;
-  // how NOOPT() calls are compared:
+  // how non-deterministic calls with a stable value (see hasStableValue) are
+  // compared:
   // false: by address, like other non-deterministic calls
-  // true: by argument, since NOOPT(x) always returns x
-  bool matchNooptCalls;
+  // true: by arguments, since they return the same value within a query
+  bool matchStableCalls;
 };
 
 template<bool resolveAttributeAccess>
@@ -447,10 +466,9 @@ int compareFcall(AstNode const* lhs, AstNode const* rhs,
   // Non-deterministic calls like RAND() are never equal to each other. Compare
   // by pointer address to keep the ordering stable within a single query.
   if (!lhs->isDeterministic() || !rhs->isDeterministic()) {
-    bool const bothNoopt = opts.matchNooptCalls &&
-                           isNooptOfDeterministic(lhs) &&
-                           isNooptOfDeterministic(rhs);
-    if (!bothNoopt) {
+    bool const bothStable =
+        opts.matchStableCalls && hasStableValue(lhs) && hasStableValue(rhs);
+    if (!bothStable) {
       return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
     }
   }
