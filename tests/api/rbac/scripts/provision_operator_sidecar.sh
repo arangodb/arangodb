@@ -58,8 +58,7 @@ report_and_exit() {
     exit 0
 }
 
-docker create --name operator public.ecr.aws/arangodb-ci/release/cache/arangodb/kube-arangodb-enterprise:1.4.5
-docker cp operator:/usr/bin/arangodb_operator "$DEST"
+
 
 if [ "$FORCE" -eq 0 ] && usable "$DEST"; then
     log "reusing existing operator binary: $DEST"
@@ -109,13 +108,34 @@ if [ -n "$DOWNLOAD_URL" ]; then
         fi
         log "the downloaded asset does not run as \`arangodb_operator sidecar\`; building instead"
     else
-        log "download failed; building instead"
+        log "download failed; attempting to fetch a pre-built binary from S3 workspace bucket"
     fi
     rm -f "$DEST.part"
 else
     # Expected today. Not a warning.
-    log "no $ASSET asset published for this release; building from source"
+    log "no $ASSET asset published for this release; attempting to fetch a pre-built binary from S3 workspace bucket"
 fi
+
+# --- attempt 2: prebuilt binary from the workspace bucket -------------------
+RELEASE_VERSION="1.4.5"
+if [ -n "${AWS_S3_WORKSPACE_BUCKET:-}" ] && [ -n "$RELEASE_VERSION" ] \
+        && command -v aws >/dev/null 2>&1; then
+    S3_URL="s3://$AWS_S3_WORKSPACE_BUCKET/test-resources/rbac/arangodb_operator-$RELEASE_VERSION/arangodb_operator"
+    log "trying $S3_URL"
+    if aws s3 cp --no-sign-request --only-show-errors "$S3_URL" "$DEST.part" >&2 \
+            && chmod +x "$DEST.part"; then
+        mv -f "$DEST.part" "$DEST"
+        if usable "$DEST"; then
+            log "downloaded operator binary from the workspace bucket: $DEST"
+            report_and_exit "$DEST"
+        fi
+        log "the workspace bucket binary does not run as \`arangodb_operator sidecar\`"
+    else
+        log "no binary in the workspace bucket for $RELEASE_VERSION"
+    fi
+    rm -f "$DEST.part"
+fi
+log "building from source"
 
 # Fetch the source as a tarball
 SRC="${KUBE_ARANGODB_SRC:-}"
@@ -154,7 +174,7 @@ if [ -n "$GO_BIN" ]; then
 fi
 
 if [ -z "$GO_BIN" ]; then
-    BOOTSTRAP_VER="${GO_BOOTSTRAP_VERSION:-1.26.9}"
+    BOOTSTRAP_VER="${GO_BOOTSTRAP_VERSION:-1.25.1}"
     GOROOT_DIR="${RBAC_OPERATOR_DIR:-/tmp/rbac-operator}/go"
     if [ ! -x "$GOROOT_DIR/bin/go" ]; then
         TARBALL="go${BOOTSTRAP_VER}.linux-${GOARCH}.tar.gz"
