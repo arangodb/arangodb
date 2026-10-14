@@ -91,6 +91,13 @@ if (getOptions === true) {
   fs.write(fs.join(secretDir, 'jwt-secret-5.pem.tmp'), hmac3);
   fs.write(fs.join(secretDir, 'jwt-secret-6.pem'), hmac3);
 
+  // Subfolders must be skipped. One sorts before all secret files (it would
+  // otherwise become the active secret), one sorts between them.
+  const subDir1 = fs.join(secretDir, '0-subfolder');
+  fs.makeDirectory(subDir1);
+  fs.write(fs.join(subDir1, 'jwt-secret.pem'), hmac1);
+  fs.makeDirectory(fs.join(secretDir, 'jwt-secret-3-subfolder'));
+
   return {
     'server.authentication': 'true',
     'server.jwt-secret-folder': secretDir

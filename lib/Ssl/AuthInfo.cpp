@@ -176,11 +176,15 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
 
   auto list = basics::FileUtils::listFiles(path);
   std::ranges::sort(list);
-  auto f =
-      list |  //
-      std::views::filter([](std::string const& file) {
-        return not(file.empty() or file[0] == '.' or file.ends_with(".tmp"));
-      });
+  auto f = list |  //
+           std::views::filter([&path](std::string const& file) {
+             if (file.empty() or file[0] == '.' or file.ends_with(".tmp")) {
+               return false;
+             }
+             // Includes symlinks to regular files but skips directories etc.
+             std::error_code ec;
+             return std::filesystem::is_regular_file(path / file, ec);
+           });
 
   if (f.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
