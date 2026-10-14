@@ -41,6 +41,7 @@ function optimizerRuleUseIndexRangeTester () {
   var collSkipInd;
   var collHashInd;
   var collBothInd;
+  var edgeCollName = collBaseName + "Edges";
 
   // various choices to control the optimizer: 
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
@@ -76,6 +77,10 @@ function optimizerRuleUseIndexRangeTester () {
       collBothInd = colls[3];
       collBothInd.ensureIndex({ type: "hash", fields: ["a"] });
       collBothInd.ensureIndex({ type: "skiplist", fields: ["a"] });
+
+      internal.db._drop(edgeCollName);
+      let edges = internal.db._createEdgeCollection(edgeCollName);
+      edges.insert([{ _from: "v/0", _to: "v/1" }, { _from: "v/1", _to: "v/0" }]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +92,7 @@ function optimizerRuleUseIndexRangeTester () {
       for (var i = 0; i < n.length; i++) {
         internal.db._drop(n[i]);
       }
+      internal.db._drop(edgeCollName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +128,8 @@ function optimizerRuleUseIndexRangeTester () {
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= FLOOR(RAND() * 10) RETURN i", true],
         ["FOR i IN UTUseIndexRangeSkipInd FILTER FLOOR(RAND() * 10) == i.a RETURN i", true],
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(FLOOR(RAND() * 10)) RETURN i", true],
-
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a IN [FLOOR(RAND() * 10)] RETURN i", true],
+        ["FOR e IN " + edgeCollName + " FILTER e._from == CONCAT('v/', FLOOR(RAND() * 2)) RETURN e", true],
       ];
 
       queries.forEach(function(query) {
@@ -147,9 +154,13 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i",
-        // NOOPT(x) always returns x
+        // NOOPT(), DOCUMENT() and COLLECTION_COUNT() always return stable values
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(2) RETURN i",
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOOPT(2) RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i",
+        "FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e",
       ];
 
       queries.forEach(function(query) {

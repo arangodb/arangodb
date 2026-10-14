@@ -501,6 +501,7 @@ function optimizerRuleTestSuite() {
         [0, loop + "FILTER v.d == NOOPT(1) FILTER v.d == NOOPT(1) RETURN v"],
         [0, loop + "FILTER v.d > NOOPT(1) FILTER v.d < NOOPT(5) RETURN v"],
         [0, "FOR x IN [{k: 1}] " + loop + "FILTER v.d == NOOPT(x.k) RETURN v"],
+        [0, loop + "FILTER v.d == NOOPT(NOOPT(1)) RETURN v"],
         [0, loop + "FILTER v.d == DOCUMENT('" + colName + "/x').d RETURN v"],
         [0, loop + "FILTER v.d == COLLECTION_COUNT('" + colNameOther + "') RETURN v"],
 
@@ -516,7 +517,6 @@ function optimizerRuleTestSuite() {
         [1, loop + "FILTER v.d == NOOPT(1) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
       ];
 
-      // check all cases first, so one failure doesn't hide the others
       const mismatches = cases
         .map(([expected, query]) => ({ query, expected, actual: filterNodes(query) }))
         .filter(({ expected, actual }) => expected !== actual);
