@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "Utils/ExecContext.h"
 
 #include <atomic>
 
@@ -43,8 +44,13 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval,
                                                  metrics::IRegistry& metrics)
-    // the settingsManager sync installs its own superuser scope where needed
-    : Thread("RocksDBThread", nullptr),
+    // This is an internal thread that's not working on behalf of any user,
+    // thus it's running as a Superuser.
+    // Having an ExecContext is required by the work items scheduled by
+    // processTreeRebuilds().
+    // RocksDBSettingsManager::sync() already installs a scoped Superuser
+    // context internally, because it can also be called from other threads.
+    : Thread("RocksDBThread", ExecContext::superuserAsShared()),
       _engine(engine),
       _interval(interval),
       _metricsWalReleasedTickReplication(
