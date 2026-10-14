@@ -8,7 +8,7 @@ if [ $(ulimit -S -n) -lt 131072 ]; then
     ulimit -S -n 131072 || true
 fi
 
-#rm -rf cluster
+rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
   cp -a cluster-init cluster
