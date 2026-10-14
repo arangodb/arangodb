@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1142: Fix AQL TO_NUMBER() returning 0 for strings holding subnormal
+  numbers such as "1e-308". This fixes issue #23358.
+
 * COR-1062: Fixed wrong AQL query results when two expressions differ only in
   grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
   `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
