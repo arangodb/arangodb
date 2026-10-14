@@ -22,6 +22,10 @@
 
 #include "Arithmetic.h"
 
+#include <cctype>
+#include <charconv>
+#include <system_error>
+
 namespace {
 
 /// @brief returns whether or not the string is empty
@@ -45,24 +49,45 @@ namespace arangodb::aql {
 
 double stringToNumber(std::string const& value, bool& failed) noexcept {
   failed = false;
-  try {
-    size_t behind = 0;
-    double v = std::stod(value, &behind);
-    while (behind < value.size()) {
-      char c = value[behind];
-      if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-        failed = true;
-        return 0.0;
-      }
-      ++behind;
-    }
-    return v;
-  } catch (...) {
-    if (!isEmptyString(value.data(), value.size())) {
+  char const* p = value.data();
+  char const* end = p + value.size();
+  while (p < end && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' ||
+                     *p == '\f' || *p == '\v')) {
+    ++p;
+  }
+  bool negative = false;
+  if (p < end && (*p == '+' || *p == '-')) {
+    negative = *p == '-';
+    ++p;
+  }
+  auto format = std::chars_format::general;
+  if (end - p > 2 && p[0] == '0' && (p[1] == 'x' || p[1] == 'X') &&
+      (std::isxdigit(static_cast<unsigned char>(p[2])) || p[2] == '.')) {
+    format = std::chars_format::hex;
+    p += 2;
+  }
+  if (p < end && (*p == '+' || *p == '-')) {
+    failed = true;
+    return 0.0;
+  }
+  double v = 0.0;
+  auto const [ptr, ec] = std::from_chars(p, end, v, format);
+  if (ec == std::errc::invalid_argument) {
+    failed = !isEmptyString(value.data(), value.size());
+    return 0.0;
+  }
+  if (ec == std::errc::result_out_of_range) {
+    failed = true;
+    return 0.0;
+  }
+  for (char const* q = ptr; q < end; ++q) {
+    char c = *q;
+    if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
       failed = true;
+      return 0.0;
     }
   }
-  return 0.0;
+  return negative ? -v : v;
 }
 
 }  // namespace arangodb::aql
