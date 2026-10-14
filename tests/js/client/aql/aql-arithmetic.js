@@ -49,7 +49,7 @@ function ahuacatlArithmeticTestSuite () {
                     "1234567890123456789,-1234567890123456789]" ], actual);
     },
 
-    testRuntimeArithmeticMatchesConstantFolding : function () {
+    testRuntimeArithmeticMatchesQueryPlanningArithmetic : function () {
       const expressions = [
         "9223372036854775807 + 1",
         "-9223372036854775807 - 2",

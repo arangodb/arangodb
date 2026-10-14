@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1146: Fix AQL arithmetic operators losing precision on integers above
+  2^53 when operands are not constant, e.g. document attributes. This fixes
+  issue #23400.
+
 * Fix AQL ROUND() changing large integers such as 4503599627370497 and
   rounding 0.49999999999999994 up to 1. This fixes issue #23350.
 
