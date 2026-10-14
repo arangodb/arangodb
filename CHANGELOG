@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* Fix AQL ROUND() changing large integers such as 4503599627370497 and
+  rounding 0.49999999999999994 up to 1. This fixes issue #23350.
+
 * COR-1142: Fix AQL TO_NUMBER() returning 0 for strings holding subnormal
   numbers such as "1e-308". This fixes issue #23358.
 
