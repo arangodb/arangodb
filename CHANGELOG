@@ -1,5 +1,41 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1062: Fixed wrong AQL query results when two expressions differ only in
+  grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
+  `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
+  and `remove-filter-covered-by-index` treated such expressions as the same.
+  This fixes issue #23397.
+
+* COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
+  when n exceeds array's length. Also emmitting a warning if n is
+  negative, non-numeric or not an integer.
+
+* Updated ArangoDB Starter to v0.19.29.
+
+* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
+* COR-1083 / github issue #23425:
+  Fixed the incorrect usage of released pool analyzer.
+
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. We commit first and then replicate.
+
+* Fixed a cluster race where a database could be dropped while it was
+  still being created. Now databases remain hidden while building
+  and cannot be deleted until creation completes.
+
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+
+* BTS-2483: The AQL optimizer rule `propagate-constant-attributes` ignores
+  comparisons on function or subquery results, such as
+  `FIRST(<subquery>).attr == 'value'`. Applying them led to wrong results.
+
+* COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
+  `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
+
 * Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
   correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
 
@@ -44,8 +80,6 @@
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
   This fixes issue #23360.
-
-* Updated ArangoDB Starter to v0.19.28.
 
 * The AQL optimizer uses a sparse index for a branch of an `OR` condition
   only if that branch itself rules out `null` for the indexed attribute.
@@ -114,6 +148,9 @@
 * The `join-index-nodes` optimizer rule no longer uses non-deterministic
   expressions or expressions that need V8, such as user-defined AQL
   functions, as constant index lookup values.
+
+* AQL Index Join no longer mixed primary indexes and persistent indexes.
+  This caused wrong results previously.
 
 3.12.12 (2026-09-21)
 --------------------

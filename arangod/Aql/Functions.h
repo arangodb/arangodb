@@ -81,6 +81,8 @@ template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
 
+void throwIfKilled(ExpressionContext const* context);
+
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>
 void stringify(velocypack::Options const* vopts, T& buffer,

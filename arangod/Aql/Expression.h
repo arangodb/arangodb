@@ -273,6 +273,10 @@ class Expression {
                                                          AstNode const*,
                                                          bool& mustDestroy);
 
+  // AT LEAST only accepts non-negative integers; anything else just warns
+  static int64_t sanitizeAtLeastValue(ExpressionContext& ctx,
+                                      AqlValue const& value);
+
   // execute an expression of type SIMPLE with TERNARY
   static AqlValue executeSimpleExpressionTernary(ExpressionContext& ctx,
                                                  AstNode const*,
