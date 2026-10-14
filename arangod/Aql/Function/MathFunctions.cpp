@@ -21,12 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlValue.h"
-#include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
