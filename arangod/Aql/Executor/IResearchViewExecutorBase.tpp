@@ -451,7 +451,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
       _indexReadBuffer(_infos.getScoreRegisters().size(),
                        _infos.getQuery().resourceMonitor()),
       _ctx(_trx, infos.getQuery(), _aqlFunctionsInternalCache,
-           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+           infos.outVariable(), infos.registers()),
       _filterCtx(_ctx),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()) {

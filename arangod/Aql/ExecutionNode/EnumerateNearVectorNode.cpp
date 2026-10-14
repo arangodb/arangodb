@@ -97,12 +97,17 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   filterVarsToRegs.reserve(inVars.size());
 
+  // getVariablesSetHere() omits _outVariable in kCovered mode, where the
+  // document is not produced, but the filter may still reference it and it has
+  // no register either way. Skip it unconditionally.
+  auto const produced = getVariablesSetHere();
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    if (var->id == _outVariable->id) {
+    if (var == _outVariable ||
+        std::find(produced.begin(), produced.end(), var) != produced.end()) {
       continue;
     }
-    filterVarsToRegs.emplace_back(var->id, variableToRegisterId(var));
+    filterVarsToRegs.emplace_back(var->id, inputRegister(var));
   }
 
   return filterVarsToRegs;
@@ -114,24 +119,24 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   // The doc-variable register is written for everything except kCovered.
   RegisterId outDocumentRegId = RegisterId::maxRegisterId;
   if (_projectionMode != vector::ProjectionMode::kCovered) {
-    outDocumentRegId = variableToRegisterId(_outVariable);
+    outDocumentRegId = outputRegister(_outVariable);
     writableOutputRegisters.emplace(outDocumentRegId);
   }
 
-  RegisterId outDistanceRegId = variableToRegisterId(_distanceOutVariable);
+  RegisterId outDistanceRegId = outputRegister(_distanceOutVariable);
   writableOutputRegisters.emplace(outDistanceRegId);
   // per-projection output registers (set by the projections rule)
   containers::FlatHashMap<VariableId, RegisterId> projectionVarsToRegs;
   for (size_t i = 0; i < _projections.size(); ++i) {
     auto const* var = _projections[i].variable;
     if (var != nullptr) {
-      RegisterId regId = variableToRegisterId(var);
+      RegisterId regId = outputRegister(var);
       writableOutputRegisters.emplace(regId);
       projectionVarsToRegs.try_emplace(var->id, regId);
     }
   }
 
-  RegisterId inNmDocIdRegId = variableToRegisterId(_inVariable);
+  RegisterId inNmDocIdRegId = inputRegister(_inVariable);
   RegIdSet readableInputRegisters;
   readableInputRegisters.emplace(inNmDocIdRegId);
 

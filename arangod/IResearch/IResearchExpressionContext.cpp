@@ -130,23 +130,22 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
 
   mustDestroy = false;
 
-  auto const& vars = varInfoMap();
-  auto const it = vars.find(var->id);
+  auto const [reg, status] = registers().lookup(var->id);
 
-  if (vars.end() == it) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot find variable");
-  }
-
-  auto const& varInfo = it->second;
-
-  if (varInfo.depth > decltype(varInfo.depth)(nodeDepth())) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "Variable '%s' is used before being assigned",
-                                  var->name.c_str());
+  switch (status) {
+    case aql::RegisterResolver::Status::UnknownVariable:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot find variable");
+    case aql::RegisterResolver::Status::NotYetAssigned:
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_BAD_PARAMETER,
+          "Variable '%s' is used before being assigned", var->name.c_str());
+    case aql::RegisterResolver::Status::Ok:
+      break;
   }
 
   TRI_ASSERT(_inputRow.isInitialized());
-  AqlValue const& value = _inputRow.getValue(varInfo.registerId);
+  AqlValue const& value = _inputRow.getValue(reg);
 
   if (doCopy) {
     mustDestroy = true;

@@ -62,15 +62,15 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId inReg = inputRegister(_inVariable);
 
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   OperationOptions options = ModificationExecutorHelpers::convertOptions(
       _options, _outVariableNew, _outVariableOld);
 
-  auto readableInputRegisters = RegIdSet{inputRegister};
+  auto readableInputRegisters = RegIdSet{inReg};
   auto writableOutputRegisters = RegIdSet{};
   if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
@@ -82,11 +82,10 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
-      &engine, inputRegister, RegisterPlan::MaxRegisterId,
-      RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
-      ProducesResults(producesResults()),
+      &engine, inReg, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
+      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
+      _plan->getAst()->query(), std::move(options), collection(),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,

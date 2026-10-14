@@ -53,10 +53,9 @@ class RegisterInfos {
    *                        TODO Update this comment, it's a stack now.
    *
    * Note that the output registers can be found in the ExecutionNode via
-   * getVariablesSetHere() and translated as follows:
-   *   auto it = getRegisterPlan()->varInfo.find(varSetHere->id);
-   *   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-   *   RegisterId register = it->second.registerId;
+   * getVariablesSetHere() and translated with
+   * ExecutionNode::outputRegister(varSetHere). Registers the executor reads
+   * off its input rows are translated with ExecutionNode::inputRegister().
    */
 
   RegisterInfos(RegIdSet readableInputRegisters,

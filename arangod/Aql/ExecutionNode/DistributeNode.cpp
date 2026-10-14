@@ -105,13 +105,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
   // get the variable to inspect . . .
   TRI_ASSERT(_variable != nullptr);
-  VariableId varId = _variable->id;
 
   // get the register id of the variable to inspect . . .
-  auto it = getRegisterPlan()->varInfo.find(varId);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId regId = (*it).second.registerId;
-
+  RegisterId regId = inputRegister(_variable);
   TRI_ASSERT(regId.isValid());
 
   auto inRegs = RegIdSet{regId};

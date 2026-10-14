@@ -50,10 +50,10 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId inReg = inputRegister(_inVariable);
 
-  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
-  auto executorInfos = FilterExecutorInfos(inputRegister);
+  auto registerInfos = createRegisterInfos(RegIdSet{inReg}, {});
+  auto executorInfos = FilterExecutorInfos(inReg);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
