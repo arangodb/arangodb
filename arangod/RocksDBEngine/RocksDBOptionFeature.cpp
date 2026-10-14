@@ -289,7 +289,6 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   // to 1, so that we can then configure max_write_buffer_size_to_maintain
   // correctly. Set to -1, 0 or a concrete number as needed. The default of
   // 0 should be good, since we do not use OptimisticTransactionDBs anyway.
-  result.max_write_buffer_number_to_maintain = 1;
   result.max_write_buffer_size_to_maintain =
       _options.maxWriteBufferSizeToMaintain;
   result.delayed_write_rate = _options.delayedWriteRate;

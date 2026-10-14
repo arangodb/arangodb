@@ -3356,12 +3356,15 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
                                    AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
+  AgencyPrecondition databaseNotBuilding(
+      "Plan/Databases/" + name + "/" + StaticStrings::AttrIsBuilding,
+      AgencyPrecondition::Type::EMPTY, true);
   AgencyWriteTransaction trans(
       {delPlanDatabases, delTargetCollections, delTargetCollectionNames,
        delPlanCollections, delTargetReplicatedLogs, delPlanReplicatedLogs,
        delTargetCollectionsGroup, delPlanCollectionsGroups, delPlanViews,
        delPlanAnalyzers, incrementVersion},
-      databaseExists);
+      {databaseExists, databaseNotBuilding});
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
