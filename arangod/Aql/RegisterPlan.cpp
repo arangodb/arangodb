@@ -31,54 +31,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-// Requires RegisterPlan to be defined
-VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
-    : depth(depth), registerId(registerId) {
-  if (!registerId.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_RESOURCE_LIMIT,
-        std::format("too many registers ({}) needed for AQL query",
-                    registerId.value()));
-  }
-}
-
-RegisterId RegisterResolver::resolve(Variable const& variable) const {
-  auto [reg, status] = lookup(variable.id);
-  if (status != Status::Ok) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL_AQL,
-        std::format("variable {} #{} {}, resolved for depth {}", variable.name,
-                    variable.id,
-                    status == Status::UnknownVariable
-                        ? "has no register assigned"
-                        : "is not available at that depth",
-                    _depth));
-  }
-  TRI_ASSERT(reg.isValid());
-  return reg;
-}
-
-RegisterId RegisterResolver::resolve(Variable const* variable) const {
-  TRI_ASSERT(variable != nullptr);
-  return resolve(*variable);
-}
-
-RegisterId RegisterResolver::tryResolve(VariableId id) const noexcept {
-  return lookup(id).first;
-}
-
-auto RegisterResolver::lookup(VariableId id) const noexcept
-    -> std::pair<RegisterId, Status> {
-  auto it = _varInfo->find(id);
-  if (it == _varInfo->end()) {
-    return {RegisterId::makeInvalid(), Status::UnknownVariable};
-  }
-  if (!it->second.registerId.isConstRegister() && it->second.depth > _depth) {
-    return {RegisterId::makeInvalid(), Status::NotYetAssigned};
-  }
-  return {it->second.registerId, Status::Ok};
-}
-
 MissingVariablesException::MissingVariablesException(
     Variable const* variable, ExecutionNode const* node,
     basics::SourceLocation location)

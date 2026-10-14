@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 

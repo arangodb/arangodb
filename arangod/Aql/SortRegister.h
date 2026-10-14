@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/types.h"
 
 #include <string>

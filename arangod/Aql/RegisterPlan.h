@@ -24,7 +24,7 @@
 
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"

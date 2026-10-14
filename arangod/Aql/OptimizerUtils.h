@@ -24,7 +24,7 @@
 
 #include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Utils/OperationOptions.h"

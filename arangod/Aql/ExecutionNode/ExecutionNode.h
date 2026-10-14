@@ -64,7 +64,7 @@
 #include "Aql/IndexHint.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SortElement.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/TypeTraits.h"

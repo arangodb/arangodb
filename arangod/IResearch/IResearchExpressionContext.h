@@ -26,7 +26,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>

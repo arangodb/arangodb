@@ -26,7 +26,7 @@
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/MultiGet.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchFilterContext.h"

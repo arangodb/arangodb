@@ -29,7 +29,7 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Aql/TraversalStats.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 

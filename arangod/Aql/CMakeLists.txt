@@ -96,6 +96,7 @@ add_library(arango_aql STATIC
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
+  RegisterResolver.cpp
   RemoveModifier.cpp
   RestAqlHandler.cpp
   Scopes.cpp
