@@ -206,9 +206,10 @@ function makeDataWrapper (options) {
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
       let rc;
       try {
+        this.instanceManager.reconnect(false);
         rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
       } catch (ex) {
-        print(`${RED}$(Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
+        print(`${RED}${Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
         throw ex;
       }
       res[whichRTA] = rc;
