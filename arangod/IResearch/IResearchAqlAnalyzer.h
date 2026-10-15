@@ -104,6 +104,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   static irs::analysis::analyzer::ptr make_json(std::string_view args);
 
   explicit AqlAnalyzer(Options const& options);
+  ~AqlAnalyzer() override;
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<AqlAnalyzer>::id();
@@ -128,7 +129,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   Options _options;
   aql::AqlValue _valueBuffer;
-  std::string _stringBuffer;
   std::unique_ptr<aql::QueryContext> _query;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
