@@ -47,6 +47,16 @@
   in front of `e2` into a DistributeNode when the shard key value comes from
   `sat`.
 
+* The AQL optimizer rule `upgrade-scatter-to-distribute` turns a ScatterNode
+  into a DistributeNode only if the snippet behind it starts with a
+  collection access, with nothing but calculations and filters in front of
+  it. The rows are then distributed by that access's shard key condition.
+  A ScatterNode in front of an ArangoSearch view stays a ScatterNode, even if
+  a later lookup filters on the shard key of another collection, as in
+  `FOR i IN 1..3 FOR v IN view SEARCH v.x == i FOR d IN c FILTER d._key == v.k`.
+  Before, such queries could return no results or fail with "variable ... is
+  not available at that depth".
+
 * COR-741: AQL `MATCH` inline bare attribute keeps support unquoted nested
   paths. Dot notation preserves object hierarchy, e.g.
   `MATCH (v:users RETURN profile.name) RETURN v` binds `v` to

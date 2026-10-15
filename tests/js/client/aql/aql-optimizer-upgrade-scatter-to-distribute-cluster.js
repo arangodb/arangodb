@@ -29,6 +29,16 @@ const isEnterprise = require("internal").isEnterprise();
 const isCollectionNode = (node) =>
   node.type === "IndexNode" || node.type === "EnumerateCollectionNode";
 
+const assertDistributesTargetFollowingCollection = (plan) => {
+  plan.nodes.forEach((n, i) => {
+    if (n.type === "DistributeNode") {
+      assertEqual("RemoteNode", plan.nodes[i + 1].type);
+      assertTrue(isCollectionNode(plan.nodes[i + 2]));
+      assertEqual(n.collection, plan.nodes[i + 2].collection);
+    }
+  });
+};
+
 function optimizerUpgradeScatterToDistributeSuite() {
 
   let col; // main collection, 3 shards
@@ -39,9 +49,11 @@ function optimizerUpgradeScatterToDistributeSuite() {
   let col_id_key;
   let col_sat;
   let col_edge; // edges pointing into the satellite collection
+  const viewName = "UnitTestsView_col";
 
   return {
     setUpAll: function () {
+      try { db._dropView(viewName); } catch (err) {}
       db._drop("UnitTestsCollection_col_msk_dsl");
       db._drop("UnitTestsCollection_col_msk");
       db._drop("UnitTestsCollection_col_dsl");
@@ -100,6 +112,9 @@ function optimizerUpgradeScatterToDistributeSuite() {
       col_id.insert(docs_id);
       col_id_key.insert(docs_id_key);
 
+      db._createView(viewName, "arangosearch", {links: {[col.name()]: {fields: {value: {}}}}});
+      db._query(`FOR d IN ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1`);
+
       if (isEnterprise) {
         col_sat = db._create("UnitTestsCollection_col_sat", {replicationFactor: "satellite"});
         col_edge = db._createEdgeCollection("UnitTestsCollection_col_edge", {numberOfShards: 3});
@@ -115,6 +130,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
     },
 
     tearDownAll: function () {
+      db._dropView(viewName);
       db._drop("UnitTestsCollection_col_msk_dsl");
       db._drop("UnitTestsCollection_col_msk");
       db._drop("UnitTestsCollection_col_dsl");
@@ -393,6 +409,34 @@ function optimizerUpgradeScatterToDistributeSuite() {
       assertTrue(plan.rules.includes("restrict-to-single-shard"));
       let result = db._query(query, {}, opts).toArray();
       assertEqual(["key-42"], result);
+    },
+
+    test_ViewInOuterLoop_ViewScatterNotUpgraded: function() {
+      let query =
+          `FOR i IN 0..3
+            FOR v IN ${viewName} SEARCH v.value == i
+             FOR d IN ${col_id.name()} FILTER d._key == v.foreign_key
+              RETURN [i, d.value]`;
+      let result = db._query(query).toArray();
+      assertEqual([[0, 0], [1, 1], [2, 2], [3, 3]], result.sort((a, b) => a[0] - b[0]));
+      let plan = db._createStatement({query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertDistributesTargetFollowingCollection(plan);
+    },
+
+    test_ViewInSubquery_ViewScatterNotUpgraded: function() {
+      let query =
+          `FOR i IN 0..3
+            LET s = (
+             FOR v IN ${viewName} SEARCH v.value == i
+              FOR d IN ${col_id.name()} FILTER d._key == v.foreign_key
+               RETURN d.value)
+            RETURN [i, s]`;
+      let result = db._query(query).toArray();
+      assertEqual([[0, [0]], [1, [1]], [2, [2]], [3, [3]]], result.sort((a, b) => a[0] - b[0]));
+      let plan = db._createStatement({query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertDistributesTargetFollowingCollection(plan);
     },
 
     test_SatelliteJoinedIntoLaterSnippet_NoUpgrade: function() {
