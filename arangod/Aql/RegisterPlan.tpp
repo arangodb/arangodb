@@ -119,19 +119,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const assertNoVariablesMissing = [this, &varsUsedLater](T* en) {
-    if (en->getType() != ExecutionNode::RETURN) {
-      VarSet varsUsedHere;
-      en->getVariablesUsedHere(varsUsedHere);
-      for (auto const& v : varsUsedHere) {
-        if (!varsUsedLater.contains(v) && !plan->varInfo.contains(v->id)) {
-          // report an error here to prevent crashing
-          throw MissingVariablesException(v, en, ADB_HERE);
-        }
-      }
-    }
-  };
-
   auto const calculateRegistersToReuse =
       [](VarSet const& varsUsedLater, RegVarMap const& regVarMap) -> RegIdSet {
     RegIdSet regsToReuse;
@@ -149,7 +136,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   RegIdSet regsToClear;
   auto const updateRegistersToClearAndReuse = [&](bool insertIntoRegsToClear) {
     if (en->getType() != ExecutionNode::RETURN) {
-      assertNoVariablesMissing(en);
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
       for (auto const& reg : regsToReuse) {
