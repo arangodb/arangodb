@@ -68,6 +68,10 @@
 * Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
   starts right after a replaced match. This fixes issue #23399.
 
+* COR-1147: The AQL optimizer rule `smart-joins` only joins two collections
+  locally on the DB-Servers if every `FOR` loop between them is over a
+  SatelliteCollection.
+
 * Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
