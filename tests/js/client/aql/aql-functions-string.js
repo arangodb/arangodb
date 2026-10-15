@@ -1252,6 +1252,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("a€b€", "€", true)`));
       assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("😀x", "x", true)`));
       assertEqual([ 4 ], getQueryResults(`RETURN CONTAINS("😀😀x", "x", true)`));
+      assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("😀😀x", "😀", true)`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
