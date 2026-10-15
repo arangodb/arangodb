@@ -262,7 +262,12 @@ functions::StringFunctionContext functions::makeStringFunctionContext(
     ExpressionContext* ctx) {
   auto& trx = ctx->trx();
   auto& cache = ctx->functionsCache();
-  return {trx.vpackOptions(), cache.locale(trx.vocbase()), cache, ctx};
+  auto& vocbase = trx.vocbase();
+  return {trx.vpackOptions(),
+          [&cache, &vocbase]() -> icu_64_64::Locale const& {
+            return cache.locale(vocbase);
+          },
+          cache, ctx};
 }
 
 AqlValue functions::toAqlResult(ExpressionContext* ctx, std::string_view name,
@@ -369,7 +374,7 @@ ResultT<AqlValue> functions::findFirst(StringFunctionContext const& ctx,
   }
 
   auto const pos =
-      searchInRange(ctx.locale, arguments.text, arguments.search,
+      searchInRange(ctx.locale(), arguments.text, arguments.search,
                     arguments.start, maxEnd, SearchMatch::kFirst);
   if (pos.fail()) {
     return pos.result();
@@ -404,7 +409,7 @@ ResultT<AqlValue> functions::findLast(StringFunctionContext const& ctx,
   }
 
   auto const pos =
-      searchInRange(ctx.locale, arguments.text, arguments.search,
+      searchInRange(ctx.locale(), arguments.text, arguments.search,
                     arguments.start, maxEnd, SearchMatch::kLast);
   if (pos.fail()) {
     return pos.result();
@@ -514,7 +519,7 @@ ResultT<AqlValue> functions::lower(StringFunctionContext const& ctx,
   auto const text = stringOf(ctx.vopts, value);
   icu_64_64::UnicodeString unicodeStr(text->data(),
                                       static_cast<int32_t>(text->length()));
-  unicodeStr.toLower(ctx.locale);
+  unicodeStr.toLower(ctx.locale());
   std::string utf8;
   unicodeStr.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -526,7 +531,7 @@ ResultT<AqlValue> functions::upper(StringFunctionContext const& ctx,
   auto const text = stringOf(ctx.vopts, value);
   icu_64_64::UnicodeString unicodeStr(text->data(),
                                       static_cast<int32_t>(text->length()));
-  unicodeStr.toUpper(ctx.locale);
+  unicodeStr.toUpper(ctx.locale());
   std::string utf8;
   unicodeStr.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -720,7 +725,7 @@ ResultT<AqlValue> functions::contains(StringFunctionContext const& ctx,
   bool const willReturnIndex =
       returnIndex != nullptr && returnIndex->toBoolean();
 
-  auto const pos = searchInRange(ctx.locale, haystack, needle, 0,
+  auto const pos = searchInRange(ctx.locale(), haystack, needle, 0,
                                  haystack.length(), SearchMatch::kFirst);
   if (pos.fail()) {
     return pos.result();
@@ -1032,7 +1037,7 @@ ResultT<AqlValue> functions::substitute(StringFunctionContext const& ctx,
       continue;
     }
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
-        searchStr, unicodeStr, ctx.locale, nullptr, status));
+        searchStr, unicodeStr, ctx.locale(), nullptr, status));
     if (U_FAILURE(status)) {
       return icuError(status);
     }
