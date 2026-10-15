@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull */
+/*global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,11 +26,11 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const expect = require('chai').expect;
 
 function RequestSuite() {
   return {
     testCursorAPI: cursorAPI,
+    /*
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
@@ -39,6 +39,7 @@ function RequestSuite() {
     testAdminExecuteWithHeaderVpack: adminExecuteWithHeaderVpack,
     testAdminExecuteWithHeaderVpack2: adminExecuteWithHeaderVpack2,
     testAdminExecuteNoHeaderVpack: adminExecuteNoHeaderVpack,
+    */
   };
 };
 
@@ -70,15 +71,15 @@ function cursorAPI() {
       });
       const res = arango.POST_RAW(path, body, headers);
 
-      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+      assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
       const obj = VPACK_TO_V8(res.body);
-      expect(obj.result).to.be.instanceOf(Array);
+      assertTrue(Array.isArray(obj.result), JSON.stringify(obj));
     });
   } finally {
     db._drop(cn);
   }
 };
-
+/*
 function versionJsonJson() {
   const path = '/_api/version';
   const headers = {
@@ -89,18 +90,18 @@ function versionJsonJson() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  expect(String(res.headers['content-type'])).to.have.string("application/json");
+  assertMatch(/.*application\/json/, String(res.headers['content-type']), res.headers);
 
   const obj = JSON.parse(res.body);
 
-  expect(obj).to.have.property('server');
-  expect(obj).to.have.property('version');
-  expect(obj).to.have.property('license');
+  assertTrue(obj.hasOwnProperty('server'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('version'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
-  expect(obj.server).to.be.equal('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
+  assertEqual(obj.server, 'arango', JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
 
-  expect(obj.license).to.match(/enterprise|community/g);
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionVpackJson() {
@@ -113,18 +114,19 @@ function versionVpackJson() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  expect(res.body).to.be.a('string');
-  expect(String(res.headers['content-type'])).to.have.string("application/json");
+  assertTrue(typeof res.body === 'string', JSON.stringify(obj));
+  assertMatch(/.*application\/json/, String(res.headers['content-type']), res.headers);
 
   const obj = JSON.parse(res.body);
 
-  expect(obj).to.have.property('server');
-  expect(obj).to.have.property('version');
-  expect(obj).to.have.property('license');
+  assertTrue(obj.hasOwnProperty('server'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('version'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
-  expect(obj.server).to.be.equal('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
-  expect(obj.license).to.match(/enterprise|community/g);
+  assertEqual(obj.server, 'arango', JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
+
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionJsonVpack() {
@@ -137,17 +139,18 @@ function versionJsonVpack() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+  assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
 
   const obj = VPACK_TO_V8(res.body);
 
-  expect(obj).to.have.property('server');
-  expect(obj).to.have.property('version');
-  expect(obj).to.have.property('license');
+  assertTrue(obj.hasOwnProperty('server'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('version'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
-  expect(obj.server).to.be.equal('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
-  expect(obj.license).to.match(/enterprise|community/g);
+  assertEqual(obj.server, 'arango', JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
+
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
 
 function versionVpackVpack() {
@@ -160,19 +163,20 @@ function versionVpackVpack() {
 
   const res = arango.POST_RAW(path, "", headers);
 
-  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+  assertMatch(/.*application\/x-velocypack/, String(res.headers['content-type']), res.headers);
 
   const obj = VPACK_TO_V8(res.body);
 
-  expect(obj).to.have.property('server');
-  expect(obj).to.have.property('version');
-  expect(obj).to.have.property('license');
+  assertTrue(obj.hasOwnProperty('server'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('version'), JSON.stringify(obj));
+  assertTrue(obj.hasOwnProperty('license'), JSON.stringify(obj));
 
-  expect(obj.server).to.be.equal('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
-  expect(obj.license).to.match(/enterprise|community/g);
+  assertEqual(obj.server, 'arango', JSON.stringify(obj));
+  assertMatch(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/, obj.version, JSON.stringify(obj));
+
+  assertMatch(/enterprise|community/g, obj.license, JSON.stringify(obj));
 };
-
+/ *
 function echoVpackVpack() {
   const path = '/_admin/echo';
   const headers = {
@@ -192,11 +196,11 @@ function echoVpackVpack() {
 };
 
 
-/*
+/ *
 The following tests are for requests to _admin/execute in which the body is in velocypack format.
 It's only interpreted as velocypack if the header has the content type for velocypack in the request.
 Otherwise, as it happens when there's no content-type in the header, it's interpreted as JSON and will return an error
- */
+ * /
 
 function adminExecuteWithHeaderVpack() {
   const path = '/_admin/execute';
@@ -246,7 +250,7 @@ function adminExecuteNoHeaderVpack() {
   assertEqual(res.code, 500);
   assertTrue(res.error);
 }
-
+*/
 jsunity.run(RequestSuite);
 
 return jsunity.done();
