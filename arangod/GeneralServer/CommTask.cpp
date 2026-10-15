@@ -967,8 +967,15 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
 
     if (encoding == StaticStrings::EncodingGzip) {
       VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
+      if (ErrorCode r = arangodb::encoding::gzipUncompress(
+              src, len, dst,
+              _generalServerFeature.maxUncompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
+        if (r == TRI_ERROR_RESOURCE_LIMIT) {
+          return {r,
+                  "uncompressed size of Content-Encoding: gzip body exceeds "
+                  "the allowed maximum"};
+        }
         return {
             r,
             "a decoding error occurred while handling Content-Encoding: gzip"};
@@ -980,8 +987,15 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       return {};
     } else if (encoding == StaticStrings::EncodingDeflate) {
       VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::zlibInflate(src, len, dst);
+      if (ErrorCode r = arangodb::encoding::zlibInflate(
+              src, len, dst,
+              _generalServerFeature.maxUncompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
+        if (r == TRI_ERROR_RESOURCE_LIMIT) {
+          return {r,
+                  "uncompressed size of Content-Encoding: deflate body exceeds "
+                  "the allowed maximum"};
+        }
         return {r,
                 "a decoding error occurred while handling Content-Encoding: "
                 "deflate"};
@@ -993,8 +1007,15 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       return {};
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
       VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
+      if (ErrorCode r = arangodb::encoding::lz4Uncompress(
+              src, len, dst,
+              _generalServerFeature.maxUncompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
+        if (r == TRI_ERROR_RESOURCE_LIMIT) {
+          return {r,
+                  "uncompressed size of Content-Encoding: lz4 body exceeds the "
+                  "allowed maximum"};
+        }
         return {
             r,
             "a decoding error occurred while handling Content-Encoding: lz4"};
