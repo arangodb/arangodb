@@ -137,7 +137,7 @@ std::string generateRawJwt(std::string_view secret,
     // Use HMAC-SHA256
     signature = arangodb::rest::SslInterface::sslHMAC(
         secret.data(), secret.size(), fullMessage.data(), fullMessage.size(),
-        Algorithm::ALGORITHM_SHA256);
+        Algorithm::SHA256);
   }
 
   return absl::StrCat(fullMessage, ".", absl::WebSafeBase64Escape(signature));

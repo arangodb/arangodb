@@ -50,11 +50,11 @@ auto validateJwtSignature(AuthKey const& key, std::string_view message,
                },
                [&](HS256Key key) {
                  if (signature.algorithm == JwtAlgorithm::HS256) {
-                   return verifyHMAC(
-                       key._data.data(), key._data.size(), message.data(),
-                       message.size(), signature.signature.data(),
-                       signature.signature.size(),
-                       rest::SslInterface::Algorithm::ALGORITHM_SHA256);
+                   return verifyHMAC(key._data.data(), key._data.size(),
+                                     message.data(), message.size(),
+                                     signature.signature.data(),
+                                     signature.signature.size(),
+                                     rest::SslInterface::Algorithm::SHA256);
 
                  } else {
                    return false;

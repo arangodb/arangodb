@@ -29,13 +29,13 @@
 
 namespace arangodb::rest::SslInterface {
 
-enum Algorithm {
-  ALGORITHM_SHA256 = 0,
-  ALGORITHM_SHA1 = 1,
-  ALGORITHM_MD5 = 2,
-  ALGORITHM_SHA224 = 3,
-  ALGORITHM_SHA384 = 4,
-  ALGORITHM_SHA512 = 5
+enum class Algorithm : uint8_t {
+  SHA256 = 0,
+  SHA1 = 1,
+  MD5 = 2,
+  SHA224 = 3,
+  SHA384 = 4,
+  SHA512 = 5
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -120,26 +120,10 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
 //////////////////////////////////////////////////////////////////////////
 /// @brief generate a random number using OpenSsl
 ///
-/// will return 0 on success, and != 0 on error
+/// will return true on success, and false on error
 //////////////////////////////////////////////////////////////////////////
 
-int sslRand(uint64_t*);
-
-//////////////////////////////////////////////////////////////////////////
-/// @brief generate a random number using OpenSsl
-///
-/// will return 0 on success, and != 0 on error
-//////////////////////////////////////////////////////////////////////////
-
-int sslRand(int64_t*);
-
-//////////////////////////////////////////////////////////////////////////
-/// @brief generate a random number using OpenSsl
-///
-/// will return 0 on success, and != 0 on error
-//////////////////////////////////////////////////////////////////////////
-
-int sslRand(int32_t*);
+bool sslRand(int32_t*);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief RSA private key signing

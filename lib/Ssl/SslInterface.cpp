@@ -30,36 +30,13 @@
 
 #include "Logger/LogMacros.h"
 
-#include <cstring>
-#include <openssl/bn.h>
-#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/md5.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <iostream>
-
-#ifdef OPENSSL_NO_SSL2  // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
-#define RAND_BYTES RAND_bytes
-#else
-#define RAND_BYTES RAND_pseudo_bytes
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-// -----------------------------------------------------------------------------
-// helper
-// -----------------------------------------------------------------------------
-
-namespace {
-static UniformCharacter SaltGenerator(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
-    "[]:;<>,.?/|");
-}
 
 namespace arangodb::rest::SslInterface {
 
@@ -77,41 +54,56 @@ std::string sslMD5(std::string_view input) {
   return std::string(hex, 32);
 }
 
-void sslMD5(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslMD5(char const* inputStr, size_t const length,
+            char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
-  MD5((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_md5(), nullptr);
 }
 
-void sslSHA1(char const* inputStr, size_t length, char* outputStr) noexcept {
-  SHA1((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
-}
-
-void sslSHA224(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslSHA1(char const* inputStr, size_t const length,
+             char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
-  SHA224((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_sha1(), nullptr);
 }
 
-void sslSHA256(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslSHA224(char const* inputStr, size_t const length,
+               char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
-  SHA256((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_sha224(), nullptr);
 }
 
-void sslSHA384(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslSHA256(char const* inputStr, size_t const length,
+               char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
-  SHA384((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_sha256(), nullptr);
 }
 
-void sslSHA512(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslSHA384(char const* inputStr, size_t const length,
+               char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
-  SHA512((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_sha384(), nullptr);
 }
 
-void sslHEX(char const* inputStr, size_t length, char* outputStr) noexcept {
+void sslSHA512(char const* inputStr, size_t const length,
+               char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
+  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
+             nullptr, EVP_sha512(), nullptr);
+}
+
+void sslHEX(char const* inputStr, size_t const length,
+            char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
   TRI_ASSERT(outputStr != nullptr);
 
@@ -137,78 +129,83 @@ std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
 
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
 
-  PKCS5_PBKDF2_HMAC_SHA1(pass, (int)passLength, (const unsigned char*)salt,
-                         (int)saltLength, iter, keyLength, dk);
+  PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
+                    (int)saltLength, iter, EVP_sha1(), keyLength, dk);
 
   // return value as hex
   return StringUtils::encodeHex((char*)dk, keyLength);
 }
 
-std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
-                      size_t passLength, int iter, int keyLength,
-                      Algorithm algorithm) {
-  EVP_MD* evp_md = nullptr;
+std::string sslPBKDF2(char const* salt, size_t const saltLength,
+                      char const* pass, size_t const passLength, int const iter,
+                      int const keyLength, Algorithm const algorithm) {
+  EVP_MD const* evp_md = [algorithm]() -> EVP_MD const* {
+    switch (algorithm) {
+      case Algorithm::SHA256:
+        return EVP_sha256();
+      case Algorithm::SHA1:
+        return EVP_sha1();
+      case Algorithm::MD5:
+        return EVP_md5();
+      case Algorithm::SHA224:
+        return EVP_sha224();
+      case Algorithm::SHA384:
+        return EVP_sha384();
+      case Algorithm::SHA512:
+        return EVP_sha512();
+    }
+    return nullptr;
+  }();
+  ADB_PROD_ASSERT(evp_md != nullptr);
 
-  if (algorithm == Algorithm::ALGORITHM_SHA1) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha1());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA224) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha224());
-  } else if (algorithm == Algorithm::ALGORITHM_MD5) {
-    evp_md = const_cast<EVP_MD*>(EVP_md5());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA384) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha384());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA512) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha512());
-  } else {
-    // default
-    evp_md = const_cast<EVP_MD*>(EVP_sha256());
-  }
-
-  unsigned char* dk = (unsigned char*)TRI_Allocate(keyLength + 1);
+  unsigned char* dk = static_cast<unsigned char*>(TRI_Allocate(keyLength + 1));
   if (dk == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
 
-  PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
-                    (int)saltLength, iter, evp_md, keyLength, dk);
+  PKCS5_PBKDF2_HMAC(pass, static_cast<int>(passLength),
+                    reinterpret_cast<const unsigned char*>(salt),
+                    static_cast<int>(saltLength), iter, evp_md, keyLength, dk);
 
   // return value as hex
-  return StringUtils::encodeHex((char*)dk, keyLength);
+  return StringUtils::encodeHex(reinterpret_cast<char*>(dk), keyLength);
 }
 
-std::string sslHMAC(char const* key, size_t keyLength, char const* message,
-                    size_t messageLen, Algorithm algorithm) {
-  EVP_MD* evp_md = nullptr;
+std::string sslHMAC(char const* key, size_t const keyLength,
+                    char const* message, size_t const messageLen,
+                    Algorithm const algorithm) {
+  char const* digestName = [algorithm]() -> const char* {
+    switch (algorithm) {
+      case Algorithm::SHA256:
+        return "SHA256";
+      case Algorithm::SHA1:
+        return "SHA1";
+      case Algorithm::MD5:
+        return "MD5";
+      case Algorithm::SHA224:
+        return "SHA224";
+      case Algorithm::SHA384:
+        return "SHA384";
+      case Algorithm::SHA512:
+        return "SHA512";
+    }
+    return nullptr;
+  }();
+  ADB_PROD_ASSERT(digestName != nullptr);
 
-  if (algorithm == Algorithm::ALGORITHM_SHA1) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha1());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA224) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha224());
-  } else if (algorithm == Algorithm::ALGORITHM_MD5) {
-    evp_md = const_cast<EVP_MD*>(EVP_md5());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA384) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha384());
-  } else if (algorithm == Algorithm::ALGORITHM_SHA512) {
-    evp_md = const_cast<EVP_MD*>(EVP_sha512());
-  } else {
-    // default
-    evp_md = const_cast<EVP_MD*>(EVP_sha256());
+  unsigned char md[EVP_MAX_MD_SIZE];
+  size_t mdLen = 0;
+
+  if (EVP_Q_mac(nullptr, "HMAC", nullptr, digestName, nullptr, key, keyLength,
+                reinterpret_cast<unsigned char const*>(message), messageLen, md,
+                sizeof(md), &mdLen) == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "HMAC computation failed");
   }
 
-  unsigned char* md = (unsigned char*)TRI_Allocate(EVP_MAX_MD_SIZE + 1);
-  if (md == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(md); });
-  unsigned int md_len;
-
-  HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
-       md, &md_len);
-
-  return std::string((char*)md, md_len);
+  return std::string(reinterpret_cast<char const*>(md), mdLen);
 }
 
 bool verifyHMAC(char const* challenge, size_t challengeLength,
@@ -229,28 +226,9 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   return false;
 }
 
-int sslRand(uint64_t* value) {
-  if (!RAND_BYTES((unsigned char*)value, sizeof(uint64_t))) {
-    return 1;
-  }
-
-  return 0;
-}
-
-int sslRand(int64_t* value) {
-  if (!RAND_BYTES((unsigned char*)value, sizeof(int64_t))) {
-    return 1;
-  }
-
-  return 0;
-}
-
-int sslRand(int32_t* value) {
-  if (!RAND_BYTES((unsigned char*)value, sizeof(int32_t))) {
-    return 1;
-  }
-
-  return 0;
+bool sslRand(int32_t* value) {
+  return RAND_bytes(reinterpret_cast<unsigned char*>(value), sizeof(int32_t)) ==
+         1;
 }
 
 int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY* pkey, std::string const& msg,
@@ -289,27 +267,20 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   }
   auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
 
-  RSA* rsa = RSA_new();
-  if (rsa == nullptr) {
-    error.append("Failed to initialize RSA algorithm.");
-    return 1;
-  }
-  rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, nullptr, nullptr);
-  EVP_PKEY* pKey = EVP_PKEY_new();
+  EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
   if (pKey == nullptr) {
-    error.append("Failed to initialize public key.");
+    error.append("Failed to read private key.");
     return 1;
   }
-  EVP_PKEY_assign_RSA(pKey, rsa);
-  auto cleanupKeys = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
   auto* ctx = EVP_MD_CTX_new();
-  auto cleanupContext = scopeGuard([&]() noexcept { EVP_MD_CTX_free(ctx); });
   if (ctx == nullptr) {
-    error.append("EVP_MD_CTX_create failed,: ")
+    error.append("EVP_MD_CTX_new failed: ")
         .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
+  auto cleanupContext = scopeGuard([&]() noexcept { EVP_MD_CTX_free(ctx); });
 
   return rsaPrivSign(ctx, pKey, msg, sign, error);
 }

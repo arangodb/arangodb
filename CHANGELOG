@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1086: Replaced deprecated OpenSSL functions with the proper newer, 
+  higher level envelope calls. Removed unused functions and refactored some
+  minor parts of the SslInterface.
+
 * COR-1137: Fixed a memory leak in the AQL analyzer when converting
   non-string values to strings.
 
