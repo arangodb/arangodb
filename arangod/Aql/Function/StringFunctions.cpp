@@ -23,6 +23,7 @@
 #include "Aql/Function/StringFunctions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -261,13 +262,12 @@ void throwIfCancelled(ICancellationToken const* token) {
 functions::StringFunctionContext functions::makeStringFunctionContext(
     ExpressionContext* ctx) {
   auto& trx = ctx->trx();
-  auto& cache = ctx->functionsCache();
   auto& vocbase = trx.vocbase();
   return {trx.vpackOptions(),
-          [&cache, &vocbase]() -> icu_64_64::Locale const& {
-            return cache.locale(vocbase);
+          [&vocbase]() -> icu_64_64::Locale const& {
+            return vocbase.server().getFeature<LanguageFeature>().getLocale();
           },
-          cache, ctx};
+          ctx->functionsCache(), ctx};
 }
 
 AqlValue functions::toAqlResult(ExpressionContext* ctx, std::string_view name,
