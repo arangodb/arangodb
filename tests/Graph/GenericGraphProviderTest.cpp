@@ -474,6 +474,7 @@ TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
   }
 
   std::jthread abortThread([this]() {
+    arangodb::ExecContextSuperuserScope execContextScope;
     this->query->kill();
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
   });
