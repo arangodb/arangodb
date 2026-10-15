@@ -67,6 +67,13 @@ void AqlFunctionFeature::add(Function const& func) {
       [&](auto& functions) { functions.try_emplace(func.name, func); });
 }
 
+template<auto Fn>
+void AqlFunctionFeature::addStringFunction(
+    char const* arguments, std::underlying_type_t<Function::Flags> flags) {
+  add({std::string{functions::kStringFunctionName<Fn>}, arguments, flags,
+       &functions::adapt<Fn>});
+}
+
 void AqlFunctionFeature::addAlias(std::string const& alias,
                                   std::string const& original) {
   auto it = _functionNames.doUnderLock([&](auto const& functions) {
@@ -160,8 +167,7 @@ void AqlFunctionFeature::addTypeCastFunctions() {
 
   // type cast functions
   add({"TO_NUMBER", ".", flags, &functions::ToNumber});
-  add({std::string{functions::kStringFunctionName<functions::toString>}, ".",
-       flags, &functions::adapt<functions::toString>});
+  addStringFunction<functions::toString>(".", flags);
   add({"TO_BOOL", ".", flags, &functions::ToBool});
   add({"TO_ARRAY", ".", flags, &functions::ToArray});
   // TO_LIST is an alias for TO_ARRAY
@@ -175,46 +181,28 @@ void AqlFunctionFeature::addStringFunctions() {
       FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
 
   // string functions
-  add({std::string{functions::kStringFunctionName<functions::concat>}, ".|+",
-       flags, &functions::adapt<functions::concat>});
-  add({std::string{functions::kStringFunctionName<functions::concatSeparator>},
-       ".,.|+", flags, &functions::adapt<functions::concatSeparator>});
-  add({std::string{functions::kStringFunctionName<functions::charLength>}, ".",
-       flags, &functions::adapt<functions::charLength>});
-  add({std::string{functions::kStringFunctionName<functions::lower>}, ".",
-       flags, &functions::adapt<functions::lower>});
-  add({std::string{functions::kStringFunctionName<functions::upper>}, ".",
-       flags, &functions::adapt<functions::upper>});
-  add({std::string{functions::kStringFunctionName<functions::substring>},
-       ".,.|.", flags, &functions::adapt<functions::substring>});
-  add({std::string{functions::kStringFunctionName<functions::substringBytes>},
-       ".,.|.,.,.", flags, &functions::adapt<functions::substringBytes>});
-  add({std::string{functions::kStringFunctionName<functions::contains>},
-       ".,.|.", flags, &functions::adapt<functions::contains>});
-  add({std::string{functions::kStringFunctionName<functions::like>}, ".,.|.",
-       flags, &functions::adapt<functions::like>});
+  addStringFunction<functions::concat>(".|+", flags);
+  addStringFunction<functions::concatSeparator>(".,.|+", flags);
+  addStringFunction<functions::charLength>(".", flags);
+  addStringFunction<functions::lower>(".", flags);
+  addStringFunction<functions::upper>(".", flags);
+  addStringFunction<functions::substring>(".,.|.", flags);
+  addStringFunction<functions::substringBytes>(".,.|.,.,.", flags);
+  addStringFunction<functions::contains>(".,.|.", flags);
+  addStringFunction<functions::like>(".,.|.", flags);
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
   add({"REGEX_SPLIT", ".,.|.,.", flags, &functions::RegexSplit});
   add({"REGEX_TEST", ".,.|.", flags, &functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", flags, &functions::RegexReplace});
-  add({std::string{functions::kStringFunctionName<functions::left>}, ".,.",
-       flags, &functions::adapt<functions::left>});
-  add({std::string{functions::kStringFunctionName<functions::right>}, ".,.",
-       flags, &functions::adapt<functions::right>});
-  add({std::string{functions::kStringFunctionName<functions::trim>}, ".|.",
-       flags, &functions::adapt<functions::trim>});
-  add({std::string{functions::kStringFunctionName<functions::ltrim>}, ".|.",
-       flags, &functions::adapt<functions::ltrim>});
-  add({std::string{functions::kStringFunctionName<functions::rtrim>}, ".|.",
-       flags, &functions::adapt<functions::rtrim>});
-  add({std::string{functions::kStringFunctionName<functions::findFirst>},
-       ".,.|.,.", flags, &functions::adapt<functions::findFirst>});
-  add({std::string{functions::kStringFunctionName<functions::findLast>},
-       ".,.|.,.", flags, &functions::adapt<functions::findLast>});
-  add({std::string{functions::kStringFunctionName<functions::split>}, ".|.,.",
-       flags, &functions::adapt<functions::split>});
-  add({std::string{functions::kStringFunctionName<functions::substitute>},
-       ".,.|.,.", flags, &functions::adapt<functions::substitute>});
+  addStringFunction<functions::left>(".,.", flags);
+  addStringFunction<functions::right>(".,.", flags);
+  addStringFunction<functions::trim>(".|.", flags);
+  addStringFunction<functions::ltrim>(".|.", flags);
+  addStringFunction<functions::rtrim>(".|.", flags);
+  addStringFunction<functions::findFirst>(".,.|.,.", flags);
+  addStringFunction<functions::findLast>(".,.|.,.", flags);
+  addStringFunction<functions::split>(".|.,.", flags);
+  addStringFunction<functions::substitute>(".,.|.,.", flags);
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
@@ -226,10 +214,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &functions::Hash});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
-  add({std::string{functions::kStringFunctionName<functions::toChar>}, ".",
-       flags, &functions::adapt<functions::toChar>});
-  add({std::string{functions::kStringFunctionName<functions::repeat>}, ".,.|.",
-       flags, &functions::adapt<functions::repeat>});
+  addStringFunction<functions::toChar>(".", flags);
+  addStringFunction<functions::repeat>(".,.|.", flags);
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &functions::LevenshteinDistance});
