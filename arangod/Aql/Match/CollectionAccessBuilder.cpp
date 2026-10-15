@@ -26,18 +26,21 @@
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Match/FilterBuilder.h"
+#include "Aql/Match/ProjectionPushdown.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "VocBase/AccessMode.h"
 
 #include <memory>
+#include <span>
 #include <utility>
 
 namespace arangodb::aql::match {
@@ -100,12 +103,41 @@ CollectionAccessBuilder::enumerateCollection(
   return std::make_tuple(enumCollection, lastNode, outputVariable);
 }
 
+namespace {
+
+void maybeSetEnumerateProjections(
+    Ast& ast, EnumerateCollectionNode* enumCollection,
+    Variable const* patternVariable,
+    std::optional<Projection> const& projection,
+    std::span<std::string_view const> mandatoryAttributes,
+    std::vector<PropertyConstraint> const& properties,
+    std::optional<ExpressionRef> const& filter) {
+  auto built =
+      buildEnumerateProjections(ast, patternVariable, projection,
+                                mandatoryAttributes, properties, filter);
+  if (!built.has_value()) {
+    return;
+  }
+  if (built->size() > enumCollection->maxProjections()) {
+    return;
+  }
+  enumCollection->setProjections(std::move(*built));
+}
+
+}  // namespace
+
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
 CollectionAccessBuilder::createCollectionAccess(
     NormalizedVertex const& vertex, Variable const* fullDocumentVariable,
     VariableSubstitution const& subst) {
-  return enumerateCollection(vertex.collection, fullDocumentVariable,
-                             vertex.properties, vertex.filter, subst);
+  auto result = enumerateCollection(vertex.collection, fullDocumentVariable,
+                                    vertex.properties, vertex.filter, subst);
+  maybeSetEnumerateProjections(
+      *_ast,
+      ExecutionNode::castTo<EnumerateCollectionNode*>(std::get<0>(result)),
+      vertex.variable, vertex.projection,
+      kMandatoryDocumentProjectionAttributes, vertex.properties, vertex.filter);
+  return result;
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
@@ -113,8 +145,14 @@ CollectionAccessBuilder::createPatternEdgeEnumerateAccess(
     NormalizedEdge const& edge, Variable const* outputVariable,
     VariableSubstitution const& subst) {
   ADB_PROD_ASSERT(!edge.collections.empty());
-  return enumerateCollection(edge.collections.front(), outputVariable,
-                             edge.properties, edge.filter, subst);
+  auto result = enumerateCollection(edge.collections.front(), outputVariable,
+                                    edge.properties, edge.filter, subst);
+  maybeSetEnumerateProjections(
+      *_ast,
+      ExecutionNode::castTo<EnumerateCollectionNode*>(std::get<0>(result)),
+      edge.variable, edge.projection,
+      kMandatoryEdgeDocumentProjectionAttributes, edge.properties, edge.filter);
+  return result;
 }
 
 }  // namespace arangodb::aql::match

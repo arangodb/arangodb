@@ -23,7 +23,9 @@
 #include "Aql/Match/MatchTestHelper.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -31,6 +33,9 @@
 #include "Aql/TypedAstNodes.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
+
+#include <string_view>
+#include <vector>
 
 using namespace arangodb::aql;
 using namespace arangodb::aql::match;
@@ -47,6 +52,36 @@ TraversalNode* firstTraversal(ExecutionPlan const& plan) {
     return nullptr;
   }
   return ExecutionNode::castTo<TraversalNode*>(nodes.front());
+}
+
+EnumerateCollectionNode* firstEnumerateCollection(ExecutionPlan const& plan) {
+  arangodb::containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan.findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+  if (nodes.empty()) {
+    return nullptr;
+  }
+  return ExecutionNode::castTo<EnumerateCollectionNode*>(nodes.front());
+}
+
+bool projectionsContainPath(Projections const& projections,
+                            std::vector<std::string_view> const& path) {
+  for (size_t i = 0; i < projections.size(); ++i) {
+    auto const& projected = projections[i].path.get();
+    if (projected.size() != path.size()) {
+      continue;
+    }
+    bool match = true;
+    for (size_t j = 0; j < path.size(); ++j) {
+      if (projected[j] != path[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -163,4 +198,38 @@ TEST_F(BuilderTest, inPatternProjectionAddsCalculation) {
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_GE(countNodesOfType(*plan, ExecutionNode::CALCULATION), 1U);
+}
+
+TEST_F(BuilderTest, projectionSetsEnumerateProjections) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto* enumNode = firstEnumerateCollection(*plan);
+  ASSERT_NE(nullptr, enumNode);
+  auto const& projections = enumNode->projections();
+  ASSERT_FALSE(projections.empty());
+  EXPECT_TRUE(projectionsContainPath(projections, {"_id"}));
+  EXPECT_TRUE(projectionsContainPath(projections, {"_key"}));
+}
+
+TEST_F(BuilderTest, projectionWithWhereIncludesFilterAttribute) {
+  auto parsed = parseMatch("MATCH (v :vc WHERE v.j == 0 RETURN _key) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto* enumNode = firstEnumerateCollection(*plan);
+  ASSERT_NE(nullptr, enumNode);
+  auto const& projections = enumNode->projections();
+  ASSERT_FALSE(projections.empty());
+  EXPECT_TRUE(projectionsContainPath(projections, {"_id"}));
+  EXPECT_TRUE(projectionsContainPath(projections, {"_key"}));
+  EXPECT_TRUE(projectionsContainPath(projections, {"j"}));
+}
+
+TEST_F(BuilderTest, noProjectionLeavesEnumerateWithoutMatchProjections) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto* enumNode = firstEnumerateCollection(*plan);
+  ASSERT_NE(nullptr, enumNode);
+  EXPECT_TRUE(enumNode->projections().empty());
 }
