@@ -72,6 +72,7 @@ def testing_runner(testing_instance, this, arangosh):
     # pylint: disable=too-many-statements
     try:
         this.start = datetime.now(tz=None)
+        ret = {'pid': -1}
         ret = arangosh.run_testing(
             this.suite,
             this.arangosh_args,
@@ -534,7 +535,7 @@ class TestingRunner:
             self.mp_zip_tar(coredumps, core_zip_dir, crash_report_file, 'crash report', 'crashreport')
             for one_file in coredumps:
                 one_file.unlink(missing_ok=True)
-            
+
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"binaries-{self.cfg.datetime_format}"

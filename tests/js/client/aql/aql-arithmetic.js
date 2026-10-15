@@ -40,6 +40,48 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ [ 4 * 3, 5 * 4, 6 * 5 ] ], actual);
     },
 
+    testRuntimeIntegerArithmeticKeepsInt64Precision : function () {
+      const actual = getQueryResults(`
+        LET id = NOOPT(9007199254740993)
+        LET a = NOOPT(1234567890123456789)
+        RETURN JSON_STRINGIFY([id % 2, a % 10, a + 1, a - 1, a * 1, a / -1])`);
+      assertEqual([ "[1,9,1234567890123456790,1234567890123456788," +
+                    "1234567890123456789,-1234567890123456789]" ], actual);
+    },
+
+    testRuntimeArithmeticMatchesQueryPlanningArithmetic : function () {
+      const expressions = [
+        "9223372036854775807 + 1",
+        "-9223372036854775807 - 2",
+        "4611686018427387904 * 2",
+        "-9223372036854775807 - 1",
+        "1234567890123456789 / 2",
+        "7 / 2",
+        "-7 % 2",
+        "7 % -2",
+        "5 + 1.5",
+        "1234567890123456789 + true",
+        "1234567890123456789 - false",
+        "1234567890123456789 + null",
+        "1234567890123456789 + {}",
+        "1234567890123456789 + []",
+        "1234567890123456789 + [1]",
+        "1234567890123456789 + [[1]]",
+        "1234567890123456789 + [1,2]",
+        "1234567890123456789 + 'abc'",
+        "1234567890123456789 + '1'",
+        "[1234567890123456789] % 10",
+        "1234567890123456789 / null",
+      ];
+      expressions.forEach((expression) => {
+        const [lhs, op, rhs] = expression.split(" ");
+        const folded = getQueryResults(`RETURN JSON_STRINGIFY(${expression})`);
+        const runtime = getQueryResults(
+          `RETURN JSON_STRINGIFY(NOOPT(${lhs}) ${op} NOOPT(${rhs}))`);
+        assertEqual(folded, runtime, expression);
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unary plus
 ////////////////////////////////////////////////////////////////////////////////
