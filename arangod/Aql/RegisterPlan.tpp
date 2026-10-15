@@ -37,39 +37,19 @@ template<typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  // TODO There are some difficulties with view nodes to resolve before this
-  // code
-  //      can be activated. Also see the comment on assertNoVariablesMissing()
-  //      below.
-  //
-#if 0
-  /*
-   * SubqueryEnd does indeed access a variable that is not valid. How can that
-   * be? The varsValid stack is already popped for SUBQUERY_END. But
-   * varsUsedHere includes the read of the return value from the subquery level.
-   */
+  // SUBQUERY_END reads the subquery's return value, which is set inside the
+  // subquery. Its varsValid already belongs to the outer level, so that
+  // variable is never in it.
   if (en->getType() != ExecutionNode::SUBQUERY_END) {
     VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
-
     VarSet const& varsValid = en->getVarsValid();
     for (auto&& var : varsUsedHere) {
-      if (varsValid.find(var) == varsValid.end()) {
-        TRI_ASSERT(false);
-        /*
-         * There is a single IResearch tests that _requires_ this exception
-         * to be thrown.
-         */
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       en->getTypeString() + " " +
-                                           std::to_string(en->id().id()) + " " +
-                                           std::string("Variable ") + var->name +
-                                           " (" + std::to_string(var->id) +
-                                           ") is used before it was set.");
+      if (!varsValid.contains(var)) {
+        throw MissingVariablesException(var, en, ADB_HERE);
       }
     }
   }
-#endif
 
   // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
@@ -139,9 +119,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  // TODO This is here to be backwards-compatible with some view tests relying
-  //      on this check. When that is cleaned up, uncomment the check further
-  //      above instead and remove this.
   auto const assertNoVariablesMissing = [this, &varsUsedLater](T* en) {
     if (en->getType() != ExecutionNode::RETURN) {
       VarSet varsUsedHere;
@@ -367,12 +344,12 @@ void RegisterPlanT<T>::increaseDepth() {
 
 template<typename T>
 void RegisterPlanT<T>::shrink(T* start) {
-  // remove all registers greater than maxRegister from the ExecutionNodes
-  // starting at current that have the same depth as current
-  auto removeRegistersGreaterThan = [](T* current, RegisterId maxRegister) {
+  // Applies the lowered register count to every node of current's depth,
+  // starting at current and walking towards the singleton.
+  auto removeExplainedRegistersAbove = [](T* current, RegisterId maxRegister) {
     auto depth = current->getDepth();
     while (current != nullptr && current->getDepth() == depth) {
-      current->removeRegistersGreaterThan(maxRegister);
+      current->removeExplainedRegistersAbove(maxRegister);
       current = current->getFirstDependency();
     }
   };
@@ -383,9 +360,9 @@ void RegisterPlanT<T>::shrink(T* start) {
   // of the maximum register id they use.
   // when we are at the end of the plan or at a depth change, we know which
   // is the maximum register id used by the depth. if it is different from
-  // the already calculated number of registers for this depth, we walk over
-  // all nodes in that depth again and remove the superfluous registers from
-  // them.
+  // the already calculated number of registers for this depth, we lower the
+  // register count of the depth. The nodes' regsToClear and regsToKeep are
+  // always below the new count, so only the explain data needs adjusting.
 
   auto maxUsedRegister = [this](auto const& container,
                                 RegisterId maxRegisterId) -> RegisterId {
@@ -439,9 +416,7 @@ void RegisterPlanT<T>::shrink(T* start) {
         // the current RegisterPlan has superfluous registers planned for this
         // depth. so let's put in some more effort and remove them.
         nrRegs[depth] = neededRegisters;
-        // remove the superfluous registers from all the nodes starting at the
-        // start node of our current depth...
-        removeRegistersGreaterThan(depthStart, maxRegisterId);
+        removeExplainedRegistersAbove(depthStart, maxRegisterId);
       }
 
       // new depth starting, so update the start node for the depth

@@ -487,6 +487,10 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow,
   auto idx = registersToKeep().size() - roffset;
   auto const& regsToKeep = registersToKeep().at(idx);
 
+  // Both branches copy each register to the same register of the output row.
+  // This is correct because register planning gives a variable one register
+  // for the whole query, so a register in regsToKeep holds the same variable
+  // in the source row and in the output row.
   if (mustClone) {
     for (auto const& itemId : regsToKeep) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

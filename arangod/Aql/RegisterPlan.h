@@ -58,21 +58,21 @@ struct RegisterPlanT;
 using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
 using RegVarMapStack = std::vector<RegVarMap>;
 
-/// There are still some improvements that can be done to the RegisterPlanWalker
-/// to produce better plans.
-/// The most important point is that registersToClear are currently used to find
-/// unused registers that can be reused. That is correct, but does not include
-/// all cases that can be reused. For example:
-///  - A register that is written in one node and never used later will not be
-///    found.
-///  - When a spliced subquery starts (at a SubqueryStartNode), two things are
-///    missed:
-///    1) registers that are used after the subquery, but not inside, will not
-///       be marked as unused registers inside the subquery.
-///    2) registers that are used inside the subquery, but not after it, are not
-///       marked as unused registers outside the subquery (i.e. on the stack
-///       level below it). It would of course suffice when this would be done
-///       at the SubqueryEndNode.
+/// Assigns a register to each variable while it walks the plan from the
+/// singleton to the root. A register becomes free when no later node uses its
+/// variable, and the walker gives the lowest free register to the next
+/// variable. Each spliced subquery level has its own set of free registers.
+///
+/// A node that passes its input block through (alwaysCopiesRows() is false)
+/// writes its outputs into that block. Thus it gets its output registers
+/// before the walker frees the registers of the variables that die at this
+/// node, because an output must not overwrite an input that the node still
+/// reads. A node that builds new rows frees those registers first, so its
+/// outputs can reuse them.
+///
+/// A variable keeps its register for the whole query. If a variable stays live
+/// into a later depth, its register index stays the same there, and shrink()
+/// can only remove unused registers above the highest index in use.
 template<typename T>
 struct RegisterPlanWalkerT final
     : public WalkerWorker<T, WalkerUniqueness::NonUnique> {

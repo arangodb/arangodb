@@ -1441,7 +1441,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
 
-void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+void ExecutionNode::removeExplainedRegistersAbove(RegisterId maxRegister) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto assertNotContained = [](RegisterId maxRegister,
                                auto const& container) noexcept {

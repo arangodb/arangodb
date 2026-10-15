@@ -385,16 +385,9 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         data.constantFields = idx.constantFields;
       }
 
-      // These are constant for the whole lookup, so they come from the input
-      // row.
-      //
-      // TODO (COR-958) The join rule also admits expressions over an earlier
-      // index's document, such as `FILTER doc2.x == doc1.z + 1`. That shape
-      // cannot work: JoinExecutor evaluates these expressions once per input
-      // row, where that document does not exist, and the variable is never
-      // assigned a register. Such a query now fails with "no register
-      // assigned" instead of aborting the server. The fix belongs in the
-      // rule, not here.
+      // JoinExecutor evaluates these expressions once per input row, so the
+      // join rule admits only variables of the JoinNode's input row into them
+      // (see knownConstVariables in JoinIndexNodes.cpp).
       for (auto const& var : varsUsed) {
         data.expressionVarsToRegs.emplace_back(var->id, inputRegister(var));
       }

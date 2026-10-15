@@ -190,9 +190,12 @@ class ExecutionNode {
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          velocypack::Slice slice);
 
-  /// @brief remove registers right of (greater than) the specified register
-  /// from the internal maps
-  void removeRegistersGreaterThan(RegisterId maxRegister);
+  /// @brief RegisterPlan::shrink() calls this after it lowered the register
+  /// count of this node's depth to maxRegister + 1. It removes the registers
+  /// above maxRegister from the unused-register list that is kept only for
+  /// explain output. regsToClear and regsToKeep never contain such registers,
+  /// which maintainer mode asserts.
+  void removeExplainedRegistersAbove(RegisterId maxRegister);
 
   /// @brief cast an ExecutionNode to a specific sub-type
   /// in maintainer mode, this function will perform a dynamic_cast and abort
