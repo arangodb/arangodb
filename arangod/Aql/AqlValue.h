@@ -25,6 +25,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/RegisterId.h"
 #include "Aql/RegIdFlatSet.h"
+#include "Assertions/Assert.h"
 #include "Basics/Endian.h"
 #include "IResearch/Misc.h"
 
@@ -531,7 +532,10 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept
-      : _value{value}, _destroy{destroy} {}
+      : _value{value}, _destroy{destroy} {
+    TRI_ASSERT(!(destroy && value.isShortLivedSlice()))
+        << "ownership claimed for a short-lived slice pointer";
+  }
   ~AqlValueGuard() noexcept {
     if (_destroy) {
       _value.destroy();

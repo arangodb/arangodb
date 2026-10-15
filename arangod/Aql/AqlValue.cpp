@@ -268,7 +268,8 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
             return AqlValue(s.at(position));
           }
           // return a reference to an existing slice
-          return AqlValue(s.at(position).begin());
+          return isStaticSlice() ? staticSlice(s.at(position).begin())
+                                 : AqlValue{s.at(position).begin()};
         }
       }
       break;
@@ -314,7 +315,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy,
             return AqlValue(s);
           }
           // return a reference to an existing slice
-          return AqlValue{s.begin()};
+          return isStaticSlice() ? staticSlice(s.begin()) : AqlValue{s.begin()};
         }
       }
       break;
@@ -354,7 +355,8 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
             return AqlValue{found};
           }
           // return a reference to an existing slice
-          return AqlValue{found.begin()};
+          return isStaticSlice() ? staticSlice(found.begin())
+                                 : AqlValue{found.begin()};
         }
       }
       break;
@@ -389,7 +391,8 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
             return AqlValue{found};
           }
           // return a reference to an existing slice
-          return AqlValue{found.begin()};
+          return isStaticSlice() ? staticSlice(found.begin())
+                                 : AqlValue{found.begin()};
         }
       }
       break;
@@ -417,7 +420,8 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
             return AqlValue{found};
           }
           // return a reference to an existing slice
-          return AqlValue{found.begin()};
+          return isStaticSlice() ? staticSlice(found.begin())
+                                 : AqlValue{found.begin()};
         }
       }
       break;
@@ -445,7 +449,8 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
             return AqlValue{found};
           }
           // return a reference to an existing slice
-          return AqlValue{found.begin()};
+          return isStaticSlice() ? staticSlice(found.begin())
+                                 : AqlValue{found.begin()};
         }
       }
       break;
@@ -481,7 +486,8 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
             return AqlValue(found);
           }
           // return a reference to an existing slice
-          return AqlValue{found.begin()};
+          return isStaticSlice() ? staticSlice(found.begin())
+                                 : AqlValue{found.begin()};
         }
       }
       break;
@@ -539,7 +545,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
             return AqlValue{s};
           }
           // return a reference to an existing slice
-          return AqlValue{s.begin()};
+          return isStaticSlice() ? staticSlice(s.begin()) : AqlValue{s.begin()};
         }
       }
       break;

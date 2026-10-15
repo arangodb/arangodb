@@ -209,3 +209,41 @@ TEST(AqlValueBorrowTest, memory_origin_is_unaffected) {
   owner.destroy();
   EXPECT_TRUE(owner.isEmpty());
 }
+
+TEST(AqlValueBorrowTest, a_pointer_into_a_static_slice_is_static) {
+  auto builder = arangodb::velocypack::Parser::fromJson(
+      "[{\"someLongAttributeName\":\"someLongAttributeValue\"}, 2]");
+  AqlValue array = AqlValue::staticSlice(builder->slice().begin());
+
+  bool mustDestroy;
+  AqlValue element = array.at(0, mustDestroy, true);
+  // at() never copies out of a slice pointer, so this is a view into the array
+  EXPECT_FALSE(mustDestroy);
+  EXPECT_TRUE(element.isStaticSlice());
+  EXPECT_TRUE(array.at(1, 2, mustDestroy, true).isStaticSlice());
+
+  AqlValue copy = element.clone();
+  EXPECT_FALSE(copy.requiresDestruction());
+  EXPECT_EQ(copy.slice().begin(), element.slice().begin());
+}
+
+TEST(AqlValueBorrowTest, a_pointer_into_a_short_lived_slice_is_short_lived) {
+  auto builder = arangodb::velocypack::Parser::fromJson(
+      "[{\"someLongAttributeName\":\"someLongAttributeValue\"}, 2]");
+  AqlValue array{AqlValueHintSliceNoCopy{builder->slice()}};
+
+  bool mustDestroy;
+  EXPECT_TRUE(array.at(0, mustDestroy, true).isShortLivedSlice());
+  EXPECT_TRUE(array.at(1, 2, mustDestroy, true).isShortLivedSlice());
+}
+
+TEST(AqlValueBorrowTest, a_pointer_into_a_static_document_is_static) {
+  auto builder = arangodb::velocypack::Parser::fromJson(
+      "{\"_key\":\"a key that does not fit inline\"}");
+  AqlValue document = AqlValue::staticSlice(builder->slice().begin());
+
+  bool mustDestroy;
+  AqlValue key = document.getKeyAttribute(mustDestroy, true);
+  EXPECT_TRUE(key.isStaticSlice());
+  EXPECT_EQ(key.slice().stringView(), "a key that does not fit inline");
+}

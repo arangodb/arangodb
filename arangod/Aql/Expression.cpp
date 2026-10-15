@@ -1048,7 +1048,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
   TRI_ASSERT(params.parameters.size() == n);
 
   AqlValue a = func->implementation(&ctx, *node, params.parameters);
-  mustDestroy = true;  // function result is always dynamic
+  mustDestroy = a.requiresDestruction();
 
   return a;
 }
