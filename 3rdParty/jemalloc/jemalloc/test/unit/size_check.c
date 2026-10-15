@@ -3,7 +3,8 @@
 #include "jemalloc/internal/safety_check.h"
 
 bool fake_abort_called;
-void fake_abort(const char *message) {
+void
+fake_abort(const char *message) {
 	(void)message;
 	fake_abort_called = true;
 }
@@ -72,8 +73,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_invalid_size_sdallocx,
+	return test(test_invalid_size_sdallocx,
 	    test_invalid_size_sdallocx_nonzero_flag,
 	    test_invalid_size_sdallocx_noflags);
 }

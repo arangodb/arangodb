@@ -5,7 +5,7 @@
 #include "jemalloc/internal/mutex.h"
 #include "jemalloc/internal/smoothstep.h"
 
-#define DECAY_UNBOUNDED_TIME_TO_PURGE ((uint64_t)-1)
+#define DECAY_UNBOUNDED_TIME_TO_PURGE ((uint64_t) - 1)
 
 /*
  * The decay_t computes the number of pages we should purge at any given time.
@@ -168,12 +168,12 @@ void decay_reinit(decay_t *decay, nstime_t *cur_time, ssize_t decay_ms);
 /*
  * Compute how many of 'npages_new' pages we would need to purge in 'time'.
  */
-uint64_t decay_npages_purge_in(decay_t *decay, nstime_t *time,
-    size_t npages_new);
+uint64_t decay_npages_purge_in(
+    decay_t *decay, nstime_t *time, size_t npages_new);
 
 /* Returns true if the epoch advanced and there are pages to purge. */
-bool decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
-    size_t current_npages);
+bool decay_maybe_advance_epoch(
+    decay_t *decay, nstime_t *new_time, size_t current_npages);
 
 /*
  * Calculates wait time until a number of pages in the interval
@@ -182,7 +182,7 @@ bool decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
  * Returns number of nanoseconds or DECAY_UNBOUNDED_TIME_TO_PURGE in case of
  * indefinite wait.
  */
-uint64_t decay_ns_until_purge(decay_t *decay, size_t npages_current,
-    uint64_t npages_threshold);
+uint64_t decay_ns_until_purge(
+    decay_t *decay, size_t npages_current, uint64_t npages_threshold);
 
 #endif /* JEMALLOC_INTERNAL_DECAY_H */

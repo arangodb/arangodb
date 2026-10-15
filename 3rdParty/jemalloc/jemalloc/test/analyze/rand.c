@@ -72,13 +72,13 @@ print_buckets(const size_t buckets[], const size_t means[],
 		if (buckets[i] + stddevs[i] <= means[i]) {
 			malloc_write(" ");
 			for (size_t t = means[i] - buckets[i]; t >= stddevs[i];
-			    t -= stddevs[i]) {
+			     t -= stddevs[i]) {
 				malloc_write("-");
 			}
 		} else if (buckets[i] >= means[i] + stddevs[i]) {
 			malloc_write(" ");
 			for (size_t t = buckets[i] - means[i]; t >= stddevs[i];
-			    t -= stddevs[i]) {
+			     t -= stddevs[i]) {
 				malloc_write("+");
 			}
 		}
@@ -93,8 +93,8 @@ bucket_analysis(uint64_t (*gen)(void *), void *opaque, size_t buckets[],
 	for (size_t i = 1; i <= 3; ++i) {
 		malloc_printf("round %zu\n", i);
 		fill(buckets, n_bucket, 0);
-		collect_buckets(gen, opaque, buckets, n_bucket,
-		    lg_bucket_width, n_iter);
+		collect_buckets(
+		    gen, opaque, buckets, n_bucket, lg_bucket_width, n_iter);
 		print_buckets(buckets, means, stddevs, n_bucket);
 	}
 }
@@ -108,7 +108,7 @@ bucket_analysis(uint64_t (*gen)(void *), void *opaque, size_t buckets[],
 
 typedef struct uniform_gen_arg_s uniform_gen_arg_t;
 struct uniform_gen_arg_s {
-	uint64_t state;
+	uint64_t       state;
 	const unsigned lg_range;
 };
 
@@ -131,8 +131,10 @@ TEST_BEGIN(test_uniform) {
 	 * integers, and that the minimal bucket mean is at least
 	 * MIN_BUCKET_MEAN.
 	 */
-	const size_t q = 1 << QUOTIENT_CEIL(LG_CEIL(QUOTIENT_CEIL(
-	    MIN_BUCKET_MEAN, N_BUCKET * (N_BUCKET - 1))), 2);
+	const size_t q = 1 << QUOTIENT_CEIL(
+	                     LG_CEIL(QUOTIENT_CEIL(
+	                         MIN_BUCKET_MEAN, N_BUCKET * (N_BUCKET - 1))),
+	                     2);
 	const size_t stddev = (N_BUCKET - 1) * q;
 	const size_t mean = N_BUCKET * stddev * q;
 	const size_t n_iter = N_BUCKET * mean;
@@ -142,14 +144,14 @@ TEST_BEGIN(test_uniform) {
 	size_t stddevs[N_BUCKET];
 	fill(stddevs, N_BUCKET, stddev);
 
-	uniform_gen_arg_t arg = {(uint64_t)(uintptr_t)&lg_range_test,
-	    lg_range_test};
+	uniform_gen_arg_t arg = {
+	    (uint64_t)(uintptr_t)&lg_range_test, lg_range_test};
 	size_t buckets[N_BUCKET];
 	assert_zu_ge(lg_range_test, LG_N_BUCKET, "");
 	const size_t lg_bucket_width = lg_range_test - LG_N_BUCKET;
 
-	bucket_analysis(uniform_gen, &arg, buckets, means, stddevs,
-	    N_BUCKET, lg_bucket_width, n_iter);
+	bucket_analysis(uniform_gen, &arg, buckets, means, stddevs, N_BUCKET,
+	    lg_bucket_width, n_iter);
 
 #undef LG_N_BUCKET
 #undef N_BUCKET
@@ -168,8 +170,8 @@ TEST_END
  * comments in test_prof_sample for explanations for n_divide.
  */
 static double
-fill_geometric_proportions(double proportions[], const size_t n_bucket,
-    const size_t n_divide) {
+fill_geometric_proportions(
+    double proportions[], const size_t n_bucket, const size_t n_divide) {
 	assert(n_bucket > 0);
 	assert(n_divide > 0);
 	double x = 1.;
@@ -220,12 +222,12 @@ TEST_BEGIN(test_prof_sample) {
 #ifdef JEMALLOC_PROF
 
 /* Number of divisions within [0, mean). */
-#define LG_N_DIVIDE 3
-#define N_DIVIDE (1 << LG_N_DIVIDE)
+#	define LG_N_DIVIDE 3
+#	define N_DIVIDE (1 << LG_N_DIVIDE)
 
 /* Coverage of buckets in terms of multiples of mean. */
-#define LG_N_MULTIPLY 2
-#define N_GEO_BUCKET (N_DIVIDE << LG_N_MULTIPLY)
+#	define LG_N_MULTIPLY 2
+#	define N_GEO_BUCKET (N_DIVIDE << LG_N_MULTIPLY)
 
 	test_skip_if(!opt_prof);
 
@@ -233,14 +235,15 @@ TEST_BEGIN(test_prof_sample) {
 
 	size_t lg_prof_sample_orig = lg_prof_sample;
 	assert_d_eq(mallctl("prof.reset", NULL, NULL, &lg_prof_sample_test,
-	    sizeof(size_t)), 0, "");
+	                sizeof(size_t)),
+	    0, "");
 	malloc_printf("lg_prof_sample = %zu\n", lg_prof_sample_test);
 
-	double proportions[N_GEO_BUCKET + 1];
-	const double min_proportion = fill_geometric_proportions(proportions,
-	    N_GEO_BUCKET + 1, N_DIVIDE);
-	const size_t n_iter = round_to_nearest(MIN_BUCKET_MEAN /
-	    min_proportion);
+	double       proportions[N_GEO_BUCKET + 1];
+	const double min_proportion = fill_geometric_proportions(
+	    proportions, N_GEO_BUCKET + 1, N_DIVIDE);
+	const size_t n_iter = round_to_nearest(
+	    MIN_BUCKET_MEAN / min_proportion);
 	size_t means[N_GEO_BUCKET + 1];
 	size_t stddevs[N_GEO_BUCKET + 1];
 	fill_references(means, stddevs, proportions, N_GEO_BUCKET + 1, n_iter);
@@ -255,12 +258,13 @@ TEST_BEGIN(test_prof_sample) {
 	    N_GEO_BUCKET + 1, lg_bucket_width, n_iter);
 
 	assert_d_eq(mallctl("prof.reset", NULL, NULL, &lg_prof_sample_orig,
-	    sizeof(size_t)), 0, "");
+	                sizeof(size_t)),
+	    0, "");
 
-#undef LG_N_DIVIDE
-#undef N_DIVIDE
-#undef LG_N_MULTIPLY
-#undef N_GEO_BUCKET
+#	undef LG_N_DIVIDE
+#	undef N_DIVIDE
+#	undef LG_N_MULTIPLY
+#	undef N_GEO_BUCKET
 
 #endif /* JEMALLOC_PROF */
 }
@@ -270,7 +274,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_uniform,
-	    test_prof_sample);
+	return test_no_reentrancy(test_uniform, test_prof_sample);
 }

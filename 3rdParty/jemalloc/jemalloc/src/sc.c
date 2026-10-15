@@ -27,7 +27,7 @@ slab_size(int lg_page, int lg_base, int lg_delta, int ndelta) {
 	size_t try_slab_size = page;
 	size_t try_nregs = try_slab_size / reg_size;
 	size_t perfect_slab_size = 0;
-	bool perfect = false;
+	bool   perfect = false;
 	/*
 	 * This loop continues until we find the least common multiple of the
 	 * page size and size class size.  Size classes are all of the form
@@ -106,7 +106,7 @@ size_classes(
 	/* Outputs that we update as we go. */
 	size_t lookup_maxclass = 0;
 	size_t small_maxclass = 0;
-	int lg_large_minclass = 0;
+	int    lg_large_minclass = 0;
 	size_t large_maxclass = 0;
 
 	/* Tiny size classes. */
@@ -209,7 +209,7 @@ size_classes(
 		lg_delta++;
 	}
 	/* Additional outputs. */
-	int nsizes = index;
+	int      nsizes = index;
 	unsigned lg_ceil_nsizes = lg_ceil(nsizes);
 
 	/* Fill in the output data. */
@@ -292,8 +292,8 @@ sc_data_update_slab_size(sc_data_t *data, size_t begin, size_t end, int pgs) {
 		if (!sc->bin) {
 			break;
 		}
-		size_t reg_size = reg_size_compute(sc->lg_base, sc->lg_delta,
-		    sc->ndelta);
+		size_t reg_size = reg_size_compute(
+		    sc->lg_base, sc->lg_delta, sc->ndelta);
 		if (begin <= reg_size && reg_size <= end) {
 			sc_data_update_sc_slab_size(sc, reg_size, pgs);
 		}

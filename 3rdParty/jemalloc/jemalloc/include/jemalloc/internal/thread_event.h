@@ -37,7 +37,7 @@
 #define TE_INVALID_ELAPSED UINT64_MAX
 
 typedef struct te_ctx_s {
-	bool is_alloc;
+	bool      is_alloc;
 	uint64_t *current;
 	uint64_t *last_event;
 	uint64_t *next_event;
@@ -48,36 +48,20 @@ void te_assert_invariants_debug(tsd_t *tsd);
 void te_event_trigger(tsd_t *tsd, te_ctx_t *ctx);
 void te_recompute_fast_threshold(tsd_t *tsd);
 void tsd_te_init(tsd_t *tsd);
-
-/*
- * List of all events, in the following format:
- *  E(event,		(condition), is_alloc_event)
- */
-#define ITERATE_OVER_ALL_EVENTS						\
-    E(tcache_gc,		(opt_tcache_gc_incr_bytes > 0), true)	\
-    E(prof_sample,		(config_prof && opt_prof), true)  	\
-    E(stats_interval,		(opt_stats_interval >= 0), true)   	\
-    E(tcache_gc_dalloc,		(opt_tcache_gc_incr_bytes > 0), false)	\
-    E(peak_alloc,		config_stats, true)			\
-    E(peak_dalloc,		config_stats, false)
-
-#define E(event, condition_unused, is_alloc_event_unused)		\
-    C(event##_event_wait)
+void te_adjust_thresholds_helper(tsd_t *tsd, te_ctx_t *ctx, uint64_t wait);
 
 /* List of all thread event counters. */
-#define ITERATE_OVER_ALL_COUNTERS					\
-    C(thread_allocated)							\
-    C(thread_allocated_last_event)					\
-    ITERATE_OVER_ALL_EVENTS						\
-    C(prof_sample_last_event)						\
-    C(stats_interval_last_event)
+#define ITERATE_OVER_ALL_COUNTERS                                              \
+	C(thread_allocated)                                                    \
+	C(thread_allocated_last_event)                                         \
+	C(prof_sample_last_event)                                              \
+	C(stats_interval_last_event)
 
 /* Getters directly wrap TSD getters. */
-#define C(counter)							\
-JEMALLOC_ALWAYS_INLINE uint64_t						\
-counter##_get(tsd_t *tsd) {						\
-	return tsd_##counter##_get(tsd);				\
-}
+#define C(counter)                                                             \
+	JEMALLOC_ALWAYS_INLINE uint64_t counter##_get(tsd_t *tsd) {            \
+		return tsd_##counter##_get(tsd);                               \
+	}
 
 ITERATE_OVER_ALL_COUNTERS
 #undef C
@@ -89,20 +73,13 @@ ITERATE_OVER_ALL_COUNTERS
  * temporarily delay the event and let it be immediately triggered at the next
  * allocation call.
  */
-#define C(counter)							\
-JEMALLOC_ALWAYS_INLINE void						\
-counter##_set(tsd_t *tsd, uint64_t v) {					\
-	*tsd_##counter##p_get(tsd) = v;					\
-}
+#define C(counter)                                                             \
+	JEMALLOC_ALWAYS_INLINE void counter##_set(tsd_t *tsd, uint64_t v) {    \
+		*tsd_##counter##p_get(tsd) = v;                                \
+	}
 
 ITERATE_OVER_ALL_COUNTERS
 #undef C
-
-/*
- * For generating _event_wait getter / setter functions for each individual
- * event.
- */
-#undef E
 
 /*
  * The malloc and free fastpath getters -- use the unsafe getters since tsd may
@@ -218,57 +195,6 @@ te_ctx_get(tsd_t *tsd, te_ctx_t *ctx, bool is_alloc) {
 		ctx->next_event_fast =
 		    tsd_thread_deallocated_next_event_fastp_get(tsd);
 	}
-}
-
-/*
- * The lookahead functionality facilitates events to be able to lookahead, i.e.
- * without touching the event counters, to determine whether an event would be
- * triggered.  The event counters are not advanced until the end of the
- * allocation / deallocation calls, so the lookahead can be useful if some
- * preparation work for some event must be done early in the allocation /
- * deallocation calls.
- *
- * Currently only the profiling sampling event needs the lookahead
- * functionality, so we don't yet define general purpose lookahead functions.
- *
- * Surplus is a terminology referring to the amount of bytes beyond what's
- * needed for triggering an event, which can be a useful quantity to have in
- * general when lookahead is being called.
- */
-
-JEMALLOC_ALWAYS_INLINE bool
-te_prof_sample_event_lookahead_surplus(tsd_t *tsd, size_t usize,
-    size_t *surplus) {
-	if (surplus != NULL) {
-		/*
-		 * This is a dead store: the surplus will be overwritten before
-		 * any read.  The initialization suppresses compiler warnings.
-		 * Meanwhile, using SIZE_MAX to initialize is good for
-		 * debugging purpose, because a valid surplus value is strictly
-		 * less than usize, which is at most SIZE_MAX.
-		 */
-		*surplus = SIZE_MAX;
-	}
-	if (unlikely(!tsd_nominal(tsd) || tsd_reentrancy_level_get(tsd) > 0)) {
-		return false;
-	}
-	/* The subtraction is intentionally susceptible to underflow. */
-	uint64_t accumbytes = tsd_thread_allocated_get(tsd) + usize -
-	    tsd_thread_allocated_last_event_get(tsd);
-	uint64_t sample_wait = tsd_prof_sample_event_wait_get(tsd);
-	if (accumbytes < sample_wait) {
-		return false;
-	}
-	assert(accumbytes - sample_wait < (uint64_t)usize);
-	if (surplus != NULL) {
-		*surplus = (size_t)(accumbytes - sample_wait);
-	}
-	return true;
-}
-
-JEMALLOC_ALWAYS_INLINE bool
-te_prof_sample_event_lookahead(tsd_t *tsd, size_t usize) {
-	return te_prof_sample_event_lookahead_surplus(tsd, usize, NULL);
 }
 
 JEMALLOC_ALWAYS_INLINE void

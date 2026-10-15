@@ -1,0 +1,23 @@
+# Ignore executable files
+pa_microbench
+pa_data_preprocessor
+
+# Ignore object files
+*.o
+*.d
+
+# Ignore temporary and backup files
+*~
+*.tmp
+*.bak
+
+# Ignore compiled output files
+*.out
+
+# Keep source files and documentation
+!*.c
+!*.cpp
+!*.h
+!*.md
+!*.sh
+!Makefile*

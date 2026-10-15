@@ -8,6 +8,7 @@
  * A simple seqlock implementation.
  */
 
+/* clang-format off */
 #define seq_define(type, short_type)					\
 typedef struct {							\
 	atomic_zu_t seq;						\
@@ -52,5 +53,6 @@ seq_try_load_##short_type(type *dst, seq_##short_type##_t *src) {	\
 	memcpy(dst, buf, sizeof(type));					\
 	return true;							\
 }
+/* clang-format on */
 
 #endif /* JEMALLOC_INTERNAL_SEQ_H */

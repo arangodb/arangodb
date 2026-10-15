@@ -48,32 +48,32 @@ eset_nbytes_get(eset_t *eset, pszind_t pind) {
 
 static void
 eset_stats_add(eset_t *eset, pszind_t pind, size_t sz) {
-	size_t cur = atomic_load_zu(&eset->bin_stats[pind].nextents,
-	    ATOMIC_RELAXED);
-	atomic_store_zu(&eset->bin_stats[pind].nextents, cur + 1,
-	    ATOMIC_RELAXED);
+	size_t cur = atomic_load_zu(
+	    &eset->bin_stats[pind].nextents, ATOMIC_RELAXED);
+	atomic_store_zu(
+	    &eset->bin_stats[pind].nextents, cur + 1, ATOMIC_RELAXED);
 	cur = atomic_load_zu(&eset->bin_stats[pind].nbytes, ATOMIC_RELAXED);
-	atomic_store_zu(&eset->bin_stats[pind].nbytes, cur + sz,
-	    ATOMIC_RELAXED);
+	atomic_store_zu(
+	    &eset->bin_stats[pind].nbytes, cur + sz, ATOMIC_RELAXED);
 }
 
 static void
 eset_stats_sub(eset_t *eset, pszind_t pind, size_t sz) {
-	size_t cur = atomic_load_zu(&eset->bin_stats[pind].nextents,
-	    ATOMIC_RELAXED);
-	atomic_store_zu(&eset->bin_stats[pind].nextents, cur - 1,
-	    ATOMIC_RELAXED);
+	size_t cur = atomic_load_zu(
+	    &eset->bin_stats[pind].nextents, ATOMIC_RELAXED);
+	atomic_store_zu(
+	    &eset->bin_stats[pind].nextents, cur - 1, ATOMIC_RELAXED);
 	cur = atomic_load_zu(&eset->bin_stats[pind].nbytes, ATOMIC_RELAXED);
-	atomic_store_zu(&eset->bin_stats[pind].nbytes, cur - sz,
-	    ATOMIC_RELAXED);
+	atomic_store_zu(
+	    &eset->bin_stats[pind].nbytes, cur - sz, ATOMIC_RELAXED);
 }
 
 void
 eset_insert(eset_t *eset, edata_t *edata) {
 	assert(edata_state_get(edata) == eset->state);
 
-	size_t size = edata_size_get(edata);
-	size_t psz = sz_psz_quantize_floor(size);
+	size_t   size = edata_size_get(edata);
+	size_t   psz = sz_psz_quantize_floor(size);
 	pszind_t pind = sz_psz2ind(psz);
 
 	edata_cmp_summary_t edata_cmp_summary = edata_cmp_summary_get(edata);
@@ -86,8 +86,9 @@ eset_insert(eset_t *eset, edata_t *edata) {
 		 * There's already a min element; update the summary if we're
 		 * about to insert a lower one.
 		 */
-		if (edata_cmp_summary_comp(edata_cmp_summary,
-		    eset->bins[pind].heap_min) < 0) {
+		if (edata_cmp_summary_comp(
+		        edata_cmp_summary, eset->bins[pind].heap_min)
+		    < 0) {
 			eset->bins[pind].heap_min = edata_cmp_summary;
 		}
 	}
@@ -104,19 +105,18 @@ eset_insert(eset_t *eset, edata_t *edata) {
 	 * don't need an atomic fetch-add; we can get by with a load followed by
 	 * a store.
 	 */
-	size_t cur_eset_npages =
-	    atomic_load_zu(&eset->npages, ATOMIC_RELAXED);
-	atomic_store_zu(&eset->npages, cur_eset_npages + npages,
-	    ATOMIC_RELAXED);
+	size_t cur_eset_npages = atomic_load_zu(&eset->npages, ATOMIC_RELAXED);
+	atomic_store_zu(
+	    &eset->npages, cur_eset_npages + npages, ATOMIC_RELAXED);
 }
 
 void
 eset_remove(eset_t *eset, edata_t *edata) {
-	assert(edata_state_get(edata) == eset->state ||
-	    edata_state_in_transition(edata_state_get(edata)));
+	assert(edata_state_get(edata) == eset->state
+	    || edata_state_in_transition(edata_state_get(edata)));
 
-	size_t size = edata_size_get(edata);
-	size_t psz = sz_psz_quantize_floor(size);
+	size_t   size = edata_size_get(edata);
+	size_t   psz = sz_psz_quantize_floor(size);
 	pszind_t pind = sz_psz2ind(psz);
 	if (config_stats) {
 		eset_stats_sub(eset, pind, size);
@@ -136,8 +136,9 @@ eset_remove(eset_t *eset, edata_t *edata) {
 		 * summaries of the removed element and the min element should
 		 * compare equal.
 		 */
-		if (edata_cmp_summary_comp(edata_cmp_summary,
-		    eset->bins[pind].heap_min) == 0) {
+		if (edata_cmp_summary_comp(
+		        edata_cmp_summary, eset->bins[pind].heap_min)
+		    == 0) {
 			eset->bins[pind].heap_min = edata_cmp_summary_get(
 			    edata_heap_first(&eset->bins[pind].heap));
 		}
@@ -148,11 +149,77 @@ eset_remove(eset_t *eset, edata_t *edata) {
 	 * As in eset_insert, we hold eset->mtx and so don't need atomic
 	 * operations for updating eset->npages.
 	 */
-	size_t cur_extents_npages =
-	    atomic_load_zu(&eset->npages, ATOMIC_RELAXED);
+	size_t cur_extents_npages = atomic_load_zu(
+	    &eset->npages, ATOMIC_RELAXED);
 	assert(cur_extents_npages >= npages);
-	atomic_store_zu(&eset->npages,
-	    cur_extents_npages - (size >> LG_PAGE), ATOMIC_RELAXED);
+	atomic_store_zu(&eset->npages, cur_extents_npages - (size >> LG_PAGE),
+	    ATOMIC_RELAXED);
+}
+
+static edata_t *
+eset_enumerate_alignment_search(
+    eset_t *eset, size_t size, pszind_t bin_ind, size_t alignment) {
+	if (edata_heap_empty(&eset->bins[bin_ind].heap)) {
+		return NULL;
+	}
+
+	edata_t                      *edata = NULL;
+	edata_heap_enumerate_helper_t helper;
+	edata_heap_enumerate_prepare(&eset->bins[bin_ind].heap, &helper,
+	    ESET_ENUMERATE_MAX_NUM, sizeof(helper.bfs_queue) / sizeof(void *));
+	while ((edata = edata_heap_enumerate_next(
+	            &eset->bins[bin_ind].heap, &helper))
+	    != NULL) {
+		uintptr_t base = (uintptr_t)edata_base_get(edata);
+		size_t    candidate_size = edata_size_get(edata);
+		if (candidate_size < size) {
+			continue;
+		}
+
+		uintptr_t next_align = ALIGNMENT_CEILING(
+		    (uintptr_t)base, PAGE_CEILING(alignment));
+		if (base > next_align || base + candidate_size <= next_align) {
+			/* Overflow or not crossing the next alignment. */
+			continue;
+		}
+
+		size_t leadsize = next_align - base;
+		if (candidate_size - leadsize >= size) {
+			return edata;
+		}
+	}
+
+	return NULL;
+}
+
+static edata_t *
+eset_enumerate_search(eset_t *eset, size_t size, pszind_t bin_ind,
+    bool exact_only, edata_cmp_summary_t *ret_summ) {
+	if (edata_heap_empty(&eset->bins[bin_ind].heap)) {
+		return NULL;
+	}
+
+	edata_t                      *ret = NULL, *edata = NULL;
+	edata_heap_enumerate_helper_t helper;
+	edata_heap_enumerate_prepare(&eset->bins[bin_ind].heap, &helper,
+	    ESET_ENUMERATE_MAX_NUM, sizeof(helper.bfs_queue) / sizeof(void *));
+	while ((edata = edata_heap_enumerate_next(
+	            &eset->bins[bin_ind].heap, &helper))
+	    != NULL) {
+		if ((!exact_only && edata_size_get(edata) >= size)
+		    || (exact_only && edata_size_get(edata) == size)) {
+			edata_cmp_summary_t temp_summ = edata_cmp_summary_get(
+			    edata);
+			if (ret == NULL
+			    || edata_cmp_summary_comp(temp_summ, *ret_summ)
+			        < 0) {
+				ret = edata;
+				*ret_summ = temp_summ;
+			}
+		}
+	}
+
+	return ret;
 }
 
 /*
@@ -160,24 +227,35 @@ eset_remove(eset_t *eset, edata_t *edata) {
  * requirement.  For each size, try only the first extent in the heap.
  */
 static edata_t *
-eset_fit_alignment(eset_t *eset, size_t min_size, size_t max_size,
-    size_t alignment) {
-        pszind_t pind = sz_psz2ind(sz_psz_quantize_ceil(min_size));
-        pszind_t pind_max = sz_psz2ind(sz_psz_quantize_ceil(max_size));
+eset_fit_alignment(
+    eset_t *eset, size_t min_size, size_t max_size, size_t alignment) {
+	pszind_t pind = sz_psz2ind(sz_psz_quantize_ceil(min_size));
+	pszind_t pind_max = sz_psz2ind(sz_psz_quantize_ceil(max_size));
+
+	/* See comments in eset_first_fit for why we enumerate search below. */
+	pszind_t pind_prev = sz_psz2ind(sz_psz_quantize_floor(min_size));
+	if (sz_large_size_classes_disabled() && pind != pind_prev) {
+		edata_t *ret = NULL;
+		ret = eset_enumerate_alignment_search(
+		    eset, min_size, pind_prev, alignment);
+		if (ret != NULL) {
+			return ret;
+		}
+	}
 
 	for (pszind_t i =
-	    (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)pind);
-	    i < pind_max;
-	    i = (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)i + 1)) {
+	         (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)pind);
+	     i < pind_max;
+	     i = (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)i + 1)) {
 		assert(i < SC_NPSIZES);
 		assert(!edata_heap_empty(&eset->bins[i].heap));
-		edata_t *edata = edata_heap_first(&eset->bins[i].heap);
+		edata_t  *edata = edata_heap_first(&eset->bins[i].heap);
 		uintptr_t base = (uintptr_t)edata_base_get(edata);
-		size_t candidate_size = edata_size_get(edata);
+		size_t    candidate_size = edata_size_get(edata);
 		assert(candidate_size >= min_size);
 
-		uintptr_t next_align = ALIGNMENT_CEILING((uintptr_t)base,
-		    PAGE_CEILING(alignment));
+		uintptr_t next_align = ALIGNMENT_CEILING(
+		    (uintptr_t)base, PAGE_CEILING(alignment));
 		if (base > next_align || base + candidate_size <= next_align) {
 			/* Overflow or not crossing the next alignment. */
 			continue;
@@ -203,22 +281,58 @@ eset_fit_alignment(eset_t *eset, size_t min_size, size_t max_size,
  * for others.
  */
 static edata_t *
-eset_first_fit(eset_t *eset, size_t size, bool exact_only,
-    unsigned lg_max_fit) {
-	edata_t *ret = NULL;
+eset_first_fit(
+    eset_t *eset, size_t size, bool exact_only, unsigned lg_max_fit) {
+	edata_t                     *ret = NULL;
 	edata_cmp_summary_t ret_summ JEMALLOC_CC_SILENCE_INIT({0});
 
 	pszind_t pind = sz_psz2ind(sz_psz_quantize_ceil(size));
 
 	if (exact_only) {
-		return edata_heap_empty(&eset->bins[pind].heap) ? NULL :
-		    edata_heap_first(&eset->bins[pind].heap);
+		if (sz_large_size_classes_disabled()) {
+			pszind_t pind_prev = sz_psz2ind(
+			    sz_psz_quantize_floor(size));
+			return eset_enumerate_search(eset, size, pind_prev,
+			    /* exact_only */ true, &ret_summ);
+		} else {
+			return edata_heap_empty(&eset->bins[pind].heap)
+			    ? NULL
+			    : edata_heap_first(&eset->bins[pind].heap);
+		}
+	}
+
+	/*
+	 * Each element in the eset->bins is a heap corresponding to a size
+	 * class.  When sz_large_size_classes_disabled() is false, all heaps after
+	 * pind (including pind itself) will surely satisfy the rquests while
+	 * heaps before pind cannot satisfy the request because usize is
+	 * calculated based on size classes then.  However, when
+	 * sz_large_size_classes_disabled() is true, usize is calculated by
+	 * ceiling user requested size to the closest multiple of PAGE.  This
+	 * means in the heap before pind, i.e., pind_prev, there may exist
+	 * extents able to satisfy the request and we should enumerate the heap
+	 * when pind_prev != pind.
+	 *
+	 * For example, when PAGE=4KB and the user requested size is 1MB + 4KB,
+	 * usize would be 1.25MB when sz_large_size_classes_disabled() is false.
+	 * pind points to the heap containing extents ranging in
+	 * [1.25MB, 1.5MB).  Thus, searching starting from pind will not miss
+	 * any candidates.  When sz_large_size_classes_disabled() is true, the
+	 * usize would be 1MB + 4KB and pind still points to the same heap.
+	 * In this case, the heap pind_prev points to, which contains extents
+	 * in the range [1MB, 1.25MB), may contain candidates satisfying the
+	 * usize and thus should be enumerated.
+	 */
+	pszind_t pind_prev = sz_psz2ind(sz_psz_quantize_floor(size));
+	if (sz_large_size_classes_disabled() && pind != pind_prev) {
+		ret = eset_enumerate_search(eset, size, pind_prev,
+		    /* exact_only */ false, &ret_summ);
 	}
 
 	for (pszind_t i =
-	    (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)pind);
-	    i < ESET_NPSIZES;
-	    i = (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)i + 1)) {
+	         (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)pind);
+	     i < ESET_NPSIZES;
+	     i = (pszind_t)fb_ffs(eset->bitmap, ESET_NPSIZES, (size_t)i + 1)) {
 		assert(!edata_heap_empty(&eset->bins[i].heap));
 		if (lg_max_fit == SC_PTR_BITS) {
 			/*
@@ -231,8 +345,9 @@ eset_first_fit(eset_t *eset, size_t size, bool exact_only,
 		if ((sz_pind2sz(i) >> lg_max_fit) > size) {
 			break;
 		}
-		if (ret == NULL || edata_cmp_summary_comp(
-		    eset->bins[i].heap_min, ret_summ) < 0) {
+		if (ret == NULL
+		    || edata_cmp_summary_comp(eset->bins[i].heap_min, ret_summ)
+		        < 0) {
 			/*
 			 * We grab the edata as early as possible, even though
 			 * we might change it later.  Practically, a large
@@ -243,9 +358,10 @@ eset_first_fit(eset_t *eset, size_t size, bool exact_only,
 			edata_t *edata = edata_heap_first(&eset->bins[i].heap);
 			assert(edata_size_get(edata) >= size);
 			assert(ret == NULL || edata_snad_comp(edata, ret) < 0);
-			assert(ret == NULL || edata_cmp_summary_comp(
-			    eset->bins[i].heap_min,
-			    edata_cmp_summary_get(edata)) == 0);
+			assert(ret == NULL
+			    || edata_cmp_summary_comp(eset->bins[i].heap_min,
+			           edata_cmp_summary_get(edata))
+			        == 0);
 			ret = edata;
 			ret_summ = eset->bins[i].heap_min;
 		}

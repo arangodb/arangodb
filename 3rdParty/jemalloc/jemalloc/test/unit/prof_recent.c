@@ -32,18 +32,20 @@ TEST_BEGIN(test_prof_recent_off) {
 	test_skip_if(config_prof);
 
 	const ssize_t past_ref = 0, future_ref = 0;
-	const size_t len_ref = sizeof(ssize_t);
+	const size_t  len_ref = sizeof(ssize_t);
 
 	ssize_t past = past_ref, future = future_ref;
-	size_t len = len_ref;
+	size_t  len = len_ref;
 
-#define ASSERT_SHOULD_FAIL(opt, a, b, c, d) do {			\
-	assert_d_eq(mallctl("experimental.prof_recent." opt, a, b, c,	\
-	    d), ENOENT, "Should return ENOENT when config_prof is off");\
-	assert_zd_eq(past, past_ref, "output was touched");		\
-	assert_zu_eq(len, len_ref, "output length was touched");	\
-	assert_zd_eq(future, future_ref, "input was touched");		\
-} while (0)
+#define ASSERT_SHOULD_FAIL(opt, a, b, c, d)                                    \
+	do {                                                                   \
+		assert_d_eq(                                                   \
+		    mallctl("experimental.prof_recent." opt, a, b, c, d),      \
+		    ENOENT, "Should return ENOENT when config_prof is off");   \
+		assert_zd_eq(past, past_ref, "output was touched");            \
+		assert_zu_eq(len, len_ref, "output length was touched");       \
+		assert_zd_eq(future, future_ref, "input was touched");         \
+	} while (0)
 
 	ASSERT_SHOULD_FAIL("alloc_max", NULL, NULL, NULL, 0);
 	ASSERT_SHOULD_FAIL("alloc_max", &past, &len, NULL, 0);
@@ -58,40 +60,45 @@ TEST_BEGIN(test_prof_recent_on) {
 	test_skip_if(!config_prof);
 
 	ssize_t past, future;
-	size_t len = sizeof(ssize_t);
+	size_t  len = sizeof(ssize_t);
 
 	confirm_prof_setup();
 
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, NULL, 0), 0, "no-op mallctl should be allowed");
+	assert_d_eq(
+	    mallctl("experimental.prof_recent.alloc_max", NULL, NULL, NULL, 0),
+	    0, "no-op mallctl should be allowed");
 	confirm_prof_setup();
 
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    &past, &len, NULL, 0), 0, "Read error");
+	assert_d_eq(
+	    mallctl("experimental.prof_recent.alloc_max", &past, &len, NULL, 0),
+	    0, "Read error");
 	expect_zd_eq(past, OPT_ALLOC_MAX, "Wrong read result");
 	future = OPT_ALLOC_MAX + 1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, len), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, len),
+	    0, "Write error");
 	future = -1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    &past, &len, &future, len), 0, "Read/write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", &past, &len,
+	                &future, len),
+	    0, "Read/write error");
 	expect_zd_eq(past, OPT_ALLOC_MAX + 1, "Wrong read result");
 	future = -2;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    &past, &len, &future, len), EINVAL,
-	    "Invalid write should return EINVAL");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", &past, &len,
+	                &future, len),
+	    EINVAL, "Invalid write should return EINVAL");
 	expect_zd_eq(past, OPT_ALLOC_MAX + 1,
 	    "Output should not be touched given invalid write");
 	future = OPT_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    &past, &len, &future, len), 0, "Read/write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", &past, &len,
+	                &future, len),
+	    0, "Read/write error");
 	expect_zd_eq(past, -1, "Wrong read result");
 	future = OPT_ALLOC_MAX + 2;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    &past, &len, &future, len * 2), EINVAL,
-	    "Invalid write should return EINVAL");
-	expect_zd_eq(past, -1,
-	    "Output should not be touched given invalid write");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", &past, &len,
+	                &future, len * 2),
+	    EINVAL, "Invalid write should return EINVAL");
+	expect_zd_eq(
+	    past, -1, "Output should not be touched given invalid write");
 
 	confirm_prof_setup();
 }
@@ -107,8 +114,8 @@ confirm_malloc(void *p) {
 	assert_ptr_not_null(e, "NULL edata for living pointer");
 	prof_recent_t *n = edata_prof_recent_alloc_get_no_lock_test(e);
 	assert_ptr_not_null(n, "Record in edata should not be NULL");
-	expect_ptr_not_null(n->alloc_tctx,
-	    "alloc_tctx in record should not be NULL");
+	expect_ptr_not_null(
+	    n->alloc_tctx, "alloc_tctx in record should not be NULL");
 	expect_ptr_eq(e, prof_recent_alloc_edata_get_no_lock_test(n),
 	    "edata pointer in record is not correct");
 	expect_ptr_null(n->dalloc_tctx, "dalloc_tctx in record should be NULL");
@@ -116,17 +123,17 @@ confirm_malloc(void *p) {
 
 static void
 confirm_record_size(prof_recent_t *n, unsigned kth) {
-	expect_zu_eq(n->size, NTH_REQ_SIZE(kth),
-	    "Recorded allocation size is wrong");
+	expect_zu_eq(
+	    n->size, NTH_REQ_SIZE(kth), "Recorded allocation size is wrong");
 }
 
 static void
 confirm_record_living(prof_recent_t *n) {
-	expect_ptr_not_null(n->alloc_tctx,
-	    "alloc_tctx in record should not be NULL");
+	expect_ptr_not_null(
+	    n->alloc_tctx, "alloc_tctx in record should not be NULL");
 	edata_t *edata = prof_recent_alloc_edata_get_no_lock_test(n);
-	assert_ptr_not_null(edata,
-	    "Recorded edata should not be NULL for living pointer");
+	assert_ptr_not_null(
+	    edata, "Recorded edata should not be NULL for living pointer");
 	expect_ptr_eq(n, edata_prof_recent_alloc_get_no_lock_test(edata),
 	    "Record in edata is not correct");
 	expect_ptr_null(n->dalloc_tctx, "dalloc_tctx in record should be NULL");
@@ -134,8 +141,8 @@ confirm_record_living(prof_recent_t *n) {
 
 static void
 confirm_record_released(prof_recent_t *n) {
-	expect_ptr_not_null(n->alloc_tctx,
-	    "alloc_tctx in record should not be NULL");
+	expect_ptr_not_null(
+	    n->alloc_tctx, "alloc_tctx in record should not be NULL");
 	expect_ptr_null(prof_recent_alloc_edata_get_no_lock_test(n),
 	    "Recorded edata should be NULL for released pointer");
 	expect_ptr_not_null(n->dalloc_tctx,
@@ -145,12 +152,12 @@ confirm_record_released(prof_recent_t *n) {
 TEST_BEGIN(test_prof_recent_alloc) {
 	test_skip_if(!config_prof);
 
-	bool b;
-	unsigned i, c;
-	size_t req_size;
-	void *p;
+	bool           b;
+	unsigned       i, c;
+	size_t         req_size;
+	void          *p;
 	prof_recent_t *n;
-	ssize_t future;
+	ssize_t        future;
 
 	confirm_prof_setup();
 
@@ -175,7 +182,7 @@ TEST_BEGIN(test_prof_recent_alloc) {
 			continue;
 		}
 		c = 0;
-		ql_foreach(n, &prof_recent_alloc_list, link) {
+		ql_foreach (n, &prof_recent_alloc_list, link) {
 			++c;
 			confirm_record_size(n, i + c - OPT_ALLOC_MAX);
 			if (c == OPT_ALLOC_MAX) {
@@ -184,8 +191,8 @@ TEST_BEGIN(test_prof_recent_alloc) {
 				confirm_record_released(n);
 			}
 		}
-		assert_u_eq(c, OPT_ALLOC_MAX,
-		    "Incorrect total number of allocations");
+		assert_u_eq(
+		    c, OPT_ALLOC_MAX, "Incorrect total number of allocations");
 		free(p);
 	}
 
@@ -204,13 +211,13 @@ TEST_BEGIN(test_prof_recent_alloc) {
 		p = malloc(req_size);
 		assert_ptr_not_null(p, "malloc failed unexpectedly");
 		c = 0;
-		ql_foreach(n, &prof_recent_alloc_list, link) {
+		ql_foreach (n, &prof_recent_alloc_list, link) {
 			confirm_record_size(n, c + OPT_ALLOC_MAX);
 			confirm_record_released(n);
 			++c;
 		}
-		assert_u_eq(c, OPT_ALLOC_MAX,
-		    "Incorrect total number of allocations");
+		assert_u_eq(
+		    c, OPT_ALLOC_MAX, "Incorrect total number of allocations");
 		free(p);
 	}
 
@@ -231,91 +238,96 @@ TEST_BEGIN(test_prof_recent_alloc) {
 		p = malloc(req_size);
 		confirm_malloc(p);
 		c = 0;
-		ql_foreach(n, &prof_recent_alloc_list, link) {
+		ql_foreach (n, &prof_recent_alloc_list, link) {
 			++c;
 			confirm_record_size(n,
 			    /* Is the allocation from the third batch? */
-			    i + c - OPT_ALLOC_MAX >= 3 * OPT_ALLOC_MAX ?
-			    /* If yes, then it's just recorded. */
-			    i + c - OPT_ALLOC_MAX :
-			    /*
+			    i + c - OPT_ALLOC_MAX >= 3 * OPT_ALLOC_MAX
+			        ?
+			        /* If yes, then it's just recorded. */
+			        i + c - OPT_ALLOC_MAX
+			        :
+			        /*
 			     * Otherwise, it should come from the first batch
 			     * instead of the second batch.
 			     */
-			    i + c - 2 * OPT_ALLOC_MAX);
+			        i + c - 2 * OPT_ALLOC_MAX);
 			if (c == OPT_ALLOC_MAX) {
 				confirm_record_living(n);
 			} else {
 				confirm_record_released(n);
 			}
 		}
-		assert_u_eq(c, OPT_ALLOC_MAX,
-		    "Incorrect total number of allocations");
+		assert_u_eq(
+		    c, OPT_ALLOC_MAX, "Incorrect total number of allocations");
 		free(p);
 	}
 
 	/* Increasing the limit shouldn't alter the list of records. */
 	future = OPT_ALLOC_MAX + 1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	c = 0;
-	ql_foreach(n, &prof_recent_alloc_list, link) {
+	ql_foreach (n, &prof_recent_alloc_list, link) {
 		confirm_record_size(n, c + 3 * OPT_ALLOC_MAX);
 		confirm_record_released(n);
 		++c;
 	}
-	assert_u_eq(c, OPT_ALLOC_MAX,
-	    "Incorrect total number of allocations");
+	assert_u_eq(c, OPT_ALLOC_MAX, "Incorrect total number of allocations");
 
 	/*
 	 * Decreasing the limit shouldn't alter the list of records as long as
 	 * the new limit is still no less than the length of the list.
 	 */
 	future = OPT_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	c = 0;
-	ql_foreach(n, &prof_recent_alloc_list, link) {
+	ql_foreach (n, &prof_recent_alloc_list, link) {
 		confirm_record_size(n, c + 3 * OPT_ALLOC_MAX);
 		confirm_record_released(n);
 		++c;
 	}
-	assert_u_eq(c, OPT_ALLOC_MAX,
-	    "Incorrect total number of allocations");
+	assert_u_eq(c, OPT_ALLOC_MAX, "Incorrect total number of allocations");
 
 	/*
 	 * Decreasing the limit should shorten the list of records if the new
 	 * limit is less than the length of the list.
 	 */
 	future = OPT_ALLOC_MAX - 1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	c = 0;
-	ql_foreach(n, &prof_recent_alloc_list, link) {
+	ql_foreach (n, &prof_recent_alloc_list, link) {
 		++c;
 		confirm_record_size(n, c + 3 * OPT_ALLOC_MAX);
 		confirm_record_released(n);
 	}
-	assert_u_eq(c, OPT_ALLOC_MAX - 1,
-	    "Incorrect total number of allocations");
+	assert_u_eq(
+	    c, OPT_ALLOC_MAX - 1, "Incorrect total number of allocations");
 
 	/* Setting to unlimited shouldn't alter the list of records. */
 	future = -1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	c = 0;
-	ql_foreach(n, &prof_recent_alloc_list, link) {
+	ql_foreach (n, &prof_recent_alloc_list, link) {
 		++c;
 		confirm_record_size(n, c + 3 * OPT_ALLOC_MAX);
 		confirm_record_released(n);
 	}
-	assert_u_eq(c, OPT_ALLOC_MAX - 1,
-	    "Incorrect total number of allocations");
+	assert_u_eq(
+	    c, OPT_ALLOC_MAX - 1, "Incorrect total number of allocations");
 
 	/* Downshift to only one record. */
 	future = 1;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	assert_false(ql_empty(&prof_recent_alloc_list), "Recent list is empty");
 	n = ql_first(&prof_recent_alloc_list);
 	confirm_record_size(n, 4 * OPT_ALLOC_MAX - 1);
@@ -325,17 +337,19 @@ TEST_BEGIN(test_prof_recent_alloc) {
 
 	/* Completely turn off. */
 	future = 0;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
-	assert_true(ql_empty(&prof_recent_alloc_list),
-	    "Recent list should be empty");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
+	assert_true(
+	    ql_empty(&prof_recent_alloc_list), "Recent list should be empty");
 
 	/* Restore the settings. */
 	future = OPT_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
-	assert_true(ql_empty(&prof_recent_alloc_list),
-	    "Recent list should be empty");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
+	assert_true(
+	    ql_empty(&prof_recent_alloc_list), "Recent list should be empty");
 
 	confirm_prof_setup();
 }
@@ -344,7 +358,7 @@ TEST_END
 #undef NTH_REQ_SIZE
 
 #define DUMP_OUT_SIZE 4096
-static char dump_out[DUMP_OUT_SIZE];
+static char   dump_out[DUMP_OUT_SIZE];
 static size_t dump_out_len = 0;
 
 static void
@@ -359,14 +373,15 @@ static void
 call_dump(void) {
 	static void *in[2] = {test_dump_write_cb, NULL};
 	dump_out_len = 0;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_dump",
-	    NULL, NULL, in, sizeof(in)), 0, "Dump mallctl raised error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_dump", NULL, NULL,
+	                in, sizeof(in)),
+	    0, "Dump mallctl raised error");
 }
 
 typedef struct {
 	size_t size;
 	size_t usize;
-	bool released;
+	bool   released;
 } confirm_record_t;
 
 #define DUMP_ERROR "Dump output is wrong"
@@ -375,7 +390,7 @@ static void
 confirm_record(const char *template, const confirm_record_t *records,
     const size_t n_records) {
 	static const char *types[2] = {"alloc", "dalloc"};
-	static char buf[64];
+	static char        buf[64];
 
 	/*
 	 * The template string would be in the form of:
@@ -384,32 +399,35 @@ confirm_record(const char *template, const confirm_record_t *records,
 	 * "{...,\"recent_alloc\":[...]}".
 	 * Using "- 2" serves to cut right before the ending "]}".
 	 */
-	assert_d_eq(memcmp(dump_out, template, strlen(template) - 2), 0,
-	    DUMP_ERROR);
+	assert_d_eq(
+	    memcmp(dump_out, template, strlen(template) - 2), 0, DUMP_ERROR);
 	assert_d_eq(memcmp(dump_out + strlen(dump_out) - 2,
-	    template + strlen(template) - 2, 2), 0, DUMP_ERROR);
+	                template + strlen(template) - 2, 2),
+	    0, DUMP_ERROR);
 
-	const char *start = dump_out + strlen(template) - 2;
-	const char *end = dump_out + strlen(dump_out) - 2;
+	const char             *start = dump_out + strlen(template) - 2;
+	const char             *end = dump_out + strlen(dump_out) - 2;
 	const confirm_record_t *record;
 	for (record = records; record < records + n_records; ++record) {
+#define ASSERT_CHAR(c)                                                         \
+	do {                                                                   \
+		assert_true(start < end, DUMP_ERROR);                          \
+		assert_c_eq(*start++, c, DUMP_ERROR);                          \
+	} while (0)
 
-#define ASSERT_CHAR(c) do {						\
-	assert_true(start < end, DUMP_ERROR);				\
-	assert_c_eq(*start++, c, DUMP_ERROR);				\
-} while (0)
+#define ASSERT_STR(s)                                                          \
+	do {                                                                   \
+		const size_t len = strlen(s);                                  \
+		assert_true(start + len <= end, DUMP_ERROR);                   \
+		assert_d_eq(memcmp(start, s, len), 0, DUMP_ERROR);             \
+		start += len;                                                  \
+	} while (0)
 
-#define ASSERT_STR(s) do {						\
-	const size_t len = strlen(s);					\
-	assert_true(start + len <= end, DUMP_ERROR);			\
-	assert_d_eq(memcmp(start, s, len), 0, DUMP_ERROR);		\
-	start += len;							\
-} while (0)
-
-#define ASSERT_FORMATTED_STR(s, ...) do {				\
-	malloc_snprintf(buf, sizeof(buf), s, __VA_ARGS__);		\
-	ASSERT_STR(buf);						\
-} while (0)
+#define ASSERT_FORMATTED_STR(s, ...)                                           \
+	do {                                                                   \
+		malloc_snprintf(buf, sizeof(buf), s, __VA_ARGS__);             \
+		ASSERT_STR(buf);                                               \
+	} while (0)
 
 		if (record != records) {
 			ASSERT_CHAR(',');
@@ -442,10 +460,10 @@ confirm_record(const char *template, const confirm_record_t *records,
 			ASSERT_CHAR(',');
 
 			if (thd_has_setname() && opt_prof_sys_thread_name) {
-				ASSERT_FORMATTED_STR("\"%s_thread_name\"",
-				    *type);
-				ASSERT_FORMATTED_STR(":\"%s\",",
-				    test_thread_name);
+				ASSERT_FORMATTED_STR(
+				    "\"%s_thread_name\"", *type);
+				ASSERT_FORMATTED_STR(
+				    ":\"%s\",", test_thread_name);
 			}
 
 			ASSERT_FORMATTED_STR("\"%s_time\"", *type);
@@ -458,9 +476,9 @@ confirm_record(const char *template, const confirm_record_t *records,
 			ASSERT_FORMATTED_STR("\"%s_trace\"", *type);
 			ASSERT_CHAR(':');
 			ASSERT_CHAR('[');
-			while (isdigit(*start) || *start == 'x' ||
-			    (*start >= 'a' && *start <= 'f') ||
-			    *start == '\"' || *start == ',') {
+			while (isdigit(*start) || *start == 'x'
+			    || (*start >= 'a' && *start <= 'f')
+			    || *start == '\"' || *start == ',') {
 				++start;
 			}
 			ASSERT_CHAR(']');
@@ -483,7 +501,6 @@ confirm_record(const char *template, const confirm_record_t *records,
 #undef ASSERT_FORMATTED_STR
 #undef ASSERT_STR
 #undef ASSERT_CHAR
-
 	}
 	assert_ptr_eq(record, records + n_records, DUMP_ERROR);
 	assert_ptr_eq(start, end, DUMP_ERROR);
@@ -495,25 +512,30 @@ TEST_BEGIN(test_prof_recent_alloc_dump) {
 	thd_setname(test_thread_name);
 	confirm_prof_setup();
 
-	ssize_t future;
-	void *p, *q;
+	ssize_t          future;
+	void            *p, *q;
 	confirm_record_t records[2];
 
-	assert_zu_eq(lg_prof_sample, (size_t)0,
-	    "lg_prof_sample not set correctly");
+	assert_zu_eq(
+	    lg_prof_sample, (size_t)0, "lg_prof_sample not set correctly");
 
 	future = 0;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	call_dump();
-	expect_str_eq(dump_out, "{\"sample_interval\":1,"
-	    "\"recent_alloc_max\":0,\"recent_alloc\":[]}", DUMP_ERROR);
+	expect_str_eq(dump_out,
+	    "{\"sample_interval\":1,"
+	    "\"recent_alloc_max\":0,\"recent_alloc\":[]}",
+	    DUMP_ERROR);
 
 	future = 2;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	call_dump();
-	const char *template = "{\"sample_interval\":1,"
+	const char *template =
+	    "{\"sample_interval\":1,"
 	    "\"recent_alloc_max\":2,\"recent_alloc\":[]}";
 	expect_str_eq(dump_out, template, DUMP_ERROR);
 
@@ -542,8 +564,9 @@ TEST_BEGIN(test_prof_recent_alloc_dump) {
 	confirm_record(template, records, 2);
 
 	future = OPT_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &future, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &future, sizeof(ssize_t)),
+	    0, "Write error");
 	confirm_prof_setup();
 }
 TEST_END
@@ -558,14 +581,14 @@ TEST_END
 #define STRESS_ALLOC_MAX 4096
 
 typedef struct {
-	thd_t thd;
+	thd_t  thd;
 	size_t id;
-	void *ptrs[N_PTRS];
+	void  *ptrs[N_PTRS];
 	size_t count;
 } thd_data_t;
 
 static thd_data_t thd_data[N_THREADS];
-static ssize_t test_max;
+static ssize_t    test_max;
 
 static void
 test_write_cb(void *cbopaque, const char *str) {
@@ -575,11 +598,11 @@ test_write_cb(void *cbopaque, const char *str) {
 static void *
 f_thread(void *arg) {
 	const size_t thd_id = *(size_t *)arg;
-	thd_data_t *data_p = thd_data + thd_id;
+	thd_data_t  *data_p = thd_data + thd_id;
 	assert(data_p->id == thd_id);
 	data_p->count = 0;
 	uint64_t rand = (uint64_t)thd_id;
-	tsd_t *tsd = tsd_fetch();
+	tsd_t   *tsd = tsd_fetch();
 	assert(test_max > 1);
 	ssize_t last_max = -1;
 	for (int i = 0; i < N_ITERS; i++) {
@@ -603,15 +626,15 @@ f_thread(void *arg) {
 		} else if (rand % 5 == 1) {
 			last_max = prof_recent_alloc_max_ctl_read();
 		} else if (rand % 5 == 2) {
-			last_max =
-			    prof_recent_alloc_max_ctl_write(tsd, test_max * 2);
+			last_max = prof_recent_alloc_max_ctl_write(
+			    tsd, test_max * 2);
 		} else if (rand % 5 == 3) {
-			last_max =
-			    prof_recent_alloc_max_ctl_write(tsd, test_max);
+			last_max = prof_recent_alloc_max_ctl_write(
+			    tsd, test_max);
 		} else {
 			assert(rand % 5 == 4);
-			last_max =
-			    prof_recent_alloc_max_ctl_write(tsd, test_max / 2);
+			last_max = prof_recent_alloc_max_ctl_write(
+			    tsd, test_max / 2);
 		}
 		assert_zd_ge(last_max, -1, "Illegal last-N max");
 	}
@@ -640,8 +663,9 @@ TEST_BEGIN(test_prof_recent_stress) {
 	}
 
 	test_max = STRESS_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &test_max, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &test_max, sizeof(ssize_t)),
+	    0, "Write error");
 	for (size_t i = 0; i < N_THREADS; i++) {
 		thd_data_t *data_p = thd_data + i;
 		data_p->id = i;
@@ -653,8 +677,9 @@ TEST_BEGIN(test_prof_recent_stress) {
 	}
 
 	test_max = OPT_ALLOC_MAX;
-	assert_d_eq(mallctl("experimental.prof_recent.alloc_max",
-	    NULL, NULL, &test_max, sizeof(ssize_t)), 0, "Write error");
+	assert_d_eq(mallctl("experimental.prof_recent.alloc_max", NULL, NULL,
+	                &test_max, sizeof(ssize_t)),
+	    0, "Write error");
 	confirm_prof_setup();
 }
 TEST_END
@@ -666,11 +691,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_confirm_setup,
-	    test_prof_recent_off,
-	    test_prof_recent_on,
-	    test_prof_recent_alloc,
-	    test_prof_recent_alloc_dump,
-	    test_prof_recent_stress);
+	return test(test_confirm_setup, test_prof_recent_off,
+	    test_prof_recent_on, test_prof_recent_alloc,
+	    test_prof_recent_alloc_dump, test_prof_recent_stress);
 }

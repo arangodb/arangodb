@@ -3,35 +3,36 @@
 
 #include "jemalloc/internal/jemalloc_preamble.h"
 #include "jemalloc/internal/jemalloc_internal_types.h"
+#include "jemalloc/internal/thread_event_registry.h"
 #include "jemalloc/internal/tsd_types.h"
 
 /*  OPTION(opt,		var_name,	default,	set_value_to) */
-#define STATS_PRINT_OPTIONS						\
-    OPTION('J',		json,		false,		true)		\
-    OPTION('g',		general,	true,		false)		\
-    OPTION('m',		merged,		config_stats,	false)		\
-    OPTION('d',		destroyed,	config_stats,	false)		\
-    OPTION('a',		unmerged,	config_stats,	false)		\
-    OPTION('b',		bins,		true,		false)		\
-    OPTION('l',		large,		true,		false)		\
-    OPTION('x',		mutex,		true,		false)		\
-    OPTION('e',		extents,	true,		false)		\
-    OPTION('h',		hpa,		config_stats,	false)
+#define STATS_PRINT_OPTIONS                                                    \
+	OPTION('J', json, false, true)                                         \
+	OPTION('g', general, true, false)                                      \
+	OPTION('m', merged, config_stats, false)                               \
+	OPTION('d', destroyed, config_stats, false)                            \
+	OPTION('a', unmerged, config_stats, false)                             \
+	OPTION('b', bins, true, false)                                         \
+	OPTION('l', large, true, false)                                        \
+	OPTION('x', mutex, true, false)                                        \
+	OPTION('e', extents, true, false)                                      \
+	OPTION('h', hpa, config_stats, false)
 
 enum {
 #define OPTION(o, v, d, s) stats_print_option_num_##v,
-    STATS_PRINT_OPTIONS
+	STATS_PRINT_OPTIONS
 #undef OPTION
-    stats_print_tot_num_options
+	    stats_print_tot_num_options
 };
 
 /* Options for stats_print. */
 extern bool opt_stats_print;
-extern char opt_stats_print_opts[stats_print_tot_num_options+1];
+extern char opt_stats_print_opts[stats_print_tot_num_options + 1];
 
 /* Utilities for stats_interval. */
 extern int64_t opt_stats_interval;
-extern char opt_stats_interval_opts[stats_print_tot_num_options+1];
+extern char    opt_stats_interval_opts[stats_print_tot_num_options + 1];
 
 #define STATS_INTERVAL_DEFAULT -1
 /*
@@ -43,9 +44,7 @@ extern char opt_stats_interval_opts[stats_print_tot_num_options+1];
 #define STATS_INTERVAL_ACCUM_BATCH_MAX (4 << 20)
 
 /* Only accessed by thread event. */
-uint64_t stats_interval_new_event_wait(tsd_t *tsd);
-uint64_t stats_interval_postponed_event_wait(tsd_t *tsd);
-void stats_interval_event_handler(tsd_t *tsd, uint64_t elapsed);
+extern te_base_cb_t stats_interval_te_handler;
 
 /* Implements je_malloc_stats_print. */
 void stats_print(write_cb_t *write_cb, void *cbopaque, const char *opts);

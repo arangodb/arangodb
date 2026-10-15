@@ -88,6 +88,7 @@ my %obj_tool_map = (
   #"nm_pdb" => "nm-pdb",       # for reading windows (PDB-format) executables
   #"addr2line_pdb" => "addr2line-pdb",                                # ditto
   #"otool" => "otool",         # equivalent of objdump on OS X
+  #"dyld_info" => "dyld_info",   # equivalent of otool on OS X for shared cache
 );
 # NOTE: these are lists, so you can put in commandline flags if you want.
 my @DOT = ("dot");          # leave non-absolute, since it may be in /usr/local
@@ -688,15 +689,15 @@ sub Main() {
   my $symbol_map = {};
 
   # Read one profile, pick the last item on the list
-  my $data = ReadProfile($main::prog, pop(@main::profile_files));
+  my $data = ReadProfile($main::prog, $main::profile_files[0]);
   my $profile = $data->{profile};
   my $pcs = $data->{pcs};
   my $libs = $data->{libs};   # Info about main program and shared libraries
   $symbol_map = MergeSymbols($symbol_map, $data->{symbols});
 
   # Add additional profiles, if available.
-  if (scalar(@main::profile_files) > 0) {
-    foreach my $pname (@main::profile_files) {
+  if (scalar(@main::profile_files) > 1) {
+    foreach my $pname (@main::profile_files[1..$#main::profile_files]) {
       my $data2 = ReadProfile($main::prog, $pname);
       $profile = AddProfile($profile, $data2->{profile});
       $pcs = AddPcs($pcs, $data2->{pcs});
@@ -2960,6 +2961,20 @@ sub RemoveUninterestingFrames {
                       'void* newImpl',
                       'fallbackNewImpl',
                       'void* fallbackNewImpl',
+                      'fallback_impl',
+                      'void* fallback_impl',
+                      'imalloc',
+                      'int imalloc',
+                      'imalloc_body',
+                      'int imalloc_body',
+                      'prof_alloc_prep',
+                      'prof_tctx_t *prof_alloc_prep',
+                      'prof_backtrace_impl',
+                      'void prof_backtrace_impl',
+                      'je_prof_backtrace',
+                      'void je_prof_backtrace',
+                      'je_prof_tctx_create',
+                      'prof_tctx_t* prof_tctx_create',
                       '@JEMALLOC_PREFIX@free',
                       '@JEMALLOC_PREFIX@memalign',
                       '@JEMALLOC_PREFIX@posix_memalign',
@@ -2968,8 +2983,12 @@ sub RemoveUninterestingFrames {
                       '@JEMALLOC_PREFIX@valloc',
                       '@JEMALLOC_PREFIX@realloc',
                       '@JEMALLOC_PREFIX@mallocx',
+                      'irallocx_prof',
+                      'void *irallocx_prof',
                       '@JEMALLOC_PREFIX@rallocx',
                       'do_rallocx',
+                      'ixallocx_prof',
+                      'size_t ixallocx_prof',
                       '@JEMALLOC_PREFIX@xallocx',
                       '@JEMALLOC_PREFIX@dallocx',
                       '@JEMALLOC_PREFIX@sdallocx',
@@ -3082,6 +3101,8 @@ sub RemoveUninterestingFrames {
     foreach my $a (@addrs) {
       if (exists($symbols->{$a})) {
         my $func = $symbols->{$a}->[0];
+        # Remove suffix in the symbols following space when filtering.
+        $func =~ s/ .*//;
         if ($skip{$func} || ($func =~ m/$skip_regexp/)) {
           # Throw away the portion of the backtrace seen so far, under the
           # assumption that previous frames were for functions internal to the
@@ -4661,7 +4682,65 @@ sub ParseTextSectionHeaderFromOtool {
   return $r;
 }
 
+# Parse text section header of a library in OS X shared cache using dyld_info
+sub ParseTextSectionHeaderFromDyldInfo {
+  my $lib = shift;
+
+  my $size = undef;
+  my $vma;
+  my $file_offset;
+  # Get dyld_info output from the library file to figure out how to
+  # map between mapped addresses and addresses in the library.
+  my $cmd = ShellEscape($obj_tool_map{"dyld_info"}, "-segments", $lib);
+  open(DYLD, "$cmd |") || error("$cmd: $!\n");
+
+  while (<DYLD>) {
+    s/\r//g;         # turn windows-looking lines into unix-looking lines
+    # -segments:
+    #    load-address    segment section        sect-size  seg-size perm
+    #     0x1803E0000    __TEXT                                   112KB r.x
+    #     0x1803E4F34             __text            80960
+    #     0x1803F8B74             __auth_stubs        768
+    #     0x1803F8E74             __init_offsets        4
+    #     0x1803F8E78             __gcc_except_tab   1180
+    my @x = split;
+    if ($#x >= 2) {
+      if ($x[0] eq 'load-offset') {
+        # dyld_info should only be used for the shared lib.
+        return undef;
+      } elsif ($x[1] eq '__TEXT') {
+        $file_offset = $x[0];
+      } elsif ($x[1] eq '__text') {
+        $size = $x[2];
+        $vma = $x[0];
+        $file_offset = AddressSub($x[0], $file_offset);
+        last;
+      }
+    }
+  }
+  close(DYLD);
+
+  if (!defined($vma) || !defined($size) || !defined($file_offset)) {
+     return undef;
+  }
+
+  my $r = {};
+  $r->{size} = $size;
+  $r->{vma} = $vma;
+  $r->{file_offset} = $file_offset;
+
+  return $r;
+}
+
 sub ParseTextSectionHeader {
+  # obj_tool_map("dyld_info") is only defined if we're in a Mach-O environment
+  if (defined($obj_tool_map{"dyld_info"})) {
+    my $r = ParseTextSectionHeaderFromDyldInfo(@_);
+    if (defined($r)){
+      return $r;
+    }
+  }
+  # if dyld_info doesn't work, or we don't have it, fall back to otool
   # obj_tool_map("otool") is only defined if we're in a Mach-O environment
   if (defined($obj_tool_map{"otool"})) {
     my $r = ParseTextSectionHeaderFromOtool(@_);
@@ -4702,7 +4781,7 @@ sub ParseLibraries {
       $offset = HexExtend($3);
       $lib = $4;
       $lib =~ s|\\|/|g;     # turn windows-style paths into unix-style paths
-    } elsif ($l =~ /^\s*($h)-($h):\s*(\S+\.so(\.\d+)*)/) {
+    } elsif ($l =~ /^\s*($h)-($h):\s*(\S+\.(so|dll|dylib|bundle)(\.\d+)*)/) {
       # Cooked line from DumpAddressMap.  Example:
       #   40000000-40015000: /lib/ld-2.3.2.so
       $start = HexExtend($1);
@@ -4719,6 +4798,15 @@ sub ParseLibraries {
       $offset = HexExtend($3);
       $lib = $4;
       $lib =~ s|\\|/|g;     # turn windows-style paths into unix-style paths
+    } elsif (($l =~ /^\s*($h)-($h):\s*(\S+)/) && ($3 eq $prog)) {
+      # PIEs and address space randomization do not play well with our
+      # default assumption that main executable is at lowest
+      # addresses. So we're detecting main executable from
+      # DumpAddressMap as well.
+      $start = HexExtend($1);
+      $finish = HexExtend($2);
+      $offset = $zero_offset;
+      $lib = $3;
     }
     # FreeBSD 10.0 virtual memory map /proc/curproc/map as defined in
     # function procfs_doprocmap (sys/fs/procfs/procfs_map.c)
@@ -5249,6 +5337,7 @@ sub ConfigureObjTools {
   if ($file_type =~ /Mach-O/) {
     # OS X uses otool to examine Mach-O files, rather than objdump.
     $obj_tool_map{"otool"} = "otool";
+    $obj_tool_map{"dyld_info"} = "dyld_info";
     $obj_tool_map{"addr2line"} = "false";  # no addr2line
     $obj_tool_map{"objdump"} = "false";  # no objdump
   }

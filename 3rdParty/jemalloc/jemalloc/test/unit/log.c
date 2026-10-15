@@ -18,16 +18,13 @@ expect_no_logging(const char *names) {
 	int count = 0;
 
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1)
-			count++;
+		log_do_begin(log_l1) count++;
 		log_do_end(log_l1)
 
-		log_do_begin(log_l2)
-			count++;
+		    log_do_begin(log_l2) count++;
 		log_do_end(log_l2)
 
-		log_do_begin(log_l2_a)
-			count++;
+		    log_do_begin(log_l2_a) count++;
 		log_do_end(log_l2_a)
 	}
 	expect_d_eq(count, 0, "Disabled logging not ignored!");
@@ -57,8 +54,7 @@ TEST_BEGIN(test_log_enabled_direct) {
 	count = 0;
 	update_log_var_names("l1");
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1)
-			count++;
+		log_do_begin(log_l1) count++;
 		log_do_end(log_l1)
 	}
 	expect_d_eq(count, 10, "Mis-logged!");
@@ -66,8 +62,7 @@ TEST_BEGIN(test_log_enabled_direct) {
 	count = 0;
 	update_log_var_names("l1.a");
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1_a)
-			count++;
+		log_do_begin(log_l1_a) count++;
 		log_do_end(log_l1_a)
 	}
 	expect_d_eq(count, 10, "Mis-logged!");
@@ -75,12 +70,10 @@ TEST_BEGIN(test_log_enabled_direct) {
 	count = 0;
 	update_log_var_names("l1.a|abc|l2|def");
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1_a)
-			count++;
+		log_do_begin(log_l1_a) count++;
 		log_do_end(log_l1_a)
 
-		log_do_begin(log_l2)
-			count++;
+		    log_do_begin(log_l2) count++;
 		log_do_end(log_l2)
 	}
 	expect_d_eq(count, 20, "Mis-logged!");
@@ -108,28 +101,22 @@ TEST_BEGIN(test_log_enabled_indirect) {
 	/* 4 are on total, so should sum to 40. */
 	int count = 0;
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1)
-			count++;
+		log_do_begin(log_l1) count++;
 		log_do_end(log_l1)
 
-		log_do_begin(log_l1a)
-			count++;
+		    log_do_begin(log_l1a) count++;
 		log_do_end(log_l1a)
 
-		log_do_begin(log_l1_a)
-			count++;
+		    log_do_begin(log_l1_a) count++;
 		log_do_end(log_l1_a)
 
-		log_do_begin(log_l2_a)
-			count++;
+		    log_do_begin(log_l2_a) count++;
 		log_do_end(log_l2_a)
 
-		log_do_begin(log_l2_b_a)
-			count++;
+		    log_do_begin(log_l2_b_a) count++;
 		log_do_end(log_l2_b_a)
 
-		log_do_begin(log_l2_b_b)
-			count++;
+		    log_do_begin(log_l2_b_b) count++;
 		log_do_end(log_l2_b_b)
 	}
 
@@ -147,12 +134,10 @@ TEST_BEGIN(test_log_enabled_global) {
 
 	int count = 0;
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(log_l1)
-		    count++;
+		log_do_begin(log_l1) count++;
 		log_do_end(log_l1)
 
-		log_do_begin(log_l2_a_a)
-		    count++;
+		    log_do_begin(log_l2_a_a) count++;
 		log_do_end(log_l2_a_a)
 	}
 	expect_d_eq(count, 20, "Mis-logged!");
@@ -167,8 +152,7 @@ TEST_BEGIN(test_logs_if_no_init) {
 
 	int count = 0;
 	for (int i = 0; i < 10; i++) {
-		log_do_begin(l)
-			count++;
+		log_do_begin(l) count++;
 		log_do_end(l)
 	}
 	expect_d_eq(count, 0, "Logging shouldn't happen if not initialized.");
@@ -188,11 +172,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_log_disabled,
-	    test_log_enabled_direct,
-	    test_log_enabled_indirect,
-	    test_log_enabled_global,
-	    test_logs_if_no_init,
-	    test_log_only_format_string);
+	return test(test_log_disabled, test_log_enabled_direct,
+	    test_log_enabled_indirect, test_log_enabled_global,
+	    test_logs_if_no_init, test_log_only_format_string);
 }

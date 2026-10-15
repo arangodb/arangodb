@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct extent_hooks_s extent_hooks_t;
 
 /*
@@ -75,3 +79,7 @@ struct extent_hooks_s {
 	extent_split_t		*split;
 	extent_merge_t		*merge;
 };
+
+#ifdef __cplusplus
+}
+#endif

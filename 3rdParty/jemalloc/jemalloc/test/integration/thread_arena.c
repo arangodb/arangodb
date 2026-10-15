@@ -5,10 +5,10 @@
 void *
 thd_start(void *arg) {
 	unsigned main_arena_ind = *(unsigned *)arg;
-	void *p;
+	void    *p;
 	unsigned arena_ind;
-	size_t size;
-	int err;
+	size_t   size;
+	int      err;
 
 	p = malloc(1);
 	expect_ptr_not_null(p, "Error in malloc()");
@@ -16,7 +16,7 @@ thd_start(void *arg) {
 
 	size = sizeof(arena_ind);
 	if ((err = mallctl("thread.arena", (void *)&arena_ind, &size,
-	    (void *)&main_arena_ind, sizeof(main_arena_ind)))) {
+	         (void *)&main_arena_ind, sizeof(main_arena_ind)))) {
 		char buf[BUFERROR_BUF];
 
 		buferror(err, buf, sizeof(buf));
@@ -24,8 +24,8 @@ thd_start(void *arg) {
 	}
 
 	size = sizeof(arena_ind);
-	if ((err = mallctl("thread.arena", (void *)&arena_ind, &size, NULL,
-	    0))) {
+	if ((err = mallctl(
+	         "thread.arena", (void *)&arena_ind, &size, NULL, 0))) {
 		char buf[BUFERROR_BUF];
 
 		buferror(err, buf, sizeof(buf));
@@ -46,28 +46,28 @@ mallctl_failure(int err) {
 }
 
 TEST_BEGIN(test_thread_arena) {
-	void *p;
-	int err;
-	thd_t thds[NTHREADS];
+	void    *p;
+	int      err;
+	thd_t    thds[NTHREADS];
 	unsigned i;
 
 	p = malloc(1);
 	expect_ptr_not_null(p, "Error in malloc()");
 
 	unsigned arena_ind, old_arena_ind;
-	size_t sz = sizeof(unsigned);
+	size_t   sz = sizeof(unsigned);
 	expect_d_eq(mallctl("arenas.create", (void *)&arena_ind, &sz, NULL, 0),
 	    0, "Arena creation failure");
 
 	size_t size = sizeof(arena_ind);
 	if ((err = mallctl("thread.arena", (void *)&old_arena_ind, &size,
-	    (void *)&arena_ind, sizeof(arena_ind))) != 0) {
+	         (void *)&arena_ind, sizeof(arena_ind)))
+	    != 0) {
 		mallctl_failure(err);
 	}
 
 	for (i = 0; i < NTHREADS; i++) {
-		thd_create(&thds[i], thd_start,
-		    (void *)&arena_ind);
+		thd_create(&thds[i], thd_start, (void *)&arena_ind);
 	}
 
 	for (i = 0; i < NTHREADS; i++) {
@@ -81,6 +81,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_thread_arena);
+	return test(test_thread_arena);
 }

@@ -10,9 +10,9 @@ static size_t miblen = MIBLEN;
 #define HUGE_BATCH (1000 * 1000)
 #define HUGE_BATCH_ITER 100
 #define LEN (100 * 1000 * 1000)
-static void *batch_ptrs[LEN];
+static void  *batch_ptrs[LEN];
 static size_t batch_ptrs_next = 0;
-static void *item_ptrs[LEN];
+static void  *item_ptrs[LEN];
 static size_t item_ptrs_next = 0;
 
 #define SIZE 7
@@ -22,17 +22,18 @@ struct batch_alloc_packet_s {
 	void **ptrs;
 	size_t num;
 	size_t size;
-	int flags;
+	int    flags;
 };
 
 static void
 batch_alloc_wrapper(size_t batch) {
-	batch_alloc_packet_t batch_alloc_packet =
-	    {batch_ptrs + batch_ptrs_next, batch, SIZE, 0};
+	batch_alloc_packet_t batch_alloc_packet = {
+	    batch_ptrs + batch_ptrs_next, batch, SIZE, 0};
 	size_t filled;
 	size_t len = sizeof(size_t);
 	assert_d_eq(mallctlbymib(mib, miblen, &filled, &len,
-	    &batch_alloc_packet, sizeof(batch_alloc_packet)), 0, "");
+	                &batch_alloc_packet, sizeof(batch_alloc_packet)),
+	    0, "");
 	assert_zu_eq(filled, batch, "");
 }
 
@@ -94,9 +95,9 @@ compare_without_free(size_t batch, size_t iter,
 	batch_ptrs_next = 0;
 	release_and_clear(item_ptrs, item_ptrs_next);
 	item_ptrs_next = 0;
-	compare_funcs(0, iter,
-	    "batch allocation", batch_alloc_without_free_func,
-	    "item allocation", item_alloc_without_free_func);
+	compare_funcs(0, iter, "batch allocation",
+	    batch_alloc_without_free_func, "item allocation",
+	    item_alloc_without_free_func);
 	release_and_clear(batch_ptrs, batch_ptrs_next);
 	batch_ptrs_next = 0;
 	release_and_clear(item_ptrs, item_ptrs_next);
@@ -116,8 +117,7 @@ compare_with_free(size_t batch, size_t iter,
 	}
 	batch_ptrs_next = 0;
 	item_ptrs_next = 0;
-	compare_funcs(0, iter,
-	    "batch allocation", batch_alloc_with_free_func,
+	compare_funcs(0, iter, "batch allocation", batch_alloc_with_free_func,
 	    "item allocation", item_alloc_with_free_func);
 	batch_ptrs_next = 0;
 	item_ptrs_next = 0;
@@ -187,12 +187,11 @@ TEST_BEGIN(test_huge_batch_with_free) {
 }
 TEST_END
 
-int main(void) {
-	assert_d_eq(mallctlnametomib("experimental.batch_alloc", mib, &miblen),
-	    0, "");
-	return test_no_reentrancy(
-	    test_tiny_batch_without_free,
-	    test_tiny_batch_with_free,
-	    test_huge_batch_without_free,
+int
+main(void) {
+	assert_d_eq(
+	    mallctlnametomib("experimental.batch_alloc", mib, &miblen), 0, "");
+	return test_no_reentrancy(test_tiny_batch_without_free,
+	    test_tiny_batch_with_free, test_huge_batch_without_free,
 	    test_huge_batch_with_free);
 }

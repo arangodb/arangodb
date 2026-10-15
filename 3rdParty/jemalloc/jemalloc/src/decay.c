@@ -4,9 +4,8 @@
 #include "jemalloc/internal/decay.h"
 
 static const uint64_t h_steps[SMOOTHSTEP_NSTEPS] = {
-#define STEP(step, h, x, y)			\
-		h,
-		SMOOTHSTEP
+#define STEP(step, h, x, y) h,
+    SMOOTHSTEP
 #undef STEP
 };
 
@@ -21,8 +20,9 @@ decay_deadline_init(decay_t *decay) {
 	if (decay_ms_read(decay) > 0) {
 		nstime_t jitter;
 
-		nstime_init(&jitter, prng_range_u64(&decay->jitter_state,
-		    nstime_ns(&decay->interval)));
+		nstime_init(&jitter,
+		    prng_range_u64(
+		        &decay->jitter_state, nstime_ns(&decay->interval)));
 		nstime_add(&decay->deadline, &jitter);
 	}
 }
@@ -31,8 +31,8 @@ void
 decay_reinit(decay_t *decay, nstime_t *cur_time, ssize_t decay_ms) {
 	atomic_store_zd(&decay->time_ms, decay_ms, ATOMIC_RELAXED);
 	if (decay_ms > 0) {
-		nstime_init(&decay->interval, (uint64_t)decay_ms *
-		    KQU(1000000));
+		nstime_init(
+		    &decay->interval, (uint64_t)decay_ms * KQU(1000000));
 		nstime_idivide(&decay->interval, SMOOTHSTEP_NSTEPS);
 	}
 
@@ -52,7 +52,7 @@ decay_init(decay_t *decay, nstime_t *cur_time, ssize_t decay_ms) {
 		decay->ceil_npages = 0;
 	}
 	if (malloc_mutex_init(&decay->mtx, "decay", WITNESS_RANK_DECAY,
-	    malloc_mutex_rank_exclusive)) {
+	        malloc_mutex_rank_exclusive)) {
 		return true;
 	}
 	decay->purging = false;
@@ -65,8 +65,8 @@ decay_ms_valid(ssize_t decay_ms) {
 	if (decay_ms < -1) {
 		return false;
 	}
-	if (decay_ms == -1 || (uint64_t)decay_ms <= NSTIME_SEC_MAX *
-	    KQU(1000)) {
+	if (decay_ms == -1
+	    || (uint64_t)decay_ms <= NSTIME_SEC_MAX * KQU(1000)) {
 		return true;
 	}
 	return false;
@@ -74,8 +74,8 @@ decay_ms_valid(ssize_t decay_ms) {
 
 static void
 decay_maybe_update_time(decay_t *decay, nstime_t *new_time) {
-	if (unlikely(!nstime_monotonic() && nstime_compare(&decay->epoch,
-	    new_time) > 0)) {
+	if (unlikely(!nstime_monotonic()
+	        && nstime_compare(&decay->epoch, new_time) > 0)) {
 		/*
 		 * Time went backwards.  Move the epoch back in time and
 		 * generate a new deadline, with the expectation that time
@@ -115,11 +115,11 @@ decay_backlog_npages_limit(const decay_t *decay) {
  * placed as the newest record.
  */
 static void
-decay_backlog_update(decay_t *decay, uint64_t nadvance_u64,
-    size_t current_npages) {
+decay_backlog_update(
+    decay_t *decay, uint64_t nadvance_u64, size_t current_npages) {
 	if (nadvance_u64 >= SMOOTHSTEP_NSTEPS) {
-		memset(decay->backlog, 0, (SMOOTHSTEP_NSTEPS-1) *
-		    sizeof(size_t));
+		memset(decay->backlog, 0,
+		    (SMOOTHSTEP_NSTEPS - 1) * sizeof(size_t));
 	} else {
 		size_t nadvance_z = (size_t)nadvance_u64;
 
@@ -128,14 +128,15 @@ decay_backlog_update(decay_t *decay, uint64_t nadvance_u64,
 		memmove(decay->backlog, &decay->backlog[nadvance_z],
 		    (SMOOTHSTEP_NSTEPS - nadvance_z) * sizeof(size_t));
 		if (nadvance_z > 1) {
-			memset(&decay->backlog[SMOOTHSTEP_NSTEPS -
-			    nadvance_z], 0, (nadvance_z-1) * sizeof(size_t));
+			memset(&decay->backlog[SMOOTHSTEP_NSTEPS - nadvance_z],
+			    0, (nadvance_z - 1) * sizeof(size_t));
 		}
 	}
 
-	size_t npages_delta = (current_npages > decay->nunpurged) ?
-	    current_npages - decay->nunpurged : 0;
-	decay->backlog[SMOOTHSTEP_NSTEPS-1] = npages_delta;
+	size_t npages_delta = (current_npages > decay->nunpurged)
+	    ? current_npages - decay->nunpurged
+	    : 0;
+	decay->backlog[SMOOTHSTEP_NSTEPS - 1] = npages_delta;
 
 	if (config_debug) {
 		if (current_npages > decay->ceil_npages) {
@@ -165,18 +166,17 @@ decay_npages_purge_in(decay_t *decay, nstime_t *time, size_t npages_new) {
 		npages_purge = npages_new;
 	} else {
 		uint64_t h_steps_max = h_steps[SMOOTHSTEP_NSTEPS - 1];
-		assert(h_steps_max >=
-		    h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
-		npages_purge = npages_new * (h_steps_max -
-		    h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
+		assert(h_steps_max >= h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
+		npages_purge = npages_new
+		    * (h_steps_max - h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
 		npages_purge >>= SMOOTHSTEP_BFP;
 	}
 	return npages_purge;
 }
 
 bool
-decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
-    size_t npages_current) {
+decay_maybe_advance_epoch(
+    decay_t *decay, nstime_t *new_time, size_t npages_current) {
 	/* Handle possible non-monotonicity of time. */
 	decay_maybe_update_time(decay, new_time);
 
@@ -202,8 +202,9 @@ decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
 	decay_backlog_update(decay, nadvance_u64, npages_current);
 
 	decay->npages_limit = decay_backlog_npages_limit(decay);
-	decay->nunpurged = (decay->npages_limit > npages_current) ?
-	    decay->npages_limit : npages_current;
+	decay->nunpurged = (decay->npages_limit > npages_current)
+	    ? decay->npages_limit
+	    : npages_current;
 
 	return true;
 }
@@ -226,21 +227,21 @@ decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
  */
 static inline size_t
 decay_npurge_after_interval(decay_t *decay, size_t interval) {
-	size_t i;
+	size_t   i;
 	uint64_t sum = 0;
 	for (i = 0; i < interval; i++) {
 		sum += decay->backlog[i] * h_steps[i];
 	}
 	for (; i < SMOOTHSTEP_NSTEPS; i++) {
-		sum += decay->backlog[i] *
-		    (h_steps[i] - h_steps[i - interval]);
+		sum += decay->backlog[i] * (h_steps[i] - h_steps[i - interval]);
 	}
 
 	return (size_t)(sum >> SMOOTHSTEP_BFP);
 }
 
-uint64_t decay_ns_until_purge(decay_t *decay, size_t npages_current,
-    uint64_t npages_threshold) {
+uint64_t
+decay_ns_until_purge(
+    decay_t *decay, size_t npages_current, uint64_t npages_threshold) {
 	if (!decay_gradually(decay)) {
 		return DECAY_UNBOUNDED_TIME_TO_PURGE;
 	}
@@ -278,7 +279,7 @@ uint64_t decay_ns_until_purge(decay_t *decay, size_t npages_current,
 	}
 
 	unsigned n_search = 0;
-	size_t target, npurge;
+	size_t   target, npurge;
 	while ((npurge_lb + npages_threshold < npurge_ub) && (lb + 2 < ub)) {
 		target = (lb + ub) / 2;
 		npurge = decay_npurge_after_interval(decay, target);

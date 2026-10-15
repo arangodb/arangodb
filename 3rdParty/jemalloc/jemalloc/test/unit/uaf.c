@@ -11,7 +11,8 @@ const char *malloc_conf = TEST_SAN_UAF_ALIGN_ENABLE;
 static size_t san_uaf_align;
 
 static bool fake_abort_called;
-void fake_abort(const char *message) {
+void
+fake_abort(const char *message) {
 	(void)message;
 	fake_abort_called = true;
 }
@@ -24,8 +25,8 @@ test_write_after_free_pre(void) {
 
 static void
 test_write_after_free_post(void) {
-	assert_d_eq(mallctl("thread.tcache.flush", NULL, NULL, NULL, 0),
-	    0, "Unexpected tcache flush failure");
+	assert_d_eq(mallctl("thread.tcache.flush", NULL, NULL, NULL, 0), 0,
+	    "Unexpected tcache flush failure");
 	expect_true(fake_abort_called, "Use-after-free check didn't fire.");
 	safety_check_set_abort(NULL);
 }
@@ -37,9 +38,10 @@ uaf_detection_enabled(void) {
 	}
 
 	ssize_t lg_san_uaf_align;
-	size_t sz = sizeof(lg_san_uaf_align);
-	assert_d_eq(mallctl("opt.lg_san_uaf_align", &lg_san_uaf_align, &sz,
-	    NULL, 0), 0, "Unexpected mallctl failure");
+	size_t  sz = sizeof(lg_san_uaf_align);
+	assert_d_eq(
+	    mallctl("opt.lg_san_uaf_align", &lg_san_uaf_align, &sz, NULL, 0), 0,
+	    "Unexpected mallctl failure");
 	if (lg_san_uaf_align < 0) {
 		return false;
 	}
@@ -48,8 +50,9 @@ uaf_detection_enabled(void) {
 
 	bool tcache_enabled;
 	sz = sizeof(tcache_enabled);
-	assert_d_eq(mallctl("thread.tcache.enabled", &tcache_enabled, &sz, NULL,
-	    0), 0, "Unexpected mallctl failure");
+	assert_d_eq(
+	    mallctl("thread.tcache.enabled", &tcache_enabled, &sz, NULL, 0), 0,
+	    "Unexpected mallctl failure");
 	if (!tcache_enabled) {
 		return false;
 	}
@@ -69,10 +72,10 @@ read_tcache_stashed_bytes(unsigned arena_ind) {
 
 	size_t tcache_stashed_bytes;
 	size_t sz = sizeof(tcache_stashed_bytes);
-	assert_d_eq(mallctl(
-	    "stats.arenas." STRINGIFY(MALLCTL_ARENAS_ALL)
-	    ".tcache_stashed_bytes", &tcache_stashed_bytes, &sz, NULL, 0), 0,
-	    "Unexpected mallctl failure");
+	assert_d_eq(mallctl("stats.arenas." STRINGIFY(
+	                        MALLCTL_ARENAS_ALL) ".tcache_stashed_bytes",
+	                &tcache_stashed_bytes, &sz, NULL, 0),
+	    0, "Unexpected mallctl failure");
 
 	return tcache_stashed_bytes;
 }
@@ -91,17 +94,17 @@ test_use_after_free(size_t alloc_size, bool write_after_free) {
 	 * make use-after-free tolerable.
 	 */
 	unsigned arena_ind = do_arena_create(-1, -1);
-	int flags = MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE;
+	int      flags = MALLOCX_ARENA(arena_ind) | MALLOCX_TCACHE_NONE;
 
 	size_t n_max = san_uaf_align * 2;
 	void **items = mallocx(n_max * sizeof(void *), flags);
 	assert_ptr_not_null(items, "Unexpected mallocx failure");
 
-	bool found = false;
+	bool   found = false;
 	size_t iter = 0;
-	char magic = 's';
-	assert_d_eq(mallctl("thread.tcache.flush", NULL, NULL, NULL, 0),
-	    0, "Unexpected tcache flush failure");
+	char   magic = 's';
+	assert_d_eq(mallctl("thread.tcache.flush", NULL, NULL, NULL, 0), 0,
+	    "Unexpected tcache flush failure");
 	while (!found) {
 		ptr = mallocx(alloc_size, flags);
 		assert_ptr_not_null(ptr, "Unexpected mallocx failure");
@@ -194,7 +197,7 @@ static bool
 check_allocated_intact(void **allocated, size_t n_alloc) {
 	for (unsigned i = 0; i < n_alloc; i++) {
 		void *ptr = *(void **)allocated[i];
-		bool found = false;
+		bool  found = false;
 		for (unsigned j = 0; j < n_alloc; j++) {
 			if (ptr == allocated[j]) {
 				found = true;
@@ -213,7 +216,7 @@ TEST_BEGIN(test_use_after_free_integration) {
 	test_skip_if(!uaf_detection_enabled());
 
 	unsigned arena_ind = do_arena_create(-1, -1);
-	int flags = MALLOCX_ARENA(arena_ind);
+	int      flags = MALLOCX_ARENA(arena_ind);
 
 	size_t n_alloc = san_uaf_align * 2;
 	void **allocated = mallocx(n_alloc * sizeof(void *), flags);
@@ -255,8 +258,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_read_after_free,
-	    test_write_after_free,
+	return test(test_read_after_free, test_write_after_free,
 	    test_use_after_free_integration);
 }

@@ -43,8 +43,9 @@ buf_writer_init(tsdn_t *tsdn, buf_writer_t *buf_writer, write_cb_t *write_cb,
 	if (write_cb != NULL) {
 		buf_writer->write_cb = write_cb;
 	} else {
-		buf_writer->write_cb = je_malloc_message != NULL ?
-		    je_malloc_message : wrtmessage;
+		buf_writer->write_cb = je_malloc_message != NULL
+		    ? je_malloc_message
+		    : wrtmessage;
 	}
 	buf_writer->cbopaque = cbopaque;
 	assert(buf_len >= 2);
@@ -52,8 +53,8 @@ buf_writer_init(tsdn_t *tsdn, buf_writer_t *buf_writer, write_cb_t *write_cb,
 		buf_writer->buf = buf;
 		buf_writer->internal_buf = false;
 	} else {
-		buf_writer->buf = buf_writer_allocate_internal_buf(tsdn,
-		    buf_len);
+		buf_writer->buf = buf_writer_allocate_internal_buf(
+		    tsdn, buf_len);
 		buf_writer->internal_buf = true;
 	}
 	if (buf_writer->buf != NULL) {
@@ -111,13 +112,13 @@ buf_writer_terminate(tsdn_t *tsdn, buf_writer_t *buf_writer) {
 }
 
 void
-buf_writer_pipe(buf_writer_t *buf_writer, read_cb_t *read_cb,
-    void *read_cbopaque) {
+buf_writer_pipe(
+    buf_writer_t *buf_writer, read_cb_t *read_cb, void *read_cbopaque) {
 	/*
 	 * A tiny local buffer in case the buffered writer failed to allocate
 	 * at init.
 	 */
-	static char backup_buf[16];
+	static char         backup_buf[16];
 	static buf_writer_t backup_buf_writer;
 
 	buf_writer_assert(buf_writer);

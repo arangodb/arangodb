@@ -5,9 +5,9 @@
 #include "jemalloc/internal/assert.h"
 
 /* Sanity check. */
-#if !defined(JEMALLOC_INTERNAL_FFSLL) || !defined(JEMALLOC_INTERNAL_FFSL) \
+#if !defined(JEMALLOC_INTERNAL_FFSLL) || !defined(JEMALLOC_INTERNAL_FFSL)      \
     || !defined(JEMALLOC_INTERNAL_FFS)
-#  error JEMALLOC_INTERNAL_FFS{,L,LL} should have been defined by configure
+#	error JEMALLOC_INTERNAL_FFS{,L,LL} should have been defined by configure
 #endif
 
 /*
@@ -35,6 +35,7 @@ ffs_u(unsigned x) {
 	return JEMALLOC_INTERNAL_FFS(x) - 1;
 }
 
+/* clang-format off */
 #define DO_FLS_SLOW(x, suffix) do {					\
 	util_assume(x != 0);						\
 	x |= (x >> 1);							\
@@ -58,6 +59,7 @@ ffs_u(unsigned x) {
 	}								\
 	return ffs_##suffix(x) - 1;					\
 } while(0)
+/* clang-format on */
 
 static inline unsigned
 fls_llu_slow(unsigned long long x) {
@@ -108,16 +110,19 @@ fls_u(unsigned x) {
 }
 #elif defined(_MSC_VER)
 
-#if LG_SIZEOF_PTR == 3
-#define DO_BSR64(bit, x) _BitScanReverse64(&bit, x)
-#else
+#	if LG_SIZEOF_PTR == 3
+#		define DO_BSR64(bit, x) _BitScanReverse64(&bit, x)
+#	else
 /*
  * This never actually runs; we're just dodging a compiler error for the
  * never-taken branch where sizeof(void *) == 8.
  */
-#define DO_BSR64(bit, x) bit = 0; unreachable()
-#endif
+#		define DO_BSR64(bit, x)                                       \
+			bit = 0;                                               \
+			unreachable()
+#	endif
 
+/* clang-format off */
 #define DO_FLS(x) do {							\
 	if (x == 0) {							\
 		return 8 * sizeof(x);					\
@@ -144,6 +149,7 @@ fls_u(unsigned x) {
 	}								\
 	unreachable();							\
 } while (0)
+/* clang-format on */
 
 static inline unsigned
 fls_llu(unsigned long long x) {
@@ -160,8 +166,8 @@ fls_u(unsigned x) {
 	DO_FLS(x);
 }
 
-#undef DO_FLS
-#undef DO_BSR64
+#	undef DO_FLS
+#	undef DO_BSR64
 #else
 
 static inline unsigned
@@ -181,9 +187,10 @@ fls_u(unsigned x) {
 #endif
 
 #if LG_SIZEOF_LONG_LONG > 3
-#  error "Haven't implemented popcount for 16-byte ints."
+#	error "Haven't implemented popcount for 16-byte ints."
 #endif
 
+/* clang-format off */
 #define DO_POPCOUNT(x, type) do {					\
 	/*								\
 	 * Algorithm from an old AMD optimization reference manual.	\
@@ -227,6 +234,7 @@ fls_u(unsigned x) {
 	x >>= ((sizeof(x) - 1) * 8);					\
 	return (unsigned)x;						\
 } while(0)
+/* clang-format on */
 
 static inline unsigned
 popcount_u_slow(unsigned bitmap) {
@@ -278,7 +286,7 @@ popcount_llu(unsigned long long bitmap) {
  */
 
 static inline size_t
-cfs_lu(unsigned long* bitmap) {
+cfs_lu(unsigned long *bitmap) {
 	util_assume(*bitmap != 0);
 	size_t bit = ffs_lu(*bitmap);
 	*bitmap ^= ZU(1) << bit;
@@ -294,7 +302,7 @@ ffs_zu(size_t x) {
 #elif LG_SIZEOF_PTR == LG_SIZEOF_LONG_LONG
 	return ffs_llu(x);
 #else
-#error No implementation for size_t ffs()
+#	error No implementation for size_t ffs()
 #endif
 }
 
@@ -307,10 +315,9 @@ fls_zu(size_t x) {
 #elif LG_SIZEOF_PTR == LG_SIZEOF_LONG_LONG
 	return fls_llu(x);
 #else
-#error No implementation for size_t fls()
+#	error No implementation for size_t fls()
 #endif
 }
-
 
 static inline unsigned
 ffs_u64(uint64_t x) {
@@ -319,7 +326,7 @@ ffs_u64(uint64_t x) {
 #elif LG_SIZEOF_LONG_LONG == 3
 	return ffs_llu(x);
 #else
-#error No implementation for 64-bit ffs()
+#	error No implementation for 64-bit ffs()
 #endif
 }
 
@@ -330,7 +337,7 @@ fls_u64(uint64_t x) {
 #elif LG_SIZEOF_LONG_LONG == 3
 	return fls_llu(x);
 #else
-#error No implementation for 64-bit fls()
+#	error No implementation for 64-bit fls()
 #endif
 }
 
@@ -339,7 +346,7 @@ ffs_u32(uint32_t x) {
 #if LG_SIZEOF_INT == 2
 	return ffs_u(x);
 #else
-#error No implementation for 32-bit ffs()
+#	error No implementation for 32-bit ffs()
 #endif
 }
 
@@ -348,7 +355,7 @@ fls_u32(uint32_t x) {
 #if LG_SIZEOF_INT == 2
 	return fls_u(x);
 #else
-#error No implementation for 32-bit fls()
+#	error No implementation for 32-bit fls()
 #endif
 }
 
@@ -369,7 +376,7 @@ pow2_ceil_u64(uint64_t x) {
 static inline uint32_t
 pow2_ceil_u32(uint32_t x) {
 	if (unlikely(x <= 1)) {
-	    return x;
+		return x;
 	}
 	size_t msb_on_index = fls_u32(x - 1);
 	/* As above. */
@@ -407,13 +414,16 @@ lg_ceil(size_t x) {
 #define LG_FLOOR_2(x) (x < (1ULL << 1) ? LG_FLOOR_1(x) : 1 + LG_FLOOR_1(x >> 1))
 #define LG_FLOOR_4(x) (x < (1ULL << 2) ? LG_FLOOR_2(x) : 2 + LG_FLOOR_2(x >> 2))
 #define LG_FLOOR_8(x) (x < (1ULL << 4) ? LG_FLOOR_4(x) : 4 + LG_FLOOR_4(x >> 4))
-#define LG_FLOOR_16(x) (x < (1ULL << 8) ? LG_FLOOR_8(x) : 8 + LG_FLOOR_8(x >> 8))
-#define LG_FLOOR_32(x) (x < (1ULL << 16) ? LG_FLOOR_16(x) : 16 + LG_FLOOR_16(x >> 16))
-#define LG_FLOOR_64(x) (x < (1ULL << 32) ? LG_FLOOR_32(x) : 32 + LG_FLOOR_32(x >> 32))
+#define LG_FLOOR_16(x)                                                         \
+	(x < (1ULL << 8) ? LG_FLOOR_8(x) : 8 + LG_FLOOR_8(x >> 8))
+#define LG_FLOOR_32(x)                                                         \
+	(x < (1ULL << 16) ? LG_FLOOR_16(x) : 16 + LG_FLOOR_16(x >> 16))
+#define LG_FLOOR_64(x)                                                         \
+	(x < (1ULL << 32) ? LG_FLOOR_32(x) : 32 + LG_FLOOR_32(x >> 32))
 #if LG_SIZEOF_PTR == 2
-#  define LG_FLOOR(x) LG_FLOOR_32((x))
+#	define LG_FLOOR(x) LG_FLOOR_32((x))
 #else
-#  define LG_FLOOR(x) LG_FLOOR_64((x))
+#	define LG_FLOOR(x) LG_FLOOR_64((x))
 #endif
 
 #define LG_CEIL(x) (LG_FLOOR(x) + (((x) & ((x) - 1)) == 0 ? 0 : 1))

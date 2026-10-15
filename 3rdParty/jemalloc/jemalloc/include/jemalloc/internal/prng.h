@@ -26,11 +26,11 @@
 /******************************************************************************/
 /* INTERNAL DEFINITIONS -- IGNORE */
 /******************************************************************************/
-#define PRNG_A_32	UINT32_C(1103515241)
-#define PRNG_C_32	UINT32_C(12347)
+#define PRNG_A_32 UINT32_C(1103515241)
+#define PRNG_C_32 UINT32_C(12347)
 
-#define PRNG_A_64	UINT64_C(6364136223846793005)
-#define PRNG_C_64	UINT64_C(1442695040888963407)
+#define PRNG_A_64 UINT64_C(6364136223846793005)
+#define PRNG_C_64 UINT64_C(1442695040888963407)
 
 JEMALLOC_ALWAYS_INLINE uint32_t
 prng_state_next_u32(uint32_t state) {
@@ -49,7 +49,7 @@ prng_state_next_zu(size_t state) {
 #elif LG_SIZEOF_PTR == 3
 	return (state * PRNG_A_64) + PRNG_C_64;
 #else
-#error Unsupported pointer size
+#	error Unsupported pointer size
 #endif
 }
 

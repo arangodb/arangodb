@@ -26,12 +26,12 @@ init_entries(ring_t *entries) {
 
 static void
 test_independent_entries(ring_t *entries) {
-	ring_t *t;
+	ring_t  *t;
 	unsigned i, j;
 
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
-		qr_foreach(t, &entries[i], link) {
+		qr_foreach (t, &entries[i], link) {
 			j++;
 		}
 		expect_u_eq(j, 1,
@@ -71,13 +71,13 @@ TEST_END
 
 static void
 test_entries_ring(ring_t *entries) {
-	ring_t *t;
+	ring_t  *t;
 	unsigned i, j;
 
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
-		qr_foreach(t, &entries[i], link) {
-			expect_c_eq(t->id, entries[(i+j) % NENTRIES].id,
+		qr_foreach (t, &entries[i], link) {
+			expect_c_eq(t->id, entries[(i + j) % NENTRIES].id,
 			    "Element id mismatch");
 			j++;
 		}
@@ -85,25 +85,26 @@ test_entries_ring(ring_t *entries) {
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
 		qr_reverse_foreach(t, &entries[i], link) {
-			expect_c_eq(t->id, entries[(NENTRIES+i-j-1) %
-			    NENTRIES].id, "Element id mismatch");
+			expect_c_eq(t->id,
+			    entries[(NENTRIES + i - j - 1) % NENTRIES].id,
+			    "Element id mismatch");
 			j++;
 		}
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		t = qr_next(&entries[i], link);
-		expect_c_eq(t->id, entries[(i+1) % NENTRIES].id,
+		expect_c_eq(t->id, entries[(i + 1) % NENTRIES].id,
 		    "Element id mismatch");
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		t = qr_prev(&entries[i], link);
-		expect_c_eq(t->id, entries[(NENTRIES+i-1) % NENTRIES].id,
+		expect_c_eq(t->id, entries[(NENTRIES + i - 1) % NENTRIES].id,
 		    "Element id mismatch");
 	}
 }
 
 TEST_BEGIN(test_qr_after_insert) {
-	ring_t entries[NENTRIES];
+	ring_t   entries[NENTRIES];
 	unsigned i;
 
 	init_entries(entries);
@@ -115,8 +116,8 @@ TEST_BEGIN(test_qr_after_insert) {
 TEST_END
 
 TEST_BEGIN(test_qr_remove) {
-	ring_t entries[NENTRIES];
-	ring_t *t;
+	ring_t   entries[NENTRIES];
+	ring_t  *t;
 	unsigned i, j;
 
 	init_entries(entries);
@@ -126,15 +127,15 @@ TEST_BEGIN(test_qr_remove) {
 
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
-		qr_foreach(t, &entries[i], link) {
-			expect_c_eq(t->id, entries[i+j].id,
-			    "Element id mismatch");
+		qr_foreach (t, &entries[i], link) {
+			expect_c_eq(
+			    t->id, entries[i + j].id, "Element id mismatch");
 			j++;
 		}
 		j = 0;
 		qr_reverse_foreach(t, &entries[i], link) {
 			expect_c_eq(t->id, entries[NENTRIES - 1 - j].id,
-			"Element id mismatch");
+			    "Element id mismatch");
 			j++;
 		}
 		qr_remove(&entries[i], link);
@@ -144,8 +145,8 @@ TEST_BEGIN(test_qr_remove) {
 TEST_END
 
 TEST_BEGIN(test_qr_before_insert) {
-	ring_t entries[NENTRIES];
-	ring_t *t;
+	ring_t   entries[NENTRIES];
+	ring_t  *t;
 	unsigned i, j;
 
 	init_entries(entries);
@@ -154,28 +155,29 @@ TEST_BEGIN(test_qr_before_insert) {
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
-		qr_foreach(t, &entries[i], link) {
-			expect_c_eq(t->id, entries[(NENTRIES+i-j) %
-			    NENTRIES].id, "Element id mismatch");
+		qr_foreach (t, &entries[i], link) {
+			expect_c_eq(t->id,
+			    entries[(NENTRIES + i - j) % NENTRIES].id,
+			    "Element id mismatch");
 			j++;
 		}
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
 		qr_reverse_foreach(t, &entries[i], link) {
-			expect_c_eq(t->id, entries[(i+j+1) % NENTRIES].id,
+			expect_c_eq(t->id, entries[(i + j + 1) % NENTRIES].id,
 			    "Element id mismatch");
 			j++;
 		}
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		t = qr_next(&entries[i], link);
-		expect_c_eq(t->id, entries[(NENTRIES+i-1) % NENTRIES].id,
+		expect_c_eq(t->id, entries[(NENTRIES + i - 1) % NENTRIES].id,
 		    "Element id mismatch");
 	}
 	for (i = 0; i < NENTRIES; i++) {
 		t = qr_prev(&entries[i], link);
-		expect_c_eq(t->id, entries[(i+1) % NENTRIES].id,
+		expect_c_eq(t->id, entries[(i + 1) % NENTRIES].id,
 		    "Element id mismatch");
 	}
 }
@@ -183,19 +185,22 @@ TEST_END
 
 static void
 test_split_entries(ring_t *entries) {
-	ring_t *t;
+	ring_t  *t;
 	unsigned i, j;
 
 	for (i = 0; i < NENTRIES; i++) {
 		j = 0;
-		qr_foreach(t, &entries[i], link) {
+		qr_foreach (t, &entries[i], link) {
 			if (i < SPLIT_INDEX) {
 				expect_c_eq(t->id,
-				    entries[(i+j) % SPLIT_INDEX].id,
+				    entries[(i + j) % SPLIT_INDEX].id,
 				    "Element id mismatch");
 			} else {
-				expect_c_eq(t->id, entries[(i+j-SPLIT_INDEX) %
-				    (NENTRIES-SPLIT_INDEX) + SPLIT_INDEX].id,
+				expect_c_eq(t->id,
+				    entries[(i + j - SPLIT_INDEX)
+				            % (NENTRIES - SPLIT_INDEX)
+				        + SPLIT_INDEX]
+				        .id,
 				    "Element id mismatch");
 			}
 			j++;
@@ -204,7 +209,7 @@ test_split_entries(ring_t *entries) {
 }
 
 TEST_BEGIN(test_qr_meld_split) {
-	ring_t entries[NENTRIES];
+	ring_t   entries[NENTRIES];
 	unsigned i;
 
 	init_entries(entries);
@@ -234,10 +239,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_qr_one,
-	    test_qr_after_insert,
-	    test_qr_remove,
-	    test_qr_before_insert,
-	    test_qr_meld_split);
+	return test(test_qr_one, test_qr_after_insert, test_qr_remove,
+	    test_qr_before_insert, test_qr_meld_split);
 }
