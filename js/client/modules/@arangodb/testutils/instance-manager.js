@@ -1069,7 +1069,7 @@ class instanceManager {
   }
   launchFinalize(startTime) {
     {//if (!this.options.cluster && !this.options.agency) {
-      let deadline = time() + seconds(this.startupMaxCount);
+      let deadline = time() + seconds(this.startupMaxCount / 4);
       this.arangods.forEach(arangod => {
         try {
           arangod.pingUntilReady(deadline);

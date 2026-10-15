@@ -840,8 +840,10 @@ class instance {
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+    let count = 0;
 
     while (true) {
+      count += 1;
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
         this.exitStatus = null;
@@ -852,7 +854,7 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.jwt_secret !== '') {
-            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
+            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url} - deadline ${deadline}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  undefined,
@@ -883,6 +885,9 @@ class instance {
         }
       } catch (ex) {
         if (time() < deadline) {
+          if ((count % 10) === 0) {
+            print(`${Date()} ping failed by: ${ex}`);
+          }
           print('.');
           sleep(1);
         } else {
