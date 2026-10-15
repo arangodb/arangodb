@@ -65,6 +65,18 @@ parameters:
       the community commit short SHA; Debian-based images get an extra -deb suffix
       (<sha>[-deb] multi-arch manifest, <sha>[-deb]-amd64 / <sha>[-deb]-arm64v8
       per-arch tags)."
+  create-preview-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
+    description: "Build and publish a multi-arch (amd64 + arm64) preview Docker
+      image of the Enterprise Edition from this commit's build results: a
+      non-maintainer, release-like build (no assertions, failure points or
+      test-only JS; x64 keeps IPO on like nightly packages). Selects the image
+      base: 'alpine' or 'deb' (Debian-based); 'none' disables. The image is
+      pushed to public ECR as public.ecr.aws/b0b8h2r4/arangodb/enterprise-preview
+      with the same tagging scheme as the test image. Independent of
+      create-test-docker-images; both can be built in one pipeline."
   extra_args:
     type: string
     default: ""
@@ -228,6 +240,7 @@ jobs:
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
             echo "create-test-docker-images: << pipeline.parameters.create-test-docker-images >>"
+            echo "create-preview-docker-images: << pipeline.parameters.create-preview-docker-images >>"
             echo "extra_args: << pipeline.parameters.extra_args >>"
             echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
             echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
@@ -299,6 +312,7 @@ jobs:
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
               <<# pipeline.parameters.with-clang-tidy >> --clang-tidy <</ pipeline.parameters.with-clang-tidy >> \
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
+              --create-preview-docker-images << pipeline.parameters.create-preview-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
               --test-suite "<<pipeline.parameters.filter-testsuite>>" \

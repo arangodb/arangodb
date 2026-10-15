@@ -41,6 +41,10 @@ parameters:
     type: enum
     enum: [none, alpine, deb]
     default: none
+  create-preview-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
   rebuild-test-docker-images:
     type: boolean
     default: false
@@ -948,7 +952,7 @@ jobs:
         default: true
       # Fetch aux binaries and produce install-<arch>.tar.gz plus the
       # per-arch docker build context for Docker image creation. Set only
-      # by the docker-images workflow's compile jobs.
+      # by the test/preview docker-image workflows' compile jobs.
       create-install-package:
         type: boolean
         default: false
@@ -1137,11 +1141,18 @@ jobs:
   # happens once both architectures are available together, in
   # push-docker-manifest. CircleCI workflows can't depend on jobs in
   # another workflow, so both architectures live in the same
-  # "docker-images" workflow and hand off through the workspace.
+  # "test-docker-images[-deb]" / "preview-docker-images[-deb]" workflow and
+  # hand off through the workspace.
   build-docker-image:
     parameters:
       resource-class:
         type: string
+      # ECR repository name under arangodb/: enterprise-test (maintainer
+      # mode) or enterprise-preview (non-maintainer, release-like)
+      image-name:
+        type: enum
+        enum: [enterprise-test, enterprise-preview]
+        default: enterprise-test
       # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
       distro:
         type: enum
@@ -1171,8 +1182,8 @@ jobs:
             cd docker-context-<< parameters.build-arch >>
             mkdir install
             tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
-            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/<< parameters.image-name >>:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
+            docker save -o /tmp/<< parameters.output >> arangodb/<< parameters.image-name >>:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp
           paths:
@@ -1186,6 +1197,12 @@ jobs:
     parameters:
       resource-class:
         type: string
+      # ECR repository name under arangodb/: must match the image-name the
+      # feeding build-docker-image jobs tagged their images with
+      image-name:
+        type: enum
+        enum: [enterprise-test, enterprise-preview]
+        default: enterprise-test
       tag:
         type: string
     docker:
@@ -1206,12 +1223,12 @@ jobs:
             docker load -i /tmp/workspace/docker-amd64.tar
             docker load -i /tmp/workspace/docker-arm64.tar
 
-            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/<< parameters.image-name >>"
 
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
+            declare -A LOCAL_TAG=( [amd64]="arangodb/<< parameters.image-name >>:local-amd64" [arm64]="arangodb/<< parameters.image-name >>:local-arm64" )
             declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
 
             for ARCH in amd64 arm64; do
