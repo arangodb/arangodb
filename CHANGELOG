@@ -26,6 +26,10 @@
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
 
+* COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
+  indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
+  matches of accented characters at the end of the search range.
+
 * Updated ArangoDB Starter to v0.19.29.
 
 * Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
