@@ -308,11 +308,13 @@ function makeDataWrapper (options) {
                 }
               });
             } catch(e) {
+              let msg = `upgradeCycle failed by: ${e.message}\n${e.stack}`;
+              print(`${RED}${Date()}${msg}${RESET}`);
               res.status = false;
               res.failed += 1;
               res[whichRTA] = {
                 'forceTerminate': true,
-                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'message': msg,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
