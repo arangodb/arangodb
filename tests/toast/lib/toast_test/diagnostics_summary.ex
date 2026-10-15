@@ -26,10 +26,6 @@ defmodule ToastTest.DiagnosticsSummary do
   @spec has_server_crash?([map()]) :: boolean()
   def has_server_crash?(suites), do: has_issue_type?(suites, :crash)
 
-  @doc "Check whether any suite has timeout issues (e.g., startup/shutdown timeout)."
-  @spec has_timeout?([map()]) :: boolean()
-  def has_timeout?(suites), do: has_issue_type?(suites, :timeout)
-
   @doc "Check whether any suite has sanitizer error issues."
   @spec has_sanitizer_errors?([map()]) :: boolean()
   def has_sanitizer_errors?(suites), do: has_issue_type?(suites, :sanitizer_report)

@@ -60,6 +60,35 @@ defmodule Toast.Diagnostics.AgencyDump do
     end
   end
 
+  @doc """
+  Fetch agency state from the deployment and write it to `result_dir`.
+
+  Silently does nothing when the deployment is not a cluster or the agents
+  are unreachable.
+  """
+  @spec try_collect(Toast.Deployment.t(), Path.t()) :: :ok
+  def try_collect(deployment, result_dir) do
+    case Toast.Deployment.dump_agency(deployment) do
+      {:ok, json} when json != nil ->
+        case write(json, result_dir, deployment.id) do
+          {:ok, path} -> Logger.info("Agency dump written to #{path}")
+          {:error, reason} -> Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+        end
+
+      {:ok, nil} ->
+        Logger.warning("Agency dump returned nil (no responsive agents?)")
+
+      {:error, reason} ->
+        Logger.debug("Agency dump skipped: #{inspect(reason)}")
+    end
+
+    :ok
+  rescue
+    e ->
+      Logger.warning("Agency dump failed: #{Exception.message(e)}")
+      :ok
+  end
+
   # 1 MB — below this we keep raw JSON for easy inspection
   @compress_threshold 1_024 * 1_024
 

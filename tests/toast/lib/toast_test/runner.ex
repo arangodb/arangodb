@@ -414,7 +414,7 @@ defmodule ToastTest.Runner do
         id = Toast.Deployment.generate_id(mode)
         deployment_dir = Path.join([test_config.base_dir, entry.name, id])
 
-        case Toast.Deployment.start(deploy_config, deployment_dir,
+        case Toast.Deployment.attempt_start(deploy_config, deployment_dir,
                id: id,
                event_listener: ToastTest.ManagedDeploymentListener
              ) do
@@ -429,8 +429,11 @@ defmodule ToastTest.Runner do
               {netstat_tool, baseline}
             )
 
+          {:error, reason, deployment} ->
+            handle_deployment_failure(deployment, suite_run, entry, reason, ex_unit_opts)
+
           {:error, reason} ->
-            handle_deployment_failure(suite_run, entry, reason, ex_unit_opts)
+            handle_deployment_failure(nil, suite_run, entry, reason, ex_unit_opts)
         end
     end
   end
@@ -501,7 +504,13 @@ defmodule ToastTest.Runner do
     finalize_suite(nil, stats, test_data, suite_run.test_config, nil)
   end
 
-  defp handle_deployment_failure(suite_run, %SuiteEntry{} = entry, reason, ex_unit_opts) do
+  defp handle_deployment_failure(
+         deployment,
+         suite_run,
+         %SuiteEntry{} = entry,
+         reason,
+         ex_unit_opts
+       ) do
     suite_module = suite_run.suite_module
     test_config = suite_run.test_config
     mode = suite_run.deployment_mode
@@ -520,14 +529,47 @@ defmodule ToastTest.Runner do
         mode
       )
 
-    finalize_suite(nil, stats, test_data, test_config, nil)
+    finalize_suite(deployment, stats, test_data, test_config, nil)
   end
 
   defp finalize_suite(deployment, stats, test_data, test_config, capture_pid) do
     pcap_path = stop_traffic_capture(capture_pid)
-    suite_result = __MODULE__.PostExecution.run(deployment, test_data, test_config, pcap_path)
+
+    servers = stop_and_collect_servers(deployment, test_data, test_config)
+
+    suite_result =
+      __MODULE__.PostExecution.run(servers, test_data, test_config, pcap_path)
+
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
+  end
+
+  defp stop_and_collect_servers(nil, _test_data, _test_config), do: %{}
+
+  defp stop_and_collect_servers(deployment, test_data, test_config) do
+    maybe_dump_agency(deployment, test_data, test_config)
+
+    Logger.debug("Stopping deployment")
+
+    {servers, error} =
+      case Toast.Deployment.stop(deployment) do
+        {:ok, info} -> {info.servers, info.error}
+        {:error, _reason, info} -> {info.servers, info.error}
+      end
+
+    if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
+    servers
+  end
+
+  defp maybe_dump_agency(deployment, test_data, test_config) do
+    has_error =
+      Abort.reason() != nil or
+        ToastTest.EventStore.unexpected_crashes() != [] or
+        test_data.failures != []
+
+    if has_error and test_config.dump_agency_on_error do
+      Toast.Diagnostics.AgencyDump.try_collect(deployment, test_config.result_dir)
+    end
   end
 
   defp maybe_start_traffic_capture(%{capture_traffic: true} = test_config, suite_name) do

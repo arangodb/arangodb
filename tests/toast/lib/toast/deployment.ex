@@ -211,11 +211,39 @@ defmodule Toast.Deployment do
   Start a deployment. The mode is derived from the config:
   `config.cluster == nil` → single server, otherwise → cluster.
 
+  On failure, the deployment is stopped automatically and no deployment
+  handle is returned. Use `attempt_start/3` when you need the deployment
+  handle on failure (e.g., for post-mortem diagnostics).
+
   The `opts` keyword list can include non-config keys like `:on_crash`,
   `:on_event`, and `:id` that are forwarded to the controller.
   """
   @spec start(Config.t(), Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
   def start(%Config{} = config, deployment_dir, opts \\ []) do
+    case attempt_start(config, deployment_dir, opts) do
+      {:ok, deployment} ->
+        {:ok, deployment}
+
+      {:error, reason, deployment} ->
+        stop(deployment)
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Start a deployment, returning the deployment handle even on failure.
+
+  On success, returns `{:ok, deployment}`. On failure, returns
+  `{:error, reason, deployment}` where the deployment is in a failed state
+  with servers potentially still running. The caller is responsible for
+  stopping the deployment.
+
+  This is useful when you need access to the partially-started deployment
+  for diagnostics (agency dump, server logs, artifacts).
+  """
+  @spec attempt_start(Config.t(), Path.t(), keyword()) ::
+          {:ok, t()} | {:error, term(), t()} | {:error, term()}
+  def attempt_start(%Config{} = config, deployment_dir, opts \\ []) do
     mode = Config.mode(config)
     id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
     Logger.info("Starting #{mode} deployment (deployment_dir=#{deployment_dir})")
@@ -233,19 +261,27 @@ defmodule Toast.Deployment do
              id: id,
              event_listener: listener,
              jwt_provider: jwt_provider
-           ),
-         :ok <- Controller.deploy(pid, specs, config.startup_timeout, stacktrace: stacktrace) do
-      info = Controller.get_info(pid)
+           ) do
+      deployment_from_controller = fn ->
+        info = Controller.get_info(pid)
 
-      {:ok,
-       %__MODULE__{
-         id: info.id,
-         controller: pid,
-         api_version: config.api_version,
-         protocol: config.protocol,
-         servers: build_server_infos(info),
-         jwt_provider: jwt_provider
-       }}
+        %__MODULE__{
+          id: info.id,
+          controller: pid,
+          api_version: config.api_version,
+          protocol: config.protocol,
+          servers: build_server_infos(info),
+          jwt_provider: jwt_provider
+        }
+      end
+
+      case Controller.deploy(pid, specs, config.startup_timeout, stacktrace: stacktrace) do
+        :ok ->
+          {:ok, deployment_from_controller.()}
+
+        {:error, reason} ->
+          {:error, reason, deployment_from_controller.()}
+      end
     end
   end
 
