@@ -1870,7 +1870,7 @@ function ahuacatlStringFunctionsTestSuite () {
 
   testFindFirstMatchShorterThanPattern: function () {
     // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
-    const decomposed = "한";
+    const decomposed = "\u1112\u1161\u11AB";
     assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("한", @s)`, { s: decomposed }));
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("x한y", @s, 0, 1)`, { s: decomposed }));
     // text has precomposed \u00e9 (1 unit), search is decomposed e\u0301 (2 units)
@@ -1888,6 +1888,16 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 2)`));
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 1)`));
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 4)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first and find_last with the largest end offset
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindMaxEndOffset: function () {
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 1, 9223372036854775807)`));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2031,10 +2041,10 @@ function ahuacatlStringFunctionsTestSuite () {
 
   testFindLastMatchShorterThanPattern: function () {
     // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
-    const decomposed = "한";
+    const decomposed = "\u1112\u1161\u11AB";
     assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("한x한", @s)`, { s: decomposed }));
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
-    // \u00e9 and e\u0301 are both represented as é 
+    // \u00e9 and e\u0301 are both represented as é
     assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST(@t, @s, 0, 3)`, { t: "caf\u00e9", s: "e\u0301" }));
   },
 
@@ -2076,8 +2086,40 @@ function ahuacatlStringFunctionsTestSuite () {
     // U+1D400 is a surrogate pair, U+FE0F a variation selector
     assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀", 0, 2)`));
     assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀")`));
-    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST(@t, "a", 0, 2)`, { t: "a️a️" }));
-    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST(@t, "a")`, { t: "a️a️" }));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST(@t, "a", 0, 2)`, { t: "a\uFE0Fa\uFE0F" }));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST(@t, "a")`, { t: "a\uFE0Fa\uFE0F" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first and find_last stay fast with many overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindManyOverlappingMatches: function () {
+    const n = 50000;
+    const query = `LET t = REPEAT("a", 2 * @n) LET p = REPEAT("a", @n) RETURN [
+      FIND_LAST(t, p), FIND_LAST(SUBSTRING(t, 1), p), FIND_LAST(t, p, 0, @n),
+      FIND_FIRST(t, p, 0, @n - 2), FIND_FIRST(t, p, 1)]`;
+    assertEqual([ [ n, n - 1, 1, -1, 1 ] ], getQueryResults(query, { n }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first and find_last reject a match crossing end in a long text
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLongTextMatchCrossingEnd: function () {
+    const query = `LET t = CONCAT(REPEAT("b", 300), @s) RETURN [
+      FIND_LAST(t, "a", 0, 302), FIND_FIRST(t, "a", 0, 300), FIND_FIRST(t, "a", 0, 301)]`;
+    assertEqual([ [ 300, -1, 300 ] ], getQueryResults(query, { s: "a\uFE0Fa\uFE0F" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with a single match at the start of a long text
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastSparseMatchInLongText: function () {
+    const query = `LET t = CONCAT("x", REPEAT("a", 1000000)) RETURN [
+      FIND_LAST(t, "x"), FIND_LAST(t, "xa"), FIND_LAST(t, "y")]`;
+    assertEqual([ [ 0, 0, -1 ] ], getQueryResults(query));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
