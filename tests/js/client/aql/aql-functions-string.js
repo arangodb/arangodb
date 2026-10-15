@@ -2069,6 +2069,18 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a last match that only fits the end bound truncated
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastTruncatedMatchLength: function () {
+    // U+1D400 is a surrogate pair, U+FE0F a variation selector
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀")`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST(@t, "a", 0, 2)`, { t: "a️a️" }));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST(@t, "a")`, { t: "a️a️" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find_last function
 // //////////////////////////////////////////////////////////////////////////////
 

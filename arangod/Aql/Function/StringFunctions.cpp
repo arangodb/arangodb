@@ -81,12 +81,15 @@ icu_64_64::UnicodeString toUnicodeString(velocypack::Options const& vopts,
                                   static_cast<int32_t>(buffer->length()));
 }
 
+enum class SearchMatch { kFirst, kLast };
+
 // Returns -1 if there is no match, or nullopt after registering an ICU warning.
-std::optional<int64_t> searchFirst(ExpressionContext* ctx,
-                                   std::string_view functionName,
-                                   icu_64_64::UnicodeString const& text,
-                                   icu_64_64::UnicodeString const& pattern,
-                                   int64_t startOffset, int64_t maxEnd) {
+std::optional<int64_t> searchInRange(ExpressionContext* ctx,
+                                     std::string_view functionName,
+                                     icu_64_64::UnicodeString const& text,
+                                     icu_64_64::UnicodeString const& pattern,
+                                     int64_t startOffset, int64_t maxEnd,
+                                     SearchMatch which) {
   if (pattern.isEmpty()) {
     return startOffset;
   }
@@ -100,8 +103,9 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
   search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  // ICU rounds offsets inside a surrogate pair back to its start, so next()
-  // can return the same match forever; restart past it instead.
+  // ICU's next() can loop inside surrogate pairs and previous() can report
+  // truncated match lengths, so only step forward with following().
+  int64_t found = -1;
   auto from = static_cast<int32_t>(startOffset);
   while (from < text.length()) {
     int32_t const pos = search.following(from, status);
@@ -109,7 +113,10 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
       break;
     }
     if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
-      return pos;
+      found = pos;
+      if (which == SearchMatch::kFirst) {
+        break;
+      }
     }
     from = text.moveIndex32(std::max(pos, from), 1);
   }
@@ -117,7 +124,7 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
     registerICUWarning(ctx, functionName, status);
     return std::nullopt;
   }
-  return -1;
+  return found;
 }
 
 void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
@@ -285,8 +292,8 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
     }
   }
 
-  auto const pos =
-      searchFirst(expressionContext, AFN, text, pattern, startOffset, maxEnd);
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kFirst);
   if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }
@@ -300,11 +307,10 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_LAST";
 
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
-  auto const uBuf =
+  auto const& vopts = expressionContext->trx().vpackOptions();
+  auto const text =
       toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
-  auto const uSearchBuf =
+  auto const pattern =
       toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
 
   int64_t startOffset = 0;
@@ -319,7 +325,7 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  maxEnd = uBuf.length();
+  maxEnd = text.length();
   int emptySearchCludge = 0;
   if (parameters.size() == 4) {
     AqlValue const& optionalEndMax =
@@ -333,33 +339,16 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  if (uSearchBuf.isEmpty()) {
+  if (pattern.isEmpty()) {
     return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
   }
-  if (uBuf.isEmpty()) {
-    return AqlValue(AqlValueHintInt(-1));
-  }
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
-  UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
-  search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
-
-  int32_t foundPos = -1;
-  for (int32_t pos = search.last(status);
-       U_SUCCESS(status) && pos != USEARCH_DONE && pos >= startOffset;
-       pos = search.previous(status)) {
-    if (pos + search.getMatchedLength() - 1 <= maxEnd) {
-      foundPos = pos;
-      break;
-    }
-  }
-  if (U_FAILURE(status)) {
-    registerICUWarning(expressionContext, AFN, status);
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kLast);
+  if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(AqlValueHintInt(foundPos));
+  return AqlValue(AqlValueHintInt(*pos));
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -1109,7 +1098,8 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
   bool const willReturnIndex =
       extractFunctionParameterValue(parameters, 2).toBoolean();
 
-  auto const pos = searchFirst(ctx, AFN, text, pattern, 0, text.length());
+  auto const pos = searchInRange(ctx, AFN, text, pattern, 0, text.length(),
+                                 SearchMatch::kFirst);
   if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }
