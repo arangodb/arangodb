@@ -1891,6 +1891,24 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("😀😀", "😀", 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find first function
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -2030,6 +2048,24 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 0, 2)`));
     assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 2)`));
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 3)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 0, 2)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 1)`));
   },
 
 // //////////////////////////////////////////////////////////////////////////////

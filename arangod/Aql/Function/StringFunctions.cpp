@@ -100,13 +100,18 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
   search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  for (int32_t pos =
-           search.following(static_cast<int32_t>(startOffset), status);
-       U_SUCCESS(status) && pos != USEARCH_DONE && pos <= maxEnd;
-       pos = search.next(status)) {
-    if (pos + search.getMatchedLength() - 1 <= maxEnd) {
+  // ICU rounds offsets inside a surrogate pair back to its start, so next()
+  // can return the same match forever; restart past it instead.
+  auto from = static_cast<int32_t>(startOffset);
+  while (from < text.length()) {
+    int32_t const pos = search.following(from, status);
+    if (U_FAILURE(status) || pos == USEARCH_DONE || pos > maxEnd) {
+      break;
+    }
+    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
       return pos;
     }
+    from = text.moveIndex32(std::max(pos, from), 1);
   }
   if (U_FAILURE(status)) {
     registerICUWarning(ctx, functionName, status);
