@@ -1,5 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* The `--server.jwt-secret-folder` startup option now skips everything in the
+  folder that is not a regular file (e.g. subfolders, sockets, devices, named
+  pipes) instead of trying to load it as a JWT secret.
+
 * COR-1062: Fixed wrong AQL query results when two expressions differ only in
   grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
   `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
