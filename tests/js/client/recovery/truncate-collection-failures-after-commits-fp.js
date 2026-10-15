@@ -128,7 +128,11 @@ const recoverySuite = function () {
             assertEqual(i.selectivityEstimate, 1);
             break;
           case 'persistent':
-            assertEqual(i.selectivityEstimate, 1);
+            if (i.fields[0] === "value") {
+              assertEqual(i.selectivityEstimate, 0.025);
+            } else if (i.fields[0] === "value2") {
+              assertEqual(i.selectivityEstimate, 0.01);
+            }
             break;
           default:
             fail();
