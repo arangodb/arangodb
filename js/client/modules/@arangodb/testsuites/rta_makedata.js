@@ -207,7 +207,7 @@ function makeDataWrapper (options) {
       let rc;
       try {
         this.instanceManager.disconnect();
-        this.instanceManager.reconnect(false);
+        this.instanceManager.reconnect(true);
         rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
       } catch (ex) {
         print(`${RED}${Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
