@@ -318,6 +318,9 @@ ResultT<AqlValue> functions::repeat(StringFunctionContext const& ctx,
                                     AqlValue const& repetitions,
                                     AqlValue const* separator) {
   int64_t const count = repetitions.toInt64();
+  if (count == 0) {
+    return AqlValue(std::string_view("", 0));
+  }
   if (count < 0) {
     return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
   }
@@ -327,20 +330,13 @@ ResultT<AqlValue> functions::repeat(StringFunctionContext const& ctx,
     appendString(*sep, ctx.vopts, *separator);
   }
 
-  bool const emptyValue =
-      value.isNull(true) ||
-      (value.isString() && value.slice().getStringLength() == 0);
-  if (count == 0 || (emptyValue && sep->empty())) {
-    return AqlValue(std::string_view("", 0));
-  }
-
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::SizeConstrainedStringSink adapter(buffer.get(),
                                                 /*maxLength*/ 16 * 1024 * 1024);
 
   for (int64_t i = 0; i < count; ++i) {
     if (i > 0 && !sep->empty()) {
-      adapter.append(*sep);
+      buffer->append(*sep);
     }
     appendAsString(ctx.vopts, adapter, value);
     if (adapter.overflowed()) {
