@@ -685,8 +685,9 @@ namespace {
 /// uuid (empty `requestedName`) that does not exist has no name to check and
 /// counts as not granted, so existence cannot be probed by identifier.
 ///
-/// Only enforced from API version 1 onwards; API version 0 and contexts without
-/// a request (internal, superuser) keep the legacy, unchecked behaviour.
+/// Only enforced from API version 2 onwards; API versions 0 and 1, and
+/// contexts without a request (internal, superuser), keep the legacy,
+/// unchecked behaviour.
 ///
 /// The FORBIDDEN result deliberately carries no details: it must be identical
 /// in both rows.
@@ -699,7 +700,7 @@ auto applyVisibilityMatrix(std::shared_ptr<LogicalDataSource> dataSource,
 
   auto const& exec = ExecContext::current();
   if (auto const apiVersion = exec.requestedApiVersion();
-      apiVersion.has_value() && *apiVersion >= 1) {
+      apiVersion.has_value() && *apiVersion > 1) {
     auto const nameToCheck =
         exists ? std::string_view{dataSource->name()} : requestedName;
     if (nameToCheck.empty() || exec.canSeeCollection(db, nameToCheck).fail()) {

@@ -97,9 +97,7 @@ struct ClassicExecContext {
 /// @param isRestApiHardened  Passed to Classic ctor; set true to require admin
 ///                           for hardened actions. Defaults to false.
 /// @param apiVersion  The requested API version recalled by the Classic auth
-///                    context (0 = v0, the default). Set to 1 to exercise
-///                    version-gated checks (e.g. the collection-visibility
-///                    check in lookupCollection).
+///                    context (0 = v0, the default).
 inline ClassicExecContext makeClassicExecContext(
     std::string username, auth::Level systemLevel,
     std::tuple<std::string, auth::Level> database,
