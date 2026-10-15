@@ -86,7 +86,9 @@ class StringFunctionTest : public ::testing::Test {
 
   arangodb::aql::AqlFunctionsInternalCache cache;
   arangodb::aql::functions::StringFunctionContext ctx{
-      velocypack::Options::Defaults, icu_64_64::Locale::getRoot(), cache};
+      velocypack::Options::Defaults,
+      []() -> icu_64_64::Locale const& { return icu_64_64::Locale::getRoot(); },
+      cache};
 
  private:
   std::vector<AqlValue> const& keep(
