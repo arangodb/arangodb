@@ -64,8 +64,6 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                        std::string_view msg) override final;
   void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice) override final;
   aql::AqlFunctionsInternalCache& functionsCache() override final;
 
   Database& vocbase() const override final;
