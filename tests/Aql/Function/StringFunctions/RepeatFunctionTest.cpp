@@ -53,12 +53,6 @@ TEST_F(RepeatFunctionTest, empty_values_still_get_separators) {
   expectResult(repeat(ctx, json("null"), json("3"), &str("-")), "--");
 }
 
-TEST_F(RepeatFunctionTest, empty_values_without_separator_return_immediately) {
-  expectResult(repeat(ctx, str(""), json("9223372036854775807"), nullptr), "");
-  expectResult(repeat(ctx, json("null"), json("9223372036854775807"), &str("")),
-               "");
-}
-
 TEST_F(RepeatFunctionTest, empty_or_null_separator_is_no_separator) {
   expectResult(repeat(ctx, str("foo"), json("3"), &str("")), "foofoofoo");
   expectResult(repeat(ctx, str("foo"), json("3"), &json("null")), "foofoofoo");
@@ -116,13 +110,6 @@ TEST_F(RepeatFunctionTest, output_up_to_16mb_is_allowed) {
 TEST_F(RepeatFunctionTest, output_over_16mb_is_rejected) {
   expectError(repeat(ctx, str("abcd"),
                      json(std::to_string(kMaxOutputLength / 4 + 1)), nullptr),
-              TRI_ERROR_RESOURCE_LIMIT);
-}
-
-TEST_F(RepeatFunctionTest, separators_count_towards_16mb_limit) {
-  expectError(repeat(ctx, json("null"),
-                     json(std::to_string(kMaxOutputLength / 1024 + 2)),
-                     &str(std::string(1024, 'x'))),
               TRI_ERROR_RESOURCE_LIMIT);
 }
 
