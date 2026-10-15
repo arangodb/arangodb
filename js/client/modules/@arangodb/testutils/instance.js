@@ -755,7 +755,7 @@ class instance {
       sleep(1);
     }
     print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
-    if (this.exitStatus('signal') &&
+    if (this.exitStatus.hasOwnProperty('signal') &&
         ((this.exitStatus === 11) ||
          (this.exitStatus === 6))) {
       let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
