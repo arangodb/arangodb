@@ -1075,15 +1075,21 @@ const IndexJoinTestSuite = function () {
       const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
-      assertEqual(nodes.indexOf("JoinNode"), 1);
-      const join = plan.nodes[1];
-      assertEqual(join.type, "JoinNode");
+      if (isCluster) {
+        // doc2 is not joined with doc3, so doc1 and doc3 cannot be joined
+        // shard-locally across it
+        assertEqual(nodes.indexOf("JoinNode"), -1);
+      } else {
+        assertEqual(nodes.indexOf("JoinNode"), 1);
+        const join = plan.nodes[1];
+        assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos.length, 2);
-      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
-      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+        assertEqual(join.indexInfos.length, 2);
+        assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+        assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+      }
 
-      const result = db._createStatement(query).execute().toArray();
+      const result = db._createStatement({query, options: queryOptions}).execute().toArray();
       assertEqual(result.length, 400);
       for (const [a, b, c, d] of result) {
         assertEqual(b, d);
