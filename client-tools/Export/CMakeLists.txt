@@ -18,6 +18,9 @@ target_link_libraries(${BIN_ARANGOEXPORT}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOEXPORT} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGOEXPORT} mimalloc)
+endif ()
 
 
 install(
