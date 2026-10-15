@@ -25,14 +25,9 @@
 #include "Aql/AqlValue.h"
 #include "VocBase/Validators.h"
 
-#include <unicode/locid.h>
 #include <unicode/regex.h>
 #include <memory>
 #include <string_view>
-
-namespace arangodb {
-struct Database;
-}
 
 namespace arangodb::aql {
 
@@ -63,8 +58,6 @@ class AqlFunctionsInternalCache final {
   //                              But it is able to handle other validation
   //                              types without change.
   arangodb::ValidatorBase* buildValidator(VPackSlice validatorDescription);
-
-  icu_64_64::Locale const& locale(Database& vocbase);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
@@ -103,7 +96,6 @@ class AqlFunctionsInternalCache final {
       _validatorCache;
   /// @brief a reusable string object for pattern generation
   std::string _temp;
-  icu_64_64::Locale const* _locale = nullptr;
 };
 
 }  // namespace arangodb::aql
