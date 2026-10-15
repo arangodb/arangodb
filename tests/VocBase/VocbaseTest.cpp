@@ -265,17 +265,29 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         vocbase.lookupCollectionByUuid("testCollectionGUID").errorNumber(),
         TRI_ERROR_FORBIDDEN);
 
+    // Existence must not leak: a hidden collection and a missing one give an
+    // identical FORBIDDEN (code and message), by identifier as well as by name.
+    auto const hidden = vocbase.lookupCollection(cid);
+    auto const missingById =
+        vocbase.lookupCollection(arangodb::DataSourceId{1});
+    auto const missingByName = vocbase.lookupCollection("anotherCollection");
+    EXPECT_EQ(hidden.errorNumber(), missingById.errorNumber());
+    EXPECT_EQ(hidden.errorMessage(), missingById.errorMessage());
+    EXPECT_EQ(hidden.errorNumber(), missingByName.errorNumber());
+    EXPECT_EQ(hidden.errorMessage(), missingByName.errorMessage());
+
     // The check belongs in lookupCollection, not in the shared lookupDataSource
     // (which also backs views/analyzers and is out of scope for the
     // collection-only change): the raw data-source lookup still resolves.
     EXPECT_NE(vocbase.lookupDataSource("testCollection"), nullptr);
   }
 
-  // API version 1: a user with read access to the database (and thus its
-  // collections) may see the collection.
+  // API version 1: a user with read access to exactly one collection, and no
+  // other grant at all (note: _system access would act as a fallback grant
+  // for every database), may see that collection and nothing else.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
-        "reader", arangodb::auth::Level::RO,
+        "reader", arangodb::auth::Level::NONE,
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::RO}},
         /*isRestApiHardened*/ false,
@@ -288,19 +300,43 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
     EXPECT_TRUE(vocbase.lookupCollection("testCollectionGUID").ok());
     EXPECT_TRUE(vocbase.lookupCollectionByUuid("testCollectionGUID").ok());
 
-    // collections that do not exist are reported as NOT_FOUND (distinct from
-    // the FORBIDDEN returned for a collection that exists but is not visible).
+    // Other collections: this user is granted for no other name, and a missing
+    // collection requested by identifier is never granted - so every lookup is
+    // FORBIDDEN, whether or not such a collection exists.
     EXPECT_EQ(vocbase.lookupCollection(arangodb::DataSourceId{1}).errorNumber(),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
     EXPECT_EQ(vocbase.lookupCollection("324").errorNumber(),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
     EXPECT_EQ(vocbase.lookupCollection("anotherCollection").errorNumber(),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
     EXPECT_EQ(vocbase.lookupCollection("anotherCollectionGUID").errorNumber(),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
     EXPECT_EQ(
         vocbase.lookupCollectionByUuid("anotherCollectionGUID").errorNumber(),
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        TRI_ERROR_FORBIDDEN);
+  }
+
+  // API version 1: a user with read access to the whole database is granted
+  // for any name, so a missing collection requested by NAME is NOT_FOUND. By
+  // id or uuid there is no name to check, so it stays FORBIDDEN: existence
+  // cannot be probed by identifier.
+  {
+    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+        "dbReader", "testVocbase", arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO, /*isRestApiHardened*/ false,
+        /*apiVersion*/ 1);
+    arangodb::ExecContextScope scope(ctx.execContext);
+
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
+    EXPECT_EQ(vocbase.lookupCollection("anotherCollection").errorNumber(),
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    EXPECT_EQ(vocbase.lookupCollection(arangodb::DataSourceId{1}).errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(vocbase.lookupCollection("324").errorNumber(),
+              TRI_ERROR_FORBIDDEN);
+    EXPECT_EQ(
+        vocbase.lookupCollectionByUuid("anotherCollectionGUID").errorNumber(),
+        TRI_ERROR_FORBIDDEN);
   }
 
   // API version 0 keeps the legacy behaviour: the visibility check is not
