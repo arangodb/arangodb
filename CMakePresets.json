@@ -191,9 +191,13 @@
         "pr-x64"
       ],
       "cacheVariables": {
-        "USE_IPO": "On"
+        "USE_IPO": "Off",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libgomp -llapack -lgfortran",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
+        "LAPACK_LIBRARIES": "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a",
+        "BLAS_LIBRARIES": "/usr/lib/x86_64-linux-gnu/libblas.a"
       },
-      "displayName": "Test Docker image build (Enterprise, Maintainer Mode, IPO) - x64"
+      "displayName": "Test Docker image build (Enterprise, Maintainer Mode) - x64"
     },
     {
       "name": "test-docker-image-arm64",
@@ -201,9 +205,39 @@
         "pr-arm64"
       ],
       "cacheVariables": {
-        "USE_IPO": "Off"
+        "USE_IPO": "Off",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libgomp -llapack -lgfortran",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
+        "LAPACK_LIBRARIES": "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a",
+        "BLAS_LIBRARIES": "/usr/lib/aarch64-linux-gnu/libblas.a"
       },
       "displayName": "Test Docker image build (Enterprise, Maintainer Mode) - ARM64"
+    },
+    {
+      "name": "preview-docker-image-x64",
+      "inherits": [
+        "test-docker-image-x64"
+      ],
+      "cacheVariables": {
+        "USE_MAINTAINER_MODE": "Off",
+        "USE_GOOGLE_TESTS": "Off",
+        "USE_FAILURE_TESTS": "Off",
+        "USE_IPO": "On"
+      },
+      "displayName": "Preview Docker image build (Enterprise, non-maintainer, IPO) - x64"
+    },
+    {
+      "name": "preview-docker-image-arm64",
+      "inherits": [
+        "test-docker-image-arm64"
+      ],
+      "cacheVariables": {
+        "USE_MAINTAINER_MODE": "Off",
+        "USE_GOOGLE_TESTS": "Off",
+        "USE_FAILURE_TESTS": "Off",
+        "USE_IPO": "Off"
+      },
+      "displayName": "Preview Docker image build (Enterprise, non-maintainer) - ARM64"
     },
     {
       "hidden": true,
@@ -352,6 +386,14 @@
     {
       "name": "test-docker-image-arm64",
       "configurePreset": "test-docker-image-arm64"
+    },
+    {
+      "name": "preview-docker-image-x64",
+      "configurePreset": "preview-docker-image-x64"
+    },
+    {
+      "name": "preview-docker-image-arm64",
+      "configurePreset": "preview-docker-image-arm64"
     },
     {
       "name": "nightly-package-x64",

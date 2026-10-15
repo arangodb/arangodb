@@ -116,7 +116,9 @@ class CircleCIGenerator(OutputGenerator):
                 self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         if self.config.circleci.create_test_docker_images != "none":
-            self._add_docker_images_workflow(circleci_config["workflows"])
+            self._add_docker_images_workflow(circleci_config["workflows"], "test")
+        if self.config.circleci.create_preview_docker_images != "none":
+            self._add_docker_images_workflow(circleci_config["workflows"], "preview")
 
         return circleci_config
 
@@ -265,11 +267,18 @@ class CircleCIGenerator(OutputGenerator):
         (Architecture.AARCH64, "arm64"),
     )
 
-    def _add_docker_images_workflow(self, workflows: Dict[str, Any]) -> None:
+    def _add_docker_images_workflow(
+        self, workflows: Dict[str, Any], flavor: str
+    ) -> None:
         """
         Add a dedicated workflow that builds and publishes the multi-arch
-        arangodb/core-test and arangodb/client-tools-test Docker images
-        (Alpine 3.24 based, maintainer-mode) to public ECR.
+        arangodb/core-<flavor> and arangodb/client-tools-<flavor> Docker
+        images (Alpine 3.24 based) to public ECR. Flavor "test" is the
+        maintainer-mode pair (create-test-docker-images), "preview" the
+        non-maintainer, release-like pair (create-preview-docker-images);
+        both may run in the same pipeline as independent workflows, and one
+        workflow name (test-docker-images / preview-docker-images) maps to
+        exactly one image pair.
 
         Tagging follows the nightly-packages convention: the manifest tag is
         <community sha7>_<enterprise sha7>, per-arch tags append
@@ -283,7 +292,7 @@ class CircleCIGenerator(OutputGenerator):
         through this workflow's own workspace.
         """
         workflow: Dict[str, Any] = {"jobs": []}
-        workflows["docker-images"] = workflow
+        workflows[f"{flavor}-docker-images"] = workflow
 
         # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
         # enterprise branch" step (config.yml).
@@ -297,37 +306,42 @@ class CircleCIGenerator(OutputGenerator):
                 architecture=architecture, build_variant=BuildVariant.NORMAL
             )
 
-            compile_job = self._create_docker_compile_job(build_config)
+            compile_job = self._create_docker_compile_job(build_config, flavor)
             workflow["jobs"].append(compile_job)
             compile_job_name = compile_job["compile-linux"]["name"]
 
             image_job = self._create_docker_build_job(
-                build_config, docker_arch, [compile_job_name]
+                build_config, flavor, docker_arch, [compile_job_name]
             )
             workflow["jobs"].append(image_job)
             image_job_names.append(image_job["build-docker-image"]["name"])
 
         workflow["jobs"].append(
-            self._create_docker_manifest_job(tag, image_job_names)
+            self._create_docker_manifest_job(flavor, tag, image_job_names)
         )
 
-    def _create_docker_compile_job(self, build_config: BuildConfig) -> Dict[str, Any]:
-        """Create the maintainer-mode compile job producing the install
-        package for a Docker image. Uses the dedicated test-docker-image
-        presets: unlike the pr presets (IPO disabled for developer build
-        turnaround), the published test image keeps IPO on x64."""
-        preset = (
-            "test-docker-image-arm64"
+    def _create_docker_compile_job(
+        self, build_config: BuildConfig, flavor: str
+    ) -> Dict[str, Any]:
+        """Create the compile job producing the install package for a Docker
+        image. Uses the dedicated <flavor>-docker-image presets: "test" is a
+        maintainer build with IPO off, matching the binaries the pr test
+        workflows run against; "preview" is a non-maintainer build that keeps
+        IPO on x64 like the nightly packages. Both carry the nightly-aligned
+        linkage (static LAPACK/BLAS, OpenMP, lld)."""
+        preset_arch = (
+            "arm64"
             if build_config.architecture == Architecture.AARCH64
-            else "test-docker-image-x64"
+            else "x64"
         )
+        preset = f"{flavor}-docker-image-{preset_arch}"
 
         params = {
             "context": ["sccache-aws-bucket"],
             "resource-class": self.sizer.get_resource_class(
                 ResourceSize.XXLARGE, build_config.architecture
             ),
-            "name": f"build-{build_config.architecture.value}-for-docker-image",
+            "name": f"build-{build_config.architecture.value}-for-{flavor}-image",
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
@@ -344,17 +358,19 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_build_job(
         self,
         build_config: BuildConfig,
+        flavor: str,
         docker_arch: str,
         requires: List[str],
     ) -> Dict[str, Any]:
         """Create the job that builds and locally saves one architecture's
-        pair of Docker images (core-test and client-tools-test)."""
+        pair of Docker images (core-<flavor> and client-tools-<flavor>)."""
         return {
             "build-docker-image": {
-                "name": f"build-{build_config.architecture.value}-docker-image",
+                "name": f"build-{build_config.architecture.value}-{flavor}-image",
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
+                "name-suffix": flavor,
                 "arch": docker_arch,
                 "build-arch": build_config.architecture.value,
                 "requires": requires,
@@ -362,16 +378,17 @@ class CircleCIGenerator(OutputGenerator):
         }
 
     def _create_docker_manifest_job(
-        self, tag: str, requires: List[str]
+        self, flavor: str, tag: str, requires: List[str]
     ) -> Dict[str, Any]:
-        """Create the job that pushes the multi-arch core-test and
-        client-tools-test manifests to ECR."""
+        """Create the job that pushes the multi-arch core-<flavor> and
+        client-tools-<flavor> manifests to ECR."""
         return {
             "push-docker-manifest": {
-                "name": "push-docker-manifest",
+                "name": f"push-{flavor}-manifest",
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, Architecture.X64
                 ),
+                "name-suffix": flavor,
                 "tag": tag,
                 "requires": requires,
             }

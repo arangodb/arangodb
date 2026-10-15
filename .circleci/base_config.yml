@@ -38,6 +38,10 @@ parameters:
     type: enum
     enum: [none, alpine]
     default: none
+  create-preview-docker-images:
+    type: enum
+    enum: [none, alpine]
+    default: none
   rebuild-test-docker-images:
     type: boolean
     default: false
@@ -927,11 +931,19 @@ jobs:
   # happens once both architectures are available together, in
   # push-docker-manifest. CircleCI workflows can't depend on jobs in
   # another workflow, so both architectures live in the same
-  # "docker-images" workflow and hand off through the workspace.
+  # "test-docker-images" / "preview-docker-images" workflow and hand off
+  # through the workspace.
   build-docker-image:
     parameters:
       resource-class:
         type: string
+      # Image flavor suffix: core-<name-suffix> / client-tools-<name-suffix>.
+      # "test" is the maintainer-mode pair, "preview" the non-maintainer,
+      # release-like pair.
+      name-suffix:
+        type: enum
+        enum: [test, preview]
+        default: test
       # Docker platform architecture (amd64 | arm64), used for --platform
       # and the image's arch build-arg
       arch:
@@ -952,10 +964,11 @@ jobs:
       - run:
           name: Build Docker Images
           command: |
-            # Two Alpine-based (3.24) test images per architecture:
-            # core-test (server only, no client tools) and
-            # client-tools-test (client tools only, pruned from the same
-            # install tree the way build-targz.sh builds the client bundle).
+            # Two Alpine-based (3.24) images per architecture:
+            # core-<name-suffix> (server only, no client tools) and
+            # client-tools-<name-suffix> (client tools only, pruned from the
+            # same install tree the way build-targz.sh builds the client
+            # bundle).
             set -eu
             cd docker-context-<< parameters.build-arch >>
             mkdir install
@@ -982,10 +995,10 @@ jobs:
             rm -rf install/usr/share/man/man1 \
                    install/usr/share/arangodb4/js
 
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-test:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
-            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-test:local-<< parameters.arch >>
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-test:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
-            docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-test:local-<< parameters.arch >>
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >>
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
+            docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp
           paths:
@@ -993,14 +1006,21 @@ jobs:
             - docker-client-tools-<< parameters.build-arch >>.tar
 
   # Loads both architectures' locally-built images (two image names each:
-  # core-test and client-tools-test), pushes each as an arch-suffixed tag,
-  # then creates and pushes one multi-arch manifest per image name under
-  # the bare tag (<community sha7>_<enterprise sha7>). ECR only, using the
-  # same OIDC role assumption as before - no stored credentials/context.
+  # core-<name-suffix> and client-tools-<name-suffix>), pushes each as an
+  # arch-suffixed tag, then creates and pushes one multi-arch manifest per
+  # image name under the bare tag (<community sha7>_<enterprise sha7>). ECR
+  # only, using the same OIDC role assumption as before - no stored
+  # credentials/context.
   push-docker-manifest:
     parameters:
       resource-class:
         type: string
+      # Image flavor suffix: must match the name-suffix the feeding
+      # build-docker-image jobs tagged their images with
+      name-suffix:
+        type: enum
+        enum: [test, preview]
+        default: test
       tag:
         type: string
     docker:
@@ -1033,9 +1053,9 @@ jobs:
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
             for NAME in core client-tools; do
-              IMAGE="public.ecr.aws/b0b8h2r4/arangodb/${NAME}-test"
+              IMAGE="public.ecr.aws/b0b8h2r4/arangodb/${NAME}-<< parameters.name-suffix >>"
               for ARCH in amd64 arm64; do
-                docker tag "arangodb/${NAME}-test:local-${ARCH}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+                docker tag "arangodb/${NAME}-<< parameters.name-suffix >>:local-${ARCH}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
                 retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
               done
               docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
