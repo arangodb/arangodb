@@ -72,6 +72,7 @@ def testing_runner(testing_instance, this, arangosh):
     # pylint: disable=too-many-statements
     try:
         this.start = datetime.now(tz=None)
+        ret = {'pid': -1}
         ret = arangosh.run_testing(
             this.suite,
             this.arangosh_args,
