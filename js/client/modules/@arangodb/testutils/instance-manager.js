@@ -1069,7 +1069,7 @@ class instanceManager {
   }
   launchFinalize(startTime) {
     {//if (!this.options.cluster && !this.options.agency) {
-      let deadline = time() + seconds(this.startupMaxCount);
+      let deadline = time() + seconds(this.startupMaxCount / 4);
       this.arangods.forEach(arangod => {
         try {
           arangod.pingUntilReady(deadline);
@@ -1160,10 +1160,7 @@ class instanceManager {
             sleep(1);
           }
           print(`${Date()} upgrading ${arangod.name}`);
-          if (!arangod.runUpgrade(JSON.stringify(this.getStructure()))) {
-            print(`${RED}aborting upgrade cycle after fatal failure${RESET}`);
-            throw new Error(`failed to upgrade cycle ${arangod.name} - it crashed`);
-          }
+          arangod.runUpgrade(JSON.stringify(this.getStructure()));
           print(`${Date()} relaunching ${arangod.name}`);
           arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {
