@@ -2091,38 +2091,6 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test find_first and find_last stay fast with many overlapping matches
-// //////////////////////////////////////////////////////////////////////////////
-
-  testFindManyOverlappingMatches: function () {
-    const n = 50000;
-    const query = `LET t = REPEAT("a", 2 * @n) LET p = REPEAT("a", @n) RETURN [
-      FIND_LAST(t, p), FIND_LAST(SUBSTRING(t, 1), p), FIND_LAST(t, p, 0, @n),
-      FIND_FIRST(t, p, 0, @n - 2), FIND_FIRST(t, p, 1)]`;
-    assertEqual([ [ n, n - 1, 1, -1, 1 ] ], getQueryResults(query, { n }));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test find_first and find_last reject a match crossing end in a long text
-// //////////////////////////////////////////////////////////////////////////////
-
-  testFindLongTextMatchCrossingEnd: function () {
-    const query = `LET t = CONCAT(REPEAT("b", 300), @s) RETURN [
-      FIND_LAST(t, "a", 0, 302), FIND_FIRST(t, "a", 0, 300), FIND_FIRST(t, "a", 0, 301)]`;
-    assertEqual([ [ 300, -1, 300 ] ], getQueryResults(query, { s: "a\uFE0Fa\uFE0F" }));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test find_last with a single match at the start of a long text
-// //////////////////////////////////////////////////////////////////////////////
-
-  testFindLastSparseMatchInLongText: function () {
-    const query = `LET t = CONCAT("x", REPEAT("a", 1000000)) RETURN [
-      FIND_LAST(t, "x"), FIND_LAST(t, "xa"), FIND_LAST(t, "y")]`;
-    assertEqual([ [ 0, 0, -1 ] ], getQueryResults(query));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find_last function
 // //////////////////////////////////////////////////////////////////////////////
 

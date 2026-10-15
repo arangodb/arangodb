@@ -83,109 +83,6 @@ icu_64_64::UnicodeString toUnicodeString(velocypack::Options const& vopts,
 
 enum class SearchMatch { kFirst, kLast };
 
-// ICU 64 overlap search: only following() is reliable near surrogate pairs.
-int32_t matchLengthAt(icu_64_64::StringSearch& search, int32_t pos,
-                      UErrorCode& status) {
-  return search.following(pos, status) == pos ? search.getMatchedLength() : 0;
-}
-
-// Binary search for the last match start in [lo, hi), lo being a match start.
-int32_t refineLastMatchStart(icu_64_64::StringSearch& search,
-                             icu_64_64::UnicodeString const& text, int32_t lo,
-                             int32_t hi, UErrorCode& status) {
-  int32_t mid = text.moveIndex32(lo, 1);
-  while (U_SUCCESS(status) && mid < hi) {
-    // A failing probe rescans the partial-match run: ICU has no anchored match.
-    int32_t const pos = search.following(mid, status);
-    if (pos != USEARCH_DONE && pos >= mid && pos < hi) {
-      lo = pos;
-    } else {
-      hi = mid;
-    }
-    int32_t const next = text.moveIndex32(lo, 1);
-    if (next >= hi) {
-      break;
-    }
-    mid = std::max(next, text.getChar32Start(lo + (hi - lo) / 2));
-  }
-  return lo;
-}
-
-int32_t lastMatchStart(icu_64_64::StringSearch& search,
-                       icu_64_64::UnicodeString const& text, int32_t low,
-                       int32_t bound, UErrorCode& status) {
-  int32_t pos = search.following(low, status);
-  if (U_FAILURE(status) || pos == USEARCH_DONE || pos < low || pos >= bound) {
-    return USEARCH_DONE;
-  }
-  // Jump over whole matches; overlapping ones only start inside the last one.
-  int32_t end = pos + search.getMatchedLength();
-  while (end < bound) {
-    int32_t const next = search.following(end, status);
-    if (U_FAILURE(status) || next == USEARCH_DONE || next < end ||
-        next >= bound) {
-      break;
-    }
-    pos = next;
-    end = pos + search.getMatchedLength();
-  }
-  return refineLastMatchStart(search, text, pos, std::min(end, bound), status);
-}
-
-struct MatchRange {
-  int32_t low;
-  int32_t limit;
-  int64_t maxEnd;
-  bool bounded;
-
-  bool fits(int32_t pos, int32_t length) const {
-    return pos >= low && length > 0 && pos + length - 1 <= maxEnd;
-  }
-};
-
-int64_t firstMatchInRange(icu_64_64::StringSearch& candidates,
-                          icu_64_64::StringSearch& search,
-                          icu_64_64::UnicodeString const& text,
-                          MatchRange const& range, UErrorCode& status) {
-  int32_t from = range.low;
-  while (U_SUCCESS(status) && from < range.limit) {
-    int32_t const pos = candidates.following(from, status);
-    if (U_FAILURE(status) || pos == USEARCH_DONE) {
-      break;
-    }
-    int32_t const length = &candidates == &search
-                               ? search.getMatchedLength()
-                               : matchLengthAt(search, pos, status);
-    if (range.fits(pos, length)) {
-      return pos;
-    }
-    from = text.moveIndex32(std::max(pos, from), 1);
-  }
-  return -1;
-}
-
-int64_t lastMatchInRange(icu_64_64::StringSearch& candidates,
-                         icu_64_64::StringSearch& search,
-                         icu_64_64::UnicodeString const& text,
-                         MatchRange const& range, UErrorCode& status) {
-  int32_t bound = range.limit;
-  while (U_SUCCESS(status)) {
-    int32_t const pos =
-        lastMatchStart(candidates, text, range.low, bound, status);
-    if (U_FAILURE(status) || pos == USEARCH_DONE) {
-      break;
-    }
-    if (!range.bounded || range.fits(pos, matchLengthAt(search, pos, status))) {
-      return pos;
-    }
-    bound = pos;
-  }
-  return -1;
-}
-
-// Below this length, a second StringSearch costs more than it saves.
-constexpr int32_t kMinPrefixSearchLength = 256;
-
 // Returns -1 if there is no match, or nullopt after registering an ICU warning.
 std::optional<int64_t> searchInRange(ExpressionContext* ctx,
                                      std::string_view functionName,
@@ -206,25 +103,22 @@ std::optional<int64_t> searchInRange(ExpressionContext* ctx,
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
   search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  bool const bounded = maxEnd < text.length() - 1;
-  MatchRange const range{
-      .low = text.getChar32Limit(static_cast<int32_t>(startOffset)),
-      .limit = bounded ? text.getChar32Limit(static_cast<int32_t>(maxEnd) + 1)
-                       : text.length(),
-      .maxEnd = maxEnd,
-      .bounded = bounded};
-  // Searching only up to maxEnd skips matches that cross it.
-  std::optional<icu_64_64::StringSearch> prefixSearch;
-  if (range.limit < text.length() && text.length() >= kMinPrefixSearchLength) {
-    prefixSearch.emplace(pattern, text.tempSubString(0, range.limit), locale,
-                         nullptr, status);
-    prefixSearch->setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
+  // ICU 64 misreports matches with next()/previous(), so only use following().
+  int64_t found = -1;
+  auto from = static_cast<int32_t>(startOffset);
+  while (from < text.length()) {
+    int32_t const pos = search.following(from, status);
+    if (U_FAILURE(status) || pos == USEARCH_DONE || pos > maxEnd) {
+      break;
+    }
+    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
+      found = pos;
+      if (which == SearchMatch::kFirst) {
+        break;
+      }
+    }
+    from = text.moveIndex32(std::max(pos, from), 1);
   }
-  auto& candidates = prefixSearch.has_value() ? *prefixSearch : search;
-  int64_t const found =
-      which == SearchMatch::kFirst
-          ? firstMatchInRange(candidates, search, text, range, status)
-          : lastMatchInRange(candidates, search, text, range, status);
   if (U_FAILURE(status)) {
     registerICUWarning(ctx, functionName, status);
     return std::nullopt;
