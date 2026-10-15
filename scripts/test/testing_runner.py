@@ -535,7 +535,7 @@ class TestingRunner:
             self.mp_zip_tar(coredumps, core_zip_dir, crash_report_file, 'crash report', 'crashreport')
             for one_file in coredumps:
                 one_file.unlink(missing_ok=True)
-            
+
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"binaries-{self.cfg.datetime_format}"
