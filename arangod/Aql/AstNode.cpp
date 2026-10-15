@@ -259,11 +259,6 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
 
 struct AstNodeCompareOptions {
   bool compareUtf8;
-  // how non-deterministic calls with a stable value (see hasStableValue) are
-  // compared:
-  // false: by address, like other non-deterministic calls
-  // true: by arguments, since they return the same value within a query
-  bool matchStableCalls;
 };
 
 template<bool resolveAttributeAccess>
@@ -441,11 +436,7 @@ int compareFcall(AstNode const* lhs, AstNode const* rhs,
   // Non-deterministic calls like RAND() are never equal to each other. Compare
   // by pointer address to keep the ordering stable within a single query.
   if (!lhs->isDeterministic() || !rhs->isDeterministic()) {
-    bool const bothStable =
-        opts.matchStableCalls && hasStableValue(lhs) && hasStableValue(rhs);
-    if (!bothStable) {
-      return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
-    }
+    return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
   }
 
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
@@ -681,8 +672,7 @@ int compareAstNodesImpl(AstNode const* lhs, AstNode const* rhs,
 
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
-  return compareAstNodesImpl<resolveAttributeAccess>(lhs, rhs,
-                                                     {compareUtf8, false});
+  return compareAstNodesImpl<resolveAttributeAccess>(lhs, rhs, {compareUtf8});
 }
 
 // NOOPT(), DOCUMENT(), and COLLECTION_COUNT() are flagged as non-deterministic,
@@ -708,10 +698,6 @@ bool hasStableValue(AstNode const* node) {
     }
   }
   return true;
-}
-
-bool isSameExpression(AstNode const* lhs, AstNode const* rhs) {
-  return compareAstNodesImpl<false>(lhs, rhs, {false, true}) == 0;
 }
 
 // private ctor, only called during by FixedSizeAllocator in case of emergency

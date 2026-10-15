@@ -91,8 +91,8 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               }
               // non-constant condition
               else if (me.operatorType == operand->type &&
-                       isSameExpression(normalize(me.valueNode),
-                                        normalize(rhs))) {
+                       compareAstNodes<false>(normalize(me.valueNode),
+                                              normalize(rhs), false) == 0) {
                 return true;
               }
             }
@@ -123,7 +123,8 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                   opType = Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
-                    isSameExpression(normalize(me.valueNode), normalize(lhs))) {
+                    compareAstNodes<false>(normalize(me.valueNode),
+                                           normalize(lhs), false) == 0) {
                   return true;
                 }
               }

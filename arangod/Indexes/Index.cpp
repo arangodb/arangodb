@@ -826,9 +826,9 @@ bool Index::canUseConditionPart(
     aql::AstNode const* op, aql::Variable const* reference,
     containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
-  if (!aql::hasStableValue(access) || !aql::hasStableValue(other)) {
-    // we can only use stable values in index lookups; we should not look up
-    // index for non-stable values such as RAND()
+  if (!access->isDeterministic() || !other->isDeterministic()) {
+    // we can only use deterministic values in index lookups; we should not look
+    // up index for non-deterministic values such as RAND()
     return false;
   }
   if (_sparse) {

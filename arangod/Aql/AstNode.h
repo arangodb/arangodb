@@ -664,15 +664,6 @@ struct AstNode {
 template<bool resolveAttributeAccess = true>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
-/// @brief whether the node has the same value every time it is evaluated
-/// within a query: true for deterministic nodes, and also true for NOOPT(),
-/// DOCUMENT() and COLLECTION_COUNT() calls whose arguments are stable
-bool hasStableValue(AstNode const* node);
-
-/// @brief whether both nodes are the same expression as written,
-/// not by the pointer address
-bool isSameExpression(AstNode const* lhs, AstNode const* rhs);
-
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;
 };

@@ -1615,33 +1615,4 @@ TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
-// NOOPT() only blocks optimizations, so a copy of NOOPT(1) is the same
-// expression; RAND() calls can return different values and never match
-TEST_F(CompareAstNodesTest, isSameExpressionMatchesStableCalls) {
-  EXPECT_TRUE(isSameExpression(fcall("NOOPT", {intVal(1)}),
-                               fcall("NOOPT", {intVal(1)})));
-  EXPECT_FALSE(isSameExpression(fcall("NOOPT", {intVal(0)}),
-                                fcall("NOOPT", {intVal(1)})));
-  EXPECT_FALSE(isSameExpression(fcall("RAND", {}), fcall("RAND", {})));
-  EXPECT_FALSE(isSameExpression(fcall("NOOPT", {fcall("RAND", {})}),
-                                fcall("NOOPT", {fcall("RAND", {})})));
-}
-
-// hasStableValue() wants to determine if a fnode returns stable values which
-// include deterministic fcalls and NOOPT, DOCUMENT and COLLECTION_COUNT, but
-// not RAND or user-defined functions.
-TEST_F(CompareAstNodesTest, hasStableValue) {
-  EXPECT_TRUE(hasStableValue(intVal(1)));
-  EXPECT_TRUE(hasStableValue(fcall("NOOPT", {intVal(1)})));
-  EXPECT_TRUE(hasStableValue(fcall("NOOPT", {fcall("NOOPT", {intVal(1)})})));
-  EXPECT_TRUE(hasStableValue(attr(fcall("DOCUMENT", {strVal("c/k")}), "x")));
-  EXPECT_TRUE(hasStableValue(fcall("COLLECTION_COUNT", {strVal("c")})));
-  EXPECT_FALSE(hasStableValue(fcall("RAND", {})));
-  EXPECT_FALSE(hasStableValue(fcall("NOOPT", {fcall("RAND", {})})));
-  EXPECT_FALSE(hasStableValue(createBinaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS,
-                                             fcall("NOOPT", {intVal(1)}),
-                                             fcall("RAND", {}))));
-  EXPECT_FALSE(hasStableValue(fcallUser("MY::FUNC")));
-}
-
 }  // namespace
