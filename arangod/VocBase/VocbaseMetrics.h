@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include <cstdint>
 #include <memory>
 #include "Metrics/Fwd.h"
 

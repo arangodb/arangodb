@@ -27,6 +27,7 @@
 #include "Cache/Manager.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace arangodb::cache {
 
@@ -95,13 +96,18 @@ basics::ReadWriteSpinLock& Metadata::lock() const noexcept { return _lock; }
 bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
   while (true) {
     std::uint64_t expected = usage.load(std::memory_order_acquire);
-    std::uint64_t desired =
-        (usageChange < 0) ? expected - static_cast<std::uint64_t>(-usageChange)
-                          : expected + static_cast<std::uint64_t>(usageChange);
-
-    if ((desired > hardUsageLimit) ||
-        ((expected <= softUsageLimit) && (desired > softUsageLimit))) {
-      return false;
+    std::uint64_t desired;
+    if (usageChange < 0) {
+      // decreasing usage is always allowed, but must not underflow
+      auto decrease = static_cast<std::uint64_t>(-usageChange);
+      TRI_ASSERT(expected >= decrease);
+      desired = (expected >= decrease) ? expected - decrease : 0;
+    } else {
+      desired = expected + static_cast<std::uint64_t>(usageChange);
+      if ((desired < expected) || (desired > hardUsageLimit) ||
+          ((expected <= softUsageLimit) && (desired > softUsageLimit))) {
+        return false;
+      }
     }
 
     bool success = usage.compare_exchange_weak(expected, desired,
@@ -127,6 +133,11 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
                             std::uint64_t hardLimit) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
   uint64_t fixed = tableSize + fixedSize + Manager::kCacheRecordOverhead;
+  // overflow-safe check for (limit + fixed <= min(deservedSize, maxSize))
+  auto fits = [&](std::uint64_t limit) -> bool {
+    std::uint64_t bound = std::min(deservedSize, maxSize);
+    return (bound >= fixed) && (limit <= bound - fixed);
+  };
   auto approve = [&]() -> bool {
     softUsageLimit = softLimit;
     hardUsageLimit = hardLimit;
@@ -150,7 +161,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
 
   // general case: start shrinking
   if ((hardLimit == hardUsageLimit) && (softLimit < hardLimit) &&
-      (softLimit + fixed <= std::min(deservedSize, maxSize))) {
+      fits(softLimit)) {
     return approve();
   }
 
@@ -161,8 +172,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
   }
 
   // general case: adjust both above usage but below deserved/maxSize
-  if ((softLimit == hardLimit) && (usage <= hardLimit) &&
-      ((hardLimit + fixed) <= std::min(deservedSize, maxSize))) {
+  if ((softLimit == hardLimit) && (usage <= hardLimit) && fits(hardLimit)) {
     return approve();
   }
 
@@ -178,16 +188,21 @@ std::uint64_t Metadata::adjustDeserved(std::uint64_t deserved) noexcept {
 std::uint64_t Metadata::newLimit() const noexcept {
   TRI_ASSERT(_lock.isLocked());
   std::uint64_t fixed = fixedSize + tableSize + Manager::kCacheRecordOverhead;
+  // cap the growth factor without overflowing
+  constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+  std::uint64_t maxGrowth =
+      (hardUsageLimit > kMax / 4) ? kMax : 4 * hardUsageLimit;
   return ((Cache::kMinSize + fixed) >= deservedSize)
              ? Cache::kMinSize
-             : std::min((deservedSize - fixed), 4 * hardUsageLimit);
+             : std::min((deservedSize - fixed), maxGrowth);
 }
 
 bool Metadata::migrationAllowed(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLocked());
-  return (hardUsageLimit + fixedSize + newTableSize +
-              Manager::kCacheRecordOverhead <=
-          std::min(deservedSize, maxSize));
+  std::uint64_t bound = std::min(deservedSize, maxSize);
+  std::uint64_t fixed =
+      fixedSize + newTableSize + Manager::kCacheRecordOverhead;
+  return (bound >= fixed) && (hardUsageLimit <= bound - fixed);
 }
 
 void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
