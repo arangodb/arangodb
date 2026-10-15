@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <functional>
 #include <string_view>
 #include <utility>
 
@@ -46,7 +47,8 @@ struct StringFunctionContext {
   // the transaction's options resolve custom types (e.g. _id) and translated
   // attribute names in place, without copying the document first
   velocypack::Options const& vopts;
-  icu_64_64::Locale const& locale;
+  // resolved on first use, so functions without a locale need no server
+  std::function<icu_64_64::Locale const&()> locale;
   // like and split string function save their built regexes into a cache
   AqlFunctionsInternalCache& cache;
   // lets long regex matches stop when the query is killed
