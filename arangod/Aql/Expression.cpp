@@ -1675,7 +1675,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     if (other->id == variable->id) {
       // simplify `v[*]` to just `v` if it's already an array
-      mustDestroy = true;
       guard.steal();
       return value;
     }
