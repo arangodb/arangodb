@@ -119,6 +119,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   void PutLogData(rocksdb::Slice const&) final override;
 
   Result setWriteTimestamp(uint64_t ts) final override;
+  std::optional<std::uint64_t> writeTimestamp() const noexcept final override {
+    return _writeTimestamp;
+  }
 
   void SetSavePoint() final override;
   rocksdb::Status RollbackToSavePoint() final override;

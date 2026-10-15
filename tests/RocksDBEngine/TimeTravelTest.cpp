@@ -502,6 +502,268 @@ TEST_F(StorageEngineDocumentTest, NonTimeTravelUpdateDropsPreviousVersion) {
   EXPECT_EQ(count(), 1u);
 }
 
+// ================ remove with custom _expired ================
+
+namespace {
+
+// A remove selector for a time-travel collection: the timestamp at which the
+// current version stops being valid.
+VPackString expiredSelector(std::string_view key, uint64_t expired) {
+  VPackBuilder b;
+  b.openObject();
+  b.add(StaticStrings::KeyString, VPackValue(key));
+  b.add(StaticStrings::Expired, VPackValue(expired));
+  b.close();
+  return VPackString{b.slice()};
+}
+
+}  // namespace
+
+// The point of a time-travel remove: the current state loses the key, while the
+// version that was live keeps its body and learns when it stopped being valid.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveTombstonesAndStampsExpired) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  auto rem = removeR(expiredSelector("k1", T2).slice());
+  ASSERT_TRUE(rem.ok()) << rem.errorMessage();
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.fail());
+  EXPECT_EQ(current.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      << current.errorMessage();
+
+  // the tombstone hides the key from the moment it was removed onwards
+  EXPECT_TRUE(readAt("k1", T2).fail());
+  EXPECT_TRUE(readAt("k1", T2 + 1000).fail());
+
+  // before that, the version is still there - now carrying its full validity
+  // interval
+  auto before = readAt("k1", T2 - 1);
+  ASSERT_TRUE(before.ok()) << before.errorMessage();
+  EXPECT_EQ(before.slice().get("value").getNumber<int>(), 1);
+  EXPECT_EQ(before.slice().get(StaticStrings::Created).getNumber<uint64_t>(),
+            T1);
+  EXPECT_EQ(before.slice().get(StaticStrings::Expired).getNumber<uint64_t>(),
+            T2);
+}
+
+// A remove expires only the version that was current; the ones already
+// superseded keep the _expired their own successor gave them.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       RemoveExpiresOnlyTheCurrentVersion) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, T2).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", T3).slice()).ok());
+
+  auto v1 = readAt("k1", T1);
+  ASSERT_TRUE(v1.ok()) << v1.errorMessage();
+  EXPECT_EQ(v1.slice().get("value").getNumber<int>(), 1);
+  EXPECT_EQ(v1.slice().get(StaticStrings::Expired).getNumber<uint64_t>(), T2);
+
+  auto v2 = readAt("k1", T2);
+  ASSERT_TRUE(v2.ok()) << v2.errorMessage();
+  EXPECT_EQ(v2.slice().get("value").getNumber<int>(), 2);
+  EXPECT_EQ(v2.slice().get(StaticStrings::Expired).getNumber<uint64_t>(), T3);
+
+  EXPECT_TRUE(readAt("k1", T3).fail());
+}
+
+// The key is gone from the current state, so inserting it again is a plain
+// insert - and it must not disturb the history that precedes the tombstone.
+TEST_F(TimeTravelStorageEngineDocumentTest, KeyCanBeInsertedAgainAfterRemove) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", T2).slice()).ok());
+
+  auto ins = insertR(createdDoc("k1", 3, T3).slice());
+  ASSERT_TRUE(ins.ok()) << ins.errorMessage();
+
+  auto revived = read("k1");
+  ASSERT_TRUE(revived.ok()) << revived.errorMessage();
+  EXPECT_EQ(revived.slice().get("value").getNumber<int>(), 3);
+  EXPECT_TRUE(revived.slice().get(StaticStrings::Expired).isNull());
+
+  // the gap between the remove and the new insert stays empty
+  EXPECT_TRUE(readAt("k1", T2).fail());
+  EXPECT_EQ(readAt("k1", T1).slice().get("value").getNumber<int>(), 1);
+}
+
+// Removing a key that is already tombstoned finds nothing to expire, exactly
+// like removing a key that never existed.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemovingTwiceReportsNotFound) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+  constexpr uint64_t T3 = 3000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", T2).slice()).ok());
+
+  auto again = removeR(expiredSelector("k1", T3).slice());
+  ASSERT_TRUE(again.fail());
+  EXPECT_EQ(again.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      << again.errorMessage();
+
+  // the first remove's stamp survived the second attempt
+  EXPECT_EQ(readAt("k1", T1)
+                .slice()
+                .get(StaticStrings::Expired)
+                .getNumber<uint64_t>(),
+            T2);
+}
+
+// A remove takes the key out of the current state, so the current-state count
+// drops even though nothing was physically deleted.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveDecrementsDocumentCount) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_EQ(count(), 1u);
+
+  ASSERT_TRUE(removeR(expiredSelector("k1", 2000).slice()).ok());
+  EXPECT_EQ(count(), 0u);
+}
+
+// The timestamp is the whole point of a time-travel remove, so a selector that
+// does not carry one must be rejected rather than silently dropping history.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithoutExpiredIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto rem = removeR(keyOnly("k1").slice());
+  ASSERT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+  EXPECT_NE(rem.errorMessage().find(StaticStrings::Expired), std::string::npos)
+      << rem.errorMessage();
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+}
+
+// A bare key is a legal remove selector everywhere else, but it has nowhere to
+// put a timestamp.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveByKeyStringIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  VPackBuilder b;
+  b.add(VPackValue("k1"));
+
+  auto rem = removeR(b.slice());
+  ASSERT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+
+  EXPECT_TRUE(read("k1").ok());
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithZeroExpiredIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto rem = removeR(expiredSelector("k1", 0).slice());
+  ASSERT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+
+  EXPECT_TRUE(read("k1").ok());
+}
+
+// Truncate removes documents by bare key, which carries no timestamp, so it
+// cannot expire anything. Until it is given one it has to fail - and leave the
+// history it cannot stamp alone.
+TEST_F(TimeTravelStorageEngineDocumentTest, TruncateIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto res = truncate();
+  ASSERT_TRUE(res.fail());
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_BAD_PARAMETER) << res.errorMessage();
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+  EXPECT_EQ(count(), 1u);
+}
+
+// Reads that serve a transaction's own uncommitted writes are answered from the
+// write batch's index, so the tombstone has to be visible there too - not only
+// after the commit that stamps it.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       RemoveIsVisibleToItsOwnTransaction) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  SingleCollectionTransaction trx{context(), *_collection,
+                                  AccessMode::Type::WRITE};
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  ASSERT_TRUE(trx.begin().ok());
+  OperationOptions options;
+  ASSERT_TRUE(trx.remove(_collection->name(),
+                         expiredSelector("k1", 2000).slice(), options)
+                  .ok());
+
+  auto lookup = keyOnly("k1");
+  auto res = trx.document(_collection->name(), lookup.slice(), options);
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+      << res.errorMessage();
+
+  std::ignore = trx.abort();
+}
+
+// One rocksdb transaction commits its time-travel families with a single
+// timestamp, and a remove is bound by that just like a write of a new version.
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       RemoveAndInsertInOneTransactionShareTheTimestamp) {
+  constexpr uint64_t T1 = 1000;
+  constexpr uint64_t T2 = 2000;
+
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, T1).slice()).ok());
+
+  {
+    SingleCollectionTransaction trx{context(), *_collection,
+                                    AccessMode::Type::WRITE};
+    ASSERT_TRUE(trx.begin().ok());
+    OperationOptions options;
+    ASSERT_TRUE(trx.remove(_collection->name(),
+                           expiredSelector("k1", T2).slice(), options)
+                    .ok());
+    ASSERT_TRUE(trx.insert(_collection->name(), createdDoc("k2", 2, T2).slice(),
+                           options)
+                    .ok());
+    ASSERT_TRUE(trx.finish(Result{}).ok());
+  }
+
+  EXPECT_TRUE(read("k1").fail());
+  EXPECT_EQ(readAt("k1", T1)
+                .slice()
+                .get(StaticStrings::Expired)
+                .getNumber<uint64_t>(),
+            T2);
+  EXPECT_TRUE(read("k2").ok());
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest,
+       RemoveAtADifferentTimestampThanAnInsertInTheSameTransactionIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  SingleCollectionTransaction trx{context(), *_collection,
+                                  AccessMode::Type::WRITE};
+  ASSERT_TRUE(trx.begin().ok());
+  OperationOptions options;
+  ASSERT_TRUE(trx.insert(_collection->name(), createdDoc("k2", 2, 2000).slice(),
+                         options)
+                  .ok());
+
+  auto rem = trx.remove(_collection->name(),
+                        expiredSelector("k1", 3000).slice(), options);
+  EXPECT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+
+  std::ignore = trx.finish(rem.result);
+}
+
 // ================ write-write conflict detection ================
 
 // A transaction that pinned its snapshot before another transaction modified a
@@ -588,21 +850,6 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
 }
 
-// Remove is not supported on time-travel collections yet (COR-653): it has no
-// way to say which timestamp it removes at. It must fail rather than silently
-// destroy history.
-TEST_F(TimeTravelStorageEngineDocumentTest, RemoveIsNotSupportedYet) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
-
-  auto rem = removeR(keyOnly("k1").slice());
-  EXPECT_TRUE(rem.fail()) << "remove must not silently drop history";
-
-  // the document is still there, unexpired
-  auto current = read("k1");
-  ASSERT_TRUE(current.ok()) << current.errorMessage();
-  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
-}
-
 // A version chain must move forward in time: a new version created at or before
 // the current one would give the superseded version an _expired that precedes
 // its own _created. The user supplies these timestamps, so this is bad input
@@ -685,4 +932,34 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   ASSERT_TRUE(ins.fail());
   EXPECT_EQ(ins.errorNumber(), TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
       << ins.errorMessage();
+}
+
+// A remove has to expire a version at an instant it was still live, so an
+// _expired at or before the current version's _created is the same kind of bad
+// input as a backdated _created on an update.
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithOlderExpiredIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 3000).slice()).ok());
+
+  auto rem = removeR(expiredSelector("k1", 2000).slice());
+  ASSERT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+  // the message names the attribute the timestamp came from, and both values
+  EXPECT_NE(rem.errorMessage().find(StaticStrings::Expired), std::string::npos)
+      << rem.errorMessage();
+  EXPECT_NE(rem.errorMessage().find("3000"), std::string::npos)
+      << rem.errorMessage();
+  EXPECT_NE(rem.errorMessage().find("2000"), std::string::npos)
+      << rem.errorMessage();
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+}
+
+TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithEqualExpiredIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+
+  auto rem = removeR(expiredSelector("k1", 1000).slice());
+  ASSERT_TRUE(rem.fail());
+  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
 }
