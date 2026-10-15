@@ -23,6 +23,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
+#include "Assertions/ProdAssert.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
@@ -280,7 +281,8 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
   for (auto const node : nodes) {
     // skip the Remote right after the Scatter
     auto const* remote = node->getFirstParent();
-    TRI_ASSERT(remote != nullptr && remote->getType() == ExecutionNode::REMOTE);
+    ADB_PROD_ASSERT(remote != nullptr &&
+                    remote->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = remote->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == ExecutionNode::INDEX ||
