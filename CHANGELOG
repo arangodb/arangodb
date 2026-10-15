@@ -1,5 +1,8 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1137: Fixed a memory leak in the AQL analyzer when converting
+  non-string values to strings.
+
 * COR-1146: Fix AQL arithmetic operators losing precision on integers above
   2^53 when operands are not constant, e.g. document attributes. This fixes
   issue #23400.
@@ -22,6 +25,10 @@
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
+
+* COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
+  indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
+  matches of accented characters at the end of the search range.
 
 * Updated ArangoDB Starter to v0.19.29.
 
