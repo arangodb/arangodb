@@ -29,7 +29,6 @@
 
 namespace arangodb {
 struct Database;
-struct ValidatorBase;
 namespace transaction {
 class Methods;
 }
@@ -55,7 +54,6 @@ class ExpressionContext : public arangodb::ICancellationToken {
   virtual void registerWarning(ErrorCode errorCode, std::string_view msg) = 0;
   virtual void registerError(ErrorCode errorCode, std::string_view msg) = 0;
 
-  virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
   virtual AqlFunctionsInternalCache& functionsCache() = 0;
 
   virtual Database& vocbase() const = 0;

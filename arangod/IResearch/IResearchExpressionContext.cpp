@@ -44,11 +44,6 @@ void ViewExpressionContextBase::registerError(ErrorCode errorCode,
   _query->warnings().registerError(errorCode, msg);
 }
 
-arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
-    arangodb::velocypack::Slice params) {
-  return _aqlFunctionsInternalCache->buildValidator(params);
-}
-
 aql::AqlFunctionsInternalCache& ViewExpressionContextBase::functionsCache() {
   TRI_ASSERT(_aqlFunctionsInternalCache != nullptr);
   return *_aqlFunctionsInternalCache;

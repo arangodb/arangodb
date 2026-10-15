@@ -295,11 +295,6 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     TRI_ASSERT(false);
   }
 
-  arangodb::ValidatorBase* buildValidator(velocypack::Slice) final {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-
   TRI_vocbase_t& vocbase() const final {
     TRI_ASSERT(false);
     return _trx.vocbase();

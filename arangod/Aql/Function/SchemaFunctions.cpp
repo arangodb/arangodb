@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
@@ -126,7 +127,8 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
         absl::StrCat("second parameter is not a schema object: ",
                      schemaValue.slice().toJson()));
   }
-  auto* validator = expressionContext->buildValidator(schemaValue.slice());
+  auto* validator =
+      expressionContext->functionsCache().buildValidator(schemaValue.slice());
 
   // store and restore validation level this is cheaper than modifying the VPack
   auto storedLevel = validator->level();

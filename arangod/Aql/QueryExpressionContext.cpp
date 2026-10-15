@@ -40,11 +40,6 @@ void QueryExpressionContext::registerError(ErrorCode errorCode,
   _query.warnings().registerError(errorCode, msg);
 }
 
-arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
-    arangodb::velocypack::Slice params) {
-  return _aqlFunctionsInternalCache.buildValidator(params);
-}
-
 AqlFunctionsInternalCache& QueryExpressionContext::functionsCache() {
   return _aqlFunctionsInternalCache;
 }
