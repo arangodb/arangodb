@@ -35,6 +35,14 @@ struct Variable;
 /// @brief a path of nested attribute accesses, e.g. `doc.a.b` -> {"a", "b"}.
 using AttributePath = std::vector<std::string_view>;
 
+/// @brief orders vertices by variable id, i.e. parse order, so that iteration
+/// and hence every tie-break in the search is reproducible across processes.
+/// Within one run of adjacent FOR loops that is the written order.
+struct VariableIdLess {
+  auto operator()(Variable const* lhs, Variable const* rhs) const noexcept
+      -> bool;
+};
+
 /// @brief The join graph describes a maximal run of adjacent collection
 /// enumerations (`FOR`-loops) that are connected via equijoin conditions.
 struct JoinGraph {
@@ -79,7 +87,7 @@ struct JoinGraph {
 
   /// @brief partition the vertices into connected components (the graph may be
   /// disconnected). Each returned vector holds the out variables of one
-  /// component. Order within and across components is unspecified.
+  /// component. Components follow the id order of their first vertex.
   [[nodiscard]] auto connectedComponents() const
       -> std::vector<std::vector<Variable const*>>;
 
@@ -87,7 +95,7 @@ struct JoinGraph {
   /// one equijoin edge.
   [[nodiscard]] auto hasJoin() const noexcept -> bool { return !edges.empty(); }
 
-  std::map<Variable const*, Node> nodes;
+  std::map<Variable const*, Node, VariableIdLess> nodes;
   std::vector<Edge> edges;
   std::vector<AstNode const*> residuals;
 
