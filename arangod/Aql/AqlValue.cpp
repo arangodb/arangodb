@@ -46,8 +46,8 @@
 namespace arangodb::aql {
 
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
-  // the pointer layouts leave bytes 1-7 unused, but isBorrowed() reads byte 1,
-  // so it must be defined rather than whatever was on the stack
+  // the pointer layouts leave bytes 1-7 unused, but isStaticSlice() reads
+  // byte 1, so it must be defined rather than whatever was on the stack
   _data.words[0] = 0;
   setType(AqlValueType::VPACK_SLICE_POINTER);
   _data.slicePointerMeta.pointer = pointer;
