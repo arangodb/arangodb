@@ -1879,6 +1879,18 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 1)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 4)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find first function
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -2006,6 +2018,18 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
     // \u00e9 and e\u0301 are both represented as é 
     assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST(@t, @s, 0, 3)`, { t: "caf\u00e9", s: "e\u0301" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaa", "aa")`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa")`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 3)`));
   },
 
 // //////////////////////////////////////////////////////////////////////////////

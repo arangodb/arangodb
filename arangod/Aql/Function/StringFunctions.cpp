@@ -90,7 +90,7 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
   if (pattern.isEmpty()) {
     return startOffset;
   }
-  if (text.isEmpty()) {
+  if (text.isEmpty() || startOffset >= text.length()) {
     return -1;
   }
 
@@ -98,10 +98,13 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
       ctx->trx().vocbase().server().getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
+  search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  for (int32_t pos = search.first(status);
-       U_SUCCESS(status) && pos != USEARCH_DONE; pos = search.next(status)) {
-    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
+  for (int32_t pos =
+           search.following(static_cast<int32_t>(startOffset), status);
+       U_SUCCESS(status) && pos != USEARCH_DONE && pos <= maxEnd;
+       pos = search.next(status)) {
+    if (pos + search.getMatchedLength() - 1 <= maxEnd) {
       return pos;
     }
   }
@@ -336,13 +339,15 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  int foundPos = -1;
-  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
-       pos = search.next(status)) {
-    if ((pos >= startOffset) &&
-        ((pos + search.getMatchedLength() - 1) <= maxEnd)) {
+  int32_t foundPos = -1;
+  for (int32_t pos = search.last(status);
+       U_SUCCESS(status) && pos != USEARCH_DONE && pos >= startOffset;
+       pos = search.previous(status)) {
+    if (pos + search.getMatchedLength() - 1 <= maxEnd) {
       foundPos = pos;
+      break;
     }
   }
   if (U_FAILURE(status)) {
