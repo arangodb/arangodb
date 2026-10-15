@@ -122,7 +122,7 @@ function optimizerRuleUseIndexRangeTester () {
         ["FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i", true],
         ["FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i", true],
         ["FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i", false],
-        // a value that can change per call can't be an index lookup value
+        // a non-deterministic value can't be an index lookup value
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
         ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= FLOOR(RAND() * 10) RETURN i", true],
@@ -130,6 +130,12 @@ function optimizerRuleUseIndexRangeTester () {
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(FLOOR(RAND() * 10)) RETURN i", true],
         ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a IN [FLOOR(RAND() * 10)] RETURN i", true],
         ["FOR e IN " + edgeCollName + " FILTER e._from == CONCAT('v/', FLOOR(RAND() * 2)) RETURN e", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(2) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOOPT(2) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i", true],
+        ["FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e", true],
       ];
 
       queries.forEach(function(query) {
@@ -154,13 +160,10 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i",
-        // NOOPT(), DOCUMENT() and COLLECTION_COUNT() always return stable values
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(2) RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOOPT(2) RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i",
-        "FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e",
+        // NOEVAL() is not computed in advance, but is deterministic
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOEVAL(2) RETURN i",
+        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOEVAL(2) RETURN i",
+        "FOR e IN " + edgeCollName + " FILTER e._from == NOEVAL('v/0') RETURN e",
       ];
 
       queries.forEach(function(query) {

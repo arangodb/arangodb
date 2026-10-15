@@ -484,8 +484,8 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result);
     },
 
-    // NOOPT(), DOCUMENT() and COLLECTION_COUNT() keep their value within a query,
-    // so the index condition covers the filter; RAND() changes, so it never does
+    // only deterministic values are used for index lookups, so only their filters
+    // can be covered; NOOPT(), DOCUMENT(), COLLECTION_COUNT() and RAND() are not
     testFiltersWithNonDeterministicValues : function() {
       // keep FilterNodes visible instead of merged into the IndexNode
       const opts = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
@@ -495,26 +495,28 @@ function optimizerRuleTestSuite() {
       const loop = "FOR v IN " + colName + " ";
 
       const cases = [
-        // value stays the same within a query: covered, filter removed
-        [0, loop + "FILTER v.d == NOOPT(1) RETURN v"],
-        [0, loop + "FILTER NOOPT(1) == v.d RETURN v"],
-        [0, loop + "FILTER v.d == NOOPT(1) FILTER v.d == NOOPT(1) RETURN v"],
-        [0, loop + "FILTER v.d > NOOPT(1) FILTER v.d < NOOPT(5) RETURN v"],
-        [0, "FOR x IN [{k: 1}] " + loop + "FILTER v.d == NOOPT(x.k) RETURN v"],
-        [0, loop + "FILTER v.d == NOOPT(NOOPT(1)) RETURN v"],
-        [0, loop + "FILTER v.d == DOCUMENT('" + colName + "/x').d RETURN v"],
-        [0, loop + "FILTER v.d == COLLECTION_COUNT('" + colNameOther + "') RETURN v"],
+        // NOEVAL() is not computed in advance, but is deterministic: covered
+        [0, loop + "FILTER v.d == NOEVAL(1) RETURN v"],
+        [0, loop + "FILTER NOEVAL(1) == v.d RETURN v"],
+        [0, loop + "FILTER v.d == NOEVAL(1) FILTER v.d == NOEVAL(1) RETURN v"],
+        [0, loop + "FILTER v.d > NOEVAL(1) FILTER v.d < NOEVAL(5) RETURN v"],
+        [0, "FOR x IN [{k: 1}] " + loop + "FILTER v.d == NOEVAL(x.k) RETURN v"],
 
-        // NOOPT with different arguments: only the one in the index condition goes
-        [1, loop + "FILTER v.d == NOOPT(0) FILTER v.d == NOOPT(1) RETURN v"],
+        // NOEVAL with different arguments: only the one in the index condition goes
+        [1, loop + "FILTER v.d == NOEVAL(0) FILTER v.d == NOEVAL(1) RETURN v"],
 
-        // value can change per call: never covered, filters kept
+        // non-deterministic: no index lookup, so filters are kept
+        [1, loop + "FILTER v.d == NOOPT(1) RETURN v"],
+        [2, loop + "FILTER v.d == NOOPT(1) FILTER v.d == NOOPT(1) RETURN v"],
+        [1, loop + "FILTER v.d == NOOPT(NOOPT(1)) RETURN v"],
+        [1, loop + "FILTER v.d == DOCUMENT('" + colName + "/x').d RETURN v"],
+        [1, loop + "FILTER v.d == COLLECTION_COUNT('" + colNameOther + "') RETURN v"],
         [1, loop + "FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
         [2, loop + "FILTER v.d == FLOOR(RAND() * 10) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
         [1, loop + "FILTER v.d == NOOPT(FLOOR(RAND() * 10)) RETURN v"],
 
-        // mixed: the NOOPT filter is covered, the RAND() one is not
-        [1, loop + "FILTER v.d == NOOPT(1) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
+        // mixed: the NOEVAL filter is covered, the RAND() one is not
+        [1, loop + "FILTER v.d == NOEVAL(1) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
       ];
 
       const mismatches = cases
