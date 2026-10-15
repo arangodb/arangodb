@@ -1305,7 +1305,7 @@ function optimizerIndexesTestSuite () {
     testPrimaryIndexDynamic : function () {
       var queries = [
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a ] RETURN i.value", [ 35 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN [ NOOPT('test35') ] RETURN i.value", [ 35 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN [ NOEVAL('test35') ] RETURN i.value", [ 35 ] ],
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, a, a ] RETURN i.value", [ 35 ] ],
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ],
         [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ],
@@ -2825,9 +2825,9 @@ function optimizerIndexesModifyTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var queries = [
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([]) RETURN i.value2", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([23]) RETURN i.value2", [ 23 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOEVAL([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOEVAL([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOEVAL([23, 42]) RETURN i.value2", [ 23, 42 ] ],
         [ "LET a = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
         [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
         [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
@@ -2841,9 +2841,9 @@ function optimizerIndexesModifyTestSuite () {
         [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
         [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
         [ "LET a = NOOPT(23), b = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value3 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([]) RETURN i.value2", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([23]) RETURN i.value2", [ 23 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOEVAL([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOEVAL([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOEVAL([23, 42]) RETURN i.value2", [ 23, 42 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23] RETURN i.value2", [ 23 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
         [ "LET a = NOOPT([]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ],
@@ -2853,9 +2853,9 @@ function optimizerIndexesModifyTestSuite () {
         [ "LET a = NOOPT('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23' ] ],
         [ "LET a = NOOPT('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ a ], a) RETURN i._key", [ 'test23' ] ],
         [ "LET a = NOOPT('test23'), b = NOOPT('test42') FOR i IN " + c.name() + " FILTER i._key IN [ a, b ] RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT([]) RETURN i._key", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT(['test23']) RETURN i._key", [ 'test23' ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOEVAL([]) RETURN i._key", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOEVAL(['test23']) RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOEVAL(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23'] RETURN i._key", [ 'test23' ] ],
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
         [ "LET a = NOOPT([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
