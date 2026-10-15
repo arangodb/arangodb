@@ -24,6 +24,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/ExecutionPlan.h"
@@ -65,9 +66,41 @@
 #include <velocypack/Slice.h>
 
 #include <limits>
+#include <optional>
 
 namespace arangodb::aql {
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+
+// mirrors AstNode::castToNumber(): nullopt where it produces a double
+std::optional<int64_t> castToInt64(AqlValue const& value) {
+  if (value.isNumber()) {
+    VPackSlice const s = value.slice();
+    if (s.isSmallInt() || s.isInt()) {
+      return s.getNumber<int64_t>();
+    }
+    if (s.isUInt() && s.getUInt() <= uint64_t(INT64_MAX)) {
+      return static_cast<int64_t>(s.getUInt());
+    }
+    return std::nullopt;
+  }
+  if (value.isBoolean()) {
+    return value.toBoolean() ? 1 : 0;
+  }
+  if (value.isString()) {
+    bool failed = false;
+    value.toDouble(failed);
+    return failed ? std::optional<int64_t>(0) : std::nullopt;
+  }
+  if (value.isArray() && value.length() == 1) {
+    bool mustDestroy = false;
+    return castToInt64(value.at(0, mustDestroy, false));
+  }
+  return 0;
+}
+
+}  // namespace
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
@@ -1359,6 +1392,34 @@ AqlValue Expression::executeSimpleExpressionComparison(ExpressionContext& ctx,
   }
 }
 
+int64_t Expression::sanitizeAtLeastValue(ExpressionContext& ctx,
+                                         AqlValue const& value) {
+  bool failed = false;
+  double d = value.toDouble(failed);
+  if (failed) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        "AT LEAST expects a non-negative integer, got a non-numeric value; "
+        "treating it as 0");
+    return 0;
+  }
+  if (d < 0) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        absl::StrCat("AT LEAST expects a non-negative integer, got ", d,
+                     "; treating it as 0"));
+    return 0;
+  }
+  int64_t truncated = static_cast<int64_t>(d);
+  if (d != truncated) {
+    ctx.registerWarning(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        absl::StrCat("AT LEAST expects a non-negative integer, got ", d,
+                     "; truncating it to ", truncated));
+  }
+  return truncated;
+}
+
 // execute an expression of type ExpressionType::kSimple with ARRAY COMPARISON
 AqlValue Expression::executeSimpleExpressionArrayComparison(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) {
@@ -1413,11 +1474,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     AqlValue atLeastValue =
         executeSimpleExpression(ctx, q->getMember(0), mustDestroy, false);
     AqlValueGuard guard(atLeastValue, mustDestroy);
-    atLeast = atLeastValue.toInt64();
-    if (atLeast < 0) {
-      atLeast = 0;
-    }
-    TRI_ASSERT(atLeast >= 0);
+    atLeast = sanitizeAtLeastValue(ctx, atLeastValue);
   }
 
   std::pair<size_t, size_t> requiredMatches =
@@ -1429,7 +1486,6 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
                             node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
 
-  bool overallResult = true;
   size_t matches = 0;
   size_t numLeft = n;
 
@@ -1483,24 +1539,25 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     if (result) {
       ++matches;
       if (matches > requiredMatches.second) {
-        // too many matches
-        overallResult = false;
+        // too many matches now, no way back into range
         break;
       }
       if (matches >= requiredMatches.first &&
           matches + numLeft <= requiredMatches.second) {
-        // enough matches
-        overallResult = true;
+        // already enough matches
         break;
       }
     } else {
       if (matches + numLeft < requiredMatches.first) {
-        // too few matches
-        overallResult = false;
+        // can't reach the minimum even if everything left matched
         break;
       }
     }
   }
+
+  // a full match can run the whole loop without ever breaking above
+  bool const overallResult =
+      matches >= requiredMatches.first && matches <= requiredMatches.second;
 
   TRI_ASSERT(!mustDestroy);
   return AqlValue(AqlValueHintBool(overallResult));
@@ -1768,11 +1825,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         AqlValue atLeastValue = executeSimpleExpression(
             ctx, quantifier.getValue(), mustDestroy, false);
         AqlValueGuard guard(atLeastValue, mustDestroy);
-        atLeast = atLeastValue.toInt64();
-        if (atLeast < 0) {
-          atLeast = 0;
-        }
-        TRI_ASSERT(atLeast >= 0);
+        atLeast = sanitizeAtLeastValue(ctx, atLeastValue);
       }
       std::tie(minRequiredItems, maxRequiredItems) =
           Quantifier::requiredMatches(n, quantifierNode,
@@ -1882,6 +1935,15 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
 
   mustDestroy = false;
 
+  auto const lInt = castToInt64(lhs);
+  auto const rInt = castToInt64(rhs);
+  if (lInt.has_value() && rInt.has_value()) {
+    if (auto result = integerArithmetic(node->type, *lInt, *rInt);
+        result.has_value()) {
+      return AqlValue(AqlValueHintInt(*result));
+    }
+  }
+
   bool failed = false;
   double l = lhs.toDouble(failed);
 
@@ -1912,32 +1974,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
     }
   }
 
-  mustDestroy = false;
-  double result = 0.0;
-
-  switch (node->type) {
-    case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      result = l + r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_MINUS:
-      result = l - r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_TIMES:
-      result = l * r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_DIV:
-      TRI_ASSERT(r != 0.0);
-      result = l / r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_MOD:
-      result = fmod(l, r);
-      break;
-    default:
-      break;
-  }
-
   // this will convert NaN, +inf & -inf to null
-  return AqlValue(AqlValueHintDouble(result));
+  return AqlValue(AqlValueHintDouble(doubleArithmetic(node->type, l, r)));
 }
 
 void Expression::replaceNode(AstNode* node) {

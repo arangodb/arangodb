@@ -78,6 +78,8 @@ function switchBinarySet(which) {
   currentBinarySet = which;
 }
 
+const CWD = fs.makeAbsolute(".");
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
@@ -226,7 +228,10 @@ function killRemainingProcesses(results) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}, cwd=undefined) {
+  if (cwd === undefined) {
+    cwd = CWD;
+  }
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -279,8 +284,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
-
+  let childEnv = sh.getSanOptions();
+  // make the tool use the ICU data of the build it comes from
+  childEnv.push(`ICU_DATA=${binaries[currentBinarySet].BIN_DIR}`);
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, childEnv, cwd);
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
   const deltaTime = (time() - startTime) * 1000;
@@ -320,7 +327,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         timeout: false,
         status: true,
         message: '',
-        duration: deltaTime
+        duration: deltaTime,
+        exit: 0
       };
     } else {
       return {
@@ -329,6 +337,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
+        exit: instanceInfo.exitStatus.exit,
       };
     }
   } else if (instanceInfo.exitStatus.status === 'ABORTED') {
@@ -341,6 +350,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
@@ -364,6 +374,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: true,
       status: false,
       message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
@@ -380,6 +391,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
@@ -415,6 +427,7 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => binaries[currentBina
 Object.defineProperty(exports, 'BIN_DIR', {get: () => binaries[currentBinarySet].BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => binaries[currentBinarySet].CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => binaries[currentBinarySet].CONFIG_RELATIVE_DIR});
+Object.defineProperty(exports, 'currentBinarySet', {get: () => currentBinarySet});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {

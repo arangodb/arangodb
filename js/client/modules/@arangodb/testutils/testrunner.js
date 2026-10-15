@@ -316,6 +316,15 @@ class testRunner {
       };
     }
 
+    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
+      return {
+        setup: {
+          status: false,
+          message: 'could not bootstrap the RBAC binding for the workload user'
+        }
+      };
+    }
+
     this.instanceManager.launchTcpDump("");
     if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
@@ -327,16 +336,6 @@ class testRunner {
       };
     }
     this.instanceManager.reconnect(false);
-    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
-      let shutdownStatus = this.instanceManager.shutdownInstance();
-      return {
-        setup: {
-          status: false,
-          message: 'could not bootstrap the RBAC binding for the workload user',
-          shutdown: shutdownStatus
-        }
-      };
-    }
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
@@ -482,7 +481,6 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print(Date() + ' Shutting down...');
     }
-    rbac.bootstrapUser(this.options, this.instanceManager, true);
     this.customInstanceInfos.preStop = this.preStop();
     if (this.customInstanceInfos.preStop.state === false) {
       if (!this.results.hasOwnProperty('setup')) {
@@ -499,7 +497,11 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    try {
+      this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    } finally {
+      rbac.bootstrapUser(this.options, this.instanceManager, true);
+    }
     if (!this.results.shutdown) {
       this.results.status = false;
     }

@@ -180,7 +180,7 @@ export default [
   {
     // GET /_api/query/slow
     // Handler: RestQueryHandler
-    // Auth: AUTHEN (returns slow queries for the current database).
+    // Auth: AUTHEN (returns the caller's own slow queries for the current database).
     // With ?all=true additionally requires _system + isSuperuser.
     // Expected: all authenticated users → 200.
     name: "Slow query list (GET /_api/query/slow)",
@@ -192,7 +192,7 @@ export default [
   {
     // GET /_api/query/current
     // Handler: RestQueryHandler
-    // Auth: AUTHEN (returns currently running queries for this database).
+    // Auth: AUTHEN (returns the caller's own currently running queries for this database).
     // Expected: all authenticated users → 200.
     name: "Current queries (GET /_api/query/current)",
     type: ["admin", "database"],
@@ -249,7 +249,7 @@ export default [
   {
     // DELETE /_api/query/{id}
     // Kills a running query by ID.
-    // Auth: AUTHEN; killing another user's query requires _system + SUPER.
+    // Auth: AUTHEN for the caller's own queries
     // A nonexistent ID → 404 after auth check — safe and requires no setup.
     // Expected: AU→401/403, others→404 (no such query running)
     name: "Kill query by nonexistent id (DELETE /_api/query/nonexistent)",
@@ -260,7 +260,8 @@ export default [
 
   {
     // DELETE /_api/query/slow
-    // Clears the slow query log for the current database.
+    // Clears the caller's own entries of the slow query log for the current
+    // database
     // Auth: AUTHEN; clearing all DBs requires _system + SUPER.
     // Expected: AU→401/403, others→200
     name: "Clear slow query log (DELETE /_api/query/slow)",
