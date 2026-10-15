@@ -24,7 +24,6 @@
 
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -45,12 +44,10 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
-#include <velocypack/Sink.h>
 
 namespace {
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
@@ -335,7 +332,10 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
           .ok());
 }
 
+AqlAnalyzer::~AqlAnalyzer() { _valueBuffer.destroy(); }
+
 bool AqlAnalyzer::next() {
+  _valueBuffer.destroy();
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
@@ -348,12 +348,16 @@ bool AqlAnalyzer::next() {
                 std::get<2>(_attrs).value =
                     arangodb::iresearch::getBytesRef(value.slice());
               } else {
-                _stringBuffer.clear();
-                velocypack::StringSink sink(&_stringBuffer);
-                aql::functions::appendAsString(
-                    _query->trxForOptimization().vpackOptions(), sink, value);
+                functions::VPackFunctionParameters params;
+                params.push_back(value);
+                aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
+                                                *_query,
+                                                _aqlFunctionsInternalCache);
+                _valueBuffer = aql::functions::ToString(
+                    &ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isString());
                 std::get<2>(_attrs).value = irs::ViewCast<irs::byte_type>(
-                    std::string_view{_stringBuffer});
+                    _valueBuffer.slice().stringView());
               }
               break;
             case AnalyzerValueType::Number:
@@ -434,6 +438,7 @@ bool AqlAnalyzer::next() {
 }
 
 bool AqlAnalyzer::reset(std::string_view field) noexcept {
+  _valueBuffer.destroy();
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
