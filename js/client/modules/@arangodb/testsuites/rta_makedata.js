@@ -206,6 +206,7 @@ function makeDataWrapper (options) {
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
       let rc;
       try {
+        this.instanceManager.disconnect();
         this.instanceManager.reconnect(false);
         rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
       } catch (ex) {
