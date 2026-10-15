@@ -22,10 +22,20 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
 
 namespace arangodb::aql {
 
+enum AstNodeType : uint32_t;
+
 double stringToNumber(std::string const& value, bool& failed) noexcept;
+
+// nullopt if the result must be computed in double precision
+std::optional<int64_t> integerArithmetic(AstNodeType type, int64_t l,
+                                         int64_t r) noexcept;
+
+double doubleArithmetic(AstNodeType type, double l, double r);
 
 }  // namespace arangodb::aql

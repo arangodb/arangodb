@@ -1622,4 +1622,16 @@ TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
   EXPECT_NE(0, compare(lhs, rhs));
 }
 
+// NOOPT() only blocks optimizations, so a copy of NOOPT(1) is the same
+// expression; RAND() calls can return different values and never match
+TEST_F(CompareAstNodesTest, isSameExpressionMatchesOnlyNoopt) {
+  EXPECT_TRUE(isSameExpression(fcall("NOOPT", {intVal(1)}),
+                               fcall("NOOPT", {intVal(1)})));
+  EXPECT_FALSE(isSameExpression(fcall("NOOPT", {intVal(0)}),
+                                fcall("NOOPT", {intVal(1)})));
+  EXPECT_FALSE(isSameExpression(fcall("RAND", {}), fcall("RAND", {})));
+  EXPECT_FALSE(isSameExpression(fcall("NOOPT", {fcall("RAND", {})}),
+                                fcall("NOOPT", {fcall("RAND", {})})));
+}
+
 }  // namespace

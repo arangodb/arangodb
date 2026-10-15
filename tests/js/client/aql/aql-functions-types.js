@@ -889,6 +889,36 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testToNumberSubnormalStrings : function () {
+      const values = ["1e-308", "5e-324", "2.225073858507201e-308"];
+      const expected = [ [ 1e-308, 5e-324, 2.225073858507201e-308 ] ];
+      assertEqual(expected, getQueryResults(
+        "RETURN [TO_NUMBER(\"1e-308\"), TO_NUMBER(\"5e-324\"), " +
+        "TO_NUMBER(\"2.225073858507201e-308\")]"));
+      assertEqual(expected, getQueryResults(
+        "RETURN (FOR s IN @values RETURN TO_NUMBER(s))", { values }));
+    },
+
+    testToNumberOutOfRangeStrings : function () {
+      const expected = [ [ 0, 0, 0 ] ];
+      assertEqual(expected, getQueryResults(
+        "RETURN [TO_NUMBER(\"1e400\"), TO_NUMBER(\"-1e400\"), " +
+        "TO_NUMBER(\"1e-400\")]"));
+      assertEqual(expected, getQueryResults(
+        "RETURN (FOR s IN @values RETURN TO_NUMBER(s))",
+        { values: ["1e400", "-1e400", "1e-400"] }));
+    },
+
+    testToNumberHexStrings : function () {
+      const expected = [ [ 16, 8, -255, 0 ] ];
+      assertEqual(expected, getQueryResults(
+        "RETURN [TO_NUMBER(\"0x10\"), TO_NUMBER(\"0X1p3\"), " +
+        "TO_NUMBER(\" -0xff \"), TO_NUMBER(\"0x-5\")]"));
+      assertEqual(expected, getQueryResults(
+        "RETURN (FOR s IN @values RETURN TO_NUMBER(s))",
+        { values: ["0x10", "0X1p3", " -0xff ", "0x-5"] }));
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to_array
 ////////////////////////////////////////////////////////////////////////////////

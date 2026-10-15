@@ -80,6 +80,7 @@ fi
 
 RELEASE_JSON="$(curl -sS -m 60 "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "$RELEASE_URL" 2>/dev/null || true)"
 DOWNLOAD_URL=""
+RELEASE_VERSION=""
 if [ -n "$RELEASE_JSON" ]; then
     # Resolve the asset by name from the API rather than guessing a URL, so a
     # renamed or absent asset is detected instead of downloading an error page.
@@ -94,6 +95,16 @@ for asset in data.get('assets') or []:
         print(asset.get('browser_download_url', ''))
         break
 " 2>/dev/null || true)"
+
+    RELEASE_VERSION="$(printf '%s' "$RELEASE_JSON" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+version = data['tarball_url'].split('/')[-1] if 'tarball_url' in data else ''
+print(version)
+" 2>/dev/null || true)"
 fi
 
 if [ -n "$DOWNLOAD_URL" ]; then
@@ -106,13 +117,34 @@ if [ -n "$DOWNLOAD_URL" ]; then
         fi
         log "the downloaded asset does not run as \`arangodb_operator sidecar\`; building instead"
     else
-        log "download failed; building instead"
+        log "download failed; attempting to fetch a pre-built binary from S3 workspace bucket"
     fi
     rm -f "$DEST.part"
 else
     # Expected today. Not a warning.
-    log "no $ASSET asset published for this release; building from source"
+    log "no $ASSET asset published for this release; attempting to fetch a pre-built binary from S3 workspace bucket"
 fi
+
+# --- attempt 2: prebuilt binary from the workspace bucket -------------------
+log "latest release version - $RELEASE_VERSION"
+if [ -n "${AWS_S3_WORKSPACE_BUCKET:-}" ] && [ -n "$RELEASE_VERSION" ] \
+        && command -v aws >/dev/null 2>&1; then
+    S3_URL="s3://$AWS_S3_WORKSPACE_BUCKET/test-resources/rbac/arangodb_operator-$RELEASE_VERSION/arangodb_operator"
+    log "trying $S3_URL"
+    if aws s3 cp --no-sign-request --only-show-errors "$S3_URL" "$DEST.part" >&2 \
+            && chmod +x "$DEST.part"; then
+        mv -f "$DEST.part" "$DEST"
+        if usable "$DEST"; then
+            log "downloaded operator binary from the workspace bucket: $DEST"
+            report_and_exit "$DEST"
+        fi
+        log "the workspace bucket binary does not run as \`arangodb_operator sidecar\`"
+    else
+        log "no binary in the workspace bucket for $RELEASE_VERSION"
+    fi
+    rm -f "$DEST.part"
+fi
+log "building from source"
 
 # Fetch the source as a tarball
 SRC="${KUBE_ARANGODB_SRC:-}"

@@ -390,11 +390,13 @@ class runWithAllureReport extends testRunnerBase {
 
     results.total = allResults.size;
     results.failed = 0;
-    results.timeout = false;
+    if (!results.hasOwnProperty('timeout')) {
+      results.timeout = false;
+    }
     if (allResults.size === 0) {
       results.status = false;
       results.failed = 1;
-      results.message = `did not find any test results in ${testResultsDir}`;
+      results.message += `\nAllureRunner: did not find any test results in ${testResultsDir}`;
       return;
     }
 

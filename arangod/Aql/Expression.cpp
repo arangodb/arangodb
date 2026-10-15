@@ -24,6 +24,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/ExecutionPlan.h"
@@ -65,9 +66,41 @@
 #include <velocypack/Slice.h>
 
 #include <limits>
+#include <optional>
 
 namespace arangodb::aql {
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+
+// mirrors AstNode::castToNumber(): nullopt where it produces a double
+std::optional<int64_t> castToInt64(AqlValue const& value) {
+  if (value.isNumber()) {
+    VPackSlice const s = value.slice();
+    if (s.isSmallInt() || s.isInt()) {
+      return s.getNumber<int64_t>();
+    }
+    if (s.isUInt() && s.getUInt() <= uint64_t(INT64_MAX)) {
+      return static_cast<int64_t>(s.getUInt());
+    }
+    return std::nullopt;
+  }
+  if (value.isBoolean()) {
+    return value.toBoolean() ? 1 : 0;
+  }
+  if (value.isString()) {
+    bool failed = false;
+    value.toDouble(failed);
+    return failed ? std::optional<int64_t>(0) : std::nullopt;
+  }
+  if (value.isArray() && value.length() == 1) {
+    bool mustDestroy = false;
+    return castToInt64(value.at(0, mustDestroy, false));
+  }
+  return 0;
+}
+
+}  // namespace
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
@@ -1902,6 +1935,15 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
 
   mustDestroy = false;
 
+  auto const lInt = castToInt64(lhs);
+  auto const rInt = castToInt64(rhs);
+  if (lInt.has_value() && rInt.has_value()) {
+    if (auto result = integerArithmetic(node->type, *lInt, *rInt);
+        result.has_value()) {
+      return AqlValue(AqlValueHintInt(*result));
+    }
+  }
+
   bool failed = false;
   double l = lhs.toDouble(failed);
 
@@ -1932,32 +1974,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
     }
   }
 
-  mustDestroy = false;
-  double result = 0.0;
-
-  switch (node->type) {
-    case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      result = l + r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_MINUS:
-      result = l - r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_TIMES:
-      result = l * r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_DIV:
-      TRI_ASSERT(r != 0.0);
-      result = l / r;
-      break;
-    case NODE_TYPE_OPERATOR_BINARY_MOD:
-      result = fmod(l, r);
-      break;
-    default:
-      break;
-  }
-
   // this will convert NaN, +inf & -inf to null
-  return AqlValue(AqlValueHintDouble(result));
+  return AqlValue(AqlValueHintDouble(doubleArithmetic(node->type, l, r)));
 }
 
 void Expression::replaceNode(AstNode* node) {
