@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinGraph.h"
+#include "Aql/Optimizer/Rule/OptimizeJoinOrder/JoinStatistics.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
@@ -39,7 +40,9 @@
 #include "../Mocks/Servers.h"
 #include "Async/async.h"
 
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -92,5 +95,72 @@ inline arangodb::aql::JoinGraph::Node* nodeByName(arangodb::aql::JoinGraph& g,
   }
   return nullptr;
 }
+
+// Scripted statistics, keyed by out-variable name so tests read declaratively.
+// This is what makes the formula tests exact: real collections cannot produce
+// an exact non-unique distinct count.
+class FakeJoinStatistics final : public arangodb::aql::JoinStatistics {
+ public:
+  // variable name -> document count
+  std::map<std::string, double, std::less<>> counts;
+  // variable name -> "attr,attr" key -> distinct estimate
+  std::map<std::string, std::map<std::string, arangodb::aql::DistinctEstimate>,
+           std::less<>>
+      distinct;
+  // variable name -> attribute names that an index can probe by
+  std::map<std::string, std::set<std::string>, std::less<>> indexed;
+
+  // Every test scripts single, unnested attributes, so that is all the key
+  // encodes.
+  static std::string keyFor(
+      std::span<arangodb::aql::AttributePath const> attributes) {
+    if (attributes.size() != 1 || attributes.front().size() != 1) {
+      return {};
+    }
+    return std::string{attributes.front().front()};
+  }
+
+  static std::string nameOf(arangodb::aql::JoinGraph::Node const& node) {
+    return node.executionNode->outVariable()->name;
+  }
+
+  auto documentCount(arangodb::aql::JoinGraph::Node const& node) const
+      -> double override {
+    auto it = counts.find(nameOf(node));
+    return it == counts.end() ? 0.0 : it->second;
+  }
+
+  auto distinctValues(arangodb::aql::JoinGraph::Node const& node,
+                      std::span<arangodb::aql::AttributePath const> attributes)
+      const -> arangodb::aql::DistinctEstimate override {
+    if (attributes.empty()) {
+      return {1.0, false};
+    }
+    auto outer = distinct.find(nameOf(node));
+    if (outer != distinct.end()) {
+      auto inner = outer->second.find(keyFor(attributes));
+      if (inner != outer->second.end()) {
+        return inner->second;
+      }
+    }
+    return {1.0, true};
+  }
+
+  auto hasIndexCovering(
+      arangodb::aql::JoinGraph::Node const& node,
+      std::span<arangodb::aql::AttributePath const> attributes) const
+      -> bool override {
+    auto it = indexed.find(nameOf(node));
+    if (it == indexed.end()) {
+      return false;
+    }
+    for (auto const& path : attributes) {
+      if (!path.empty() && it->second.contains(std::string{path.front()})) {
+        return true;
+      }
+    }
+    return false;
+  }
+};
 
 }  // namespace arangodb::tests::aql
