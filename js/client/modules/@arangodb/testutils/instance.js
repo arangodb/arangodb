@@ -755,6 +755,7 @@ class instance {
       sleep(1);
     }
     print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
+    this.processSanitizerReports();
     if (this.exitStatus.hasOwnProperty('signal') &&
         ((this.exitStatus === 11) ||
          (this.exitStatus === 6))) {
@@ -949,7 +950,10 @@ class instance {
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      const ret = arango.reconnect(this.endpoint,
+                                   '_system', 'root',
+                                   this.hasSetPassvoid ? this.options.password: '',
+                                   true);
       this.connectionHandle = arango.getConnectionHandle();
       this.dumpConnectionTable();
       return ret;
