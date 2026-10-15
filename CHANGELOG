@@ -16,6 +16,9 @@
   and `remove-filter-covered-by-index` treated such expressions as the same.
   This fixes issue #23397.
 
+* COR-1089: Replaces deprecated OpenSSL function calls in LicenseFeature,
+  Also replaces call with proper EVP_ variants.
+
 * COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
   when n exceeds array's length. Also emmitting a warning if n is
   negative, non-numeric or not an integer.
