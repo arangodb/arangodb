@@ -40,7 +40,6 @@
 
 namespace arangodb {
 class LogicalCollection;
-struct ValidatorBase;
 
 namespace aql {
 struct AstNode;
@@ -80,7 +79,6 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  ValidatorBase* buildValidator(velocypack::Slice params) override;
   aql::AqlFunctionsInternalCache& functionsCache() override;
 
   Database& vocbase() const override;

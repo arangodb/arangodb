@@ -115,11 +115,6 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
   return error;
 }
 
-ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    velocypack::Slice params) {
-  return _aqlFunctionsInternalCache.buildValidator(params);
-}
-
 aql::AqlFunctionsInternalCache&
 ComputedValuesExpressionContext::functionsCache() {
   return _aqlFunctionsInternalCache;

@@ -34,8 +34,6 @@
 #include <string_view>
 
 namespace arangodb {
-struct ValidatorBase;
-
 namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
@@ -58,8 +56,6 @@ class QueryExpressionContext : public aql::ExpressionContext {
                        std::string_view msg) override final;
   void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice) override final;
   AqlFunctionsInternalCache& functionsCache() override final;
 
   Database& vocbase() const override final;
