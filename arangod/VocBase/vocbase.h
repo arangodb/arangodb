@@ -364,26 +364,33 @@ struct Database {
 
   /// @brief looks up a collection by identifier
   ///
-  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
-  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
-  /// may not even see it (canSeeCollection) - so that callers can distinguish
-  /// the two cases (and hide existence where required).
+  /// From API version 2 on the result follows the visibility matrix (see
+  /// applyVisibilityMatrix in vocbase.cpp): FORBIDDEN if the current execution
+  /// context may not see the collection (canSeeCollection) and - as there is
+  /// no name to check a grant for - also FORBIDDEN if it does not exist, so
+  /// that existence cannot be probed by identifier. Below API version 2, and
+  /// for contexts without a request, the lookup is unchecked and a missing
+  /// collection yields NOT_FOUND.
   arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
   lookupCollection(arangodb::DataSourceId id) const;
 
   /// @brief looks up a collection by name or stringified cid or uuid
   ///
-  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
-  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
-  /// may not even see it (canSeeCollection).
+  /// From API version 2 on the result follows the visibility matrix: FORBIDDEN
+  /// if the current execution context may not see the collection, NOT_FOUND
+  /// only if it is granted for the requested name but no such collection
+  /// exists. A stringified id behaves like lookupCollection(DataSourceId).
+  /// Below API version 2, and for contexts without a request, the lookup is
+  /// unchecked and a missing collection yields NOT_FOUND.
   arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
   lookupCollection(std::string_view nameOrId) const;
 
   /// @brief looks up a collection by uuid
   ///
-  /// Fails with TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if the collection does
-  /// not exist, or with TRI_ERROR_FORBIDDEN if the current execution context
-  /// may not even see it (canSeeCollection).
+  /// Behaves like lookupCollection(DataSourceId): from API version 2 on a
+  /// collection the current execution context may not see, or that does not
+  /// exist, yields FORBIDDEN; below that, and without a request, a missing
+  /// collection yields NOT_FOUND.
   arangodb::ResultT<std::shared_ptr<arangodb::LogicalCollection>>
   lookupCollectionByUuid(std::string_view uuid) const;
 
