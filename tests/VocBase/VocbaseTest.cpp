@@ -243,7 +243,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
   ASSERT_NE(collection, nullptr);
   auto const cid = collection->id();
 
-  // API version 1: a user who may not see the collection must NOT be able to
+  // API version 2: a user who may not see the collection must NOT be able to
   // look it up by id, name or UUID.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
@@ -251,7 +251,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::NONE}},
         /*isRestApiHardened*/ false,
-        /*apiVersion*/ 1);
+        /*apiVersion*/ 2);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);
@@ -282,7 +282,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
     EXPECT_NE(vocbase.lookupDataSource("testCollection"), nullptr);
   }
 
-  // API version 1: a user with read access to exactly one collection, and no
+  // API version 2: a user with read access to exactly one collection, and no
   // other grant at all (note: _system access would act as a fallback grant
   // for every database), may see that collection and nothing else.
   {
@@ -291,7 +291,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::RO}},
         /*isRestApiHardened*/ false,
-        /*apiVersion*/ 1);
+        /*apiVersion*/ 2);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
@@ -316,7 +316,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         TRI_ERROR_FORBIDDEN);
   }
 
-  // API version 1: a user with read access to the whole database is granted
+  // API version 2: a user with read access to the whole database is granted
   // for any name, so a missing collection requested by NAME is NOT_FOUND. By
   // id or uuid there is no name to check, so it stays FORBIDDEN: existence
   // cannot be probed by identifier.
@@ -324,7 +324,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "dbReader", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RO, /*isRestApiHardened*/ false,
-        /*apiVersion*/ 1);
+        /*apiVersion*/ 2);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
@@ -339,15 +339,14 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         TRI_ERROR_FORBIDDEN);
   }
 
-  // API version 0 keeps the legacy behaviour: the visibility check is not
-  // enforced, so even a user without access resolves the collection.
-  {
+  // API versions 0 and 1 keep the legacy behaviour: the visibility check is
+  // not enforced, so even a user without access resolves the collection.
+  for (uint32_t const apiVersion : {0u, 1u}) {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "reader", arangodb::auth::Level::RO,
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::NONE}},
-        /*isRestApiHardened*/ false,
-        /*apiVersion*/ 0);
+        /*isRestApiHardened*/ false, apiVersion);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
@@ -379,14 +378,14 @@ TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
     EXPECT_TRUE(vocbase.lookupCollectionByUuid("testSystemGUID").ok());
   }
 
-  // API version 1: a regular user without any access must not have the system
+  // API version 2: a regular user without any access must not have the system
   // collection leaked either, so every lookup returns nullptr.
   {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "restricted", arangodb::auth::Level::NONE,
         {"testVocbase", arangodb::auth::Level::NONE}, {},
         /*isRestApiHardened*/ false,
-        /*apiVersion*/ 1);
+        /*apiVersion*/ 2);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);
