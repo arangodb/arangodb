@@ -287,6 +287,7 @@ ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expressio
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evaluate to true"
 
 ERROR_QUERY_WINDOW_AFTER_MODIFICATION,1595,"window operation after data-modification","Will be raised when a window node is created after a data-modification operation."
+ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE,1596,"attribute '%s' was excluded by MATCH projection on variable '%s'","Will be raised when a query accesses an attribute that was not kept by a MATCH projection."
 
 ################################################################################
 ## ArangoDB cursor errors
