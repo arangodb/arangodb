@@ -6,6 +6,7 @@ target_sources(arango_aql PRIVATE
   CollectionAccessBuilder.cpp
   FilterBuilder.cpp
   ProjectionBuilder.cpp
+  ProjectionPushdown.cpp
   VariableScope.cpp
   PatternBuildState.cpp
   PathConstruction.cpp

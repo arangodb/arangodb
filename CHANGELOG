@@ -17,6 +17,9 @@
   MATCH now rejects filters and attribute constraints applied to variables
   that reference documents defined outside the MATCH pattern.
 
+* COR-620: AQL MATCH inline projections now push storage projections down to one-hop 
+  collection scans. The required attributes include mandatory system attributes, paths specified in the RETURN list, and attributes referenced in pattern properties or WHERE conditions. The bound variable is still constructed by the projection calculation, preserving the existing result shape. The MATCH statement's status remains unchanged.
+
 * Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
 
 * Updated node modules:
