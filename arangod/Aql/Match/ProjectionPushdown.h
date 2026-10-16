@@ -24,9 +24,11 @@
 
 #include "Aql/Match/PatternTypes.h"
 #include "Aql/Projections.h"
+#include "Aql/types.h"
 
 #include <optional>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb::aql {
@@ -37,11 +39,14 @@ struct Variable;
 namespace arangodb::aql::match {
 
 /// @brief Build storage/index projections for a MATCH-projected collection
-/// scan: mandatory attrs ∪ RETURN paths ∪ attrs used by properties/WHERE/alias
-/// expressions on the pattern variable. Empty optional means "do not restrict"
-/// (full document).
+/// scan. Include mandatory attributes, RETURN paths, and attributes referenced
+/// by property, WHERE, and alias expressions. Rewrite filter/alias expressions
+/// using @p subst to reference @p documentVariable (the enumeration output
+/// or full-document temporary variable). An empty optional means no restriction
+/// (load the full document).
 [[nodiscard]] std::optional<Projections> buildEnumerateProjections(
-    Ast& ast, Variable const* patternVariable,
+    Ast& ast, Variable const* documentVariable,
+    std::unordered_map<VariableId, Variable const*> const& subst,
     std::optional<Projection> const& projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::vector<PropertyConstraint> const& properties,

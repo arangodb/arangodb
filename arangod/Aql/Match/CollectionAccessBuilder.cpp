@@ -107,13 +107,13 @@ namespace {
 
 void maybeSetEnumerateProjections(
     Ast& ast, EnumerateCollectionNode* enumCollection,
-    Variable const* patternVariable,
+    Variable const* documentVariable, VariableSubstitution const& subst,
     std::optional<Projection> const& projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::vector<PropertyConstraint> const& properties,
     std::optional<ExpressionRef> const& filter) {
   auto built =
-      buildEnumerateProjections(ast, patternVariable, projection,
+      buildEnumerateProjections(ast, documentVariable, subst, projection,
                                 mandatoryAttributes, properties, filter);
   if (!built.has_value()) {
     return;
@@ -135,7 +135,7 @@ CollectionAccessBuilder::createCollectionAccess(
   maybeSetEnumerateProjections(
       *_ast,
       ExecutionNode::castTo<EnumerateCollectionNode*>(std::get<0>(result)),
-      vertex.variable, vertex.projection,
+      fullDocumentVariable, subst, vertex.projection,
       kMandatoryDocumentProjectionAttributes, vertex.properties, vertex.filter);
   return result;
 }
@@ -150,7 +150,7 @@ CollectionAccessBuilder::createPatternEdgeEnumerateAccess(
   maybeSetEnumerateProjections(
       *_ast,
       ExecutionNode::castTo<EnumerateCollectionNode*>(std::get<0>(result)),
-      edge.variable, edge.projection,
+      outputVariable, subst, edge.projection,
       kMandatoryEdgeDocumentProjectionAttributes, edge.properties, edge.filter);
   return result;
 }

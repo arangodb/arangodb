@@ -32,14 +32,29 @@
 #include <utility>
 
 namespace arangodb::aql::match {
+namespace {
+
+[[nodiscard]] bool collectAttributesFromExpression(
+    AstNode const* node, Variable const* documentVariable,
+    containers::FlatHashSet<AttributeNamePath>& attributes,
+    ResourceMonitor& monitor) {
+  if (node == nullptr) {
+    return true;
+  }
+  return Ast::getReferencedAttributesRecursive(
+      node, documentVariable, /*expectedAttribute*/ "", attributes, monitor);
+}
+
+}  // namespace
 
 std::optional<Projections> buildEnumerateProjections(
-    Ast& ast, Variable const* patternVariable,
+    Ast& ast, Variable const* documentVariable,
+    std::unordered_map<VariableId, Variable const*> const& subst,
     std::optional<Projection> const& projection,
     std::span<std::string_view const> mandatoryAttributes,
     std::vector<PropertyConstraint> const& properties,
     std::optional<ExpressionRef> const& filter) {
-  if (patternVariable == nullptr || !projection.has_value()) {
+  if (documentVariable == nullptr || !projection.has_value()) {
     return std::nullopt;
   }
 
@@ -57,10 +72,12 @@ std::optional<Projections> buildEnumerateProjections(
       continue;
     }
     TRI_ASSERT(item.isAlias());
-    // Alias expressions use normal AQL scope (pattern variable refs).
-    if (!Ast::getReferencedAttributesRecursive(
-            item.expression.node, patternVariable, /*expectedAttribute*/ "",
-            attributes, monitor)) {
+    // Same rewrite ProjectionBuilder applies so we see accesses on the
+    // full-document temp rather than the user pattern variable.
+    AstNode* rewritten = Ast::replaceVariables(
+        const_cast<AstNode*>(item.expression.node), subst);
+    if (!collectAttributesFromExpression(rewritten, documentVariable,
+                                         attributes, monitor)) {
       return std::nullopt;
     }
   }
@@ -70,9 +87,10 @@ std::optional<Projections> buildEnumerateProjections(
   }
 
   if (filter.has_value()) {
-    if (!Ast::getReferencedAttributesRecursive(filter->node, patternVariable,
-                                               /*expectedAttribute*/ "",
-                                               attributes, monitor)) {
+    AstNode* rewritten =
+        Ast::replaceVariables(const_cast<AstNode*>(filter->node), subst);
+    if (!collectAttributesFromExpression(rewritten, documentVariable,
+                                         attributes, monitor)) {
       return std::nullopt;
     }
   }
