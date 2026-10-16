@@ -24,6 +24,7 @@
 
 #include "Aql/Match/PatternTypes.h"
 #include "Aql/TypedAstNodes.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb::aql {
 class Ast;
@@ -49,9 +50,12 @@ class PatternNormalizer {
       AstNode const& nodePattern) const;
   [[nodiscard]] NormalizedEdge normalizeEdge(AstNode const& edge) const;
 
-  [[nodiscard]] DataSource normalizeDataSource(AstNode const& node) const;
+  [[nodiscard]] DataSource normalizeDataSource(
+      AstNode const& node, TRI_col_type_e expectedType) const;
+  void requireCollectionType(std::string_view name,
+                             TRI_col_type_e expectedType) const;
   [[nodiscard]] std::vector<DataSource> normalizeDataSourceList(
-      AstNode const* node) const;
+      AstNode const* node, TRI_col_type_e expectedType) const;
   [[nodiscard]] std::vector<PropertyConstraint> normalizeProperties(
       AstNode const* node) const;
   [[nodiscard]] std::optional<ExpressionRef> normalizeFilter(

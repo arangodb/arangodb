@@ -697,6 +697,37 @@ TEST_F(PatternNormalizerTest, rejectsInvalidRange) {
       basics::Exception);
 }
 
+TEST_F(PatternNormalizerTest, rejectsEdgeCollectionAsVertexLabel) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :ec) RETURN 1");
+  try {
+    (void)normalize(parsed);
+    FAIL() << "expected an exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, ex.code());
+  }
+}
+
+TEST_F(PatternNormalizerTest, rejectsDocumentCollectionAsEdgeLabel) {
+  auto parsed = parseMatch("MATCH (v :vc) -[ e :ec|vc ]-> (w :vc) RETURN 1");
+  try {
+    (void)normalize(parsed);
+    FAIL() << "expected an exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, ex.code());
+  }
+}
+
+TEST_F(PatternNormalizerTest,
+       rejectsResolvedEdgeCollectionBindParameterAsVertexLabel) {
+  auto parsed = parseMatch("MATCH (v :@@vc) RETURN 1", true, {{"@vc", "ec"}});
+  try {
+    (void)normalize(parsed);
+    FAIL() << "expected an exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, ex.code());
+  }
+}
+
 TEST_F(PatternNormalizerTest, whereNestedDottedAttributeAccess) {
   auto parsed = parseMatch(
       "MATCH (v :vc) -[ e :ec WHERE e.Data.Weight == 1 ]-> (w :vc) RETURN 1");

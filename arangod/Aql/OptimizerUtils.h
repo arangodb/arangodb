@@ -24,7 +24,7 @@
 
 #include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Utils/OperationOptions.h"
@@ -117,8 +117,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable);
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable);
 
 arangodb::aql::Collection const* getCollection(
     arangodb::aql::ExecutionNode const* node);

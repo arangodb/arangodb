@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,17 +22,24 @@
 
 #pragma once
 
-#include "Aql/types.h"
-
-#include <unordered_map>
-// TODO(MBkkt) Try to use FlatHashMap to achieve better
-//  lookup performance on query execution
-// #include "Containers/FlatHashMap.h"
-
 namespace arangodb::aql {
-
-struct VarInfo;
-
-using VarInfoMap = std::unordered_map<VariableId, VarInfo>;
-
+struct AstNode;
 }  // namespace arangodb::aql
+
+namespace arangodb::aql::match {
+
+/// @brief Typed MATCH statement OPTIONS.
+/// rejected-unknown-field behavior is enforced via Inspector.
+struct MatchOptions {
+  /// @brief Parses MATCH OPTIONS from the AST node.
+  /// @param node nullptr or NODE_TYPE_OBJECT accepted.
+  /// Throws TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE on unknown fields.
+  static MatchOptions fromAstNode(AstNode const* node);
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MatchOptions& options) {
+  return f.object(options).fields();
+}
+
+}  // namespace arangodb::aql::match
