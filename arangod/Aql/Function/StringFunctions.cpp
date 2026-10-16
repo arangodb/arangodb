@@ -81,16 +81,19 @@ icu_64_64::UnicodeString toUnicodeString(velocypack::Options const& vopts,
                                   static_cast<int32_t>(buffer->length()));
 }
 
+enum class SearchMatch { kFirst, kLast };
+
 // Returns -1 if there is no match, or nullopt after registering an ICU warning.
-std::optional<int64_t> searchFirst(ExpressionContext* ctx,
-                                   std::string_view functionName,
-                                   icu_64_64::UnicodeString const& text,
-                                   icu_64_64::UnicodeString const& pattern,
-                                   int64_t startOffset, int64_t maxEnd) {
+std::optional<int64_t> searchInRange(ExpressionContext* ctx,
+                                     std::string_view functionName,
+                                     icu_64_64::UnicodeString const& text,
+                                     icu_64_64::UnicodeString const& pattern,
+                                     int64_t startOffset, int64_t maxEnd,
+                                     SearchMatch which) {
   if (pattern.isEmpty()) {
     return startOffset;
   }
-  if (text.isEmpty()) {
+  if (text.isEmpty() || startOffset >= text.length()) {
     return -1;
   }
 
@@ -98,18 +101,29 @@ std::optional<int64_t> searchFirst(ExpressionContext* ctx,
       ctx->trx().vocbase().server().getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
+  search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  for (int32_t pos = search.first(status);
-       U_SUCCESS(status) && pos != USEARCH_DONE; pos = search.next(status)) {
-    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
-      return pos;
+  // ICU 64 misreports matches with next()/previous(), so only use following().
+  int64_t found = -1;
+  auto from = static_cast<int32_t>(startOffset);
+  while (from < text.length()) {
+    int32_t const pos = search.following(from, status);
+    if (U_FAILURE(status) || pos == USEARCH_DONE || pos > maxEnd) {
+      break;
     }
+    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
+      found = pos;
+      if (which == SearchMatch::kFirst) {
+        break;
+      }
+    }
+    from = text.moveIndex32(std::max(pos, from), 1);
   }
   if (U_FAILURE(status)) {
     registerICUWarning(ctx, functionName, status);
     return std::nullopt;
   }
-  return -1;
+  return found;
 }
 
 void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
@@ -277,8 +291,8 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
     }
   }
 
-  auto const pos =
-      searchFirst(expressionContext, AFN, text, pattern, startOffset, maxEnd);
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kFirst);
   if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }
@@ -286,31 +300,17 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
 }
 
 /// @brief function FIND_LAST
-/// FIND_FIRST(text, search, start, end) → position
+/// FIND_LAST(text, search, start, end) → position
 AqlValue functions::FindLast(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_LAST";
 
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-
-  auto buf1 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter(buf1.get());
-  appendAsString(vopts, adapter, value);
-  icu_64_64::UnicodeString uBuf(buf1->data(),
-                                static_cast<int32_t>(buf1->length()));
-
-  auto buf2 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter2(buf2.get());
-  appendAsString(vopts, adapter2, searchValue);
-  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
-                                      static_cast<int32_t>(buf2->length()));
-  auto searchLen = uSearchBuf.length();
+  auto const& vopts = expressionContext->trx().vpackOptions();
+  auto const text =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
+  auto const pattern =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
 
   int64_t startOffset = 0;
   int64_t maxEnd = -1;
@@ -324,7 +324,7 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  maxEnd = uBuf.length();
+  maxEnd = text.length();
   int emptySearchCludge = 0;
   if (parameters.size() == 4) {
     AqlValue const& optionalEndMax =
@@ -338,30 +338,16 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  if (searchLen == 0) {
+  if (pattern.isEmpty()) {
     return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
   }
-  if (uBuf.length() == 0) {
-    return AqlValue(AqlValueHintInt(-1));
-  }
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
-  UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
-
-  int foundPos = -1;
-  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
-       pos = search.next(status)) {
-    if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
-      foundPos = pos;
-    }
-  }
-  if (U_FAILURE(status)) {
-    registerICUWarning(expressionContext, AFN, status);
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kLast);
+  if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(AqlValueHintInt(foundPos));
+  return AqlValue(AqlValueHintInt(*pos));
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -1111,7 +1097,8 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
   bool const willReturnIndex =
       extractFunctionParameterValue(parameters, 2).toBoolean();
 
-  auto const pos = searchFirst(ctx, AFN, text, pattern, 0, text.length());
+  auto const pos = searchInRange(ctx, AFN, text, pattern, 0, text.length(),
+                                 SearchMatch::kFirst);
   if (!pos.has_value()) {
     return AqlValue(AqlValueHintNull());
   }

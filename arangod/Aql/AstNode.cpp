@@ -401,7 +401,8 @@ int compareReference(AstNode const* lhs, AstNode const* rhs) noexcept {
   return (lhsVar->id == rhsVar->id) ? 0 : (lhsVar->id < rhsVar->id ? -1 : 1);
 }
 
-/// @brief compare two nodes' children positionally
+/// @brief compare two nodes' children positionally; they have to be identical
+/// as written i.e. the order matters
 int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
                            AstNodeCompareOptions opts) {
   size_t lhsN = lhs->numMembers();
@@ -492,9 +493,10 @@ int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
   return compareAstNodesImpl<false>(lhsRight, rhsRight, opts);
 }
 
-/// @brief compare n-ary AND/OR nodes independent of child order
-int compareNary(AstNode const* lhs, AstNode const* rhs,
-                AstNodeCompareOptions opts) {
+/// @brief compare OBJECT nodes when both sides have unique, non-computed keys
+int compareObject(AstNode const* lhs, AstNode const* rhs,
+                  AstNodeCompareOptions opts) {
+  TRI_ASSERT(!lhs->mustCheckUniqueness() && !rhs->mustCheckUniqueness());
   size_t lhsN = lhs->numMembers();
   size_t rhsN = rhs->numMembers();
   if (lhsN != rhsN) {
@@ -520,13 +522,6 @@ int compareNary(AstNode const* lhs, AstNode const* rhs,
     }
   }
   return 0;
-}
-
-/// @brief compare OBJECT nodes when both sides have unique, non-computed keys
-int compareObject(AstNode const* lhs, AstNode const* rhs,
-                  AstNodeCompareOptions opts) {
-  TRI_ASSERT(!lhs->mustCheckUniqueness() && !rhs->mustCheckUniqueness());
-  return compareNary(lhs, rhs, opts);
 }
 
 /// @brief compare IN/NIN nodes with order-independent array element comparison
@@ -611,16 +606,13 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_BINARY_OR:
       return compareCommutativeBinary(lhs, rhs, opts);
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-      return compareNary(lhs, rhs, opts);
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return compareInNin(lhs, rhs, opts);
     default:
+      // BINARY_AND/OR, NARY_AND/OR go here because the order matters for them
+      // i.e. `x.a AND x.b` is not equivalent to `x.b AND x.a` in AQL
       return compareChildrenInOrder(lhs, rhs, opts);
   }
 }
