@@ -19,7 +19,8 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override {
     _isDone = false;
-    _startVertex = _graph.vertex(VertexIdLabel{source.getID().toString()});
+    _startVertex =
+        _graph.ensureVertex(VertexIdLabel{source.getID().toString()});
   }
   void resetManyStartVertices(
       std::vector<VertexDescription> const& vertices) override {
@@ -33,31 +34,30 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     if (not _startVertex.has_value()) {
       return nullptr;
     }
-    _graph.outEdges(_startVertex.value());
+    // _graph.outEdges(_startVertex.value());
 
     // for an empty graph:
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
-        std::vector<std::optional<VertexId>>{{_startVertex}},
-        std::vector<Edge>{});
-  };
+        std::vector<VertexId>{_startVertex.value()}, std::vector<Edge>{});
+  }
 
-    // batched [later]:
-    // auto [previous, next] = _queue.pop_front();
-    // _queue.push_back(graph.createNeighbourCursor(next));
+  // batched [later]:
+  // auto [previous, next] = _queue.pop_front();
+  // _queue.push_back(graph.createNeighbourCursor(next));
 
-    // TODO
-    // auto neighbourhood() {
-    //   auto [previous, next] = _queue.pop_front();
-    //   for (auto const neighbour : graph.getNeighbours(next)) {
-    //     _queue.push_back({next, neighbour});
-    //   }
-    //   _paths.add(next);  // Need a data structure (similar to _interior)
-    //   // _results: vec<Step> end steps of paths; and _interior
-    //   _interior.append(previous, next);  // need actually to and edge
-    //   // auto append(Step, Step)
-    //   // auto reverseReconstruction
-    // }
+  // TODO
+  // auto neighbourhood() {
+  //   auto [previous, next] = _queue.pop_front();
+  //   for (auto const neighbour : graph.getNeighbours(next)) {
+  //     _queue.push_back({next, neighbour});
+  //   }
+  //   _paths.add(next);  // Need a data structure (similar to _interior)
+  //   // _results: vec<Step> end steps of paths; and _interior
+  //   _interior.append(previous, next);  // need actually to and edge
+  //   // auto append(Step, Step)
+  //   // auto reverseReconstruction
+  // }
 
 #ifdef USE_ENTERPRISE
   auto smartSearch(size_t amountOfExpansions, velocypack::Builder& result)

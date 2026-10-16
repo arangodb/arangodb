@@ -77,8 +77,11 @@ struct IGraphView {
   virtual auto outEdges(VertexId vertex) -> std::vector<Edge> = 0;
 
   // TODO needs to return at some point Vertex data
-  virtual auto vertex(VertexIdLabel const& vertex)
+  virtual auto ensureVertex(VertexIdLabel const& vertex) -> VertexId = 0;
+  virtual auto queryVertex(VertexIdLabel const& vertex)
       -> std::optional<VertexId> = 0;
+  virtual auto retrieveDocument(VertexId const& id)
+      -> std::optional<VertexIdLabel> = 0;
 
   // -----------------------------
   // // Hausmeisterschrott

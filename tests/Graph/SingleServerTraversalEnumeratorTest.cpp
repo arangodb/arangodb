@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <velocypack/HashedStringRef.h>
+#include "Graph/SimplifiedTraversal/IGraphView.h"
 #include "Graph/SimplifiedTraversal/InMemoryGraph.h"
 #include "Graph/SimplifiedTraversal/SingleServerTraversalEnumerator.h"
 #include "Graph/SimplifiedTraversal/SingleServerPathResult.h"
@@ -25,13 +26,13 @@ auto assertEqual(IPathResult& a, IPathResult& b) {
 }
 
 TEST(SingleServerTraversalEnumeratorTest, is_done_before_setting_start_vertex) {
-  auto graph = experimental::InMemoryGraph();
+  auto graph = experimental::InMemoryGraphView();
   auto enumerator = SingleServerTraversalEnumerator(graph);
   EXPECT_TRUE(enumerator.isDone());
 }
 
 TEST(SingleServerTraversalEnumeratorTest, is_not_done_before_querying) {
-  auto graph = experimental::InMemoryGraph();
+  auto graph = experimental::InMemoryGraphView();
   auto enumerator = SingleServerTraversalEnumerator(graph);
   auto start = std::string{"v/0"};
   enumerator.reset(graph::VertexRef{velocypack::HashedStringRef{
@@ -41,7 +42,7 @@ TEST(SingleServerTraversalEnumeratorTest, is_not_done_before_querying) {
 
 TEST(SingleServerTraversalEnumeratorTest,
      fails_when_not_reset_after_construction) {
-  auto graph = experimental::InMemoryGraph();
+  auto graph = experimental::InMemoryGraphView();
   auto enumerator = SingleServerTraversalEnumerator(graph);
 
   // at the moment it cannot be communicated (other than by an exception) that
@@ -52,7 +53,7 @@ TEST(SingleServerTraversalEnumeratorTest,
 }
 
 TEST(SingleServerTraversalEnumeratorTest, is_done_after_querying_sole_vertex) {
-  auto graph = experimental::InMemoryGraph();
+  auto graph = experimental::InMemoryGraphView();
   auto enumerator = SingleServerTraversalEnumerator(graph);
   auto start = std::string{"v/0"};
   enumerator.reset(VertexRef{velocypack::HashedStringRef{
@@ -65,11 +66,13 @@ TEST(SingleServerTraversalEnumeratorTest, is_done_after_querying_sole_vertex) {
 
 TEST(SingleServerTraversalEnumeratorTest,
      querying_single_vertex_not_contained_in_graph) {
-  auto graph = experimental::InMemoryGraph();
+  auto graph = experimental::InMemoryGraphView();
   auto enumerator = SingleServerTraversalEnumerator(graph);
   auto start = std::string{"v/0"};
   enumerator.reset(VertexRef{velocypack::HashedStringRef{
       start.c_str(), static_cast<uint32_t>(start.length())}});
+  auto vertexId = graph.queryVertex(VertexIdLabel{start});
+  EXPECT_TRUE(vertexId.has_value());
 
   auto nextPath = enumerator.getNextPath();
 
@@ -77,23 +80,27 @@ TEST(SingleServerTraversalEnumeratorTest,
   // if a vertex document for a vertex id does not exist in the database this is
   // fine in arangodb, the query will register a warning about the non-existing
   // document and return null for the vertex document
-  auto expected = SingleServerPathResult{{std::nullopt}, {}};
+  auto expected = SingleServerPathResult{{vertexId.value()}, {}};
   assertEqual(*nextPath, expected);
 }
 
-// TEST(SingleServerTraversalEnumeratorTest,
+// is currently irrelevant because only toVelocypack on path result should read
+// from real graph TEST(SingleServerTraversalEnumeratorTest,
 //      querying_single_vertex_contained_in_graph) {
 //   // auto v0 = std::string{"v/0"};
 //   // auto v0Ref = VertexRef{velocypack::HashedStringRef{
 //   //     v0.c_str(), static_cast<uint32_t>(v0.length())}};
-//   auto graph = experimental::InMemoryGraph({"v/0"}, {});
+//   auto graph = experimental::InMemoryGraphView({"v/0"}, {});
 //   auto enumerator = SingleServerTraversalEnumerator(graph);
-//   enumerator.reset("v/0");
+//   auto start = std::string{"v/0"};
+//   enumerator.reset(start);
+//   auto vertexId = graph.queryVertex(VertexIdLabel{start});
+//   EXPECT_TRUE(vertexId.has_value());
 
 //   auto nextPath = enumerator.getNextPath();
 
 //   EXPECT_NE(nextPath, nullptr);
-//   auto expected = SingleServerPathResult{{VertexId{0}}, {}};
+//   auto expected = SingleServerPathResult{{vertexId.value()}, {}};
 //   assertEqual(*nextPath, expected);
 // }
 
@@ -104,7 +111,9 @@ TEST(SingleServerTraversalEnumeratorTest,
 //   auto v1 = std::string{"v/1"};
 //   auto v1Ref = VertexRef{velocypack::HashedStringRef{
 //       v1.c_str(), static_cast<uint32_t>(v1.length())}};
-//   auto graph = experimental::InMemoryGraph({v0Ref, v1Ref}, {{v0Ref, v1Ref}});
+//   auto graph = experimental::InMemoryGraph{{VertexIdLabel{v0},
+//   VertexIdLabel{v1}}}; auto graphView =
+//       experimental::InMemoryGraphView({}, {{v0Ref, v1Ref}});
 //   auto enumerator = SingleServerTraversalEnumerator(graph);
 //   enumerator.reset(v0Ref);
 
