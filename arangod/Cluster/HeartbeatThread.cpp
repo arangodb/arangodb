@@ -1021,7 +1021,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // database on one coordinator and then access the newly created
   // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
-    if (!options.value.isObject()) {
+    if (!options.value.isObject() ||
+        options.value.hasKey(StaticStrings::AttrIsBuilding)) {
       continue;
     }
 
