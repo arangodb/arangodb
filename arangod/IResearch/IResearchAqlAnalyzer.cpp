@@ -30,6 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/Function/StringFunctions.h"
 #include "Aql/Functions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
@@ -353,7 +354,7 @@ bool AqlAnalyzer::next() {
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
                                                 _aqlFunctionsInternalCache);
-                _valueBuffer = aql::functions::ToString(
+                _valueBuffer = aql::functions::adapt<aql::functions::toString>(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
                 std::get<2>(_attrs).value = irs::ViewCast<irs::byte_type>(
