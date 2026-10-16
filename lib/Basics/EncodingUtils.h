@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace arangodb::encoding {
 
@@ -49,6 +50,10 @@ template<typename T>
 [[nodiscard]] ErrorCode lz4Uncompress(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
     size_t maxUncompressedSize = defaultMaxUncompressedSize);
+
+// size declared in an lz4 body's header; nullopt if the header is incomplete
+[[nodiscard]] std::optional<uint32_t> lz4UncompressedLength(
+    uint8_t const* compressed, size_t compressedLength) noexcept;
 
 template<typename T>
 [[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,

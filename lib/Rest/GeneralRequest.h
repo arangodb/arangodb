@@ -37,6 +37,7 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
+#include "Basics/ResourceUsage.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
@@ -220,6 +221,10 @@ class GeneralRequest {
   /// @throws ArangoException if /_arango prefix is present but invalid
   void detectAndStripApiVersion(char const*& start, char const* end);
 
+  void setPayloadMemory(ResourceUsageScope scope) {
+    _payloadMemory.emplace(std::move(scope));
+  }
+
  protected:
   static RequestType findRequestType(char const*, size_t const);
   void setValue(std::string key, std::string value);
@@ -233,6 +238,8 @@ class GeneralRequest {
   velocypack::Options const* validationOptions(bool strictValidation);
 
   ConnectionInfo _connectionInfo;  /// connection info
+
+  std::optional<ResourceUsageScope> _payloadMemory;
 
   /// request payload buffer, exact access semantics are defined in subclass
   velocypack::Buffer<uint8_t> _payload;

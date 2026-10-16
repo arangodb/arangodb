@@ -203,18 +203,13 @@ template<typename T>
 ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
                                   size_t compressedLength, T& uncompressed,
                                   size_t maxUncompressedSize) {
-  if (compressedLength <= ::lz4HeaderLength) {
+  auto declared = lz4UncompressedLength(compressed, compressedLength);
+  if (!declared) {
     // empty/bad input.
     return TRI_ERROR_BAD_PARAMETER;
   }
-
+  uint32_t uncompressedLength = *declared;
   size_t initial = uncompressed.size();
-
-  uint32_t uncompressedLength;
-  // uncompressed size is encoded in bytes 1-4, starting from offset 0,
-  // encoded as a uint32_t in big endian format
-  memcpy(&uncompressedLength, compressed + 1, sizeof(uncompressedLength));
-  uncompressedLength = basics::bigToHost<uint32_t>(uncompressedLength);
 
   if (uncompressedLength == 0) {
     return TRI_ERROR_BAD_PARAMETER;
@@ -260,6 +255,19 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+std::optional<uint32_t> encoding::lz4UncompressedLength(
+    uint8_t const* compressed, size_t compressedLength) noexcept {
+  if (compressedLength <= ::lz4HeaderLength) {
+    return std::nullopt;
+  }
+  // bytes 1-4, big endian
+  uint32_t length;
+  // uncompressed size is encoded in bytes 1-4, starting from offset 0,
+  // encoded as a uint32_t in big endian format
+  memcpy(&length, compressed + 1, sizeof(length));
+  return basics::bigToHost<uint32_t>(length);
 }
 
 template<typename T>

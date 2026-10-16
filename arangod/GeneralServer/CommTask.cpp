@@ -1006,6 +1006,16 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       req.removeHeader(header);
       return {};
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
+      ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
+      if (auto declared = arangodb::encoding::lz4UncompressedLength(src, len)) {
+        try {
+          scope.increase(*declared);
+        } catch (basics::Exception const&) {
+          return {TRI_ERROR_RESOURCE_LIMIT,
+                  "decompressed request bodies held by the server would exceed "
+                  "the allowed total"};
+        }
+      }
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::lz4Uncompress(
               src, len, dst,
