@@ -202,7 +202,8 @@ TEST_F(BuilderTest, excludedNestedProjectionAttributeAccessWarns) {
 
 TEST_F(BuilderTest, keptNestedProjectionAttributeAccessDoesNotWarn) {
   // Keeping the parent object covers nested reads such as v.profile.a.b.c.
-  auto parsed = parseMatch("MATCH (v :vc RETURN profile) RETURN v.profile.a.b.c");
+  auto parsed =
+      parseMatch("MATCH (v :vc RETURN profile) RETURN v.profile.a.b.c");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_TRUE(parsed.queryContext->warnings().empty());
@@ -210,7 +211,8 @@ TEST_F(BuilderTest, keptNestedProjectionAttributeAccessDoesNotWarn) {
 
 TEST_F(BuilderTest, keptNestedPathPrefixAccessDoesNotWarn) {
   // Keeping profile.a.b.c also allows reading parent prefixes (v.profile).
-  auto parsed = parseMatch("MATCH (v :vc RETURN profile.a.b.c) RETURN v.profile");
+  auto parsed =
+      parseMatch("MATCH (v :vc RETURN profile.a.b.c) RETURN v.profile");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_TRUE(parsed.queryContext->warnings().empty());
@@ -254,8 +256,8 @@ TEST_F(BuilderTest, mandatoryEdgeProjectionAttributeAccessDoesNotWarn) {
 }
 
 TEST_F(BuilderTest, excludedNestedEdgeProjectionAttributeAccessWarns) {
-  auto parsed = parseMatch(
-      "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.meta.a.b.c");
+  auto parsed =
+      parseMatch("MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.meta.a.b.c");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
 
