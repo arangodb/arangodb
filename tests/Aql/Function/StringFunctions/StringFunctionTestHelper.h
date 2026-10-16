@@ -77,6 +77,12 @@ class StringFunctionTest : public ::testing::Test {
     EXPECT_EQ(result->slice().stringView(), expected);
   }
 
+  static void expectResult(ResultT<AqlValue> result, int64_t expected) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    arangodb::aql::AqlValueGuard guard(*result, true);
+    EXPECT_EQ(result->slice().getNumber<int64_t>(), expected);
+  }
+
   static void expectError(ResultT<AqlValue> result, ErrorCode expected) {
     if (result.ok()) {
       result->destroy();
