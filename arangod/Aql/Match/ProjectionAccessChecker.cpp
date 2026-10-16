@@ -38,7 +38,6 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 namespace arangodb::aql::match {
@@ -49,8 +48,8 @@ struct ProjectedAttributes {
   std::vector<std::vector<std::string>> allowedPaths;
 };
 
-[[nodiscard]] bool isPrefix(std::vector<std::string> const& prefix,
-                            std::vector<std::string> const& path) noexcept {
+[[nodiscard]] bool isPrefix(std::span<std::string const> prefix,
+                            std::span<std::string const> path) noexcept {
   if (prefix.size() > path.size()) {
     return false;
   }
@@ -58,7 +57,7 @@ struct ProjectedAttributes {
 }
 
 [[nodiscard]] bool isPathAllowed(
-    std::vector<std::string> const& accessPath,
+    std::span<std::string const> accessPath,
     std::vector<std::vector<std::string>> const& allowedPaths) noexcept {
   for (auto const& allowed : allowedPaths) {
     // The kept subtree covers this access, or the access is a parent of a
@@ -188,18 +187,19 @@ void warnExcludedAttributeAccesses(Ast& ast,
         }
         // Warn on the shortest excluded prefix so v.profile.name with
         // RETURN _key reports "profile" once, not every nested access.
-        std::vector<std::string> excludedPrefix;
+        size_t excludedLen = 0;
         for (size_t len = 1; len <= path.size(); ++len) {
-          std::vector<std::string> prefix(path.begin(), path.begin() + len);
-          if (!isPathAllowed(prefix, it->second.allowedPaths)) {
-            excludedPrefix = std::move(prefix);
+          if (!isPathAllowed(std::span{path.data(), len},
+                             it->second.allowedPaths)) {
+            excludedLen = len;
             break;
           }
         }
-        if (excludedPrefix.empty()) {
+        if (excludedLen == 0) {
           return;
         }
 
+        std::span<std::string const> excludedPrefix{path.data(), excludedLen};
         auto attr = absl::StrJoin(excludedPrefix, ".");
         auto key = absl::StrCat(variable->id, ":", attr);
         if (!warned.emplace(key).second) {
