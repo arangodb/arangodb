@@ -43,6 +43,7 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -159,6 +160,7 @@ static void SetupGreetingsPhase(MockServer& server) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SoftShutdownFeature>(false);
+  server.addFeature<LanguageFeature>(false);
   // We do not need any further features from this phase
 }
 
