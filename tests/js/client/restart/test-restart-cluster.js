@@ -106,9 +106,7 @@ function testSuite() {
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator.getStructure());
 
-      coordinator.restartOneInstance({
-        "server.jwt-secret": jwtSecret
-      });
+      coordinator.restartOneInstance();
         
       waitForAlive(30, coordinator.url, {});
     },
@@ -181,7 +179,6 @@ function testSuite() {
         checkAvailability(dbServers, 500);
         // we need this so that testing.js will not loop trying to contact the coordinator
         coordinator.launchInstance({
-          "server.jwt-secret": jwtSecret,
           "server.authentication": "true",
         });
 
@@ -222,7 +219,6 @@ function testSuite() {
         // assume all db servers are unreachable
         checkAvailability(dbServers, 500);
         coordinator.restartOneInstance({
-          "server.jwt-secret": jwtSecret,
           "server.authentication": "true",
         }, true);
 
