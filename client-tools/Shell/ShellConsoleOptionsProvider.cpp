@@ -34,8 +34,17 @@ void ShellConsoleOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ShellConsoleFeatureOptions& options) {
   opts->addOption("--quiet", "Silent startup.",
                   new BooleanParameter(&options.quiet));
-  opts->addOption("--connect", "whether to attempt to connect the server.",
-                  new BooleanParameter(&options.connect));
+  opts->addOption("--connect",
+                  "Whether to connect to the server (intended for internal "
+                  "development use only).",
+                  new BooleanParameter(&options.connect),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(If set to `false`, no connection to the server
+is established. The `arango` and `db` objects are not available then, and you
+cannot connect later in the same session. Only the interactive shell and
+`--javascript.execute-string` honor this option.)");
 
   opts->addSection("console", "console");
 
