@@ -23,13 +23,12 @@
 #pragma once
 
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
-
-struct IndexTypeFactory;
 
 namespace iresearch {
 
@@ -126,32 +125,13 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
-  ////////////////////////////////////////////////////////////////////////////////
-  struct IndexFactory : public IndexTypeFactory {
-    friend class IResearchRocksDBLink;
-
-   private:
-    IndexFactory(application_features::ApplicationServer& server);
-
-   public:
-    bool equal(VPackSlice lhs, VPackSlice rhs,
-               std::string const& dbname) const final;
-
-    std::shared_ptr<Index> instantiate(
-        LogicalCollection& collection, VPackSlice definition, IndexId id,
-        bool /*isClusterConstructor*/) const final;
-
-    virtual Result normalize(VPackBuilder& normalized, VPackSlice definition,
-                             bool isCreation,
-                             TRI_vocbase_t const& vocbase) const final;
-  };
-
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
 };
+
+// construction logic for a RocksDB arangosearch link; registered with
+// IndexFactory::setLinkCreator by IResearchFeature::registerIndexFactory
+std::shared_ptr<Index> createRocksDBLink(LogicalCollection& collection,
+                                         velocypack::Slice definition,
+                                         IndexId id, bool isOpening);
 
 }  // namespace iresearch
 }  // namespace arangodb

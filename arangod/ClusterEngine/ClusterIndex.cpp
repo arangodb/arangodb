@@ -269,7 +269,7 @@ void ClusterIndex::setCacheEnabled(bool cacheEnabled) {
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine = _collection.vocbase().engine();
-  return Index::compare(engine, _info.slice(), info,
+  return Index::compare(engine.indexTypeCatalog(), _info.slice(), info,
                         _collection.vocbase().name());
 }
 

@@ -78,9 +78,11 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkDefinition.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/common.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -625,13 +627,16 @@ void MockClusterServer::startFeatures() {
   agencyTrx("/arango/Current/ServersKnown", st);
   ServerState::instance()->setRebootId(RebootId{1});
 
-  // register factories & normalizers
+  // register the arangosearch link, same as
+  // IResearchFeature::registerIndexFactory does for a real ClusterEngine
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  _iresearchLinkFactory =
-      iresearch::IResearchLinkCoordinator::createFactory(server());
-  indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType},
-      *_iresearchLinkFactory);
+  indexFactory.setLinkCreator(&iresearch::createLinkCoordinator);
+  _iresearchLinkDefinition =
+      std::make_unique<iresearch::IResearchLinkDefinition>(server());
+  auto r = _engine->indexTypeCatalog().add(
+      iresearch::StaticStrings::ViewArangoSearchType,
+      *_iresearchLinkDefinition);
+  TRI_ASSERT(r.ok());
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 
