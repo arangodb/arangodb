@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb::agency {
 
 VPackBuilder diagnoseAgency(VPackSlice agency, bool strict);
-VPackBuilder diagnoseAgency(arangodb::ArangodServer& server, bool strict);
+VPackBuilder diagnoseAgency(application_features::ApplicationServer& server,
+                            bool strict);
 
 }  // namespace arangodb::agency

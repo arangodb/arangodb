@@ -720,7 +720,8 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
   return builder;
 }
 
-VPackBuilder diagnoseAgency(arangodb::ArangodServer& server, bool strict) {
+VPackBuilder diagnoseAgency(application_features::ApplicationServer& server,
+                            bool strict) {
   AgencyCache& ac = server.getFeature<ClusterFeature>().agencyCache();
   auto [agency_vpack, index] = ac.read(std::vector<std::string>({"/"}));
   TRI_ASSERT(agency_vpack->slice().isArray() &&
