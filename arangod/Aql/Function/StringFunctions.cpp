@@ -369,9 +369,8 @@ ResultT<AqlValue> functions::findFirst(StringFunctionContext const& ctx,
     }
   }
 
-  auto const pos =
-      searchInRange(ctx.locale(), arguments.text, arguments.search,
-                    arguments.start, maxEnd, SearchMatch::kFirst);
+  auto const pos = searchInRange(ctx.locale(), arguments.text, arguments.search,
+                                 arguments.start, maxEnd, SearchMatch::kFirst);
   if (pos.fail()) {
     return pos.result();
   }
@@ -404,9 +403,8 @@ ResultT<AqlValue> functions::findLast(StringFunctionContext const& ctx,
     return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
   }
 
-  auto const pos =
-      searchInRange(ctx.locale(), arguments.text, arguments.search,
-                    arguments.start, maxEnd, SearchMatch::kLast);
+  auto const pos = searchInRange(ctx.locale(), arguments.text, arguments.search,
+                                 arguments.start, maxEnd, SearchMatch::kLast);
   if (pos.fail()) {
     return pos.result();
   }
