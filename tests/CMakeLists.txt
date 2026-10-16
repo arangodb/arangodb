@@ -175,6 +175,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/StringFunctions/LikeFunctionTest.cpp
   Aql/Function/StringFunctions/LowerUpperFunctionTest.cpp
   Aql/Function/StringFunctions/RepeatFunctionTest.cpp
+  Aql/Function/StringFunctions/SplitFunctionTest.cpp
   Aql/Function/StringFunctions/SubstringBytesFunctionTest.cpp
   Aql/Function/StringFunctions/SubstituteFunctionTest.cpp
   Aql/Function/StringFunctions/TrimFunctionTest.cpp
