@@ -28,36 +28,38 @@
 
 namespace arangodb::tests::aql {
 
-using SubstituteFunctionTest = StringFunctionTest;
 using arangodb::aql::functions::substitute;
 
-TEST_F(SubstituteFunctionTest, replaces_search_string_with_replacement) {
+TEST_F(StringFunctionTest, substitute_replaces_search_string_with_replacement) {
   expectResult(substitute(ctx, str("the quick brown fox"), str("fox"),
                           &str("dog"), nullptr),
                "the quick brown dog");
 }
 
-TEST_F(SubstituteFunctionTest, removes_matches_when_no_replacement_given) {
+TEST_F(StringFunctionTest,
+       substitute_removes_matches_when_no_replacement_given) {
   expectResult(substitute(ctx, str("the quick brown fox"), str("quick "),
                           nullptr, nullptr),
                "the brown fox");
 }
 
-TEST_F(SubstituteFunctionTest, replaces_each_search_with_matching_replacement) {
+TEST_F(StringFunctionTest,
+       substitute_replaces_each_search_with_matching_replacement) {
   expectResult(
       substitute(ctx, str("the quick brown fox"), json(R"(["quick", "fox"])"),
                  &json(R"(["slow", "cat"])"), nullptr),
       "the slow brown cat");
 }
 
-TEST_F(SubstituteFunctionTest,
-       plain_string_replacement_applies_to_all_searches) {
+TEST_F(StringFunctionTest,
+       substitute_plain_string_replacement_applies_to_all_searches) {
   expectResult(substitute(ctx, str("the quick brown fox"),
                           json(R"(["quick", "brown"])"), &str("x"), nullptr),
                "the x x fox");
 }
 
-TEST_F(SubstituteFunctionTest, removes_matches_without_replacement_entry) {
+TEST_F(StringFunctionTest,
+       substitute_removes_matches_without_replacement_entry) {
   expectResult(substitute(ctx, str("the quick brown fox"),
                           json(R"(["quick", "brown", "fox"])"),
                           &json(R"(["slow"])"), nullptr),
@@ -67,7 +69,7 @@ TEST_F(SubstituteFunctionTest, removes_matches_without_replacement_entry) {
                "the quick  fox");
 }
 
-TEST_F(SubstituteFunctionTest, null_or_empty_replacement_removes_match) {
+TEST_F(StringFunctionTest, substitute_null_or_empty_replacement_removes_match) {
   expectResult(substitute(ctx, str("the quick brown fox"),
                           json(R"(["quick", "brown", "fox"])"),
                           &json(R"(["", null, "ant"])"), nullptr),
@@ -78,14 +80,15 @@ TEST_F(SubstituteFunctionTest, null_or_empty_replacement_removes_match) {
                "the   ant");
 }
 
-TEST_F(SubstituteFunctionTest, mapping_object_replaces_keys_with_values) {
+TEST_F(StringFunctionTest,
+       substitute_mapping_object_replaces_keys_with_values) {
   expectResult(
       substitute(ctx, str("the quick brown fox"),
                  json(R"({"quick": "slow", "fox": null})"), nullptr, nullptr),
       "the slow brown ");
 }
 
-TEST_F(SubstituteFunctionTest, applies_all_patterns_in_one_pass) {
+TEST_F(StringFunctionTest, substitute_applies_all_patterns_in_one_pass) {
   expectResult(
       substitute(ctx, str("fox and dog"),
                  json(R"({"fox": "dog", "dog": "fox"})"), nullptr, nullptr),
@@ -95,12 +98,12 @@ TEST_F(SubstituteFunctionTest, applies_all_patterns_in_one_pass) {
                "dog and fox");
 }
 
-TEST_F(SubstituteFunctionTest, limit_caps_number_of_replacements) {
+TEST_F(StringFunctionTest, substitute_limit_caps_number_of_replacements) {
   expectResult(substitute(ctx, str("a a a"), str("a"), &str("b"), &json("2")),
                "b b a");
 }
 
-TEST_F(SubstituteFunctionTest, limit_counts_across_all_patterns) {
+TEST_F(StringFunctionTest, substitute_limit_counts_across_all_patterns) {
   expectResult(substitute(ctx, str("aaaabbbbccc"), json(R"(["a", "b", "c"])"),
                           &json(R"(["x", "y", "z"])"), &json("6")),
                "xxxxyybbccc");
@@ -110,7 +113,7 @@ TEST_F(SubstituteFunctionTest, limit_counts_across_all_patterns) {
                "AbcDef");
 }
 
-TEST_F(SubstituteFunctionTest, zero_limit_returns_input_unchanged) {
+TEST_F(StringFunctionTest, substitute_zero_limit_returns_input_unchanged) {
   expectResult(
       substitute(ctx, str("a a a"), json(R"({"a": "b"})"), &json("0"), nullptr),
       "a a a");
@@ -118,14 +121,14 @@ TEST_F(SubstituteFunctionTest, zero_limit_returns_input_unchanged) {
                "a a a");
 }
 
-TEST_F(SubstituteFunctionTest, only_minus_one_disables_limit) {
+TEST_F(StringFunctionTest, substitute_only_minus_one_disables_limit) {
   expectResult(substitute(ctx, str("a a a"), str("a"), &str("b"), &json("-1")),
                "b b b");
   expectResult(substitute(ctx, str("a a a"), str("a"), &str("b"), &json("-2")),
                "a a a");
 }
 
-TEST_F(SubstituteFunctionTest, returns_input_when_nothing_matches) {
+TEST_F(StringFunctionTest, substitute_returns_input_when_nothing_matches) {
   expectResult(
       substitute(ctx, str("the fox"), str("cat"), &str("dog"), nullptr),
       "the fox");
@@ -136,7 +139,7 @@ TEST_F(SubstituteFunctionTest, returns_input_when_nothing_matches) {
                "the fox");
 }
 
-TEST_F(SubstituteFunctionTest, empty_input_returns_empty_string) {
+TEST_F(StringFunctionTest, substitute_empty_input_returns_empty_string) {
   expectResult(substitute(ctx, str(""), str("foo"), &str("bar"), nullptr), "");
   expectResult(substitute(ctx, str(""), json(R"(["foo", "baz"])"),
                           &json(R"(["bar", "qux"])"), nullptr),
@@ -146,7 +149,7 @@ TEST_F(SubstituteFunctionTest, empty_input_returns_empty_string) {
       "");
 }
 
-TEST_F(SubstituteFunctionTest, empty_search_inserts_between_characters) {
+TEST_F(StringFunctionTest, substitute_empty_search_inserts_between_characters) {
   expectResult(substitute(ctx, str("abc"), str(""), &str("_"), nullptr),
                "_a_b_c_");
   expectResult(substitute(ctx, str("abc"), str(""), &str("_"), &json("2")),
@@ -162,14 +165,14 @@ TEST_F(SubstituteFunctionTest, empty_search_inserts_between_characters) {
                "_a-_c_");
 }
 
-TEST_F(SubstituteFunctionTest,
-       duplicate_empty_patterns_all_apply_at_each_position) {
+TEST_F(StringFunctionTest,
+       substitute_duplicate_empty_patterns_all_apply_at_each_position) {
   expectResult(substitute(ctx, str("abc"), json(R"(["", ""])"),
                           &json(R"(["_", "-"])"), nullptr),
                "_-a_-b_-c_-");
 }
 
-TEST_F(SubstituteFunctionTest, earliest_match_wins) {
+TEST_F(StringFunctionTest, substitute_earliest_match_wins) {
   expectResult(substitute(ctx, str("baaaa"), json(R"(["ba", "aaa"])"),
                           &json(R"(["<1>", "<2>"])"), nullptr),
                "<1><2>");
@@ -181,7 +184,7 @@ TEST_F(SubstituteFunctionTest, earliest_match_wins) {
                "<1>b");
 }
 
-TEST_F(SubstituteFunctionTest, earlier_pattern_wins_at_same_position) {
+TEST_F(StringFunctionTest, substitute_earlier_pattern_wins_at_same_position) {
   expectResult(substitute(ctx, str("ab"), json(R"(["a", "ab"])"),
                           &json(R"(["1", "2"])"), nullptr),
                "1b");
@@ -190,7 +193,7 @@ TEST_F(SubstituteFunctionTest, earlier_pattern_wins_at_same_position) {
                "2");
 }
 
-TEST_F(SubstituteFunctionTest, matches_do_not_overlap) {
+TEST_F(StringFunctionTest, substitute_matches_do_not_overlap) {
   expectResult(substitute(ctx, str("aaaaaa"), str("aaa"), &str("x"), nullptr),
                "xx");
   expectResult(substitute(ctx, str("baaaaaaa"), json(R"(["ba", "aaa"])"),
@@ -198,12 +201,12 @@ TEST_F(SubstituteFunctionTest, matches_do_not_overlap) {
                "<1><2><2>");
 }
 
-TEST_F(SubstituteFunctionTest, is_case_sensitive) {
+TEST_F(StringFunctionTest, substitute_is_case_sensitive) {
   expectResult(substitute(ctx, str("abc"), str("A"), &str("x"), nullptr),
                "abc");
 }
 
-TEST_F(SubstituteFunctionTest, treats_patterns_as_literal_text) {
+TEST_F(StringFunctionTest, substitute_treats_patterns_as_literal_text) {
   expectResult(substitute(ctx, str("abc"), str("."), &str("x"), nullptr),
                "abc");
   expectResult(
@@ -211,7 +214,7 @@ TEST_F(SubstituteFunctionTest, treats_patterns_as_literal_text) {
       "a.b.c");
 }
 
-TEST_F(SubstituteFunctionTest, handles_multibyte_characters) {
+TEST_F(StringFunctionTest, substitute_handles_multibyte_characters) {
   expectResult(
       substitute(ctx, str("the fox"), str("fox"), &str("mötör"), nullptr),
       "the mötör");
@@ -219,7 +222,7 @@ TEST_F(SubstituteFunctionTest, handles_multibyte_characters) {
                "motor");
 }
 
-TEST_F(SubstituteFunctionTest, converts_non_string_input_to_string) {
+TEST_F(StringFunctionTest, substitute_converts_non_string_input_to_string) {
   expectResult(substitute(ctx, json("123"), str("2"), &str("x"), nullptr),
                "1x3");
   expectResult(substitute(ctx, json("123"), json("[]"), &str("x"), nullptr),
@@ -227,7 +230,7 @@ TEST_F(SubstituteFunctionTest, converts_non_string_input_to_string) {
   expectResult(substitute(ctx, json("null"), str("n"), &str("x"), nullptr), "");
 }
 
-TEST_F(SubstituteFunctionTest, non_string_search_is_type_mismatch) {
+TEST_F(StringFunctionTest, substitute_non_string_search_is_type_mismatch) {
   expectError(substitute(ctx, str("abc"), json("1"), &str("x"), nullptr),
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   expectError(
@@ -235,7 +238,7 @@ TEST_F(SubstituteFunctionTest, non_string_search_is_type_mismatch) {
       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-TEST_F(SubstituteFunctionTest, non_string_replacement_is_type_mismatch) {
+TEST_F(StringFunctionTest, substitute_non_string_replacement_is_type_mismatch) {
   expectError(substitute(ctx, str("abc"), str("a"), &json("1"), nullptr),
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   expectError(substitute(ctx, str("abc"), str("a"), &json("null"), nullptr),
@@ -247,14 +250,15 @@ TEST_F(SubstituteFunctionTest, non_string_replacement_is_type_mismatch) {
       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-TEST_F(SubstituteFunctionTest, non_string_mapping_value_is_type_mismatch) {
+TEST_F(StringFunctionTest,
+       substitute_non_string_mapping_value_is_type_mismatch) {
   expectError(
       substitute(ctx, str("abc"), json(R"({"a": 1})"), nullptr, nullptr),
       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
-TEST_F(SubstituteFunctionTest,
-       mapping_with_extra_arguments_is_number_mismatch) {
+TEST_F(StringFunctionTest,
+       substitute_mapping_with_extra_arguments_is_number_mismatch) {
   expectError(substitute(ctx, str("abc"), json(R"({"a": "b"})"), &json("1"),
                          &json("2")),
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);

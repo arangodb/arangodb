@@ -27,32 +27,31 @@
 
 namespace arangodb::tests::aql {
 
-using CharLengthFunctionTest = StringFunctionTest;
 using arangodb::aql::functions::charLength;
 
-TEST_F(CharLengthFunctionTest, ascii_strings_count_one_per_byte) {
+TEST_F(StringFunctionTest, char_length_ascii_strings_count_one_per_byte) {
   expectResult(charLength(ctx, str("")), 0);
   expectResult(charLength(ctx, str("a")), 1);
   expectResult(charLength(ctx, str("the quick fox")), 13);
 }
 
-TEST_F(CharLengthFunctionTest, multibyte_characters_count_once) {
+TEST_F(StringFunctionTest, char_length_multibyte_characters_count_once) {
   expectResult(charLength(ctx, str("äöüÄÖÜß")), 7);
   expectResult(charLength(ctx, str("€")), 1);
   expectResult(charLength(ctx, str("アボカド名称について")), 10);
   expectResult(charLength(ctx, str("🥑😄👻👽")), 4);
 }
 
-TEST_F(CharLengthFunctionTest, null_has_length_zero) {
+TEST_F(StringFunctionTest, char_length_null_has_length_zero) {
   expectResult(charLength(ctx, json("null")), 0);
 }
 
-TEST_F(CharLengthFunctionTest, booleans_count_their_names) {
+TEST_F(StringFunctionTest, char_length_booleans_count_their_names) {
   expectResult(charLength(ctx, json("true")), 4);
   expectResult(charLength(ctx, json("false")), 5);
 }
 
-TEST_F(CharLengthFunctionTest, numbers_count_their_string_form) {
+TEST_F(StringFunctionTest, char_length_numbers_count_their_string_form) {
   expectResult(charLength(ctx, json("0")), 1);
   expectResult(charLength(ctx, json("3")), 1);
   expectResult(charLength(ctx, json("-42")), 3);
@@ -61,7 +60,8 @@ TEST_F(CharLengthFunctionTest, numbers_count_their_string_form) {
   expectResult(charLength(ctx, json("1.5e-7")), 6);
 }
 
-TEST_F(CharLengthFunctionTest, arrays_and_objects_count_their_json_form) {
+TEST_F(StringFunctionTest,
+       char_length_arrays_and_objects_count_their_json_form) {
   expectResult(charLength(ctx, json("[]")), 2);
   expectResult(charLength(ctx, json("[1, 2, 3]")), 7);
   expectResult(charLength(ctx, json("{}")), 2);
@@ -70,7 +70,8 @@ TEST_F(CharLengthFunctionTest, arrays_and_objects_count_their_json_form) {
   expectResult(charLength(ctx, json(R"({"a": 1, "b": [true, null]})")), 23);
 }
 
-TEST_F(CharLengthFunctionTest, arrays_and_objects_count_bytes_not_characters) {
+TEST_F(StringFunctionTest,
+       char_length_arrays_and_objects_count_bytes_not_characters) {
   expectResult(charLength(ctx, json(R"(["ö"])")), 6);
   expectResult(charLength(ctx, json(R"({"€": 1})")), 9);
 }
