@@ -27,10 +27,9 @@
 
 namespace arangodb::tests::aql {
 
-using SubstringBytesFunctionTest = StringFunctionTest;
 using arangodb::aql::functions::substringBytes;
 
-TEST_F(SubstringBytesFunctionTest, offset_and_length_are_in_bytes) {
+TEST_F(StringFunctionTest, substring_bytes_offset_and_length_are_in_bytes) {
   expectResult(substringBytes(ctx, str("hello"), json("1"), &json("3"), nullptr,
                               nullptr),
                "ell");
@@ -42,7 +41,8 @@ TEST_F(SubstringBytesFunctionTest, offset_and_length_are_in_bytes) {
                "fo");
 }
 
-TEST_F(SubstringBytesFunctionTest, without_length_the_rest_is_returned) {
+TEST_F(StringFunctionTest,
+       substring_bytes_without_length_the_rest_is_returned) {
   expectResult(
       substringBytes(ctx, str("🤡foo"), json("0"), nullptr, nullptr, nullptr),
       "🤡foo");
@@ -51,7 +51,8 @@ TEST_F(SubstringBytesFunctionTest, without_length_the_rest_is_returned) {
       "foo");
 }
 
-TEST_F(SubstringBytesFunctionTest, negative_offset_counts_from_the_end) {
+TEST_F(StringFunctionTest,
+       substring_bytes_negative_offset_counts_from_the_end) {
   expectResult(substringBytes(ctx, str("🤡foo"), json("-1"), &json("1"),
                               nullptr, nullptr),
                "o");
@@ -60,7 +61,8 @@ TEST_F(SubstringBytesFunctionTest, negative_offset_counts_from_the_end) {
                "fo");
 }
 
-TEST_F(SubstringBytesFunctionTest, out_of_range_offset_and_length_are_clamped) {
+TEST_F(StringFunctionTest,
+       substring_bytes_out_of_range_offset_and_length_are_clamped) {
   expectResult(substringBytes(ctx, str("🤡foo"), json("-42"), &json("4"),
                               nullptr, nullptr),
                "🤡");
@@ -72,13 +74,13 @@ TEST_F(SubstringBytesFunctionTest, out_of_range_offset_and_length_are_clamped) {
                "foo");
 }
 
-TEST_F(SubstringBytesFunctionTest, negative_length_gives_empty_string) {
+TEST_F(StringFunctionTest, substring_bytes_negative_length_gives_empty_string) {
   expectResult(substringBytes(ctx, str("🤡foo"), json("-2"), &json("-2"),
                               nullptr, nullptr),
                "");
 }
 
-TEST_F(SubstringBytesFunctionTest, empty_string_gives_empty_string) {
+TEST_F(StringFunctionTest, substring_bytes_empty_string_gives_empty_string) {
   expectResult(
       substringBytes(ctx, str(""), json("0"), &json("1"), nullptr, nullptr),
       "");
@@ -87,8 +89,8 @@ TEST_F(SubstringBytesFunctionTest, empty_string_gives_empty_string) {
       "");
 }
 
-TEST_F(SubstringBytesFunctionTest,
-       offset_and_length_are_converted_to_integers) {
+TEST_F(StringFunctionTest,
+       substring_bytes_offset_and_length_are_converted_to_integers) {
   expectResult(substringBytes(ctx, str("abc"), json("1.9"), &json("1"), nullptr,
                               nullptr),
                "b");
@@ -100,8 +102,8 @@ TEST_F(SubstringBytesFunctionTest,
                "b");
 }
 
-TEST_F(SubstringBytesFunctionTest,
-       non_numeric_offset_and_length_count_as_zero) {
+TEST_F(StringFunctionTest,
+       substring_bytes_non_numeric_offset_and_length_count_as_zero) {
   expectResult(substringBytes(ctx, str("🤡foo"), json("null"), &json("4"),
                               nullptr, nullptr),
                "🤡");
@@ -116,7 +118,8 @@ TEST_F(SubstringBytesFunctionTest,
                "");
 }
 
-TEST_F(SubstringBytesFunctionTest, cutting_inside_a_character_is_rejected) {
+TEST_F(StringFunctionTest,
+       substring_bytes_cutting_inside_a_character_is_rejected) {
   expectError(
       substringBytes(ctx, str("🤡"), json("1"), &json("2"), nullptr, nullptr),
       TRI_ERROR_BAD_PARAMETER);
@@ -131,7 +134,7 @@ TEST_F(SubstringBytesFunctionTest, cutting_inside_a_character_is_rejected) {
               TRI_ERROR_BAD_PARAMETER);
 }
 
-TEST_F(SubstringBytesFunctionTest, non_string_values_are_rejected) {
+TEST_F(StringFunctionTest, substring_bytes_non_string_values_are_rejected) {
   for (auto value : {R"(null)", R"(true)", R"(1)", R"(["🤡"])", R"({})"}) {
     expectError(substringBytes(ctx, json(value), json("0"), &json("1"), nullptr,
                                nullptr),
@@ -139,7 +142,8 @@ TEST_F(SubstringBytesFunctionTest, non_string_values_are_rejected) {
   }
 }
 
-TEST_F(SubstringBytesFunctionTest, left_and_right_extend_by_characters) {
+TEST_F(StringFunctionTest,
+       substring_bytes_left_and_right_extend_by_characters) {
   expectResult(substringBytes(ctx, str("aa🤡aa"), json("6"), &json("1"),
                               &json("1"), &json("0")),
                "🤡a");
@@ -154,19 +158,22 @@ TEST_F(SubstringBytesFunctionTest, left_and_right_extend_by_characters) {
                "bcx🤡ユf");
 }
 
-TEST_F(SubstringBytesFunctionTest, left_without_right_extends_both_sides) {
+TEST_F(StringFunctionTest,
+       substring_bytes_left_without_right_extends_both_sides) {
   expectResult(substringBytes(ctx, str("abcde"), json("2"), &json("1"),
                               &json("1"), nullptr),
                "bcd");
 }
 
-TEST_F(SubstringBytesFunctionTest, extension_stops_at_the_string_bounds) {
+TEST_F(StringFunctionTest,
+       substring_bytes_extension_stops_at_the_string_bounds) {
   expectResult(substringBytes(ctx, str("abcde"), json("2"), &json("1"),
                               &json("10"), nullptr),
                "abcde");
 }
 
-TEST_F(SubstringBytesFunctionTest, negative_or_null_extension_counts_as_zero) {
+TEST_F(StringFunctionTest,
+       substring_bytes_negative_or_null_extension_counts_as_zero) {
   expectResult(substringBytes(ctx, str("abc"), json("1"), &json("1"),
                               &json("-1"), nullptr),
                "b");
