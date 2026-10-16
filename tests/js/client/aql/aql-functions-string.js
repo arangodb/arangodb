@@ -1453,8 +1453,8 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
-    testSubstituteDuplicateEmptyKeyUsesFirst: function () {
-      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '_', '': '-' })`));
+    testSubstituteDuplicateEmptyKeyUsesLast: function () {
+      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '-', '': '_' })`));
     },
 
     testSubstituteComputedValueUnchanged: function () {
