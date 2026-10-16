@@ -483,7 +483,8 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toLower(nullptr);
+  unicodeStr.toLower(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -505,7 +506,8 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toUpper(nullptr);
+  unicodeStr.toUpper(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
