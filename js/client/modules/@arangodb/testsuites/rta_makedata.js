@@ -206,8 +206,11 @@ function makeDataWrapper (options) {
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
       let rc;
       try {
-        this.instanceManager.reconnect(false);
+        this.instanceManager.disconnect();
+        this.instanceManager.reconnect(true);
         rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+        this.instanceManager.disconnect();
+        this.instanceManager.reconnect(true);
       } catch (ex) {
         print(`${RED}${Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
         throw ex;
@@ -307,11 +310,13 @@ function makeDataWrapper (options) {
                 }
               });
             } catch(e) {
+              let msg = `upgradeCycle failed by: ${e.message}\n${e.stack}`;
+              print(`${RED}${Date()}${msg}${RESET}`);
               res.status = false;
               res.failed += 1;
               res[whichRTA] = {
                 'forceTerminate': true,
-                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'message': msg,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
