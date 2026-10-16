@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <memory>
@@ -31,6 +30,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Metrics/MetricsFeature.h"
@@ -55,10 +55,9 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
         std::move(gid), std::move(log), std::move(lc), iter->second.metrics,
         std::move(scheduler));
   }
-  using namespace fmt::literals;
   throw basics::Exception::fmt(
       ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,
-      "type"_a = name);
+      name);
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
@@ -80,19 +79,9 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
   }
 }
 
-auto replicated_state::ReplicatedStateFeature::createMetricsObject(
-    std::string_view name) -> std::shared_ptr<ReplicatedStateMetrics> {
-  struct ReplicatedStateMetricsMock : ReplicatedStateMetrics {
-    explicit ReplicatedStateMetricsMock(std::string_view name)
-        : ReplicatedStateMetrics(nullptr, name) {}
-  };
-
-  return std::make_shared<ReplicatedStateMetricsMock>(name);
-}
-
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    Server& server)
-    : ArangodFeature{server, *this} {
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ReplicatedLogFeature>();
   onlyEnabledWith<ReplicatedLogFeature>();

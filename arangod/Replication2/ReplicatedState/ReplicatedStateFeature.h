@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,9 +26,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -97,7 +96,7 @@ struct ReplicatedStateFeature {
     return createMetricsObject(impl);
   }
   virtual auto createMetricsObject(std::string_view impl)
-      -> std::shared_ptr<ReplicatedStateMetrics>;
+      -> std::shared_ptr<ReplicatedStateMetrics> = 0;
 
  private:
   static void assertWasInserted(std::string_view name, bool wasInserted);
@@ -146,7 +145,8 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   }
 };
 
-struct ReplicatedStateAppFeature : ArangodFeature, ReplicatedStateFeature {
+struct ReplicatedStateAppFeature : application_features::ApplicationFeature,
+                                   ReplicatedStateFeature {
   static constexpr std::string_view name() noexcept {
     return "ReplicatedState";
   }
@@ -156,7 +156,8 @@ struct ReplicatedStateAppFeature : ArangodFeature, ReplicatedStateFeature {
       -> std::shared_ptr<ReplicatedStateMetrics> override;
 
  public:
-  explicit ReplicatedStateAppFeature(Server& server);
+  explicit ReplicatedStateAppFeature(
+      application_features::ApplicationServer& server);
 };
 
 }  // namespace arangodb::replication2::replicated_state

@@ -18,18 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -37,29 +34,25 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
-#include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
-#include "Replication/GlobalReplicationApplier.h"
+#include "Metrics/IRegistry.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -77,10 +70,10 @@ namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
  public:
-  explicit HeartbeatBackgroundJobThread(
-      application_features::ApplicationServer& server,
-      HeartbeatThread* heartbeatThread)
-      : Thread(server, "Maintenance"),
+  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
+      // needs superuser permissions for DBServerAgencySync, which executes
+      // maintenance actions
+      : Thread("Maintenance", ExecContext::superuserAsShared()),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -208,12 +201,13 @@ DECLARE_COUNTER(arangodb_heartbeat_failures_total,
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale,
                   "Time required to send heartbeat [ms]");
 
-HeartbeatThread::HeartbeatThread(Server& server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry,
-                                 std::chrono::microseconds interval,
-                                 uint64_t maxFailsBeforeWarning,
-                                 double noHeartbeatDelayBeforeShutdown)
-    : arangodb::ServerThread<Server>(server, "Heartbeat"),
+HeartbeatThread::HeartbeatThread(
+    application_features::ApplicationServer& server,
+    AgencyCallbackRegistry* agencyCallbackRegistry,
+    std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
+    double noHeartbeatDelayBeforeShutdown, metrics::IRegistry& metricsRegistry)
+    : arangodb::ServerThread(server, "Heartbeat",
+                             ExecContext::superuserAsShared()),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
@@ -241,11 +235,10 @@ HeartbeatThread::HeartbeatThread(Server& server,
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(server, this),
       _clusterFeature(server.getFeature<ClusterFeature>()),
-      _heartbeat_send_time_ms(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_heartbeat_send_time_msec{})),
+      _heartbeat_send_time_ms(
+          metricsRegistry.add(arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_heartbeat_failures_total{})) {
+          metricsRegistry.add(arangodb_heartbeat_failures_total{})) {
   TRI_ASSERT(_maxFailsBeforeWarning > 0);
 }
 
@@ -371,6 +364,26 @@ void HeartbeatThread::run() {
       << "stopped heartbeat thread (" << role << ")";
 }
 
+namespace {
+
+/// @brief wait for an already scheduled getNewsFromAgency job to finish.
+/// The job runs in a scheduler thread and accesses objects owned by the
+/// ClusterFeature (e.g. the AgencyCache). The ClusterFeature tears those down
+/// once the HeartbeatThread has stopped, so the thread must not stop while the
+/// job is still in flight.
+void waitForScheduledGetNews(std::atomic<int> const& getNewsRunning) noexcept {
+  size_t counter = 0;
+  while (getNewsRunning.load(std::memory_order_seq_cst) != 0) {
+    if (++counter % 200 == 0) {
+      LOG_TOPIC("a3b7c", WARN, Logger::HEARTBEAT)
+          << "waiting for scheduled getNewsFromAgency job to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+}  // namespace
+
 void HeartbeatThread::getNewsFromAgencyForDBServer() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
@@ -495,6 +508,8 @@ void HeartbeatThread::runDBServer() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -762,7 +777,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     } catch (...) {
     }
 
-    if (version > 0) {
+    if (version > 0 && server().hasFeature<FoxxFeature>()) {
       // track the global foxx queues version from the agency. any
       // coordinator can update this any time. the setQueueVersion
       // method makes sure we are not going below a value that
@@ -793,6 +808,8 @@ void HeartbeatThread::runCoordinator() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   while (!isStopping()) {
     try {
@@ -873,8 +890,7 @@ bool HeartbeatThread::init() {
     // thread, but that SyncerThread is started before runDBServer is called.
     // So in order to prevent a data race we should initialize
     // _maintenanceThread before that SyncerThread is started.
-    _maintenanceThread =
-        std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
   }
   return true;
 }
@@ -1005,7 +1021,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // database on one coordinator and then access the newly created
   // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
-    if (!options.value.isObject()) {
+    if (!options.value.isObject() ||
+        options.value.hasKey(StaticStrings::AttrIsBuilding)) {
       continue;
     }
 
@@ -1112,11 +1129,9 @@ bool HeartbeatThread::sendServerState() {
     TRI_ASSERT(_maxFailsBeforeWarning > 0);
     if (++_numFails % _maxFailsBeforeWarning == 0) {
       _heartbeat_failure_counter.count();
-      std::string const endpoints =
-          AsyncAgencyCommManager::INSTANCE->endpointsString();
-
       LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
-          << "heartbeat could not be sent to agency endpoints (" << endpoints
+          << "heartbeat could not be sent to agents ("
+          << inspection::json(AsyncAgencyCommManager::INSTANCE->agents())
           << "): http code: " << result.httpCode()
           << ", body: " << result.body();
       _numFails = 0;
@@ -1143,7 +1158,7 @@ void HeartbeatThread::sendServerStateAsync() {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          server().getFeature<EngineSelectorFeature>().engine().healthCheck();
+          server().getFeature<StorageEngine>().healthCheck();
       // intentionally dont transmit details so we can save a bit of traffic
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
@@ -1191,11 +1206,11 @@ void HeartbeatThread::sendServerStateAsync() {
             TRI_ASSERT(self->_maxFailsBeforeWarning > 0);
             if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
               self->_heartbeat_failure_counter.count();
-              std::string const endpoints =
-                  AsyncAgencyCommManager::INSTANCE->endpointsString();
               LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
-                  << "heartbeat could not be sent to agency endpoints ("
-                  << endpoints << "): error code: " << result.errorMessage();
+                  << "heartbeat could not be sent to agents ("
+                  << inspection::json(
+                         AsyncAgencyCommManager::INSTANCE->agents())
+                  << "): error code: " << result.errorMessage();
               self->_numFails = 0;
             }
           } else {
@@ -1219,19 +1234,21 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0 &&
       agentPool.get("id").isString()) {
     try {
-      std::vector<std::string> values;
+      std::vector<Agent> values;
       // we have to make sure that the leader is on the front
       auto leaderId = agentPool.get("id").stringView();
       auto pool = agentPool.get("pool");
       values.reserve(pool.length());
-      values.emplace_back(pool.get(leaderId).copyString());
+      values.emplace_back(
+          Agent{ServerID{leaderId}, pool.get(leaderId).copyString()});
       // now add all non leaders
       for (auto pair : VPackObjectIterator(pool)) {
         if (!pair.key.isEqualString(leaderId)) {
-          values.emplace_back(pair.value.copyString());
+          values.emplace_back(
+              Agent{pair.key.copyString(), pair.value.copyString()});
         }
       }
-      AsyncAgencyCommManager::INSTANCE->updateEndpoints(values);
+      AsyncAgencyCommManager::INSTANCE->updateAgents(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
           << "Error updating agency pool: " << e.message();

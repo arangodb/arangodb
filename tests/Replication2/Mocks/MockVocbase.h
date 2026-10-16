@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,17 +25,17 @@
 #include <gmock/gmock.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Utils/VersionTracker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocbaseInfo.h"
 #include "Mocks/StorageEngineMock.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::replication2::tests {
 
 struct MockCreateDatabaseInfo : CreateDatabaseInfo {
-  MockCreateDatabaseInfo(ArangodServer& server, ExecContext const& execContext,
+  MockCreateDatabaseInfo(application_features::ApplicationServer& server,
+                         ExecContext const& execContext,
                          std::string const& name, std::uint64_t id)
       : CreateDatabaseInfo(CreateDatabaseInfo::mockConstruct, server,
                            execContext, name, id, replication::Version::TWO) {}
@@ -45,21 +44,18 @@ struct MockCreateDatabaseInfo : CreateDatabaseInfo {
 };
 
 struct MockVocbase : TRI_vocbase_t {
-  static auto createDatabaseInfo(ArangodServer& server, std::string const& name,
-                                 std::uint64_t id) -> MockCreateDatabaseInfo {
+  static auto createDatabaseInfo(
+      application_features::ApplicationServer& server, std::string const& name,
+      std::uint64_t id) -> MockCreateDatabaseInfo {
     return MockCreateDatabaseInfo(server, ExecContext::current(), name, id);
   }
 
-  explicit MockVocbase(ArangodServer& server, std::string const& name,
-                       std::uint64_t id)
-      : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
-                      createDatabaseInfo(server, name, id), storageEngine,
-                      versionTracker, true),
-        storageEngine(server) {
-    server.addFeature<arangodb::EngineSelectorFeature>();
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        &storageEngine);
-  }
+  explicit MockVocbase(application_features::ApplicationServer& server,
+                       std::string const& name, std::uint64_t id)
+      : TRI_vocbase_t(
+            TRI_vocbase_t::mockConstruct, createDatabaseInfo(server, name, id),
+            server.getFeature<StorageEngine, StorageEngineMock>(), dbProvider),
+        storageEngine(server.getFeature<StorageEngine, StorageEngineMock>()) {}
 
   virtual ~MockVocbase() = default;
 
@@ -76,8 +72,8 @@ struct MockVocbase : TRI_vocbase_t {
     return col;
   }
 
-  StorageEngineMock storageEngine;
-  VersionTracker versionTracker;
+  StorageEngineMock& storageEngine;
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> dbProvider;
 };
 
 }  // namespace arangodb::replication2::tests

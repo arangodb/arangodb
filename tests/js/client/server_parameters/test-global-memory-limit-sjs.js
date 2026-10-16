@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -35,7 +33,7 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 const db = require('internal').db;
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let IM = global.instanceManager;
 
 function testSuite() {
   return {
@@ -67,7 +65,7 @@ function testSuite() {
       // now give it a second to make sure it has allocated _some_ memory
       require("internal").sleep(1.0);
 
-      const previousValue = getMetric("arangodb_aql_global_query_memory_limit_reached_total");
+      const previousValue = IM.getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       try {
         // we expect this query here to violate the global memory limit, because some memory is already
         // allocated by the other, sleeping query
@@ -81,7 +79,7 @@ function testSuite() {
         queries.kill(current[0].id);
       }
       
-      const currentValue = getMetric("arangodb_aql_global_query_memory_limit_reached_total");
+      const currentValue = IM.getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
     },
     

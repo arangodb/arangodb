@@ -21,14 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
-
-const { getDBServers } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function numberOfServersSuite () {
   let numberFound = 3;  // will be overwritten in setUp
@@ -37,8 +34,9 @@ function numberOfServersSuite () {
       // We need the actual number of DBServers, since when we later
       // set the target number, we want that no cleanOutServer job is
       // started.
-      const dbservers = getDBServers();
-      numberFound = dbservers.length;
+      let IM = global.instanceManager;
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      numberFound = dbServers.length;
     },
 
     setUp : function () {

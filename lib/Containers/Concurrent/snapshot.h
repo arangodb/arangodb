@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include <concepts>
 
 template<typename T>
-concept HasSnapshot = requires(T t) {
+concept HasSnapshot = requires(T const& t) {
   { t.snapshot() } -> std::convertible_to<typename T::Snapshot>;
 };

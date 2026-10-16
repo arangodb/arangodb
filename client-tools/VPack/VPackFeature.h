@@ -18,34 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "VPack/arangovpack.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/VelocyPackHelper.h"
+#include "VPackFeatureOptions.h"
 
 namespace arangodb {
 
-class VPackFeature final : public ArangoVPackFeature {
+class VPackFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "VPack"; }
 
-  VPackFeature(Server& server, int* result);
+  VPackFeature(application_features::ApplicationServer& server, int* result,
+               VPackFeatureOptions options);
+  VPackFeature(application_features::ApplicationServer& server, int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
 
  private:
   int* _result;
-  std::string _inputFile;
-  std::string _outputFile;
-  std::string _inputType;
-  std::string _outputType;
-  bool _failOnNonJson;
+  VPackFeatureOptions _options;
 };
 
 }  // namespace arangodb

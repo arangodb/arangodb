@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewMergeExecutor.h"
@@ -198,7 +196,8 @@ LocalDocumentId IResearchViewMergeExecutor<ExecutionTraits>::readPK(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
+bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(
+    ReadContext& ctx, IResearchViewStats&) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost =

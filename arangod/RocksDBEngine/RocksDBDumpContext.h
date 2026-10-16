@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Activities/GenericActivity.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Inspection/Types.h"
@@ -56,7 +56,7 @@ struct CustomTypeHandler;
 }
 
 class CollectionGuard;
-class DatabaseFeature;
+struct IDatabaseProvider;
 class DatabaseGuard;
 class LogicalCollection;
 class RocksDBCollection;
@@ -121,7 +121,7 @@ class RocksDBDumpContext {
   RocksDBDumpContext& operator=(RocksDBDumpContext const&) = delete;
 
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
-                     DatabaseFeature& databaseFeature, std::string id,
+                     IDatabaseProvider& databaseProvider, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
                      std::string database, bool useVPack);
 
@@ -162,6 +162,9 @@ class RocksDBDumpContext {
   // determine whether the given document should be included in the
   // dump
   bool applyFilter(velocypack::Slice const& documentSlice) const;
+
+  // get the activityId of this dump context
+  activities::GenericActivity::HandleType activity() const noexcept;
 
   // Contains the data for a batch
   struct Batch {
@@ -348,6 +351,8 @@ class RocksDBDumpContext {
   std::atomic<int64_t> _blockCounter{0};
 
   std::atomic_bool _stopped{false};
+
+  activities::GenericActivity::HandleType _activity;
 };
 
 }  // namespace arangodb

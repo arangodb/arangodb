@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WeightedTwoSidedEnumerator.h"
@@ -202,11 +200,11 @@ auto WeightedTwoSidedEnumerator<ProviderType>::Ball::validateSingletonPath(
     CandidatesStore& candidates) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
-  TRI_ASSERT(std::holds_alternative<Step>(tmp));
+  TRI_ASSERT(tmp.has_value());
 
   TRI_ASSERT(_queue.isEmpty());
 
-  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
+  auto posPrevious = _interior.append(std::move(tmp.value()));
   auto& step = _interior.getStepReference(posPrevious);
   ValidationResult res = _validator.validatePath(step);
 
@@ -219,10 +217,14 @@ template<class ProviderType>
 auto WeightedTwoSidedEnumerator<ProviderType>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
         -> void {
+  if (_graphOptions.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
-  TRI_ASSERT(std::holds_alternative<Step>(tmp));
-  auto tmpStep = std::get<Step>(tmp);
+  TRI_ASSERT(tmp.has_value());
+  auto tmpStep = std::move(tmp.value());
 
   // if the other side has explored this vertex, don't add it again
   if (other.hasBeenVisited(tmpStep)) {
@@ -781,6 +783,9 @@ WeightedTwoSidedEnumerator<ProviderType>::getBallToContinueSearch() const {
 
 template<class ProviderType>
 auto WeightedTwoSidedEnumerator<ProviderType>::searchDone() const -> bool {
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
     return true;
   }

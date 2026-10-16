@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneCalculation.h"
@@ -28,10 +27,9 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
-#include "Aql/LazyConditions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
@@ -273,7 +271,7 @@ Result StandaloneCalculation::validateQuery(
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);
-    Parser parser(queryContext, *ast, qs);
+    Parser parser(queryContext, &queryContext.warnings(), *ast, qs);
     if (isComputedValue) {
       // force the condition of the ternary operator (condition ? truePart :
       // falsePart) to be always inlined and not be extracted into its own LET

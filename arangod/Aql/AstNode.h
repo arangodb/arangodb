@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -427,6 +426,9 @@ struct AstNode {
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to any variable reference
+  /// allowIndexedAccess refers to allowing indexed access in an array using
+  /// the subscript operator, eg. arr[0], arr[offset].field. It has nothing to
+  /// do with the use of indexes over collections.
   /// returns true if yes, and then also returns variable reference and array
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(
@@ -661,6 +663,10 @@ struct AstNode {
 
 template<bool resolveAttributeAccess = true>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
+
+/// @brief whether both nodes are the same expression as written,
+/// not by the pointer address
+bool isSameExpression(AstNode const* lhs, AstNode const* rhs);
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

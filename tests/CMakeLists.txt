@@ -54,6 +54,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerTester.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
@@ -72,7 +73,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -108,12 +109,15 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BlockCollector.cpp
+  Aql/ConditionRemoveForIndexTest.cpp
+  Aql/ConditionRemoveForTraversalTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
   Aql/ExecutionNode/ExecutionNodeTest.cpp
   Aql/ExecutionNode/IndexNodeTest.cpp
+  Aql/ExecutionNode/LocalGraphNodeCompatibilityTest.cpp
   Aql/ExecutionNode/MockTypedNode.cpp
   Aql/ExecutionNode/ShortestPathNodeTest.cpp
   Aql/ExecutionNode/TraversalNodeTest.cpp
@@ -162,6 +166,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramMatchFunctionTest.cpp
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
+  Aql/Function/RangeFunctionTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
@@ -180,6 +185,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/ClassicAuthModeTest.cpp
+  Auth/RbacAuthModeTest.cpp
+  Auth/RbacBackendTest.cpp
+  # Disabled for now, since this needs docker and does not work in CI:
+  Auth/RbacIntegrationTest.cpp
+  Auth/RbacSerializationTest.cpp
+  Auth/SmockerClient.cpp
+  Auth/RbacServiceImplTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
@@ -198,6 +211,8 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionsWithBackingStore.cpp
+  ClientTools/BackgroundJwtRenewalTest.cpp
+  ClientTools/RenewingJwtTokenTest.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
@@ -233,6 +248,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -251,17 +267,22 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  Scheduler/SchedulerExecContextTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
+  SimpleHttpClient/SimpleHttpClientParamsTest.cpp
+  Ssl/JwtTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
   Transaction/ManagerTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
+  Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
+  VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
@@ -282,7 +303,7 @@ if (USE_PERF_TESTS)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
     Scheduler/ThreadPoolPerfTest.cpp)
 endif()
-    
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -303,6 +324,7 @@ add_executable(arangodbtests
 
 add_subdirectory(Basics)
 add_subdirectory(Inspection)
+add_subdirectory(VelocyPackUtils)
 
 # This is the default from the Jenkins setup
 add_test(NAME arangodbtests
@@ -328,17 +350,18 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_activities
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
-  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -351,7 +374,6 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
-  fmt
   velocypack_utils
 )
 
@@ -366,7 +388,7 @@ endif ()
 add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
-  target_link_libraries(arangodbtests ${JEMALLOC_LIB})
+  target_link_libraries(arangodbtests jemalloc)
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
     target_link_libraries(arangodbtests ${LIBUNWIND_LIB})
   endif ()
@@ -398,10 +420,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangodbtests v8_build)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests jemalloc_build)
-endif ()
-
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
   "${LIB_EAY_DEBUG_DLL}"
@@ -420,11 +438,14 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
+add_subdirectory(RocksDBEngine)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
-add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
+add_subdirectory(Scheduler)
+add_subdirectory(Probe)

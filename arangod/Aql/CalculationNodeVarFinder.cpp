@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/CalculationNodeVarFinder.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
     Variable const* lookingFor,
@@ -74,5 +72,4 @@ bool CalculationNodeVarExistenceFinder::before(ExecutionNode* en) {
   return false;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

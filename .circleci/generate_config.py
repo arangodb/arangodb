@@ -152,9 +152,11 @@ def create_generator_config(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
-    create_docker_images: bool,
+    create_test_docker_images: str,
     validate_only: bool,
+    test_suite: str,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -184,7 +186,9 @@ def create_generator_config(
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
+        clang_tidy=clang_tidy,
         v8=not arangod_without_v8,
+        test_suite=test_suite,
     )
 
     # Create test execution config
@@ -202,7 +206,7 @@ def create_generator_config(
 
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
-        create_docker_images=create_docker_images,
+        create_test_docker_images=create_test_docker_images,
         test_image=test_image,
     )
 
@@ -280,20 +284,31 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
+    "--clang-tidy",
+    is_flag=True,
+    help="Schedule the clang-tidy job",
+)
+@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
     help="Enable replication version 2 tests",
 )
 @click.option(
-    "--create-docker-images",
-    is_flag=True,
-    help="Create docker images from build results",
+    "--create-test-docker-images",
+    type=click.Choice(["none", "alpine", "deb"]),
+    default="none",
+    help="Build and publish a multi-arch arangodb/enterprise-test Docker "
+    "image (Alpine- or Debian-based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",
     is_flag=True,
     help="Validate test definitions without generating config",
+)
+@click.option(
+    "--test-suite",
+    help="filter for testsuite",
 )
 def main(
     base_config: str,
@@ -310,9 +325,11 @@ def main(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
-    create_docker_images: bool,
+    create_test_docker_images: str,
     validate_only: bool,
+    test_suite: str,
 ):
     """
     Generate CircleCI configuration from test definitions.
@@ -343,9 +360,11 @@ def main(
             arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
+            clang_tidy=clang_tidy,
             replication_two=replication_two,
-            create_docker_images=create_docker_images,
+            create_test_docker_images=create_test_docker_images,
             validate_only=validate_only,
+            test_suite=test_suite,
         )
 
         # If validate-only, we're done

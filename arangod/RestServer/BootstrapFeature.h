@@ -18,28 +18,58 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
+#ifdef USE_V8
+class V8DealerFeature;
+#endif
+class ClusterUpgradeFeature;
+class SystemDatabaseFeature;
+class DatabaseFeature;
+class ClusterFeature;
 
-class BootstrapFeature final : public ArangodFeature {
+class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  explicit BootstrapFeature(Server& server);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
+                            ,
+                            BootstrapFeatureOptions options);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
+  );
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void unprepare() override final;
 
   bool isReady() const;
+
+  ClusterFeature& clusterFeature();
+  DatabaseFeature& databaseFeature();
+  SystemDatabaseFeature* systemDatabaseFeature();
+  ClusterUpgradeFeature* clusterUpgradeFeature();
 
  private:
   void killRunningQueries();
@@ -47,8 +77,16 @@ class BootstrapFeature final : public ArangodFeature {
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
 
+  ClusterFeature& _clusterFeature;
+  DatabaseFeature& _databaseFeature;
+  SystemDatabaseFeature* _systemDatabaseFeature{};
+  ClusterUpgradeFeature* _clusterUpgradeFeature{};
+#ifdef USE_V8
+  V8DealerFeature* _v8DealerFeature{};
+#endif
+
+  BootstrapFeatureOptions _options;
   bool _isReady;
-  bool _bark;
 };
 
 }  // namespace arangodb

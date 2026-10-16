@@ -21,19 +21,21 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let internal = require("internal");
 let db = arangodb.db;
+const inst = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const {
-  waitForShardsInSync, getMetric, getUrlById, getAllMetric
+  waitForShardsInSync, eventuallyAssertMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
+const metricName = "arangodb_vocbase_shards_read_only_by_write_concern";
 
 function WriteConcernReadOnlyMetricSuite() {
 
@@ -45,7 +47,7 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     tearDown: function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       try {
         db._dropDatabase(database);
@@ -54,71 +56,92 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     testCheckMetric: function () {
-
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      let metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
 
       // trigger a follower drop
       c.insert({});
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 1); // one shard does not have enough in sync follower
+      // one shard does not have enough in sync follower
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       waitForShardsInSync(c.name());
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after sync`);
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      let k = 0;
-      for (; k < 100; k++) {
-        const metrics = getAllMetric(getUrlById(leader), '');
-        if (metrics.indexOf(database) === -1) {
-          break;
-        }
-        internal.sleep(0.5);
-      }
-      assertNotEqual(k, 100);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
     },
 
-    testCheckMetricChangeWriteConcern: function () {
-
+    testMetricAfterCollectionDrop: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      let metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
 
       // trigger a follower drop
       c.insert({});
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 1); // one shard does not have enough in sync follower
+      // one shard does not have enough in sync follower
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
+
+      // Lets drop the collection and see if the metric changes
+      db._drop(c.name());
+
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
+    },
+
+    testCheckMetricChangeWriteConcern: function () {
+
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
+
+      // this should work
+      c.insert({});
+      waitForShardsInSync(c.name());
+
+      // query metric, it should be zero
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
+
+      // suspend the follower
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
+
+      // trigger a follower drop
+      c.insert({});
+
+      // one shard does not have enough in sync follower
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       // change write concern
       c.properties({writeConcern: 1});
@@ -142,25 +165,55 @@ function WriteConcernReadOnlyMetricSuite() {
         internal.wait(0.5);
       }
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after write concern change`);
 
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       waitForShardsInSync(c.name());
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      let k = 0;
-      for (; k < 100; k++) {
-        const metrics = getAllMetric(getUrlById(leader), '');
-        if (metrics.indexOf(database) === -1) {
-          break;
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after database drop`);
+    },
+
+    testFollowerNotCountedAfterWriteConcernChange: function () {
+
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 3, writeConcern: 2});
+      const [shard, servers] = Object.entries(c.shards(true))[0];
+      const instances = servers.map((id) => IM.getInstanceByID(id));
+
+      c.insert({});
+      waitForShardsInSync(c.name());
+
+      const assertNoneCounted = function (context) {
+        instances.forEach((server, i) => {
+          eventuallyAssertMetric(server, metricName, (v) => v === 0,
+            `expected ${metricName} to be 0 on ${i === 0 ? "the leader" : "follower " + i} ${context}`);
+        });
+      };
+
+      assertNoneCounted("in a healthy state");
+
+      // Raising writeConcern makes the maintenance push the new properties to
+      // every replica. A follower does not maintain a follower list, so it must
+      // not be counted, and nothing on a follower would ever recompute it.
+      const setWriteConcern = function (value) {
+        c.properties({writeConcern: value});
+        let tries = 20;
+        while (c.properties().writeConcern !== value) {
+          if (--tries === 0) {
+            assertTrue(false, `writeConcern change to ${value} was not applied within 10 seconds`);
+          }
+          internal.wait(0.5);
         }
-        internal.sleep(0.5);
-      }
-      assertNotEqual(k, 100);
+      };
+
+      setWriteConcern(3);
+      assertNoneCounted("after raising writeConcern to 3");
+
+      setWriteConcern(2);
+      assertNoneCounted("after lowering writeConcern to 2");
     },
   };
 }

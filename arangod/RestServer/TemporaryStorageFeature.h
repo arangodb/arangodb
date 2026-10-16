@@ -18,19 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -68,18 +67,22 @@ class StorageUsageTracker {
   std::atomic<std::uint64_t> _currentUsage;
 };
 
-class TemporaryStorageFeature : public ArangodFeature {
+class TemporaryStorageFeature
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TemporaryStorage";
   }
 
-  explicit TemporaryStorageFeature(Server& server);
+  explicit TemporaryStorageFeature(
+      application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider,
+      TemporaryStorageFeatureOptions options);
+  explicit TemporaryStorageFeature(
+      application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider);
   ~TemporaryStorageFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -97,14 +100,7 @@ class TemporaryStorageFeature : public ArangodFeature {
  private:
   void cleanupDirectory();
 
-  // parameters that can be configured by the user
-  std::string _basePath;
-  bool _useEncryption;
-  bool _allowHWAcceleration;
-
-  std::uint64_t _maxDiskCapacity;
-  size_t _spillOverThresholdNumRows;
-  size_t _spillOverThresholdMemoryUsage;
+  TemporaryStorageFeatureOptions _options;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;
@@ -113,6 +109,8 @@ class TemporaryStorageFeature : public ArangodFeature {
 
   // whether or not we have cleaned up our temp directory already
   bool _cleanedUpDirectory;
+
+  IDatabasePathProvider& _databasePathProvider;
 };
 
 }  // namespace arangodb

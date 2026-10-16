@@ -15,7 +15,7 @@ interface EngineResponse extends ArangojsResponse {
 }
 
 export const useSupportedIndexTypes = () => {
-  const { data, ...rest } = useSWR<EngineResponse>(`/engine`, path => {
+  const { data, ...rest } = useSWR<EngineResponse>(`/engine`, (path: string) => {
     return getApiRouteForCurrentDB().get(
       path
     ) as any as Promise<EngineResponse>;
@@ -24,7 +24,7 @@ export const useSupportedIndexTypes = () => {
   const indexes = data?.parsedBody.supports.indexes;
   const aliases = data?.parsedBody.supports.aliases?.indexes || {};
   const supported = indexes?.filter(indexType => {
-    return !aliases.hasOwnProperty(indexType);
+    return !Object.prototype.hasOwnProperty.call(aliases, indexType);
   });
   const options = indexTypeOptions.filter(option =>
     supported?.includes(option.value)

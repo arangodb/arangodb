@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,7 +26,6 @@
 #include <memory>
 
 #include "Basics/ConditionVariable.h"
-#include "RestServer/arangod.h"
 #include "Agency/AgencyCommon.h"
 
 namespace arangodb {
@@ -101,20 +99,24 @@ class AgencyCallback {
   using CallbackType =
       std::function<bool(velocypack::Slice, consensus::index_t)>;
 
-  AgencyCallback(ApplicationServer& server, AgencyCache& agencyCache,
-                 std::string key, CallbackType, bool needsValue,
-                 bool needsInitialValue = true);
+  AgencyCallback(application_features::ApplicationServer& server,
+                 AgencyCache& agencyCache, std::string key, CallbackType,
+                 bool needsValue, bool needsInitialValue = true);
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] AgencyCallback(ArangodServer& server, std::string const&,
+      "dependency")]] AgencyCallback(application_features::ApplicationServer&
+                                         server,
+                                     std::string const&,
                                      std::function<
                                          bool(velocypack::Slice const&)> const&,
                                      bool needsValue,
                                      bool needsInitialValue = true);
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] AgencyCallback(ArangodServer& server, std::string key,
-                                     CallbackType, bool needsValue,
+      "dependency")]] AgencyCallback(application_features::ApplicationServer&
+                                         server,
+                                     std::string key, CallbackType,
+                                     bool needsValue,
                                      bool needsInitialValue = true);
 
   std::string const key;
@@ -155,7 +157,7 @@ class AgencyCallback {
                   consensus::index_t raftIndex, bool forceCheck);
 
  private:
-  ApplicationServer& _server;
+  application_features::ApplicationServer& _server;
   AgencyCache& _agencyCache;
   CallbackType const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;

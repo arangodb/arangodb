@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,14 +25,19 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class StorageEngine;
 
 class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  RestCompactHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestCompactHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
  public:
   RestStatus execute() override;
   char const* name() const override { return "RestCompactHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+
+ private:
+  StorageEngine& _engine;
 };
 }  // namespace arangodb

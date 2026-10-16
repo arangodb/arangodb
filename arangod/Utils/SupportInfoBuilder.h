@@ -18,36 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
 
+class CpuUsageFeature;
+class DatabaseFeature;
+class EnvironmentFeature;
+class FileDescriptorsFeature;
+
 namespace velocypack {
 class Builder;
-class Slice;
 }  // namespace velocypack
 
 class SupportInfoBuilder {
  public:
   SupportInfoBuilder() = delete;
   static void buildInfoMessage(velocypack::Builder& result,
-                               std::string const& dbName, ArangodServer& server,
-                               bool isLocal, bool isTemeletricsReq = false);
-  static void buildDbServerDataStoredInfo(velocypack::Builder& result,
-                                          ArangodServer& server);
+                               std::string const& dbName,
+                               application_features::ApplicationServer& server,
+                               bool isLocal);
 
  private:
-  static void addDatabaseInfo(velocypack::Builder& result,
-                              velocypack::Slice infoSlice,
-                              ArangodServer& server);
-  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server,
-                            bool isTelemetricsReq);
-  static void normalizeKeyForTelemetrics(std::string& key);
+  static void buildHostInfo(velocypack::Builder& result,
+                            EnvironmentFeature const& environment,
+                            FileDescriptorsFeature& fileDescriptors,
+                            CpuUsageFeature& cpuUsage,
+                            DatabaseFeature& databaseFeature);
 };
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,8 @@ namespace iresearch {
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
+  explicit IResearchRocksDBInvertedIndexFactory(
+      application_features::ApplicationServer& server);
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const final;
@@ -61,7 +61,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name);
 
-  IndexType type() const final { return Index::TRI_IDX_TYPE_INVERTED_INDEX; }
+  IndexType type() const final { return IndexType::Inverted; }
 
   std::string getCollectionName() const;
   std::string const& getShardName() const noexcept;
@@ -76,7 +76,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type_t<Index::Serialize> flags) const final;
 
-  size_t memory() const final { return stats().indexSize; }
+  size_t memory() const final { return getStats().indexSize; }
 
   bool isHidden() const final { return false; }
 

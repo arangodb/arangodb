@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,15 +25,15 @@
 #include "Basics/Result.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/arangod.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <optional>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -53,6 +52,8 @@ class ShardingInfo {
  public:
   ShardingInfo() = delete;
   ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection);
+  ShardingInfo(CollectionDescriptor const& descriptor,
+               LogicalCollection* collection);
   ShardingInfo(ShardingInfo const& other, LogicalCollection* collection);
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
@@ -90,7 +91,8 @@ class ShardingInfo {
   /// @brief validates the number of shards and the replication factor
   /// in slice against the minimum and maximum configured values
   static Result validateShardsAndReplicationFactor(
-      arangodb::velocypack::Slice slice, ArangodServer const& server,
+      arangodb::velocypack::Slice slice,
+      application_features::ApplicationServer const& server,
       bool enforceReplicationFactor);
 
   bool usesDefaultShardKeys() const noexcept;
@@ -121,8 +123,23 @@ class ShardingInfo {
                                  size_t replicationFactor,
                                  std::vector<std::string>& shardKeys);
 
+  static Result extractShardKeys(
+      std::optional<std::vector<std::string>> const& input,
+      size_t replicationFactor, std::vector<std::string>& shardKeys);
+
  private:
   void makeSatellite();
+
+  // @brief zeroes the shard count for a smart edge parent, then rejects a
+  // count of zero everywhere it is not allowed
+  void resolveNumberOfShards(bool isSmart);
+
+  // @brief stores both values, rejecting invalid combinations of the two
+  void applyReplicationFactorAndWriteConcern(
+      bool isSmart, size_t replicationFactor,
+      std::optional<size_t> writeConcern);
+
+  void initializeShardingStrategy(CollectionDescriptor const& descriptor);
 
   // @brief the logical collection we are working for
   LogicalCollection* _collection;

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEdgeIndex.h"
@@ -35,7 +33,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/LogMacros.h"
@@ -44,13 +41,11 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -649,14 +644,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     bool const isEmpty = slice.length() == 0;
 
-    auto& cmf =
-        _collection->vocbase().server().getFeature<CacheManagerFeature>();
-
     // values >= this size will be stored LZ4-compressed in the in-memory
     // edge cache
     size_t const minValueSizeForCompression =
-        cmf.minValueSizeForEdgeCompression();
-    int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
+        _index->_minValueSizeForEdgeCompression;
+    int const accelerationFactor =
+        _index->_accelerationFactorForEdgeCompression;
 
     auto [data, size, didCompress] = tryCompress(
         slice, originalSize, minValueSizeForCompression, accelerationFactor,
@@ -745,17 +738,24 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
           /*useCache*/ !ServerState::instance()->isCoordinator(),
           /*cacheManager*/
           collection.vocbase()
-              .server()
-              .getFeature<CacheManagerFeature>()
+              .engine<RocksDBEngine>()
+              .getCacheManagerProvider()
               .manager(),
           /*engine*/
           collection.vocbase().engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
-      _forceCacheRefill(collection.vocbase()
-                            .server()
-                            .getFeature<RocksDBIndexCacheRefillFeature>()
-                            .autoRefill()),
+      _forceCacheRefill(
+          collection.vocbase().engine<RocksDBEngine>().autoRefillIndexCaches()),
+      _minValueSizeForEdgeCompression(collection.vocbase()
+                                          .engine<RocksDBEngine>()
+                                          .getCacheManagerProvider()
+                                          .minValueSizeForEdgeCompression()),
+      _accelerationFactorForEdgeCompression(
+          collection.vocbase()
+              .engine<RocksDBEngine>()
+              .getCacheManagerProvider()
+              .accelerationFactorForEdgeCompression()),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString
                                                    : StaticStrings::FromString),
@@ -821,9 +821,9 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(fromTo.isString());
   std::string_view fromToRef = fromTo.stringView();
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
-  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructEdgeIndexValue(objectId(), fromToRef, documentId);
+  TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
@@ -832,7 +832,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   Result res;
-  rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
+  rocksdb::Status s = mthd->PutUntracked(_cf, key, value.string());
 
   if (s.ok()) {
     std::hash<std::string_view> hasher;
@@ -859,8 +859,8 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   std::string_view fromToRef = fromTo.stringView();
   TRI_ASSERT(fromTo.isString());
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructEdgeIndexValue(objectId(), fromToRef, documentId);
 
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
@@ -869,7 +869,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   Result res;
-  rocksdb::Status s = mthd->Delete(_cf, key.ref());
+  rocksdb::Status s = mthd->Delete(_cf, key);
 
   if (s.ok()) {
     std::hash<std::string_view> hasher;
@@ -1038,12 +1038,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   if (cache == nullptr) {
     return;
   }
-  auto& cmf = _collection.vocbase().server().getFeature<CacheManagerFeature>();
-
-  size_t const minValueSizeForCompression =
-      cmf.minValueSizeForEdgeCompression();
-  int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
-
   auto rocksColl = toRocksDBCollection(_collection);
 
   // intentional copy of the read options
@@ -1080,9 +1074,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
     size_t const originalSize = b.slice().byteSize();
 
-    auto [data, size, didCompress] = tryCompress(
-        b.slice(), originalSize, minValueSizeForCompression, accelerationFactor,
-        lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
+    auto [data, size, didCompress] =
+        tryCompress(b.slice(), originalSize, _minValueSizeForEdgeCompression,
+                    _accelerationFactorForEdgeCompression, lz4CompressBuffer,
+                    [](size_t /*memoryUsage*/) {});
 
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
         static_cast<EdgeIndexCacheType&>(*cache), cacheKey.data(),

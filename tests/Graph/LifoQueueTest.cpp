@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <variant>
@@ -149,8 +148,8 @@ TEST_F(LifoQueueTest, it_should_pop_in_correct_order) {
   size_t id = 4;
   while (queue.hasProcessableElement()) {
     auto myStep = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(myStep));
-    ASSERT_EQ(id, std::get<Step>(myStep).id());
+    ASSERT_TRUE(myStep.has_value());
+    ASSERT_EQ(id, myStep.value().id());
     id--;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -198,8 +197,8 @@ TEST_F(LifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
   // So do not revert it,but just run from first to last
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -227,8 +226,8 @@ TEST_F(LifoQueueTest,
   {
     // Pop First entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{5, 1, false});
     // We expand some on
@@ -237,8 +236,8 @@ TEST_F(LifoQueueTest,
   {
     // Pop Second entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{4, 1, false});
     queue.append(Step{3, 1, false});
@@ -248,8 +247,8 @@ TEST_F(LifoQueueTest,
   ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);

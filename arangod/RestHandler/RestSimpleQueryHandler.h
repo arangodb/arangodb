@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,7 +31,8 @@ class QueryRegistry;
 
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
-  RestSimpleQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+  RestSimpleQueryHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*,
                          arangodb::aql::QueryRegistry*);
 
  public:

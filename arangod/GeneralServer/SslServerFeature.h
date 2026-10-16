@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,24 +29,24 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/SslServerOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace options {
 class ProgramOptions;
 }
 
-class SslServerFeature : public ArangodFeature {
+class SslServerFeature : public application_features::ApplicationFeature {
  public:
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
   static constexpr std::string_view name() noexcept { return "SslServer"; }
 
-  explicit SslServerFeature(Server& server);
+  explicit SslServerFeature(application_features::ApplicationServer& server,
+                            SslServerOptions options);
+  explicit SslServerFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
   virtual void verifySslOptions();

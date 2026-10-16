@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,8 +26,6 @@
 
 #include "Basics/ResultError.h"
 #include "Basics/ResultError.tpp"
-
-#include <fmt/core.h>
 
 namespace arangodb {
 

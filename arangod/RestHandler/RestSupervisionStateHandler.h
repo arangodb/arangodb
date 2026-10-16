@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,8 +28,8 @@ namespace arangodb {
 
 class RestSupervisionStateHandler : public RestVocbaseBaseHandler {
  public:
-  RestSupervisionStateHandler(ArangodServer&, GeneralRequest*,
-                              GeneralResponse*);
+  RestSupervisionStateHandler(application_features::ApplicationServer&,
+                              GeneralRequest*, GeneralResponse*);
   ~RestSupervisionStateHandler() = default;
 
  public:

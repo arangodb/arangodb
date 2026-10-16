@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DistributeClientBlock.h"
@@ -31,8 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 DistributeClientBlock::QueueEntry::QueueEntry(SkipResult const& skipped,
                                               SharedAqlItemBlockPtr block,
@@ -250,3 +248,5 @@ auto DistributeClientBlock::remainingRows() const -> uint64_t {
       [](uint64_t sum, auto const& item) { return sum + item.numRows(); });
 }
 #endif
+
+}  // namespace arangodb::aql

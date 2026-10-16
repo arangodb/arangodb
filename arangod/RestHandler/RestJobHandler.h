@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,8 +37,8 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                 rest::AsyncJobManager*);
+  RestJobHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, rest::AsyncJobManager*);
 
  public:
   char const* name() const override final { return "RestJobHandler"; }

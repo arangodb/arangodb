@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,7 +26,6 @@
 #include <rocksdb/listener.h>
 
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <string_view>
 
@@ -43,7 +41,7 @@ namespace arangodb {
 /// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  explicit RocksDBMetricsListener(metrics::MetricsFeature& metricsFeature);
+  explicit RocksDBMetricsListener(metrics::IRegistry& metricsFeature);
 
   void OnFlushBegin(rocksdb::DB*, rocksdb::FlushJobInfo const& info) override;
   void OnFlushCompleted(rocksdb::DB*,

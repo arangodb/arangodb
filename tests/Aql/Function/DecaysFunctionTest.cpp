@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"

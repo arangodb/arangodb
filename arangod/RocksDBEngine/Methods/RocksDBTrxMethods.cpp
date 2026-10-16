@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTrxMethods.h"
@@ -31,7 +30,6 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 

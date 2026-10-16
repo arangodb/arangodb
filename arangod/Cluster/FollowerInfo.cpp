@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FollowerInfo.h"
@@ -38,7 +36,6 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Random/RandomGenerator.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseMetrics.h"
@@ -119,13 +116,12 @@ VPackSlice planShardEntry(arangodb::LogicalCollection const& col,
        std::to_string(col.planId().id()), "shards", col.name()}));
 }
 
-bool checkWriteConcernCondition(
-    std::shared_ptr<std::vector<ServerID>> const& followers,
-    LogicalCollection* docColl) noexcept {
-  return followers->size() + 1 >= docColl->writeConcern();
-}
-
 }  // namespace
+
+bool FollowerInfo::checkWriteConcernCondition() const noexcept {
+  return !_theLeader.empty() ||
+         _followers->size() + 1 >= _docColl->writeConcern();
+}
 
 FollowerInfo::FollowerInfo(LogicalCollection* d)
     : _followers(std::make_shared<std::vector<ServerID>>()),
@@ -137,7 +133,7 @@ FollowerInfo::FollowerInfo(LogicalCollection* d)
           metrics::InstrumentedBool::Metrics{
               .false_counter =
                   d->vocbase().metrics().shards_read_only_by_write_concern},
-          checkWriteConcernCondition(_followers, _docColl)) {
+          _followers->size() + 1 >= d->writeConcern()) {
   // On replicationfactor 1 we do not have any failover servers to maintain.
   // This should also disable satellite tracking.
 }
@@ -187,7 +183,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
-    _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
+    _writeConcernReached = checkWriteConcernCondition();
     {
       // insertIntoCandidates
       if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
@@ -231,7 +227,7 @@ void FollowerInfo::setTheLeader(std::string const& who) {
   WRITE_LOCKER(writeLocker, _dataLock);
   _theLeader = who;
   _theLeaderTouched = true;
-  _writeConcernReached = true;
+  _writeConcernReached = checkWriteConcernCondition();
 }
 
 // conditionally change the leader, in case the current leader is still the
@@ -249,7 +245,7 @@ bool FollowerInfo::setTheLeaderConditional(std::string const& expected,
   // old leader was as expected. now change it and return success.
   _theLeader = actual;
   _theLeaderTouched = true;
-  _writeConcernReached = true;
+  _writeConcernReached = checkWriteConcernCondition();
   return true;
 }
 
@@ -266,7 +262,7 @@ bool FollowerInfo::getLeaderTouched() const {
 FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
   {
     auto& engine = _docColl->vocbase().engine();
-    if (engine.inRecovery()) {
+    if (!engine.isReady()) {
       return WriteState::ALLOWED;
     }
     READ_LOCKER(readLocker, _canWriteLock);
@@ -282,7 +278,7 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
           << " failover-candidates = " << *_failoverCandidates;
       // Our follower list only contains followers, numFollowers + leader
       // needs to be at least writeConcern.
-      TRI_ASSERT(checkWriteConcernCondition(_followers, _docColl))
+      TRI_ASSERT(checkWriteConcernCondition())
           << "followers.size() = " << _followers->size()
           << " write-concern = " << _docColl->writeConcern();
       TRI_ASSERT(_writeConcernReached);
@@ -319,6 +315,13 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
     return WriteState::UNAVAILABLE;
   }
   return WriteState::ALLOWED;
+}
+
+void FollowerInfo::invalidateCanWrite() {
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(dataLocker, _dataLock);
+  _canWrite = false;
+  _writeConcernReached = checkWriteConcernCondition();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +400,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   Result agencyRes =
       persistInAgency(/*isRemove*/ true, /*acquireDataLock*/ false);
   if (agencyRes.ok()) {
-    _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
+    _writeConcernReached = checkWriteConcernCondition();
     // +1 for the leader (me)
     if (_followers->size() + 1 < _docColl->writeConcern()) {
       _canWrite = false;
@@ -439,7 +442,13 @@ void FollowerInfo::clear() {
   _followers = std::make_shared<std::vector<ServerID>>();
   _failoverCandidates = std::make_shared<std::vector<ServerID>>();
   _canWrite = false;
-  _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
+  _writeConcernReached = checkWriteConcernCondition();
+}
+
+void FollowerInfo::clearWriteConcernMetric() {
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(writeLocker, _dataLock);
+  _writeConcernReached.clear();
 }
 
 /// @brief check whether the given server is a follower
@@ -523,10 +532,10 @@ void FollowerInfo::takeOverLeadership(
   }
 
   _canWrite = false;
-  _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
   // Take over leadership
   _theLeader.clear();
   _theLeaderTouched = true;
+  _writeConcernReached = checkWriteConcernCondition();
 }
 
 /// @brief Update the current information in the Agency. We update the failover-
@@ -548,7 +557,7 @@ bool FollowerInfo::updateFailoverCandidates() {
 #endif
     return _canWrite;
   }
-  TRI_ASSERT(checkWriteConcernCondition(_followers, _docColl));
+  TRI_ASSERT(checkWriteConcernCondition());
   // Update both lists (we use a copy here, as we are modifying them in other
   // places individually!)
   _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
@@ -571,7 +580,7 @@ bool FollowerInfo::updateFailoverCandidates() {
     TRI_ASSERT(!_canWrite);
   } else {
     _canWrite = true;
-    _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
+    _writeConcernReached = checkWriteConcernCondition();
   }
   return _canWrite;
 }

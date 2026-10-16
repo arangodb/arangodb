@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +35,8 @@ namespace arangodb {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  RestAgencyPrivHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                        consensus::Agent*);
+  RestAgencyPrivHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
   char const* name() const override final { return "RestAgencyPrivHandler"; }

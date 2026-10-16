@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,7 +32,6 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class RocksDBKeyLeaser;
 
 namespace transaction {
 class Methods;
@@ -50,7 +48,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   ~RocksDBPrimaryIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
+  IndexType type() const override { return IndexType::Primary; }
 
   char const* typeName() const override { return "primary"; }
 

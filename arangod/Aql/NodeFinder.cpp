@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/NodeFinder.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// @brief node finder for one node type
 template<>
@@ -111,5 +109,4 @@ bool EndNodeFinder::before(ExecutionNode* en) {
   return (!_enterSubqueries);
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

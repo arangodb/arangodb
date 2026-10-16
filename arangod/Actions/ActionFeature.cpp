@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
-#include "ProgramOptions/Parameters.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::application_features;
@@ -33,23 +32,21 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ActionFeature::ActionFeature(Server& server)
-    : ArangodFeature{server, *this}, _allowUseDatabase(false) {
+ActionFeature::ActionFeature(ApplicationServer& server)
+    : ActionFeature(server, ActionFeatureOptions{}) {}
+
+ActionFeature::ActionFeature(ApplicationServer& server,
+                             ActionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
 }
 
-void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.allow-use-database",
-      "Allow to change the database in REST actions. Only needed internally "
-      "for unit tests.",
-      new BooleanParameter(&_allowUseDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
 void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
-bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
+bool ActionFeature::allowUseDatabase() const {
+  return _options.allowUseDatabase;
+}
 
 }  // namespace arangodb

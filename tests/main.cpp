@@ -18,19 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
 #include <thread>
 
+#include "Async/Registry/registry_variable.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -41,10 +42,10 @@
 #include "VocBase/Identifiers/ServerId.h"
 
 template<class Function>
-class TestThread : public arangodb::Thread {
+class TestThread : public arangodb::BasicThread {
  public:
-  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
-      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
+  TestThread(Function&& f, int i, char* c[])
+      : arangodb::BasicThread("gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     std::unique_lock guard{_wait.mutex};
     while (true) {
@@ -116,7 +117,7 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::ArangodServer server(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::ServerState state(server);
   state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);
@@ -144,12 +145,16 @@ int main(int argc, char* argv[]) {
   // assertions in queries
   arangodb::ClusterEngine::Mocking = true;
 
+  // set metrics of registries
+  arangodb::async_registry::registry.set_metrics(nullptr);
+  arangodb::activities::registry.setMetrics(nullptr);
+
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
   auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
-  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();

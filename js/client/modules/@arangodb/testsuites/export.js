@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -371,6 +370,7 @@ class exportRunner extends trs.runInArangoshRunner {
           }
         });
       }
+      results.failed = 0;
       exportTestCases.forEach(testCase => {
         print(CYAN + Date() + ': ' + testCase.name + RESET);
         let args = Object.assign(testCase.args, commonArgValues);
@@ -382,8 +382,16 @@ class exportRunner extends trs.runInArangoshRunner {
           if (testCase.hasOwnProperty('validate')) {
             results[testCase.name].failed = results[testCase.name].status ? 0 : 1;
           } else {
+            // asume: if we don't have a validator, we expect the test to fail.
             results[testCase.name].status = !results[testCase.name].status;
             results[testCase.name].failed = results[testCase.name].status ? 0 : 1;
+            if (results[testCase.name].status) {
+              // prune the message, so we don't get none-failure XML reports
+              results[testCase.name].message = "";
+            }
+          }
+          if (!results[testCase.name].status) {
+            results.failed += 1;
           }
         } catch (ex) {
           results.failed += 1;
@@ -393,6 +401,7 @@ class exportRunner extends trs.runInArangoshRunner {
             message: ex,
             duration: time() - tStart
           };
+          results.failed += 1;
         }
         if (testCase.hasOwnProperty('validate')) {
           print(GREEN + Date() + " Revalidating " + testCase.name + RESET);

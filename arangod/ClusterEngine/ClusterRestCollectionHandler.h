@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,8 +28,8 @@ namespace arangodb {
 
 class ClusterRestCollectionHandler : public RestCollectionHandler {
  public:
-  ClusterRestCollectionHandler(ArangodServer&, GeneralRequest*,
-                               GeneralResponse*);
+  ClusterRestCollectionHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  protected:
   futures::Future<Result> handleExtraCommandPut(

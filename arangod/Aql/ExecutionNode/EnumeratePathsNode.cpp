@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Markus Pfeiffer
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumeratePathsNode.h"
@@ -31,7 +28,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EnumeratePathsExecutor.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -111,7 +108,7 @@ static GraphNode::InputVertex prepareVertexInput(EnumeratePathsNode const* node,
 }  // namespace
 
 EnumeratePathsNode::EnumeratePathsNode(
-    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
     arangodb::graph::PathType::Type pathType, AstNode const* direction,
     AstNode const* start, AstNode const* target, AstNode const* graph,
     std::unique_ptr<BaseOptions> options)
@@ -155,7 +152,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 
 /// @brief Internal constructor to clone the node.
 EnumeratePathsNode::EnumeratePathsNode(
-    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
     arangodb::graph::PathType::Type pathType,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls,
@@ -430,7 +427,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
 
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-      opts->getMinDepth(), opts->getMaxDepth(), pathType()};
+      opts->getMinDepth(), opts->getMaxDepth(), pathType(), opts->query()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 
@@ -474,13 +471,14 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache());
+        opts->produceVertices(), opts->useCache(), opts->query());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     switch (pathType()) {
@@ -576,11 +574,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   } else {  // Cluster case (on coordinator)
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
-    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices());
+    ClusterBaseProviderOptions forwardProviderOptions(
+        cache, engines(), false, opts->produceVertices(), opts->query());
     forwardProviderOptions.setClearEdgeCacheOnClear(false);
-    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices());
+    ClusterBaseProviderOptions backwardProviderOptions(
+        cache, engines(), true, opts->produceVertices(), opts->query());
     backwardProviderOptions.setClearEdgeCacheOnClear(false);
     // A comment is in order here: For all cases covered here
     // (k-shortest-paths, all shortest paths, k-paths) we do not need to
@@ -879,7 +877,7 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
         _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ true);

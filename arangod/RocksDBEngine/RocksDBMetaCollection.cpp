@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBMetaCollection.h"
@@ -47,7 +46,6 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -74,13 +72,12 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 
 }  // namespace
 
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             velocypack::Slice info)
+RocksDBMetaCollection::RocksDBMetaCollection(
+    LogicalCollection& collection, LocalStorageProperties const& storage)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
-      _objectId(basics::VelocyPackHelper::stringUInt64(
-          info, StaticStrings::ObjectId)),
+      _objectId(storage.objectId),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
@@ -106,7 +103,9 @@ RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
       timeout, std::forward<F>(fn));
 }
 
-RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
+RocksDBMetaCollection::~RocksDBMetaCollection() {
+  RocksDBMetaCollection::freeMemory();
+}
 
 void RocksDBMetaCollection::freeMemory() noexcept {
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
@@ -219,7 +218,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& it : _indexes) {
-      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (it->type() == IndexType::Primary) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
         set = true;
@@ -246,7 +245,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
 
-  ArangodServer& server = vocbase.server();
+  auto& server = vocbase.server();
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
@@ -335,8 +334,7 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
 
 void RocksDBMetaCollection::setRevisionTree(
     std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq) {
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
-  TRI_ASSERT(_logicalCollection.syncByRevision());
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
   TRI_ASSERT(tree != nullptr);
   TRI_ASSERT(tree->depth() == revisionTreeDepth);
 
@@ -479,7 +477,8 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     rocksdb::SequenceNumber wantedMaxCommitSeq, bool force,
     std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
-  TRI_ASSERT(coll.useSyncByRevision() || coll.deleted());
+  TRI_ASSERT(coll.getPhysical() == this);
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
 
   // might lower `appliedSeq`!
 
@@ -755,7 +754,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     return commitSeq;
   }
 
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
 
   if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
     return commitSeq;
@@ -1132,7 +1131,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(
 
 // returns a pair with the number of documents and the tree's seq number.
 std::pair<uint64_t, uint64_t> RocksDBMetaCollection::revisionTreeInfo() const {
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_revisionTree != nullptr) {
@@ -1265,7 +1264,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_engine.inRecovery());
+    TRI_ASSERT(!_engine.isReady());
     return;
   }
 
@@ -1326,11 +1325,22 @@ void RocksDBMetaCollection::hibernateRevisionTree(
   }
 }
 
+bool RocksDBMetaCollection::useSyncByRevisionOrDeleted() const noexcept {
+  // A concurrent drop flips _syncByRevision to false (in deferDropCollection),
+  // but only *after* setDeleted() has been called. The update in
+  // deferDropCollection and the load in useSyncByRevision() are seq-cst, so
+  // observing useSyncByRevision()==false here guarantees the subsequent
+  // deleted() read sees true.
+  //
+  // Operand order matters for the memory-ordering argument above - do NOT swap.
+  return _logicalCollection.useSyncByRevision() || _logicalCollection.deleted();
+}
+
 void RocksDBMetaCollection::applyUpdates(
     rocksdb::SequenceNumber commitSeq,
     std::unique_lock<std::mutex> const& lock) {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
   TRI_ASSERT(_revisionTree || haveBufferedOperations(lock));
 
   TRI_IF_FAILURE("applyUpdates::forceHibernation1") {
@@ -1786,7 +1796,7 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
 bool RocksDBMetaCollection::haveBufferedOperations(
     std::unique_lock<std::mutex> const& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(useSyncByRevisionOrDeleted());
 
   return (!_revisionTruncateBuffer.empty() || !_revisionInsertBuffers.empty() ||
           !_revisionRemovalBuffers.empty());

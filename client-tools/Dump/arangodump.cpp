@@ -18,43 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangodump.h"
-
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Dump/DumpFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
+#include "Dump/ArangoDumpServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "Maskings/AttributeMasking.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
 #include "Enterprise/Maskings/AttributeMaskingEE.h"
 #endif
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -70,58 +51,14 @@ int main(int argc, char* argv[]) {
     maskings::InstallMaskingsEE();
 #endif
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangodump [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: arangodump [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
-    ArangoDumpServer server(options, BIN_DIRECTORY);
-
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-#ifdef TRI_HAVE_GETRLIMIT
-        [](ArangoDumpServer& server, TypeTag<BumpFileDescriptorsFeature>) {
-          return std::make_unique<BumpFileDescriptorsFeature>(
-              server, "--descriptors-minimum");
-        },
-#endif
-        [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&context](ArangoDumpServer& server,
-                   TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
-#endif
-        [&context](ArangoDumpServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoDumpServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoDumpServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(
-              server, true, std::numeric_limits<size_t>::max());
-        },
-        [&ret](ArangoDumpServer& server, TypeTag<DumpFeature>) {
-          return std::make_unique<DumpFeature>(server, ret);
-        },
-        [](ArangoDumpServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoDumpServer::id<DumpFeature>()});
-        }});
+    ArangoDumpServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8363a", ERR, arangodb::Logger::FIXME)
           << "arangodump terminated because of an unhandled exception: "

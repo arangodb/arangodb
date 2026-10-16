@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,13 +26,10 @@
 #include <condition_variable>
 #include <function2.hpp>
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
 class Scheduler;
-namespace application_features {
-class ApplicationServer;
-}
 namespace aql {
 
 class SharedQueryState final
@@ -42,8 +38,9 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState(ArangodServer& server);
-  SharedQueryState(ArangodServer& server, Scheduler* scheduler);
+  SharedQueryState(application_features::ApplicationServer& server);
+  SharedQueryState(application_features::ApplicationServer& server,
+                   Scheduler* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -181,7 +178,7 @@ class SharedQueryState final
   bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   Scheduler* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;

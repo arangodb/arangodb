@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 
+#include <format>
 #include <ostream>
 
 #include "Inspection/Format.h"
@@ -31,6 +31,18 @@
 
 namespace {
 using namespace arangodb;
+
+struct FieldAfterMap {
+  int before;
+  std::map<std::string, int> m;
+  std::string after;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, FieldAfterMap& x) {
+    return f.object(x).fields(f.field("before", x.before), f.field("m", x.m),
+                              f.field("after", x.after));
+  }
+};
 
 struct JsonPrintInspectorTest : public ::testing::Test {
   std::ostringstream stream;
@@ -71,6 +83,59 @@ TEST_F(JsonPrintInspectorTest, store_string) {
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("\"foobar\"", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_special_chars) {
+  std::string x = "hello \"world\"\nfoo\\bar";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("hello \"world\"\nfoo\\bar")", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_control_chars) {
+  using namespace std::string_literals;
+  auto x = "tab\there\bnull\0end"s;
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("tab\there\bnull\u0000end")", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_unicode) {
+  std::string x = "héllo wörld \xc3\xa9";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("\"héllo wörld \xc3\xa9\"", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_emoji) {
+  std::string x = "hello \xf0\x9f\x98\x80 world";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("\"hello \xf0\x9f\x98\x80 world\"", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_rejects_invalid_utf8) {
+  std::string x = "bad\x80sequence";
+  auto result = inspector.apply(x);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_rejects_truncated_utf8) {
+  std::string x = "truncated\xc3";
+  auto result = inspector.apply(x);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_escapes_all_control_chars) {
+  std::string x;
+  x += '\x01';
+  x += '\x1f';
+  x += '\x7f';
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("\u0001\u001f\u007f")", stream.str());
 }
 
 TEST_F(JsonPrintInspectorTest, store_object) {
@@ -159,6 +224,42 @@ TEST_F(JsonPrintInspectorTest, store_map) {
   }
 })";
   EXPECT_EQ(expected, stream.str());
+}
+
+// Regression: beginObject() for a nested map clobbered _firstField, causing
+// the comma before the next field at the enclosing level to be omitted.
+TEST_F(JsonPrintInspectorTest, store_field_after_map_has_comma) {
+  FieldAfterMap x{.before = 1, .m = {{"a", 2}}, .after = "end"};
+  auto result = inspector.apply(x);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({
+  "before": 1,
+  "m": {
+    "a": 2
+  },
+  "after": "end"
+})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_map_escapes_keys) {
+  std::map<std::string, int> m{{"a\"b\\c", 1}, {"normal", 2}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({
+  "a\"b\\c": 1,
+  "normal": 2
+})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_map_rejects_invalid_utf8_key) {
+  std::map<std::string, int> m{{"bad\x80key", 1}};
+  auto result = inspector.apply(m);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
 }
 
 TEST_F(JsonPrintInspectorTest, store_set) {
@@ -1099,11 +1200,11 @@ TEST(JsonPrint, format_output) {
   "b": true,
   "s": "foobar"
 })";
-    auto actual = fmt::format("Dummy - {:p}", inspection::json(f));
+    auto actual = std::format("Dummy - {:p}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
     actual =
-        fmt::format("Dummy - {}",
+        std::format("Dummy - {}",
                     inspection::json(f, inspection::JsonPrintFormat::kPretty));
     EXPECT_EQ(expected, actual);
   }
@@ -1111,19 +1212,19 @@ TEST(JsonPrint, format_output) {
   {
     auto expected =
         R"(Dummy - { "i": 42, "d": 123.456, "b": true, "s": "foobar" })";
-    auto actual = fmt::format("Dummy - {}", inspection::json(f));
+    auto actual = std::format("Dummy - {}", inspection::json(f));
     EXPECT_EQ(expected, actual);
-    actual = fmt::format("Dummy - {:c}", inspection::json(f));
+    actual = std::format("Dummy - {:c}", inspection::json(f));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - {"i":42,"d":123.456,"b":true,"s":"foobar"})";
-    auto actual = fmt::format("Dummy - {:m}", inspection::json(f));
+    auto actual = std::format("Dummy - {:m}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
     actual =
-        fmt::format("Dummy - {}",
+        std::format("Dummy - {}",
                     inspection::json(f, inspection::JsonPrintFormat::kMinimal));
     EXPECT_EQ(expected, actual);
   }
@@ -1139,10 +1240,10 @@ TEST(JsonPrint, format_output_with_unquoted_fields) {
   b: true,
   s: "foobar"
 })";
-    auto actual = fmt::format("Dummy - {:pu}", inspection::json(f));
+    auto actual = std::format("Dummy - {:pu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
+    actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kPretty, false));
     EXPECT_EQ(expected, actual);
@@ -1150,20 +1251,20 @@ TEST(JsonPrint, format_output_with_unquoted_fields) {
 
   {
     auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
-    auto actual = fmt::format(
+    auto actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kCompact, false));
     EXPECT_EQ(expected, actual);
-    actual = fmt::format("Dummy - {:cu}", inspection::json(f));
+    actual = std::format("Dummy - {:cu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
-    auto actual = fmt::format("Dummy - {:mu}", inspection::json(f));
+    auto actual = std::format("Dummy - {:mu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
+    actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kMinimal, false));
     EXPECT_EQ(expected, actual);

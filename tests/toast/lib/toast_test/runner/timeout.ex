@@ -1,0 +1,138 @@
+################################################################################
+## DISCLAIMER
+##
+## Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+## Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+##
+## Licensed under the Business Source License 1.1 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+## Copyright holder is ArangoDB GmbH, Cologne, Germany
+################################################################################
+
+defmodule ToastTest.Runner.Timeout do
+  @moduledoc false
+
+  alias ToastTest.{Abort, EventStore}
+
+  require Logger
+
+  defmodule Settings do
+    @moduledoc false
+    @enforce_keys [:base_timeout, :timeout_factor, :suite_deadline, :disable_timeouts]
+
+    defstruct [
+      :base_timeout,
+      :timeout_factor,
+      :suite_deadline,
+      :suite_timeout,
+      :global_deadline,
+      :global_timeout,
+      :disable_timeouts
+    ]
+
+    @type t :: %__MODULE__{
+            base_timeout: pos_integer() | nil,
+            timeout_factor: number(),
+            suite_deadline: integer() | nil,
+            suite_timeout: pos_integer() | nil,
+            global_deadline: integer() | nil,
+            global_timeout: pos_integer() | nil,
+            disable_timeouts: boolean()
+          }
+  end
+
+  @type timeout_source ::
+          :test
+          | {:global_deadline, configured_timeout :: pos_integer()}
+          | {:suite_deadline, configured_timeout :: pos_integer()}
+
+  @spec get_timeout(map(), map()) :: {pos_integer() | :infinity, timeout_source()}
+  def get_timeout(config, tags) do
+    ts = config.timeout_settings
+
+    timeout =
+      ts
+      |> compute_base_timeout(tags)
+      |> apply_timeout_factor(ts.timeout_factor)
+
+    timeout
+    |> clamp_to_deadline(ts.global_deadline, {:global_deadline, ts.global_timeout})
+    |> clamp_to_deadline(ts.suite_deadline, {:suite_deadline, ts.suite_timeout})
+    |> resolve_source()
+  end
+
+  def compute_suite_deadline(suite_timeout, nil) do
+    System.monotonic_time(:millisecond) + suite_timeout
+  end
+
+  def compute_suite_deadline(suite_timeout, global_deadline) do
+    now = System.monotonic_time(:millisecond)
+    suite_end = now + suite_timeout
+    min(suite_end, global_deadline)
+  end
+
+  @doc "Milliseconds remaining until the nearest deadline (suite or global)."
+  @spec remaining_ms(Settings.t()) :: pos_integer() | :infinity
+  def remaining_ms(%Settings{suite_deadline: sd, global_deadline: gd}) do
+    case min(sd || :infinity, gd || :infinity) do
+      :infinity -> :infinity
+      deadline -> max(Toast.Utils.remaining_ms(deadline), 1)
+    end
+  end
+
+  def check_suite_deadline!(%{timeout_settings: %{suite_deadline: nil}}), do: :ok
+
+  def check_suite_deadline!(%{timeout_settings: %{suite_deadline: deadline}}) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      abort_with_timeout(:test_timeout, "Suite timeout exceeded")
+    end
+  end
+
+  def check_global_deadline!(nil), do: :ok
+
+  def check_global_deadline!(deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      abort_with_timeout(:global_timeout, "Global execution timeout exceeded")
+    end
+  end
+
+  defp compute_base_timeout(%{disable_timeouts: true}, _tags), do: :infinity
+  defp compute_base_timeout(ts, tags), do: Map.get(tags, :timeout, ts.base_timeout)
+
+  defp apply_timeout_factor(:infinity, _factor), do: :infinity
+  defp apply_timeout_factor(timeout, factor), do: round(timeout * factor)
+
+  defp clamp_to_deadline(timeout, nil, _source), do: timeout
+
+  defp clamp_to_deadline(timeout, deadline, source) do
+    remaining = max(Toast.Utils.remaining_ms(deadline), 1)
+    current = effective_ms(timeout)
+
+    if remaining < current,
+      do: {remaining, source},
+      else: timeout
+  end
+
+  defp effective_ms({ms, _source}), do: ms
+  defp effective_ms(:infinity), do: :infinity
+  defp effective_ms(ms), do: ms
+
+  defp resolve_source({clamped_ms, source}), do: {clamped_ms, source}
+  defp resolve_source(timeout), do: {timeout, :test}
+
+  defp abort_with_timeout(source, reason) do
+    Logger.warning("#{reason} — aborting suite")
+    EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
+    Abort.abort!({:timeout, reason})
+  end
+end

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
@@ -50,23 +49,25 @@
 #include "VocBase/vocbase.h"
 
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
+
+namespace arangodb {
 
 DECLARE_GAUGE(arangodb_agency_log_size_bytes, uint64_t,
               "Agency replicated log size [bytes]");
 DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
+namespace consensus {
+
 /// Constructor:
-State::State(metrics::MetricsFeature& metrics)
+State::State(metrics::IRegistry& metricsRegistry)
     : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
@@ -74,9 +75,9 @@ State::State(metrics::MetricsFeature& metrics)
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _log_size(metricsRegistry.add(arangodb_agency_log_size_bytes{})),
       _clientIdLookupCount(
-          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
+          metricsRegistry.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;
@@ -1494,9 +1495,8 @@ bool State::removeObsolete(index_t cind) {
 }
 
 /// Persist a compaction snapshot
-bool State::persistCompactionSnapshot(index_t cind,
-                                      arangodb::consensus::term_t term,
-                                      arangodb::consensus::Store& snapshot) {
+bool State::persistCompactionSnapshot(index_t cind, term_t term,
+                                      Store& snapshot) {
   TRI_IF_FAILURE("State::persistCompactionSnapshot") { return true; }
 
   if (checkCollection("compact")) {
@@ -1649,54 +1649,6 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   LOG_TOPIC("4c42c", DEBUG, Logger::AGENCY)
       << "Updated persisted agency configuration: " << builder.slice().toJson();
-}
-
-query_t State::allLogs() const {
-  std::string const comp("FOR c IN compact SORT c._key RETURN c");
-  std::string const logs("FOR l IN log SORT l._key RETURN l");
-
-  TRI_ASSERT(nullptr != _vocbase);
-
-  std::lock_guard mutexLocker{_logLock};
-
-  auto origin =
-      transaction::OperationOriginInternal{"retrieving all agency logs"};
-  auto compq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::create(*_vocbase, origin),
-      aql::QueryString(comp), nullptr);
-  auto logsq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::create(*_vocbase, origin),
-      aql::QueryString(logs), nullptr);
-
-  aql::QueryResult compqResult = compq->executeSync();
-
-  if (compqResult.result.fail()) {
-    THROW_ARANGO_EXCEPTION(compqResult.result);
-  }
-
-  aql::QueryResult logsqResult = logsq->executeSync();
-
-  if (logsqResult.result.fail()) {
-    THROW_ARANGO_EXCEPTION(logsqResult.result);
-  }
-
-  auto everything = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder(everything.get());
-    try {
-      everything->add("compact", compqResult.data->slice());
-    } catch (std::exception const&) {
-      LOG_TOPIC("1face", ERR, Logger::AGENCY)
-          << "Failed to assemble compaction part of everything package";
-    }
-    try {
-      everything->add("logs", logsqResult.data->slice());
-    } catch (std::exception const&) {
-      LOG_TOPIC("fe816", ERR, Logger::AGENCY)
-          << "Failed to assemble remaining part of everything package";
-    }
-  }
-  return everything;
 }
 
 std::vector<index_t> State::inquire(velocypack::Slice query) const {
@@ -1974,3 +1926,39 @@ void State::toVelocyPack(velocypack::Builder& builder) const {
   char const* key = keySlice.getString(keyLength);
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
 }
+
+ResultT<State::AppendEntriesPayload> State::buildAppendEntriesPayload(
+    index_t lastConfirmed, size_t maxEntries) {
+  // Disk I/O under _logLock is acceptable: snapshot sends are rare because
+  // a follower has to fall behind the leader's compaction horizon first.
+  std::lock_guard mutexLocker{_logLock};
+
+  if (_log.empty()) {
+    return Result{TRI_ERROR_INTERNAL, "agency log is empty"};
+  }
+
+  AppendEntriesPayload payload;
+  index_t fetchStart = lastConfirmed;
+
+  if (lastConfirmed < _cur) {
+    AppendEntriesPayload::SnapshotInfo info;
+    if (!loadLastCompactedSnapshot(info.store, info.index, info.term) ||
+        info.index == 0 || info.term == 0) {
+      return Result{TRI_ERROR_INTERNAL, "could not load compacted snapshot"};
+    }
+    fetchStart = info.index - 1;
+    payload.snapshot.emplace(std::move(info));
+  }
+
+  auto const [startBound, endBound] =
+      determineLogBounds(fetchStart, fetchStart + maxEntries);
+  payload.entries.reserve(endBound - startBound);
+  for (size_t i = startBound; i < endBound; ++i) {
+    TRI_ASSERT(i < _log.size());
+    payload.entries.push_back(_log[i]);
+  }
+  return payload;
+}
+
+}  // namespace consensus
+}  // namespace arangodb

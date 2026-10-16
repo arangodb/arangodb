@@ -18,22 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeaturePhase.h"
 
-namespace arangodb {
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeature.h"
 
-class ConfigFeature;
-class FileSystemFeature;
-class LoggerFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class VersionFeature;
-class GreetingsFeature;
+namespace arangodb {
 
 namespace application_features {
 
@@ -47,16 +45,15 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
       : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
 
-    startsAfter<ConfigFeature, Server>();
-    startsAfter<FileSystemFeature, Server>();
-    startsAfter<LoggerFeature, Server>();
-    startsAfter<RandomFeature, Server>();
-    startsAfter<ShellColorsFeature, Server>();
-    startsAfter<VersionFeature, Server>();
+    startsAfter<ConfigFeature>();
+    startsAfter<FileSystemFeature>();
+    startsAfter<LoggerFeature>();
+    startsAfter<RandomFeature>();
+    startsAfter<ShellColorsFeature>();
 
     if constexpr (!IsClient) {
       // These are server only features
-      startsAfter<GreetingsFeature, Server>();
+      startsAfter<GreetingsFeature>();
     }
   }
 };

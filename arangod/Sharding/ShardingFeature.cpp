@@ -18,12 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -37,15 +36,14 @@
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
-#include <array>
-
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 namespace arangodb {
 
-ShardingFeature::ShardingFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ShardingFeature::ShardingFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }
@@ -198,6 +196,14 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(
 
   // now create a sharding strategy instance
   return (*it).second(sharding);
+}
+
+std::unique_ptr<ShardingStrategy> ShardingFeature::createOrDefault(
+    std::optional<std::string> const& name, ShardingInfo* sharding) {
+  if (name.has_value() && !name.value().empty()) {
+    return create(name.value(), sharding);
+  }
+  return create(getDefaultShardingStrategy(sharding), sharding);
 }
 
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(

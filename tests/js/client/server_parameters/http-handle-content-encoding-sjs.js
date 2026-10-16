@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertMatch, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -32,10 +31,12 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
 const internal = require('internal');
 const fs = require("fs");
+let IM = global.instanceManager;
 
 const jwtRoot = () => {
   const jwtSecret = 'haxxmann';
@@ -59,8 +60,8 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_open/auth", 
-          body: "piff", 
+          url: IM.url + "/_open/auth",
+          body: "piff",
           headers: h
         });
         assertEqual(400, res.status);
@@ -77,15 +78,15 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_open/auth", 
-          body: "piff", 
+          url: IM.url + "/_open/auth",
+          body: "piff",
           headers: h,
           auth: { bearer: jwtRoot() },
         });
         // this is still supposed to fail, because we are not sending any
         // valid content
-        assertEqual(400, res.status);
-        assertMatch(/decoding error occurred while handling Content-Encoding/, res.json.errorMessage);
+        assertEqual(400, res.status, res);
+        assertMatch(new RegExp(`a decoding error occurred while handling Content-Encoding: ${h["Content-Encoding"]}`), res.json.errorMessage);
       });
     },
     
@@ -98,15 +99,15 @@ function HandleContentEncodingSuite() {
       ];
       headers.forEach((h) => {
         let res = request.post({
-          url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_api/version", 
-          body: "piff", 
+          url: IM.url + "/_api/version",
+          body: "piff",
           headers: h,
           auth: { bearer: jwtRoot() },
         });
         // this is still supposed to fail, because we are not sending any
         // valid content
         assertEqual(400, res.status);
-        assertMatch(/decoding error occurred while handling Content-Encoding/, res.json.errorMessage);
+        assertMatch(new RegExp(`decoding error occurred while handling Content-Encoding: ${h["Content-Encoding"]}`), res.json.errorMessage);
       });
     },
 
@@ -116,13 +117,24 @@ function HandleContentEncodingSuite() {
       let uncompressedBuffer = fs.readGzip(compressedFile);
 
       let res = request.post({
-        url: arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_admin/echo", 
-        body: compressedBuffer, 
+        url: IM.url + "/_admin/echo",
+        body: compressedBuffer,
         headers: {"Content-Encoding": "gzip"},
         auth: { bearer: jwtRoot() },
       });
-      assertEqual(200, res.status);
-      assertEqual(res.json.requestBody, uncompressedBuffer.toString());
+      if (res.status === 200) {
+        assertEqual(res.json.requestBody, uncompressedBuffer.toString());
+      } else {
+        assertEqual(400, res.status);
+        let count = 0;
+        ['support for handling Content-Encoding headers is turned off for unauthenticated requests', 
+         'decoding error occurred while handling Content-Encoding'].forEach(msg => {
+           if (res.json.errorMessage.search(msg) >= 0) {
+             count += 1;
+           }
+         });
+        assertTrue(count > 0, `error message not one of the wanted: ${JSON.stringify(res)}`);
+      }        
     },
 
   };

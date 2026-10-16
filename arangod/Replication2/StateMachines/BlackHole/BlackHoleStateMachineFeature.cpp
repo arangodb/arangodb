@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BlackHoleStateMachineFeature.h"
@@ -31,8 +30,9 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::black_hole;
 
-BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {
+BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   startsAfter<ReplicatedStateAppFeature>();
   onlyEnabledWith<ReplicatedStateAppFeature>();
   setOptional(true);

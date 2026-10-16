@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,12 +27,9 @@
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arangodb {
 namespace velocypack {
@@ -130,7 +126,7 @@ class GatherNode final : public ExecutionNode {
 
  private:
   /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.

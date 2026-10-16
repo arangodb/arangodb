@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,7 +33,8 @@ namespace arangodb {
 
 class MaintenanceRestHandler : public RestBaseHandler {
  public:
-  MaintenanceRestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  MaintenanceRestHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }

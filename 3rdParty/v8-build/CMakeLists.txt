@@ -12,6 +12,8 @@ endif ()
 
 project(V8)
 
+include(ExternalProject)
+
 set(CMAKE_CXX_STANDARD 20)
 
 set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
@@ -482,7 +484,7 @@ else ()
     CONFIGURE_COMMAND
       ${CMAKE_COMMAND} -E env CFLAGS=${V8_CFLAGS} CXXFLAGS=${V8_CXXFLAGS} cflags_c=${V8_CFLAGS} cflags_cc=${V8_CXXFLAGS} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} 
     BUILD_COMMAND
-      $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
+      ${MAKE} ${MAKE_JOBS} ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
       icui18n icuuc v8_libbase v8_libplatform v8_snapshot
     INSTALL_COMMAND

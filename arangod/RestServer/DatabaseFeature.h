@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,40 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
-#include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeatureOptions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/IDatabaseBootstrap.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <velocypack/Slice.h>
 
 #include <cstddef>
 #include <mutex>
 #include <memory>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }  // namespace application_features
+struct Database;
 class IOHeartbeatThread;
 class LogicalCollection;
 class StorageEngine;
+class ClusterEngine;
+class RocksDBEngine;
+class V8DealerFeature;
 
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 template<typename T>
 class Gauge;
 }  // namespace metrics
@@ -69,7 +76,7 @@ DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
               "Global number of databases");
 
-class DatabaseManagerThread final : public ServerThread<ArangodServer> {
+class DatabaseManagerThread final : public ServerThread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
@@ -77,7 +84,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   /// @brief database manager thread main loop
   /// the purpose of this thread is to physically remove directories of
   /// databases that have been dropped
-  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+  DatabaseManagerThread(application_features::ApplicationServer&,
+                        DatabaseFeature& databaseFeature,
                         StorageEngine& engine);
   ~DatabaseManagerThread() final;
 
@@ -91,21 +99,23 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
 #ifdef USE_V8
-  V8DealerFeature& _dealer;
+  V8DealerFeature* _dealer;
 #endif
 };
 
-class DatabaseFeature final : public ArangodFeature {
+class DatabaseFeature final : public application_features::ApplicationFeature,
+                              public IDatabaseProvider,
+                              public IDatabaseBootstrap {
   friend class DatabaseManagerThread;
 
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
-  explicit DatabaseFeature(Server& server);
+  explicit DatabaseFeature(application_features::ApplicationServer& server);
+  DatabaseFeature(application_features::ApplicationServer& server,
+                  DatabaseFeatureOptions options);
   ~DatabaseFeature() final;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;
@@ -119,11 +129,7 @@ class DatabaseFeature final : public ArangodFeature {
   }
 #endif
 
-  /// @brief will be called when the recovery phase has run
-  /// this will call the engine-specific recoveryDone() procedures
-  /// and will execute engine-unspecific operations (such as starting
-  /// the replication appliers) for all databases
-  void recoveryDone();
+  void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from
@@ -131,11 +137,11 @@ class DatabaseFeature final : public ArangodFeature {
   bool started() const noexcept;
 
   /// @brief enumerate all databases
-  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
+  void enumerate(std::function<void(Database*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() ->
+  ///   if !StorageEngine.isReady() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
   ///   else ->
@@ -143,24 +149,26 @@ class DatabaseFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker& versionTracker() { return _versionTracker; }
+  void notifyDdlChange(char const* reason) override {
+    _versionTracker.track(reason);
+  }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
-  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+  std::vector<std::string> getDatabaseNamesForCurrentUser();
 
-  Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&&, Database*& result);
 
   ErrorCode dropDatabase(std::string_view name);
   ErrorCode dropDatabase(TRI_voc_tick_t id);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const&
-                     nameFilter);
+                     nameFilter) override;
 
-  VocbasePtr useDatabase(std::string_view name) const;
-  VocbasePtr useDatabase(TRI_voc_tick_t id) const;
+  VocbasePtr useDatabase(std::string_view name) const override;
+  VocbasePtr useDatabase(TRI_voc_tick_t id) const override;
 
   bool existsDatabase(std::string_view name) const;
 
@@ -169,36 +177,42 @@ class DatabaseFeature final : public ArangodFeature {
   // concurrently while the returned pointer is used).
   // this is a potentially unsafe API. if in doubt, prefer using
   // `useDatabase(...)`, which is safe.
-  [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
+  [[deprecated]] Database* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func);
+      std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const noexcept { return _ignoreDatafileErrors; }
+  bool ignoreDatafileErrors() const noexcept {
+    return _options.ignoreDatafileErrors;
+  }
   bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }
-  bool waitForSync() const noexcept { return _defaultWaitForSync; }
-  replication::Version defaultReplicationVersion() const noexcept {
-    return replication::parseVersion(_defaultReplicationVersion).get();
+  bool waitForSync() const noexcept { return _options.defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const noexcept override {
+    return replication::parseVersion(_options.defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
   /// and indexes
-  bool extendedNames() const noexcept { return _extendedNames; }
+  bool extendedNames() const noexcept override {
+    return _options.extendedNames;
+  }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNames(bool value) noexcept { _extendedNames = value; }
+  void extendedNames(bool value) noexcept override {
+    _options.extendedNames = value;
+  }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
   void enableUpgrade() noexcept { _upgrade = true; }
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
-  size_t maxDatabases() const noexcept { return _maxDatabases; }
+  size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
-  static TRI_vocbase_t& getCalculationVocbase();
+  static Database& getCalculationVocbase();
 
   /// @brief update metadata metrics (number of databases, collections, shards)
   /// This should only be called on single servers
@@ -211,9 +225,10 @@ class DatabaseFeature final : public ArangodFeature {
   void decrementCollectionCount(size_t count = 1);
 
  private:
-  static void initCalculationVocbase(ArangodServer& server);
+  void initCalculationVocbase();
 
-  void stopAppliers();
+  // called by the engine once it's open, not by anything else.
+  void bootstrapDatabases(velocypack::Slice databases) override;
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(velocypack::Slice databases);
@@ -224,25 +239,19 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  bool _defaultWaitForSync{false};
-  bool _ignoreDatafileErrors{false};
+  DatabaseFeatureOptions _options;
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended names for databases, collections, views and indexes
-  bool _extendedNames{true};
-  bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
-
-  std::string _defaultReplicationVersion{
-      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+#ifdef USE_V8
+  V8DealerFeature* _dealer{nullptr};
+#endif
 
-  size_t _maxDatabases{SIZE_MAX};
-
-  using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
+  using DatabasesList = containers::FlatHashMap<std::string, Database*>;
   class DatabasesListGuard {
    public:
     [[nodiscard]] static std::shared_ptr<DatabasesList> create() {
@@ -271,7 +280,7 @@ class DatabaseFeature final : public ArangodFeature {
     std::shared_ptr<DatabasesList const> _impl = create();
   } _databases;
   mutable std::mutex _databasesMutex;
-  containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
+  containers::FlatHashSet<Database*> _droppedDatabases;
 
   /// @brief lock for serializing the creation of databases
   std::mutex _databaseCreateLock;
@@ -284,14 +293,13 @@ class DatabaseFeature final : public ArangodFeature {
   VersionTracker _versionTracker;
 
   StorageEngine* _engine = nullptr;
-  ReplicationFeature* _replicationFeature = nullptr;
 
   /// @brief metadata metrics structure for single servers only
   struct MetadataMetrics {
     metrics::Gauge<std::uint64_t>& numberOfCollections;
     metrics::Gauge<std::uint64_t>& numberOfDatabases;
 
-    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+    explicit MetadataMetrics(metrics::IRegistry& metricsRegistry);
   };
   // Report these only on single servers
   std::optional<MetadataMetrics> _metadataMetrics;

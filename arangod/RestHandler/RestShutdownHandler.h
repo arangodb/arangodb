@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,8 +27,8 @@
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  explicit RestShutdownHandler(ArangodServer&, GeneralRequest*,
-                               GeneralResponse*);
+  explicit RestShutdownHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestShutdownHandler"; }

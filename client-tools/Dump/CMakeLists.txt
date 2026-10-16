@@ -1,6 +1,9 @@
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
+  ArangoDumpServer.cpp
   DumpFeature.cpp
+  DumpFeatureOptions.cpp
+  DumpOptionsProvider.cpp
   arangodump.cpp
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
@@ -14,6 +17,10 @@ target_link_libraries(${BIN_ARANGODUMP}
   clienttools_utils
 )
 
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGODUMP} jemalloc)
+endif ()
+
 install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -24,9 +31,5 @@ add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGODUMP} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGODUMP} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGODUMP} man)

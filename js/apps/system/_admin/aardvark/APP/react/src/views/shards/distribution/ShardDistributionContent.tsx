@@ -1,6 +1,7 @@
 import { ReactTable, useSortableReactTable } from "@arangodb/ui";
 import {
   Box,
+  Center,
   Flex,
   Grid,
   Heading,
@@ -63,9 +64,13 @@ export const ShardDistributionContent = ({
 }: {
   readOnly: boolean;
 }) => {
-  const { data: statistics, mutate } = useFetchShardStatistics();
-  if (!statistics) {
-    return <Spinner />;
+  const { data: statistics, mutate, isLoading } = useFetchShardStatistics();
+  if (isLoading) {
+    return (
+      <Center height="calc(100vh - 142px)">
+        <Spinner />
+      </Center>
+    );
   }
   return (
     <Box width="100%" padding="5" background="white">
@@ -102,13 +107,17 @@ const renderCustomizedLabel = ({
 const ShardDistributionCharts = ({
   statistics
 }: {
-  statistics: ShardStatisticsData;
+  statistics?: ShardStatisticsData;
 }) => {
   const colors = d3.scale.category20().range();
   const tableInstance = useSortableReactTable({
-    data: statistics.table ?? [],
+    data: statistics?.table ?? [],
     columns: TABLE_COLUMNS
   });
+
+  if (!statistics) {
+    return null;
+  }
 
   return (
     <Stack gap="4">

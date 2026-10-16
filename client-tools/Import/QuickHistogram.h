@@ -18,39 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "Basics/ConditionVariable.h"
+#include "Basics/BasicThread.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 #include <algorithm>
 #include <chrono>
 #include <ctime>
-#include <future>
 #include <iomanip>
 #include <mutex>
 #include <numeric>
 #include <vector>
-
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace import {
 //
 // quickly written histogram class for debugging
 //
-class QuickHistogram : public arangodb::Thread {
+class QuickHistogram : public arangodb::BasicThread {
  private:
   QuickHistogram(QuickHistogram const&) = delete;
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
-  explicit QuickHistogram(application_features::ApplicationServer& server)
-      : Thread(server, "QuickHistogram"),
+  QuickHistogram()
+      : BasicThread("QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
         _objectsWriting(0),
@@ -61,7 +59,7 @@ class QuickHistogram : public arangodb::Thread {
 
   void beginShutdown() override {
     _threadRunning = false;
-    Thread::beginShutdown();
+    BasicThread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
     std::lock_guard guard{_condvar.mutex};

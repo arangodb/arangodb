@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,12 +31,16 @@ class UserManager;
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
-  RestUsersHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestUsersHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestUsersHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
+
+ protected:
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   // helper to generate a compliant response for individual user requests

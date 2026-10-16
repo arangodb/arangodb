@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,25 +25,21 @@
 #include "RestHandler/RestBaseHandler.h"
 
 #include "Rest/GeneralResponse.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 #include <memory>
 #include <string_view>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
 class Methods;
 }
-
-class VocbaseContext;
 
 // abstract base request handler
 class RestVocbaseBaseHandler : public RestBaseHandler {
@@ -121,6 +116,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // view path
   static std::string const VIEW_PATH;
 
+  // stats arangosearch path
+  static std::string const STATS_ARANGOSEARCH_PATH;
+
   // Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
@@ -128,7 +126,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   static std::string const TRAVERSER_PATH_VERTEX;
 
-  RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
   virtual void cancel() override {
@@ -203,20 +202,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // Please see the comment in RestHandler::makeSharedLogContextValue() for
   // some comments.
   [[nodiscard]] auto makeSharedLogContextValue() const
-      -> std::shared_ptr<LogContext::Values> override {
-    return LogContext::makeValue()
-        .with<structuredParams::UrlName>(_request->fullUrl())
-        .with<structuredParams::UserName>(_request->user())
-        .with<structuredParams::DatabaseName>(_vocbase.name())
-        .share();
-  }
+      -> std::shared_ptr<LogContext::Values> override;
 
  protected:
-  // request context
-  VocbaseContext& _context;
+  // request context (ExecContext with auth + vocbase)
+  ExecContext& _context;
 
-  // the vocbase, managed by VocbaseContext
-  TRI_vocbase_t& _vocbase;
+  // the database, managed by ExecContext
+  Database& _vocbase;
 };
 
 }  // namespace arangodb

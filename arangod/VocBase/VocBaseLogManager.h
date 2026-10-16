@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Basics/Guarded.h"
@@ -27,11 +26,10 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "RestServer/arangod.h"
-
-struct TRI_vocbase_t;
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
+struct Database;
 class LogicalCollection;
 namespace replication2 {
 class LogId;
@@ -55,13 +53,14 @@ struct QuickLogStatus;
 struct ReplicatedLog;
 }  // namespace replicated_log
 namespace replicated_state {
+struct ReplicatedStateAppFeature;
 struct ReplicatedStateBase;
 struct StateStatus;
 }  // namespace replicated_state
 }  // namespace replication2
 
 struct VocBaseLogManager {
-  VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database);
+  VocBaseLogManager(Database& vocbase, DatabaseID database);
 
   [[nodiscard]] auto getReplicatedStateById(replication2::LogId id) -> ResultT<
       std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
@@ -101,8 +100,8 @@ struct VocBaseLogManager {
       -> ResultT<
           std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
 
-  ArangodServer& _server;
-  TRI_vocbase_t& _vocbase;
+  application_features::ApplicationServer& _server;
+  Database& _vocbase;
   LoggerContext const _logContext;
 
   struct GuardedData {
@@ -122,8 +121,8 @@ struct VocBaseLogManager {
     auto buildReplicatedStateWithMethods(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase,
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, Database& vocbase,
         std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
             storage)
         -> ResultT<std::shared_ptr<
@@ -132,8 +131,8 @@ struct VocBaseLogManager {
     auto buildReplicatedState(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase)
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, Database& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
 

@@ -18,12 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <format>
 #include <memory>
-#include "fmt/core.h"
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPackWithErrorT.h"
 
@@ -79,7 +78,7 @@ TEST(ActorTest, formats_actor) {
       DistributedActorPID{.server = "A", .database = "database", .id = {1}},
       runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(
-      fmt::format("{}", *actor),
+      std::format("{}", *actor),
       R"({"pid":{"server":"A","database":"database","id":1},"state":{"state":"","called":0},"batchsize":16})");
 }
 

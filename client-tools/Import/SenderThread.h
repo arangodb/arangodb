@@ -18,20 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -40,14 +36,13 @@ class SimpleHttpResult;
 namespace import {
 struct ImportStatistics;
 
-class SenderThread final : public arangodb::Thread {
+class SenderThread final : public arangodb::BasicThread {
  private:
   SenderThread(SenderThread const&) = delete;
   SenderThread& operator=(SenderThread const&) = delete;
 
  public:
-  explicit SenderThread(application_features::ApplicationServer& server,
-                        std::unique_ptr<httpclient::SimpleHttpClient>,
+  explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>,
                         ImportStatistics* stats,
                         std::function<void()> const& wakeup);
 

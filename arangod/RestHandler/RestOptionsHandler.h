@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,7 +28,8 @@ namespace arangodb {
 
 class RestOptionsHandler : public RestOptionsBaseHandler {
  public:
-  RestOptionsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestOptionsHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
   char const* name() const override final { return "RestOptionsHandler"; }
   RestStatus execute() override;

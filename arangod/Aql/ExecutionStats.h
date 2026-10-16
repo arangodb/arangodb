@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -85,6 +84,9 @@ struct ExecutionStats {
 
   /// @brief number of documents scanned (using indexes scan)
   uint64_t scannedIndex = 0;
+
+  /// @brief number of threads used for iresearch query
+  uint64_t iresearchParallelism = 1;
 
   /// @brief number of cursors created. currently only populated by
   /// IndexExecutor.

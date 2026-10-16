@@ -12,6 +12,7 @@ add_library(arango_tests_graph OBJECT
         FifoQueueTest.cpp
         LifoQueueTest.cpp
         WeightedQueueTest.cpp
+        CursorWeightedQueueTest.cpp
         KShortestPathsFinderTest.cpp
         WeightedShortestPathTest.cpp
         SingleServerProviderTest.cpp
@@ -21,8 +22,7 @@ target_link_libraries(arango_tests_graph
         PRIVATE
         arango_lightweight
         arango_tests_basics
-        velocypack
-        fmt)
+        velocypack)
 
 add_executable(arangodbtests_graph
         EXCLUDE_FROM_ALL)

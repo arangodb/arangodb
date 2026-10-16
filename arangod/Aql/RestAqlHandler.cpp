@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
@@ -50,6 +49,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -58,8 +58,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
+using application_features::ApplicationServer;
 
-RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
+RestAqlHandler::RestAqlHandler(ApplicationServer& server,
+                               GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),
@@ -454,6 +456,7 @@ auto RestAqlHandler::useQuery(std::string const& operation,
 }
 
 // executes the handler
+// Mounted at /_api/aql (prefix)
 auto RestAqlHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

@@ -18,22 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
@@ -45,24 +41,17 @@ DECLARE_GAUGE(arangodb_flush_subscriptions, uint64_t,
 
 namespace arangodb {
 
-FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this},
+FlushFeature::FlushFeature(ApplicationServer& server,
+                           metrics::IRegistry& metricsRegistry)
+    : ApplicationFeature{server, *this},
       _stopped(false),
       _metricsFlushSubscriptions(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_flush_subscriptions{})) {
+          metricsRegistry.add(arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<StorageEngineFeature>();
 }
 
 FlushFeature::~FlushFeature() = default;
-
-void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.flush-interval",
-      "The interval (in microseconds) for flushing data.", true);
-}
 
 void FlushFeature::registerFlushSubscription(
     std::shared_ptr<FlushSubscription> const& subscription) {
@@ -85,7 +74,7 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   auto const initialTick = engine.currentTick();
 
   size_t stale = 0;

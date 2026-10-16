@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -96,7 +94,7 @@ class IResearchViewMergeExecutor
   // reads local document id from a specified segment
   LocalDocumentId readPK(Segment& segment);
 
-  bool fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx, IResearchViewStats& stats);
 
   bool writeRow(ReadContext& ctx, size_t idx);
 

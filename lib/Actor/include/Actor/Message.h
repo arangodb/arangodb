@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -140,17 +138,17 @@ struct MessageOrError
 }  // namespace arangodb::actor
 
 template<typename Payload>
-struct fmt::formatter<arangodb::actor::MessagePayload<Payload>>
+struct std::formatter<arangodb::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
 template<typename PID>
-struct fmt::formatter<arangodb::actor::message::UnknownMessage<PID>>
+struct std::formatter<arangodb::actor::message::UnknownMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<typename PID>
-struct fmt::formatter<arangodb::actor::message::ActorNotFound<PID>>
+struct std::formatter<arangodb::actor::message::ActorNotFound<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::message::NetworkError>
+struct std::formatter<arangodb::actor::message::NetworkError>
     : arangodb::inspection::inspection_formatter {};
 template<typename PID>
-struct fmt::formatter<arangodb::actor::message::ActorDown<PID>>
+struct std::formatter<arangodb::actor::message::ActorDown<PID>>
     : arangodb::inspection::inspection_formatter {};

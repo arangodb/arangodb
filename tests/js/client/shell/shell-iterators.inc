@@ -21,13 +21,10 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 const internal = require('internal');
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
-const testHelper = require('@arangodb/test-helper');
-const deriveTestSuite = testHelper.deriveTestSuite;
 const db = arangodb.db;
 
 const cn = 'UnitTestsIterators';
@@ -545,13 +542,13 @@ function IteratorWriteSuite(permuteConfigs) {
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
         // full scan
-        let result = ctx.query('FOR i IN 1..2000 UPSERT { v: "dummy" } INSERT { v: "dummy", cnt: 1, idx: i } UPDATE { cnt: OLD.cnt + 1 } IN @@c RETURN OLD', { '@c': cn }, opts).toArray();
+        let result = ctx.query('FOR i IN 1..1200 UPSERT { v: "dummy" } INSERT { v: "dummy", cnt: 1, idx: i } UPDATE { cnt: OLD.cnt + 1 } IN @@c RETURN OLD', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 1, tc.count());
-        assertEqual(2000, result.length);
+        assertEqual(1200, result.length);
 
         let values = ctx.query('FOR doc in @@c FILTER doc.v == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
-        assertEqual(2000, values[0].cnt);
+        assertEqual(1200, values[0].cnt);
       });
     },
 

@@ -18,15 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Logger.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -679,7 +677,8 @@ void Logger::log(std::string_view logid, std::string_view function,
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
   if (_cachedPid.load(std::memory_order_relaxed) == 0) {
-    _cachedPid.store(Thread::currentProcessId(), std::memory_order_relaxed);
+    _cachedPid.store(BasicThread::currentProcessId(),
+                     std::memory_order_relaxed);
   }
 
   std::string out;
@@ -764,7 +763,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
 
   // tid
   if (_showThreadIdentifier) {
-    absl::StrAppend(&out, ",\"tid\":", Thread::currentThreadNumber());
+    absl::StrAppend(&out, ",\"tid\":", BasicThread::currentThreadNumber());
   }
 
   // thread name
@@ -907,7 +906,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
 
   if (_showThreadIdentifier) {
     out.push_back(haveProcessOutput ? '-' : '[');
-    absl::StrAppend(&out, Thread::currentThreadNumber());
+    absl::StrAppend(&out, BasicThread::currentThreadNumber());
     haveProcessOutput = true;
   }
 

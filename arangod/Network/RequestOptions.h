@@ -24,8 +24,10 @@
 
 #include "Assertions/Assert.h"
 #include "GeneralServer/RequestLane.h"
+#include "Inspection/Transformers.h"
 #include "Network/types.h"
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/types.h>
 
 #include <string>
@@ -62,6 +64,8 @@ struct RequestOptions {
   // the "allowDirtyReads" options when we want to read from followers.
   std::string overrideDestination;
 
+  std::optional<fuerte::api_version::ApiVersion> apiVersion;
+
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     TRI_ASSERT(!std::string_view{val}.empty());  // cannot parse it on receiver
@@ -69,6 +73,24 @@ struct RequestOptions {
                                       std::forward<V>(val));
     return *this;
   }
-};
 
+  bool operator==(RequestOptions const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, RequestOptions& x) {
+  return f.object(x).fields(
+      f.field("database", x.database), f.field("contentType", x.contentType),
+      f.field("accentType", x.acceptType), f.field("parameters", x.parameters),
+      f.field("timeout", x.timeout)
+          .transformWith(
+              inspection::DurationTransformer<std::chrono::duration<double>>{}),
+      f.field("retryNotFound", x.retryNotFound),
+      f.field("skipScheduler", x.skipScheduler),
+      f.field("sendHLCHeader", x.sendHLCHeader),
+      f.field("handleContentEncoding", x.handleContentEncoding),
+      f.field("allowCompression", x.allowCompression),
+      f.field("continuationLane", x.continuationLane),
+      f.field("overrideDestination", x.overrideDestination),
+      f.field("apiVersion", x.apiVersion));
+}
 }  // namespace arangodb::network

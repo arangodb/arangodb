@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,12 +27,16 @@
 namespace arangodb {
 class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestDatabaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestDatabaseHandler(application_features::ApplicationServer&, GeneralRequest*,
+                      GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestDatabaseHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
+
+ protected:
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   RestStatus getDatabases();

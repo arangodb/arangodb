@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,12 +32,11 @@
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Basics/Guarded.h"
-#include "Basics/ResourceUsage.h"
 #include "Futures/Future.h"
-#include "Futures/Try.h"
 #include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "Aql/QueryActivity.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -49,8 +47,6 @@
 #include <optional>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 #ifdef USE_V8
 namespace v8 {
 class Isolate;
@@ -60,6 +56,7 @@ class Isolate;
 namespace arangodb {
 
 class CollectionNameResolver;
+class ExecContext;
 class LogicalDataSource;
 #ifdef USE_V8
 class V8Executor;
@@ -120,7 +117,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// we do not revisit all call sites and ensure that we have access
   /// to the `AqlFeature` now. So this cleanup is for a later
   /// day. Therefore, we use the `server()` functionality in the
-  /// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+  /// `Database` in the `transaction::Context` to get access to the
   /// `AqlFeature` for now. Over time, one should have access to the
   /// `AqlFeature` to create a new `Query` object, but we are not there
   /// yet. If you use AQL queries from within C++ code in the future,
@@ -229,10 +226,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void prepareFromVelocyPackWithoutInstantiate(velocypack::Slice querySlice,
                                                velocypack::Slice collections,
                                                velocypack::Slice views,
-                                               velocypack::Slice variables,
-                                               velocypack::Slice snippets);
+                                               velocypack::Slice variables);
 
-  async<void> instantiatePlan(velocypack::Slice snippets);
+  async<void> instantiatePlan(velocypack::Slice querySlice);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -499,6 +495,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief user that started the query
   std::string _user;
 
+  /// @brief the ExecContext that was installed on the thread that created
+  /// this query. Used (in maintainer mode) to assert that the query executes
+  /// under the same identity it was created with, so that any spawn path
+  /// that fails to propagate the ExecContext fails loudly instead of
+  /// silently running as a different (or no) user.
+  std::shared_ptr<ExecContext const> _execContext;
+
   /// @brief optional plan cache key that was used to look up the query in the
   /// plan cache. this will be result for storing the query plan later in the
   /// cache
@@ -547,6 +550,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   bool _isCached{false};
 
   std::atomic<bool> _isExecuting{false};
+
+  aql::query_activity::AqlQueryActivity::HandleType _activity;
 };
 
 }  // namespace aql

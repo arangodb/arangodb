@@ -18,35 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAuthHandler.h"
 
-#include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+#include "Ssl/jwt.h"
+#include "Utils/ExecContext.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 
 #include <format>
+#include <Basics/DownCast.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestAuthHandler::RestAuthHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_open/auth (prefix)
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
@@ -54,6 +56,8 @@ RestStatus RestAuthHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
+
+  ExecContextSuperuserScope scope;
 
   if (!AuthenticationFeature::instance()->isActive()) {
     // Since 3.12.6 we actually mount this RestHandler in the case that
@@ -200,12 +204,17 @@ RestStatus RestAuthHandler::execute() {
   return RestStatus::DONE;
 }
 
+async<RestHandler::AuthenticationGrant>
+RestAuthHandler::checkUserAuthentication() const {
+  co_return AuthenticationGrant::GRANTED;
+}
+
 std::string RestAuthHandler::generateJwt(
     std::string const& username, std::chrono::seconds expiryTime) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username,
-                                        expiryTime);
+  return auth::generateUserToken(af->tokenCache().jwtSecret(), username,
+                                 expiryTime);
 }
 
 RestStatus RestAuthHandler::badRequest() {

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -148,6 +146,9 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  // evaluates the constant expressions for _currentRow and resets the
+  // strategy with their values
+  void resetStrategyForCurrentRow();
   void clearProjectionsBuilder() noexcept;
   [[nodiscard]] ResourceMonitor& resourceMonitor();
 

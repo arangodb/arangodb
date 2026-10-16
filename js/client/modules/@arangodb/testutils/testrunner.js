@@ -22,13 +22,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const rbac = require('@arangodb/testutils/rbac');
 const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
@@ -54,7 +54,8 @@ function isBucketized(testBuckets) {
 exports.sutFilters = {
   checkUsers: ["users"],
   checkCollections: ["tasks-sjs", "collections", "views", "graphs"],
-  checkDBs: ["databases"]
+  checkDBs: ["databases"],
+  checkAnalyzers: ["analyzers"]
 };
 class testRunner {
   constructor(options, testname, serverOptions = {}, disableChecks=[]) {
@@ -69,6 +70,8 @@ class testRunner {
     if (this.serverOptions === undefined) {
       this.serverOptions = {};
     }
+    this.rbacVerified = false;
+    rbac.applyServerOptions(this.options, this.serverOptions);
     this.testList = [];
     this.customInstanceInfos = {};
     this.memProfCounter = 0;
@@ -289,6 +292,12 @@ class testRunner {
       };
     }
     
+    let unsupported = rbac.checkSuiteSupported(this.options, this.friendlyName,
+                                               this.rbacVerified);
+    if (unsupported !== null) {
+      return {setup: {status: false, message: unsupported}};
+    }
+
     let beforeStart = time();
 
     this.instanceManager = new im.instanceManager(this.options.protocol,
@@ -307,6 +316,15 @@ class testRunner {
       };
     }
 
+    if (!rbac.bootstrapUser(this.options, this.instanceManager, false)) {
+      return {
+        setup: {
+          status: false,
+          message: 'could not bootstrap the RBAC binding for the workload user'
+        }
+      };
+    }
+
     this.instanceManager.launchTcpDump("");
     if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
@@ -317,7 +335,7 @@ class testRunner {
         }
       };
     }
-    this.instanceManager.reconnect();
+    this.instanceManager.reconnect(false);
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
@@ -414,6 +432,10 @@ class testRunner {
           first = false;
 
           if (this.options.loopEternal) {
+            if (reply.hasOwnProperty('status') && reply.status === false) {
+              print(RED + 'test failed, terminating' + RESET);
+              break;
+            }
             if (loopCount % this.options.loopSleepWhen === 0) {
               print('sleeping...');
               sleep(this.options.loopSleepSec);
@@ -475,7 +497,11 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    try {
+      this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    } finally {
+      rbac.bootstrapUser(this.options, this.instanceManager, true);
+    }
     if (!this.results.shutdown) {
       this.results.status = false;
     }
@@ -493,6 +519,8 @@ class testRunner {
       print('done.');
     }
     this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
+    delete(global.instanceManager);
+    delete(this.instanceManager);
     return this.results;
   }
 }

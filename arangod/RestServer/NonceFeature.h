@@ -18,22 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/NonceOptionsProvider.h"
 
 namespace arangodb {
 
-class NonceFeature : public ArangodFeature {
+class NonceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Nonce"; }
 
-  explicit NonceFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  explicit NonceFeature(application_features::ApplicationServer& server);
 };
 
 }  // namespace arangodb

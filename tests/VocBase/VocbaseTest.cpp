@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -31,7 +29,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
@@ -109,7 +106,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), server.engine());
 
   // not present collection (no datasource)
   {

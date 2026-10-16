@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -158,7 +157,7 @@ collectAll(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
-    first->update_requester(ctx->p.id());
+    (*first).update_requester(ctx->p.id());
     std::move(*first).thenFinal(
         [i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
   }
@@ -179,7 +178,7 @@ template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
   (ts.update_requester(c->p.id()), ...);
   (std::move(ts).thenFinal(
-       [&](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
+       [c](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
    ...);
 }
 }  // namespace gather

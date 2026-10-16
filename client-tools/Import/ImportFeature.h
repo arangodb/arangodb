@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Import/arangoimport.h"
+#include "Import/ImportFeatureOptions.h"
 #include "Shell/ClientFeature.h"
 
 #include <memory>
@@ -36,16 +35,15 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 }  // namespace httpclient
 
-class ImportFeature final : public ArangoImportFeature {
+class ImportFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Import"; }
 
-  ImportFeature(Server& server, int* result);
+  ImportFeature(application_features::ApplicationServer& server, int* result,
+                ImportFeatureOptions options);
+  ImportFeature(application_features::ApplicationServer& server, int* result);
   ~ImportFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -53,36 +51,8 @@ class ImportFeature final : public ArangoImportFeature {
   ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
 
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  std::string _filename;
-  bool _useBackslash;
-  bool _convert;
-  bool _autoChunkSize;
-  uint64_t _chunkSize;
-  uint32_t _threadCount;
-  std::string _collectionName;
-  std::string _fromCollectionPrefix;
-  std::string _toCollectionPrefix;
-  bool _overwriteCollectionPrefix;
-  bool _createCollection;
-  bool _createDatabase;
-  std::string _createCollectionType;
-  std::string _typeImport;
-  std::string _headersFile;
-  std::vector<std::string> _translations;
-  std::vector<std::string> _datatypes;
-  std::vector<std::string> _removeAttributes;
-  bool _overwrite;
-  std::string _quote;
-  std::string _separator;
-  bool _progress;
-  bool _ignoreMissing;
-  std::string _onDuplicateAction;
-  uint64_t _rowsToSkip;
-  uint64_t _maxErrors;
+  ImportFeatureOptions _options;
   int* _result;
-  bool _skipValidation;
-  bool _latencyStats;
-  std::vector<std::string> _mergeAttributes;
 };
 
 }  // namespace arangodb

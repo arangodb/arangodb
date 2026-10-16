@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrei Lobov
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 // Some tests skips cluster until ticket TG-1110 (Some fullCount seems to not be propagated well enough)

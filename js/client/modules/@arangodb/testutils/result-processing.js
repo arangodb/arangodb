@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -303,7 +302,7 @@ function saveToJunitXML(options, results) {
         name: state.xmlName,
       };
       state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
-      if (testSuite.hasOwnProperty('message') && testSuite.message !== "") {
+      if (!testSuite.status && testSuite.hasOwnProperty('message') && testSuite.message !== "") {
         state.xml.elem('testcase', addOptionalDuration({ name: `whole testsuite ${testSuiteName} failed` }, testSuiteName), false);
         state.xml.elem('failure');
         state.xml.text('<![CDATA[' + stripAnsiColors(testSuite.message) + ']]>\n');
@@ -502,7 +501,11 @@ function unitTestPrettyPrintResults (options, results) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            m = '  ****> "' + one + '" failed:\n' + details[one].replaceAll('\\n', '\n');
+            if (details[one] !== undefined) {
+              m = `  ****> "${one}" failed:\n${details[one].replaceAll('\\n', '\n')}`;
+            } else {
+              m= `   ***> No detail message for "${one}"`;
+            }
             failedMessages += RED + m + RESET + '\n\n';
             onlyFailedMessages += m + '\n\n';
             count++;
@@ -679,6 +682,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
             layer = layer[attribute];
           }
         });
+        layer = JSON.stringify(layer);
         if (Array.isArray(layer)) {
           resultLine.push('n/a');
         } else {

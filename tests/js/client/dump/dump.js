@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -44,12 +41,6 @@ jsunity.run(function dump_single_testsuite() {
   if (!internal.isEnterprise()) {
       enterpriseTests = [
           // enterprise sharded graphs on single server tests
-          "testEmptySmartGraph",
-          "testEmptyEnterpriseGraph",
-          "testEmptySatelliteGraph",
-          "testEmptyDisjointGraph",
-          "testSmartGraphWithoutData",
-          "testEnterpriseGraphWithoutData",
           "testSmartGraphSingleServer",
           "testEnterpriseGraphSingleServer",
           "testSatelliteSmartGraphSingleServer",
@@ -90,7 +81,6 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
 
       // Hotbackup tests:

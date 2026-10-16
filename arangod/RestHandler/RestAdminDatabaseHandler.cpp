@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminDatabaseHandler.h"
@@ -32,11 +31,12 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminDatabaseHandler::RestAdminDatabaseHandler(ArangodServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/database/target-version (prefix)
 RestStatus RestAdminDatabaseHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

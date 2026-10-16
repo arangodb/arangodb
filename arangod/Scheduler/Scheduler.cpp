@@ -18,40 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Scheduler.h"
 
 #include <velocypack/Builder.h>
 
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "GeneralServer/Acceptor.h"
+#include "Basics/BasicThread.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
-#include "Rest/GeneralResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/RequestStatistics.h"
+#include "Utils/Thread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : public ServerThread<ArangodServer> {
+class SchedulerThread : public Thread {
  public:
-  explicit SchedulerThread(Server& server, Scheduler& scheduler,
+  explicit SchedulerThread(Scheduler& scheduler,
                            std::string const& name = "Scheduler")
-      : ServerThread<ArangodServer>(server, name), _scheduler(scheduler) {}
+      // scheduler threads run without an ExecContext; work items carry
+      // their own context
+      : Thread(name, nullptr), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;
@@ -62,8 +56,8 @@ class SchedulerThread : public ServerThread<ArangodServer> {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
-      : SchedulerThread(server, scheduler, "SchedCron") {}
+  explicit SchedulerCronThread(Scheduler& scheduler)
+      : SchedulerThread(scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -72,7 +66,7 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler(ArangodServer& server)
+Scheduler::Scheduler(application_features::ApplicationServer& server)
     : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
@@ -81,7 +75,7 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
+  _cronThread = std::make_unique<SchedulerCronThread>(*this);
   return _cronThread->start();
 }
 

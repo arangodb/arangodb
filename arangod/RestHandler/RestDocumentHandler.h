@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,7 +35,8 @@ class Methods;
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
-  RestDocumentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestDocumentHandler(application_features::ApplicationServer&, GeneralRequest*,
+                      GeneralResponse*);
   ~RestDocumentHandler();
 
  public:

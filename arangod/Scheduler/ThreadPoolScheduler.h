@@ -27,7 +27,8 @@
 namespace arangodb {
 
 struct ThreadPoolScheduler final : Scheduler {
-  explicit ThreadPoolScheduler(ArangodServer& server, uint64_t maxThreads,
+  explicit ThreadPoolScheduler(application_features::ApplicationServer& server,
+                               uint64_t maxThreads,
                                std::shared_ptr<SchedulerMetrics> metrics);
   void toVelocyPack(velocypack::Builder& builder) const override;
   QueueStatistics queueStatistics() const override;

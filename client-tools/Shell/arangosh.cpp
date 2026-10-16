@@ -18,51 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangosh.h"
-
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "FeaturePhases/V8ShellFeaturePhase.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
-#include "Shell/arangosh.h"
+#include "Shell/ArangoshServer.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/ShellFeature.h"
-#include "Shell/V8ShellFeature.h"
-#include "Shell/ProcessMonitoringFeature.h"
-#include "Ssl/SslFeature.h"
-#include "V8/V8PlatformFeature.h"
-#include "V8/V8SecurityFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -73,60 +41,19 @@ int main(int argc, char* argv[]) {
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: " + context.binaryName() + " [<options>]",
-            "For more information use:", BIN_DIRECTORY
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: " + context.binaryName() + " [<options>]",
+        "For more information use:", BIN_DIRECTORY
 #ifndef USE_V8
-            ,
-            arangodb::options::ParseJsOps::parseJS
+        ,
+        arangodb::options::ParseJsOps::parseJS
 #endif
-            ));
-    ArangoshServer server(options, BIN_DIRECTORY);
+    );
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoshServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(server, true);
-        },
-        [](ArangoshServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoshServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
-#endif
-        [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoshServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [&](ArangoshServer& server, TypeTag<ShellFeature>) {
-          return std::make_unique<ShellFeature>(server, &ret);
-        },
-        [&](ArangoshServer& server, TypeTag<V8ShellFeature>) {
-          return std::make_unique<V8ShellFeature>(server, context.binaryName());
-        },
-        [&](ArangoshServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        },
-        [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoshServer::id<ShellFeature>()});
-        }});
+    ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception: "

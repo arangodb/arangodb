@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 
 #include <cstdint>
 #include <memory>
@@ -32,15 +32,8 @@
 #include <string>
 #include <unordered_map>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
-struct DumpLimits;
 class RocksDBEngine;
-
-namespace metrics {
-class MetricsFeature;
-}
 
 namespace velocypack {
 struct Options;
@@ -49,8 +42,8 @@ struct Options;
 class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
-                              metrics::MetricsFeature& metricsFeature,
-                              DumpLimits const& limits);
+                              metrics::IRegistry& metrics,
+                              DumpLimitsFeatureOptions const& limits);
 
   ~RocksDBDumpManager();
 
@@ -79,7 +72,7 @@ class RocksDBDumpManager {
               std::string const& user);
 
   // delete all contexts for the given database.
-  void dropDatabase(TRI_vocbase_t& vocbase);
+  void dropDatabase(Database& vocbase);
 
   void garbageCollect(bool force);
 
@@ -116,7 +109,7 @@ class RocksDBDumpManager {
   // destroyed once the last shared_ptr to it goes out of scope.
   MapType _contexts;
 
-  DumpLimits const& _limits;
+  DumpLimitsFeatureOptions const& _limits;
 
   metrics::Gauge<std::uint64_t>& _dumpsOngoing;
   metrics::Gauge<std::uint64_t>& _dumpsMemoryUsage;

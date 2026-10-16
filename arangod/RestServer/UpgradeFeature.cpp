@@ -18,13 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UpgradeFeature.h"
 
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -37,11 +39,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -52,149 +53,55 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(Server& server, int* result,
-                               std::span<const size_t> nonServerFeatures)
-    : ArangodFeature{server, *this},
-      _upgrade(false),
-      _upgradeCheck(true),
-      _upgradeFullCompaction(false),
+UpgradeFeature::UpgradeFeature(
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures)
+    : UpgradeFeature(server, result, nonServerFeatures,
+                     UpgradeFeatureOptions{}) {}
+
+UpgradeFeature::UpgradeFeature(
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures,
+    UpgradeFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<AqlFeaturePhase>();
-}
 
-void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
-  _tasks.push_back(std::move(task));
-}
-
-void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("upgrade", "database.auto-upgrade");
-
-  options
-      ->addOption("--database.auto-upgrade",
-                  "Perform a database upgrade if necessary.",
-                  new BooleanParameter(&_upgrade))
-      .setLongDescription(R"(If you specify this option, then the server
-performs a database upgrade instead of starting normally.
-
-A database upgrade first compares the version number stored in the `VERSION`
-file in the database directory with the current server version.
-
-If the version number found in the database directory is higher than that of the
-server, the server considers this is an unintentional downgrade and warns about
-this. Using the server in these conditions is neither recommended nor supported.
-
-If the version number found in the database directory is lower than that of the
-server, the server checks whether there are any upgrade tasks to perform.
-It then executes all required upgrade tasks and prints the status. If one of the
-upgrade tasks fails, the server exits with an error. Re-starting the server with
-the upgrade option again triggers the upgrade check and execution until the
-problem is fixed.
-
-Whether or not you specify this option, the server always perform a version
-check on startup. If you running the server with a non-matching version number
-in the `VERSION` file, the server refuses to start.)");
-
-  options->addOption(
-      "--database.upgrade-check", "Skip the database upgrade if set to false.",
-      new BooleanParameter(&_upgradeCheck),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption("--database.auto-upgrade-full-compaction",
-                  "Perform a full RocksDB compaction after database upgrade.",
-                  new BooleanParameter(&_upgradeFullCompaction))
-      .setLongDescription(R"(If this option is specified together with 
---database.auto-upgrade, the server will perform a full RocksDB compaction 
-after the database upgrade has completed successfully but before shutting down.
-
-This performs a complete compaction of all column families with both 
-changeLevel and compactBottomMostLevel options enabled, which can help 
-optimize the database files after an upgrade.
-
-The server will exit with an error code if the compaction fails.)");
-}
-
-static int upgradeRestart() {
-  unsetenv(StaticStrings::UpgradeEnvName.c_str());
-  return 0;
-}
-
-void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // The following environment variable is another way to run a database
-  // upgrade. If the environment variable is set, the system does a database
-  // upgrade and then restarts itself without the environment variable.
-  // This is used in hotbackup if a restore to a backup happens which is from
-  // an older database version. The restore process sets the environment
-  // variable at runtime and then does a restore. After the restart (with
-  // the old data) the database upgrade is run and another restart is
-  // happening afterwards with the environment variable being cleared.
-  char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
-  if (upgrade != nullptr) {
-    _upgrade = true;
-    restartAction = new std::function<int()>();
-    *restartAction = upgradeRestart;
-    LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
-        << "Detected environment variable " << StaticStrings::UpgradeEnvName
-        << " with value " << upgrade
-        << " will perform database auto-upgrade and immediately restart.";
-  }
-  if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both '--database.auto-upgrade true' and "
-           "'--database.upgrade-check false'";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
-  }
-
-  if (_upgradeFullCompaction && !_upgrade) {
-    LOG_TOPIC("47699", FATAL, arangodb::Logger::ENGINES)
-        << "cannot specify '--database.auto-upgrade-full-compaction true' "
-           "without '--database.auto-upgrade true'";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
-  }
-
-  if (!_upgrade) {
+  if (!_options.upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
       << "executing upgrade procedure: disabling server features";
 
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
-  if (ServerState::instance()->isCoordinator()) {
-    auto disableDaemonAndSupervisor = [&]() {
-      if constexpr (Server::contains<DaemonFeature>()) {
-        server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
-      }
-      if constexpr (Server::contains<SupervisorFeature>()) {
-        server().forceDisableFeatures(
-            std::array{Server::id<SupervisorFeature>()});
-      }
-    };
-
-    server().forceDisableFeatures(std::array{Server::id<GreetingsFeature>()});
-    disableDaemonAndSupervisor();
-  } else {
-    server().forceDisableFeatures(_nonServerFeatures);
-    server().forceDisableFeatures(std::array{
-        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()});
+  if (!ServerState::instance()->isCoordinator()) {
+    server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
+    TRI_ASSERT(!server.hasFeature<ActionFeature>());
+    if (server.hasFeature<BootstrapFeature>()) {
+      server.forceDisableFeatures<BootstrapFeature>();
+    }
   }
+  // a coordinator has nothing left to disable here: already unregistered
 
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
-
-  DatabaseFeature& database = server().getFeature<DatabaseFeature>();
+  DatabaseFeature& database = server.getFeature<DatabaseFeature>();
   database.enableUpgrade();
 
 #ifdef USE_ENTERPRISE
-  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
-  hotBackupFeature.forceDisable();
+  server.getFeature<HotBackupFeature>().forceDisable();
 #endif
+}
+
+void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
+  _tasks.push_back(std::move(task));
 }
 
 void UpgradeFeature::prepare() {
@@ -206,7 +113,7 @@ void UpgradeFeature::start() {
   auto& init = server().getFeature<InitDatabaseFeature>();
 
   // upgrade the database
-  if (_upgradeCheck) {
+  if (_options.upgradeCheck) {
     if (!ServerState::instance()->isCoordinator()) {
       // no need to run local upgrades in the coordinator
       upgradeLocalDatabase();
@@ -283,7 +190,7 @@ void UpgradeFeature::start() {
   }
 
   // perform full compaction if requested
-  if (_upgrade && _upgradeFullCompaction &&
+  if (_options.upgrade && _options.upgradeFullCompaction &&
       !ServerState::instance()->isCoordinator()) {
     Result res = catchToResult([&]() { return performFullCompaction(); });
     if (res.fail()) {
@@ -298,12 +205,12 @@ void UpgradeFeature::start() {
   }
 
   // and force shutdown
-  if (_upgrade || init.isInitDatabase() || init.restoreAdmin()) {
+  if (_options.upgrade || init.isInitDatabase() || init.restoreAdmin()) {
     if (init.isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
 
-    if (!ServerState::instance()->isCoordinator() || !_upgrade) {
+    if (!ServerState::instance()->isCoordinator() || !_options.upgrade) {
       LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
           << "server will now shut down due to upgrade, database "
              "initialization "
@@ -336,8 +243,8 @@ void UpgradeFeature::upgradeLocalDatabase() {
       continue;
     }
 
-    auto res =
-        methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+    auto res = methods::Upgrade::startup(*vocbase, _options.upgrade,
+                                         ignoreDatafileErrors);
 
     if (res.fail()) {
       std::string_view typeName = "initialization";
@@ -346,7 +253,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade";  // an upgrade failed or is required
 
-        if (!_upgrade) {
+        if (!_options.upgrade) {
           exitCode = TRI_EXIT_UPGRADE_REQUIRED;
           LOG_TOPIC("1c156", ERR, arangodb::Logger::FIXME)
               << "Database '" << vocbase->name() << "' needs upgrade. "
@@ -372,7 +279,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
     }
   }
 
-  if (_upgrade) {
+  if (_options.upgrade) {
     *_result = EXIT_SUCCESS;
     LOG_TOPIC("0de5e", INFO, arangodb::Logger::FIXME)
         << "database upgrade passed";
@@ -387,8 +294,7 @@ Result UpgradeFeature::performFullCompaction() {
   LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
 
   // Perform full compaction with both changeLevel and compactBottomMostLevel
   // enabled This matches the behavior of the /_admin/compact API with

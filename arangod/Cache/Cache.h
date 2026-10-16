@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,8 +25,8 @@
 #include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
-#include "Cache/Common.h"
 #include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"

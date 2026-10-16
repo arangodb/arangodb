@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,7 +28,8 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }

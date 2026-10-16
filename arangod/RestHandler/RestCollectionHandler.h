@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,7 +34,8 @@ class LogicalCollection;
 
 class RestCollectionHandler : public RestVocbaseBaseHandler {
  public:
-  RestCollectionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestCollectionHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*);
 
   char const* name() const final { return "RestCollectionHandler"; }
   RequestLane lane() const final;

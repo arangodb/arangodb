@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -45,6 +44,11 @@ class UserManagerClusterTest : public ::testing::Test {
     auto& auth = _server.getFeature<AuthenticationFeature>();
     // we are testing the proper implementation of the userManager, not the
     // mock.
+    // The MockServer sets up an expectation for the UserManager's shutdown
+    // function to be called when the AuthenticationFeature is stopped. Since we
+    // swap out the userManager here with a real version, we have to call
+    // shutdown manually to fulfill this expectation.
+    auth.userManager()->shutdown();
     auth.setUserManager(
         std::make_unique<auth::UserManagerImpl>(_server.server()));
     auto* um = auth.userManager();
@@ -59,10 +63,10 @@ class UserManagerClusterTest : public ::testing::Test {
   mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
-  auth::UserManager* userManager() {
-    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+  auth::UserManagerImpl* userManager() {
+    auto* um = _server.getFeature<AuthenticationFeature>().userManager();
     TRI_ASSERT(um != nullptr);
-    return um;
+    return static_cast<auth::UserManagerImpl*>(um);
   }
 
   void simulateOneHeartbeat() {

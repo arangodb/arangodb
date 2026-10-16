@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -319,7 +318,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   OperationResult cursor = trx.any(collectionName, options).waitAndGet();
 
   res = trx.finish(cursor.result);

@@ -18,7 +18,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -233,6 +232,29 @@ function multiDimSparseTestSuite() {
 
         const [indexNode] = plan.nodes.filter(n => n.type === 'IndexNode');
         assertTrue(indexNode.filter === undefined, query);
+      }
+    },
+
+    testMdiSparseQueryWithNonComparisonFilter: function () {
+      const c = db._create(collectionName);
+      c.ensureIndex({
+        type: 'mdi',
+        name: indexName,
+        fields: ["x", "y"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
+      c.insert([{_key: "a", x: 1, y: 2, t: "Alpha"}, {_key: "b", x: 3, y: 4}]);
+
+      const queries = [
+        [`FOR doc IN ${collectionName} FILTER IS_STRING(doc.t) RETURN doc._key`, ["a"]],
+        [`FOR doc IN ${collectionName} FILTER NOT doc.t RETURN doc._key`, ["b"]],
+        [`FOR doc IN ${collectionName} FILTER doc.x > 0 && doc.y > 0 && IS_STRING(doc.t) RETURN doc._key`, ["a"]],
+      ];
+
+      for (const [query, expected] of queries) {
+        const res = db._query(query).toArray();
+        assertEqual(expected, res.sort(), query);
       }
     }
   };
@@ -494,6 +516,30 @@ function multiDimPrefixedSparseTestSuite() {
 
         const [indexNode] = plan.nodes.filter(n => n.type === 'IndexNode');
         assertTrue(indexNode.filter === undefined, query);
+      }
+    },
+
+    testMdiPrefixedSparseQueryWithNonComparisonFilter: function () {
+      const c = db._create(collectionName);
+      c.ensureIndex({
+        type: 'mdi-prefixed',
+        name: indexName,
+        fields: ["x", "y"],
+        prefixFields: ["a"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
+      c.insert([{_key: "a", a: 12, x: 1, y: 2, t: "Alpha"}, {_key: "b", a: 12, x: 3, y: 4}]);
+
+      const queries = [
+        [`FOR doc IN ${collectionName} FILTER IS_STRING(doc.t) RETURN doc._key`, ["a"]],
+        [`FOR doc IN ${collectionName} FILTER NOT doc.t RETURN doc._key`, ["b"]],
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x > 0 && doc.y > 0 && IS_STRING(doc.t) RETURN doc._key`, ["a"]],
+      ];
+
+      for (const [query, expected] of queries) {
+        const res = db._query(query).toArray();
+        assertEqual(expected, res.sort(), query);
       }
     }
   };

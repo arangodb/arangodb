@@ -20,10 +20,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
 
+#include <ranges>
 #include <sstream>
 
 #include "debugging.h"
@@ -44,9 +46,7 @@ inline int hex2int(char ch, int errorCode) {
 }
 }  // namespace
 
-namespace arangodb {
-namespace fuerte {
-inline namespace v1 {
+namespace arangodb::fuerte { inline namespace v1 {
 
 ///////////////////////////////////////////////
 // class MessageHeader
@@ -87,14 +87,58 @@ void RequestHeader::acceptType(std::string const& type) {
   addMeta(fu_accept_key, type);
 }
 
+namespace {
+using VersionString = std::string_view;
+using PathRest = std::string_view;
+
+/// split paths /_arango/version/some/other/rest
+/// into version and some/other/rest
+auto extractVersionFromPath(std::string_view path)
+    -> std::optional<std::pair<VersionString, PathRest>> {
+  constexpr std::string_view kPrefix = "/_arango/";
+  if (!path.starts_with(kPrefix)) {
+    return std::nullopt;
+  }
+  auto const tail = path.substr(kPrefix.size());
+  auto const slash = tail.find('/');
+  if (slash == std::string_view::npos) {
+    if (tail.empty()) {
+      return std::nullopt;
+    }
+    return {{tail, PathRest{"/"}}};
+  }
+  if (slash == 0) {
+    return std::nullopt;
+  }
+  return {{tail.substr(0, slash), tail.substr(slash)}};
+}
+}  // namespace
+
 /// @brief analyze path and split into components
-/// strips /_db/<name> prefix, sets db name and fills parameters
+/// strips /_arango/vX (or /_arango/experimental) prefix, then /_db/<name>
+/// prefix; sets apiVersion, database, path, and fills parameters
 void RequestHeader::parseArangoPath(std::string_view p) {
   this->path = extractPathParameters(p, this->parameters);
+  this->apiVersion = std::nullopt;
+
+  // Detect and strip /_arango/vX or /_arango/experimental prefix.
+  // This must come before /_db/<name>.
+  {
+    auto maybe_splitPath = extractVersionFromPath(this->path);
+    if (maybe_splitPath != std::nullopt) {
+      auto& [versionString, pathRest] = *maybe_splitPath;
+      if (auto maybe_v = fuerte::api_version::from(versionString);
+          maybe_v != std::nullopt) {
+        this->apiVersion = *maybe_v;
+        this->path = pathRest;
+      }
+    }
+    // in any other case: leave path unchanged, apiVersion stays nullopt
+  }
 
   // extract database prefix /_db/<name>/
   const char* q = this->path.c_str();
-  if (this->path.size() >= 4 && q[0] == '/' && q[1] == '_' && q[2] == 'd' &&
+  if (this->path.size() >= 5 && q[0] == '/' && q[1] == '_' && q[2] == 'd' &&
       q[3] == 'b' && q[4] == '/') {
     // request contains database name
     q += 5;
@@ -294,6 +338,4 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-}  // namespace v1
-}  // namespace fuerte
-}  // namespace arangodb
+}}  // namespace arangodb::fuerte::v1

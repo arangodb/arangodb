@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 
+#include "Replication2/Mocks/TestReplicatedStateFeature.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
@@ -109,8 +108,8 @@ struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   }
 
   std::shared_ptr<MyHelperLeaderState> leaderState;
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<tests::TestReplicatedStateFeature> feature =
+      std::make_shared<tests::TestReplicatedStateFeature>();
   std::shared_ptr<MockStatePersistorInterface> statePersistor =
       std::make_shared<MockStatePersistorInterface>();
 };

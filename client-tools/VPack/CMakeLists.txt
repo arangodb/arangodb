@@ -1,6 +1,8 @@
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
+  ArangoVPackServer.cpp
   VPackFeature.cpp
+  VPackOptionsProvider.cpp
   arangovpack.cpp
 )
 target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
@@ -12,6 +14,10 @@ target_link_libraries(${BIN_ARANGOVPACK}
   arango_shell
   clienttools_utils
 )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOVPACK} jemalloc)
+endif ()
+
 
 install(
   TARGETS ${BIN_ARANGOVPACK}
@@ -23,9 +29,5 @@ add_dependencies(${BIN_ARANGOVPACK} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGOVPACK} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOVPACK} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGOVPACK} man)

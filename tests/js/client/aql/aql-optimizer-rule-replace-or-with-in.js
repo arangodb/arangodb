@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author 
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -496,6 +494,14 @@ function NewAqlReplaceORWithINTestSuite () {
         "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || 2 == x.val1 || 3 == x.val1 || 4 == x.val2 RETURN x";
 
       isRuleUsed(query, {});
+    },
+
+    testDudDifferentAttributes6: function () {
+      var query =
+        "FOR x IN [ { i: 2, j: 1, k: 1, arr: [ 10, 20, 30, 40 ] } ] " +
+        "FILTER x.arr[(x.i - x.j) - x.k] == 30 || x.arr[x.i - (x.j - x.k)] == 10 RETURN x";
+
+      ruleIsNotUsed(query, {});
     },
 
     testDudDifferentAttributesWithBool1: function () {

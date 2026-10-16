@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 #include "gtest/gtest.h"
 
@@ -66,7 +65,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #ifdef USE_V8
@@ -138,7 +136,7 @@ class IResearchFilterArrayIntervalTest
         testDBInfo(server.server()),
         _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

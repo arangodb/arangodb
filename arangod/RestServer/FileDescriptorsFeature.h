@@ -18,15 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
+#include "RestServer/FileDescriptorsFeatureOptions.h"
 
 #include <chrono>
 #include <mutex>
@@ -34,16 +32,22 @@
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
-class FileDescriptorsFeature : public ArangodFeature {
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
+
+class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(Server& server);
+  FileDescriptorsFeature(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metricsRegistry,
+                         FileDescriptorsFeatureOptions options);
+  FileDescriptorsFeature(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   uint64_t current() const noexcept;
@@ -59,7 +63,7 @@ class FileDescriptorsFeature : public ArangodFeature {
   void countOpenFilesIfNeeded();
 
  private:
-  uint64_t _countDescriptorsInterval;
+  FileDescriptorsFeatureOptions _options;
 
   metrics::Gauge<uint64_t>& _fileDescriptorsCurrent;
   metrics::Gauge<uint64_t>& _fileDescriptorsLimit;

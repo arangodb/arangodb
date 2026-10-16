@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -29,6 +28,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
@@ -39,113 +39,21 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, *this},
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
+    : FoxxFeature(server, FoxxFeatureOptions{}) {}
+
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server,
+                         FoxxFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _queueVersion(0),
-      _localQueueInserts(0),
-      _queuesPollInterval(1.0),
-      _queuesEnabled(true),
-      _startupWaitForSelfHeal(false),
-      _foxxEnabled(true) {
+      _localQueueInserts(0) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }
 
-void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("foxx", "Foxx services");
-
-  options->addOldOption("server.foxx-queues", "foxx.queues");
-  options->addOldOption("server.foxx-queues-poll-interval",
-                        "foxx.queues-poll-interval");
-
-  options
-      ->addOption("--foxx.queues", "Enable or disable Foxx queues.",
-                  new BooleanParameter(&_queuesEnabled),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(If set to `true`, the Foxx queues are available
-and jobs in the queues are executed asynchronously.
-
-If set to `false`, the queue manager is disabled and any jobs are prevented from
-being processed, which may reduce CPU load a bit.)");
-
-  options
-      ->addOption("--foxx.queues-poll-interval",
-                  "The poll interval for the Foxx queue manager (in seconds)",
-                  new DoubleParameter(&_queuesPollInterval),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(Lower values lead to more immediate and more
-frequent Foxx queue job execution, but make the queue thread wake up and query
-the queues more often. If set to a low value, the queue thread might cause
-CPU load.
-
-If you don't use Foxx queues much, then you may increase this value to make the
-queues thread wake up less.)");
-
-  options
-      ->addOption("--foxx.force-update-on-startup",
-                  "Ensure that all Foxx services are synchronized before "
-                  "completing the startup sequence.",
-                  new BooleanParameter(&_startupWaitForSelfHeal),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(If set to `true`, all Foxx services in all
-databases are synchronized between multiple Coordinators during the startup
-sequence. This ensures that all Foxx services are up-to-date when a Coordinator
-reports itself as ready.
-
-In case the option is set to `false` (i.e. no waiting), the Coordinator
-completes the startup sequence faster, and the Foxx services are propagated
-lazily. Until the initialization procedure has completed for the local Foxx
-apps, any request to a Foxx app is responded to with an HTTP 500 error and a
-message `waiting for initialization of Foxx services in this database`. This can
-cause an unavailability window for Foxx services on Coordinator startup for the
-initial requests to Foxx apps until the app propagation has completed.
-
-If you don't use Foxx, you should set this option to `false` to benefit from a
-faster Coordinator startup. Deployments relying on Foxx apps being available as
-soon as a Coordinator is integrated or responding should set this option to
-`true`.
-
-The option only has an effect for cluster setups. On single servers all
-Foxx apps are available from the very beginning.
-
-**Note**: ArangoDB 3.8 changes the default value to `false` for this option.
-In previous versions, this option had a default value of `true`.)");
-
-  options
-      ->addOption("--foxx.enable", "Enable Foxx.",
-                  new BooleanParameter(&_foxxEnabled),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31005)
-      .setLongDescription(R"(If set to `false`, access to any custom Foxx 
-services in the deployment will be forbidden. Access to ArangoDB's built-in
-web interface will still be possible though.
-
-**Note**: when setting this option to `false`, the management API for Foxx
-services will automatically be disabled as well. This is the same as manually
-setting the startup option `--foxx.api false`.)");
-}
-
-void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // use a minimum for the interval
-  if (_queuesPollInterval < 0.1) {
-    _queuesPollInterval = 0.1;
-  }
-}
-
 void FoxxFeature::prepare() {
-  if (!_foxxEnabled) {
+  if (!_options.foxxEnabled) {
     auto& ssf = server().getFeature<ServerSecurityFeature>();
     if (!ssf.isFoxxApiDisabled()) {
       ssf.disableFoxxApi();
@@ -158,17 +66,17 @@ void FoxxFeature::prepare() {
 }
 
 double FoxxFeature::pollInterval() const noexcept {
-  if (!_queuesEnabled) {
+  if (!_options.queuesEnabled) {
     return -1.0;
   }
-  return _queuesPollInterval;
+  return _options.queuesPollInterval;
 }
 
 bool FoxxFeature::startupWaitForSelfHeal() const noexcept {
-  return _startupWaitForSelfHeal;
+  return _options.startupWaitForSelfHeal;
 }
 
-bool FoxxFeature::foxxEnabled() const noexcept { return _foxxEnabled; }
+bool FoxxFeature::foxxEnabled() const noexcept { return _options.foxxEnabled; }
 
 uint64_t FoxxFeature::queueVersion() const noexcept {
   std::shared_lock lock(_queueLock);

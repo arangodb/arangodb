@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -34,8 +34,6 @@
 #include "Metrics/CollectMode.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/Parse.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb::metrics {
@@ -47,7 +45,8 @@ namespace arangodb::metrics {
 ///
 /// See IResearchLinkCoordinator as an example
 ////////////////////////////////////////////////////////////////////////////////
-class ClusterMetricsFeature final : public ArangodFeature {
+class ClusterMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterMetrics"; }
 
@@ -83,10 +82,11 @@ class ClusterMetricsFeature final : public ArangodFeature {
     LeaderResponse packed;
     Metrics metrics;
   };
-  explicit ClusterMetricsFeature(Server& server);
+  ClusterMetricsFeature(application_features::ApplicationServer& server,
+                        ClusterMetricsOptions options);
+  explicit ClusterMetricsFeature(
+      application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;

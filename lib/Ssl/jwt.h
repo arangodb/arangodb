@@ -1,0 +1,64 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include <chrono>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
+namespace rest::SslInterface::jwt {
+
+/// Generate JWT token as used by internal arangodb communication
+std::string generateInternalToken(std::string_view secret, std::string_view id);
+
+/// Generate JWT token as used for 'users' in arangodb
+std::string generateUserToken(
+    std::string_view secret, std::string_view username,
+    std::chrono::seconds validFor = std::chrono::seconds{0});
+
+std::string generateRawJwt(std::string_view secret, velocypack::Slice body);
+
+/**
+ * Returns the "exp" claim of a JWT in seconds since epoch
+ *
+ * Returns nullopt for tokens without an expiry (such as internal superuser
+ * tokens) and for malformed tokens.
+ */
+std::optional<double> extractExpiration(std::string_view token);
+
+/**
+ * Returns the "preferred_username" claim of a JWT
+ *
+ * Returns nullopt for tokens without a user (such as internal superuser
+ * tokens) and for malformed tokens.
+ */
+std::optional<std::string> extractPreferredUsername(std::string_view token);
+
+}  // namespace rest::SslInterface::jwt
+}  // namespace arangodb

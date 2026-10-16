@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
@@ -28,6 +26,7 @@
 #include "Basics/DownCast.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchView.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -38,7 +37,8 @@
 IResearchQueryTest::IResearchQueryTest() : server{false} {
   arangodb::tests::init(true);
 
-  server.addFeature<arangodb::FlushFeature>(false);
+  auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+  server.addFeature<arangodb::FlushFeature>(false, metrics);
   server.startFeatures();
 
   auto& analyzers =
@@ -50,7 +50,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
   dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);

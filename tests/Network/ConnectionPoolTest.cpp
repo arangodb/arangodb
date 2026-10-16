@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -33,6 +32,7 @@
 #include <fuerte/requests.h>
 
 #include <atomic>
+#include <format>
 
 using namespace arangodb;
 using namespace arangodb::network;
@@ -69,7 +69,7 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
   }
 
   static constexpr std::string getActiveEndpoint() {
-    return fmt::format("tcp://127.0.0.1:{}", kPort);
+    return std::format("tcp://127.0.0.1:{}", kPort);
   }
 
   static constexpr std::string getInactiveEndpoint1() {

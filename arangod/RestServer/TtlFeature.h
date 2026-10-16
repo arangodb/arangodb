@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/TtlProperties.h"
+
 #include <mutex>
 
 namespace arangodb {
@@ -55,25 +56,15 @@ struct TtlStatistics {
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 };
 
-struct TtlProperties {
-  static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
-  uint64_t frequency = 30 * 1000;                     // milliseconds
-  uint64_t maxTotalRemoves = 1000000;
-  uint64_t maxCollectionRemoves = 100000;
-
-  void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
-  Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
-};
-
-class TtlFeature final : public ArangodFeature {
+class TtlFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Ttl"; }
 
-  explicit TtlFeature(Server& server);
+  explicit TtlFeature(application_features::ApplicationServer& server);
+  TtlFeature(application_features::ApplicationServer& server,
+             TtlProperties properties);
   ~TtlFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void beginShutdown() override final;
   void start() override final;
   void stop() override final;
@@ -104,7 +95,6 @@ class TtlFeature final : public ArangodFeature {
  private:
   void shutdownThread() noexcept;
 
- private:
   /// @brief protects _properties and _active
   mutable std::mutex _propertiesMutex;
   TtlProperties _properties;

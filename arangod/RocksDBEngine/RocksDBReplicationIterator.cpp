@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationIterator.h"
@@ -33,7 +32,6 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 

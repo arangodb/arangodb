@@ -18,26 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterInfo.h"
+
+#include <frozen/unordered_map.h>
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/Supervision.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryPlanCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -61,26 +60,27 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/Logger.h"
-#include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/MetricsFeature.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -281,7 +281,7 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       << "Supervision health is:" << supervisionHealth.toString();
   if (serversKnownSlice.isObject()) {
     for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      auto status = ServerHealth::kUnclear;
+      auto status = ServerHealth::kFailed;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
         auto serverKey = supervisionHealth.get(serverId);
@@ -342,7 +342,9 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = methods::Indexes::drop(*coll, builder.slice()).waitAndGet();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-          // we should have internal superuser
+          // this task runs under the superuser ExecContext captured at
+          // enqueue time from the SyncerThread (COR-821), so the drop
+          // cannot fail with a permission error
           TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
           LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
               << "Failed to drop dangling link " << id
@@ -381,10 +383,9 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<ArangodServer> {
+class ClusterInfo::SyncerThread final : public Thread {
  public:
-  explicit SyncerThread(Server&, std::string const& section,
+  explicit SyncerThread(std::string const& section,
                         std::function<consensus::index_t()> const&,
                         AgencyCache&);
   ~SyncerThread() override;
@@ -435,12 +436,51 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 // Shards metric is cluster-specific (databases and collections metrics are
 // declared in DatabaseFeature.h)
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
-              "Global number of shards");
+              "Number of leader shards");  // Number of Leader shards
 
-ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+// New coordinator-level shard metrics
+DECLARE_GAUGE(
+    arangodb_metadata_total_number_of_shards, std::uint64_t,
+    "Total number of shards (viewed by coordinator)");  // Leaders + Followers
+DECLARE_GAUGE(
+    arangodb_metadata_number_out_of_sync_shards, std::uint64_t,
+    "Number of shards out-of-sync between Plan and Current");  // Replication
+                                                               // Factor diff
+                                                               // then the
+                                                               // Number of
+                                                               // Followers
+DECLARE_GAUGE(
+    arangodb_metadata_number_not_replicated_shards, std::uint64_t,
+    "Number of non replicated shards");  // Number of shards replication factor
+                                         // bigger than 1 and just 1 follower
+DECLARE_GAUGE(
+    arangodb_metadata_number_follower_shards, std::uint64_t,
+    "Total number of follower replicas observed in Current");  // Number of
+                                                               // Followers =
+                                                               // Total Number
+                                                               // of Shards -
+                                                               // Leaders
+DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number,
+              std::uint64_t,
+              "Number of follower shards that are out of sync with their "
+              "leader");  // No leaders have been elected yet or they are
+                          // catching up
+
+/// Gauge-style metric (one series per server via target_server /
+/// target_shortname). Values: 0=FAILED, 1=BAD, 2=GOOD.
+/// Updated from Supervision/Health via ClusterInfo::loadServers on
+/// Coordinators.
+DECLARE_GAUGE(
+    arangodb_server_health, std::uint64_t,
+    "Cluster server health status (0=FAILED, 1=BAD, 2=GOOD). "
+    "Labeled by target_server (unique id), target_shortname."
+    "Exporter identity is provided by the global shortname/role labels.");
+
+ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+                         AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
-                         metrics::MetricsFeature& metrics)
+                         metrics::IRegistry& metricsRegistry)
     : _server(server),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _agency(server),
@@ -448,9 +488,10 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
-      _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
-      _lcTimer(metrics.add(arangodb_load_current_runtime{})),
+      _memoryUsage(
+          metricsRegistry.add(arangodb_internal_cluster_info_memory_usage{})),
+      _lpTimer(metricsRegistry.add(arangodb_load_plan_runtime{})),
+      _lcTimer(metricsRegistry.add(arangodb_load_current_runtime{})),
       _metadataMetrics(std::nullopt),
       _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
@@ -510,7 +551,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
 #endif
 
   if (ServerState::instance()->isCoordinator()) {
-    _metadataMetrics.emplace(metrics);
+    _metadataMetrics.emplace(metricsRegistry);
   }
 }
 
@@ -519,6 +560,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {
+  clearServerHealthMetrics();
   _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
   _planMemoryUsage = 0;
   _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
@@ -843,7 +885,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
       // the collection caching optimization
       bool const hasViewLink =
           std::any_of(indexes.begin(), indexes.end(), [](auto const& index) {
-            return (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+            return (index->type() == IndexType::IResearchLink);
           });
       if (hasViewLink) {
         // we do have a view. set hash to 0, which will disable the caching
@@ -853,7 +895,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
           TRI_ASSERT(ServerState::instance()->isCoordinator());
           for (auto const& idx : indexes) {
             TRI_ASSERT(idx);
-            if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            if (idx->type() == IndexType::IResearchLink) {
               auto& coordLink =
                   basics::downCast<iresearch::IResearchLinkCoordinator const>(
                       *idx);
@@ -1955,7 +1997,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planProt.isValid = true;
   }
 
-  updateMetadataMetrics();
+  updateMetadataMetricsFromPlan();
 
   _clusterFeature.addDirty(changeSet.dbs);
 
@@ -2220,36 +2262,48 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
   }
 
   // Now set the new value:
-  WRITE_LOCKER(writeLocker, _currentProt.lock);
+  {
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
 
-  _current.swap(newCurrent);
-  std::uint64_t memoryUsage = 0;
-  for (auto const& it : _current) {
-    TRI_ASSERT(it.second != nullptr);
-    memoryUsage += it.second->slice().byteSize();
+    _current.swap(newCurrent);
+    std::uint64_t memoryUsage = 0;
+    for (auto const& it : _current) {
+      TRI_ASSERT(it.second != nullptr);
+      memoryUsage += it.second->slice().byteSize();
+    }
+    _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+    _resourceMonitor.increaseMemoryUsage(memoryUsage);
+    _currentMemoryUsage = memoryUsage;
+
+    _currentVersion = changeSet.version;
+    _currentIndex = changeSet.ind;
+    LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
+        << "Updating current in ClusterInfo: version=" << changeSet.version
+        << " index=" << _currentIndex;
+
+    if (swapDatabases) {
+      _currentDatabases.swap(newDatabases);
+    }
+
+    if (swapCollections) {
+      LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
+          << "Have loaded new collections current cache!";
+      _currentCollections.swap(newCollections);
+      _shardsToCurrentServers.swap(newShardsToCurrentServers);
+    }
+
+    _currentProt.isValid = true;
   }
-  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
-  _resourceMonitor.increaseMemoryUsage(memoryUsage);
-  _currentMemoryUsage = memoryUsage;
 
-  _currentVersion = changeSet.version;
-  _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
-      << "Updating current in ClusterInfo: version=" << changeSet.version
-      << " index=" << _currentIndex;
-
-  if (swapDatabases) {
-    _currentDatabases.swap(newDatabases);
+  // Update coordinator-specific shard metrics computed from Current.
+  // Do not hold `_currentProt.lock` here to avoid acquiring `_planProt.lock`
+  // while already holding `_currentProt.lock`, which would invert the
+  // established Plan->Current lock ordering used elsewhere in this file.
+  // The helper acquires the necessary locks internally in the correct order.
+  if (_metadataMetrics.has_value()) {
+    updateCoordinatorCurrentShardMetrics();
   }
 
-  if (swapCollections) {
-    LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
-        << "Have loaded new collections current cache!";
-    _currentCollections.swap(newCollections);
-    _shardsToCurrentServers.swap(newShardsToCurrentServers);
-  }
-
-  _currentProt.isValid = true;
   _clusterFeature.addDirty(changeSet.dbs);
 
   {
@@ -2780,7 +2834,11 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
 /// This should only be called on coordinators, and should be called while
 /// holding the _planProt write lock (or after data has been swapped in
 /// loadPlan)
-void ClusterInfo::updateMetadataMetrics() {
+void ClusterInfo::updateMetadataMetricsFromPlan() {
+  // Caller must hold _planProt.lock (at least for read) so that
+  // _plannedDatabases, _plannedCollections, and _shards are stable.
+  TRI_ASSERT(_planProt.lock.isLocked());
+
   // Only update on coordinators
   if (!_metadataMetrics.has_value()) {
     return;
@@ -3298,12 +3356,15 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
                                    AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
+  AgencyPrecondition databaseNotBuilding(
+      "Plan/Databases/" + name + "/" + StaticStrings::AttrIsBuilding,
+      AgencyPrecondition::Type::EMPTY, true);
   AgencyWriteTransaction trans(
       {delPlanDatabases, delTargetCollections, delTargetCollectionNames,
        delPlanCollections, delTargetReplicatedLogs, delPlanReplicatedLogs,
        delTargetCollectionsGroup, delPlanCollectionsGroups, delPlanViews,
        delPlanAnalyzers, incrementVersion},
-      databaseExists);
+      {databaseExists, databaseNotBuilding});
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4363,6 +4424,7 @@ void ClusterInfo::loadServers() {
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
     rebootTracker().updateServerState(_serversKnown);
+    updateServerHealthMetrics(_serversKnown);
     return;
   }
 
@@ -4378,6 +4440,107 @@ void ClusterInfo::loadServers() {
 ServersKnown ClusterInfo::rebootIds() const {
   READ_LOCKER(readLocker, _serversProt.lock);
   return _serversKnown;
+}
+
+namespace {
+
+[[nodiscard]] arangodb_server_health makeServerHealthBuilder(
+    ServerID const& serverId, std::string_view targetShortName) {
+  arangodb_server_health builder;
+  // Reserve for variable label values plus ~80 bytes of fixed label overhead
+  // (label names and separators value) to minimize reallocations.
+  builder.reserveSpaceForLabels(serverId.size() + targetShortName.size() + 80);
+  builder.addLabel("target_server", serverId);
+  builder.addLabel("target_shortname", targetShortName);
+  return builder;
+}
+
+}  // namespace
+
+void ClusterInfo::updateServerHealthMetrics(ServersKnown const& serversKnown) {
+  // Cluster-wide health view is exported from Coordinators (the usual
+  // Prometheus scrape targets). Agency Supervision remains the source of truth;
+  // ClusterInfo already mirrors Supervision/Health into ServersKnown.
+  //
+  // Agents intentionally do not export this metric: AgencyCache / ClusterInfo
+  // server-list sync are not started for ROLE_AGENT, so ServersKnown is not
+  // kept up to date on Agents. Leading Agents already hold Supervision/Health
+  // in the agency snapshot, but wiring a parallel export path would duplicate
+  // ClusterInfo and is not needed for the normal Coordinator scrape model.
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+
+  // Target/MapUniqueToShortID is stored as ShortName -> ServerID.
+  containers::FlatHashMap<ServerID, std::string> idToShortName;
+  {
+    READ_LOCKER(readLocker, _serversProt.lock);
+    idToShortName.reserve(_serverAliases.size());
+    for (auto const& [shortName, id] : _serverAliases) {
+      idToShortName.try_emplace(id, shortName);
+    }
+  }
+
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      updatedMetrics;
+  updatedMetrics.reserve(serversKnown.size());
+
+  // Iterate every ServersKnown entry — Coordinators and DBServers alike.
+  // There is no role-based filter; disappeared servers are removed below.
+  for (auto const& [serverId, state] : serversKnown) {
+    std::string_view targetShortName;
+    if (auto alias = idToShortName.find(serverId);
+        alias != idToShortName.end()) {
+      targetShortName = alias->second;
+    }
+
+    auto builder = makeServerHealthBuilder(serverId, targetShortName);
+    auto it = _serverHealthMetrics.find(serverId);
+    metrics::Gauge<std::uint64_t>* gauge = nullptr;
+    if (it != _serverHealthMetrics.end()) {
+      gauge = it->second;
+      _serverHealthMetrics.erase(it);
+      // ShortName may appear (or change) after the first registration; recreate
+      // the series when labels diverge so Prometheus identity stays correct.
+      if (gauge->labels() != builder.labels()) {
+        metricsFeature.remove(*gauge);
+        gauge = &metricsFeature.ensureMetric(std::move(builder));
+      }
+    } else {
+      gauge = &metricsFeature.ensureMetric(std::move(builder));
+    }
+    TRI_ASSERT(gauge != nullptr);
+    gauge->store(serverHealthMetricValue(state.status),
+                 std::memory_order_relaxed);
+    updatedMetrics.emplace(serverId, gauge);
+  }
+
+  // Drop series for servers that disappeared from ServersKnown.
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics = std::move(updatedMetrics);
+}
+
+void ClusterInfo::clearServerHealthMetrics() {
+  if (_serverHealthMetrics.empty()) {
+    return;
+  }
+  if (!_server.hasFeature<metrics::MetricsFeature>()) {
+    _serverHealthMetrics.clear();
+    return;
+  }
+  auto& metricsFeature = _server.getFeature<metrics::MetricsFeature>();
+  for (auto const& [serverId, gauge] : _serverHealthMetrics) {
+    TRI_ASSERT(gauge != nullptr);
+    metricsFeature.remove(*gauge);
+  }
+  _serverHealthMetrics.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -4871,7 +5034,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
         return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                      fmt::format("Could not find servers of shard {} in "
+                      std::format("Could not find servers of shard {} in "
                                   "Current version {} (raft index {})",
                                   shardId, _currentVersion, _currentIndex)};
       }
@@ -4912,14 +5075,14 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       readLocker.unlock();
       if (!database.has_value()) {
         co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                   fmt::format("Could not find database for shard {} in Plan "
+                   std::format("Could not find database for shard {} in Plan "
                                "version {} (raft index {})",
                                shardId, planVersion, planIndex)};
       }
       if (collection.empty()) {
         co_return {
             TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            fmt::format("Could not find collection for shard {} in Plan "
+            std::format("Could not find collection for shard {} in Plan "
                         "version {} (raft index {}) (database is {})",
                         shardId, planVersion, planIndex, database.value())};
       }
@@ -4942,7 +5105,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                 if (servers.isNone()) {
                   return std::make_tuple(
                       Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                             fmt::format(
+                             std::format(
                                  "Database or collection ({}/{}) gone in "
                                  "Current "
                                  "while waiting for leader of shard {} (raft "
@@ -5275,6 +5438,14 @@ void ClusterInfo::setServerAdvertisedEndpoints(
   for (auto const& [k, v] : advertisedEndpoints) {
     _serverAdvertisedEndpoints.emplace(k, v);
   }
+}
+
+void ClusterInfo::setServersKnown(ServersKnown serversKnown) {
+  {
+    WRITE_LOCKER(writeLocker, _serversProt.lock);
+    _serversKnown = std::move(serversKnown);
+  }
+  updateServerHealthMetrics(_serversKnown);
 }
 
 void ClusterInfo::setShardToShardGroupLeader(
@@ -5866,7 +6037,9 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-ArangodServer& ClusterInfo::server() const { return _server; }
+application_features::ApplicationServer& ClusterInfo::server() const {
+  return _server;
+}
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
   return _agencyCallbackRegistry;
@@ -5874,9 +6047,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
-      _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
+      "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current",
+      "Current",
       [this] {
         TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
           using namespace std::chrono_literals;
@@ -5950,9 +6123,10 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    Server& server, std::string const& section,
-    std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread<Server>(server, section + "Syncer"),
+    std::string const& section, std::function<consensus::index_t()> const& f,
+    AgencyCache& agencyCache)
+    // needs superuser permissions for loadPlan: it may create databases etc.
+    : Thread(section + "Syncer", ExecContext::superuserAsShared()),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}
@@ -6310,15 +6484,145 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
   return it->second;
 }
 
-ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
-    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+ClusterInfo::MetadataMetrics::MetadataMetrics(
+    metrics::IRegistry& metricsRegistry)
+    : numberOfShards(metricsRegistry.add(arangodb_metadata_number_of_shards{})),
       numberOfCollections(
-          metrics.add(arangodb_metadata_number_of_collections{})),
-      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+          metricsRegistry.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(
+          metricsRegistry.add(arangodb_metadata_number_of_databases{})),
+      totalNumberOfShards(
+          metricsRegistry.add(arangodb_metadata_total_number_of_shards{})),
+      numberOutOfSyncShards(
+          metricsRegistry.add(arangodb_metadata_number_out_of_sync_shards{})),
+      numberNotReplicatedShards(metricsRegistry.add(
+          arangodb_metadata_number_not_replicated_shards{})),
+      numberFollowerShards(
+          metricsRegistry.add(arangodb_metadata_number_follower_shards{})),
+      shardFollowersOutOfSync(metricsRegistry.add(
+          arangodb_metadata_shard_followers_out_of_sync_number{})) {
   // TODO We should expose these on a single server as well, but that can't
   //      happen in the ClusterInfo.
   TRI_ASSERT(ServerState::instance()->isCoordinator())
       << "ClusterInfo::MetadataMetrics should be exposed only on a coordinator";
+}
+
+// Update coordinator-level current metrics.
+// This routine acquires read-locks on _planProt.lock and _currentProt.lock
+// in the correct order (Plan->Current) to maintain consistent lock ordering
+// with the rest of the codebase. It compares Plan (expected state) with
+// Current (actual state) to compute shard metrics.
+void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t totalShards = 0;
+  uint64_t totalFollowers = 0;  // Total follower count in Current
+  uint64_t outOfSync = 0;       // Shards where Plan != Current (set difference)
+  uint64_t notReplicated =
+      0;  // Shards with only leader in Current (but plan expects more)
+  uint64_t followersOutOfSync =
+      0;  // Count of individual planned followers missing from Current
+
+  // Acquire locks in the correct order (Plan->Current) to maintain consistent
+  // lock ordering with the rest of the codebase.
+  READ_LOCKER(planLocker, _planProt.lock);
+  READ_LOCKER(currentLocker, _currentProt.lock);
+
+  // Iterate over Plan shards (source of truth) and compare to Current. This
+  // avoids counting stale entries that may remain in Current for deleted
+  // shards/collections.
+  for (auto const& [shardId, plannedServersPtr] : _shardsToPlanServers) {
+    auto const plannedN = (plannedServersPtr ? plannedServersPtr->size() : 0);
+    totalShards += plannedN;
+
+    // Lookup current
+    auto cit = _shardsToCurrentServers.find(shardId);
+    auto const& serversPtr =
+        (cit != _shardsToCurrentServers.end() ? cit->second : nullptr);
+
+    // Handle case where shard exists in Plan but not yet in Current
+    // (e.g., during collection creation) or has been removed from Current
+    // (e.g., during deletion). This can legitimately happen during transitions.
+    if (!serversPtr || serversPtr->empty()) {
+      // Shard is in Plan but not in Current - treat as out of sync
+      ++outOfSync;
+      // Count all planned followers as out of sync since Current doesn't exist
+      if (plannedN > 1) {
+        followersOutOfSync += (plannedN - 1);
+      }
+      // If plan expects replication but Current is empty, it's not replicated
+      if (plannedN > 1) {
+        ++notReplicated;
+      }
+      continue;  // Skip to next shard
+    }
+
+    size_t currentN = serversPtr->size();
+
+    // Count total followers in Current
+    if (currentN > 0) {
+      totalFollowers += (currentN - 1);
+    }
+
+    // Build current servers set for lookups
+    // Note: serversPtr is guaranteed to be non-null and non-empty here
+    // due to the check above
+    absl::flat_hash_set<std::string_view> curSet;
+    for (auto const& s : *serversPtr) {
+      curSet.insert(s);
+    }
+
+    // Build planned servers set for comparison
+    absl::flat_hash_set<std::string_view> planSet;
+    if (plannedServersPtr) {
+      for (auto const& s : *plannedServersPtr) {
+        planSet.insert(s);
+      }
+    }
+
+    // Check if shard is out of sync (any set difference)
+    bool shardOutOfSync = false;
+    if (plannedN == 0 || currentN == 0) {
+      shardOutOfSync = true;
+    } else {
+      // Use set comparison to detect any difference (missing or extra servers)
+      shardOutOfSync = (planSet != curSet);
+    }
+
+    if (shardOutOfSync) {
+      ++outOfSync;
+    }
+
+    // Count followers out of sync: planned followers (index 1+) missing from
+    // Current
+    if (plannedN > 1) {
+      for (size_t i = 1; i < plannedN; ++i) {
+        auto const& plannedFollower = plannedServersPtr->at(i);
+        if (curSet.find(plannedFollower) == curSet.end()) {
+          ++followersOutOfSync;  // This individual follower is not in Current
+        }
+      }
+    }
+
+    // Not replicated: plan expects replicas but only leader (or none) in
+    // Current
+    if (plannedN > 1 && currentN <= 1) {
+      ++notReplicated;
+    }
+  }
+
+  _metadataMetrics->totalNumberOfShards.store(totalShards,
+                                              std::memory_order_relaxed);
+  _metadataMetrics->numberFollowerShards.store(totalFollowers,
+                                               std::memory_order_relaxed);
+  _metadataMetrics->numberOutOfSyncShards.store(outOfSync,
+                                                std::memory_order_relaxed);
+  _metadataMetrics->numberNotReplicatedShards.store(notReplicated,
+                                                    std::memory_order_relaxed);
+  _metadataMetrics->shardFollowersOutOfSync.store(followersOutOfSync,
+                                                  std::memory_order_relaxed);
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

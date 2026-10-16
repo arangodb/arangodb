@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,32 +26,33 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Result.h"
+#include "Metrics/Fwd.h"
+#include "V8/JSLoader.h"
+#include "V8Server/GlobalExecutorMethods.h"
+#include "V8Server/V8DealerFeatureOptions.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 #include <atomic>
 #include <string>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Result.h"
-#include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
-#include "Utils/DatabaseGuard.h"
-#include "V8/JSLoader.h"
-#include "V8Server/GlobalExecutorMethods.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class JavaScriptSecurityContext;
 class Thread;
 class V8Executor;
+namespace options {
+class ProgramOptions;
+}
 
-class V8DealerFeature final : public ArangodFeature {
+class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   struct Statistics {
     size_t available;
@@ -73,10 +73,12 @@ class V8DealerFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
-  V8DealerFeature(Server& server, metrics::MetricsFeature& metrics);
+  V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::IRegistry& metricsRegistry,
+                  V8DealerFeatureOptions options);
+  V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void unprepare() final;
@@ -84,7 +86,7 @@ class V8DealerFeature final : public ArangodFeature {
   void verifyAppPaths();
   ErrorCode createDatabase(std::string_view name, std::string_view id,
                            bool removeExisting);
-  void cleanupDatabase(TRI_vocbase_t& database);
+  void cleanupDatabase(Database& database);
 
  private:
   ErrorCode createApplicationDirectory(std::string const& name,
@@ -93,42 +95,22 @@ class V8DealerFeature final : public ArangodFeature {
   ErrorCode createBaseApplicationDirectory(std::string const& appPath,
                                            std::string const& type);
 
-  double _gcFrequency;
-  uint64_t _gcInterval;
-  double _maxExecutorAge;
-  std::string _appPath;
-  std::string _startupDirectory;
+  V8DealerFeatureOptions _options;
   std::string _nodeModulesDirectory;
-  std::vector<std::string> _moduleDirectories;
-  // maximum number of executors to create
-  uint64_t _nrMaxExecutors;
-  // minimum number of executors to keep
-  uint64_t _nrMinExecutors;
   // number of executors currently in creation
   uint64_t _nrInflightExecutors;
-  // maximum number of V8 context invocations
-  uint64_t _maxExecutorInvocations;
-
-  // copy JavaScript files into database directory on startup
-  bool _copyInstallation;
-  // enable /_admin/execute API
-  bool _allowAdminExecute;
-  // allow JavaScript transactions?
-  bool _allowJavaScriptTransactions;
-  // allow JavaScript user-defined functions?
-  bool _allowJavaScriptUdfs;
-  // allow JavaScript tasks (tasks module)?
-  bool _allowJavaScriptTasks;
-  // enable JavaScript globally
-  bool _enableJS;
 
  public:
-  bool allowAdminExecute() const noexcept { return _allowAdminExecute; }
+  bool allowAdminExecute() const noexcept { return _options.allowAdminExecute; }
   bool allowJavaScriptTransactions() const noexcept {
-    return _allowJavaScriptTransactions;
+    return _options.allowJavaScriptTransactions;
   }
-  bool allowJavaScriptUdfs() const noexcept { return _allowJavaScriptUdfs; }
-  bool allowJavaScriptTasks() const noexcept { return _allowJavaScriptTasks; }
+  bool allowJavaScriptUdfs() const noexcept {
+    return _options.allowJavaScriptUdfs;
+  }
+  bool allowJavaScriptTasks() const noexcept {
+    return _options.allowJavaScriptTasks;
+  }
 
   bool addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
   void collectGarbage();
@@ -137,24 +119,24 @@ class V8DealerFeature final : public ArangodFeature {
   /// if the builder pointer is not nullptr, then
   /// the Javascript result(s) are returned as VPack in the builder,
   /// the builder is not cleared and thus should be empty before the call.
-  void loadJavaScriptFileInAllExecutors(TRI_vocbase_t*, std::string const& file,
+  void loadJavaScriptFileInAllExecutors(Database*, std::string const& file,
                                         velocypack::Builder* builder);
 
   /// @brief enter a V8 executor
   /// currently returns a nullptr if no executor can be acquired in time
-  V8Executor* enterExecutor(TRI_vocbase_t*,
+  V8Executor* enterExecutor(Database*,
                             JavaScriptSecurityContext const& securityContext);
   void exitExecutor(V8Executor* executor);
 
   void setMinimumExecutors(size_t nr) {
-    if (nr > _nrMinExecutors) {
-      _nrMinExecutors = nr;
+    if (nr > _options.nrMinExecutors) {
+      _options.nrMinExecutors = nr;
     }
   }
 
-  uint64_t maximumExecutors() const noexcept { return _nrMaxExecutors; }
+  uint64_t maximumExecutors() const noexcept { return _options.nrMaxExecutors; }
 
-  void setMaximumExecutors(size_t nr) noexcept { _nrMaxExecutors = nr; }
+  void setMaximumExecutors(size_t nr) noexcept { _options.nrMaxExecutors = nr; }
 
   Statistics getCurrentExecutorStatistics();
   std::vector<DetailedExecutorStatistics> getCurrentExecutorDetails();
@@ -167,7 +149,7 @@ class V8DealerFeature final : public ArangodFeature {
     _definedDoubles[name] = value;
   }
 
-  std::string const& appPath() const { return _appPath; }
+  std::string const& appPath() const { return _options.appPath; }
 
   static bool javascriptRequestedViaOptions(
       std::shared_ptr<options::ProgramOptions> const& options);
@@ -177,16 +159,16 @@ class V8DealerFeature final : public ArangodFeature {
   void copyInstallationFiles();
   void startGarbageCollection();
   std::unique_ptr<V8Executor> addExecutor();
-  std::unique_ptr<V8Executor> buildExecutor(TRI_vocbase_t* vocbase, size_t id);
+  std::unique_ptr<V8Executor> buildExecutor(Database* vocbase, size_t id);
   V8Executor* pickFreeExecutorForGc();
   void shutdownExecutor(V8Executor* executor);
   void unblockDynamicExecutorCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Executor* executor,
                                   velocypack::Builder* builder);
-  void loadJavaScriptFileInExecutor(TRI_vocbase_t*, std::string const& file,
+  void loadJavaScriptFileInExecutor(Database*, std::string const& file,
                                     V8Executor* executor,
                                     velocypack::Builder* builder);
-  void prepareLockedExecutor(TRI_vocbase_t*, V8Executor* executor,
+  void prepareLockedExecutor(Database*, V8Executor* executor,
                              JavaScriptSecurityContext const&);
   void exitExecutorInternal(V8Executor* executor);
   void cleanupLockedExecutor(V8Executor* executor);
@@ -224,7 +206,7 @@ class V8DealerFeature final : public ArangodFeature {
 /// throws an exception when no executor can be provided
 class V8ExecutorGuard {
  public:
-  explicit V8ExecutorGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  explicit V8ExecutorGuard(Database*, JavaScriptSecurityContext const&);
   V8ExecutorGuard(V8ExecutorGuard const&) = delete;
   V8ExecutorGuard& operator=(V8ExecutorGuard const&) = delete;
   ~V8ExecutorGuard();
@@ -234,7 +216,7 @@ class V8ExecutorGuard {
                       bool executeGlobalMethods = true);
 
  private:
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
   v8::Isolate* _isolate;
   V8Executor* _executor;
 };
@@ -243,7 +225,7 @@ class V8ExecutorGuard {
 // in case the passed in isolate is a nullptr
 class V8ConditionalExecutorGuard {
  public:
-  explicit V8ConditionalExecutorGuard(TRI_vocbase_t*,
+  explicit V8ConditionalExecutorGuard(Database*,
                                       JavaScriptSecurityContext const&);
   V8ConditionalExecutorGuard(V8ConditionalExecutorGuard const&) = delete;
   V8ConditionalExecutorGuard& operator=(V8ConditionalExecutorGuard const&) =
@@ -255,7 +237,7 @@ class V8ConditionalExecutorGuard {
                       bool executeGlobalMethods = true);
 
  private:
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
   v8::Isolate* _isolate;
   V8Executor* _executor;
 };

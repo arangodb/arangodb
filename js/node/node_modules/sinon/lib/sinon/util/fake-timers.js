@@ -1,8 +1,15 @@
-"use strict";
+'use strict';
 
-const extend = require("./core/extend");
-const FakeTimers = require("@sinonjs/fake-timers");
-const globalObject = require("@sinonjs/commons").global;
+var extend = require('./core/extend.js');
+var FakeTimers = require('@sinonjs/fake-timers');
+var commons = require('@sinonjs/commons');
+
+function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
+
+var FakeTimers__default = /*#__PURE__*/_interopDefault(FakeTimers);
+var commons__default = /*#__PURE__*/_interopDefault(commons);
+
+const { global: globalObject } = commons__default.default;
 
 /**
  *
@@ -12,9 +19,9 @@ const globalObject = require("@sinonjs/commons").global;
  * @returns {object} the clock, after installing it on the global context, if given
  */
 function createClock(config, globalCtx) {
-    let FakeTimersCtx = FakeTimers;
+    let FakeTimersCtx = FakeTimers__default.default;
     if (globalCtx !== null && typeof globalCtx === "object") {
-        FakeTimersCtx = FakeTimers.withGlobal(globalCtx);
+        FakeTimersCtx = FakeTimers__default.default.withGlobal(globalCtx);
     }
     const clock = FakeTimersCtx.install(config);
     clock.restore = clock.uninstall;
@@ -37,7 +44,7 @@ function addIfDefined(obj, globalPropName) {
  * @param {number|Date|object} dateOrConfig The unix epoch value to install with (default 0)
  * @returns {object} Returns a lolex clock instance
  */
-exports.useFakeTimers = function (dateOrConfig) {
+function useFakeTimers(dateOrConfig) {
     const hasArguments = typeof dateOrConfig !== "undefined";
     const argumentIsDateLike =
         (typeof dateOrConfig === "number" || dateOrConfig instanceof Date) &&
@@ -69,11 +76,11 @@ exports.useFakeTimers = function (dateOrConfig) {
     throw new TypeError(
         "useFakeTimers expected epoch or config object. See https://github.com/sinonjs/sinon",
     );
-};
+}
 
-exports.clock = {
+const clock = {
     create: function (now) {
-        return FakeTimers.createClock(now);
+        return FakeTimers__default.default.createClock(now);
     },
 };
 
@@ -87,4 +94,6 @@ const timers = {
 addIfDefined(timers, "setImmediate");
 addIfDefined(timers, "clearImmediate");
 
+exports.clock = clock;
 exports.timers = timers;
+exports.useFakeTimers = useFakeTimers;

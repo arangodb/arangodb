@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestLicenseHandler.h"
@@ -30,27 +29,26 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/License/LicenseFeature.h"
 #endif
-#include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestLicenseHandler::RestLicenseHandler(ArangodServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+RestLicenseHandler::RestLicenseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE
+// Mounted at /_admin/license (prefix)
 RestStatus RestLicenseHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          arangodb::auth::perms::AdminLicense{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 
@@ -77,25 +75,3 @@ RestStatus RestLicenseHandler::execute() {
   return RestStatus::DONE;
 }
 #endif
-
-/// @brief check for administrator rights
-arangodb::Result RestLicenseHandler::verifyPermitted() {
-#ifdef USE_ENTERPRISE
-  auto& feature = server().getFeature<arangodb::LicenseFeature>();
-
-  // do we have admin rights (if rights are active)
-  if (feature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
-      return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN,
-          "you need super user rights for license operations");
-    }
-  } else {
-    if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
-                              "you need admin rights for license operations");
-    }
-  }
-#endif
-  return arangodb::Result();
-}

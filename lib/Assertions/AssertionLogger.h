@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,7 +31,7 @@ namespace arangodb::debug {
 struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
-    arangodb::CrashHandler::assertionFailure(
+    arangodb::crash_handler::CrashHandler::assertionFailure(
         location.file_name(), location.line(), function, expr,
         message.empty() ? nullptr : message.c_str());
   }

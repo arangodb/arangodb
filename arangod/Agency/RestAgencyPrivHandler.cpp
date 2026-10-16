@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyPrivHandler.h"
@@ -32,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
@@ -41,11 +39,10 @@ using namespace arangodb::velocypack;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
-
-RestAgencyPrivHandler::RestAgencyPrivHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response,
-                                             Agent* agent)
+namespace arangodb {
+RestAgencyPrivHandler::RestAgencyPrivHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
@@ -159,6 +156,7 @@ bool readValue(GeneralRequest const& req, char const* name, std::string& val) {
 }
 }  // namespace
 
+// Mounted at /_api/agency_priv (prefix, only when agency is enabled)
 RestStatus RestAgencyPrivHandler::execute() {
   try {
     auto const& suffixes = _request->suffixes();
@@ -294,3 +292,5 @@ RestStatus RestAgencyPrivHandler::execute() {
   }
   return RestStatus::DONE;
 }
+
+}  // namespace arangodb

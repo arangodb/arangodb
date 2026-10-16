@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/Result.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Scheduler/Scheduler.h"
@@ -33,14 +32,12 @@
 
 #include <mutex>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 class InitialSyncer : public Syncer {
  public:
   explicit InitialSyncer(
-      ReplicationApplierConfiguration const&,
+      ReplicationSyncConfiguration const&,
       replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();

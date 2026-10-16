@@ -18,7 +18,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const [indexType, setIndexType] = useState<
     CollectionIndex["type"] | "fulltext"
   >(indexTypeOptions[0].value);
-  let tooltipText = "Type of index to create.";
+  const tooltipText = "Type of index to create.";
   return (
     <Box width="100%" paddingY="4" height="full" background="white">
       <Box fontSize={"lg"} paddingX="10">

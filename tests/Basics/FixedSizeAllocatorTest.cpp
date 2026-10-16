@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
@@ -265,7 +264,7 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::create(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),

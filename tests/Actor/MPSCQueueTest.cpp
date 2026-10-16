@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
@@ -29,8 +28,6 @@
 
 #include "Actor/MPSCQueue.h"
 #include "Basics/ThreadGuard.h"
-
-#include "fmt/core.h"
 
 using namespace arangodb;
 using namespace arangodb::actor;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -59,7 +58,7 @@ class ConnectionPool final {
 
     metrics::Histogram<metrics::LogScale<float>>* leaseHistMSec;
 
-    static Metrics fromMetricsFeature(metrics::MetricsFeature& feature,
+    static Metrics fromMetricsFeature(metrics::IRegistry& registry,
                                       std::string_view name);
     static Metrics createStub(std::string_view name);
   };

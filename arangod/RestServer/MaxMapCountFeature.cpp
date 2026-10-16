@@ -18,37 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxMapCountFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/process-utils.h"
-#include "Basics/system-functions.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MaxMapCountFeature::MaxMapCountFeature(Server& server)
-    : ArangodFeature{server, *this} {
+MaxMapCountFeature::MaxMapCountFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void MaxMapCountFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.check-max-memory-mappings",
-      "check the maximum number of memory mappings at startup", true);
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {

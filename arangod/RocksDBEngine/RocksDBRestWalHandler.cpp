@@ -18,20 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
-
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
@@ -41,11 +37,12 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+RocksDBRestWalHandler::RocksDBRestWalHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, StorageEngine* engine)
+    : RestBaseHandler(server, request, response), _engine(engine) {}
 
+// Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
@@ -80,19 +77,39 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce a cluster info dump");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 #endif
-    server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .waitForEstimatorSync();
+    _engine->waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (operation == "recovery_start_sequence") {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "system level access is needed for this API");
+      return RestStatus::DONE;
+    }
+#else
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+#endif
+    VPackBuilder builder;
+    auto* engine = dynamic_cast<RocksDBEngine*>(_engine);
+    builder.add(VPackValue(engine->recoveryStartSequence()));
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+#endif
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
@@ -148,8 +165,7 @@ void RocksDBRestWalHandler::flush() {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    server().getFeature<EngineSelectorFeature>().engine().flushWal(
-        waitForSync, flushColumnFamilies);
+    _engine->flushWal(waitForSync, flushColumnFamilies);
   }
 
   if (res.fail()) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
@@ -70,7 +69,7 @@ TEST_F(AqlQueryLimitsTest, testManyNodes) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
 
   std::string query("LET x = NOOPT('testi')\n");
   size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes -
@@ -93,7 +92,7 @@ TEST_F(AqlQueryLimitsTest, testTooManyNodes) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
 
   std::string query("LET x = NOOPT('testi')\n");
   size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes;
@@ -112,7 +111,7 @@ TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
 
   std::string query("RETURN 0");
   size_t cnt = arangodb::aql::Ast::maxExpressionNesting - 2;
@@ -134,7 +133,7 @@ TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo), server.engine());
 
   std::string query("RETURN 0");
   size_t cnt = arangodb::aql::Ast::maxExpressionNesting;

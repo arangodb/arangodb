@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,11 +27,18 @@
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  RestVersionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestVersionHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
+
+ protected:
+  async<Result> checkApiVersionAccess() const override;
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
 
  public:
-  static void getVersion(ArangodServer& server, bool allowInfo,
-                         bool includeDetails, VPackBuilder& result);
+  static void getVersion(application_features::ApplicationServer& server,
+                         bool allowInfo, bool includeDetails,
+                         VPackBuilder& result, uint32_t requestedApiVersion);
 
   char const* name() const override final { return "RestVersionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }

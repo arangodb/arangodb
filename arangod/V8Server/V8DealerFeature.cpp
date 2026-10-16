@@ -18,9 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <filesystem>
+#include "Actions/ActionFeature.h"
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
@@ -33,13 +34,13 @@
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "Basics/application-exit.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -50,28 +51,25 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FrontendFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-deadline.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Executor.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
@@ -81,9 +79,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -94,7 +89,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(V8DealerFeature& dealer)
-      : Thread(dealer.server(), "V8GarbageCollector"),
+      : Thread("V8GarbageCollector", ExecContext::superuserAsShared()),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
@@ -126,313 +121,45 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server,
-                                 metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
-      _gcFrequency(60.0),
-      _gcInterval(2000),
-      _maxExecutorAge(60.0),
-      _nrMaxExecutors(0),
-      _nrMinExecutors(0),
+V8DealerFeature::V8DealerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry)
+    : V8DealerFeature(server, metricsRegistry, V8DealerFeatureOptions{}) {}
+
+V8DealerFeature::V8DealerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, V8DealerFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _nrInflightExecutors(0),
-      _maxExecutorInvocations(0),
-      _copyInstallation(false),
-      _allowAdminExecute(false),
-      _allowJavaScriptTransactions(true),
-      _allowJavaScriptUdfs(true),
-      _allowJavaScriptTasks(true),
-      _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicExecutorCreationBlockers(0),
       _executorsCreationTime(
-          metrics.add(arangodb_v8_context_creation_time_msec_total{})),
-      _executorsCreated(metrics.add(arangodb_v8_context_created_total{})),
-      _executorsDestroyed(metrics.add(arangodb_v8_context_destroyed_total{})),
-      _executorsEntered(metrics.add(arangodb_v8_context_entered_total{})),
-      _executorsExited(metrics.add(arangodb_v8_context_exited_total{})),
+          metricsRegistry.add(arangodb_v8_context_creation_time_msec_total{})),
+      _executorsCreated(
+          metricsRegistry.add(arangodb_v8_context_created_total{})),
+      _executorsDestroyed(
+          metricsRegistry.add(arangodb_v8_context_destroyed_total{})),
+      _executorsEntered(
+          metricsRegistry.add(arangodb_v8_context_entered_total{})),
+      _executorsExited(metricsRegistry.add(arangodb_v8_context_exited_total{})),
       _executorsEnterFailures(
-          metrics.add(arangodb_v8_context_enter_failures_total{})) {
-  static_assert(
-      Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
-
+          metricsRegistry.add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
   startsAfter<ActionFeature>();
   startsAfter<V8PlatformFeature>();
   startsAfter<V8SecurityFeature>();
-}
 
-void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "JavaScript engine and execution");
-
-  options
-      ->addOption(
-          "--javascript.gc-frequency",
-          "Time-based garbage collection frequency for JavaScript objects "
-          "(each x seconds).",
-          new DoubleParameter(&_gcFrequency),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(This option is useful to have the garbage
-collection still work in periods with no or little numbers of requests.)");
-
-  options->addOption(
-      "--javascript.gc-interval",
-      "Request-based garbage collection interval for JavaScript objects "
-      "(each x requests).",
-      new UInt64Parameter(&_gcInterval),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.app-path",
-                     "The directory for Foxx applications.",
-                     new StringParameter(&_appPath),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.startup-directory",
-      "A path to the directory containing the JavaScript startup scripts.",
-      new StringParameter(&_startupDirectory),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption("--javascript.module-directory",
-                     "Additional paths containing JavaScript modules.",
-                     new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption(
-          "--javascript.copy-installation",
-          "Copy the contents of `javascript.startup-directory` on first start.",
-          new BooleanParameter(&_copyInstallation),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(This option is intended to be useful for rolling
-upgrades. If you set it to `true`, you can upgrade the underlying ArangoDB
-packages without influencing the running _arangod_ instance.
-
-Setting this value does only make sense if you use ArangoDB outside of a
-container solution, like Docker or Kubernetes.)");
-
-  options
-      ->addOption("--javascript.v8-contexts",
-                  "The maximum number of V8 contexts that are created for "
-                  "executing JavaScript actions.",
-                  new UInt64Parameter(&_nrMaxExecutors),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Dynamic,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(More contexts allow executing more JavaScript
-actions in parallel, provided that there are also enough threads available.
-Note that each V8 context uses a substantial amount of memory and requires
-periodic CPU processing time for garbage collection.
-
-This option configures the maximum number of V8 contexts that can be used in
-parallel. On server start, only as many V8 contexts are created as are
-configured by the `--javascript.v8-contexts-minimum` option. The actual number
-of available V8 contexts may vary between `--javascript.v8-contexts-minimum`
-and `--javascript.v8-contexts` at runtime. When there are unused V8 contexts
-that linger around, the server's garbage collector thread automatically deletes
-them.)");
-
-  options
-      ->addOption("--javascript.v8-contexts-minimum",
-                  "The minimum number of V8 contexts to keep available for "
-                  "executing JavaScript actions.",
-                  new UInt64Parameter(&_nrMinExecutors),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(The actual number of V8 contexts never drops below
-this value, but it may go up as high as specified by the
-`--javascript.v8-contexts` option.
-
-When there are unused V8 contexts that linger around and the number of V8
-contexts is greater than `--javascript.v8-contexts-minimum`, the server's
-garbage collector thread automatically deletes them.)");
-
-  options->addOption(
-      "--javascript.v8-contexts-max-invocations",
-      "The maximum number of invocations for each V8 context before it is "
-      "disposed (0 = unlimited).",
-      new UInt64Parameter(&_maxExecutorInvocations),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption("--javascript.v8-contexts-max-age",
-                  "The maximum age for each V8 context (in seconds) before it "
-                  "is disposed.",
-                  new DoubleParameter(&_maxExecutorAge),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(If both `--javascript.v8-contexts-max-invocations`
-and `--javascript.v8-contexts-max-age` are set, then the context is destroyed
-when either of the specified threshold values is reached.)");
-
-  options
-      ->addOption("--javascript.allow-admin-execute",
-                  "For testing purposes, allow `/_admin/execute`. Never enable "
-                  "this option "
-                  "in production!",
-                  new BooleanParameter(&_allowAdminExecute),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(You can use this option to control whether
-user-defined JavaScript code is allowed to be executed on the server by sending
-HTTP requests to the `/_admin/execute` API endpoint with an authenticated user
-account.
-
-The default value is `false`, which disables the execution of user-defined
-code. This is also the recommended setting for production. In test environments,
-it may be convenient to turn the option on in order to send arbitrary setup
-or teardown commands for execution on the server.)");
-
-  options
-      ->addOption("--javascript.transactions",
-                  "Enable JavaScript transactions.",
-                  new BooleanParameter(&_allowJavaScriptTransactions),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption(
-          "--javascript.user-defined-functions",
-          "Enable JavaScript user-defined functions (UDFs) in AQL queries.",
-          new BooleanParameter(&_allowJavaScriptUdfs),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31004);
-
-  options
-      ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
-                  new BooleanParameter(&_allowJavaScriptTasks),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption("--javascript.enabled", "Enable the V8 JavaScript engine.",
-                  new BooleanParameter(&_enableJS),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(By default, the V8 engine is enabled on single
-servers and Coordinators. It is disabled by default on Agents and DB-Servers.
-
-It is possible to turn the V8 engine off also on the latter instance types to 
-reduce the footprint of ArangoDB. Turning the V8 engine off on single servers or
-Coordinators will automatically render certain functionality unavailable or
-dysfunctional. The affected functionality includes JavaScript transactions, Foxx, 
-AQL user-defined functions, the built-in web interface and some server APIs.)");
-}
-
-void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  ProgramOptions::ProcessingResult const& result = options->processingResult();
-
-  // a bit of duck typing here to check if we are an agent.
-  // the problem is that the server role may be still unclear in this early
-  // phase, so we are also looking for startup options that identify an agent
-  bool const isAgent =
-      (ServerState::instance()->getRole() ==
-       ServerState::RoleEnum::ROLE_AGENT) ||
-      (result.touched("agency.activate") &&
-       *(options->get<BooleanParameter>("agency.activate")->ptr));
-
-  // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (!javascriptRequestedViaOptions(options) &&
-      (isAgent || ServerState::instance()->getRole() ==
-                      ServerState::RoleEnum::ROLE_DBSERVER)) {
-    // specifying --console requires JavaScript, so we can only turn it off
-    // if not requested
-    _enableJS = false;
-  }
-
-  if (!_enableJS) {
+  if (!_options.enableJS) {
     disable();
-
-    server().disableFeatures(
-        std::array{Server::id<V8PlatformFeature>(), Server::id<ActionFeature>(),
-                   Server::id<ScriptFeature>(), Server::id<FoxxFeature>(),
-                   Server::id<FrontendFeature>()});
+    if (server.hasFeature<ActionFeature>()) {
+      server.disableFeatures<ActionFeature>();
+    }
     return;
-  }
-
-  // check the startup path
-  if (_startupDirectory.empty()) {
-    LOG_TOPIC("6330a", FATAL, arangodb::Logger::V8)
-        << "no 'javascript.startup-directory' has been supplied, giving up";
-    FATAL_ERROR_EXIT();
-  }
-
-  // remove trailing / from path and set path
-  auto ctx = ArangoGlobalContext::CONTEXT;
-
-  if (ctx == nullptr) {
-    LOG_TOPIC("ae845", FATAL, arangodb::Logger::V8)
-        << "failed to get global context";
-    FATAL_ERROR_EXIT();
-  }
-
-  ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
-
-  // check whether app-path was specified
-  if (_appPath.empty()) {
-    LOG_TOPIC("a161b", FATAL, arangodb::Logger::V8)
-        << "no value has been specified for --javascript.app-path";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Tests if this path is either a directory (ok) or does not exist (we create
-  // it in ::start) If it is something else this will throw an error.
-  ctx->normalizePath(_appPath, "javascript.app-path", false);
-
-  // use a minimum of 1 second for GC
-  if (_gcFrequency < 1) {
-    _gcFrequency = 1;
   }
 }
 
@@ -443,10 +170,10 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
-  TRI_ASSERT(_enableJS);
+  TRI_ASSERT(_options.enableJS);
   TRI_ASSERT(isEnabled());
 
-  if (_copyInstallation) {
+  if (_options.copyInstallation) {
     copyInstallationFiles();  // will exit process if it fails
   } else {
     // don't copy JS files on startup
@@ -461,77 +188,81 @@ void V8DealerFeature::start() {
     std::string const commonPath = FileUtils::buildFilename(dbJSPath, "common");
     std::string const nodeModulesPath =
         FileUtils::buildFilename(dbJSPath, "node", "node_modules");
-    if (FileUtils::isDirectory(dbJSPath) && FileUtils::exists(checksumFile) &&
-        FileUtils::isDirectory(serverPath) &&
-        FileUtils::isDirectory(commonPath)) {
+
+    if (std::filesystem::is_directory(dbJSPath) &&
+        std::filesystem::exists(checksumFile) &&
+        std::filesystem::is_directory(serverPath) &&
+        std::filesystem::is_directory(commonPath)) {
       // js directory inside database directory looks good. now use it!
-      _startupDirectory = dbJSPath;
+      _options.startupDirectory = dbJSPath;
       // older versions didn't copy node_modules. so check if it exists inside
       // the database directory or not.
-      if (FileUtils::isDirectory(nodeModulesPath)) {
+      if (std::filesystem::is_directory(nodeModulesPath)) {
         _nodeModulesDirectory = nodeModulesPath;
       } else {
-        _nodeModulesDirectory = _startupDirectory;
+        _nodeModulesDirectory = _options.startupDirectory;
       }
     }
   }
 
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
-      << "effective startup-directory: " << _startupDirectory
-      << ", effective module-directories: " << _moduleDirectories
+      << "effective startup-directory: " << _options.startupDirectory
+      << ", effective module-directories: " << _options.moduleDirectories
       << ", node-modules-directory: " << _nodeModulesDirectory;
 
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
-  TRI_ASSERT(!_startupDirectory.empty());
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
+  TRI_ASSERT(!_options.startupDirectory.empty());
+  v8security.addToInternalReadAllowList(_options.startupDirectory);
 
   if (!_nodeModulesDirectory.empty()) {
-    v8security.addToInternalAllowList(_nodeModulesDirectory,
-                                      FSAccessType::READ);
+    v8security.addToInternalReadAllowList(_nodeModulesDirectory);
   }
-  for (auto const& it : _moduleDirectories) {
+  for (auto const& it : _options.moduleDirectories) {
     if (!it.empty()) {
-      v8security.addToInternalAllowList(it, FSAccessType::READ);
+      v8security.addToInternalReadAllowList(it);
     }
   }
 
-  TRI_ASSERT(!_appPath.empty());
-  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
-  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
+  TRI_ASSERT(!_options.appPath.empty());
+  v8security.addToInternalReadAllowList(_options.appPath);
+  v8security.addToInternalWriteAllowList(_options.appPath);
   v8security.dumpAccessLists();
 
-  _startupLoader.setDirectory(_startupDirectory);
+  _startupLoader.setDirectory(_options.startupDirectory);
 
   // dump paths
   {
     std::vector<std::string> paths;
 
-    paths.push_back(std::string("startup '" + _startupDirectory + "'"));
+    paths.push_back(std::string("startup '" + _options.startupDirectory + "'"));
 
-    if (!_moduleDirectories.empty()) {
+    if (!_options.moduleDirectories.empty()) {
       paths.push_back(std::string(
-          "module '" + StringUtils::join(_moduleDirectories, ";") + "'"));
+          "module '" + StringUtils::join(_options.moduleDirectories, ";") +
+          "'"));
     }
 
-    if (!_appPath.empty()) {
-      paths.push_back(std::string("application '" + _appPath + "'"));
+    if (!_options.appPath.empty()) {
+      paths.push_back(std::string("application '" + _options.appPath + "'"));
 
       // create app directory if it does not exist
-      if (!basics::FileUtils::isDirectory(_appPath)) {
+
+      if (!std::filesystem::is_directory(_options.appPath)) {
         std::string systemErrorStr;
         long errorNo;
 
-        auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo,
-                                                systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(),
+                                                errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)
-              << "created javascript.app-path directory '" << _appPath << "'";
+              << "created javascript.app-path directory '" << _options.appPath
+              << "'";
         } else {
           LOG_TOPIC("2d23f", FATAL, arangodb::Logger::FIXME)
-              << "unable to create javascript.app-path directory '" << _appPath
-              << "': " << systemErrorStr;
+              << "unable to create javascript.app-path directory '"
+              << _options.appPath << "': " << systemErrorStr;
           FATAL_ERROR_EXIT();
         }
       }
@@ -541,12 +272,12 @@ void V8DealerFeature::start() {
         << "JavaScript using " << StringUtils::join(paths, ", ");
   }
 
-  if (_nrMinExecutors < 1) {
-    _nrMinExecutors = 1;
+  if (_options.nrMinExecutors < 1) {
+    _options.nrMinExecutors = 1;
   }
 
   // try to guess a suitable number of executors
-  if (0 == _nrMaxExecutors) {
+  if (0 == _options.nrMaxExecutors) {
     // use 7/8 of the available scheduler threads as the default number
     // of available V8 executors. only 7/8 are used to leave some headroom
     // for important maintenance tasks.
@@ -555,30 +286,31 @@ void V8DealerFeature::start() {
     // startup to properly run through with all its parallel requests
     // and the potential need for multiple V8 executors.
     auto& sf = server().getFeature<SchedulerFeature>();
-    _nrMaxExecutors = std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
+    _options.nrMaxExecutors =
+        std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
   }
 
-  if (_nrMinExecutors > _nrMaxExecutors) {
+  if (_options.nrMinExecutors > _options.nrMaxExecutors) {
     // max executors must not be lower than min executors
-    _nrMaxExecutors = _nrMinExecutors;
+    _options.nrMaxExecutors = _options.nrMinExecutors;
   }
 
   LOG_TOPIC("09e14", DEBUG, Logger::V8)
-      << "number of V8 executors: min: " << _nrMinExecutors
-      << ", max: " << _nrMaxExecutors;
+      << "number of V8 executors: min: " << _options.nrMinExecutors
+      << ", max: " << _options.nrMaxExecutors;
 
-  defineDouble("V8_CONTEXTS", static_cast<double>(_nrMaxExecutors));
+  defineDouble("V8_CONTEXTS", static_cast<double>(_options.nrMaxExecutors));
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // setup instances
   {
     std::unique_lock guard{_executorsCondition.mutex};
-    _executors.reserve(static_cast<size_t>(_nrMaxExecutors));
-    _busyExecutors.reserve(static_cast<size_t>(_nrMaxExecutors));
-    _idleExecutors.reserve(static_cast<size_t>(_nrMaxExecutors));
-    _dirtyExecutors.reserve(static_cast<size_t>(_nrMaxExecutors));
+    _executors.reserve(static_cast<size_t>(_options.nrMaxExecutors));
+    _busyExecutors.reserve(static_cast<size_t>(_options.nrMaxExecutors));
+    _idleExecutors.reserve(static_cast<size_t>(_options.nrMaxExecutors));
+    _dirtyExecutors.reserve(static_cast<size_t>(_options.nrMaxExecutors));
 
-    for (size_t i = 0; i < _nrMinExecutors; ++i) {
+    for (size_t i = 0; i < _options.nrMinExecutors; ++i) {
       guard.unlock();  // avoid lock order inversion in buildExecutor
 
       // use vocbase here and hand ownership to executor
@@ -596,7 +328,7 @@ void V8DealerFeature::start() {
     }
 
     TRI_ASSERT(_executors.size() > 0);
-    TRI_ASSERT(_executors.size() <= _nrMaxExecutors);
+    TRI_ASSERT(_executors.size() <= _options.nrMaxExecutors);
     for (auto& executor : _executors) {
       _idleExecutors.push_back(executor);
     }
@@ -611,8 +343,8 @@ void V8DealerFeature::start() {
 }
 
 void V8DealerFeature::copyInstallationFiles() {
-  if (!_enableJS && (ServerState::instance()->isAgent() ||
-                     ServerState::instance()->isDBServer())) {
+  if (!_options.enableJS && (ServerState::instance()->isAgent() ||
+                             ServerState::instance()->isDBServer())) {
     // skip expensive file-copying in case we are an agency or db server
     // these do not need JavaScript support
     return;
@@ -622,7 +354,7 @@ void V8DealerFeature::copyInstallationFiles() {
   auto& dbPathFeature = server().getFeature<DatabasePathFeature>();
   std::string const copyJSPath =
       FileUtils::buildFilename(dbPathFeature.directory(), "js");
-  if (copyJSPath == _startupDirectory) {
+  if (copyJSPath == _options.startupDirectory) {
     LOG_TOPIC("89fe2", FATAL, arangodb::Logger::V8)
         << "'javascript.startup-directory' cannot be inside "
            "'database.directory'";
@@ -630,16 +362,17 @@ void V8DealerFeature::copyInstallationFiles() {
   }
   TRI_ASSERT(!copyJSPath.empty());
 
-  _nodeModulesDirectory = _startupDirectory;
+  _nodeModulesDirectory = _options.startupDirectory;
 
   std::string const checksumFile = FileUtils::buildFilename(
-      _startupDirectory, StaticStrings::checksumFileJs);
+      _options.startupDirectory, StaticStrings::checksumFileJs);
   std::string const copyChecksumFile =
       FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
 
   bool overwriteCopy = false;
-  if (!FileUtils::exists(copyJSPath) || !FileUtils::exists(checksumFile) ||
-      !FileUtils::exists(copyChecksumFile)) {
+  if (!std::filesystem::exists(copyJSPath) ||
+      !std::filesystem::exists(checksumFile) ||
+      !std::filesystem::exists(copyChecksumFile)) {
     overwriteCopy = true;
   } else {
     try {
@@ -657,17 +390,19 @@ void V8DealerFeature::copyInstallationFiles() {
     // basic security checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
-    if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
+    std::error_code copyExistsEc;
+    if (std::filesystem::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"),
+                                copyExistsEc)) {
       LOG_TOPIC("214d1", FATAL, Logger::V8)
           << "JS installation path '" << copyJSPath << "' seems to be invalid";
       FATAL_ERROR_EXIT();
     }
 
     LOG_TOPIC("dd1c0", INFO, Logger::V8)
-        << "Copying JS installation files from '" << _startupDirectory
+        << "Copying JS installation files from '" << _options.startupDirectory
         << "' to '" << copyJSPath << "'";
     auto res = TRI_ERROR_NO_ERROR;
-    if (FileUtils::exists(copyJSPath)) {
+    if (std::filesystem::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("1a20d", FATAL, Logger::V8)
@@ -676,10 +411,11 @@ void V8DealerFeature::copyInstallationFiles() {
         FATAL_ERROR_EXIT();
       }
     }
-    if (!FileUtils::createDirectory(copyJSPath, &res)) {
+    if (auto ec = std::error_code{};
+        !std::filesystem::create_directory(copyJSPath, ec)) {
       LOG_TOPIC("b8c79", FATAL, Logger::V8)
           << "Error creating JS installation path '" << copyJSPath
-          << "': " << TRI_errno_string(res);
+          << "': " << ec.message();
       FATAL_ERROR_EXIT();
     }
 
@@ -711,8 +447,8 @@ void V8DealerFeature::copyInstallationFiles() {
         return true;
       }
 
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
+      std::string const normalized =
+          std::filesystem::path(filename).make_preferred().string();
       if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;
@@ -726,7 +462,7 @@ void V8DealerFeature::copyInstallationFiles() {
     double start = TRI_microtime();
 
     std::string error;
-    if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter,
+    if (!FileUtils::copyRecursive(_options.startupDirectory, copyJSPath, filter,
                                   error)) {
       LOG_TOPIC("45261", FATAL, Logger::V8)
           << "Error copying JS installation files to '" << copyJSPath
@@ -737,9 +473,9 @@ void V8DealerFeature::copyInstallationFiles() {
     // attempt to copy enterprise JS files too.
     // only required for developer installations, not packages
     std::string const enterpriseJs = basics::FileUtils::buildFilename(
-        _startupDirectory, "..", "enterprise", "js");
+        _options.startupDirectory, "..", "enterprise", "js");
 
-    if (FileUtils::isDirectory(enterpriseJs)) {
+    if (std::filesystem::is_directory(enterpriseJs)) {
       std::function<bool(std::string const&)> const passAllFilter =
           [](std::string const&) { return false; };
       if (!FileUtils::copyRecursive(enterpriseJs, copyJSPath, passAllFilter,
@@ -756,7 +492,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   // finally switch over the paths
-  _startupDirectory = copyJSPath;
+  _options.startupDirectory = copyJSPath;
   _nodeModulesDirectory =
       basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
@@ -803,31 +539,32 @@ void V8DealerFeature::unprepare() {
                                                          std::string_view id) {
   bool const isOldStyleName =
       DatabaseNameValidator::validateName(
-          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          /*allowSystem=*/true, /*extendNames=*/false, name)
           .ok();
   return (isOldStyleName || id.empty()) ? name : id;
 }
 
 void V8DealerFeature::verifyAppPaths() {
-  if (!_appPath.empty() && !TRI_IsDirectory(_appPath.c_str())) {
+  if (!_options.appPath.empty() && !TRI_IsDirectory(_options.appPath.c_str())) {
     long systemError;
     std::string errorMessage;
-    auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), systemError,
-                                            errorMessage);
+    auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(),
+                                            systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("1bf74", INFO, Logger::FIXME)
-          << "created --javascript.app-path directory '" << _appPath << "'";
+          << "created --javascript.app-path directory '" << _options.appPath
+          << "'";
     } else {
       LOG_TOPIC("52bd5", ERR, Logger::FIXME)
-          << "unable to create --javascript.app-path directory '" << _appPath
-          << "': " << errorMessage;
+          << "unable to create --javascript.app-path directory '"
+          << _options.appPath << "': " << errorMessage;
       THROW_ARANGO_EXCEPTION(res);
     }
   }
 
   // create subdirectory js/apps/_db if not yet present
-  auto r = createBaseApplicationDirectory(_appPath, "_db");
+  auto r = createBaseApplicationDirectory(_options.appPath, "_db");
 
   if (r != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("610c7", ERR, Logger::FIXME)
@@ -841,17 +578,17 @@ ErrorCode V8DealerFeature::createDatabase(std::string_view name,
                                           bool removeExisting) {
   // create app directory for database if it does not exist
   std::string const dirName{getDatabaseDirName(name, id)};
-  return createApplicationDirectory(dirName, _appPath, removeExisting);
+  return createApplicationDirectory(dirName, _options.appPath, removeExisting);
 }
 
 void V8DealerFeature::cleanupDatabase(TRI_vocbase_t& database) {
-  if (_appPath.empty()) {
+  if (_options.appPath.empty()) {
     return;
   }
   std::string const dirName{
       getDatabaseDirName(database.name(), std::to_string(database.id()))};
   std::string const path = basics::FileUtils::buildFilename(
-      basics::FileUtils::buildFilename(_appPath, "_db"), dirName);
+      basics::FileUtils::buildFilename(_options.appPath, "_db"), dirName);
 
   if (TRI_IsDirectory(path.c_str())) {
     LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
@@ -965,11 +702,11 @@ void V8DealerFeature::collectGarbage() {
 
   // the time we'll wait for a signal
   uint64_t const regularWaitTime =
-      static_cast<uint64_t>(_gcFrequency * 1000.0 * 1000.0);
+      static_cast<uint64_t>(_options.gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
   uint64_t const reducedWaitTime =
-      static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
+      static_cast<uint64_t>(_options.gcFrequency * 1000.0 * 200.0);
 
   while (!_stopping) {
     try {
@@ -1063,16 +800,15 @@ void V8DealerFeature::collectGarbage() {
         {
           std::unique_lock guard{_executorsCondition.mutex};
 
-          if (_executors.size() > _nrMinExecutors && !executor->isDefault() &&
-              executor->shouldBeRemoved(_maxExecutorAge,
-                                        _maxExecutorInvocations) &&
+          if (_executors.size() > _options.nrMinExecutors &&
+              !executor->isDefault() &&
+              executor->shouldBeRemoved(_options.maxExecutorAge,
+                                        _options.maxExecutorInvocations) &&
               _dynamicExecutorCreationBlockers == 0) {
             // remove the extra context as it is not needed anymore
-            _executors.erase(std::remove_if(_executors.begin(),
-                                            _executors.end(),
-                                            [&executor](V8Executor* e) {
-                                              return e->id() == executor->id();
-                                            }));
+            std::erase_if(_executors, [&executor](V8Executor const* e) {
+              return e->id() == executor->id();
+            });
 
             LOG_TOPIC("0a995", DEBUG, Logger::V8)
                 << "removed superfluous V8 executor #" << executor->id()
@@ -1264,7 +1000,7 @@ V8Executor* V8DealerFeature::enterExecutor(
       }
 
       bool const executorsLimitNotExceeded =
-          (_executors.size() + _nrInflightExecutors < _nrMaxExecutors);
+          (_executors.size() + _nrInflightExecutors < _options.nrMaxExecutors);
 
       if (executorsLimitNotExceeded && _dynamicExecutorCreationBlockers == 0) {
         ++_nrInflightExecutors;
@@ -1330,8 +1066,8 @@ V8Executor* V8DealerFeature::enterExecutor(
             << "giving up waiting for unused V8 executors for '"
             << securityContext.typeName() << "' operation after "
             << Logger::FIXED(maxWaitTime) << " s - "
-            << "executors: " << _executors.size() << "/" << _nrMaxExecutors
-            << ", idle: " << _idleExecutors.size()
+            << "executors: " << _executors.size() << "/"
+            << _options.nrMaxExecutors << ", idle: " << _idleExecutors.size()
             << ", busy: " << _busyExecutors.size()
             << ", dirty: " << _dirtyExecutors.size()
             << ", in flight: " << _nrInflightExecutors
@@ -1454,9 +1190,9 @@ void V8DealerFeature::exitExecutor(V8Executor* executor) {
 
     // postpone garbage collection for standard executors
     double lastGc = gc->getLastGcStamp();
-    if (executor->lastGcStamp() + _gcFrequency < lastGc) {
+    if (executor->lastGcStamp() + _options.gcFrequency < lastGc) {
       performGarbageCollection = true;
-      if (executor->lastGcStamp() + 30 * _gcFrequency < lastGc) {
+      if (executor->lastGcStamp() + 30 * _options.gcFrequency < lastGc) {
         // force the GC, so that it happens eventually
         forceGarbageCollection = true;
         LOG_TOPIC("f543a", TRACE, arangodb::Logger::V8)
@@ -1467,7 +1203,7 @@ void V8DealerFeature::exitExecutor(V8Executor* executor) {
             << "V8 executor #" << executor->id()
             << " has reached GC timeout threshold and will be scheduled for GC";
       }
-    } else if (executor->invocationsSinceLastGc() >= _gcInterval) {
+    } else if (executor->invocationsSinceLastGc() >= _options.gcInterval) {
       LOG_TOPIC("c6441", TRACE, arangodb::Logger::V8)
           << "V8 executor #" << executor->id()
           << " has reached maximum number of requests and will "
@@ -1648,7 +1384,7 @@ V8Executor* V8DealerFeature::pickFreeExecutorForGc() {
   TRI_ASSERT(executor != nullptr);
 
   // now compare its last GC timestamp with the last global GC stamp
-  if (executor->lastGcStamp() + _gcFrequency >= gc->getLastGcStamp()) {
+  if (executor->lastGcStamp() + _options.gcFrequency >= gc->getLastGcStamp()) {
     // no need yet to clean up the executor
     return nullptr;
   }
@@ -1709,11 +1445,11 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
 
                 std::vector<std::string> directories;
                 directories.insert(directories.end(),
-                                   _moduleDirectories.begin(),
-                                   _moduleDirectories.end());
-                directories.emplace_back(_startupDirectory);
+                                   _options.moduleDirectories.begin(),
+                                   _options.moduleDirectories.end());
+                directories.emplace_back(_options.startupDirectory);
                 if (!_nodeModulesDirectory.empty() &&
-                    _nodeModulesDirectory != _startupDirectory) {
+                    _nodeModulesDirectory != _options.startupDirectory) {
                   directories.emplace_back(_nodeModulesDirectory);
                 }
 
@@ -1731,7 +1467,8 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
                 TRI_InitV8UserFunctions(isolate, context);
                 TRI_InitV8UserStructures(isolate, context);
                 TRI_InitV8Buffer(isolate);
-                TRI_InitV8Utils(isolate, context, _startupDirectory, modules);
+                TRI_InitV8Utils(isolate, context, _options.startupDirectory,
+                                modules);
                 TRI_InitV8ServerUtils(isolate);
                 TRI_InitV8Shell(isolate);
                 TRI_InitV8Ttl(isolate);
@@ -1741,7 +1478,7 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
 
                   TRI_AddGlobalVariableVocbase(
                       isolate, TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
-                      TRI_V8_STD_STRING(isolate, _appPath));
+                      TRI_V8_STD_STRING(isolate, _options.appPath));
 
                   for (auto const& j : _definedBooleans) {
                     context->Global()
@@ -1815,8 +1552,9 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
 V8DealerFeature::Statistics V8DealerFeature::getCurrentExecutorStatistics() {
   std::lock_guard guard{_executorsCondition.mutex};
 
-  return {_executors.size(),     _busyExecutors.size(), _dirtyExecutors.size(),
-          _idleExecutors.size(), _nrMaxExecutors,       _nrMinExecutors};
+  return {_executors.size(),       _busyExecutors.size(),
+          _dirtyExecutors.size(),  _idleExecutors.size(),
+          _options.nrMaxExecutors, _options.nrMinExecutors};
 }
 
 std::vector<V8DealerFeature::DetailedExecutorStatistics>

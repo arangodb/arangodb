@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
@@ -42,8 +40,8 @@
 #include "Metrics/LogScale.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RestServer/ServerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -656,19 +654,16 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
-AgencyComm::AgencyComm(ArangodServer& server)
+AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : AgencyComm(server, server.getFeature<ClusterFeature>(),
-                 server.getFeature<EngineSelectorFeature>(),
                  server.getFeature<DatabaseFeature>()) {}
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       EngineSelectorFeature& engineSelectorFeature,
-                       DatabaseFeature& databaseFeature)
+                       IDatabaseProvider& databaseProvider)
     : _server(server),
       _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
-      _databaseFeature(databaseFeature),
+      _databaseProvider(databaseProvider),
       _agency_comm_request_time_ms(
           _clusterFeature.agency_comm_request_time_ms()) {}
 
@@ -686,7 +681,8 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _engineSelectorFeature.engine().healthCheck();
+      arangodb::HealthData hd =
+          _server.getFeature<StorageEngine>().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
@@ -1323,7 +1319,7 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add(StaticStrings::DatabaseId, VPackValue("1"));
           builder.add(StaticStrings::ReplicationVersion,
                       arangodb::replication::versionToString(
-                          _databaseFeature.defaultReplicationVersion()));
+                          _databaseProvider.defaultReplicationVersion()));
           // We need to also take care of the `cluster.force-one-shard` option
           // here. If set, the entire cluster is forced to be a OneShard
           // deployment.

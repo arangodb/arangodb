@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseJsonString = exports.parseJsonNumber = exports.parseJson = void 0;
-const rxParseJson = /position\s(\d+)$/;
+const rxParseJson = /position\s(\d+)(?: \(line \d+ column \d+\))?$/;
 function parseJson(s, pos) {
     let endPos;
     parseJson.message = undefined;
@@ -131,6 +131,7 @@ function parseJsonString(s, pos) {
                 while (count--) {
                     code <<= 4;
                     c = s[pos];
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                     if (c === undefined) {
                         errorMessage("unexpected end");
                         return undefined;

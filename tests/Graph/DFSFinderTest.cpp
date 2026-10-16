@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -170,7 +169,8 @@ class DFSFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
-    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
+    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       *_query.get()};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return DFSFinder(
         {*_query.get(),

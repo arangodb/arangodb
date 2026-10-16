@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBaseLogManager.h"
@@ -37,20 +36,15 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "vocbase.h"
-#include <cinttypes>
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
-VocBaseLogManager::VocBaseLogManager(TRI_vocbase_t& vocbase,
-                                     DatabaseID database)
+VocBaseLogManager::VocBaseLogManager(Database& vocbase, DatabaseID database)
     : _server(vocbase.server()),
       _vocbase(vocbase),
       _logContext(
@@ -66,7 +60,7 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
     return {iter->second.state};
   } else {
     return Result(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-                  fmt::format("replicated state {} not found", id.id()));
+                  std::format("replicated state {} not found", id.id()));
   }
 }
 
@@ -276,8 +270,8 @@ auto VocBaseLogManager::createReplicatedState(replication2::LogId id,
 auto VocBaseLogManager::GuardedData::buildReplicatedState(
     replication2::LogId const id, std::string_view type, VPackSlice parameters,
     replication2::replicated_state::ReplicatedStateAppFeature& feature,
-    LoggerContext const& logContext, ArangodServer& server,
-    TRI_vocbase_t& vocbase)
+    LoggerContext const& logContext,
+    application_features::ApplicationServer& server, Database& vocbase)
     -> ResultT<
         std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>> {
   using namespace arangodb::replication2;
@@ -313,8 +307,8 @@ auto VocBaseLogManager::GuardedData::buildReplicatedState(
 auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     replication2::LogId const id, std::string_view type, VPackSlice parameters,
     replication2::replicated_state::ReplicatedStateAppFeature& feature,
-    LoggerContext const& logContext, ArangodServer& server,
-    TRI_vocbase_t& vocbase,
+    LoggerContext const& logContext,
+    application_features::ApplicationServer& server, Database& vocbase,
     std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         storage)
     -> ResultT<std::shared_ptr<
@@ -329,7 +323,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     // due to dropping a database.
     return Result{
         TRI_ERROR_SHUTTING_DOWN,
-        fmt::format("Abort replicated state creation because all logs from the "
+        std::format("Abort replicated state creation because all logs from the "
                     "current database are being resigned, log id: {}",
                     id.id())};
   }
@@ -355,7 +349,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
   struct NetworkFollowerFactory
       : replication2::replicated_log::IAbstractFollowerFactory {
     NetworkFollowerFactory(
-        TRI_vocbase_t& vocbase, replication2::LogId id,
+        Database& vocbase, replication2::LogId id,
         std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>
             options)
         : vocbase(vocbase), id(id), options(std::move(options)) {}
@@ -378,7 +372,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
           pool, participantId, vocbase.name(), id);
     }
 
-    TRI_vocbase_t& vocbase;
+    Database& vocbase;
     replication2::LogId id;
     std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options;
   };

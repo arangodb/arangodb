@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -175,6 +173,9 @@ struct ActionDescription final {
    */
   bool isRunEvenIfDuplicate() const { return _runEvenIfDuplicate; }
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ActionDescription& x);
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
@@ -188,6 +189,14 @@ struct ActionDescription final {
   /// @brief flag to not sort out duplicates by hashing
   bool _runEvenIfDuplicate;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ActionDescription& x) {
+  return f.object(x).fields(
+      f.field("discriminatoryProperties", x._description),
+      f.field("nonDiscriminatoryProperties", x._properties),
+      f.field("priority", x._priority),
+      f.field("runEvenIfDuplicate", x._runEvenIfDuplicate));
+}
 
 }  // namespace maintenance
 }  // namespace arangodb

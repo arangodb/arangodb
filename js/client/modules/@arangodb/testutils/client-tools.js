@@ -22,18 +22,18 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
-const executeExternal = internal.executeExternal;
+const {
+  sleep,
+  executeExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
 const isSan = versionHas('tsan') || versionHas('aulsan');
@@ -59,23 +59,24 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
     case 'restore':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangorestore.conf');
-      this.executable = pu.ARANGORESTORE_BIN;
+      this.configName = 'arangorestore.conf';
+      this.binName = 'ARANGORESTORE_BIN';
       this.logprefix = 'restore';
       break;
     case 'dump':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangodump.conf');
-      this.executable = pu.ARANGODUMP_BIN;
+      this.configName = 'arangodump.conf';
+      this.binName = 'ARANGODUMP_BIN';
       this.logprefix = 'dump';
       break;
     case 'import':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangoimport.conf');
-      this.executable = pu.ARANGOIMPORT_BIN;
+      this.configName = 'arangoimport.conf';
+      this.binName = 'ARANGOIMPORT_BIN';
       this.logprefix = 'import';
       break;
     default:
       throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
   }
 
   setWhatToImport (what) {
@@ -276,12 +277,16 @@ class ConfigBuilder {
   disableContinue() {
     delete this.config['continue'];
   }
-  toArgv() { return internal.toArgv(this.config); }
+  // the binary set may change between runs (--oldSource upgrade tests)
+  toArgv() {
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
+    return internal.toArgv(this.config);
+  }
 
-  getExe() { return this.executable; }
+  getExe() { return pu[this.binName]; }
 
   print() {
-    print(this.executable);
+    print(this.getExe());
     print(this.config);
   }
 }
@@ -312,20 +317,24 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
+function makeArgsArangosh (options, instanceManager, force_jwt) {
   let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
-  if (options.hasOwnProperty('username')) {
-    args['server.username'] = options.username;
-  }
-  if (options.hasOwnProperty('password')) {
-    args['server.password'] = options.password;
-  }
 
+  if (force_jwt) {
+    args['server.jwt-token'] = instanceManager.JWT;
+  } else {
+    if (options.hasOwnProperty('username')) {
+      args['server.username'] = options.username;
+    }
+    if (options.hasOwnProperty('password')) {
+      args['server.password'] = options.password;
+    }
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -399,7 +408,7 @@ function launchPlainSnippetInBG (snippet, key) {
 }
 
 
-function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume, args) {
   let IM = global.instanceManager;
   let globalFn = fs.getTempFile();
   fs.write(globalFn, "x");
@@ -416,6 +425,7 @@ let passvoid = '${IM.options.password}';
 while (fs.exists('${globalFn}')) {
    require('internal').sleep(0.1);
 }
+let args = ${JSON.stringify(args)};
 let testfunc = ${String(snippet)};
 testfunc();
 `;
@@ -497,15 +507,19 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   }
   let client = launchInShellBG(file);
   print(`${CYAN}started client with key '${key}', pid ${client.pid}, args: ${JSON.stringify(client.args)}${RESET}`);
-  return { key, file, client, done: false };
+  client.key = key;
+  client.file = file;
+  client.done = false;
+  return client;
 }
 
 function readClientLogfile(client) {
-  const logfile = client.file + '.log';
-  if (fs.exists(logfile)) {
-    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()}`);
+  // remove file:// from the filename:
+  let fn = client.logFile.slice(7);
+  if (fs.exists(fn)) {
+    return (`${Date()} test client with pid ${client.pid} has failed and wrote a logfile: \n${fs.readFileSync(fn).toString()}`);
   } else {
-    return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
+    return (`${Date()} test client with pid ${client.pid} has failed and did not write a logfile`);
   }
 }
 
@@ -515,27 +529,26 @@ function joinBGShells (options, clients, waitFor, cn) {
   let tries = 0;
   let done = 0;
   let clientErrors = '';
+  let haveErrors = false;
+
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
-        client.status = internal.statusExternal(client.client.pid);
+        client.status = internal.statusExternal(client.pid);
         if (client.status.status !== 'RUNNING') {
-          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          let failed = client.sh.fetchSanFileAfterExit(client.pid);
           IM.serverCrashedLocal |= failed;
           client.failed = failed;
           client.done = true;
         }
-        if (client.status === 'TERMINATED') {
-          if (client.exit === 0) {
-            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-            client.failed = false;
-          } else {
-            IM.options.cleanup = false;
-            client.failed = true;
+        if (client.status.status === 'TERMINATED') {
+          client.done = true;
+          IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
+          client.failed = (client.status.exit !== 0);
+          if (client.failed) {
+            haveErrors = true;
+            clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
           }
-        }
-        if (client.failed) {
-          clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
         }
       }
     });
@@ -556,9 +569,17 @@ function joinBGShells (options, clients, waitFor, cn) {
     }
   }
 
-  if (done !== clients.length) {
-    options.cleanup = false;
-    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
+  let notAllJoined = done !== clients.length;
+  if (notAllJoined || haveErrors) {
+    IM.options.cleanup = false;
+    let msg = '';
+    if (notAllJoined) {
+      msg += 'not all shells could be joined';
+    }
+    if (haveErrors) {
+      msg += 'some shells exited with errors. Read on for their log output';
+    }
+    throw new Error(`${msg}:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
   }
 }
 
@@ -570,17 +591,17 @@ function joinFinishedBGShells(options, clients) {
     if (client.done) {
       done -= 1;
     } else {
-      client.status = internal.statusExternal(client.client.pid);
+      client.status = internal.statusExternal(client.pid);
       if (client.status.status !== 'RUNNING') { 
-        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+        let failed = client.sh.fetchSanFileAfterExit(client.pid);
         IM.serverCrashedLocal |= failed;
         client.failed = failed;
         client.done = true;
       }
-      if (client.status === 'TERMINATED') {
+      if (client.status.status === 'TERMINATED') {
         done -= 1;
         if (client.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
           client.failed = false;
         } else {
           IM.options.cleanup = false;
@@ -596,18 +617,21 @@ function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = clients.length;
+  let success = true;
   clients.forEach(client => {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+    } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
       client.done = true;
-      if (client.exit === 0) {
-        IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+      IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
+      if (client.status.exit === 0) {
         client.failed = false;
       } else {
+        success = false;
         IM.options.cleanup = false;
         client.failed = true;
+        client.message = readClientLogfile(client);
       }
     }
   });
@@ -625,21 +649,22 @@ function joinForceBGShells(options, clients) {
           IM.serverCrashedLocal |= failed;
           client.failed = failed;
           client.done = true;
-        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+        } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
           done -= 1;
           if (client.exit === 0) {
-            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+            IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
             client.failed = false;
           } else {
             IM.options.cleanup = false;
             client.failed = true;
+            success = false;
           }
         }
       }
     });
     internal.sleep(0.5);
   }
-  return done === 0;
+  return done === 0 && success;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -655,9 +680,9 @@ function cleanupBGShells (clients, cn) {
     if (client.failed) {
       print(`${RED}${readClientLogfile(client)}${RESET}`);
       if (fs.exists(logfile)) {
-        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
+        print(`${RED}${Date()} test client with pid ${client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
-        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile${RESET}`);
+        print(`${RED}${Date()} test client with pid ${client.pid} has failed and did not write a logfile${RESET}`);
       }
     } else {
       try {
@@ -669,27 +694,83 @@ function cleanupBGShells (clients, cn) {
     if (!client.done) {
       // hard-kill all running instances
       try {
-        let status = internal.statusExternal(client.client.pid).status;
-        print(`${RED}${Date()} current not done client ${client.client.pid} status: ${status}${RESET}`);
+        let status = internal.statusExternal(client.pid).status;
+        print(`${RED}${Date()} current not done client ${client.pid} status: ${status}${RESET}`);
         if (status === 'RUNNING') {
-          print(`${RED}${Date()} forcefully killing test client with pid ${client.client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
-          internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
-          client.status = internal.statusExternal(client.client.pid);
+          print(`${RED}${Date()} forcefully killing test client with pid ${client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
+          internal.killExternal(client.pid, 9 /*SIGKILL*/);
+          client.status = internal.statusExternal(client.pid);
         }
       } catch (err) { }
     }
   });
 }
 
+function readRtaErrorLog(logFile) {
+  let rx = new RegExp(/\\n/g);
+  const unInteristingRtaLogTopics = [
+    "9c2f7",
+    "5095d",
+    "2abe3",
+    "930d9",
+  ];
+  const buf = fs.readBuffer(fs.join(logFile));
+  let lineStart = 0;
+  let maxBuffer = buf.length;
+  let fnLines = "";
+  for (let j = 0; j < maxBuffer; j++) {
+    if (buf[j] === 10) { // \n
+      let line = buf.utf8Slice(lineStart, j);
+      lineStart = j + 1;
+
+      let foundUninteresting = false;
+      unInteristingRtaLogTopics.forEach(logToken => {
+        if (line.search(logToken) !== -1) {
+          foundUninteresting = true;
+        }
+      });
+      if (!foundUninteresting) {
+        // clip unnessecary noise from the start:
+        if (line.search("8a210") > 0) {
+          line = line.substring(line.search(': ') + 2);
+        } else if (line.search("409ee") > 0 ||
+                   line.search("cb0bd") > 0 ||
+                   line.search("cb0bf") > 0) {
+          line = line.substring(line.search('}') + 1);
+        }
+        fnLines += line.replace(rx, '\n') + '\n';
+      }
+    }
+  }
+  return fnLines;
+}
+
+// version that created the data; the SUT gets upgraded, the data does not
+let rtaDataVersion;
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
-  let args = Object.assign(makeArgsArangosh(options), {
+  if (rtaDataVersion === undefined) {
+    if (pu.currentBinarySet !== 0) {
+      throw new Error('rta oldVersion captured after the binary switch');
+    }
+    rtaDataVersion = internal.db._version();
+  }
+  let args = Object.assign(makeArgsArangosh(
+    options, instanceManager,
+    // waitData needs JWT access for the _users collection;
+    // old arangosh (< 3.12.6) has no --server.jwt-token
+    (writeReadClean === 2 && instanceManager.options.cluster &&
+     !(options.oldSource !== undefined && pu.currentBinarySet === 0))
+  ), {
     'server.endpoint': instanceManager.findEndpoint(),
+    'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
-        fs.join(options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(options.rtasource, 'test_data', 'cleardata.js')
+      fs.join(options.rtasource, 'test_data', 'makedata.js'),
+      fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+      fs.join(options.rtasource, 'test_data', 'waitdata.js'),
+      fs.join(options.rtasource, 'test_data', 'cleardata.js')
     ][writeReadClean],
     'server.force-json': options.forceJson,
   });
@@ -701,14 +782,19 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
                        '--minReplicationFactor', '2',
+                       '--progress', true,
+                       '--printTimeTableMeasurement', true,
                        '--progress', 'true',
-                       '--oldVersion', require('internal').db._version()
+                       '--oldVersion', rtaDataVersion
                      ]);
+  if (options.password) {
+    argv = argv.concat(['--passvoid', options.password]);
+  }
   if (options.rtaNegFilter !== '') {
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
   if (options.forceOneShard) {
-    argv = argv.concat(['--singleShard', 'true']);
+    argv = argv.concat(['--singleShard', 'true', '--createOneShardDatabase', 'true', '--countOffset', '1']);
   }
   if (options.hasOwnProperty('makedataArgs')) {
     argv = argv.concat(toArgv(options['makedataArgs']));
@@ -718,8 +804,14 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 30 : 60 * 15;
-  return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
+  SetGlobalExecutionDeadlineTo(timeout);
+  let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    ret.status = false;
+  }
+  return ret;
 }
 function rtaWaitShardsInSync(options, instanceManager) {
   let args = Object.assign(makeArgsArangosh(options), {
@@ -872,13 +964,15 @@ exports.run = {
   arangoBenchmark: runArangoBenchmark,
   arangoBackup: runArangoBackup,
   rtaWaitShardsInSync: rtaWaitShardsInSync,
-  rtaMakedata: rtaMakedata
+  rtaMakedata: rtaMakedata,
+  readRtaErrorLog: readRtaErrorLog
 };
 
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -891,6 +985,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };

@@ -22,8 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgnes
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -64,6 +62,7 @@ let optionsDocumentation = [
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
+  '   - `httpTimeout`: timeout of individual client test requests',
   '   - `cleanup`: if set to false the data files',
   '                and logs are not removed after termination of the test.',
   '',

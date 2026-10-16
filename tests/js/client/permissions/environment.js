@@ -21,15 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 let env = require('process').env;
 if (getOptions === true) {
   env['PATHTT'] = 'denylist';
   return {
-    'javascript.environment-variables-denylist': 'PATH',
+    'javascript.environment-variables-denylist': 'PATH^(TT)',
     'javascript.environment-variables-allowlist': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
   };
 }

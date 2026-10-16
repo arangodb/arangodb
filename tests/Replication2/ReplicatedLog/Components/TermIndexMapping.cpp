@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include <gtest/gtest.h>
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -31,8 +30,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 namespace {
-auto operator"" _Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
-auto operator"" _T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
+auto operator""_Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
+auto operator""_T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
 
 void insertMapping(TermIndexMapping& mapping, LogRange range, LogTerm term) {
   mapping.insert(range, storage::IteratorPosition::fromLogIndex(range.from),

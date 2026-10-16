@@ -18,36 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <atomic>
 
-#include "RestServer/arangod.h"
-
-struct TRI_vocbase_t;  // forward declaration
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
+struct Database;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a flexible way to get at the system vocbase
 ///        can be used for persisting configuration
 ////////////////////////////////////////////////////////////////////////////////
-class SystemDatabaseFeature final : public ArangodFeature {
+class SystemDatabaseFeature final
+    : public application_features::ApplicationFeature {
  public:
   struct VocbaseReleaser {
-    void operator()(TRI_vocbase_t* ptr);
+    void operator()(Database* ptr);
   };
 
-  using ptr = std::unique_ptr<TRI_vocbase_t, VocbaseReleaser>;
+  using ptr = std::unique_ptr<Database, VocbaseReleaser>;
 
   static constexpr std::string_view name() noexcept { return "SystemDatabase"; }
 
-  explicit SystemDatabaseFeature(Server& server,
-                                 TRI_vocbase_t* vocbase = nullptr);
+  explicit SystemDatabaseFeature(
+      application_features::ApplicationServer& server,
+      Database* vocbase = nullptr);
 
   void start() override;
   void unprepare() override;
@@ -55,7 +55,7 @@ class SystemDatabaseFeature final : public ArangodFeature {
 
  private:
   // cached pointer to the system database
-  std::atomic<TRI_vocbase_t*> _vocbase;
+  std::atomic<Database*> _vocbase;
 };
 
 }  // namespace arangodb

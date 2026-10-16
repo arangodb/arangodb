@@ -18,48 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
-#include <string_view>
-#include <type_traits>
-#include "RestServer/DatabaseFeature.h"
+#include <cstring>
+#include <cstdlib>
+#include <filesystem>
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
 
-// The list of includes for the features is defined in the following file -
-// please add new includes there!
-#include "RestServer/arangod_includes.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/directories.h"
+#include "Basics/application-exit.h"
+#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "RestServer/CrashHandlerFeature.h"
+#include "RestServer/PrivilegeFeature.h"
+#include "RestServer/RestartAction.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
-
-constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<ActionFeature>(),
-               ArangodServer::id<AgencyFeature>(),
-               ArangodServer::id<ClusterFeature>(),
-#ifdef ARANGODB_HAVE_FORK
-               ArangodServer::id<SupervisorFeature>(),
-               ArangodServer::id<DaemonFeature>(),
-#endif
-#ifdef USE_V8
-               ArangodServer::id<FoxxFeature>(),
-#endif
-               ArangodServer::id<GeneralServerFeature>(),
-               ArangodServer::id<GreetingsFeature>(),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-               ArangodServer::id<ProcessEnvironmentFeature>(),
-#endif
-               ArangodServer::id<HttpEndpointProvider>(),
-               ArangodServer::id<LogBufferFeature>(),
-               ArangodServer::id<ServerFeature>(),
-               ArangodServer::id<SslServerFeature>(),
-               ArangodServer::id<StatisticsFeature>()};
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler crashHandler;  // initializes the crash handler and starts its
-                                // thread the destructor will stop it.
+    auto dataSourceRegistry =
+        std::make_shared<crash_handler::DataSourceRegistry>();
+    auto crashDumpManager =
+        std::make_shared<crash_handler::DumpManager>(dataSourceRegistry);
+    crash_handler::CrashHandler crashHandler(crashDumpManager);
+    // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
 
@@ -68,168 +59,30 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY};
+    ArangodServer server{options, SBIN_DIRECTORY,   std::move(name),
+                         &ret,    crashDumpManager, dataSourceRegistry};
     ServerState state{server};
 
     server.addReporter(
-        {[&](ArangodServer::State state) {
-           CrashHandler::setState(ArangodServer::stringifyState(state));
+        {[&server](ArangodServer::State state) {
+           crash_handler::CrashHandler::setState(
+               ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
-             // drop priveleges before starting features
+             // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
            }
          },
          {}});
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](auto& server, TypeTag<async_registry::Feature>) {
-          return std::make_unique<async_registry::Feature>(server);
-        },
-#ifdef TRI_HAVE_GETRLIMIT
-        [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
-          return std::make_unique<BumpFileDescriptorsFeature>(
-              server, "--server.descriptors-minimum");
-        },
-#endif
-        [](auto& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::false_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&name](auto& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(server, name);
-        },
-#endif
-        [&ret](auto& server, TypeTag<CheckVersionFeature>) {
-          return std::make_unique<CheckVersionFeature>(server, &ret,
-                                                       kNonServerFeatures);
-        },
-        [](auto& server, TypeTag<ClusterUpgradeFeature>) {
-          return std::make_unique<ClusterUpgradeFeature>(
-              server, server.template getFeature<DatabaseFeature>());
-        },
-        [&name](auto& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, name);
-        },
-        [](auto& server, TypeTag<GeneralServerFeature>) {
-          return std::make_unique<GeneralServerFeature>(
-              server, server.template getFeature<metrics::MetricsFeature>());
-        },
-        [](auto& server, TypeTag<InitDatabaseFeature>) {
-          return std::make_unique<InitDatabaseFeature>(server,
-                                                       kNonServerFeatures);
-        },
-        [](auto& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, true);
-        },
-        [](auto& server, TypeTag<metrics::MetricsFeature>) {
-          return std::make_unique<metrics::MetricsFeature>(
-              server,
-              LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-              LazyApplicationFeatureReference<StatisticsFeature>(server),
-              LazyApplicationFeatureReference<EngineSelectorFeature>(server),
-              LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-                  server),
-              LazyApplicationFeatureReference<ClusterFeature>(server));
-        },
-        [](auto& server, TypeTag<NetworkFeature>) {
-          auto& metrics = server.template getFeature<metrics::MetricsFeature>();
-          return std::make_unique<NetworkFeature>(
-              server, metrics, network::ConnectionPool::Config{});
-        },
-        [](auto& server, TypeTag<QueryRegistryFeature>) {
-          return std::make_unique<QueryRegistryFeature>(
-              server, server.template getFeature<metrics::MetricsFeature>());
-        },
-        [](auto& server, TypeTag<ReplicationMetricsFeature>) {
-          return std::make_unique<ReplicationMetricsFeature>(
-              server, server.template getFeature<metrics::MetricsFeature>());
-        },
-        [](auto& server, TypeTag<VectorIndexFeature>) {
-          return std::make_unique<VectorIndexFeature>(server);
-        },
-        [](auto& server, TypeTag<RocksDBOptionFeature>) {
-          return RocksDBOptionFeature::construct(
-              server, server.template hasFeature<AgencyFeature>()
-                          ? &server.template getFeature<AgencyFeature>()
-                          : nullptr);
-        },
-        [](auto& server, TypeTag<RocksDBEngine>) {
-          return RocksDBEngine::construct(
-              server, server.template getFeature<RocksDBOptionFeature>(),
-              server.template getFeature<metrics::MetricsFeature>(),
-              server.template getFeature<DatabasePathFeature>(),
-              server.template getFeature<VectorIndexFeature>(),
-              server.template getFeature<FlushFeature>(),
-              server.template getFeature<DumpLimitsFeature>(),
-              server.template getFeature<SchedulerFeature>(),
-              replication2::EnableReplication2
-                  ? &server.template getFeature<ReplicatedLogFeature>()
-                  : nullptr,
-              server.template getFeature<RocksDBRecoveryManager>(),
-              server.template getFeature<DatabaseFeature>(),
-              server.template getFeature<RocksDBIndexCacheRefillFeature>(),
-              server.template getFeature<CacheManagerFeature>(),
-              server.template getFeature<AgencyFeature>());
-        },
-        [](auto& server, TypeTag<SchedulerFeature>) {
-          return std::make_unique<SchedulerFeature>(
-              server, server.template getFeature<metrics::MetricsFeature>());
-        },
-#ifdef USE_V8
-        [&ret](auto& server, TypeTag<ScriptFeature>) {
-          return std::make_unique<ScriptFeature>(server, &ret);
-        },
-#endif
-        [&ret](auto& server, TypeTag<ServerFeature>) {
-          return std::make_unique<ServerFeature>(server, &ret);
-        },
-        [](auto& server, TypeTag<CacheManagerFeature>) {
-          return std::make_unique<CacheManagerFeature>(
-              server, server.template getFeature<CacheOptionsFeature>());
-        },
-        [](auto& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server,
-#ifdef USE_V8
-              std::array { ArangodServer::id<ScriptFeature>() }
-#else
-              std::array { ArangodServer::id<AgencyFeaturePhase>() }
-#endif
-          );
-        },
-        [&name](auto& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, name);
-        },
-        [](auto& server, TypeTag<SslServerFeature>) {
-#ifdef USE_ENTERPRISE
-          return std::make_unique<SslServerFeatureEE>(server);
-#else
-          return std::make_unique<SslServerFeature>(server);
-#endif
-        },
-        [&ret](auto& server, TypeTag<UpgradeFeature>) {
-          return std::make_unique<UpgradeFeature>(server, &ret,
-                                                  kNonServerFeatures);
-        },
-        [&](auto& server, TypeTag<V8DealerFeature>) {
-          return std::make_unique<V8DealerFeature>(
-              server, server.template getFeature<metrics::MetricsFeature>());
-        },
-        [](auto& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<EndpointFeature>(server);
-        }});
+    // Everything the application server runs on this thread -- feature
+    // preparation and start (including recovery, upgrade, and bootstrap),
+    // the wait loop, and shutdown -- acts on behalf of the server itself,
+    // not on behalf of any user, and must therefore run as Superuser.
+    ExecContextSuperuserScope superuserScope;
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("5d508", ERR, Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
@@ -280,9 +133,8 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::string workdir(basics::FileUtils::currentDirectory().result());
+  auto workdir = std::filesystem::current_path();
 
-  TRI_GET_ARGV(argc, argv);
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;
@@ -312,8 +164,8 @@ int main(int argc, char* argv[]) {
   // cases, we need outside help to get the process restarted.
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
-              << std::endl;
+    std::cerr << "WARNING: could not change into directory '"
+              << workdir.string() << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"

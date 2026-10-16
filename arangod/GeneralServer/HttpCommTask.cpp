@@ -18,16 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpCommTask.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
-#include "Basics/dtrace-wrapper.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"

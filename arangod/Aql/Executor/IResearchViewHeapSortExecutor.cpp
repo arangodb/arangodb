@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewHeapSortExecutor.h"
@@ -129,7 +127,8 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(ReadContext&) {
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(
+    ReadContext&, IResearchViewStats&) {
   fillBufferInternal(0);
   // FIXME: Use additional flag from fillBufferInternal
   return !this->_indexReadBuffer.empty();

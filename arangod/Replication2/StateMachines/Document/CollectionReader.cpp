@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
@@ -86,7 +85,7 @@ CollectionReader::CollectionReader(
     : _logicalCollection(std::move(logicalCollection)) {
   trx.addCollection(*_logicalCollection);
 
-  OperationOptions countOptions(ExecContext::current());
+  OperationOptions countOptions;
   OperationResult countResult =
       trx.countAsync(_logicalCollection->name(),
                      transaction::CountType::kNormal, countOptions)

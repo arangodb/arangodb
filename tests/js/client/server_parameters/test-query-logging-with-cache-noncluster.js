@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -70,10 +69,12 @@ function QueryLoggerWithCacheSuite() {
             }
             collection.save(docs);
 
+            db._useDatabase("_system");
             let result = cache.properties({
                 mode: "on"
             });
             assertEqual("on", result.mode);
+            db._useDatabase(dbName);
         },
 
         tearDown: function() {

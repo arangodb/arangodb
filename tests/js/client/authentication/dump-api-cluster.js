@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotUndefined */
+/*global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,13 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotUndefined, assertUndefined} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
+const dump = require('@arangodb/arango-dump');
+let IM = global.instanceManager;
 
 function AuthSuite() {
   'use strict';
@@ -39,7 +41,7 @@ function AuthSuite() {
       
   return {
     setUpAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.rememberConnection();
 
       try {
         users.remove(user1);
@@ -71,7 +73,7 @@ function AuthSuite() {
     },
 
     tearDownAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       try {
         users.remove(user1);
       } catch (err) {
@@ -88,41 +90,62 @@ function AuthSuite() {
     },
 
     testCreateContextNoPermission: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', "root", "");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', "root", "");
 
       const shards = db[cn].shards(true);
       const shard = Object.keys(shards)[0];
       const server = shards[shard][0];
 
       // user2 should not be able to create a dump context
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      let result = arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, {shards: [shard]});
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
+      let result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 403);
 
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, {shards: [shard]});
+      // user1 can create a dump
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
+      result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 201);
       let token = result.headers["x-arango-dump-id"];
       assertNotUndefined(token);
 
       // user2 should not be able to read from the collection using the handle
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/next/${token}?dbserver=${server}&batchId=1`, {});
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
+      result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 403);
 
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/next/${token}?dbserver=${server}&batchId=1`, {});
+      // user1 can read the dump
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
+      result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 204); // collection is empty
 
-
-      // user 2 should not be able to delete the dump context
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      result = arango.DELETE_RAW(`/_api/dump/${token}?dbserver=${server}`, {});
+      // user2 should not be able to delete the dump context
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
+      result = dump.delete(token, server);
       assertEqual(result.code, 403);
 
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.DELETE_RAW(`/_api/dump/${token}?dbserver=${server}`, {});
+      // user1 can delete the dump
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
+      result = dump.delete(token, server);
       assertEqual(result.code, 200);
+    },
+
+    testCreateContextEmptyShards: function () {
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', "root", "");
+
+      const shards = db[cn].shards(true);
+      const shard = Object.keys(shards)[0];
+      const server = shards[shard][0];
+
+      // an empty shard list names no collection to check against. Such a
+      // context can never hand out data, so nobody gets one - not user2, who
+      // may not read the collection, not user1, who may, and not root.
+      [user2, user1, "root"].forEach((user) => {
+        arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user,
+                         user === "root" ? "" : 'foobar');
+        let result = dump.start({shards: []}, server);
+        assertEqual(result.code, 400, {user, result});
+        assertUndefined(result.headers["x-arango-dump-id"], {user, result});
+      });
     },
   };
 }

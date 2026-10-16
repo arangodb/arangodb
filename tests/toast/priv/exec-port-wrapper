@@ -1,0 +1,15 @@
+#!/bin/bash
+# Run exec-port in its own process group so it doesn't receive terminal
+# SIGINT. This ensures exec-port can clean up all child processes when
+# the Erlang VM terminates via Ctrl+C.
+#
+# Resolve the real exec-port path from the erlexec dependency.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+EXEC_PORT="$(find "$SCRIPT_DIR/../deps/erlexec/priv" -name exec-port -type f 2>/dev/null | head -1)"
+
+if [ -z "$EXEC_PORT" ]; then
+    echo "exec-port not found" >&2
+    exit 1
+fi
+
+exec setsid "$EXEC_PORT" "$@"

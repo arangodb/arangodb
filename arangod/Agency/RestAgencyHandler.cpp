@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyHandler.h"
@@ -30,15 +29,13 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Rest/Version.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <Async/async.h>
 #include <velocypack/Builder.h>
 
 #include <thread>
-
-using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -48,10 +45,11 @@ using namespace arangodb::velocypack;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
 
-RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response, Agent* agent)
+RestAgencyHandler::RestAgencyHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 void RestAgencyHandler::reportErrorEmptyRequest() {
@@ -706,9 +704,7 @@ void RestAgencyHandler::handleConfig() {
     LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY)
         << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add(
-        "engine",
-        VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
+    body.add("engine", VPackValue(_vocbase.engine().typeName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
@@ -756,6 +752,7 @@ void RestAgencyHandler::reportMethodNotAllowed() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
+// Mounted at /_api/agency (prefix, only when agency is enabled)
 auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
   response()->setAllowCompression(
       rest::ResponseCompressionType::kAllowCompression);
@@ -803,3 +800,5 @@ auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
   co_return;
 }
+
+}  // namespace arangodb

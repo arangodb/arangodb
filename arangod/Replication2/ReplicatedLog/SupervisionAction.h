@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,12 +25,9 @@
 #include "Basics/debugging.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include <memory>
-#include <utility>
 
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+#include <format>
+#include <utility>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -432,7 +428,7 @@ auto executeAction(Log log, Action& action) -> ActionContext;
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 template<>
-struct fmt::formatter<arangodb::replication2::replicated_log::Action>
+struct std::formatter<arangodb::replication2::replicated_log::Action>
     : formatter<string_view> {
   // parse is inherited from formatter<string_view>.
   template<typename FormatContext>

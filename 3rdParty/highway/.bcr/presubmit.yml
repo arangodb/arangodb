@@ -1,0 +1,10 @@
+bcr_test_module:
+  module_path: "bzlmod"
+  matrix:
+    platform: ["debian10", "macos", "ubuntu2004", "windows"]
+  tasks:
+    run_tests:
+      name: "Run test module"
+      platform: ${{ platform }}
+      test_targets:
+        - ":hwy_ops_tests"

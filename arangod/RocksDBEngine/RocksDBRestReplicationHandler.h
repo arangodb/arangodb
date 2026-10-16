@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,8 +31,8 @@ namespace arangodb {
 /// @brief replication request handler
 class RocksDBRestReplicationHandler : public RestReplicationHandler {
  public:
-  RocksDBRestReplicationHandler(ArangodServer&, GeneralRequest*,
-                                GeneralResponse*);
+  RocksDBRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final {
@@ -42,9 +40,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  /// @brief handle a follow command for the replication log
-  void handleCommandLoggerFollow() override;
-
   /// @brief handle the command to determine the transactions that were open
   /// at a certain point in time
   void handleCommandDetermineOpenTransactions() override;

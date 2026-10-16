@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMeta.h"
@@ -137,11 +136,10 @@ IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
-bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
-                                      VPackSlice const& slice,
-                                      bool readAnalyzerDefinition,
-                                      std::string& errorField,
-                                      std::string_view const defaultVocbase) {
+bool IResearchInvertedIndexMeta::init(
+    arangodb::application_features::ApplicationServer& server,
+    VPackSlice const& slice, bool readAnalyzerDefinition,
+    std::string& errorField, std::string_view const defaultVocbase) {
   if (!IResearchDataStoreMeta::init(slice, errorField, DEFAULT(), nullptr)) {
     return false;
   }
@@ -347,6 +345,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       }
     }
   }
+  TRI_ASSERT(server.hasFeature<IResearchAnalyzerFeature>());
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
 #ifdef USE_ENTERPRISE
@@ -390,9 +389,9 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 }
 
 bool IResearchInvertedIndexMeta::json(
-    arangodb::ArangodServer& server, VPackBuilder& builder,
-    bool writeAnalyzerDefinition,
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
+    arangodb::application_features::ApplicationServer& server,
+    VPackBuilder& builder, bool writeAnalyzerDefinition,
+    Database const* defaultVocbase /*= nullptr*/) const {
   if (!IResearchDataStoreMeta::json(builder)) {
     return false;
   }
@@ -467,7 +466,7 @@ bool IResearchInvertedIndexMeta::operator==(
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
     IResearchInvertedIndexMeta const& meta, VPackSlice other,
-    TRI_vocbase_t const& vocbase) {
+    Database const& vocbase) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -488,9 +487,9 @@ bool IResearchInvertedIndexMeta::matchesDefinition(
 }
 
 bool InvertedIndexField::json(
-    arangodb::ArangodServer& server, VPackBuilder& builder,
-    InvertedIndexField const& parent, bool rootMode,
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
+    arangodb::application_features::ApplicationServer& server,
+    VPackBuilder& builder, InvertedIndexField const& parent, bool rootMode,
+    Database const* defaultVocbase /*= nullptr*/) const {
   // FIXME: uncomment once parameter is supported
   // if (rootMode || parent._isArray != _isArray) {
   //  builder.add(kIsArrayFieldName, VPackValue(_isArray));

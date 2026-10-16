@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicatedRocksDBTransactionState.h"
@@ -41,10 +40,10 @@
 using namespace arangodb;
 
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
-    TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    Database& vocbase, TransactionId tid, transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin, manager) {
+}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
@@ -195,7 +194,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         // distributed transactions.
         return Result{
             TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-            fmt::format(
+            std::format(
                 "All the replicated log leaders involved in transaction {} "
                 "have resigned before the commit operation could be "
                 "replicated. The transaction has neither been committed "
@@ -203,7 +202,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
                 tid.asCoordinatorTransactionId().id())};
       }
 
-      auto warningMsg = fmt::format(
+      auto warningMsg = std::format(
           "Some replicated log leaders have resigned before replicating "
           "the commit operation of transaction {}. The transaction may "
           "have been successfully applied only on some of the shards.",

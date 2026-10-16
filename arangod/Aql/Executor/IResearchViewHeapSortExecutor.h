@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -55,7 +53,7 @@ class IResearchViewHeapSortExecutor
   bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
 
   void reset(bool needFullCount);
-  bool fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx, IResearchViewStats& stats);
   bool fillBufferInternal(size_t skip);
 
   bool writeRow(ReadContext& ctx, size_t idx);

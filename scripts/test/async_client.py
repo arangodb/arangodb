@@ -204,7 +204,7 @@ def kill_children(identifier, params, children):
                 killed.append(one_child.pid)
                 err += add_message_to_report(
                     params,
-                    f"{identifier}: killing {pname} - {str(one_child.pid)}",
+                    f"{str(datetime.now())} {identifier}: killing {pname} - {str(one_child.pid)}",
                 )
                 one_child.resume()
         except FileNotFoundError:

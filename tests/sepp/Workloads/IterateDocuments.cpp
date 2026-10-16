@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IterateDocuments.h"
@@ -29,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -92,8 +90,8 @@ void IterateDocuments::Thread::run() {
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
 
-  auto& engine =
-      _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
+  auto& engine = static_cast<arangodb::RocksDBEngine&>(
+      _server.vocbase()->server().getFeature<arangodb::StorageEngine>());
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
   rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ _options.fillBlockCache);

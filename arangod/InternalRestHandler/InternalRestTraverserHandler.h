@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,8 +37,9 @@ class BaseEngine;
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(ArangodServer&, GeneralRequest*,
-                                        GeneralResponse*, aql::QueryRegistry*);
+  explicit InternalRestTraverserHandler(
+      application_features::ApplicationServer&, GeneralRequest*,
+      GeneralResponse*, aql::QueryRegistry*);
 
  public:
   auto executeAsync() -> futures::Future<futures::Unit> override;

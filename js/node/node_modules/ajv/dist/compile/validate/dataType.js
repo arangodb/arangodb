@@ -10,7 +10,7 @@ var DataType;
 (function (DataType) {
     DataType[DataType["Correct"] = 0] = "Correct";
     DataType[DataType["Wrong"] = 1] = "Wrong";
-})(DataType = exports.DataType || (exports.DataType = {}));
+})(DataType || (exports.DataType = DataType = {}));
 function getSchemaTypes(schema) {
     const types = getJSONTypes(schema.type);
     const hasNull = types.includes("null");
@@ -28,6 +28,7 @@ function getSchemaTypes(schema) {
     return types;
 }
 exports.getSchemaTypes = getSchemaTypes;
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 function getJSONTypes(ts) {
     const types = Array.isArray(ts) ? ts : ts ? [ts] : [];
     if (types.every(rules_1.isJSONType))

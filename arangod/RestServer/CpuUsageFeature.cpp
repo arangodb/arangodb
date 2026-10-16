@@ -18,15 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CpuUsageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/debugging.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
-#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -66,8 +63,8 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(
   constexpr size_t bufferSize = 4096;
 
   // none of the following methods will throw an exception
-  rewind(_statFile);
-  fflush(_statFile);
+  rewind(_statFile);  // NOLINT(bugprone-unsafe-functions)
+  fflush(_statFile);  // NOLINT(clang-analyzer-unix.Errno)
 
   char buffer[bufferSize];
   buffer[0] = '\0';
@@ -103,8 +100,9 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   return offset;
 }
 
-CpuUsageFeature::CpuUsageFeature(Server& server)
-    : ArangodFeature{server, *this},
+CpuUsageFeature::CpuUsageFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {
   setOptional(true);

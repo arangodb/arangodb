@@ -18,13 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <fmt/format.h>
-
+#include <format>
 #include <iosfwd>
 
 namespace arangodb::aql {
@@ -83,11 +81,11 @@ std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 }  // namespace arangodb::aql
 
 template<>
-struct fmt::formatter<::arangodb::aql::ExecutionState>
+struct std::formatter<::arangodb::aql::ExecutionState>
     : formatter<std::string_view> {
   // parse is inherited from formatter<string_view>.
-  template<class FormatContext>
-  auto format(::arangodb::aql::ExecutionState state, FormatContext& fc) const {
+  auto format(::arangodb::aql::ExecutionState state,
+              std::format_context& fc) const {
     auto view = toStringView(state);
 
     return formatter<std::string_view>::format(view, fc);
@@ -95,11 +93,11 @@ struct fmt::formatter<::arangodb::aql::ExecutionState>
 };
 
 template<>
-struct fmt::formatter<::arangodb::aql::ExecutorState>
+struct std::formatter<::arangodb::aql::ExecutorState>
     : formatter<std::string_view> {
   // parse is inherited from formatter<string_view>.
-  template<class FormatContext>
-  auto format(::arangodb::aql::ExecutorState state, FormatContext& fc) const {
+  auto format(::arangodb::aql::ExecutorState state,
+              std::format_context& fc) const {
     auto view = toStringView(state);
 
     return formatter<std::string_view>::format(view, fc);

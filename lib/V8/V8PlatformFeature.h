@@ -18,21 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "V8/V8PlatformFeatureOptions.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <v8-platform.h>
 #include <v8.h>
@@ -49,16 +47,12 @@ class ProgramOptions;
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
  public:
-  template<typename Server>
-  explicit V8PlatformFeature(Server& server)
-      : ApplicationFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
-    setOptional(true);
-  }
+  explicit V8PlatformFeature(application_features::ApplicationServer& server,
+                             V8PlatformFeatureOptions options);
+  explicit V8PlatformFeature(application_features::ApplicationServer& server);
 
   static constexpr std::string_view name() noexcept { return "V8Platform"; }
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 
@@ -97,8 +91,7 @@ class V8PlatformFeature final
 
   char const* _binaryPath;
 
-  std::vector<std::string> _v8Options;
-  uint64_t _v8MaxHeap = TRI_V8_MAXHEAP;
+  V8PlatformFeatureOptions _options;
 
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;

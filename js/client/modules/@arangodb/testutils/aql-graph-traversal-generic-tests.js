@@ -23,7 +23,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -39,6 +38,7 @@ const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-
 const {findExecutionNodes} = require("@arangodb/aql-helper");
 const isCluster = require("internal").isCluster();
 let IM = global.instanceManager;
+
 /*
   TODO:
     We need more tests to cover the following things:
@@ -6956,7 +6956,7 @@ const testsByGraph = {
     testEmptyGraphBfsPath,
     testEmptyGraphDfsPath,
     testEmptyGraphWeightedPath,
-  }
+  },
 };
 
 const metaTests = {

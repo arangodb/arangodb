@@ -1,6 +1,9 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
+  ClientFeatureOptions.cpp
+  ClientOptionsProvider.cpp
   ShellConsoleFeature.cpp
+  ShellConsoleOptionsProvider.cpp
 )
 
 target_link_libraries(arango_shell
@@ -12,16 +15,19 @@ target_link_libraries(arango_shell
 )
 
 target_link_libraries(arango_shell v8_interface)
+target_link_libraries(arango_shell clienttools_utils)
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
 
+  ArangoshServer.cpp
   ShellFeature.cpp
-  TelemetricsHandler.cpp
+  ShellOptionsProvider.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
+  V8ShellOptionsProvider.cpp
   ProcessMonitoringFeature.cpp
   arangosh.cpp
   v8-deadline.cpp
@@ -48,6 +54,9 @@ target_link_libraries(${BIN_ARANGOSH}
   ${ICU_STATIC_LIBS}
   ${V8_LIBS}
   )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOSH} jemalloc)
+endif ()
 
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
@@ -66,10 +75,6 @@ add_dependencies(${BIN_ARANGOSH} iculegacy_build)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOSH} v8_build)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOSH} jemalloc_build)
 endif ()
 
 add_dependencies(${BIN_ARANGOSH} man)

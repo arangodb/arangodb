@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -95,9 +93,9 @@ union DocumentValue {
   size_t result;
 };
 
-union HeapSortValue {
+struct HeapSortValue {
   irs::score_t score;
-  velocypack::Slice slice;
+  velocypack::SharedSlice slice;
 };
 
 struct ExecutorValue {
@@ -553,14 +551,18 @@ class IResearchViewExecutorInfos {
 class IResearchViewStats {
  public:
   void incrScanned() noexcept { ++_scannedIndex; }
-  void incrScanned(size_t value) noexcept { _scannedIndex += value; }
+  void incrScanned(uint64_t value) noexcept { _scannedIndex += value; }
+  void setParallelism(uint64_t parallelism) { _parallelism = parallelism; }
+  uint64_t getParallelism() const noexcept { return _parallelism; }
   void operator+=(IResearchViewStats const& stats) {
     _scannedIndex += stats._scannedIndex;
+    _parallelism = std::max(_parallelism, stats._parallelism);
   }
-  size_t getScanned() const noexcept { return _scannedIndex; }
+  uint64_t getScanned() const noexcept { return _scannedIndex; }
 
  private:
-  size_t _scannedIndex{};
+  uint64_t _scannedIndex{};
+  uint64_t _parallelism{1};
 };
 
 ExecutionStats& operator+=(ExecutionStats& executionStats,
@@ -571,19 +573,6 @@ ExecutionStats& operator+=(ExecutionStats& executionStats,
 // CollectionPtr May be dropped as SearchDoc contains Cid! But needs caching to
 // avoid multiple access rights check! Adding buffering for
 // LateMaterializeExecutor!
-
-struct FilterCtx final : irs::attribute_provider {
-  explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
-      : _execCtx(ctx) {}
-
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
-               ? &_execCtx
-               : nullptr;
-  }
-
-  iresearch::ExpressionExecutionContext _execCtx;
-};
 
 inline constexpr irs::bytes_view kNullSlice{VPackSlice::nullSliceData, 1};
 
@@ -717,7 +706,7 @@ class IResearchViewExecutorBase {
   IRS_NO_UNIQUE_ADDRESS
   irs::utils::Need<isMaterialized, MultiGetContext> _context;
   iresearch::ViewExpressionContext _ctx;
-  FilterCtx _filterCtx;
+  iresearch::FilterCtx _filterCtx;
   iresearch::ViewSnapshotPtr _reader;
   irs::proxy_filter::cache_ptr _cache;
   irs::filter::prepared::ptr _filter;

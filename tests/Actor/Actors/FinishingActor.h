@@ -18,15 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <thread>
-#include <string>
-#include <memory>
 #include <variant>
 
 #include "Inspection/InspectorBase.h"
@@ -85,7 +85,7 @@ struct FinishingHandler : HandlerBase<Runtime, FinishingState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<FinishingState> {
-    fmt::print(stderr, "Finishing actor: handles rest\n");
+    std::cerr << "Finishing actor: handles rest\n";
     return std::move(this->state);
   }
 };
@@ -102,8 +102,8 @@ struct FinishingActor {
 }  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::actor::test::FinishingState>
+struct std::formatter<arangodb::actor::test::FinishingState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::test::message::FinishingMessages>
+struct std::formatter<arangodb::actor::test::message::FinishingMessages>
     : arangodb::inspection::inspection_formatter {};

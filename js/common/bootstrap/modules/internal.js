@@ -27,9 +27,6 @@ global.DEFINE_MODULE('internal', (function () {
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -489,6 +486,24 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_RSAPRIVSIGN) {
     exports.rsaprivsign = global.SYS_RSAPRIVSIGN;
     delete global.SYS_RSAPRIVSIGN;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ES256 sign with private key in PEM format
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ES256SIGN) {
+    exports.es256sign = global.SYS_ES256SIGN;
+    delete global.SYS_ES256SIGN;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ES256 verify with public key in PEM format
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ES256VERIFY) {
+    exports.es256verify = global.SYS_ES256VERIFY;
+    delete global.SYS_ES256VERIFY;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1367,7 +1382,7 @@ global.DEFINE_MODULE('internal', (function () {
       } else {
         var context = {
           customInspect: true,
-          emit: 16384,
+          emit: printShell.emit,
           level: 0,
           limitString: printShell.limitString,
           names: [],
@@ -1388,7 +1403,7 @@ global.DEFINE_MODULE('internal', (function () {
 
     output('\n');
   }
-
+  printShell.emit = 16384;
   printShell.limitString = 256;
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1807,6 +1822,19 @@ global.DEFINE_MODULE('internal', (function () {
     }
 
     output('\n');
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief _PRINT
+  // //////////////////////////////////////////////////////////////////////////////
+
+  global._PRINT = function _PRINT (context) {
+    var printRecursive = require('internal').printRecursive;
+
+    context.seen = [];
+    context.customInspect = false; // Don't call _PRINT (recursively)
+
+    printRecursive(global, context);
   };
 
   // //////////////////////////////////////////////////////////////////////////////

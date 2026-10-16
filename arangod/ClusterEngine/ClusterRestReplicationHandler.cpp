@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestReplicationHandler.h"
@@ -30,15 +29,12 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ClusterRestReplicationHandler::ClusterRestReplicationHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestReplicationHandler(server, request, response) {}
 
 futures::Future<futures::Unit>
 ClusterRestReplicationHandler::handleCommandBatch() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-void ClusterRestReplicationHandler::handleCommandLoggerFollow() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

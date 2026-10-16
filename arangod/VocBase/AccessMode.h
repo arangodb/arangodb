@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -89,6 +88,15 @@ struct AccessMode {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 };
+
+// TODO deduplicate inspection and to/from string above?
+template<typename Inspector>
+auto inspect(Inspector& f, AccessMode::Type& t) {
+  return f.enumeration(t).values(AccessMode::Type::EXCLUSIVE, "exclusive",  //
+                                 AccessMode::Type::READ, "read",            //
+                                 AccessMode::Type::WRITE, "write",          //
+                                 AccessMode::Type::NONE, "none");
+}
 
 }  // namespace arangodb
 

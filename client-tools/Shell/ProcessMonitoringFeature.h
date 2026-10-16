@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,19 +28,20 @@
 #include <vector>
 #include <mutex>
 
-#include "Basics/Thread.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/BasicThread.h"
 #include "Basics/process-utils.h"
-#include "Shell/arangosh.h"
 #include <absl/cleanup/cleanup.h>
+
+#include "V8ShellFeature.h"
 
 namespace arangodb {
 class ProcessMonitoringFeature;
 
-class ProcessMonitorThread final : public arangodb::Thread {
+class ProcessMonitorThread final : public arangodb::BasicThread {
  public:
-  ProcessMonitorThread(application_features::ApplicationServer& server,
-                       ProcessMonitoringFeature& processMonitorFeature)
-      : Thread(server, "ProcessMonitor"),
+  ProcessMonitorThread(ProcessMonitoringFeature& processMonitorFeature)
+      : BasicThread("ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
   ~ProcessMonitorThread() final { shutdown(); }
 
@@ -51,13 +51,15 @@ class ProcessMonitorThread final : public arangodb::Thread {
   ProcessMonitoringFeature& _processMonitorFeature;
 };
 
-class ProcessMonitoringFeature final : public ArangoshFeature {
+class ProcessMonitoringFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ProcessMonitoringFeature(Server& server);
+  explicit ProcessMonitoringFeature(
+      application_features::ApplicationServer& server,
+      V8ShellFeature& v8ShellFeature,
+      V8SecurityFeature const& v8SecurityFeature);
   ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> /*options*/) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;
@@ -82,6 +84,8 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 
   void moveMonitoringPIDToAttic(ExternalId const& pid,
                                 ExternalProcessStatus const& exitStatus);
+
+  void resetConnection() { _V8ShellFeature.resetConnection(); }
 
   template<typename Func>
   void visitMonitoring(Func const& func) {
@@ -118,6 +122,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   std::unique_ptr<ProcessMonitorThread> _monitorThread;
 
   bool _enabled;
+  V8ShellFeature& _V8ShellFeature;
 };
 
 }  // namespace arangodb

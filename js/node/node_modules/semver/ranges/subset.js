@@ -1,3 +1,5 @@
+'use strict'
+
 const Range = require('../classes/range.js')
 const Comparator = require('../classes/comparator.js')
 const { ANY } = Comparator
@@ -36,7 +38,7 @@ const compare = require('../functions/compare.js')
 // - If LT
 //   - If LT.semver is greater than any < or <= comp in C, return false
 //   - If LT is <=, and LT.semver does not satisfy every C, return false
-//   - If GT.semver has a prerelease, and not in prerelease mode
+//   - If LT.semver has a prerelease, and not in prerelease mode
 //     - If no C has a prerelease and the LT.semver tuple, return false
 // - Else return true
 
@@ -172,7 +174,7 @@ const simpleSubset = (sub, dom, options) => {
         if (higher === c && higher !== gt) {
           return false
         }
-      } else if (gt.operator === '>=' && !satisfies(gt.semver, String(c), options)) {
+      } else if (gt.operator === '>=' && !c.test(gt.semver)) {
         return false
       }
     }
@@ -190,7 +192,7 @@ const simpleSubset = (sub, dom, options) => {
         if (lower === c && lower !== lt) {
           return false
         }
-      } else if (lt.operator === '<=' && !satisfies(lt.semver, String(c), options)) {
+      } else if (lt.operator === '<=' && !c.test(lt.semver)) {
         return false
       }
     }

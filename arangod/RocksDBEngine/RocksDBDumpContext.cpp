@@ -18,15 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBDumpContext.h"
 
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
@@ -43,6 +44,7 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
+#include <unordered_map>
 #include <utility>
 
 using namespace arangodb;
@@ -198,7 +200,7 @@ void RocksDBDumpContext::WorkItems::stop() {
 
 RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
                                        RocksDBDumpManager& manager,
-                                       DatabaseFeature& databaseFeature,
+                                       IDatabaseProvider& databaseProvider,
                                        std::string id,
                                        RocksDBDumpContextOptions options,
                                        std::string user, std::string database,
@@ -212,12 +214,20 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _options(std::move(options)),
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
-      _channel(_options.prefetchCount) {
+      _channel(_options.prefetchCount),
+      _activity{activities::make<activities::GenericActivity>(
+          "RocksDBDump",
+          activities::GenericActivityData{
+              {{"id", _id}, {"user", _user}, {"database", _database}}})} {
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(_activity);
+
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
   // found.
-  _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, _database);
+  _databaseGuard =
+      std::make_unique<DatabaseGuard>(databaseProvider.useDatabase(_database));
 
   TRI_vocbase_t& vocbase = _databaseGuard->database();
 
@@ -354,6 +364,11 @@ bool RocksDBDumpContext::applyFilter(
     return basics::VelocyPackHelper::equal(documentSlice.get(filter.path),
                                            filter.value.slice(), true);
   });
+}
+
+activities::GenericActivity::HandleType RocksDBDumpContext::activity()
+    const noexcept {
+  return _activity;
 }
 
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(

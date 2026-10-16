@@ -18,11 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fmt/ostream.h>
-#include <fmt/core.h>
+#include <format>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
@@ -165,7 +163,7 @@ ReplaceServerTargetState::ReplaceServerTargetState(ParticipantId oldServer,
     : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
 
 auto ReplaceServerTargetState::toString() const -> std::string {
-  return fmt::format("replacing {} with {}", oldServer, newServer);
+  return std::format("replacing {} with {}", oldServer, newServer);
 }
 
 void ReplaceServerTargetState::apply(AgencyState& agency) const {
@@ -181,7 +179,7 @@ ReplaceServerTargetLog::ReplaceServerTargetLog(ParticipantId oldServer,
     : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
 
 auto ReplaceServerTargetLog::toString() const -> std::string {
-  return fmt::format("replacing {} with {}", oldServer, newServer);
+  return std::format("replacing {} with {}", oldServer, newServer);
 }
 
 void ReplaceServerTargetLog::apply(AgencyState& agency) const {
@@ -196,7 +194,7 @@ void ReplaceServerTargetLog::apply(AgencyState& agency) const {
 }
 
 auto SetLeaderInTargetAction::toString() const -> std::string {
-  return fmt::format("setting `{}` as leader in target", newLeader);
+  return std::format("setting `{}` as leader in target", newLeader);
 }
 
 SetLeaderInTargetAction::SetLeaderInTargetAction(ParticipantId newLeader)
@@ -219,7 +217,7 @@ void AddLogParticipantAction::apply(AgencyState& agency) const {
 }
 
 auto AddLogParticipantAction::toString() const -> std::string {
-  return fmt::format("adding participant {}", server);
+  return std::format("adding participant {}", server);
 }
 
 RemoveLogParticipantAction::RemoveLogParticipantAction(
@@ -234,7 +232,7 @@ void RemoveLogParticipantAction::apply(AgencyState& agency) const {
 }
 
 auto RemoveLogParticipantAction::toString() const -> std::string {
-  return fmt::format("removing participant {}", server);
+  return std::format("removing participant {}", server);
 }
 
 SetWriteConcernAction::SetWriteConcernAction(size_t newWriteConcern)
@@ -248,7 +246,7 @@ void SetWriteConcernAction::apply(AgencyState& agency) const {
 }
 
 auto SetWriteConcernAction::toString() const -> std::string {
-  return fmt::format("setting writeConcern to {}", newWriteConcern);
+  return std::format("setting writeConcern to {}", newWriteConcern);
 }
 
 SetSoftWriteConcernAction::SetSoftWriteConcernAction(size_t newSoftWriteConcern)
@@ -262,7 +260,7 @@ void SetSoftWriteConcernAction::apply(AgencyState& agency) const {
 }
 
 auto SetSoftWriteConcernAction::toString() const -> std::string {
-  return fmt::format("setting softWriteConcern to {}", newSoftWriteConcern);
+  return std::format("setting softWriteConcern to {}", newSoftWriteConcern);
 }
 
 SetBothWriteConcernAction::SetBothWriteConcernAction(size_t newWriteConcern,
@@ -279,7 +277,7 @@ void SetBothWriteConcernAction::apply(AgencyState& agency) const {
 }
 
 auto SetBothWriteConcernAction::toString() const -> std::string {
-  return fmt::format("setting writeConcern to {} and softWriteConcern to {}",
+  return std::format("setting writeConcern to {} and softWriteConcern to {}",
                      newWriteConcern, newSoftWriteConcern);
 }
 
@@ -294,7 +292,7 @@ void SetWaitForSyncAction::apply(AgencyState& agency) const {
 }
 
 auto SetWaitForSyncAction::toString() const -> std::string {
-  return fmt::format("setting waitForSync to {}", newWaitForSync);
+  return std::format("setting waitForSync to {}", newWaitForSync);
 }
 
 }  // namespace arangodb::test

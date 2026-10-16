@@ -18,14 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <memory>
@@ -35,47 +36,58 @@
 #include <vector>
 
 namespace arangodb {
+class RocksDBEngine;
+class BootstrapFeature;
+
+class ClusterFeature;
 class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
+class RocksDBIndexCacheRefillFeature final
+    : public application_features::ApplicationFeature,
+      public IIndexCacheRefill {
  public:
   static constexpr std::string_view name() noexcept {
     return "RocksDBIndexCacheRefill";
   }
 
-  explicit RocksDBIndexCacheRefillFeature(Server& server);
+  RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::IRegistry& metricsRegistry,
+      RocksDBIndexCacheRefillFeatureOptions options);
+  RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::IRegistry& metricsRegistry);
 
   ~RocksDBIndexCacheRefillFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void beginShutdown() override;
   void start() override;
   void stop() override;
 
   // track the refill of the specified keys
   void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, std::vector<std::string> keys);
+                   IndexId iid, std::vector<std::string> keys) override;
 
   // schedule the refill of the full index
   void scheduleFullIndexRefill(std::string const& database,
-                               std::string const& collection, IndexId iid);
+                               std::string const& collection,
+                               IndexId iid) override;
 
-  // wait until the background thread has applied all operations
-  void waitForCatchup();
+  void waitForCatchup() override;
+
+  bool autoRefill() const noexcept override;
+
+  bool autoRefillOnFollowers() const noexcept override;
 
   // maximum capacity for tracking per-key refills
   size_t maxCapacity() const noexcept;
 
-  // auto-refill in-memory cache after every insert/update/replace operation
-  bool autoRefill() const noexcept;
-
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
-
-  // auto-refill in-memory cache also on followers
-  bool autoRefillOnFollowers() const noexcept;
 
  private:
   void stopThread();
@@ -90,36 +102,22 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // the method can indirectly schedule itself.
   void scheduleIndexRefillTasks();
 
+  static metrics::Counter& addTotalFullIndexRefills(
+      metrics::IRegistry& metricsRegistry);
+
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
 
   DatabaseFeature& _databaseFeature;
+  ClusterFeature* _clusterFeature{};
+  metrics::IRegistry& _metricsRegistry;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
   std::unique_ptr<RocksDBIndexCacheRefillThread> _refillThread;
 
-  // maximum capacity of queue used for automatic refilling of in-memory index
-  // caches after insert/update/replace (not used for initial filling at
-  // startup)
-  size_t _maxCapacity;
-
-  // maximum concurrent index fill tasks that we are allowed to run to fill
-  // indexes during startup
-  size_t _maxConcurrentIndexFillTasks;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // refilled upon insert/update/replace
-  bool _autoRefill;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // populated on server start
-  bool _fillOnStartup;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // refilled on followers
-  bool _autoRefillOnFollowers;
+  RocksDBIndexCacheRefillFeatureOptions _options;
 
   // total number of full index refills completed
   metrics::Counter& _totalFullIndexRefills;
@@ -136,4 +134,5 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   size_t _currentlyRunningIndexFillTasks;
 };
+
 }  // namespace arangodb

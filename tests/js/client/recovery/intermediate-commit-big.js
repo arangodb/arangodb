@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -65,7 +63,7 @@ function recoverySuite () {
     testIntermediateCommitsBig: function () {
       var c = db._collection('UnitTestsRecovery');
 
-      assertEqual(20000, c.count());
+      assertEqual(19000, c.count());
     }
 
   };

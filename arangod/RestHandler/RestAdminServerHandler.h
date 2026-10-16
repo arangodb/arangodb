@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,6 +26,8 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class ApiRecordingFeature;
+class StorageEngine;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
@@ -34,13 +35,17 @@ namespace arangodb {
 
 class RestAdminServerHandler : public RestBaseHandler {
  public:
-  explicit RestAdminServerHandler(ArangodServer&, GeneralRequest*,
-                                  GeneralResponse*);
+  explicit RestAdminServerHandler(application_features::ApplicationServer&,
+                                  GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminServerHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+
+ protected:
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
 
  private:
   void handleMode();
@@ -55,5 +60,9 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleEncryptionKeyRotation();
   void handleApiCalls();
   void handleAqlRecordedQueries();
+  void handleGetWalFileList();
+
+  StorageEngine& _engine;
+  ApiRecordingFeature& _apiRecordingFeature;
 };
 }  // namespace arangodb

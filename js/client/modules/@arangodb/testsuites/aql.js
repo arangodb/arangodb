@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -30,8 +29,10 @@ const functionsDocumentation = {
   'shell_api': 'shell client tests - only *api*',
   'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
+  'shell_client_large': 'shell client tests (high cpu usage)',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_client_aql': 'AQL tests in the client',
+  'shell_client_aql_large': 'AQL tests in the client - high cpu usage, long duration',
   'shell_client_aql_vector': 'AQL tests in the client with vector index feature enabled',
   'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
@@ -56,9 +57,11 @@ const testPaths = {
   'shell_api': [ tu.pathForTesting('client/shell/api')],
   'shell_api_multi': [ tu.pathForTesting('client/shell/api/multi')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
+  'shell_client_large': [ tu.pathForTesting('common/shell/large'), tu.pathForTesting('client/shell/large')],
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
+  'shell_client_aql_large': [ tu.pathForTesting('client/aql/large'), tu.pathForTesting('common/aql/large')],
   'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -90,9 +93,10 @@ function ensureCoordinators(options, numServers) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellV8 (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_v8, options);
+  const name = 'shell_v8';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.shellv8Runner(options, 'shell_v8', []).run(testCases);
+  let rc = new trs.shellv8Runner(options, name, []).run(testCases);
   return rc;
 }
 
@@ -101,7 +105,8 @@ function shellV8 (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellApiClient (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_api, options);
+  const name = 'shell_api';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -112,8 +117,12 @@ function shellApiClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -123,7 +132,8 @@ function shellApiClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellApiMulti (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_api_multi, options);
+  const name = 'shell_api_multi';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -134,8 +144,12 @@ function shellApiMulti (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_api_multi', moreOptions).run(testCases);
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -145,7 +159,8 @@ function shellApiMulti (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClient (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client, options);
+  const name = 'shell_client';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -156,8 +171,38 @@ function shellClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_large
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientLarge (options) {
+  const name = 'shell_client_large';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  var opts = ensureServers(options, 3);
+  opts = ensureCoordinators(opts, 2);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
+  // increase timeouts after which servers count as BAD/FAILED.
+  // we want this to ensure that in an overload situation we do not
+  // get random failedLeader / failedFollower jobs during our tests.
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -167,7 +212,8 @@ function shellClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientMulti (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client_multi, options);
+  const name = 'shell_client_multi';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -178,8 +224,12 @@ function shellClientMulti (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_multi', moreOptions).run(testCases);
+  let moreOptions = {
+    "agency.supervision-ok-threshold" : "15",
+    "agency.supervision-grace-period" : "30",
+    "server.authentication": false
+  };
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -199,12 +249,15 @@ function shellServerOnly (options) {
     };
   }
 
-  let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
+  const name = 'shell_server_only';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = new trs.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
+  let rc = new trs.runOnArangodRunner(opts, name, {
+      "server.authentication": false
+  }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -216,16 +269,32 @@ function shellServerOnly (options) {
 function shellClientAql (options) {
   let testCases;
   let name = 'shell_client_aql';
-  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
-  if (options.skipRanges) {
-    testCases = _.filter(testCases,
-                         function (p) { return p.indexOf('ranges-combined') === -1; });
-    name = 'shell_client_aql_skipranges';
-  }
+  testCases = tu.scanTestPaths(testPaths[name], options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {
+    "server.authentication": false
+  }).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_aql_large
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientAqlLarge (options) {
+  let testCases;
+  let name = 'shell_client_aql_large';
+  testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -238,14 +307,15 @@ function shellClientAql (options) {
 function shellClientAqlVector (options) {
   let testCases;
   let name = 'shell_client_aql_vector';
-  testCases = tu.scanTestPaths(testPaths.shell_client_aql_vector, options);
+  testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let moreOptions = {
-    "vector-index": "true",
-  };
+  let moreOptions = { };
 
+  if (options.isCov) {
+    arango.timeout(arango.timeout() * 10);
+  }
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -256,13 +326,14 @@ function shellClientAqlVector (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientTraffic(options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client_traffic, options);
+  const name = 'shell_client_traffic';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_traffic', {}).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -272,7 +343,8 @@ function shellClientTraffic(options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientTransaction(options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client_transaction, options);
+  const name = 'shell_client_transaction';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
@@ -286,7 +358,7 @@ function shellClientTransaction(options) {
     };
   }
 
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -296,7 +368,8 @@ function shellClientTransaction(options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientReplication2Recovery(options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client_replication2_recovery, options);
+  const name = 'shell_client_replication2_recovery';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
 
   var opts = ensureServers(options, 5);
@@ -312,7 +385,7 @@ function shellClientReplication2Recovery(options) {
     "agency.supervision-ok-threshold": "1.5",
     "agency.supervision-grace-period": "3.0",
   };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_replication2_recovery', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -323,8 +396,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_api'] = shellApiClient;
   testFns['shell_api_multi'] = shellApiMulti;
   testFns['shell_client'] = shellClient;
+  testFns['shell_client_large'] = shellClientLarge;
   testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_client_aql'] = shellClientAql;
+  testFns['shell_client_aql_large'] = shellClientAqlLarge;
   testFns['shell_client_aql_vector'] = shellClientAqlVector;
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
@@ -332,7 +407,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client_traffic'] = shellClientTraffic;
 
   opts['skipAql'] = false;
-  opts['skipRanges'] = true;
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);

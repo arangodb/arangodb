@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/arangod.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
@@ -36,21 +35,21 @@ struct ViewFactory {
   // LogicalView factory for end-user validation instantiation and
   // persistence.
   // Return if success then 'view' is set, else 'view' state is undefined
-  virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  virtual Result create(LogicalView::ptr& view, Database& vocbase,
                         velocypack::Slice definition,
                         bool isUserRequest) const = 0;
 
   // LogicalView factory for internal instantiation only
-  virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  virtual Result instantiate(LogicalView::ptr& view, Database& vocbase,
                              velocypack::Slice definition,
                              bool isUserRequest) const = 0;
 };
 
-class ViewTypesFeature final : public ArangodFeature {
+class ViewTypesFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ViewTypes"; }
 
-  explicit ViewTypesFeature(Server& server);
+  explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   // Return 'factory' for 'type' was added successfully
   Result emplace(std::string_view type, ViewFactory const& factory);

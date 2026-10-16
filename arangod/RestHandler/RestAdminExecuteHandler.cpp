@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminExecuteHandler.h"
@@ -46,13 +45,15 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminExecuteHandler::RestAdminExecuteHandler(ArangodServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestAdminExecuteHandler::RestAdminExecuteHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/execute (exact, requires V8)
 RestStatus RestAdminExecuteHandler::execute() {
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");
@@ -107,6 +108,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
     // get a V8 context
     bool const allowUseDatabase =
+        server().hasFeature<ActionFeature>() &&
         server().getFeature<ActionFeature>().allowUseDatabase();
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestAdminScriptActionContext(

@@ -54,7 +54,7 @@ const getGraphLabel = ({
   type: DetectedGraphType;
   isDisjoint?: boolean;
 }) => {
-  let graphTypeString = GRAPH_TYPE_TO_LABEL_MAP[type];
+  const graphTypeString = GRAPH_TYPE_TO_LABEL_MAP[type];
   if (isDisjoint) {
     return `Disjoint ${graphTypeString}`;
   }

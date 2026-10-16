@@ -18,14 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utilities.h"
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <unordered_map>
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -37,7 +39,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationSyncConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Rest/Version.h"
@@ -46,8 +48,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/UrlHelper.h"
-
-struct TRI_vocbase_t;
 
 namespace {
 /// @brief handle the state response of the leader
@@ -174,7 +174,7 @@ namespace replutils {
 std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer,
-                       ReplicationApplierConfiguration const& applierConfig)
+                       ReplicationSyncConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
       _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
@@ -264,6 +264,14 @@ void ProgressInfo::set(std::string const& msg) {
 }
 
 constexpr double BatchInfo::DefaultTimeout;
+constexpr double BatchInfo::kMaxTimeout;
+
+double BatchInfo::sanitizeTtl(double ttl) noexcept {
+  if (std::isnan(ttl) || ttl <= 0.0) {
+    return DefaultTimeout;
+  }
+  return std::min(ttl, kMaxTimeout);
+}
 
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
@@ -272,7 +280,6 @@ Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress,
                         replutils::LeaderInfo& leader, SyncerId const& syncerId,
                         char const* context, std::string const& patchCount) {
-  // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
   }
@@ -470,8 +477,7 @@ Result BatchInfo::finish(replutils::Connection& connection,
   }
 }
 
-LeaderInfo::LeaderInfo(
-    ReplicationApplierConfiguration const& /*applierConfig*/) {}
+LeaderInfo::LeaderInfo(ReplicationSyncConfiguration const& /*applierConfig*/) {}
 
 uint64_t LeaderInfo::version() const {
   return majorVersion * 10000 + minorVersion * 100 + patchVersion;
@@ -479,14 +485,7 @@ uint64_t LeaderInfo::version() const {
 
 /// @brief get leader state
 Result LeaderInfo::getState(replutils::Connection& connection,
-                            bool isChildSyncer, char const* context) {
-  if (isChildSyncer) {
-    TRI_ASSERT(endpoint.empty());
-    TRI_ASSERT(serverId.isSet());
-    TRI_ASSERT(majorVersion != 0);
-    return Result();
-  }
-
+                            char const* context) {
   std::string const url =
       ReplicationUrl + "/logger-state?serverId=" + connection.localServerId();
 
@@ -579,6 +578,14 @@ bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
   std::string const& cType =
       response.getHeaderField(StaticStrings::ContentTypeHeader, found);
   return found && cType == StaticStrings::MimeTypeVPack;
+}
+
+Result documentInsertError(Result res, std::string_view collectionName) {
+  TRI_ASSERT(res.fail());
+  return Result{
+      res.errorNumber(),
+      absl::StrCat("error while inserting documents into collection '",
+                   collectionName, "': ", res.errorMessage())};
 }
 
 /// @brief parse a velocypack response

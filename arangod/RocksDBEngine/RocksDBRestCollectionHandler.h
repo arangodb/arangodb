@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,8 +28,8 @@ namespace arangodb {
 
 class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  RocksDBRestCollectionHandler(ArangodServer&, GeneralRequest*,
-                               GeneralResponse*);
+  RocksDBRestCollectionHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  protected:
   futures::Future<Result> handleExtraCommandPut(

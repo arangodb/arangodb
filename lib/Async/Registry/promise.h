@@ -18,23 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include <atomic>
-#include <iostream>
+#include <format>
 #include <memory>
 #include <optional>
 #include <source_location>
-#include <string>
-#include <thread>
+
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/thread.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/shared.h"
-#include "fmt/format.h"
-#include "fmt/std.h"
 
 namespace {
 // helper type for the visitor
@@ -48,29 +44,30 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace arangodb::async_registry {
 
-enum class State { Running = 0, Suspended, Resolved, Deleted };
+enum class State { Running = 0, Suspended, Resolved };
 template<typename Inspector>
 auto inspect(Inspector& f, State& x) {
-  return f.enumeration(x).values(State::Running, "Running", State::Suspended,
-                                 "Suspended", State::Resolved, "Resolved",
-                                 State::Deleted, "Deleted");
+  return f.enumeration(x).values(State::Running, "Running",      //
+                                 State::Suspended, "Suspended",  //
+                                 State::Resolved, "Resolved");
 }
 
 struct PromiseId {
-  void* id;
+  void const* id;
   bool operator==(PromiseId const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PromiseId& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
+  return f.object(x).fields(f.field("id", std::format("{}", x.id)));
 }
 
 struct Requester : std::variant<basics::ThreadInfo, PromiseId> {
-  static auto from(std::variant<basics::ThreadInfo, void*> var) -> Requester {
+  static auto from(std::variant<basics::ThreadInfo, void const*> var)
+      -> Requester {
     return std::visit(
         overloaded{
             [](basics::ThreadInfo const& info) { return Requester{info}; },
-            [](void* ptr) { return Requester{PromiseId{ptr}}; }},
+            [](void const* ptr) { return Requester{PromiseId{ptr}}; }},
         var);
   }
 };
@@ -102,7 +99,7 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
 using CurrentRequester =
     std::variant<containers::SharedPtr<basics::ThreadInfo>, PromiseId>;
 struct AtomicRequester
-    : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, void> {
+    : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, const void> {
   static auto from(CurrentRequester req) -> AtomicRequester {
     return std::visit(
         overloaded{[](containers::SharedPtr<basics::ThreadInfo> const& ptr) {
@@ -121,8 +118,8 @@ struct Promise {
   Promise(CurrentRequester requester, std::source_location location);
   ~Promise() = default;
 
-  auto id() -> PromiseId { return PromiseId{this}; }
-  auto snapshot() -> Snapshot {
+  auto id() const -> PromiseId { return PromiseId{this}; }
+  auto snapshot() const -> Snapshot {
     return PromiseSnapshot{
         .id = id(),
         .owning_thread =
@@ -132,9 +129,6 @@ struct Promise {
         .state = state.load(),
         .thread = running_thread.load(std::memory_order_acquire),
         .source_location = source_location.snapshot()};
-  }
-  auto set_to_deleted() -> void {
-    state.store(State::Deleted, std::memory_order_relaxed);
   }
 
   containers::SharedPtr<basics::ThreadInfo> owning_thread;
@@ -176,11 +170,8 @@ struct AddToAsyncRegistry {
   auto update_requester_to_current_thread() -> void;
 
  private:
-  struct noop {
-    void operator()(void*) {}
-  };
-  std::unique_ptr<containers::ThreadOwnedList<Promise>::Node, noop>
-      node_in_registry = nullptr;
+  std::shared_ptr<containers::ThreadOwnedList<Promise>::Node> node_in_registry =
+      nullptr;
 };
 
 }  // namespace arangodb::async_registry

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Executor/AqlExecutorTestCase.h"

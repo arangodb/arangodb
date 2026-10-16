@@ -4,7 +4,6 @@
 const expect = require('chai').expect;
 const utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
-const request = require('@arangodb/request');
 const util = require('@arangodb/util');
 const fs = require('fs');
 const internal = require('internal');
@@ -16,7 +15,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
 const _ = require("lodash");
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:');
+const origin = global.instanceManager.url;
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);

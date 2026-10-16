@@ -18,20 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Aql/types.h"
 #include "Futures/Future.h"
-#include "Logger/LogContext.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include <memory>
 #include <string>
-
-struct TRI_vocbase_t;
 
 namespace arangodb::velocypack {
 class Slice;
@@ -44,8 +39,8 @@ class QueryRegistry;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                 QueryRegistry*);
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, QueryRegistry*);
   ~RestAqlHandler() override = default;
 
   char const* name() const override final { return "RestAqlHandler"; }

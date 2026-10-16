@@ -18,9 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -72,12 +72,13 @@ class IResearchInvertedIndexConditionTest
  protected:
   IResearchInvertedIndexConditionTest() : server(false) {
     arangodb::tests::init();
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         _collection);

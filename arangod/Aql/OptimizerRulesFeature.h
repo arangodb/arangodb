@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,20 +26,24 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace aql {
 
-class OptimizerRulesFeature final : public ArangodFeature {
+class OptimizerRulesFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "OptimizerRules"; }
 
-  explicit OptimizerRulesFeature(Server& server);
+  explicit OptimizerRulesFeature(
+      application_features::ApplicationServer& server,
+      OptimizerRulesOptions options);
+  explicit OptimizerRulesFeature(
+      application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 
@@ -77,7 +80,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
 
  private:
   void addRules();
-  void addStorageEngineRules();
   void enableOrDisableRules();
 
   OptimizerRulesOptions _options;

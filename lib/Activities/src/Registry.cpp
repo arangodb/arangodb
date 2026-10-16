@@ -1,0 +1,109 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Activities/Registry.h"
+#include "Activities/Activity.h"
+#include "Activities/ActivityHandle.h"
+#include "velocypack/Builder.h"
+#include "Basics/ErrorT.h"
+#include "velocypack/SharedSlice.h"
+
+namespace arangodb::activities {
+
+auto Registry::increment_total_nodes() -> void {
+  if (_metrics != nullptr) {
+    _metrics->increment_total_nodes();
+  }
+}
+
+auto Registry::increment_registered_nodes() -> void {
+  if (_metrics != nullptr) {
+    _metrics->increment_registered_nodes();
+  }
+}
+
+auto Registry::store_registered_nodes(std::uint64_t count) -> void {
+  if (_metrics != nullptr) {
+    _metrics->store_registered_nodes(count);
+  }
+}
+
+auto Registry::setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void {
+  _metrics = std::move(metrics);
+}
+
+auto Registry::garbageCollect() -> void {
+  _registry.doUnderLock([this](auto&& reg) {
+    std::erase_if(reg, [](auto&& a) { return a.use_count() == 1; });
+    store_registered_nodes(reg.size());
+  });
+}
+
+auto Registry::garbageCollectAll() -> void {
+  _registry.doUnderLock([this](auto&& reg) {
+    size_t deletedCount = 1;
+    while (deletedCount > 0) {
+      deletedCount =
+          std::erase_if(reg, [](auto&& a) { return a.use_count() == 1; });
+      store_registered_nodes(reg.size());
+    }
+  });
+}
+
+auto Registry::snapshot()
+    -> errors::ErrorT<inspection::Status, velocypack::SharedSlice> {
+  return _registry.doUnderLock([](auto&& reg) {
+    VPackBuilder builder;
+    {
+      auto array = VPackArrayBuilder(&builder);
+      for (auto&& a : reg) {
+        if (a.use_count() == 1) {
+          continue;
+        }
+        auto res = a->snapshot(builder);
+        if (!res.ok()) {
+          return errors::ErrorT<inspection::Status,
+                                velocypack::SharedSlice>::error(res.error());
+        }
+      }
+    }
+    return errors::ErrorT<inspection::Status, velocypack::SharedSlice>::ok(
+        builder.sharedSlice());
+  });
+}
+
+auto Registry::size() -> size_t {
+  return _registry.doUnderLock([](auto&& reg) { return reg.size(); });
+}
+
+Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
+    ActivityHandle activity) noexcept {
+  _oldExecutingActivity = Registry::currentlyExecutingActivity();
+  Registry::setCurrentlyExecutingActivity(activity);
+}
+
+Registry::ScopedCurrentlyExecutingActivity::
+    ~ScopedCurrentlyExecutingActivity() {
+  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
+}
+
+}  // namespace arangodb::activities

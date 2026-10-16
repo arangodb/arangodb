@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
@@ -178,6 +176,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
 ExecutionStats& operator+=(ExecutionStats& executionStats,
                            IResearchViewStats const& viewStats) noexcept {
   executionStats.scannedIndex += viewStats.getScanned();
+  executionStats.iresearchParallelism =
+      std::max(executionStats.iresearchParallelism, viewStats.getParallelism());
   return executionStats;
 }
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
@@ -26,6 +25,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <new>
+#include <typeinfo>
 #include <utility>
 
 #include <boost/range/adaptor/filtered.hpp>
@@ -53,6 +53,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -66,24 +67,14 @@ void failCallback(std::string const& message) {
   FATAL_ERROR_EXIT();
 }
 
-auto nonEmptyFeatures(
-    std::span<std::unique_ptr<ApplicationFeature>> features) noexcept {
-  return boost::make_iterator_range(features) |
-         boost::adaptors::filtered([](auto& p) { return nullptr != p; }) |
-         boost::adaptors::transformed(
-             [](auto& p) -> ApplicationFeature& { return *p; });
-}
-
 }  // namespace
 
 std::atomic<bool> ApplicationServer::CTRL_C(false);
 
-ApplicationServer::ApplicationServer(
-    std::shared_ptr<ProgramOptions> options, char const* binaryPath,
-    std::span<std::unique_ptr<ApplicationFeature>> features)
+ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
+                                     char const* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
-      _features{features},
       _fail{failCallback},  // register callback function for failures
       _binaryPath{binaryPath} {
   addReporter(ProgressHandler{
@@ -93,6 +84,14 @@ ApplicationServer::ApplicationServer(
       [server = this](ApplicationServer::State state, std::string_view name) {
         server->progressInfo(server->stringifyState(state), name);
       }});
+}
+
+ApplicationServer::~ApplicationServer() {
+  // destroy features in inverse order in which they were added.
+  for (auto it = _featureInitOrder.rbegin(); it != _featureInitOrder.rend();
+       ++it) {
+    _features[*it].reset();
+  }
 }
 
 std::pair<std::string, std::string> ApplicationServer::progressInfo() const {
@@ -125,23 +124,41 @@ bool ApplicationServer::isStoppingState(State state) const {
          state == State::ABORTED;
 }
 
-void ApplicationServer::disableFeatures(std::span<const size_t> types) {
+void ApplicationServer::disableFeatures(
+    std::span<const std::type_index> types) {
   disableFeatures(types, false);
 }
 
-void ApplicationServer::forceDisableFeatures(std::span<const size_t> types) {
+void ApplicationServer::forceDisableFeatures(
+    std::span<const std::type_index> types) {
   disableFeatures(types, true);
 }
 
-void ApplicationServer::disableFeatures(std::span<const size_t> types,
+bool ApplicationServer::hasFeature(std::type_index type) const noexcept {
+  return _features.contains(type);
+}
+
+ApplicationFeature& ApplicationServer::getFeature(std::type_index type) const {
+  auto it = _features.find(type);
+  if (ADB_LIKELY(it != _features.end())) {
+    return *it->second;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, std::string("unknown feature '") + type.name() + "'");
+}
+
+void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
-  for (size_t const type : types) {
-    if (hasFeature(type)) {
-      auto& feature = *_features[type];
+  for (std::type_index type : types) {
+    auto it = _features.find(type);
+    TRI_ASSERT(it != _features.end());
+    if (it != _features.end()) {
+      TRI_ASSERT(it->second != nullptr);
       if (force) {
-        feature.forceDisable();
+        it->second->forceDisable();
       } else {
-        feature.disable();
+        it->second->disable();
       }
     }
   }
@@ -157,34 +174,36 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // in this phase, all features are order-independent
   _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_COLLECT_OPTIONS);
-  collectOptions();
-
-  // setup dependency, but ignore any failure for now
-  setupDependencies(false);
+  declareOptions();
 
   // parse the command line parameters and load any configuration
   // file(s)
   parseOptions(argc, argv);
 
-  if (!_helpSection.empty()) {
-    // help shown. we can exit early
-    return;
-  }
-
   // seal the options
   _options->seal();
+
+  processOptions();
+
+  maybeDumpOptions();
 
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
+  addFeatures();
+
   // setup and validate all feature dependencies
+  // This is needed to also add the feature coming from
+  // addFeatures to the _orderedFeatures vector
   setupDependencies(true);
 
   // turn off all features that depend on other features that have been
   // turned off
   disableDependentFeatures();
+
+  maybeDumpDependencies();
 
   // allows process control
   daemonize();
@@ -230,6 +249,36 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // stopped
   _state.store(State::STOPPED, std::memory_order_release);
   reportServerProgress(State::STOPPED);
+}
+
+void ApplicationServer::maybeDumpOptions() {
+  if (_dumpOptions) {
+    auto builder = _options->toVelocyPack(
+        false, true, [](std::string const&) { return true; });
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+}
+
+void ApplicationServer::maybeDumpDependencies() {
+  if (_dumpDependencies) {
+    std::cout << "digraph dependencies\n"
+              << "{\n"
+              << "  overlap = false;\n";
+    for (auto& [_id, feature] : _features) {
+      for (auto& before : feature->startsAfter()) {
+        std::string_view depName;
+        if (hasFeature(before)) {
+          depName = getFeature(before).name();
+        }
+        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
+      }
+    }
+    std::cout << "}\n";
+    exit(EXIT_SUCCESS);
+  }
 }
 
 // signal the server to initiate a soft shutdown
@@ -326,14 +375,14 @@ VPackBuilder ApplicationServer::options(
 // the order in which features are visited is unspecified
 void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
                               bool enabledOnly) {
-  for (auto& feature : nonEmptyFeatures(_features)) {
-    if (!enabledOnly || feature.isEnabled()) {
-      callback(feature);
+  for (auto& [_id, feature] : _features) {
+    if (!enabledOnly || feature->isEnabled()) {
+      callback(*feature);
     }
   }
 }
 
-void ApplicationServer::collectOptions() {
+void ApplicationServer::declareOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP)
       << "ApplicationServer::collectOptions";
 
@@ -354,15 +403,18 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
-  apply(
-      [this](ApplicationFeature& feature) {
-        LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
-            << feature.name() << "::loadOptions";
-        reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                              feature.name());
-        feature.collectOptions(_options);
-      },
-      true);
+  _options->addOption(
+      "--version",
+      "Print the version and other related information, then exit.",
+      new BooleanParameter(&_printVersion), makeDefaultFlags(Flags::Command));
+
+  _options
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
+                  new BooleanParameter(&_printVersionJson),
+                  makeDefaultFlags(Flags::Command))
+      .setIntroducedIn(30900);
 }
 
 void ApplicationServer::parseOptions(int argc, char* argv[]) {
@@ -378,7 +430,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       _helpSection = ".";
     }
     _options->printHelp(_helpSection);
-    return;
+    exit(EXIT_SUCCESS);
   }
 
   if (!parser.parse(argc, argv)) {
@@ -387,55 +439,16 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
   }
 
-  if (_dumpDependencies) {
-    std::cout << "digraph dependencies\n"
-              << "{\n"
-              << "  overlap = false;\n";
-    for (auto& feature : ::nonEmptyFeatures(_features)) {
-      for (size_t const before : feature.startsAfter()) {
-        std::string_view depName;
-        if (hasFeature(before)) {
-          depName = getFeature(before).name();
-        }
-        std::cout << "  " << feature.name() << " -> " << depName << ";\n";
-      }
-    }
-    std::cout << "}\n";
+  // handle `--version-json` command
+  if (_printVersionJson) {
+    rest::Version::printJson(std::cout);
     exit(EXIT_SUCCESS);
   }
 
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    ApplicationFeature& feature = (*it).get();
-    if (feature.isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP)
-          << feature.name() << "::loadOptions";
-      feature.loadOptions(_options, _binaryPath);
-    }
-  }
-
-  if (_dumpOptions) {
-    auto builder = _options->toVelocyPack(
-        false, true, [](std::string const&) { return true; });
-    arangodb::velocypack::Options options;
-    options.prettyPrint = true;
-    std::cout << builder.slice().toJson(&options) << std::endl;
+  // handle `--version` command
+  if (_printVersion) {
+    rest::Version::print(std::cout);
     exit(EXIT_SUCCESS);
-  }
-}
-
-void ApplicationServer::validateOptions() {
-  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
-      << "ApplicationServer::validateOptions";
-
-  for (ApplicationFeature& feature : _orderedFeatures) {
-    if (feature.isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
-          << feature.name() << "::validateOptions";
-      reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                            feature.name());
-      feature.validateOptions(_options);
-      feature.state(ApplicationFeature::State::VALIDATED);
-    }
   }
 }
 
@@ -445,25 +458,19 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       << "ApplicationServer::validateDependencies";
 
   // apply all "startsBefore" values
-  for (auto& feature : nonEmptyFeatures(_features)) {
-    for (auto const& other : feature.startsBefore()) {
+  for (auto& [_id, feature] : _features) {
+    for (auto const& other : feature->startsBefore()) {
+      // the target may simply not be registered in this configuration
       if (!hasFeature(other)) {
-        if (failOnMissing) {
-          _fail(std::string{"feature '"}
-                    .append(feature.name())
-                    .append("' depends on unknown feature id '")
-                    .append(std::to_string(other))
-                    .append("'"));
-        }
         continue;
       }
-      getFeature(other).startsAfter(feature.registration());
+      getFeature(other).startsAfter(feature->registration());
     }
   }
 
   // calculate ancestors for all features
-  for (auto& feature : nonEmptyFeatures(_features)) {
-    feature.determineAncestors(feature.registration());
+  for (auto& [_id, feature] : _features) {
+    feature->determineAncestors(feature->registration());
   }
 
   // first check if a feature references an unknown other feature
@@ -474,8 +481,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
             if (!hasFeature(other)) {
               _fail(std::string{"feature '"}
                         .append(feature.name())
-                        .append("' depends on unknown feature with id '")
-                        .append(std::to_string(other))
+                        .append("' depends on unknown feature '")
+                        .append(other.name())
                         .append("'"));
             }
             if (!getFeature(other).isEnabled()) {
@@ -492,26 +499,40 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
-  for (auto& us : nonEmptyFeatures(_features)) {
+  for (auto& [_id, us] : _features) {
     auto insertPosition = features.end();
 
     for (size_t i = features.size(); i > 0; --i) {
       auto const& other = features[i - 1].get();
-      if (us.doesStartBefore(other.registration())) {
+      if (us->doesStartBefore(other.registration())) {
         // we start before the other feature. so move ourselves up
         insertPosition = features.begin() + (i - 1);
-      } else if (other.doesStartBefore(us.registration())) {
+      } else if (other.doesStartBefore(us->registration())) {
         // the other feature starts before us. so stop moving up
         break;
       } else {
         // no dependencies between the two features
-        if (us.name() < other.name()) {
+        if (us->name() < other.name()) {
           insertPosition = features.begin() + (i - 1);
         }
       }
     }
-    features.insert(insertPosition, us);
+    features.insert(insertPosition, *us);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validate that features is totally ordered
+  for (std::size_t i = 0; i < features.size(); ++i) {
+    auto const& feature = features[i].get();
+    for (std::size_t j = i + 1; j < features.size(); ++j) {
+      auto const& other = features[j].get();
+      if (other.doesStartBefore(feature.registration())) {
+        LOG_DEVEL << "feature '" << feature.name() << "' is ordered BEFORE '"
+                  << other.name() << "' but should start AFTER it";
+      }
+    }
+  }
+#endif
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
     LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
@@ -522,10 +543,10 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
       std::string dependencies;
       if (!startsAfter.empty()) {
-        std::function<std::string(size_t)> cb =
-            [this](size_t type) -> std::string {
+        std::function<std::string(std::type_index)> cb =
+            [this](std::type_index type) -> std::string {
           return hasFeature(type) ? std::string{getFeature(type).name()}
-                                  : "unknown";
+                                  : std::string(type.name());
         };
         dependencies =
             " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
@@ -580,8 +601,8 @@ void ApplicationServer::disableDependentFeatures() {
             << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with "
                "non-existing "
-               "feature with id '"
-            << other << "'";
+               "feature '"
+            << other.name() << "'";
         feature.disable();
         break;
       }

@@ -18,31 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NetworkFeature.h"
+#include "Network/NetworkOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/FunctionUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/Thread.h"
 
 #include <fuerte/connection.h>
 
@@ -63,12 +64,13 @@ namespace {
 // pushing retry operations to the scheduler needs to use the correct
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
-class RetryThread : public ServerThread<ArangodServer> {
+class RetryThread : public Thread {
   static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
-  explicit RetryThread(ArangodServer& server)
-      : ServerThread<ArangodServer>(server, "NetworkRetry"),
+  explicit RetryThread()
+      // connection retry plumbing only, no ExecContext required
+      : Thread("NetworkRetry", nullptr),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {
@@ -310,165 +312,53 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
-NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
                                network::ConnectionPool::Config config)
-    : ArangodFeature{server, *this},
-      _options(config),
+    : NetworkFeature(server, metricsRegistry, NetworkOptions{config}) {}
+
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               NetworkOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _prepared(false),
       _forwardedRequests(
-          metrics.add(arangodb_network_forwarded_requests_total{})),
-      _requestsInFlight(metrics.add(arangodb_network_requests_in_flight{})),
-      _requestTimeouts(metrics.add(arangodb_network_request_timeouts_total{})),
-      _requestDurations(metrics.add(
+          metricsRegistry.add(arangodb_network_forwarded_requests_total{})),
+      _requestsInFlight(
+          metricsRegistry.add(arangodb_network_requests_in_flight{})),
+      _requestTimeouts(
+          metricsRegistry.add(arangodb_network_request_timeouts_total{})),
+      _requestDurations(metricsRegistry.add(
           arangodb_network_request_duration_as_percentage_of_timeout{})),
-      _unfinishedSends(metrics.add(arangodb_network_unfinished_sends_total{})),
-      _dequeueDurations(metrics.add(arangodb_network_dequeue_duration{})),
-      _sendDurations(metrics.add(arangodb_network_send_duration{})),
-      _responseDurations(metrics.add(arangodb_network_response_duration{})),
-      _metrics(metrics) {
+      _unfinishedSends(
+          metricsRegistry.add(arangodb_network_unfinished_sends_total{})),
+      _dequeueDurations(
+          metricsRegistry.add(arangodb_network_dequeue_duration{})),
+      _sendDurations(metricsRegistry.add(arangodb_network_send_duration{})),
+      _responseDurations(
+          metricsRegistry.add(arangodb_network_response_duration{})),
+      _metricsRegistry(metricsRegistry) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
-  startsAfter<EngineSelectorFeature>();
+
+  // cross-feature default: derive idle TTL from GeneralServerFeature's
+  // keep-alive timeout when not explicitly set by the user
+  auto opts = server.options();
+  if (opts &&
+      !opts->processingResult().touched("--network.idle-connection-ttl") &&
+      server.hasFeature<GeneralServerFeature>()) {
+    auto& gs = server.getFeature<GeneralServerFeature>();
+    _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
+  }
+  _options.idleTtlMilli = std::max<uint64_t>(_options.idleTtlMilli, 10000);
 }
 
 NetworkFeature::~NetworkFeature() {
   if (_pool) {
     _pool->stop();
-  }
-}
-
-void NetworkFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("network", "cluster-internal networking");
-
-  options->addOption(
-      "--network.io-threads",
-      "The number of network I/O threads for cluster-internal "
-      "communication.",
-      new UInt32Parameter(&_options.numIOThreads, /*base*/ 1, /*minValue*/ 1));
-  options->addOption("--network.max-open-connections",
-                     "The maximum number of open TCP connections for "
-                     "cluster-internal communication per endpoint",
-                     new UInt64Parameter(&_options.maxOpenConnections,
-                                         /*base*/ 1, /*minValue*/ 8));
-  options->addOption("--network.idle-connection-ttl",
-                     "The default time-to-live of idle connections for "
-                     "cluster-internal communication (in milliseconds).",
-                     new UInt64Parameter(&_options.idleTtlMilli));
-  options->addOption(
-      "--network.verify-hosts",
-      "Verify peer certificates when using TLS in cluster-internal "
-      "communication.",
-      new BooleanParameter(&_options.verifyHosts));
-
-  std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
-
-  // starting with 3.9, we will hard-code the protocol for cluster-internal
-  // communication
-  options
-      ->addOption(
-          "--network.protocol",
-          "The network protocol to use for cluster-internal communication.",
-          new DiscreteValuesParameter<StringParameter>(&_options.protocol,
-                                                       protos),
-          options::makeDefaultFlags(options::Flags::Uncommon))
-      .setDeprecatedIn(30900);
-
-  options
-      ->addOption("--network.max-requests-in-flight",
-                  "The number of internal requests that can be in "
-                  "flight at a given point in time.",
-                  new options::UInt64Parameter(&_options.maxInFlight),
-                  options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption("--network.compress-request-threshold",
-                  "The HTTP request body size from which on cluster-internal "
-                  "requests are transparently compressed.",
-                  new UInt64Parameter(&_options.compressRequestThreshold),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests in cluster-internal
-traffic with the deflate, gzip or lz4 compression format.
-Compression will only happen if the size of the uncompressed request body exceeds
-the threshold value controlled by this startup option,
-and if the request body size after compression is less than the original
-request body size.
-Using the value 0 disables the automatic compression.")");
-
-  std::unordered_set<std::string> types = {
-      StaticStrings::EncodingGzip, StaticStrings::EncodingDeflate,
-      StaticStrings::EncodingLz4, "auto", "none"};
-  options
-      ->addOption("--network.compression-method",
-                  "The compression method used for cluster-internal requests.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.compressionTypeLabel, types),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Setting this option to 'none' will disable compression for
-cluster-internal requests.
-To enable compression for cluster-internal requests, set this option to either
-'deflate', 'gzip', 'lz4' or 'auto'.
-The 'deflate' and 'gzip' compression methods are general purpose,
-but have significant CPU overhead for performing the compression work.
-The 'lz4' compression method compresses slightly worse, but has a lot lower
-CPU overhead for performing the compression.
-The 'auto' compression method will use 'deflate' by default, and 'lz4' for
-requests which have a size that is at least 3 times the configured threshold
-size.
-The compression method only matters if `--network.compress-request-threshold`
-is set to value greater than zero. If the threshold is set to value of 0,
-then no compression will be performed.)");
-}
-
-void NetworkFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> opts) {
-  if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
-    auto& gs = server().getFeature<GeneralServerFeature>();
-    _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
-  }
-  if (_options.idleTtlMilli < 10000) {
-    _options.idleTtlMilli = 10000;
-  }
-
-  uint64_t clamped =
-      std::clamp(_options.maxInFlight, NetworkOptions::MinAllowedInFlight,
-                 NetworkOptions::MaxAllowedInFlight);
-  if (clamped != _options.maxInFlight) {
-    LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
-        << "Must set --network.max-requests-in-flight between "
-        << NetworkOptions::MinAllowedInFlight << " and "
-        << NetworkOptions::MaxAllowedInFlight << ", clamping value";
-    _options.maxInFlight = clamped;
-  }
-
-  if (_options.compressionTypeLabel == StaticStrings::EncodingGzip) {
-    _options.compressionType = CompressionType::kGzip;
-  } else if (_options.compressionTypeLabel == StaticStrings::EncodingDeflate) {
-    _options.compressionType = CompressionType::kDeflate;
-  } else if (_options.compressionTypeLabel == StaticStrings::EncodingLz4) {
-    _options.compressionType = CompressionType::kLz4;
-  } else if (_options.compressionTypeLabel == "auto") {
-    _options.compressionType = CompressionType::kAuto;
-  } else if (_options.compressionTypeLabel == "none") {
-    _options.compressionType = CompressionType::kNone;
-  } else {
-    LOG_TOPIC("339d5", FATAL, Logger::CONFIG)
-        << "invalid value for `--network.compression-method` ('"
-        << _options.compressionTypeLabel << "')";
-    FATAL_ERROR_EXIT();
   }
 }
 
@@ -488,7 +378,7 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
   config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
-      _metrics, config.name);
+      _metricsRegistry, config.name);
 
   // using an internal network protocol other than HTTP/1 is
   // not supported since 3.9. the protocol is always hard-coded
@@ -541,7 +431,7 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
-  _retryThread = std::make_unique<RetryThread>(server());
+  _retryThread = std::make_unique<RetryThread>();
   if (!_retryThread->start()) {
     LOG_TOPIC("9b1a2", FATAL, arangodb::Logger::COMMUNICATION)
         << "unable to start network request retry thread";
@@ -572,6 +462,7 @@ void NetworkFeature::stop() {
     _pool->shutdownConnections();
     _pool->drainConnections();
     _pool->stop();
+    _pool.reset();  // Destroy the pool to avoid any races
   }
   _retryThread.reset();
 }

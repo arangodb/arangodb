@@ -12,7 +12,10 @@ target_link_libraries(arangoimport_utils
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
+  ArangoImportServer.cpp
   ImportFeature.cpp
+  ImportFeatureOptions.cpp
+  ImportOptionsProvider.cpp
   arangoimport.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
@@ -25,6 +28,9 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   arangoimport_utils
   clienttools_utils
 )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOIMPORT} jemalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGOIMPORT}
@@ -36,10 +42,6 @@ add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGOIMPORT} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOIMPORT} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGOIMPORT} man)
 

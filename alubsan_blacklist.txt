@@ -1,0 +1,5 @@
+# we do not want to instrument V8
+
+# v8::* namespace
+fun:ZN2v8*
+fun:_ZN2v8*

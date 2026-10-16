@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -54,12 +53,15 @@ const RESET = internal.COLORS.COLOR_RESET;
 
 const functionsDocumentation = {
   'server_permissions': 'permissions test for the server',
-  'server_parameters': 'specifies startup parameters for the instance'
+  'server_parameters': 'specifies startup parameters for the instance',
+  'server_secrets': 'tests the server secrets handling'
 };
 
 const testPaths = {
-  'server_permissions': [tu.pathForTesting('client/server_permissions')],
-  'server_parameters': [tu.pathForTesting('client/server_parameters')]
+  'server_permissions': [tu.pathForTesting('client/server_permissions'),
+                         tu.pathForTesting('client/server_permissions/authorization-questions')],
+  'server_parameters': [tu.pathForTesting('client/server_parameters')],
+  'server_secrets': [tu.pathForTesting('client/server_secrets')]
 };
 
 class permissionsRunner extends trs.runLocalInArangoshRunner {
@@ -100,6 +102,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        delete paramsSecondRun['runSetup'];
         if (paramsSecondRun.hasOwnProperty('opts')) {
           _.defaults(paramsSecondRun.opts, clonedOpts);
           clonedOpts = _.clone(paramsSecondRun.opts);
@@ -156,10 +159,8 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
-              messages: 'Warmup of system failed: ' + ex,
-              shutdown: shutdownStatus
+              messages: `Warmup of system failed: ${ex}\n${ex.stack} Shutdown: ${shutdownStatus}`,
             };
-            this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
             this.results.status = false;
             return this.results;
           }
@@ -189,7 +190,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                   ex.message + " - " + ex.stack +
                   JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
-                shutdown: false
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
@@ -201,7 +201,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             this.results[te] = {
               status: false,
               message: "failed to stop instance",
-              shutdown: false
             };
           }
         } else {
@@ -210,6 +209,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
+          this.instanceManager.launchTcpDump("");
           global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
@@ -225,7 +225,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " + JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
-                shutdown: false
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
@@ -239,9 +238,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                 ex.message + " - " +
                 JSON.stringify(this.instanceManager.getStructure()),
               status: false,
-              shutdown: false
             };
-            this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
             this.instanceManager.destructor(false);
@@ -253,15 +250,24 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         }
 
         this.results[te] = this.runOneTest(te);
-        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") &&
-            this.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
+        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") ||
+            this.instanceManager.addArgs.hasOwnProperty("server.jwt-secret")) {
           // Reconnect to set the server credentials right
-          arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
+          let hasJWT = this.instanceManager.jwt_secret !== "";
+          arango.reconnect(arango.getEndpoint(),
+                           '_system',
+                           hasJWT ? "root":undefined,
+                           hasJWT ? "":undefined,
+                           true,
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
         this.results.status = this.results.status && this.results[te].status;
         shutdownStatus = this.instanceManager.shutdownInstance(false);
-        this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+        this.results['shutdown'] = {
+          status: this.results['shutdown'] && shutdownStatus,
+          message: (this.results['shutdown'] && shutdownStatus)? "": "shutdown failed"
+        };
+        this.options.cleanup &= shutdownStatus;
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
         if (this.options.extremeVerbosity) {
@@ -313,7 +319,12 @@ function server_secrets(options) {
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectoryRecursive(keyfileDir);
 
-  fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
+  let pemFile = fs.join("etc", "testing", "server.pem");
+  if (!fs.exists(keyfileName)) {
+    fs.copyFile(pemFile, keyfileName);
+  } else {
+    print(`not placing ${pemFile} into ${keyfileName} with content ${fs.read(keyfileName)}`);
+  }
 
   process.env["tls-keyfile"] = keyfileName;
 

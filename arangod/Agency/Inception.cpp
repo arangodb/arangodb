@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Inception.h"
@@ -36,7 +35,6 @@
 #include <chrono>
 #include <thread>
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 namespace {
@@ -122,8 +120,10 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
 }  // namespace
 
+namespace arangodb::consensus {
+// gossip sometimes calls consensus::State::persistActiveAgents
 Inception::Inception(Agent& agent)
-    : Thread(agent.server(), "Inception"), _agent(agent) {}
+    : Thread("Inception", ExecContext::superuserAsShared()), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() { shutdown(); }
@@ -570,3 +570,5 @@ void Inception::signalConditionVar() {
   std::lock_guard guard{_cv.mutex};
   _cv.cv.notify_all();
 }
+
+}  // namespace arangodb::consensus

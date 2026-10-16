@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,9 @@
 #include <vector>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class ClusterInfo;
 
@@ -51,7 +53,8 @@ class ShardDistributionReporter {
 
   /// @brief helper function to create an instance of the
   /// ShardDistributionReporter
-  static std::shared_ptr<ShardDistributionReporter> instance(ArangodServer&);
+  static std::shared_ptr<ShardDistributionReporter> instance(
+      application_features::ApplicationServer&);
 
   /// @brief fetch distribution for a single collections in db
   void getCollectionDistributionForDatabase(

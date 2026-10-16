@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
 namespace application_features {
@@ -35,7 +34,8 @@ class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
     return "BasicsPhaseServer";
   }
 
-  explicit BasicFeaturePhaseServer(ArangodServer& server);
+  explicit BasicFeaturePhaseServer(
+      application_features::ApplicationServer& server);
 };
 
 }  // namespace application_features

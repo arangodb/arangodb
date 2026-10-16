@@ -18,20 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Transaction/Context.h"
 #include "Transaction/OperationOrigin.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/AccessMode.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class TransactionState;
 
 namespace transaction {
@@ -44,7 +38,7 @@ namespace transaction {
 /// server.
 class SmartContext : public Context {
  public:
-  SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+  SmartContext(Database& vocbase, TransactionId globalId,
                std::shared_ptr<TransactionState> state,
                OperationOrigin operationOrigin);
 
@@ -75,7 +69,7 @@ struct TransactionContextSideUser {};
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+  AQLStandaloneContext(Database& vocbase, TransactionId globalId,
                        OperationOrigin operationOrigin)
       : SmartContext(vocbase, globalId, nullptr, operationOrigin) {}
 

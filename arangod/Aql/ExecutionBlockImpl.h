@@ -18,10 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -77,6 +73,7 @@ class SubqueryEndExecutor;
 class EnumerateNearVectorsExecutor;
 
 template<typename T, typename... Es>
+// NOLINTNEXTLINE(misc-redundant-expression)
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 
 template<typename Executor>
@@ -326,14 +323,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // as soon as we reach a place where there is no skip
   // ordered in the outer shadow rows, this call
   // will fall back to shadowRowForwarding.
-  // We need to make this method a template to prevent it from being implicitly
-  // instantiated for explicit ExecutionBlockImpl instantiations, because that
-  // would cause the static assert in the implementation to fail for executors
-  // that don't have side effects.
-  template<class E = Executor>
-  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
-                                                   SkipResult& skipResult)
-      -> ExecState;
 
   void initOnce();
 
@@ -349,18 +338,32 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
+  auto forwardShadowRow(AqlCallStack& stack,
+                        std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                        ShadowAqlItemRow& shadowRow) -> void;
+
+  enum class SideEffectSkipResult {
+    FORWARD_SHADOW_ROW,
+    DROP_SHADOW_ROW,
+    RETURN_DONE
+  };
+  auto sideEffectSkipHandling(AqlCallStack& stack,
+                              std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                              ShadowAqlItemRow& shadowRow, SkipResult& skipped)
+      -> SideEffectSkipResult;
+
  private:
   /**
    * @brief The PrefetchTask is used to asynchronously prefetch the next batch
    * from upstream. Each block holds only a single instance (if any), so each
    * block can have max one pending async prefetch task. This instance is
-   * created on demand when the first async request is spawned, later tasks can
-   * reuse that instance.
-   * The async task is queued on the global scheduler so it can be picked up by
-   * some worker thread. However, sometimes the original thread might that
-   * created the task might be faster, in which case we don't want to wait
-   * until a worker has picked up the task. Instead, any thread that wants to
-   * process the task has to _claim_ it. This is managed via the task's `state`.
+   * created on demand when the first async request is spawned, later tasks
+   * can reuse that instance. The async task is queued on the global scheduler
+   * so it can be picked up by some worker thread. However, sometimes the
+   * original thread that created the task might be faster, in which
+   * case we don't want to wait until a worker has picked up the task.
+   * Instead, any thread that wants to process the task has to _claim_ it.
+   * This is managed via the task's `state`.
    *
    * Before the task is queued on the scheduler, `state` is set to `Pending`.
    * When a thread wants to process the task, it must call `tryClaim` which

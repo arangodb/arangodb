@@ -18,29 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 
 namespace arangodb {
+class ClusterFeature;
 class ClusterInfo;
 class CollectionNameResolver;
+class DatabaseFeature;
 class LogicalCollection;
-class ReplicationApplier;
+class ReplicationFeature;
 class SingleCollectionTransaction;
 
 namespace transaction {
@@ -60,23 +59,22 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
-  static std::string const Revisions;
-  static std::string const Tree;
-  static std::string const TreePending;
-  static std::string const Ranges;
-  static std::string const Documents;
+  static constexpr std::string_view Revisions = "revisions";
+  static constexpr std::string_view Tree = "tree";
+  static constexpr std::string_view TreePending = "treepending";
+  static constexpr std::string_view TreeSummary = "treesummary";
+  static constexpr std::string_view Ranges = "ranges";
+  static constexpr std::string_view Documents = "documents";
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerTickRanges;
-  static std::string const LoggerFirstTick;
-  static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -85,14 +83,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const Sync;
-  static std::string const MakeFollower;
-  static std::string const ServerId;
-  static std::string const ApplierConfig;
-  static std::string const ApplierStart;
-  static std::string const ApplierStop;
-  static std::string const ApplierState;
-  static std::string const ApplierStateAll;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
@@ -103,16 +93,26 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether the current command may be forwarded to a client-supplied
+  /// DBserver with the caller's authorization stripped.
+  ///
+  /// Only the commands used by arangodump ("dump"/"batch") may be forwarded,
+  /// and "dump" only if the caller has the permissions for it - forwarding
+  /// happens with cluster-internal superuser privileges, so the permissions
+  /// must be validated here.
+  ///
+  /// Returns TRI_ERROR_NO_ERROR if the command may be forwarded,
+  /// TRI_ERROR_FORBIDDEN if it may not, and the error of the permission check
+  /// otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+
+  Result checkDBserverForwardingAllowed() const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
 
   bool isCoordinatorError();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a follower of another
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandMakeFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forward a command in the coordinator case
@@ -149,60 +149,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRestoreView();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a server-id command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandServerId();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a sync command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandSync();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the configuration of the the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetConfig();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief configure the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierSetConfig();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief start the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierStart();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief stop the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierStop();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetState();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the all replication applier
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierGetStateAll();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief delete the replication applier state
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandApplierDeleteState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower of a shard to the list of followers
@@ -253,27 +199,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerState();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerFirstTick();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerTickRanges();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
   /// @response 204 No Content if all goes well
   //////////////////////////////////////////////////////////////////////////////
@@ -293,6 +218,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //            * truncates integer counter of the pending truncations
   //////////////////////////////////////////////////////////////////////////////
   void handleCommandRevisionTreePendingUpdates();
+  void handleCommandRevisionTreeSummary();
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
@@ -321,11 +247,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   uint64_t determineChunkSize() const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get correct replication applier, based on global paramerter
-  //////////////////////////////////////////////////////////////////////////////
-  ReplicationApplier* getApplier(bool& global);
-
  protected:
   struct RevisionOperationContext {
     uint64_t batchId;
@@ -336,6 +257,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   };
 
   bool prepareRevisionOperation(RevisionOperationContext&);
+  ReplicationFeature& replicationFeature() const { return _replicationFeature; }
 
  private:
   bool prepareCollectionForRevisionOperation(RevisionOperationContext&);
@@ -418,6 +340,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief cached feature references
+  //////////////////////////////////////////////////////////////////////////////
+
+  ClusterFeature& _clusterFeature;
+  ReplicationFeature& _replicationFeature;
+  DatabaseFeature& _databaseFeature;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
   //////////////////////////////////////////////////////////////////////////////
 
@@ -458,12 +388,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialization
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a follow command for the replication log
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFollow() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the command to determine the transactions that were open
@@ -568,11 +492,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
       TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Validate that the requesting user has access rights to this route
-  ///        Will return TRI_ERROR_NO_ERROR if user has access
-  ///        Will return error code otherwise.
+  /// @brief Validate that the requesting user may dump the collection given in
+  ///        the "collection" request parameter
+  ///
+  ///        On a coordinator the parameter holds a shard, which is translated
+  ///        to its collection first.
+  ///
+  ///        Will return TRI_ERROR_NO_ERROR if the user has access,
+  ///        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND if there is no such
+  ///        collection, and the error of the permission check otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  Result testPermissions();
+  Result checkDumpPermissions() const;
 
   static constexpr uint64_t defaultChunkSize = 128 * 1024;
   static constexpr uint64_t maxChunkSize = 64 * 1024 * 1024;

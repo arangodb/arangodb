@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -261,6 +260,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'seeks',
     'scannedFull',
     'scannedIndex',
+    'searchParallelism',
     'cursorsCreated',
     'cursorsRearmed',
     'cacheHits',

@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "FollowerStateManager.h"
+
+#include <format>
 
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
@@ -259,15 +260,15 @@ auto FollowerStateManager<S>::backOffSnapshotRetry()
     using namespace std::chrono_literals;
     using namespace std::chrono;
     if (duration < 10us) {
-      return fmt::format("{}ns", duration_cast<nanoseconds>(duration).count());
+      return std::format("{}ns", duration_cast<nanoseconds>(duration).count());
     } else if (duration < 10ms) {
-      return fmt::format("{}us", duration_cast<microseconds>(duration).count());
+      return std::format("{}us", duration_cast<microseconds>(duration).count());
     } else if (duration < 10s) {
-      return fmt::format("{}ms", duration_cast<milliseconds>(duration).count());
+      return std::format("{}ms", duration_cast<milliseconds>(duration).count());
     } else if (duration < 10min) {
-      return fmt::format("{}s", duration_cast<seconds>(duration).count());
+      return std::format("{}s", duration_cast<seconds>(duration).count());
     } else {
-      return fmt::format("{}min", duration_cast<minutes>(duration).count());
+      return std::format("{}min", duration_cast<minutes>(duration).count());
     }
   };
 

@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/StaticStrings.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "VocBase/Properties/InspectContexts.h"
 #include "Inspection/Access.h"
 
 #include <velocypack/Builder.h>
@@ -55,12 +55,13 @@ struct CollectionMutableProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionMutableProperties& props) {
   return f.object(props).fields(
-      f.field(StaticStrings::DataSourceName, props.name)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmpty),
-      f.field(StaticStrings::Schema, props.schema)
-          .fallback(f.keep())
-          .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
+      userInvariant(
+          f,
+          f.field(StaticStrings::DataSourceName, props.name).fallback(f.keep()),
+          UtilityInvariants::isNonEmpty),
+      userInvariant(
+          f, f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
+          CollectionMutableProperties::Invariants::isJsonSchema),
       f.field(StaticStrings::ComputedValues, props.computedValues)
           .fallback(f.keep()),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled)

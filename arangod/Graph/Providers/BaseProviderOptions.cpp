@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -86,7 +85,7 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     MonitoredCollectionToShardMap const& collectionToShardMap,
     aql::Projections const& vertexProjections,
     aql::Projections const& edgeProjections, bool produceVertices,
-    bool useCache)
+    bool useCache, aql::QueryContext& query)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
@@ -96,7 +95,8 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
       _vertexProjections{vertexProjections},
       _edgeProjections{edgeProjections},
       _produceVertices(produceVertices),
-      _useCache(useCache) {}
+      _useCache(useCache),
+      _queryObserver(query) {}
 
 aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -169,13 +169,14 @@ void SingleServerBaseProviderOptions::unPrepareContext() {
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-    bool produceVertices)
+    bool produceVertices, aql::QueryContext& query)
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
       _produceVertices(produceVertices),
       _expressionContext(nullptr),
-      _weightCallback(std::nullopt) {
+      _weightCallback(std::nullopt),
+      _queryObserver(query) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -186,7 +187,8 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
         filterConditionVariables,
-    std::unordered_set<uint64_t> availableDepthsSpecificConditions)
+    std::unordered_set<uint64_t> availableDepthsSpecificConditions,
+    aql::QueryContext& query)
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
@@ -195,7 +197,8 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _filterConditionVariables(filterConditionVariables),
       _weightCallback(std::nullopt),
       _availableDepthsSpecificConditions(
-          std::move(availableDepthsSpecificConditions)) {
+          std::move(availableDepthsSpecificConditions)),
+      _queryObserver(query) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }

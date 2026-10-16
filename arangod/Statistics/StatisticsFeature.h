@@ -18,17 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
-#include "Basics/system-functions.h"
 #include "Metrics/Fwd.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
+#include "Statistics/StatisticsFeatureOptions.h"
 #include "Statistics/figures.h"
 
 #include <array>
@@ -37,9 +36,11 @@
 #include <string>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
 class Thread;
 class StatisticsWorker;
 namespace stats {
@@ -86,16 +87,19 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final : public ArangodFeature {
+class StatisticsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
-  explicit StatisticsFeature(Server& server);
+  StatisticsFeature(application_features::ApplicationServer& server,
+                    metrics::IRegistry& metrics,
+                    StatisticsFeatureOptions options);
+  explicit StatisticsFeature(application_features::ApplicationServer& server,
+                             metrics::IRegistry& registry);
 
   static double time();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void toPrometheus(std::string& result, double now, std::string_view globals,
@@ -103,14 +107,13 @@ class StatisticsFeature final : public ArangodFeature {
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
-  static arangodb::velocypack::Builder fillDistribution(
+  static velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-  Result getClusterSystemStatistics(
-      TRI_vocbase_t& vocbase, double start,
-      arangodb::velocypack::Builder& result) const;
+  Result getClusterSystemStatistics(Database& vocbase, double start,
+                                    velocypack::Builder& result) const;
 
-  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
 
  private:
   static void appendMetric(std::string& result, std::string const& val,
@@ -130,10 +133,8 @@ class StatisticsFeature final : public ArangodFeature {
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
-  bool _statistics;
-  bool _statisticsHistory;
-  bool _statisticsHistoryTouched;
-  bool _statisticsAllDatabases;
+
+  StatisticsFeatureOptions _options;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

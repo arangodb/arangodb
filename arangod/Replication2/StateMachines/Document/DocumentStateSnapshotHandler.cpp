@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
@@ -68,7 +67,7 @@ auto DocumentStateSnapshotHandler::create(
             self->abort(id);
           }
         },
-        fmt::format("Snapshot {} aborted because the follower rebooted", id));
+        std::format("Snapshot {} aborted because the follower rebooted", id));
 
     sc.cancel();
     return guardRef.snapshot;
@@ -81,7 +80,7 @@ auto DocumentStateSnapshotHandler::find(SnapshotId const& id) noexcept
     return ResultT<std::weak_ptr<Snapshot>>::success(it->second.snapshot);
   }
   return ResultT<std::weak_ptr<Snapshot>>::error(
-      TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
+      TRI_ERROR_INTERNAL, std::format("Snapshot {} not found", id));
 }
 
 auto DocumentStateSnapshotHandler::abort(SnapshotId const& id) noexcept
@@ -95,7 +94,7 @@ auto DocumentStateSnapshotHandler::abort(SnapshotId const& id) noexcept
     _snapshots.erase(it);
     return {};
   }
-  return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
+  return Result{TRI_ERROR_INTERNAL, std::format("Snapshot {} not found", id)};
 }
 
 auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) noexcept
@@ -105,7 +104,7 @@ auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) noexcept
     _snapshots.erase(it);
     return res;
   }
-  return Result{TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id)};
+  return Result{TRI_ERROR_INTERNAL, std::format("Snapshot {} not found", id)};
 }
 
 void DocumentStateSnapshotHandler::clear() noexcept {

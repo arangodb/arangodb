@@ -18,25 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Sharding/ShardingStrategy.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Slice.h>
+
+#include <optional>
 
 namespace arangodb {
 
 class ShardingInfo;
 
-class ShardingFeature : public ArangodFeature {
+class ShardingFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Sharding"; }
 
-  explicit ShardingFeature(Server& server);
+  explicit ShardingFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
   void start() override final;
@@ -49,6 +50,11 @@ class ShardingFeature : public ArangodFeature {
 
   std::unique_ptr<ShardingStrategy> create(std::string const& name,
                                            ShardingInfo* sharding);
+
+  /// @brief creates the named strategy, or the default for an existing
+  /// collection when no name is given.
+  std::unique_ptr<ShardingStrategy> createOrDefault(
+      std::optional<std::string> const& name, ShardingInfo* sharding);
 
   /// @brief returns the name of the default sharding strategy for new
   /// collections

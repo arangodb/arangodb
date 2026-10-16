@@ -18,25 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <span>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -46,9 +36,13 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
 
-#include "Basics/ResourceUsage.h"
-
-struct TRI_vocbase_t;
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -85,6 +79,7 @@ struct ClusterCollectionCreationInfo;
 class ClusterInfo;
 class CollectionInfoCurrent;
 class CreateDatabaseInfo;
+struct Database;
 class IndexId;
 class LogicalDataSource;
 class LogicalCollection;
@@ -267,10 +262,11 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+  explicit ClusterInfo(application_features::ApplicationServer& server,
+                       AgencyCache& agencyCache,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode,
-                       metrics::MetricsFeature& metrics);
+                       metrics::IRegistry& metricsRegistry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -468,7 +464,7 @@ class ClusterInfo final {
 
   [[nodiscard]] std::unordered_map<std::string,
                                    std::shared_ptr<LogicalCollection>>
-  generateCollectionStubs(TRI_vocbase_t& database);
+  generateCollectionStubs(Database& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -521,10 +517,10 @@ class ClusterInfo final {
   /// @brief get shard statistics for all databases, split by servers.
   Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
 
-  /// @brief update metadata metrics (number of databases, collections, shards)
-  /// This should only be called on coordinators while holding _planProt write
-  /// lock
-  void updateMetadataMetrics();
+  /// @brief update metadata metrics from Plan (number of databases,
+  /// collections, shards, and coordinator-specific shard metrics) This should
+  /// only be called on coordinators while holding _planProt write lock
+  void updateMetadataMetricsFromPlan();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -914,6 +910,8 @@ class ClusterInfo final {
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
 
+  void setServersKnown(ServersKnown serversKnown);
+
   void setShardToShardGroupLeader(
       containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader);
 
@@ -1013,7 +1011,7 @@ class ClusterInfo final {
     return timeout;
   }
 
-  ArangodServer& server() const;
+  application_features::ApplicationServer& server() const;
 
   AgencyCallbackRegistry& agencyCallbackRegistry() const;
 
@@ -1028,8 +1026,8 @@ class ClusterInfo final {
   /// possible
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
-      std::string_view collectionId, velocypack::Slice data,
-      TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
+      std::string_view collectionId, velocypack::Slice data, Database& database,
+      uint64_t planVersion, bool cleanupLinks) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -1057,6 +1055,21 @@ class ClusterInfo final {
   void triggerWaiting(AssocMultiMap<uint64_t, futures::Promise<Result>>& mm,
                       uint64_t commitIndex);
 
+  // Coordinator-only metric helper for Current metrics (per-shard derived
+  // metrics). Expects the caller to hold _currentProt.lock (read) when
+  // invoked.
+  void updateCoordinatorCurrentShardMetrics();
+
+  /// @brief Sync arangodb_server_health gauges from ServersKnown (Coordinators
+  /// only). Creates/updates one labeled gauge per server (target_server,
+  /// target_shortname) for every ServersKnown entry — including
+  /// DBServers — and removes gauges for servers that disappeared. Agents do
+  /// not export this metric (no AgencyCache/ClusterInfo server sync).
+  void updateServerHealthMetrics(ServersKnown const& serversKnown);
+
+  /// @brief Remove all arangodb_server_health series.
+  void clearServerHealthMetrics();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
   //////////////////////////////////////////////////////////////////////////////
@@ -1069,7 +1082,7 @@ class ClusterInfo final {
   void triggerBackgroundGetIds();
 
   /// underlying application server
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1125,7 +1138,14 @@ class ClusterInfo final {
     metrics::Gauge<std::uint64_t>& numberOfCollections;
     metrics::Gauge<std::uint64_t>& numberOfDatabases;
 
-    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+    // New coordinator-level shard metrics
+    metrics::Gauge<std::uint64_t>& totalNumberOfShards;
+    metrics::Gauge<std::uint64_t>& numberOutOfSyncShards;
+    metrics::Gauge<std::uint64_t>& numberNotReplicatedShards;
+    metrics::Gauge<std::uint64_t>& numberFollowerShards;
+    metrics::Gauge<std::uint64_t>& shardFollowersOutOfSync;
+
+    explicit MetadataMetrics(metrics::IRegistry& metricsRegistry);
   };
   // Report these only on Coordinators.
   std::optional<MetadataMetrics> _metadataMetrics;
@@ -1148,6 +1168,11 @@ class ClusterInfo final {
   // So should we consider removing this member and use only rebootTracker?
   // Current/ServersKnown:
   ServersKnown _serversKnown;
+
+  /// @brief Per-server health gauges (Coordinator only). Keyed by ServerID.
+  /// Uses MetricsFeature::ensureMetric / remove for dynamic label sets.
+  containers::FlatHashMap<ServerID, metrics::Gauge<std::uint64_t>*>
+      _serverHealthMetrics;
 
   // Accounting drops of dangling links. We do not want to pollute
   // scheduler with drop requests. So we put only one per link at time.

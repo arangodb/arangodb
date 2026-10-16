@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -164,7 +163,7 @@ class KPathFinderTest
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::KPaths;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{

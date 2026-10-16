@@ -4,7 +4,7 @@
  * Compares a `value` to `NaN`
  *
  * @private
- * @param {*} value A value to examine
+ * @param {unknown} value A value to examine
  * @returns {boolean} Returns `true` when `value` is `NaN`
  */
 function isNaN(value) {

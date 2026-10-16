@@ -18,44 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangobench.h"
-
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Benchmark/BenchFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
+#include "Benchmark/ArangoBenchServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -64,55 +39,15 @@ int main(int argc, char* argv[]) {
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangobench [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: arangobench [<options>]",
+        "For more information use:", BIN_DIRECTORY);
+
     int ret = EXIT_SUCCESS;
-    ArangoBenchServer server(options, BIN_DIRECTORY);
-
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoBenchServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
-#endif
-        [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoBenchServer& server, TypeTag<HttpEndpointProvider>) {
-          // provide max number of endpoints
-          return std::make_unique<ClientFeature>(
-              server, false, std::numeric_limits<size_t>::max());
-        },
-        [](ArangoBenchServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [&](ArangoBenchServer& server, TypeTag<BenchFeature>) {
-          return std::make_unique<BenchFeature>(server, &ret);
-        },
-        [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoBenchServer::id<BenchFeature>()});
-        },
-        [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        }});
-
+    ArangoBenchServer server(options, BIN_DIRECTORY, context.binaryName(),
+                             &ret);
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("0a1a9", ERR, arangodb::Logger::BENCH)
           << "arangobench terminated because of an unhandled exception: "

@@ -18,26 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "Graph/Options/QueryContextObserver.h"
 #include <cstddef>
 
 namespace arangodb::graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
+                            aql::QueryContext& query);
   ~OneSidedEnumeratorOptions();
 
   [[nodiscard]] size_t getMinDepth() const noexcept;
   [[nodiscard]] size_t getMaxDepth() const noexcept;
+  [[nodiscard]] bool isKilled() const noexcept { return _observer.isKilled(); }
 
  private:
   size_t const _minDepth;
   size_t const _maxDepth;
+  QueryContextObserver _observer;
 };
 }  // namespace arangodb::graph

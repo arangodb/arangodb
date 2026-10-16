@@ -18,14 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogBufferFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
@@ -33,12 +31,11 @@
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/LogBufferOptionsProvider.h"
 
 #include <cstring>
-#include <utility>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -161,12 +158,12 @@ class LogAppenderRingBuffer final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
+  LogAppenderMetricsCounter(metrics::IRegistry& metricsRegistry)
       : LogAppender(),
-        _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
-        _errorsCounter(metrics.add(arangodb_logger_errors_total{})),
+        _warningsCounter(metricsRegistry.add(arangodb_logger_warnings_total{})),
+        _errorsCounter(metricsRegistry.add(arangodb_logger_errors_total{})),
         _droppedMessagesCounter(
-            metrics.add(arangodb_logger_messages_dropped_total{})) {}
+            metricsRegistry.add(arangodb_logger_messages_dropped_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -187,15 +184,20 @@ class LogAppenderMetricsCounter final : public LogAppender {
   metrics::Counter& _droppedMessagesCounter;
 };
 
-LogBufferFeature::LogBufferFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _minInMemoryLogLevel("info"),
-      _useInMemoryAppender(true) {
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry)
+    : LogBufferFeature(server, metricsRegistry, LogBufferFeatureOptions{}) {}
+
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, LogBufferFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(
-      server.getFeature<metrics::MetricsFeature>());
+  _metricsCounter =
+      std::make_shared<LogAppenderMetricsCounter>(metricsRegistry);
 
   Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
 
@@ -205,59 +207,17 @@ LogBufferFeature::LogBufferFeature(Server& server)
   });
 }
 
-void LogBufferFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options
-      ->addOption("--log.in-memory",
-                  "Use an in-memory log appender which can be queried via the "
-                  "API and web interface.",
-                  new BooleanParameter(&_useInMemoryAppender),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30800)
-      .setLongDescription(R"(You can use this option to toggle storing log
-messages in memory, from which they can be consumed via the `/_admin/log`
-HTTP API and via the web interface.
-
-By default, this option is turned on, so log messages are consumable via the API
-and web interface. Turning this option off disables that functionality, saves a
-bit of memory for the in-memory log buffers, and prevents potential log
-information leakage via these means.)");
-
-  std::unordered_set<std::string> const logLevels = {
-      "fatal", "error", "err", "warning", "warn", "info", "debug", "trace"};
-  options
-      ->addOption(
-          "--log.in-memory-level",
-          "Use an in-memory log appender only for this log level and higher.",
-          new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
-                                                       logLevels),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(You can use this option to control which log
-messages are preserved in memory (in case `--log.in-memory` is enabled).
-
-The default value is `info`, meaning all log messages of types `info`,
-`warning`, `error`, and `fatal` are stored in-memory by an instance. By setting
-this option to `warning`, only `warning`, `error` and `fatal` log messages are 
-preserved in memory, and by setting the option to `error`, only `error` and
-`fatal` messages are kept.
-
-This option is useful because the number of in-memory log messages is limited 
-to the latest 2048 messages, and these slots are shared between informational,
-warning, and error messages by default.)");
-}
-
 void LogBufferFeature::prepare() {
   TRI_ASSERT(_inMemoryAppender == nullptr);
 
-  if (_useInMemoryAppender) {
+  if (_options.useInMemoryAppender) {
     // only create the in-memory appender when we really need it. if we created
     // it in the ctor, we would waste a lot of memory in case we don't need the
     // in-memory appender. this is the case for simple command such as `--help`
     // etc.
     LogLevel level;
-    bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
+    bool isValid =
+        Logger::translateLogLevel(_options.minInMemoryLogLevel, true, level);
     if (!isValid) {
       level = LogLevel::INFO;
     }
@@ -279,7 +239,7 @@ std::vector<LogBuffer> LogBufferFeature::entries(
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }
-  TRI_ASSERT(_useInMemoryAppender);
+  TRI_ASSERT(_options.useInMemoryAppender);
   return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())
       ->entries(level, start, upToLevel, searchString);
 }

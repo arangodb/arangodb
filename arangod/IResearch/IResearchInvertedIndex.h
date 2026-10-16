@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,7 +42,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
  public:
   using IResearchDataStore::IResearchDataStore;
 
-  void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
+  void toVelocyPack(application_features::ApplicationServer& server,
+                    TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder,
                     bool writeAnalyzerDefinition) const;
 

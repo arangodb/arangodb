@@ -104,16 +104,16 @@ function getSchemaRefs(schema, baseId) {
         if (parentJsonPtr === undefined)
             return;
         const fullPath = pathPrefix + jsonPtr;
-        let baseId = baseIds[parentJsonPtr];
+        let innerBaseId = baseIds[parentJsonPtr];
         if (typeof sch[schemaId] == "string")
-            baseId = addRef.call(this, sch[schemaId]);
+            innerBaseId = addRef.call(this, sch[schemaId]);
         addAnchor.call(this, sch.$anchor);
         addAnchor.call(this, sch.$dynamicAnchor);
-        baseIds[jsonPtr] = baseId;
+        baseIds[jsonPtr] = innerBaseId;
         function addRef(ref) {
             // eslint-disable-next-line @typescript-eslint/unbound-method
             const _resolve = this.opts.uriResolver.resolve;
-            ref = normalizeId(baseId ? _resolve(baseId, ref) : ref);
+            ref = normalizeId(innerBaseId ? _resolve(innerBaseId, ref) : ref);
             if (schemaRefs.has(ref))
                 throw ambiguos(ref);
             schemaRefs.add(ref);

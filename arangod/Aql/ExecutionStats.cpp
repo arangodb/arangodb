@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionStats.h"
@@ -30,7 +29,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief convert the statistics to VelocyPack
 void ExecutionStats::toVelocyPack(VPackBuilder& builder,
@@ -42,6 +41,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("seeks", VPackValue(seeks));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
+  builder.add("searchParallelism", VPackValue(iresearchParallelism));
   builder.add("cursorsCreated", VPackValue(cursorsCreated));
   builder.add("cursorsRearmed", VPackValue(cursorsRearmed));
   builder.add("cacheHits", VPackValue(cacheHits));
@@ -121,7 +121,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
+void ExecutionStats::addNode(ExecutionNodeId nid,
                              ExecutionNodeStats const& stats) {
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
@@ -182,6 +182,8 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "scannedFull", 0);
   scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "scannedIndex", 0);
+  iresearchParallelism = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "searchParallelism", 0);
   filtered =
       basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "filtered", 0);
   requests = basics::VelocyPackHelper::getNumericValue<uint64_t>(
@@ -275,3 +277,5 @@ void ExecutionStats::clear() noexcept {
   intermediateCommits = 0;
   _nodes.clear();
 }
+
+}  // namespace arangodb::aql

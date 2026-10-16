@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,20 +26,21 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "V8Server/FoxxFeatureOptions.h"
 
 #include <shared_mutex>
 
 namespace arangodb {
 
-class FoxxFeature final : public ArangodFeature {
+class FoxxFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "FoxxQueues"; }
 
-  explicit FoxxFeature(Server& server);
+  FoxxFeature(application_features::ApplicationServer& server,
+              FoxxFeatureOptions options);
+  explicit FoxxFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   // return poll interval for foxx queues. returns a negative number if
@@ -73,14 +73,11 @@ class FoxxFeature final : public ArangodFeature {
   void trackLocalQueueInsert() noexcept;
 
  private:
+  FoxxFeatureOptions _options;
+
   mutable std::shared_mutex _queueLock;
   uint64_t _queueVersion;
   uint64_t _localQueueInserts;
-
-  double _queuesPollInterval;
-  bool _queuesEnabled;
-  bool _startupWaitForSelfHeal;
-  bool _foxxEnabled;
 };
 
 }  // namespace arangodb

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TwoSidedEnumerator.h"
@@ -175,6 +173,9 @@ auto TwoSidedEnumerator<ProviderType, PathValidator>::Ball::fetchResults(
 template<class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<ProviderType, PathValidator>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void {
+  if (_graphOptions.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -190,8 +191,8 @@ auto TwoSidedEnumerator<ProviderType, PathValidator>::Ball::
   }
 
   auto tmp = _queue.pop();
-  TRI_ASSERT(std::holds_alternative<Step>(tmp));
-  auto step = std::get<Step>(tmp);
+  TRI_ASSERT(tmp.has_value());
+  auto step = std::move(tmp.value());
   auto previous = _interior.append(step);
 
   _provider.expand(step, previous, [&](Step n) -> void {
@@ -411,6 +412,13 @@ template<class ProviderType, class PathValidator>
 void TwoSidedEnumerator<ProviderType, PathValidator>::searchMoreResults() {
   while (_results.empty() && !searchDone()) {
     _resultsFetched = false;
+
+    // Check for kill signal before proceeding
+    // We will also do additional checks in computeNeighbourhoodOfNextVertex
+    if (_options.isKilled()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     if (_searchLeft) {
       if (ADB_UNLIKELY(_left.doneWithDepth())) {
         startNextDepth();

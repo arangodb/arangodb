@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #include "SupervisionAction.h"
 
@@ -31,11 +30,9 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-#include <fmt/core.h>
 #include <variant>
 
 using namespace arangodb::replication2::agency;
-namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 

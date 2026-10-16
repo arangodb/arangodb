@@ -1,5 +1,5 @@
 import { ChangeEvent, Dispatch, useCallback, useEffect, useRef } from "react";
-import minimatch from "minimatch";
+import { minimatch } from "minimatch";
 import { cloneDeep, compact, has, isEqual, merge, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { ErrorObject, ValidateFunction } from "ajv";
@@ -36,7 +36,7 @@ export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[]
         filteredList = filteredList.filter(
           item => minimatch(item[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
       }
-    } catch (e) {
+    } catch {
       const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
 
       filteredList = filteredList.filter(item => facets.some(field => minimatch(item[field].toLowerCase(), normalizedPattern)));

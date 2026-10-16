@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/DownCast.h"
@@ -67,12 +65,12 @@ T& syncImpl(Index& index) {
 
 void syncIndexOnCreate(Index& index) {
   switch (index.type()) {
-    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
+    case IndexType::IResearchLink: {
       auto& store = syncImpl<iresearch::IResearchRocksDBLink>(index);
       TRI_IF_FAILURE("search::AlwaysIsBuildingSingle");
       else store.setBuilding(false);
     } break;
-    case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
+    case IndexType::Inverted: {
       syncImpl<iresearch::IResearchRocksDBInvertedIndex>(index);
     } break;
     default:

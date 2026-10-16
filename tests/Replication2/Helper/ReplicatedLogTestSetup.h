@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,6 +25,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/DelayedLogFollower.h"
 #include "Replication2/Mocks/FakeAbstractFollower.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
@@ -33,14 +33,15 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ReplicatedStateHandleMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Futures/Utilities.h"
+
+#include <format>
 
 // TODO Remove this conditional as soon as we've upgraded MSVC.
 #ifdef DISABLE_I_HAS_SCHEDULER
@@ -51,12 +52,10 @@
 
 namespace arangodb::replication2::test {
 
-auto inline operator"" _Lx(unsigned long long x) -> LogIndex {
+auto inline operator""_Lx(unsigned long long x) -> LogIndex {
   return LogIndex{x};
 }
-auto inline operator"" _T(unsigned long long x) -> LogTerm {
-  return LogTerm{x};
-}
+auto inline operator""_T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
 
 struct LogArguments {
   std::variant<LogRange, std::vector<LogPayload>> initialLogRange = {};
@@ -383,6 +382,13 @@ struct LogContainer : IHasScheduler {
 // going over
 // multiple terms.
 struct WholeLog {
+  // fakeRegistry must live longer than every ReplicatedLog stored in `logs`
+  // because they touch ReplicatedLogMetrics raw pointers that are owned
+  // by fakeRegistry.
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
+
   LogId const logId;
   // Relying on stable pointers and references to logs for now. Move to
   // shared_ptr<LogContainer> if necessary.
@@ -397,7 +403,7 @@ struct WholeLog {
 
   auto createParticipant(LogArguments fakeArguments) -> ParticipantWithFakes* {
     auto const id = _nextParticipantId++;
-    auto serverId = agency::ServerInstanceReference{fmt::format("dbs{:02}", id),
+    auto serverId = agency::ServerInstanceReference{std::format("dbs{:02}", id),
                                                     RebootId{1}};
     if (fakeArguments.persistedMetadata.has_value()) {
       fakeArguments.persistedMetadata->stateId = logId;
@@ -411,7 +417,7 @@ struct WholeLog {
 
   auto createFakeFollower() -> ParticipantFakeFollower* {
     auto const id = _nextParticipantId++;
-    auto serverId = agency::ServerInstanceReference{fmt::format("dbs{:02}", id),
+    auto serverId = agency::ServerInstanceReference{std::format("dbs{:02}", id),
                                                     RebootId{1}};
     auto it = logs.try_emplace(logs.end(), serverId.serverId,
                                LogContainer::createWithFakeFollower(serverId));
@@ -512,10 +518,6 @@ struct WholeLog {
     return &it->second;
   }
 
- public:
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
-
  protected:
   LoggerContext const loggerContext;
   std::size_t _nextParticipantId = 1;
@@ -527,7 +529,7 @@ struct ReplicatedLogTest : ::testing::Test {
   constexpr static char gtestStr[] = "gtest";
   LoggerContext const loggerContext =
       LoggerContext(Logger::REPLICATION2)
-          .with<gtestStr>(fmt::format("{}.{}", testInfo->test_suite_name(),
+          .with<gtestStr>(std::format("{}.{}", testInfo->test_suite_name(),
                                       testInfo->test_case_name()));
 
   WholeLog wholeLog = WholeLog(loggerContext, LogId{1});
@@ -610,7 +612,7 @@ MATCHER_P2(IsTermIndexPair, term, index, "") {
 
 // Matches a map entry pair (LogIndex, LogEntry) against a PartialLogEntry.
 MATCHER(MatchesMapLogEntry,
-        fmt::format("{} log entries", negation ? "doesn't match" : "matches")) {
+        std::format("{} log entries", negation ? "doesn't match" : "matches")) {
   auto const& logIndex = std::get<0>(arg).first;
   auto const& logEntry = std::get<0>(arg).second;
   auto const& partialLogEntry = std::get<1>(arg);

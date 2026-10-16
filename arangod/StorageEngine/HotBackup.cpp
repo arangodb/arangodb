@@ -18,17 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HotBackup.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterHotBackup.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
@@ -37,7 +34,7 @@
 
 namespace arangodb {
 
-HotBackup::HotBackup(ArangodServer& server)
+HotBackup::HotBackup(application_features::ApplicationServer& server)
 #ifdef USE_ENTERPRISE
     : _server(server) {
 #else

@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeatureOptions.h"
 
 namespace arangodb {
 
@@ -33,20 +34,17 @@ class RandomFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Random"; }
 
-  template<typename Server>
-  explicit RandomFeature(Server& server)
-      : RandomFeature{server, Server::template id<RandomFeature>()} {
-    startsAfter<LoggerFeature, Server>();
-  }
+  explicit RandomFeature(application_features::ApplicationServer& server);
+  explicit RandomFeature(application_features::ApplicationServer& server,
+                         RandomFeatureOptions options);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
   RandomFeature(application_features::ApplicationServer& server,
-                size_t registration);
+                std::type_index registration, RandomFeatureOptions options);
 
-  uint32_t _randomGenerator;
+  RandomFeatureOptions _options;
 };
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Version.h"
@@ -33,7 +32,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -102,9 +100,11 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   }
 
   std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
-  if (!basics::FileUtils::exists(versionFile)) {
+  std::error_code existsEc;
+  if (!std::filesystem::exists(versionFile, existsEc)) {
     LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP)
-        << "VERSION file '" << versionFile << "' not found";
+        << "VERSION file '" << versionFile << "' not found"
+        << existsEc.message();
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
   }
   std::string versionInfo = basics::FileUtils::slurp(versionFile);

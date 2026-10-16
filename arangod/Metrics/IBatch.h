@@ -18,11 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-
-#include "RestServer/arangod.h"
 
 #include <string>
 #include <string_view>

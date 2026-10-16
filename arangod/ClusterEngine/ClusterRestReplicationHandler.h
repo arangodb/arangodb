@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,8 +29,8 @@ namespace arangodb {
 /// @brief replication request handler
 class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  ClusterRestReplicationHandler(ArangodServer&, GeneralRequest*,
-                                GeneralResponse*);
+  ClusterRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
   ~ClusterRestReplicationHandler() = default;
 
  public:
@@ -41,9 +39,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  /// @brief handle a follow command for the replication log
-  void handleCommandLoggerFollow() override;
-
   /// @brief handle the command to determine the transactions that were open
   /// at a certain point in time
   void handleCommandDetermineOpenTransactions() override;

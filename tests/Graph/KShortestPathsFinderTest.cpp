@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -198,7 +197,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::KShortestPaths;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     auto forwardProviderOptions =
@@ -457,7 +456,7 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::KShortestPaths;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     auto forwardProviderOptions =

@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
 #include <string_view>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LoggerFeature.h"
 
 namespace arangodb {
 class LoggerFeature;
@@ -36,13 +35,10 @@ class OptionsCheckFeature final
  public:
   static constexpr std::string_view name() noexcept { return "OptionsCheck"; }
 
-  template<typename Server>
-  OptionsCheckFeature(Server& server)
+  OptionsCheckFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature{server, *this} {
-    static_assert(Server::template isCreatedAfter<LoggerFeature>());
-
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<LoggerFeature>();
   }
 
   void prepare() override final;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,7 +28,8 @@ namespace arangodb {
 
 class RestSupportInfoHandler : public RestBaseHandler {
  public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestSupportInfoHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
   char const* name() const override final { return "RestSupportInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

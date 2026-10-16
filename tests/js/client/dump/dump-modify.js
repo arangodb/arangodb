@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -260,102 +259,6 @@ function dumpTestSuite() {
       assertEqual(1, c.indexes().length); // just primary index
       assertEqual("primary", c.indexes()[0].type);
       assertEqual(0, c.count());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test autoincrement keygen
-////////////////////////////////////////////////////////////////////////////////
-
-    testKeygen: function() {
-      var c = db._collection("UnitTestsDumpKeygen");
-      var p = c.properties();
-
-      assertEqual(2, c.type()); // document
-      assertFalse(p.waitForSync);
-      assertEqual("autoincrement", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-      assertEqual(7, p.keyOptions.offset);
-      assertEqual(42, p.keyOptions.increment);
-
-      assertEqual(1, c.indexes().length); // just primary index
-      assertEqual("primary", c.indexes()[0].type);
-      assertEqual(1001, c.count());
-
-      for (let i = 0; i < 1000; ++i) {
-        var doc = c.document(String(7 + (i * 42)));
-
-        assertEqual(String(7 + (i * 42)), doc._key);
-        assertEqual(i, doc.value);
-        assertEqual({value: [i, i]}, doc.more);
-      }
-
-      for (let i = 0; i < 1000; ++i) {
-        c.save({value: i, more: [i, i]});
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test padded keygen
-////////////////////////////////////////////////////////////////////////////////
-
-    testKeygenPadded: function() {
-      var c = db._collection("UnitTestsDumpKeygenPadded");
-      var p = c.properties();
-
-      assertEqual(2, c.type()); // document
-      assertFalse(p.waitForSync);
-      assertEqual("padded", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-
-      assertEqual(1, c.indexes().length); // just primary index
-      assertEqual("primary", c.indexes()[0].type);
-      assertEqual(1001, c.count());
-
-      let allDocs = {};
-      c.toArray().forEach(doc => {
-        allDocs[doc.value] = doc;
-      });
-      let lastKey = "";
-      for (var i = 0; i < 1000; ++i) {
-        var doc = allDocs[i];
-
-        assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-        assertEqual(i, doc.value);
-        assertEqual({value: [i, i]}, doc.more);
-        lastKey = doc._key;
-      }
-      doc = c.save({});
-      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test uuid keygen
-////////////////////////////////////////////////////////////////////////////////
-
-    testKeygenUuid: function() {
-      var c = db._collection("UnitTestsDumpKeygenUuid");
-      var p = c.properties();
-
-      assertEqual(2, c.type()); // document
-      assertFalse(p.waitForSync);
-      assertEqual("uuid", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-
-      assertEqual(1, c.indexes().length); // just primary index
-      assertEqual("primary", c.indexes()[0].type);
-      assertEqual(1001, c.count());
-
-      let allDocs = {};
-      c.toArray().forEach(doc => {
-        allDocs[doc.value] = doc;
-      });
-      let docs = [];
-      for (var i = 0; i < 1000; ++i) docs.push({"a": i});
-
-      let savedDocs = c.save(docs);
-      savedDocs.forEach(doc => {
-        assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
-      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

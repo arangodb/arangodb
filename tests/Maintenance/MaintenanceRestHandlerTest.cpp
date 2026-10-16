@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -38,8 +35,8 @@
 // give access to some protected routines for more thorough unit tests
 class TestHandler : public arangodb::MaintenanceRestHandler {
  public:
-  TestHandler(arangodb::ArangodServer& server, arangodb::GeneralRequest* req,
-              arangodb::GeneralResponse* res)
+  TestHandler(arangodb::application_features::ApplicationServer& server,
+              arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
       : arangodb::MaintenanceRestHandler(server, req, res){};
 
   bool test_parsePutBody(VPackSlice const& parameters) {
@@ -74,7 +71,8 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   auto* dummyResponse = new arangodb::HttpResponse(
       arangodb::rest::ResponseCode::OK, 1, nullptr,
       arangodb::rest::ResponseCompressionType::kNoCompression);
-  arangodb::ArangodServer dummyServer{nullptr, nullptr};
+  arangodb::application_features::ApplicationServer dummyServer{nullptr,
+                                                                nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
   ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));

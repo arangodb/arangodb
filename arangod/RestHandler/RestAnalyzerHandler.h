@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,8 +32,8 @@ class IResearchAnalyzerFeature;
 
 class RestAnalyzerHandler : public RestVocbaseBaseHandler {
  public:
-  RestAnalyzerHandler(ArangodServer& server, GeneralRequest* request,
-                      GeneralResponse* response);
+  RestAnalyzerHandler(application_features::ApplicationServer& server,
+                      GeneralRequest* request, GeneralResponse* response);
 
   virtual RestStatus execute() override;
 

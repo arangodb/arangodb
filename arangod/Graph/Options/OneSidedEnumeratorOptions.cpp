@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OneSidedEnumeratorOptions.h"
@@ -28,8 +26,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth,
-                                                     size_t maxDepth)
-    : _minDepth(minDepth), _maxDepth(maxDepth) {}
+                                                     size_t maxDepth,
+                                                     aql::QueryContext& query)
+    : _minDepth(minDepth), _maxDepth(maxDepth), _observer(query) {}
 
 OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
 

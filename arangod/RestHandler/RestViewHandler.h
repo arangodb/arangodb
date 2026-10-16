@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +32,8 @@ namespace arangodb {
 
 class RestViewHandler : public RestVocbaseBaseHandler {
  public:
-  RestViewHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestViewHandler(application_features::ApplicationServer&, GeneralRequest*,
+                  GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestViewHandler"; }

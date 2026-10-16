@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,7 +30,8 @@ namespace arangodb {
 
 class RestAdminDeploymentHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminDeploymentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAdminDeploymentHandler(application_features::ApplicationServer&,
+                             GeneralRequest*, GeneralResponse*);
   ~RestAdminDeploymentHandler() override = default;
 
  public:

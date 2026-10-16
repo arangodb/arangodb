@@ -1,0 +1,69 @@
+# clang-tidy configuration for iresearch.
+#
+# iresearch was developed as a standalone third-party library and still follows
+# a different code style (snake_case identifiers, etc.). Historically it shipped
+# its own comprehensive config here (Checks: '*' with WarningsAsErrors: '*'),
+# which produces ~14k findings on this tree -- far too many to serve as a build
+# gate, and mostly from checks we intentionally do not run elsewhere.
+#
+# Now, iresearch inherits the repository-root .clang-tidy.
+#
+# InheritParentConfig makes the options here layer on top of the root config.
+InheritParentConfig: true
+
+# iresearch's historical identifier-naming scheme (snake_case).
+# These are currently dormant, as the root config does not (yet) enable
+# readability-identifier-naming.
+CheckOptions:
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: k
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: k
+  - key: readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstantPrefix
+    value: k
+  - key: readability-identifier-naming.StaticVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^[A-Z]+(_[A-Z]+)*_$'
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: 1
+  - key: readability-simplify-boolean-expr.ChainedConditionalReturn
+    value: 1
+  - key: readability-simplify-boolean-expr.ChainedConditionalAssignment
+    value: 1
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: 1

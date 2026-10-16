@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaintenanceRestHandler.h"
@@ -41,11 +39,12 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+MaintenanceRestHandler::MaintenanceRestHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/actions (exact)
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ProgramOptions.h"
@@ -63,6 +62,18 @@ using namespace arangodb::options;
         return false;
       }
       return true;
+    };
+
+/*static*/ std::function<bool(std::string const&)> const
+    ProgramOptions::defaultPublicOptionsFilter = [](std::string const& name) {
+      // only expose a small, curated set of options that are safe to share
+      // with any authenticated database user via GET /_admin/options-public
+      return name == "database.extended-names" ||
+             name == "cluster.min-replication-factor" ||
+             name == "cluster.max-replication-factor" ||
+             name == "cluster.max-number-of-shards" ||
+             name == "cluster.api-jwt-policy" ||
+             name == "server.session-timeout";
     };
 
 ProgramOptions::ProcessingResult::ProcessingResult()
@@ -142,6 +153,7 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
 }
 
 std::string ProgramOptions::progname() const { return _progname; }
+char const* ProgramOptions::binaryPath() const noexcept { return _binaryPath; }
 
 // sets a value translator
 void ProgramOptions::setTranslator(
@@ -808,7 +820,7 @@ void ProgramOptions::addOption(Option&& option) {
 }
 
 // modernize an option name
-std::string const& ProgramOptions::modernize(std::string const& name) {
+std::string ProgramOptions::modernize(std::string const& name) {
   auto it = _oldOptions.find(Option::stripPrefix(name));
   if (it == _oldOptions.end()) {
     return name;

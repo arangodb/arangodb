@@ -1,0 +1,163 @@
+sudo: required
+dist: trusty
+language: cpp
+script: cmake
+
+matrix:
+    include:
+        # OSX
+
+        - env: CPP=14 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode9.4
+          compiler: clang
+        - env: CPP=17 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode9.4
+          compiler: clang
+
+        - env: CPP=14 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode10.3
+          compiler: clang
+        - env: CPP=17 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode10.3
+          compiler: clang
+
+        - env: CPP=14 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode11.4
+          compiler: clang
+        - env: CPP=17 MAC_OSX=true BUILD_TYPE=Debug JOBS=4
+          os: osx
+          osx_image: xcode11.4
+          compiler: clang
+        - env: CPP=17 MAC_OSX=true BUILD_TYPE=Release JOBS=4
+          os: osx
+          osx_image: xcode11.4
+          compiler: clang
+
+        # Gcc
+
+        #- env: GCC_VERSION=6 CPP=14 BUILD_TYPE=Release JOBS=4
+        #  os: linux
+        #  compiler: gcc-6
+        #  addons: &gcc6
+        #    apt:
+        #      packages:
+        #        - g++-6
+        #      sources:
+        #        - ubuntu-toolchain-r-test
+        #
+        #- env: GCC_VERSION=7 CPP=14 BUILD_TYPE=Release JOBS=4
+        #  os: linux
+        #  compiler: gcc-7
+        #  addons: &gcc7
+        #    apt:
+        #      packages:
+        #        - g++-7
+        #      sources:
+        #        - ubuntu-toolchain-r-test
+        #
+        #- env: GCC_VERSION=8 CPP=14 BUILD_TYPE=Release JOBS=4
+        #  os: linux
+        #  compiler: gcc-8
+        #  addons: &gcc8
+        #    apt:
+        #      packages:
+        #        - g++-8
+        #      sources:
+        #        - ubuntu-toolchain-r-test
+        - env: GCC_VERSION=8 CPP=17 BUILD_TYPE=Release JOBS=4
+          os: linux
+          compiler: gcc-8
+          addons: &gcc8
+            apt:
+              packages:
+                - g++-8
+              sources:
+                - ubuntu-toolchain-r-test
+
+        #- env: GCC_VERSION=9 CPP=14 BUILD_TYPE=Release JOBS=4
+        #  os: linux
+        #  compiler: gcc-9
+        #  addons: &gcc9
+        #    apt:
+        #      packages:
+        #        - g++-9
+        #      sources:
+        #        - ubuntu-toolchain-r-test
+        - env: GCC_VERSION=9 CPP=17 BUILD_TYPE=Release JOBS=4
+          os: linux
+          compiler: gcc-9
+          addons: &gcc9
+            apt:
+              packages:
+                - g++-9
+              sources:
+                - ubuntu-toolchain-r-test
+
+install:
+    - export CHECKOUT_PATH=`pwd`;
+    - if [ -n "$GCC_VERSION" ]; then export CXX="g++-${GCC_VERSION}" CC="gcc-${GCC_VERSION}"; fi
+    - if [ -n "$CLANG_VERSION" ]; then export CXXFLAGS="${CXXFLAGS} -stdlib=libstdc++" CXX="clang++-${CLANG_VERSION}" CC="clang-${CLANG_VERSION}"; fi
+    # - if [[ "$CLANG_VERSION" == "3.4" ]]; then export CXX="/usr/local/clang-3.4/bin/clang++" CC="/usr/local/clang-3.4/bin/clang"; fi
+    # Setup deps directory
+    - export DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+    - mkdir ${DEPS_DIR} && cd ${DEPS_DIR}
+    - mkdir usr
+    - export PATH=${DEPS_DIR}/usr/bin:${PATH}
+    # Install cmake
+    - |
+      if [[ "$MAC_OSX" == "true" ]]; then
+        export CMAKE_URL="http://www.cmake.org/files/v3.17/cmake-3.17.0-Darwin-x86_64.tar.gz"
+        # These use of brew are now broken on Travis.
+        # brew update
+        # brew install lcov
+      else
+        export CMAKE_URL="http://www.cmake.org/files/v3.17/cmake-3.17.0-Linux-x86_64.tar.gz"
+      fi
+      travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C usr
+    - echo $PATH
+    # Show compiler info
+    - $CXX --version
+    - which $CXX
+    - $CC --version
+    - which $CC
+    - which cmake
+    - cmake --version
+    # Add warnings
+    - export CXXFLAGS="${CXXFLAGS} -Wall"
+
+script:
+    - cd $CHECKOUT_PATH
+    - |
+      if [[ "$COVERAGE" != "on" ]]; then
+        build_dir="build-$BUILD_TYPE-cxx-$CPP"
+        mkdir $build_dir
+        cd $build_dir
+        cmake -DCXX_STD=${CPP} -DBOOST_BRANCH=$TRAVIS_BRANCH -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DLIMIT_TESTING_FOR_CI=true ..
+        make -j${JOBS} && CTEST_OUTPUT_ON_FAILURE=1 CTEST_PARALLEL_LEVEL=4 make check
+        if [ $? -ne 0 ]
+        then
+          exit 1
+        fi
+        cd ..
+        rm -rf $build_dir
+      fi
+      if [[ "$COVERAGE" == "on" ]]; then
+        build_dir="build-cov-cxx-$CPP-coverage"
+        mkdir $build_dir
+        cd $build_dir
+        cmake -DCXX_STD=${CPP} -DBOOST_BRANCH=$TRAVIS_BRANCH -DCMAKE_BUILD_TYPE=Debug -DLIMIT_TESTING_FOR_CI=true -DBUILD_COVERAGE=true ..
+        sudo ln -s /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-cov /usr/local/bin/llvm-cov
+        make -j${JOBS} && CTEST_OUTPUT_ON_FAILURE=1 CTEST_PARALLEL_LEVEL=4 make coverage
+        if [ $? -ne 0 ]
+        then
+          exit 1
+        fi
+        bash <(curl -s https://codecov.io/bash) -f test/lcov.info || echo "Codecov did not collect coverage reports"
+        cd ..
+        rm -rf $build_dir
+      fi

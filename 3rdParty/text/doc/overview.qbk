@@ -1,0 +1,104 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section An Overview of Boost.Text]
+
+_Text_ is composed of two main layers:
+
+* The Unicode layer
+* The _t_ layer
+
+There are a couple of assorted bits that were necessary or useful to have
+around when implementing various parts of _Text_: _segv_, _ur_, _urv_, and
+_trie_\/_trie_m_\/_trie_s_.
+
+The _t_ layer depends on the Unicode layer.  The Unicode layer can be used
+without touching the _t_ layer.
+
+
+[heading The Unicode Layer]
+
+The Unicode layer provides a few Unicode-related utility types, but is
+primarily comprised of the Unicode algorithms.  These algorithms are done in
+the style of the standard algorithms, with range-friendly interfaces.  For
+each of the unicode algorithms there is a corresponding lazy view.  There are
+algorithms for these Unicode operations:
+
+* Transcoding among UTF-8, UTF-16, and UTF-32
+* Normalization, including the four Unicode normalization forms, plus the FCC form from _tn5_
+* Text segmentation (line breaks, word breaks, etc.)
+* Case mapping (`to_upper()`, `is_lower()`, etc.)
+* Collation, including tailoring using the _ldml_coll_tail_ and serialization of collation tables
+* Collation-aware searching, including caseless searching
+* The Unicode Bidirectional Algorithm, for laying out text that includes both left-to-right and right-to-left text
+
+These algorithms are independent of the _t_ layer; it is possible to use
+_Text_ as a Unicode library without using the _t_ layer at all.
+
+
+[heading The _t_ Layer]
+
+The _t_ layer is built on top of the Unicode layer.  Its types encode text as
+UTF-8, and maintain normalization.  Much of their implementation is done in
+terms of the algorithms from the Unicode layer.  The types in this layer are:
+_t_, _tv_, _r_, and _rv_.  It contains templates that can be instantiated with
+different UTF formats, normalization forms, and/or underlying storage.
+
+
+[heading The Assorted Bits]
+
+Finally, there are some items that I wrote in the process of implementing
+everything else, that rise to the level of general utility.
+
+First is _segv_.  This is a discontiguous sequence of `T`, for which
+insertions anywhere in the sequence are cheap, with very cheap copies provided
+via a copy-on-write mechanism.  It is a generalization of _ur_ for arbitrary
+`T`.
+
+The remaining assorted types are _trie_, _trie_m_, and _trie_s_.  The first of
+these is a trie that is not a valid C++ container.  The latter two are
+analogous to `std::map` and `std::set`, respectively, just built on a trie
+instead of a binary tree.
+
+[endsect]
+
+[section A Big, Fat Warning About Proxy Iterators]
+
+Before we go any further, I just want to make you aware that _Text_ makes
+extensive use of proxy iterators (see _8_to_32_iter_ and friends).  This is
+fine in C++20 and later, but is not fine in earlier versions of standard.  In
+fact, in earlier versions proxy iterators are not iterators at all, by the
+standard's formal definition.
+
+This is not a problem in practice; I have yet to run into any code that does
+not compile, or that does not work in some other way, due to the use of these
+proxy iterators, but it is a theoretical problem about which you should know.
+Consider yourself warned.
+
+[endsect]
+
+[section The `v1` and `v2` Namespaces, and the Use of C++20 Concepts]
+
+For much of this library, there are two interfaces: one in namespace
+`boost::text::v1`, and one in `boost::text::v2`.  The `v1` version uses SFINAE
+to constrain templates, and the `v2` version uses concepts, including the
+standard concepts from C++20.
+
+When you build with a conforming C++20 compiler, the compiler defines a macro
+`__cpp_lib_concepts` that indicates that the compiler supports concepts, and
+provides the standard concepts in `std` and `std::ranges`.  When _Text_ sees
+the `__cpp_lib_concepts` macro defined, it inlines the `v2` namespace;
+otherwise, it inlines the `v1` namespace.
+
+The net result for you as a user is that, for some function or type `foo` with
+`v1` and `v2` versions, you can use `boost::text::foo`, and you will get
+`boost::text::v1::foo` when building in C++14 or C++17 modes, and
+`boost::text::v2::foo` when building in C++20 or later.
+
+If you are using an early C++20 implementation that claims to have concept
+support, but that breaks when you build _Text_'s C++20 code, you can disable
+the `v2` namespace by defining _disable_concepts_m_.
+
+[endsect]

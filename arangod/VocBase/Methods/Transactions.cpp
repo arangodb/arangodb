@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -27,12 +26,9 @@
 
 #include "Transactions.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
@@ -52,7 +48,7 @@
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   V8DealerFeature& v8Dealer = v8g->server().getFeature<V8DealerFeature>();
   if (v8Dealer.allowJavaScriptTransactions()) {

@@ -18,22 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
 #include <utils/type_id.hpp>
-#include <unordered_set>
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchOptimizeTopK.h"
@@ -41,6 +37,7 @@
 
 namespace arangodb {
 
+struct Database;
 class LogicalCollection;
 class LogicalView;
 
@@ -74,8 +71,9 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(ArangodServer& server, velocypack::Slice lhs,
-                    velocypack::Slice rhs, std::string_view dbname);
+  static bool equal(application_features::ApplicationServer& server,
+                    velocypack::Slice lhs, velocypack::Slice rhs,
+                    std::string_view dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
@@ -94,11 +92,11 @@ struct IResearchLinkHelper {
   ///        'normalized'
   /// @note missing analyzers will be created if exceuted on db-server
   /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
-  /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
+  /// @note true == !isReady() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
   static Result normalize(
       velocypack::Builder& normalized, velocypack::Slice definition,
-      bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
+      bool isCreation, Database const& vocbase, LinkVersion defaultVersion,
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
@@ -115,7 +113,7 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static Result validateLinks(TRI_vocbase_t& vocbase, velocypack::Slice links);
+  static Result validateLinks(Database& vocbase, velocypack::Slice links);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visits all links in a collection

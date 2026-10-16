@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -39,16 +38,16 @@ const optionsDocumentation = [
 
 const internal = require('internal');
 
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
+const {
+  statusExternal,
+  SetGlobalExecutionDeadlineTo } = internal;
 
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
+const { runWithAllureReport } = require('@arangodb/testutils/testrunners');
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -66,127 +65,8 @@ const testPaths = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_http
+// / @brief TEST: java_driver
 // //////////////////////////////////////////////////////////////////////////////
-
-class runWithAllureReport extends testRunnerBase {
-  getAllureResults(testResultsDir, results, status) {
-    let allResultJsons = {};
-    let topLevelContainers = [];
-    let allContainerJsons = {};
-    let containerRe = /-container.json/;
-    let resultRe = /-result.json/;
-    let resultFiles = fs.list(testResultsDir).filter(file => {
-      return file.match(resultRe) !== null;
-    });
-    if (resultFiles.length === 0) {
-      let msg = `did not find any files in ${testResultsDir}`;
-      print(msg);
-      results['status'] = false;
-      results['message'] = msg;
-    }
-    //print(resultFiles)
-    resultFiles.forEach(containerFile => {
-      let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      resultJson['parents'] = [];
-      allResultJsons[resultJson.uuid] = resultJson;
-    });
-
-    let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
-    containerFiles.forEach(containerFile => {
-      let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      container['childContainers'] = [];
-      container['isToplevel'] = false;
-      //print(container)
-      container.children.forEach(child => {
-        allResultJsons[child]['parents'].push(container.uuid);
-      });
-      allContainerJsons[container.uuid] = container;
-    });
-
-    for(let oneResultKey in allResultJsons) {
-      allResultJsons[oneResultKey].parents = 
-        allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
-          let a = allContainerJsons[aUuid];
-          let b = allContainerJsons[bUuid];
-          if ((a.start !== b.start) || (a.stop !== b.stop)) {
-            return (b.stop - b.start) - (a.stop - a.start);
-          }
-          if (a.children.length !== b.children.length) {
-            return b.children.length - a.children.length;
-          }
-          //print(a)
-          //print(b)
-          //print('--------')
-          return 0;
-        });
-      for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
-        let parent = allResultJsons[oneResultKey].parents[i];
-        let child = allResultJsons[oneResultKey].parents[i + 1];
-        if(i === 0) {
-          topLevelContainers.push(parent);
-        }
-        if (!allContainerJsons[parent]['childContainers'].includes(child)) {
-          allContainerJsons[parent]['childContainers'].push(child);
-        }
-        // print(allContainerJsons[parent])
-      }
-      //print(allResultJsons[oneResultKey])
-      //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
-    }
-    //print(topLevelContainers)
-    topLevelContainers.forEach(id => {
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-      let tlContainer = allContainerJsons[id];
-      //print(tlContainer['childContainers'])
-
-      let resultSet = {
-        duration: tlContainer.stop - tlContainer.start,
-        total: tlContainer.children.length,
-        failed: 0,
-        status: true
-      };
-      results[tlContainer.name] = resultSet;
-
-      tlContainer['childContainers'].forEach(childContainerId => {
-        let childContainer = allContainerJsons[childContainerId];
-        let suiteResult = {};
-        resultSet[childContainer.name] = suiteResult;
-        //print(childContainer);
-        childContainer['childContainers'].forEach(grandChildContainerId => {
-          let grandChildContainer = allContainerJsons[grandChildContainerId];
-          //print(grandChildContainer);
-          let name = childContainer.name + "." + grandChildContainer.name;
-          if (grandChildContainer.children.length !== 1) {
-            print(RED+"This grandchild has more than one item - not supported!"+RESET);
-            print(RED+grandChildContainer.children+RESET);
-          }
-          let gcTestResult = allResultJsons[grandChildContainer.children[0]];
-          let message = "";
-          if (gcTestResult.hasOwnProperty('statusDetails')) {
-            message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
-          }
-          let myResult = {
-            duration: gcTestResult.stop - gcTestResult.start,
-            status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
-            message: message
-          };
-
-          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
-          if (!myResult.status) {
-            status = false;
-            suiteResult.status = false;
-            // suiteResult.message = myResult.message;
-            results.message += myResult.message;
-          }
-        });
-      });
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-    });
-    results['timeout'] = false;
-    results['status'] = status;
-  }
-}
 
 class runInJavaTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
@@ -226,6 +106,11 @@ arangodb.acquireHostList=true
     fs.write(propertiesFileName, propertiesFileContent);
     let args = [
       'verify',
+    ];
+    if (this.options.loopEternal) {
+      args = args.concat(['-am',]);
+    }
+    args = args.concat([
       '-am',
       '-pl',
       'test-functional',
@@ -237,7 +122,7 @@ arangodb.acquireHostList=true
       '-Dallure.results.directory=' + testResultsDir,
       '-Dmaven.wagon.http.retryHandler.count=10',
       // TODO? '-Dnative=<<parameters.native>>'
-    ];
+    ]);
 
     if (this.options.testCase) {
       args.push('-Dit.test=' + this.options.testCase);
@@ -248,17 +133,41 @@ arangodb.acquireHostList=true
         args.push('-D' + key + '=' + this.options.javaOptions[key]);
       }
     }
+    if (this.options.loopEternal) {
+      args = ['failsafe:integration-test', 'failsafe:verify'].concat(args);
+    }
     if (this.options.extremeVerbosity) {
       print(args);
     }
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "javaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (!rc.status) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
       status = false;
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    this.getAllureResults(testResultsDir, results, status);
+    SetGlobalExecutionDeadlineTo(0.0);
+    let txtfile = fs.join(cwd, "test-functional/target/unicode_names.txt");
+    if (fs.exists(txtfile)) {
+      print(`copying ${txtfile}`);
+      fs.copyFile(txtfile, this.instanceManager.rootDir);
+    } else {
+      print(`${txtfile} not found!`);
+    }
+    this.getAllureResults(testResultsDir, results, status, 'javadriver');
     return results;
   }
 }
@@ -268,7 +177,6 @@ function javaDriver (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions['extraArgs']['vector-index'] =  true;
   let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
@@ -303,6 +211,7 @@ class runInKafkaTest extends runWithAllureReport {
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dkafka.bootstrap.servers=${this.options.kafkaHost}`,
       '-Dgpg.skip',
+      '-Drecord.trace.level=DEBUG',
       '-Dmaven.javadoc.skip',
       `-Dallure.results.directory=${testResultsDir}`,
       `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,
@@ -329,11 +238,25 @@ class runInKafkaTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "kafkaDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (!rc.status) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    this.getAllureResults(testResultsDir, results, status);
+    SetGlobalExecutionDeadlineTo(0.0);
+    this.getAllureResults(testResultsDir, results, status, 'kafkadriver');
     return results;
   }
 }
@@ -375,8 +298,8 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     let rx = /.*:\/\//gi;
     let args = [
       'test',
-      '-Pscala-2.12',
-      '-Pspark-3.5',
+      '-Pscala-2.13.18',
+      '-Pspark-4.1',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
@@ -397,11 +320,25 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "sparkdriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (!rc.status) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    this.getAllureResults(testResultsDir, results, status);
+    SetGlobalExecutionDeadlineTo(0.0);
+    this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
     return results;
   }
 }
@@ -462,11 +399,25 @@ class runInSpringDataTest extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.springsource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "SpringDataDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (!rc.status) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    this.getAllureResults(testResultsDir, results, status);
+    SetGlobalExecutionDeadlineTo(0.0);
+    this.getAllureResults(testResultsDir, results, status, 'springdatatest');
     return results;
   }
 }
@@ -530,11 +481,32 @@ class runInTinkerpopProvider extends runWithAllureReport {
     let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
-    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
-      status = false;
+    let deadline = this.options.oneTestTimeout;
+    if (this.options.cluster) {
+      deadline *= 10;
+    } else {
+      deadline *= 4;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.options.oneTestTimeout = deadline;
+    SetGlobalExecutionDeadlineTo(deadline);
+    try {
+      const rc = pu.executeAndWait('mvn', args, this.options, "TinkerpopDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (!rc.status) {
+        print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
+        status = false;
+      }
+    } catch (ex) {
+      status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
+    }
+    SetGlobalExecutionDeadlineTo(0.0);
+    this.getAllureResults(testResultsDir, results, status, 'tinkerpopdriver');
     return results;
   }
 }

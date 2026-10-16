@@ -57,6 +57,13 @@ function randomInteger() {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function generateSeed() {
+  const seed = randomInteger();
+  print(`Generated random seed ${seed}`);
+  return seed;
+}
+
 exports.randomNumberGeneratorInt = randomNumberGeneratorInt;
 exports.randomNumberGeneratorFloat = randomNumberGeneratorFloat;
 exports.randomInteger = randomInteger;
+exports.generateSeed = generateSeed;

@@ -19,8 +19,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
-// / @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var Graph = require('@arangodb/general-graph');

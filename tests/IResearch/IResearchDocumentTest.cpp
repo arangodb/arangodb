@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <memory>
@@ -60,7 +58,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -113,8 +110,8 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
     } else {
       ASSERT_EQ(mangleString(expectedName, analyzerName), value.name());
     }
-    auto& analyzers = server.template getFeature<
-        arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
         irs::type<Analyzer>::name(), irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -453,7 +450,7 @@ class IResearchDocumentTest
       auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto vocbase = sysDatabase.use();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -2117,7 +2114,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server());
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(
+      server.server(),
+      arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
+          server.server()));
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"stringValue\": \"string\" \
@@ -3011,8 +3011,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
   auto& analyzers =
-      server
-          .template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._analyzers.clear();
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
@@ -3779,7 +3778,7 @@ TEST_F(IResearchDocumentTest,
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"includeAllFields":true, "fields" : [
-            {"name": "boost.foo.bar", "analyzer":"iresearch-document-string"}, 
+            {"name": "boost.foo.bar", "analyzer":"iresearch-document-string"},
             {"name": "boost.foo"}]})");
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();

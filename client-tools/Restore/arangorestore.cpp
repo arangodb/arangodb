@@ -18,41 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangorestore.h"
-
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "Logger/LoggerFeature.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
-#include "Restore/RestoreFeature.h"
+#include "Restore/ArangoRestoreServer.h"
 #include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -61,61 +39,15 @@ int main(int argc, char* argv[]) {
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangorestore [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: arangorestore [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
     int ret = EXIT_SUCCESS;
-    ArangoRestoreServer server(options, BIN_DIRECTORY);
-
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-#ifdef TRI_HAVE_GETRLIMIT
-        [](ArangoRestoreServer& server, TypeTag<BumpFileDescriptorsFeature>) {
-          return std::make_unique<BumpFileDescriptorsFeature>(
-              server, "--descriptors-minimum");
-        },
-#endif
-        [](ArangoRestoreServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoRestoreServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
-#endif
-        [&](ArangoRestoreServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoRestoreServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoRestoreServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(
-              server, true, std::numeric_limits<size_t>::max());
-        },
-        [&ret](ArangoRestoreServer& server, TypeTag<RestoreFeature>) {
-          return std::make_unique<RestoreFeature>(server, ret);
-        },
-        [](ArangoRestoreServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoRestoreServer::id<RestoreFeature>()});
-        },
-        [&](ArangoRestoreServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        }});
-
+    ArangoRestoreServer server(options, BIN_DIRECTORY, context.binaryName(),
+                               &ret);
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
-        ret = EXIT_SUCCESS;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("f337f", ERR, arangodb::Logger::FIXME)
           << "arangorestore terminated because of an unhandled exception: "

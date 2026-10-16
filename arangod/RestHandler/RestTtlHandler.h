@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,7 +27,8 @@
 namespace arangodb {
 class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestTtlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestTtlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTtlHandler"; }

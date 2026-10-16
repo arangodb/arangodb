@@ -8,8 +8,10 @@ target_link_libraries(arango_tests_futures
     arango
     arango_futures
     gtest
-    velocypack
-    fmt)
+    gmock
+    velocypack)
+target_include_directories(arango_tests_futures PRIVATE
+  ${PROJECT_SOURCE_DIR}/tests)
 
 add_executable(arangodbtests_futures EXCLUDE_FROM_ALL)
 target_link_libraries(arangodbtests_futures

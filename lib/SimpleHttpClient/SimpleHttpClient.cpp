@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpClient.h"
@@ -69,6 +66,13 @@ void SimpleHttpClientParams::setUserNamePassword(std::string_view prefix,
                                                  std::string_view password) {
   TRI_ASSERT(prefix == "/");
   _basicAuth = absl::Base64Escape(absl::StrCat(username, ":", password));
+}
+
+std::string SimpleHttpClientParams::currentJwt() const {
+  if (_jwtProvider) {
+    return _jwtProvider();
+  }
+  return _jwt;
 }
 
 /// @brief default value for max packet size
@@ -614,10 +618,11 @@ ErrorCode SimpleHttpClient::setRequest(
   using ExclusionType = std::pair<size_t, size_t>;
   containers::SmallVector<ExclusionType, 4> exclusions;
   size_t pos = 0;
-  if (!_params._jwt.empty()) {
+  auto const jwt = _params.currentJwt();
+  if (!jwt.empty()) {
     _writeBuffer.appendText(std::string_view("Authorization: bearer "));
     pos = _writeBuffer.size();
-    _writeBuffer.appendText(_params._jwt);
+    _writeBuffer.appendText(jwt);
     exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(std::string_view("\r\n"));
   } else if (!_params._basicAuth.empty()) {
@@ -1001,6 +1006,8 @@ void SimpleHttpClient::processChunkedHeader() {
   processChunkedBody();
 }
 
+// TODO (COR-1030): lz4Uncompress call is broken; this func should assemble
+// chunked compressed data into one data and then call lz4Uncompress.
 void SimpleHttpClient::processChunkedBody() {
   // HEAD requests may be responded to without a body...
   if (_method == rest::RequestType::HEAD) {

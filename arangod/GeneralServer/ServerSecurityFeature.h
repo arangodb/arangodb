@@ -18,22 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 
 namespace arangodb {
 
-class ServerSecurityFeature final : public ArangodFeature {
+class ServerSecurityFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
 
-  explicit ServerSecurityFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  explicit ServerSecurityFeature(
+      application_features::ApplicationServer& server,
+      ServerSecurityFeatureOptions options);
+  explicit ServerSecurityFeature(
+      application_features::ApplicationServer& server);
 
   // disable Foxx API. must only be called during server startup
   void disableFoxxApi() noexcept;
@@ -41,14 +44,10 @@ class ServerSecurityFeature final : public ArangodFeature {
   bool isRestApiHardened() const noexcept;
   bool isFoxxApiDisabled() const noexcept;
   bool isFoxxStoreDisabled() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
   bool foxxAllowInstallFromRemote() const noexcept;
 
  private:
-  bool _enableFoxxApi;
-  bool _enableFoxxStore;
-  bool _hardenedRestApi;
-  bool _foxxAllowInstallFromRemote;
+  ServerSecurityFeatureOptions _options;
 };
 
 }  // namespace arangodb

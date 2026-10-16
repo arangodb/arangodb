@@ -27,8 +27,6 @@
 namespace arangodb {
 
 struct ReplicationOptions {
-  bool replicationApplierAutoStart = true;
-
   /// maximum number of parallel tailing operations invocations
   uint64_t maxParallelTailingInvocations = 0;
 
@@ -41,6 +39,12 @@ struct ReplicationOptions {
   /// automatically repair revision trees of shards after too many failed
   /// shard synchronization attempts
   bool autoRepairRevisionTrees = true;
+
+  double connectTimeout = 10.0;
+  double requestTimeout = 600.0;
+
+  bool forceConnectTimeout = false;
+  bool forceRequestTimeout = false;
 };
 
 }  // namespace arangodb

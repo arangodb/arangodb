@@ -2,11 +2,12 @@ add_library(arango_vocbase_api STATIC
         ClusteringConstantProperties.cpp
         ClusteringMutableProperties.cpp
         ClusteringProperties.cpp
-        CollectionConstantProperties.cpp
         CollectionCreateOptions.cpp
+        CollectionDescriptor.cpp
         CollectionIndexesProperties.cpp
         CollectionInternalProperties.cpp
         CollectionMutableProperties.cpp
+        CollectionStorageProperties.cpp
         CreateCollectionBody.cpp
         DatabaseConfiguration.cpp
         KeyGeneratorProperties.cpp
@@ -23,10 +24,8 @@ target_include_directories(arango_vocbase_api PRIVATE
 target_compile_options(arango_vocbase_api PRIVATE
         ${CMAKE_DEPRECATE_OPTIONS})
 
-
 target_link_libraries(arango_vocbase_api PUBLIC
         velocypack
-        fmt
 
         # Required for Result / ResultT
         PRIVATE arango

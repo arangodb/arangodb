@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Agency/Store.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
+#include "Utils/Thread.h"
 #include "Containers/FlatHashMap.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
@@ -41,7 +40,7 @@ namespace cluster::paths {
 class Path;
 }
 
-class AgencyCache final : public ServerThread<ArangodServer> {
+class AgencyCache final : public ServerThread {
  public:
   using databases_t = containers::FlatHashMap<std::string, consensus::query_t>;
 
@@ -62,7 +61,7 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(ArangodServer& server,
+  explicit AgencyCache(application_features::ApplicationServer& server,
                        AgencyCallbackRegistry& callbackRegistry,
                        ErrorCode shutdownCode);
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LanguageFeature.h"
@@ -38,6 +37,7 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/LanguageOptionsProvider.h"
 
 #include <absl/strings/str_cat.h>
 #include <unicode/udata.h>
@@ -114,60 +114,23 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::~LanguageFeature() = default;
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server)
+    : LanguageFeature(server, LanguageFeatureOptions{}) {}
 
-void LanguageFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options
-      ->addOption("--default-language",
-                  "An ISO-639 language code. You can only set this option "
-                  "once, when initializing the database.",
-                  new StringParameter(&_defaultLanguage),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(31000)
-      .setLongDescription(R"(The default language is used for sorting and
-comparing strings. The language value is a two-letter language code (ISO-639) or
-it is composed by a two-letter language code followed by a two letter country
-code (ISO-3166). For example: `de`, `en`, `en_US`, `en_UK`.
-
-The default is the system locale of the platform.)");
-
-  options
-      ->addOption(
-          "--icu-language",
-          "An ICU locale ID to set a language and optionally additional "
-          "properties that affect string comparisons and sorting. You can only "
-          "set this option once, when initializing the database.",
-          new StringParameter(&_icuLanguage),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30901)
-      .setLongDescription(R"(With this option, you can get the sorting and
-comparing order exactly as it is defined in the ICU standard. The language value
-can be a two-letter language code (ISO-639), a two-letter language code followed
-by a two letter country code (ISO-3166), or any other valid ICU locale
-definition. For example: `de`, `en`, `en_US`, `en_UK`,
-`de_AT@collation=phonebook`.
-
-For the Swedish language (`sv`), for instance, the correct ICU-based sorting
-order for letters is `'a','A','b','B','z','Z','å','Ä','ö','Ö'`. To get this
-order, use `--icu-language sv`. If you use `--default-language sv` instead, the
-sorting order will be `"A", "a", "B", "b", "Z", "z", "å", "Ä", "Ö", "ö"`.
-
-**Note**: You can use only one of the language options, either `--icu-language`
-or `--default-language`. Setting both of them results in an error.)");
-
-  options
-      ->addOption(
-          "--default-language-check",
-          "Check if `--icu-language` / `--default-language` matches the "
-          "stored language.",
-          new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30800);
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server,
+    LanguageFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _binaryPath(server.getBinaryPath()),
+      _locale(),
+      _langType(basics::LanguageType::INVALID) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
+
+LanguageFeature::~LanguageFeature() = default;
 
 std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
                                         std::string const& binaryExecutionPath,
@@ -218,8 +181,8 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
     } else {
       std::string icu_path = path.substr(0, path.length() - fn.length());
-      FileUtils::makePathAbsolute(icu_path);
-      FileUtils::normalizePath(icu_path);
+      icu_path = basics::FileUtils::absolutePath(icu_path).string();
+      icu_path = std::filesystem::path(icu_path).make_preferred().string();
       setenv("ICU_DATA_LEGACY", icu_path.c_str(), 1);
     }
   }
@@ -252,7 +215,7 @@ void LanguageFeature::prepare() {
   }
 
   // Now on to the language type and locale settings:
-  _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
+  _langType = ::getLanguageType(_options.defaultLanguage, _options.icuLanguage);
 
   if (LanguageType::INVALID == _langType) {
     LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
@@ -261,9 +224,9 @@ void LanguageFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(
-      _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
-      _langType);
+  ::setCollator(_langType == LanguageType::ICU ? _options.icuLanguage
+                                               : _options.defaultLanguage,
+                _langType);
   ::setLocale(_locale);
 }
 
@@ -272,14 +235,16 @@ icu_64_64::Locale& LanguageFeature::getLocale() { return _locale; }
 std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
   if (LanguageType::ICU == _langType) {
-    return {_icuLanguage, _langType};
+    return {_options.icuLanguage, _langType};
   }
   TRI_ASSERT(LanguageType::DEFAULT == _langType);
-  // If it is invalid type just returning _defaultLanguage
-  return {_defaultLanguage, _langType};
+  // If it is invalid type just returning _options.defaultLanguage
+  return {_options.defaultLanguage, _langType};
 }
 
-bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
+bool LanguageFeature::forceLanguageCheck() const {
+  return _options.forceLanguageCheck;
+}
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
@@ -289,15 +254,15 @@ std::string LanguageFeature::getCollatorLanguage() const {
 void LanguageFeature::resetLanguage(std::string_view language,
                                     arangodb::basics::LanguageType type) {
   _langType = type;
-  _defaultLanguage.clear();
-  _icuLanguage.clear();
+  _options.defaultLanguage.clear();
+  _options.icuLanguage.clear();
   switch (_langType) {
     case LanguageType::DEFAULT:
-      _defaultLanguage = language;
+      _options.defaultLanguage = language;
       break;
 
     case LanguageType::ICU:
-      _icuLanguage = language;
+      _options.icuLanguage = language;
       break;
 
     case LanguageType::INVALID:

@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
 // //////////////////////////////////////////////////////////////////////////////
 
 const LH = require("@arangodb/testutils/replicated-logs-helper");

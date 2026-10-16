@@ -18,26 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestCollectionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
 ClusterRestCollectionHandler::ClusterRestCollectionHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
 futures::Future<Result> ClusterRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
+    // Note that this check was missing before the RBAC change and we have
+    // considered to be a bug, so it is fixed here.
+    if (auto r = ExecContext::current().canUseCollection(
+            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta);
+        !r.ok()) {
+      return r;
+    }
     Result res = recalculateCountsOnAllDBServers(
         server().getFeature<ClusterFeature>(), _vocbase.name(), coll->name());
     if (res.ok()) {

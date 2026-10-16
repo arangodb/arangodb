@@ -18,40 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <span>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/CheckVersionFeatureOptions.h"
 
-struct TRI_vocbase_t;
+#include <span>
+#include <typeindex>
 
 namespace arangodb {
 
-class CheckVersionFeature final : public ArangodFeature {
+class CheckVersionFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "CheckVersion"; }
 
-  explicit CheckVersionFeature(Server& server, int* result,
-                               std::span<const size_t> nonServerFeatures);
+  explicit CheckVersionFeature(
+      application_features::ApplicationServer& server, int* result,
+      std::span<const std::type_index> nonServerFeatures,
+      CheckVersionFeatureOptions options);
+  explicit CheckVersionFeature(
+      application_features::ApplicationServer& server, int* result,
+      std::span<const std::type_index> nonServerFeatures);
 
- private:
-  bool _checkVersion;
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:
   void checkVersion();
 
+  CheckVersionFeatureOptions _options;
   int* _result;
-  std::span<const size_t> _nonServerFeatures;
+  std::span<const std::type_index> _nonServerFeatures;
 };
 
 }  // namespace arangodb

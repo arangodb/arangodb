@@ -18,22 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDebugHandler.h"
 
 #include "Basics/DebugRaceController.h"
+#include "Cluster/ServerState.h"
+
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestDebugHandler::RestDebugHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+async<RestHandler::AuthenticationGrant>
+RestDebugHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
+}
+
+// Mounted at /_admin/debug (prefix, only when ARANGODB_ENABLE_FAILURE_TESTS is
+// defined)
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -115,7 +135,19 @@ RestStatus RestDebugHandler::execute() {
   } else if (suffixes[0] == "crash") {
     if (type == rest::RequestType::PUT) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_TerminateDebugging("crashing server by REST call");
+      auto const message =
+          std::invoke([payload = _request->payload()]() -> std::string {
+            if (payload.isObject()) {
+              auto const messageSlice = payload.get("message");
+              if (messageSlice.isString()) {
+                return messageSlice.copyString();
+              }
+            }
+
+            return "crashing server by REST call";
+          });
+
+      TRI_TerminateDebugging(message);
       return RestStatus::DONE;
 #else
       generateNotImplemented(

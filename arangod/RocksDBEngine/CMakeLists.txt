@@ -2,6 +2,7 @@ add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
+  RocksDBCFStats.cpp
   RocksDBChecksumEnv.cpp
   RocksDBCollection.cpp
   RocksDBColumnFamilyManager.cpp
@@ -12,12 +13,15 @@ add_library(arango_rocksdb STATIC
   RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
+  RocksDBEngineOptionsProvider.cpp
   RocksDBFormat.cpp
   RocksDBFulltextIndex.cpp
   RocksDBGeoIndex.cpp
   RocksDBIncrementalSync.cpp
   RocksDBIndex.cpp
   RocksDBIndexCacheRefillFeature.cpp
+  RocksDBIndexCacheRefillFeatureOptions.cpp
+  RocksDBIndexCacheRefillOptionsProvider.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
   RocksDBIndexingDisabler.cpp
@@ -30,10 +34,12 @@ add_library(arango_rocksdb STATIC
   RocksDBMethods.cpp
   RocksDBMethodsMemoryTracker.cpp
   RocksDBMultiDimIndex.cpp
-  RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
+  RocksDBOptionFeatureOptions.cpp
+  RocksDBOptionFeatureOptionsProvider.cpp
   RocksDBOptionsProvider.cpp
   RocksDBPrimaryIndex.cpp
+  RocksDBReadWriteMetrics.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp
@@ -41,10 +47,6 @@ add_library(arango_rocksdb STATIC
   RocksDBReplicationIterator.cpp
   RocksDBReplicationManager.cpp
   RocksDBReplicationTailing.cpp
-  RocksDBRestCollectionHandler.cpp
-  RocksDBRestHandlers.cpp
-  RocksDBRestReplicationHandler.cpp
-  RocksDBRestWalHandler.cpp
   RocksDBSavePoint.cpp
   RocksDBSettingsManager.cpp
   RocksDBSortedRowsStorageContext.cpp
@@ -60,31 +62,49 @@ add_library(arango_rocksdb STATIC
   RocksDBValue.cpp
   RocksDBVectorIndex.cpp
   RocksDBVectorIndexList.cpp
+  RocksDBVectorIndexBuilder.cpp
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
 
-if (USE_V8) 
+if (USE_V8)
   target_sources(arango_rocksdb PRIVATE
     RocksDBV8Functions.cpp)
 endif()
 
 target_link_libraries(arango_rocksdb
-  arango_cache
-  arango_common_rest_handler
-  arango_geo
-  arango_health
-  arango_indexes
-  arango_restart_action
-  arango_storage_engine_common
-  arango::validation
-  arango_zkd
-  boost_boost
-  rocksdb
-  rocksdb_interface
-  snappy
-  faiss)
+  PUBLIC
+    arango_cache
+    arango_indexes
+    arango_restart_action
+    arango_storage_engine_common
+    arango_zkd
+    rocksdb
+    rocksdb_interface
+    faiss
+  PRIVATE
+    arango_health
+    arango_v8server
+    snappy)
+
+add_library(arango_rocksdb_rest STATIC
+  RocksDBRestCollectionHandler.cpp
+  RocksDBRestHandlers.cpp
+  RocksDBRestReplicationHandler.cpp
+  RocksDBRestWalHandler.cpp
+)
+
+target_link_libraries(arango_rocksdb_rest
+  PUBLIC
+    arango_rocksdb
+    arango_common_rest_handler
+)
+
+target_include_directories(arango_rocksdb_rest PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -93,8 +113,12 @@ if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
-  target_link_libraries(arango_rocksdb
-    arango_rclone 
+  target_link_libraries(arango_rocksdb PUBLIC
+    arango_rclone
+    arango_enterprise_storage_engine
+  )
+  target_link_libraries(arango_rocksdb PRIVATE
+    arango_enterprise_audit
   )
 endif()
 

@@ -137,6 +137,41 @@ To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
     ./utils/eslint.sh
 
+### clang-tidy
+
+clang-tidy can be run on-demand with the wrapper script `./utils/clang-tidy.sh`,
+or along with a build by setting `USE_CLANG_TIDY=On`:
+
+#### On demand
+
+This requires `clang-tidy`, `run-clang-tidy` and `jq` in PATH. It also needs an
+existing build directory; defaulting to `./build/`, which can be overridden with
+`--build` or `-B`.
+
+    ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
+    ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
+    ./utils/clang-tidy.sh --fix <files>      # apply clang-tidy's fixes in place
+
+With no arguments it checks the sources locally modified vs. `HEAD` in both the
+main and the enterprise repository (same selection as `./scripts/clang-format.sh`).
+
+To scan the whole codebase, pass the source roots:
+
+    ./utils/clang-tidy.sh \
+      arangod lib client-tools enterprise
+
+#### As part of the build
+
+Configure `cmake` with `-DUSE_CLANG_TIDY=On` to run clang-tidy on every
+first-party translation unit as it compiles. It is `Off` by default.
+
+This covers `arangod`, `lib` (including `lib/iresearch`), `client-tools` and
+`enterprise`; vendored `3rdParty` code is excluded.
+
+clang-tidy runs in addition to the compilation, and can increase the total build
+time significantly. Any partial recompile will also run clang-tidy on the same
+set of translation units.
+
 ### Adding startup options
 
 Startup option example with explanations:
@@ -265,6 +300,8 @@ You can start the build container as follows in a Bash-like terminal:
     cd arangodb
     docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
 
+SELinux enabled distribitons need `:z` added to the to the volume path: `-v $(pwd):/root/project:z`
+
 In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
 The port mapping is for accessing the web interface in case you want to run a
@@ -314,7 +351,7 @@ For building the ArangoDB Starter (`arangodb` executable), see the
 
 ### Building Locally
 
-Recommended for Debian-based Linux. First, install dependencies:
+Debian-based Linux is recommended. Dependencies:
 - `clang-19`
 - `libomp-19-dev`
 - `liblapack-dev`
@@ -322,6 +359,13 @@ Recommended for Debian-based Linux. First, install dependencies:
 - `cmake` (at least 3.21)
 - `libssl-dev`
 - `libstdc++-14-dev`
+- `bison`
+- `flex`
+
+Dependencies for a Fedora-based distribution:
+```
+dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
+```
 
 After installing, follow the general build steps above.
 
@@ -869,6 +913,11 @@ Run specific gtest tests:
     ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Run an upgrade from another source with compiled binaries:
+
+    ./scripts/unittest rta_makedata --cluster true --oldSource ../othersource
+    ./scripts/unittest dump_multiple_two --oldSource  ../othersource
 
 Controlling the place where the test-data is stored:
 

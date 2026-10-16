@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/MetricsOptions.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
@@ -66,13 +65,17 @@
   while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
 #endif
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 class CollectionNameResolver;
+struct Database;
 struct ResourceMonitor;
 
 namespace transaction {
+
+namespace activity {
+struct TransactionActivity;
+}
+
 class CounterGuard;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class HistoryEntry;
@@ -104,7 +107,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  TransactionState(Database& vocbase, TransactionId tid,
                    transaction::Options const& options,
                    transaction::OperationOrigin operationOrigin);
   virtual ~TransactionState();
@@ -133,7 +136,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] transaction::Options const& options() const noexcept {
     return _options;
   }
-  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] Database& vocbase() const noexcept { return _vocbase; }
   [[nodiscard]] TransactionId id() const noexcept { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
   [[nodiscard]] bool isRunning() const noexcept {
@@ -182,6 +185,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] futures::Future<Result> addCollection(
       DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
       bool lockUsage);
+
+  /// @brief check that the current user may access the given collection in the
+  /// requested mode
+  [[nodiscard]] Result checkCollectionPermission(DataSourceId cid,
+                                                 std::string_view cname,
+                                                 AccessMode::Type accessType);
 
   /// @brief use all participating collections of a transaction
   [[nodiscard]] futures::Future<Result> useCollections();
@@ -411,10 +420,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     callbacks.clear();
   }
 
-  /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
-                                   AccessMode::Type);
-
   /// @brief helper function for addCollection
   futures::Future<Result> addCollectionInternal(DataSourceId cid,
                                                 std::string_view cname,
@@ -435,7 +440,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void publishShardMetrics(CollectionNameResolver const& resolver);
 
  protected:
-  TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
+  Database& _vocbase;  /// @brief vocbase for this transaction
 
   /// @brief access type (read|write)
   AccessMode::Type _type = AccessMode::Type::READ;
@@ -494,7 +499,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::OperationOrigin const _operationOrigin;
 
-  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+  metrics::UsageTrackingMode _usageTrackingMode;
 
   /// @brief name of user who originated the transaction. may be empty.
   /// this user name is informational only and can be used for logging,
@@ -512,6 +517,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   // number of times the metrics have been increased since the metrics
   // were last published
   size_t _shardBytesUnpublishedEvents = 0;
+
+  std::shared_ptr<transaction::activity::TransactionActivity> _activity;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

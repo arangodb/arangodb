@@ -18,27 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "RestServer/LogBufferFeatureOptions.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Metrics/Fwd.h"
 
 #include <cstdint>
 #include <memory>
 #include <vector>
 
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
 namespace arangodb {
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
 
 struct LogBuffer {
   uint64_t _id;
@@ -50,15 +51,18 @@ struct LogBuffer {
   LogBuffer();
 };
 
-class LogBufferFeature final : public ArangodFeature {
+class LogBufferFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "LogBuffer"; }
 
   static constexpr uint32_t BufferSize = 2048;
 
-  explicit LogBufferFeature(Server& server);
+  LogBufferFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry,
+                   LogBufferFeatureOptions options);
+  LogBufferFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
   /// @brief return all buffered log entries
@@ -71,8 +75,7 @@ class LogBufferFeature final : public ArangodFeature {
  private:
   std::shared_ptr<LogAppender> _inMemoryAppender;
   std::shared_ptr<LogAppender> _metricsCounter;
-  std::string _minInMemoryLogLevel;
-  bool _useInMemoryAppender;
+  LogBufferFeatureOptions _options;
 };
 
 }  // namespace arangodb

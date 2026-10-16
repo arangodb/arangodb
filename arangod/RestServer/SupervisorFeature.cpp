@@ -18,21 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <cstdint>
 
 #include "SupervisorFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
-#include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
@@ -40,10 +37,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorOptionsProvider.h"
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -104,52 +100,25 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(Server& server)
-    : ArangodFeature{server, *this}, _supervisor(false), _clientPid(0) {
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server)
+    : SupervisorFeature(server, SupervisorFeatureOptions{}) {}
+
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server,
+    SupervisorFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
 }
 
-void SupervisorFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--supervisor",
-          "Start the server in supervisor mode. Requires --pid-file to be set.",
-          new BooleanParameter(&_supervisor),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(Runs an arangod process as supervisor with another
-arangod process as child, which acts as the server. In the event that the server
-unexpectedly terminates due to an internal error, the supervisor automatically
-restarts the server. Enabling this option implies that the server runs as a
-daemon.)");
-}
-
-void SupervisorFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_supervisor) {
-    try {
-      DaemonFeature& daemon = server().getFeature<DaemonFeature>();
-
-      // force daemon mode
-      daemon.setDaemon(true);
-
-      // revalidate options
-      daemon.validateOptions(options);
-    } catch (...) {
-      LOG_TOPIC("9207d", FATAL, arangodb::Logger::FIXME)
-          << "daemon mode not available, cannot start supervisor";
-      FATAL_ERROR_EXIT();
-    }
-  }
-}
-
 void SupervisorFeature::daemonize() {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
-  if (!_supervisor) {
+  if (!_options.supervisor) {
     return;
   }
 

@@ -18,14 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgencyPaths.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,11 +42,10 @@ class ApplicationServer;
 
 class AgencyCallbackRegistry {
  public:
-  AgencyCallbackRegistry(ApplicationServer& server,
+  AgencyCallbackRegistry(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
-                         EngineSelectorFeature& engineSelectorFeature,
                          DatabaseFeature& databaseFeature,
-                         metrics::MetricsFeature& metrics,
+                         metrics::IRegistry& metricsRegistry,
                          std::string const& callbackBasePath);
   ~AgencyCallbackRegistry();
 
@@ -89,7 +86,7 @@ class AgencyCallbackRegistry {
  private:
   std::string getEndpointUrl(uint64_t id) const;
 
-  ApplicationServer& _server;
+  application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
   AgencyComm _agencyComm;
 

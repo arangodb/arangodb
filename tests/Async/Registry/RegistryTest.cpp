@@ -18,14 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Containers/Concurrent/shared.h"
 #include "Containers/Concurrent/thread.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
+#include <format>
 #include <gtest/gtest.h>
 #include <optional>
 #include <source_location>
@@ -65,6 +65,7 @@ struct MyPromise : public AddToAsyncRegistry {
 }  // namespace
 
 struct AsyncRegistryTest : ::testing::Test {
+  static void SetUpTestSuite() { get_thread_registry().garbage_collect(); }
   void TearDown() override {
     // execute garbage collection on current thread
     get_thread_registry().garbage_collect();
@@ -132,12 +133,12 @@ TEST_F(
               (std::vector<PromiseSnapshot>{promise.snapshot()}));
   }  // marks promise for deletion
 
-  promise_in_registry.state = State::Deleted;
-  EXPECT_EQ(promises_in_registry(),
-            (std::vector<PromiseSnapshot>{promise_in_registry}));
+  // promises does not show up because it is already marked for deletion
+  EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+  EXPECT_EQ(registry.size(), 1);
 
   get_thread_registry().garbage_collect();
-  EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+  EXPECT_EQ(registry.size(), 0);
 }
 
 TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
@@ -167,11 +168,6 @@ TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
   EXPECT_EQ(all_promises[0].state, State::Running);
   EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
 
-  promise.update_state(State::Deleted);
-  all_promises = promises_in_registry();
-  EXPECT_EQ(all_promises[0].state, State::Deleted);
-  EXPECT_EQ(all_promises[0].thread, std::nullopt);
-
   promise.update_state(State::Running);
   all_promises = promises_in_registry();
   EXPECT_EQ(all_promises[0].state, State::Running);
@@ -187,5 +183,5 @@ TEST_F(AsyncRegistryTest, inpection_works_on_after_thread_was_deleted) {
 
   // we just make sure that we can still inspect the promise (and it does not
   // crash the system), although the thread the promise was created on is gone
-  EXPECT_NE(fmt::format("{}", inspection::json(promise_snapshot)), "");
+  EXPECT_NE(std::format("{}", inspection::json(promise_snapshot)), "");
 }

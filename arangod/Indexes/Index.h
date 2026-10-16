@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,18 +26,18 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
-#include <s2/base/integral_types.h>
+#include "IndexType.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <iosfwd>
+#include <memory>
 #include <string_view>
 #include <vector>
 
 namespace arangodb {
+class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
@@ -48,7 +47,9 @@ struct AqlIndexDistinctScanIterator;
 struct IndexStreamOptions;
 struct IndexDistinctScanOptions;
 
-struct UserVectorIndexDefinition;
+namespace vector {
+struct UserDefinition;
+}  // namespace vector
 
 using StoredValues = std::vector<std::vector<basics::AttributeName>>;
 
@@ -94,28 +95,6 @@ class Index {
 
   static std::vector<std::vector<basics::AttributeName>> const
       emptyCoveredFields;
-
-  /// @brief index types
-  enum IndexType {
-    TRI_IDX_TYPE_UNKNOWN = 0,
-    TRI_IDX_TYPE_PRIMARY_INDEX,
-    TRI_IDX_TYPE_GEO_INDEX,
-    TRI_IDX_TYPE_GEO1_INDEX,
-    TRI_IDX_TYPE_GEO2_INDEX,
-    TRI_IDX_TYPE_HASH_INDEX,
-    TRI_IDX_TYPE_EDGE_INDEX,
-    TRI_IDX_TYPE_FULLTEXT_INDEX,
-    TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_TTL_INDEX,
-    TRI_IDX_TYPE_PERSISTENT_INDEX,
-    TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX,
-    TRI_IDX_TYPE_MDI_INDEX,
-    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX,
-    TRI_IDX_TYPE_VECTOR_INDEX,
-  };
 
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -242,10 +221,8 @@ class Index {
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
-    return (type == TRI_IDX_TYPE_HASH_INDEX ||
-            type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
-            type == TRI_IDX_TYPE_INVERTED_INDEX);
+    return (type == IndexType::Hash || type == IndexType::Skiplist ||
+            type == IndexType::Persistent || type == IndexType::Inverted);
   }
 
   virtual IndexType type() const = 0;
@@ -447,7 +424,15 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
+  virtual vector::UserDefinition const& getVectorIndexDefinition() const;
+
+  /// @brief Returns true if the vector index is trained and ready for queries.
+  /// Default returns false. Overridden only by vector index implementations.
+  // TODO(jbajic): This is a bit unfortunate, but we currently have no better
+  // way to
+  virtual bool isVectorIndexReady() const noexcept;
+
+  virtual bool isLinearScanEnabled() const noexcept;
 
   virtual StoredValues const& storedValues() const;
 

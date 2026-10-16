@@ -18,22 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/MaxMapCountOptionsProvider.h"
 
 namespace arangodb {
 
-class MaxMapCountFeature final : public ArangodFeature {
+class MaxMapCountFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "MaxMapCount"; }
 
-  explicit MaxMapCountFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
   static bool needsChecking() { return true; }
 

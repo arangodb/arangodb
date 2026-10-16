@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -30,6 +29,10 @@
 #include <string_view>
 
 namespace arangodb::metrics {
+
+// Escapes a label value for the Prometheus text exposition format:
+// backslash, double quote and line feed must be escaped.
+std::string escapeLabelValue(std::string_view value);
 
 class Builder {
  public:

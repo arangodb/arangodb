@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 // We
@@ -128,7 +126,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   let clients = [];
   let dropCb = (name) => {
     let cn = "UnitTestsCollection";
-    clients.push({client: launchPlainSnippetInBG(`
+    clients.push(launchPlainSnippetInBG(`
         let cn = "${cn}";
         db[cn].insert({ _key: "runner1", _from: "v/test1", _to: "v/test2" });
 
@@ -138,7 +136,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
         require("internal").sleep(0.02);
         db._drop(cn);
-      `, name)});
+      `, name));
 
     while (!db[cn].exists("runner1")) {
       sleep(0.02);
@@ -147,7 +145,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   };
 
   let suite = {
-    setup: function() {
+    setUp: function() {
       clients = [];
     },
     tearDown: function () {
@@ -168,7 +166,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
   let dropCb = (name) => {
     let cn = "UnitTestsCollection";
     let old = db._name();
-    clients.push({client: launchPlainSnippetInBG(`
+    clients.push(launchPlainSnippetInBG(`
           let cn = "${cn}";
           let dn = "${old}";
           db._useDatabase(dn);
@@ -182,7 +180,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
           require("internal").sleep(0.02);
           db._useDatabase('_system');
           db._dropDatabase(dn);
-        `, name)});
+        `, name));
 
     sleep(0.02);
     try {

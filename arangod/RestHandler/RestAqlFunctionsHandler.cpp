@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -30,11 +29,12 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlFunctionsHandler::RestAqlFunctionsHandler(ArangodServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/aql-builtin (prefix)
 RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

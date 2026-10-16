@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,13 +34,11 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationServer;
 
-class ApplicationFeaturePhase : public ApplicationFeature {
+class ApplicationFeaturePhase
+    : public application_features::ApplicationFeature {
   friend class ApplicationServer;
 
  public:
-  // validate options of this phase
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // prepare the phase
   void prepare() override;
 
@@ -60,11 +57,10 @@ class ApplicationFeaturePhase : public ApplicationFeature {
  protected:
   template<typename Server, typename Impl>
   ApplicationFeaturePhase(Server& server, const Impl&)
-      : ApplicationFeaturePhase{server, Server::template id<Impl>(),
-                                Impl::name()} {}
+      : ApplicationFeaturePhase{server, typeid(Impl), Impl::name()} {}
 
-  ApplicationFeaturePhase(ApplicationServer& server, size_t registration,
-                          std::string_view name);
+  ApplicationFeaturePhase(ApplicationServer& server,
+                          std::type_index registration, std::string_view name);
 };
 
 }  // namespace application_features

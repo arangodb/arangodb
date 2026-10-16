@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -99,6 +98,10 @@ struct DocumentProducingFunctionContext {
   void setAllowCoveringIndexOptimization(
       bool allowCoveringIndexOptimization) noexcept;
 
+  /// switch active projections for per-cursor covering index optimization
+  void setActiveProjections(aql::Projections const* proj,
+                            aql::Projections const* projForRegs) noexcept;
+
   void incrScanned() noexcept;
 
   void incrFiltered() noexcept;
@@ -154,6 +157,8 @@ struct DocumentProducingFunctionContext {
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
   aql::Projections _projectionsForRegisters;
+  aql::Projections const* _activeProjections;
+  aql::Projections const* _activeProjectionsForRegisters;
   ResourceMonitor& _resourceMonitor;
 
   uint64_t _numScanned;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,8 +32,8 @@ namespace arangodb {
 
 class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestAqlFunctionsHandler(ArangodServer&, GeneralRequest*,
-                                   GeneralResponse*);
+  explicit RestAqlFunctionsHandler(application_features::ApplicationServer&,
+                                   GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;

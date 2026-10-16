@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalManager.h"
 
+#include <fcntl.h>
 #include <filesystem>
 
 #include "Basics/Exceptions.h"

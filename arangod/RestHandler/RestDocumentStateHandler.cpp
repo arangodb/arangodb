@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandler/RestDocumentStateHandler.h"
@@ -42,7 +41,7 @@ namespace {
  * CustomTypeHandler to parse the collection ID from snapshot batches.
  */
 struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
-  explicit SnapshotTypeHandler(TRI_vocbase_t& vocbase)
+  explicit SnapshotTypeHandler(Database& vocbase)
       : resolver(CollectionNameResolver(vocbase)) {}
 
   void dump(VPackSlice const& value, VPackDumper* dumper,
@@ -59,19 +58,33 @@ struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
 };
 }  // namespace
 
-RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
+RestDocumentStateHandler::RestDocumentStateHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _customTypeHandler{std::make_unique<SnapshotTypeHandler>(_vocbase)},
       _options{VPackOptions::Defaults} {
   _options.customTypeHandler = _customTypeHandler.get();
 }
 
+// Mounted at /_api/document-state (prefix, only when replication2 is enabled
+// and in cluster mode)
 RestStatus RestDocumentStateHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+  auto const type = _request->requestType();
+  if (type == RequestType::GET) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminReadReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+  } else {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWriteReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
   }
 
   auto methods = replication2::DocumentStateMethods::createInstance(_vocbase);
@@ -109,7 +122,7 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
   if (!logId.has_value()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format(
+        std::format(
             "invalid state id {} during GET /_api/document-state/<state-id>",
             suffixes[0]));
     return RestStatus::DONE;
@@ -156,7 +169,7 @@ auto RestDocumentStateHandler::parseGetSnapshotParams()
     if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_HTTP_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+          std::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
                       id.result().errorMessage()));
     }
     return document::SnapshotParams{document::SnapshotParams::Status{id.get()}};
@@ -181,7 +194,7 @@ RestStatus RestDocumentStateHandler::handlePostRequest(
   if (!logId.has_value()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format(
+        std::format(
             "invalid state id {} during POST /_api/document-state/<state-id>",
             suffixes[0]));
     return RestStatus::DONE;
@@ -207,7 +220,7 @@ auto RestDocumentStateHandler::parsePostSnapshotParams()
     if (suffixes.size() != 3) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("expect POST "
+          std::format("expect POST "
                       "/_api/document-state/<state-id>/snapshot/"
                       "start"));
     }
@@ -233,7 +246,7 @@ auto RestDocumentStateHandler::parsePostSnapshotParams()
     if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+          std::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
                       id.result().errorMessage()));
     }
 
@@ -259,7 +272,7 @@ RestStatus RestDocumentStateHandler::handleDeleteRequest(
       replication2::LogId::fromString(suffixes[0]);
   if (!logId.has_value()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  fmt::format("invalid state id {} during DELETE "
+                  std::format("invalid state id {} during DELETE "
                               "/_api/document-state/<state-id>",
                               suffixes[0]));
     return RestStatus::DONE;
@@ -285,7 +298,7 @@ auto RestDocumentStateHandler::parseDeleteSnapshotParams()
     if (suffixes.size() != 4) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("expect DELETE "
+          std::format("expect DELETE "
                       "/_api/document-state/<state-id>/snapshot/"
                       "finish/<snapshot-id>"));
     }
@@ -294,7 +307,7 @@ auto RestDocumentStateHandler::parseDeleteSnapshotParams()
     if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+          std::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
                       id.result().errorMessage()));
     }
 

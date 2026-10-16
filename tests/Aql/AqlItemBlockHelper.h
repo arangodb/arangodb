@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,6 +33,7 @@
 
 #include "AqlHelper.h"
 #include "VelocyPackHelper.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include <velocypack/Slice.h>
 
@@ -105,6 +105,7 @@ namespace tests {
 namespace aql {
 
 using namespace ::arangodb::aql;
+using namespace arangodb::velocypack;
 
 template<RegisterId::value_t columns>
 SharedAqlItemBlockPtr buildBlock(
@@ -125,9 +126,8 @@ SharedAqlItemBlockPtr buildBlock(
                 [](NoneEntry) { return AqlValue{}; },
                 [](int i) { return AqlValue{AqlValueHintInt{i}}; },
                 [](const char* json) {
-                  VPackBufferPtr tmpVpack = vpackFromJsonString(json);
                   return AqlValue{
-                      AqlValueHintSliceCopy{VPackSlice(tmpVpack->data())}};
+                      AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}};
                 },
             },
             entry);

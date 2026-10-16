@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestOptionsBaseHandler.h"
@@ -26,16 +25,15 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestOptionsBaseHandler::RestOptionsBaseHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestOptionsBaseHandler::RestOptionsBaseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 bool RestOptionsBaseHandler::checkAuthentication() {
@@ -44,16 +42,17 @@ bool RestOptionsBaseHandler::checkAuthentication() {
   TRI_ASSERT(apiPolicy != "disabled");
 
   if (apiPolicy == "jwt") {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions");
       return false;
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+  if (auto r =
+          ExecContext::current().canUseAdminAction(auth::perms::AdminOptions{});
+      apiPolicy == "admin" && r.fail()) {
+    generateError(r);
     return false;
   }
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewSort.h"
@@ -108,6 +106,11 @@ bool IResearchSortBase::fromVelocyPack(velocypack::Slice slice,
       basics::TRI_ParseAttributeString(fieldSlice.stringView(), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
+      error = absl::StrCat("[", size(), "].", kFieldName);
+      return false;
+    }
+
+    if (field.empty()) {
       error = absl::StrCat("[", size(), "].", kFieldName);
       return false;
     }

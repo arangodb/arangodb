@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineInfoContainerCoordinator.h"
@@ -34,8 +33,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Coordinator Container
@@ -127,7 +125,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 Result EngineInfoContainerCoordinator::buildEngines(
     Query& query, AqlItemBlockManager& mgr,
     MapRemoteToSnippet const& dbServerQueryIds,
-    aql::SnippetList& coordSnippets) const {
+    SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
@@ -156,3 +154,5 @@ Result EngineInfoContainerCoordinator::buildEngines(
 
   return {};
 }
+
+}  // namespace arangodb::aql

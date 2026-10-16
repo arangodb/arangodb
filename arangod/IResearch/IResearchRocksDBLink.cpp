@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -34,7 +32,6 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchFeature.h"
@@ -96,7 +93,8 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(ArangodServer& server)
+IResearchRocksDBLink::IndexFactory::IndexFactory(
+    application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
@@ -153,7 +151,8 @@ Result IResearchRocksDBLink::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory>
-IResearchRocksDBLink::createFactory(ArangodServer& server) {
+IResearchRocksDBLink::createFactory(
+    application_features::ApplicationServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }

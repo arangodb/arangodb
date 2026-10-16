@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyCallbacksHandler.h"
@@ -29,17 +28,19 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response,
     arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
+// Mounted at /_api/agency/agency-callbacks (prefix, only when cluster is
+// enabled)
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 

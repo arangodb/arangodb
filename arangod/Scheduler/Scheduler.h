@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,21 +25,19 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <functional>
 #include <mutex>
 #include <queue>
 #include <string_view>
 #include <utility>
 
+#include "Activities/Registry.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
+#include "Utils/ExecContext.h"
 
 namespace arangodb {
 namespace application_features {
@@ -57,7 +53,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler(ArangodServer&);
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -107,7 +103,7 @@ class Scheduler {
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   // Returns the scheduler's server object
-  ArangodServer& server() noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   struct WorkItemBase {
     virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
@@ -144,7 +140,10 @@ class Scheduler {
           _lane(lane),
           _disable(false),
           _scheduler(scheduler),
-          _logContext(LogContext::current()) {}
+          _logContext(LogContext::current()),
+          _currentlyExecutingActivity(
+              activities::Registry::currentlyExecutingActivity()),
+          _execContext(ExecContext::currentAsShared()) {}
 
     // This is not copyable or movable
     DelayedWorkItem(DelayedWorkItem const&) = delete;
@@ -161,6 +160,13 @@ class Scheduler {
       // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
         LogContext::ScopedContext ctxGuard(_logContext);
+        activities::Registry::ScopedCurrentlyExecutingActivity activityGuard(
+            _currentlyExecutingActivity);
+        // Install the ExecContext captured at queueDelayed() time, so the
+        // WorkItem created by queue() below captures it in turn. This runs
+        // on the cron thread or on an arbitrary cancelling thread, so the
+        // previous context is restored afterwards.
+        ExecContextScope execContextGuard(std::move(_execContext));
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
@@ -180,15 +186,21 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
     LogContext _logContext;
+    activities::ActivityHandle _currentlyExecutingActivity;
+    std::shared_ptr<ExecContext const> _execContext;
   };
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {
+        : F(std::move(f)),
+          logContext(LogContext::current()),
+          currentlyExecutingActivity(
+              activities::Registry::currentlyExecutingActivity()),
+          execContext(ExecContext::currentAsShared()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() {
@@ -197,11 +209,23 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
+      activities::Registry::ScopedCurrentlyExecutingActivity activityGuard(
+          currentlyExecutingActivity);
+      // Install the ExecContext captured at enqueue time for the duration
+      // of the job, and restore the previous thread-local afterwards (also
+      // on exceptions): executing a work item must leave the executing
+      // thread's ExecContext exactly as it found it. On dedicated worker
+      // threads the previous state is always nullptr, so a work item can
+      // never leak its ExecContext into the next job; when run inline
+      // (e.g. tests), the caller's context is not clobbered.
+      ExecContextScope execContextGuard(std::move(execContext));
       this->operator()();
     }
 
    private:
     LogContext logContext;
+    activities::ActivityHandle currentlyExecutingActivity;
+    std::shared_ptr<ExecContext const> execContext;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler

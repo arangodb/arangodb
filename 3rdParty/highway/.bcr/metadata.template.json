@@ -1,0 +1,25 @@
+{
+  "homepage": "https://github.com/google/highway",
+  "maintainers": [
+    {
+      "email": "janwas@google.com",
+      "github": "jan-wassenberg",
+      "name": "Jan Wassenberg"
+    },
+    {
+      "email": "eustas@google.com",
+      "github": "eustas",
+      "name": "Eugene Kliuchnikov"
+    },
+    {
+      "email": "rhettstucki@google.com",
+      "github": "rhettstucki",
+      "name": "Rhett Stucki"
+    }
+  ],
+  "repository": [
+    "github:google/highway"
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}

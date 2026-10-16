@@ -1,0 +1,1319 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section The Unicode Layer]
+
+"Unicode is hard."
+
+['[*-- Everyone]]
+
+Unicode is hard to implement; the algorithms are crazy.  Even as a user of
+Unicode, it can be difficult to understand how one is supposed to use Unicode
+correctly.  The _t_ layer types do much of what is described in this section,
+but nicely out of view.  Unless you need to use many different normalization
+and/or encoding forms, feel free to skip those portions of this section.
+
+A primary design goal of the Unicode layer of _Text_ is usability.  To that
+end, the data model is as simple as possible.
+
+[heading A Quick Unicode Primer]
+
+There are multiple encoding types defined in Unicode: UTF-8, UTF-16, and
+UTF-32.  A /_cu_/ is the lowest-level datum-type in your Unicode
+data. Examples are a `char` in UTF-8 and a `uint32_t` in UTF-32.  A /_cp_/ is
+a 32-bit integral value that represents a single Unicode value. Examples are
+U+0041 "A" "LATIN CAPITAL LETTER A" and U+0308 "¨" "COMBINING DIAERESIS".
+
+There are four different Unicode normalization forms.  Normalization is
+necessary because Unicode requires that certain combinations of _cps_ be
+considered identical.  For instance, the two _cps_ mentioned above, U+0041
+U+0308, appear like this: "Ä", and the _cp_ U+00C4 appears like this: "Ä".
+Since these two sequences are not visually distinct, all the algorithms must
+treat them as the same thing.  Therefore, `u8"\U00000041\U00000308" ==
+u8"\U000000C4"` must evaluate to `true` for the purposes of Unicode.
+Normalizations exist to put strings of _cps_ into canonical forms that can be
+bitwise compared.
+
+An /extended grapheme cluster/, or just /_gr_/, is a sequence of _cps_ that
+appears to the end-user to be a single character.  For example, the _cps_
+(U+0041 U+0308) form a _gr_, since they appear when rendered to be the single
+character "Ä".
+
+
+[heading Unicode Versions]
+
+There are multiple versions of Unicode, and _Text_ only supports one at a
+time.  There are large volumes of data required to implement the Unicode
+algorithms, and adding data for N versions of Unicode would make an already
+large library larger by a factor of N.
+
+Most Unicode data used in _Text_ come straight from the published Unicode data
+files, but the collation data are taken from _cldr_, with language-specific
+tailoring data taken from _ldml_ (a part of the _cldr_ project).
+
+To find out what versions of Unicode and _cldr_ were used to generate _Text_'s
+data, call [funcref boost::text::v1::unicode_version `unicode_version`] or
+[funcref boost::text::v1::cldr_version `cldr_version`], respectively.
+
+
+[heading Unicode Layer Parameter Conventions]
+
+Most of the Unicode layer algorithms are written as typical C++ standard
+algorithms; they take iterators as input and produce output via an
+out-iterator.  Since ranges are the future, there are range overloads of the
+algorithms that take a pair of iterators.  The Unicode algorithms all operate
+on _cps_, so they take _CPIter_ iterator parameters.  The range overloads take
+_CPRng_ parameters.  For convenience, overloads are provided for many of the
+Unicode layer algorithms that take _GrRng_ and _GrIter_ parameters.  This
+provides convenient compatibility with the text layer types, like _t_ and _r_.
+
+[heading Memory Allocations]
+
+Many of the Unicode algorithms require that intermediate results be
+accumulated in side buffers at various times during their operation.
+Therefore, many of the algorithms in this section may allocate memory.
+However, _Text_ makes extensive use of `boost::container::small_vector<>`s for
+these side buffers.  The end result is that though these algorithms /may/
+allocate memory, in practice they seldom do, if ever.
+
+[heading What About Code Point Properties?]
+
+You might notice that there are no interfaces in this layer that provide
+properties of _cps_, like whether a particular _cp_ is space or
+punctuation.  The reason for this is that such properties are complicated in
+Unicode.
+
+Unicode defines properties like space and punctuation, but it defines them in
+a highly context-sensitive way; each algorithm has its own set of properties
+it associates with _cps_.  For instance, the word breaking algorithm is
+concerned with single quotes and double quotes, and so has a property for
+each, but other punctuation is spread out among its other properties.  It has
+no property that maps to something like "punctuation" in a general sense.
+
+So if you want to know if a _cp_ is whitespace or not, you might have to
+look it up on a Unicode reference website (and implement a function for
+yourself), or see if the whitespace _cps_ covered by one of the Unicode
+algorithms fits your needs and use that algorithm's `*_prop()` function
+(e.g. _word_prop_).
+
+
+[section Encoding and Normalization]
+
+[heading Transcoding Iterators]
+
+_Text_ provides conversions among the UTF-8, UTF-16, and UTF-32 encodings, via
+converting iterators.  The conversion among UTF encoding formats is referred
+to as transcoding.  The converting iterators are:
+
+* _8_to_16_iter_
+* _8_to_32_iter_
+* _16_to_8_iter_
+* _16_to_32_iter_
+* _32_to_8_iter_
+* _32_to_16_iter_
+
+There are three make-functions that create these transcoding iterators:
+
+* _8_iter_
+* _16_iter_
+* _32_iter_
+
+A make-function is provided for each to-encoding; `utf16_iterator(a, b, c)`
+returns: a _8_to_16_iter_ if `a`, `b`, and `c` are iterators to UTF-8 _cus_; a
+_32_to_16_iter_ if `a`, `b`, and `c` are iterators to UTF-32 _cus_ (i.e. code
+points); and `b` otherwise.  See the section on _unpacking_ for details.
+
+By default, the transcoding iterators produce the Unicode replacement
+character `0xFFFD` when encountering an invalid encoding.  The exact error
+handling behavior can be controlled via the `ErrorHandler` template parameter.
+
+[note The error handling strategy of producing replacement characters is used
+exclusively within _Text_ when performing conversions. ]
+
+The Unicode standard is flexible with respect to where, in an incoming stream,
+encoding errors are reported.  However, the standard provides recommendations
+for where within a stream, and how frequently within that stream, errors
+should be reported.  _Text_'s converting iterators follow the Unicode
+recommendations.  See Unicode, "Best Practices for Using U+FFFD" and Table
+3-8.
+
+The converting iterators are pretty straightforward, but there is an important
+caveat.  Because each of these converting iterators does a substantial amount
+of work in increment and decrement operations, including in some cases caching
+the result of reading several bytes of a multi-byte encoding, post-increment
+and post-decrement can be quite a bit more expensive than pre-increment and
+pre-decrement.
+
+To use a converting iterator, you must provide it with an underlying iterator.
+An example of use:
+
+[to_utf32_verbose]
+
+That's a lot of typing, so there's also a much terser range-based form using
+_u32v_:
+
+[to_utf32_terse]
+
+All the transcoding iterators are bidirectional.  When each one is
+dereferenced, it may read multiple values from the underlying input range.
+For instance, a `utf_8_to_32_iterator it` has to read 1-4 _cus_ to produce a
+_cp_ when performing the operation `*it`.  Therefore, each of these iterators
+requires the endpoints of the underlying range, to ensure that reads outside
+the underlying range generate replacement characters instead of undefined
+behavior.
+
+All the transcoding iterators still exhibit undefined behavior when
+incrementing past the end of, or decrementing before the beginning of, the
+underlying range.  The generation of replacment characters only happens in
+cases where the number of _cus_ is variable and there is an incomplete
+sequence of _cus_ right at the beginning or end.
+
+For instance, if you have a sequence of UTF-8 that consists of a single broken
+_cp_ sequence:
+
+[to_utf32_ub]
+
+then `*it` will produce a replacement character, and the behavior of
+`std::next(it)` is defined.  However, the behaviors of `std::prev(it)` and
+`std::next(it, 2)` are each undefined.
+
+In keeping with the ranges and algorithms from `std::ranges`, the transcoding
+iterators accept an underlying input range that may be delimited by different
+types: the range is represented as an iterator-sentinel pair, instead of a
+pair of iterators.  _Text_ provides a null-terminated string sentinel,
+_null_sent_, which can be used to represent a null-terminated string as a
+pointer-_null_sent_ pair.
+
+Each transcoding iterator contains three elements: the `[first, last)` of the
+underlying range, and the current position within that range.  In the worst
+case, a transcoding iterator is the size of three pointers.  If the underlying
+range is end-delimited by a _null_sent_, it may be a bit smaller.
+
+
+[heading Transcoding Output Iterators]
+
+There are output iterator adapters for each of the iterators above.  For each
+transcoding iterator `utf_N_to_M_iterator`, there is are these iterators (and
+their associated functions):
+
+* `utf_N_to_M_out_iterator` - This is an adapting iterator that accepts
+  UTF-`N` values and writes values of type UTF-`M` to an underlying output
+  iterator.  Each write to this iterator may write multiple values to the
+  underlying iterator, depending on `N` and `M`.  You can create one using
+  `utf_N_to_M_out`.
+
+* `utf_N_to_M_insert_iterator` - This is analogous to `std::insert_iterator`,
+  but also does UTF-`N` to UTF-`M` transcoding.  You can create one using
+  `from_utfN_inserter`; `M` is deduced from the size of the `value_type` of
+  the container.
+
+* `utf_N_to_M_front_insert_iterator` - This is analogous to
+  `std::front_insert_iterator`, but also does UTF-`N` to UTF-`M` transcoding.
+  You can create one using `from_utfN_front_inserter`; `M` is deduced from the
+  size of the `value_type` of the container.
+
+* `utf_N_to_M_back_insert_iterator` - This is analogous to
+  `std::back_insert_iterator`, but also does UTF-`N` to UTF-`M` transcoding.
+  You can create one using `from_utfN_back_inserter`; `M` is deduced from the
+  size of the `value_type` of the container.
+
+
+[heading Transcoding Iterator Performance]
+
+The transcoding iterators are available for flexibility.  In particular, they
+can be used with the standard algorithms.  However, this flexibility comes at
+a cost.  When doing a bulk-transcoding operation, using these iterators can be
+substantially slower than using the transcoding algorithms.
+
+
+[heading Transcoding Views]
+
+Using transcoding iterators directly is a bit verbose and tedious.  Also, when
+you use two transcoding iterators as an iterator pair, it may be the size of 6
+underlying itertors!
+
+So, both for convenience and for size optimization, _Text_ provides view
+templates for UTF-8, UTF-16, and UTF-32: _u8v_, _u16v_, and _u32v_,
+respectively.  Just as with the transcoding iterators, each view can be
+constructed from a pair of iterators or as an iterator-sentinel pair.
+
+Make-functions _as_u8_, _as_u16_, and _as_u32_, are also provided.  The
+`as_utfN()` functions are overloaded to take an iterator and sentinel, or a
+range:
+
+    std::string str = "some text";
+
+    // These each represent the same range:
+
+    auto const utf32_range_the_hard_way =
+        boost::text::utf32_view<std::string::iterator>(str.begin(), str.end());
+
+    auto const utf32_range_from_utf8_range =
+        boost::text::as_utf32(str);
+
+    auto const utf32_range_from_utf8_iters =
+        boost::text::as_utf32(str.begin(), str.end());
+
+    auto const utf32_range_from_utf8_iter_and_sentinel =
+        boost::text::as_utf32(str.c_str(), boost::text::null_sentinel{});
+
+These functions also support null-terminated strings; you can just pass a
+pointer to `as_utfN()`:
+
+    auto const range_1 = boost::text::as_utf32("text");         // char const *
+    auto const range_2 = boost::text::as_utf32(u8"more text");  // char8_t const *, in C++20 and later
+    auto const range_3 = boost::text::as_utf32(u16"more text"); // char16_t const *
+    auto const range_4 = boost::text::as_utf32(u32"more text"); // char32_t const *
+
+You can pass any range of 1-, 2-, or 4-byte integral values to `as_utfN()`,
+and you will get a range that transcodes from UTF-8, UTF-16, or UTF-32 to
+UTF-`N`, respectively.
+
+The views are all streamable.  They transcode to UTF-8 when streamed to a
+`std::basic_ostream<char>`, and they transcode to UTF-16 when streamed to a
+`std::basic_ostream<wchar_t>` (Windows only).
+
+[note Though it does not produce a `utfN_view`, there is a related function
+_to_str_, which takes two UTF-32 iterators and returns a _s_ containing the
+given sequence, UTF-8-encoded.]
+
+[important _u8v_, _u16v_, and _u32v_ are all implemented in terms of C++20's
+`std::ranges::view_interface`.  _Text_ uses a pre-C++20-friendly
+implementation of this from Boost.STLIterfaces for pre-C++20 builds.  The
+implication of using `view_interface` is that _u8v_, _u16v_, and _u32v_ all
+have the fullest interface possible, based on the iterator and/or sentinel
+template parameters used to instantiate them.  For instance, if you use a
+random access iterator to instantiate _u32v_, it will have an `operator[]`.
+If you use a bidirectional iterator instead, it will not have `operator[]`.
+See `[view.interface]` in the standard for more details.]
+
+
+[heading Iterator "Unpacking"]
+
+A simple way to represent a transcoding view is as a pair of transcoding
+iterators.  However, there is a problem with that approach, since a
+`utf32_view<utf_8_to_32_iterator<char const *>>` would be a range the size of
+6 pointers.  Worse yet, a
+`utf32_view<utf_8_to_16_iterator<utf_16_to_32_iterator<char const *>>>` would
+be the size of 18 pointers!  Further, such a view would do a UTF-8 to UTF-16
+to UTF-32 conversion, when it could have done a direct UTF-8 to UTF-32
+conversion instead.
+
+To solve these kinds of problems, `as_utfN()` unpacks the iterators it is
+given, so that only the bottom-most underlying pointer or iterator is stored:
+
+    std::string str = "some text";
+
+    auto to_16_first = boost::text::utf_8_to_16_iterator<std::string::iterator>(
+        str.begin(), str.begin(), str.end());
+    auto to_16_last = boost::text::utf_8_to_16_iterator<std::string::iterator>(
+        str.begin(), str.end(), str.end());
+
+    auto to_32_first = boost::text::utf_16_to_32_iterator<
+        boost::text::utf_8_to_16_iterator<std::string::iterator>
+    >(to_16_first, to_16_first, to_16_last);
+    auto to_32_last = boost::text::utf_16_to_32_iterator<
+        boost::text::utf_8_to_16_iterator<std::string::iterator>
+    >(to_16_first, to_16_last, to_16_last);
+
+    auto range = boost::text::as_utf8(to_32_first, to_32_last);
+    static_assert(std::is_same<decltype(range),
+                               boost::text::utf8_view<std::string::iterator>>::value, "");
+
+Each of these views stores only the unpacked iterator and sentinel, so each
+view is typically the size of two pointers, and possibly smaller if a sentinel
+is used.
+
+The same unpacking logic is used in `utfN_iterator()`, `from_utfN_inserter()`,
+the transcoding algorithms, and the normalization algorithms.  This allows you
+to write `boost::text::as_uf32(first, last)` in a generic context, without
+caring whether `first` and `last` are iterators to a sequence of UTF-8,
+UTF-16, or UTF-32.  You also do not need to care about whether `first` and
+`last` are raw pointers, some other kind of iterator, or transcoding
+iterators.  For example, if `first` is a _32_to_8_iter_, the resulting view
+will use `first.base()` for its begin-iterator.
+
+
+[heading Transcoding Algorithms]
+
+When you only need to transcode from one UTF encoding to another, use the
+transcoding algorithms instead of the transcoding iterators.  The algorithms
+are quite a bit faster in most cases (_tc_8_to_32_ is particularly faster, as
+it uses SIMD instructions when available).
+
+There are three of these, just as there are three make-functions for
+transcoding iterators:
+
+* _tc_to_8_
+* _tc_to_16_
+* _tc_to_32_
+
+Like the default behavior of the transcoding iterators, these algorithms
+produce the Unicode replacement character `0xFFFD` when encountering an
+invalid encoding.  Unlike the iterators, the algorithms are not configurable
+to handle errors in any other way.
+
+These are fully generic algorithms, and there are overloads that take
+iterator-sentinel pairs as well as ones that take ranges.  Also, the transcode
+algorithms unpack the iterators that they are given, which can be a large
+optimization.  See the _unpacking_ section for details.
+
+[important Though these algorithms are generic, some of the optimizations in
+them require pointers on both the input and output iterators for maximum
+performance.  In performance-critical code paths, stick to pointers.]
+
+[The transcoding algorithms do iterator unpacking.  See the section on
+_unpacking_ for details.]
+
+
+[heading Choosing a Transcoding Mechanism]
+
+Since there are multiple ways to perform transcoding, how do you pick one?
+Here are some guidelines:
+
+* If you need maximum performance, stick to the transcoding algorithms, and in
+  particular use pointers for input and output.
+
+* If you need compatibility with existing iterator-based algorithms (such as
+  the standard algorithms), use the transcoding iterators.
+
+* If you want streamability or the convenience of constructing ranges with a
+  single `as_utfN()` function call, use the transcoding views.
+
+
+[heading Accessing the Underlying UTF-8 chars]
+
+When using _8_to_32_iter_ or _u32v_, it is often desirable to get access to
+the underlying sequence of `char`s (e.g. for copying into a buffer or
+constructing a `std::string`).
+
+_8_to_32_iter_ exposes, and in fact all the converting iterators expose, the
+iterator they are parameterized with, via the member function `base()`.  You
+can always get at the sequence of `char` underlying the _cp_ sequence exposed
+by _8_to_32_iter_ like this:
+
+    boost::text::utf_8_to_32_iterator first = /* ... */;
+    boost::text::utf_8_to_32_iterator last = /* ... */;
+
+    // Copy [first, last) as code points.
+    std::vector<uint32_t> cp_vec;
+    std::copy(first, last, std::back_inserter(cp_vec));
+
+    // Copy [first, last) as chars.
+    std::vector<char> char_vec;
+    std::copy(first.base(), last.base(), std::back_inserter(char_vec));
+
+See the _unpacking_ section for more detail about how this is used within
+_Text_'s interfaces.
+
+
+[heading The Stream-Safe Format]
+
+Unicode text often contains sequences in which a noncombining code point
+(e.g. 'A') is followed by one or more combining code points (e.g. some number
+of umlauts).  It is valid to have an 'A' followed by 100 million umlauts.
+This is valid but not useful.  Unicode specifies something called the
+_str_safe_.  This format inserts extra code points between combiners to ensure
+that there are never more than 30 combiners in a row.  In practice, you should
+never need anywhere near that number.
+
+_Text_ provides an API for putting text in a _str_safe_:
+
+    std::vector<uint32_t> code_points = /* ... */;
+    auto it = boost::text::stream_safe(code_points);
+    code_points.erase(it.base(), code_points.end());
+    assert(boost::text::is_safe_stream(code_points));
+
+There is also a lazy-range API:
+
+    std::vector<uint32_t> code_points = /* ... */;
+    auto const stream_safe_view = boost::text::as_stream_safe(code_points);
+
+These operations do not implement the _str_safe_ algorithm described on the
+Unicode web site.  Instead, it takes the much simpler approach of allowing
+only at most 8 combiners after any noncombiner.  The rest are truncated.
+
+[important Long sequences of combining characters create a problem for
+algorithms like normalization or _gr_ breaking; the _gr_ breaking algorithm
+may be required to look ahead a very long way in order to determine how to
+handle the current _gr_.  To address this, Unicode allows a conforming
+implementation to assume that a sequence of _cps_ contains _grs_ of at most 32
+_cps_.  This is known as the _str_safe_ assumption; _Text_ makes this
+assumption.
+
+If you give _Text_ algorithms a _cp_ sequence with _grs_ longer than 32 _cps_,
+you will get undefined behavior.  This poses a security problem.  To address
+this, use the stream-safe API (e.g. `boost::text::as_stream_safe()`), or use
+the container-modifying free functions to normalize, render stream-safe, and
+erase/insert/replace in one call.  See the [link
+boost_text__proposed_.the_unicode_layer.encoding_and_normalization.container_modifying_normalization_api
+Container-Modifying Normalization API] section for details. ]
+
+
+[heading Normalization]
+
+_Text_ provides algorithms for all four Unicode normalization forms: NFD,
+NFKD, NFC, and NFKC.  In addition, it provides an unofficial fifth
+normalization form called FCC that is described in _tn5_.  FCC is just as
+compact as the most compact official form, NFC, except in a few degenerate
+cases.  FCC is particularly useful when doing collation _emdash_ the collation
+algorithm requires its inputs to be normalized NFD or FCC, and FCC is much
+faster to normalize to.
+
+The algorithm is invoked as `normalize<X>()`, where `X` is one of the
+enumerators of _nf_ ("Normalization Form").  Range and iterator-based
+overloads are provided.  The iterator interfaces require iterators that model
+_CPIter_, and ranges that model _CPRng_.  There are also algorithms that can
+check if a _cp_ sequence is in a certain normalization form.
+
+[normalize_1]
+
+There are _s_-specific in-place normalization functions as well, in
+_norm_str_header_.
+
+There is also an API for normalizing a _cp_ sequence and appending the result
+to a container:
+
+[normalize_1]
+
+This is much more performant than the `normalize()` function, because the
+output iterator used by `normalize()` slows things down quite a bit _emdash_
+`normalize()` can be factors slower than `normalize_append()`.
+`normalize_append()` will only append to UTF-8 and UTF-16 containers
+(UTF-32-encoded containers are very uncommon, and so are not supported).
+
+[note When you're working entirely within a UTF-8 encoding (on both sides of
+the normalization operation), the most efficient version of the normalization
+API is `normalize_append(a, b, str)`, where `a` and `b` are iterators over an
+underlying sequence of UTF-8, and `str` is a container of integral type `T`,
+where `sizeof(T) == 1`. ]
+
+
+[heading Container-Modifying Normalization API]
+
+If you need to insert text into a `std::string` or other STL-compatible
+container, you can use the erase/insert/replace API, found in
+_norm_algo_header_:
+
+* _norm_erase_
+* _norm_insert_
+* _norm_replace_
+
+There are iterator and range overloads of each.  Each one:
+
+* normalizes the inserted text (if text is being inserted);
+* places the inserted text in _str_safe_ (if text is being inserted);
+* performs the erase/insert/replace operation on the string;
+* ensures that the result is in _str_safe_ (if text is being erased); and
+* normalizes the code points on either side of the affected subsequence within the string.
+
+This last step is necessary because insertions and erasures may create
+situations in which code points which may combine are now next to each other,
+when they were not before.
+
+This API is like the `normalize_append()` overloads in that it may operate on
+UTF-8 or UTF-16 containers, and deduces the UTF from the size of the mutated
+container's `value_type`.
+
+[endsect]
+
+
+[section Text Segmentation]
+
+Unicode provides algorithms for breaking _cp_ sequences into _grs_, words,
+sentences, and lines.  The Unicode Bidirectional Algorithm requires paragraph
+breaking too, so paragraph breaking is included as well, even though it is not
+an official Unicode text segmentation algorithm.
+
+[heading Conventions]
+
+All the kinds of text breaking have a common pattern.  Each kind of break `X`
+(where `X` is word, sentence, etc.) provides at least these functions:
+
+    template <typename CPIter, typename Sentinel>
+    CPIter prev_X_break(CPIter first, CPIter it, Sentinel last) noexcept;
+
+`prev_X_break()` returns `it` if `it` is already at a break, or the break
+before `it` otherwise.  There is one exception to this _emdash_ even though
+there is always an implicit break at the end of a sequence of _cps_, if `it`
+== `last`, the previous break is still returned, if any.
+
+This behavior allows us to do two convenient things with `prev_X_break()`.
+First, we can use `prev_X_break(first, it, last) == it` as a predicate that
+`it` is at a break.  Second, we can use `prev_X_break()` followed by
+`next_X_break()` to find the nearest breaks that include `it`.
+
+Note that `prev_X_break()` requires `last` because in the general case, the
+algorithm needs to know context after `it` to determine where the breaks are
+at or before `it`.
+
+    template <typename CPIter, typename Sentinel>
+    CPIter next_X_break(CPIter first, Sentinel last) noexcept;
+
+`next_X_break()` returns the next break after `first`.  It has a precondition
+that `first` is already at a break; the results are otherwise undefined.
+
+    template<typename CPIter, typename Sentinel>
+    utf32_view<CPIter> X(CPIter first, CPIter it, Sentinel last) noexcept;
+
+`X()` returns smallest range of _cps_ that comprise an `X` (word, line, etc.)
+in which `it` is found.
+
+    template<typename CPIter, typename Sentinel>
+    auto Xs(CPIter first, Sentinel last) noexcept;
+
+`Xs()` returns a lazy range of subranges of `[first, last)`.  Each subrange is an `X`.
+
+    template<typename CPIter>
+    auto reversed_Xs(CPIter first, CPIter last) noexcept;
+
+`reversed_Xs()` returns the same thing as `Xs()`, with the subranges in
+reverse order.
+
+And of course there are _CPRng_ overloads as well:
+
+    template<typename CPRange, typename CPIter>
+    auto prev_X_break(CPRange & range, CPIter it) noexcept;
+    template<typename CPRange, typename CPIter>
+    auto next_X_break(CPRange & range, CPIter it) noexcept;
+    template<typename CPRange, typename CPIter>
+    auto X(CPRange & range, CPIter it) noexcept;
+    template<typename CPRange>
+    auto Xs(CPRange & range) noexcept;
+    template<typename CPRange>
+    auto reversed_Xs(CPRange & range) noexcept;
+
+For all kinds of breaks besides grapheme breaks, there are range overloads
+that accept _GrRng_ ranges _GrIter_ iterators instead.  These provide
+convenient support for using the Unicode layer algorithms with the text layer
+types like _t_ and _r_.
+
+    template<typename GraphemeRange, typename GraphemeIter>
+    auto prev_X_break(GraphemeRange const & range, GraphemeIter it) noexcept;
+    template<typename GraphemeRange, typename GraphemeIter>
+    auto next_X_break(GraphemeRange const & range, GraphemeIter it) noexcept;
+    template<typename GraphemeRange, typename GraphemeIter>
+    auto X(GraphemeRange const & range, GraphemeIter it) noexcept;
+    template<typename GraphemeRange>
+    auto Xs(GraphemeRange const & range) noexcept;
+    template<typename GraphemeRange>
+    auto reversed_Xs(GraphemeRange const & range) noexcept;
+
+[heading Tailoring]
+
+Unicode allows for /tailoring/ of the segmentation algorithms, to produce
+customized results that are necessary or useful for a particular application,
+or to produce correct results in cases that the Unicode algorithms do not
+handle.  Some of the break algorithms below are tailorable.  Each section
+below indicates whether a certain kind of break is tailorable, and if so, how.
+
+[heading Graphemes]
+
+[grapheme_breaks]
+
+_Text_ does not support tailoring of _gr_ breaking, because _grs_ are the
+fundamental unit of work for the _t_ layer of the library.  All code must have
+the same notion of what a _gr_ is for that to work.
+
+[heading Alternate Grapheme API]
+
+In addition to the interface that is used for all the kinds of text
+segmentation, there is an API just for producing grapheme views, similar to
+the one for producing UTF views.  See _as_grs_ for details.
+
+[important _as_grs_ produces `grapheme_view<Iter>`s (where `Iter` is some code
+point iterator).  If you call a standard algorithm in `std::ranges` with two
+`grapheme_view`s of different type, there is a chance that the call will be
+ill-formed.  For example, this:
+
+``
+grapheme_view<Iter1> v1(/*...*/);
+grapheme_view<Iter2> v2(/*...*/);
+std::ranges::search(v1, v2);
+``
+
+may not compile.  The reasons is that the default comparator used by
+`std::ranges::search()` expects the elements of both ranges to be
+equality-comparable.  This means that they have to have a common type that
+both types of elements may be converted to.  If the underlying values iterated
+over in `grapheme_view<Iter1>` and `grapheme_view<Iter2>` are different, a
+common type probably does not exist for the elements of those two views.
+
+As a workaround, you can pass a more permissive comparator, such as `std::equal_to<>`:
+
+``
+grapheme_view<Iter1> v1(/*...*/);
+grapheme_view<Iter2> v2(/*...*/);
+std::ranges::search(v1, v2, std::equal_to<>{});
+``
+]
+
+
+[heading Words]
+
+Word breaks occur where you'd expect _emdash_ at the beginnings and ends of
+words _emdash_ but they also occur where you might not expect _emdash_ at the
+beginnings and ends of the _cp_ sequences *between* words.  Here is an example
+of word breaks taken from _text_seg_.  The string `"The quick (“brown”) fox
+can’t jump 32.3 feet, right?"` is broken up into words like this:
+
+[table Word Break Example
+    [
+    [`"The"`]
+    [`" "`]
+    [`"quick"`]
+    [`" "`]
+    [`"("`]
+    [`"“"`]
+    [`"brown"`]
+    [`"”"`]
+    [`")"`]
+    [`" "`]
+    [`"fox"`]
+    [`" "`]
+    [`"can’t"`]
+    [`" "`]
+    [`"jump"`]
+    [`" "`]
+    [`"32.3"`]
+    [`" "`]
+    [`"feet"`]
+    [`","`]
+    [`" "`]
+    [`"right"`]
+    [`"?"`]
+    ]
+]
+
+Note that many of those "words" are not what most people would consider to be
+words.  You may need to do some additional processing to find only the "real"
+words, if that matters in your use case.
+
+The word breaking API can be used just as the _gr_ break API, except that it
+also has _GrRng_ overloads.  Here are some example calls using only the
+_GrRng_ overloads, with a _t_ as the _GrRng_:
+
+[word_breaks_1]
+
+[heading Limitations of Word Breaking]
+
+This algorithm does not work for all languages.  From _text_seg_:
+
+[:For Thai, Lao, Khmer, Myanmar, and other scripts that do not typically use
+spaces between words, a good implementation should not depend on the default
+word boundary specification. It should use a more sophisticated mechanism, as
+is also required for line breaking. Ideographic scripts such as Japanese and
+Chinese are even more complex. Where Hangul text is written without spaces,
+the same applies. However, in the absence of a more sophisticated mechanism,
+the rules specified in this annex supply a well-defined default.]
+
+French and Italian words are not meant to be broken after an apostrophe, but
+the default algorithm finds `"l’objectif"` to be a single word.
+
+Breaking on dashes is the default.  For example, the default algorithm finds
+`"out-of-the-box"` to be seven words.
+
+There are other rarer failure cases in that document you might want to look at
+too.
+
+[heading Word Break Tailoring]
+
+Fortunately, unlike _gr_ breaking, word breaking is tailorable in two ways.
+
+Each break algorithm is defined in terms of _cp_ properties; each _cp_ is a
+letter, digit, punctuation, etc.  All the work break functions accept an
+optional word-property lookup function to replace the default one.
+
+For example, here I've made a custom word property lookup function that treats
+a regular dash `'-'` as a `MidLetter`.  `MidLetter` is a property that
+repesents _cps_ that are part of a word as long as it can reach at least one
+letter on either side, before reaching a word break first:
+
+[word_breaks_2]
+
+From _text_seg_, here are some other _cps_ you might want to treat as
+`MidLetter`, depending on your language and use case:
+
+[table `MidLetter` Candidates
+    [[Code Point]]
+    [[U+002D ( - ) HYPHEN-MINUS]]
+    [[U+055A ( ՚ ) ARMENIAN APOSTROPHE]]
+    [[U+058A ( ֊ ) ARMENIAN HYPHEN]]
+    [[U+0F0B ( ་ ) TIBETAN MARK INTERSYLLABIC TSHEG]]
+    [[U+1806 ( ᠆ ) MONGOLIAN TODO SOFT HYPHEN]]
+    [[U+2010 ( ‐ ) HYPHEN]]
+    [[U+2011 ( ‑ ) NON-BREAKING HYPHEN]]
+    [[U+201B ( ‛ ) SINGLE HIGH-REVERSED-9 QUOTATION MARK]]
+    [[U+30A0 ( ゠ ) KATAKANA-HIRAGANA DOUBLE HYPHEN]]
+    [[U+30FB ( ・ ) KATAKANA MIDDLE DOT]]
+    [[U+FE63 ( ﹣ ) SMALL HYPHEN-MINUS]]
+    [[U+FF0D ( － ) FULLWIDTH HYPHEN-MINUS]]
+]
+
+Another example from _text_seg_ is to treat spaces as `MidNum` to support
+languages that use spaces as thousands separators, as in `"€1 234,56"`.
+`MidNum` is like `MidLetter`, but for the interior _cps_ of numbers instead of
+words containing letters.  Here are the space _cps_ you might want to do
+that with:
+
+[table `MidNum` Candidates
+    [[Code Point]]
+    [[U+0020 SPACE]]
+    [[U+00A0 NO-BREAK SPACE ]]
+    [[U+2007 FIGURE SPACE]]
+    [[U+2008 PUNCTUATION SPACE]]
+    [[U+2009 THIN SPACE]]
+    [[U+202F NARROW NO-BREAK SPACE]]
+]
+
+Tailoring the properties for each _cp_ works for some cases, but using
+tailorings of the meanings of `MidLetter` and `MidNum` can only add to the
+sizes of words; it cannot decrease their sizes.  The word break functions take
+a second optional parameter that allows you to pick arbitrary word breaks
+based on limited context.
+
+The _Text_ implementation of the word break algorithm uses the current _cp_,
+plus two _cps_ before and two _cps_ after, to determine whether a word break
+exists at the current _cp_.  Therefore, the signature of the custom word break
+function is this:
+
+    bool custom_break(uint32_t prev_prev,
+                      uint32_t prev,
+                      uint32_t curr,
+                      uint32_t next,
+                      uint32_t next_next);
+
+Returning `true` indicates that `[prev, curr]` straddles a word break _emdash_
+`prev` is the last _cp_ of one word, and `curr` is the first _cp_ of the next.
+If provided, this custom break function is evaluated before any of the Unicode
+word break rules.
+
+[word_breaks_3]
+
+[heading Sentences]
+
+The sentence breaking API is the same as the word breaking API, without the
+extra tailoring parameters.
+
+[heading Paragraphs]
+
+The paragraph breaking API is the same as the sentence and word breaking APIs,
+without the extra tailoring parameters.
+
+Unicode does not list paragraph breaks as a specific kind of text
+segmentation, but it can be useful in some cases.  In particular, paragraph
+detection is part of the Unicode bidirectional algorithm.  One way of
+tailoring the behavior of the bidirectional algorithm is to process some
+paragraphs separately from others; having an API for detecting paragraph
+breaks makes that simpler.
+
+[heading Lines]
+
+The Unicode line breaking algorithm differs from the other break algorithms in
+that there are multiple kinds of line breaks.  Some line breaks are required,
+as after a newline (e.g. `"\n"` or `"\r\n"`).  These are known as /hard/ line
+breaks.
+
+The line breaking algorithm produces many more line breaks, but all non-hard
+line breaks are places where it is *possible* to break the line _emdash_
+though it is not necessary to do so.  These are known as /allowed/ line
+breaks.  Higher-level program logic must determine which of these allowed
+breaks is to be used, for example to fit in available horizontal space.
+
+[note _Text_ only generates hard line breaks where they are indicated in the
+Unicode line breaking rules *and* there could be an allowed line break.  Line
+breaks always occur at the beginning and end of any sequence, but _Text_ does
+not report those as hard breaks _emdash_ the fact that they are hard breaks is
+implicit. ]
+
+The `next_*_break()` and `prev_*_break()` functions for line breaking come in
+two flavors.  There are `hard_line` versions and `allowed_line` versions.  For
+the `allowed` overloads, you may need to know, once you have the break
+position, whether it was a hard line break.  The `allowed` overloads therefore
+return a struct, _line_brk_res_.  It has an `.iter` member to indicate the
+location, and a `.hard_break` member to indicate whether that location is a
+hard line break.  Overloads of `operator==()` and `operator!=()` are defined
+between _line_brk_res_ and its iterator type so that you can treat it as an
+iterator in generic code if you don't care about the hard line break
+information:
+
+[line_breaks_1]
+
+The `hard` naming is only present in these low-level functions; the rest of
+the line breaking API uses `line` for the hard break version, and
+`allowed_line` for the other.  The rest of the line breaking API should be
+familiar by now; it parallels the other breaking APIs, but with the hard
+vs. allowed overloads.
+
+Just as the low-level `prev` and `next` functions for allowed beaks returned
+extra information, the other allowed-break functions do as well.  The rest of
+the API produces _cp_ or _gr_ ranges, and the allowed-break versions produce
+_line_brk_cp_vs_ or _line_brk_gr_vs_ instead, respectively:
+
+[line_breaks_2]
+
+Additionally, there are overloads that make it convenient to write simple code
+that selects an allowed break based on available space.  The available space,
+and the amount of space taken up by each chunk of _cps_, is user-configurable.
+There is an overload of `lines()` that takes the amount of space and a
+callable that determines the space used by some sequence of _cps_.  Each chunk
+contains the _cps_ between allowed breaks.  If a chunk would exceed available
+space, the allowed break before that chunk is used:
+
+[line_breaks_3]
+
+[endsect]
+
+
+[section Case Mapping]
+
+Case mapping is conceptually simple.  There are three kinds of case:
+lower-case, upper-case, and title-case.  Title-case has an upper-case letter
+at the beginning of each word.  There are six operations, though there are a
+few overloads of each.  There are three case-mapping algorithms: _to_lower_,
+_to_title_, and _to_upper_.  Each of these outputs its result (as _cps_) via
+an out-iterator.  There are also three case predicates, _is_lower_,
+_is_title_, and _is_upper_.
+
+For each of these, there are overloads that take the input _cp_ sequence as a
+_CPRng_, a pair of _CPIters_, or a _GrRng_:
+
+[case_mapping_1]
+
+As a complication, some languages have case-mapping rules that differ from the
+general case, and so there is an optional _case_lang_ parameter to the
+`to_*()` functions that you can specify to get this custom behavior:
+
+[case_mapping_2]
+
+Another complication is that the title-case functions need to know where word
+boundaries are.  By default, they use an instance of _wbreak_call_, which in
+turn just calls _next_wbreak_.  You can supply your own callable instead if
+you need tailored word breaking.
+
+There are a few case mapping behaviors that are common in various languages,
+but that are not accounted for by the default Unicode case mapping rules.  For
+instance, Dutch capitalizes `"IJ"` at the beginning of title-cased words.
+This is available in _Text_'s implementation if you use `_case_lang_::dutch`,
+as seen above.  _Text_ also implements the somewhat complicated rules for
+upper-casing modern Greek.
+
+Finally, there are in-place versions of the case-mapping functions available
+for use with _t_ and _r_:
+
+[case_mapping_3]
+
+[endsect]
+
+
+[section Collation]
+
+Collation is the relative ordering of sequences of _cps_ for purposes of
+sorting or searching.  The Unicode collation algorithm takes a sequence of
+_cps_ and produces a sequence of numbers (a "sort key") that can be
+lexicographically compared to another sequence's sort key.
+
+Why can't we just lexicographically compare two Unicode strings?  Because
+Unicode.  Consider two _cps_ `A` and `B`.  There may be some languages for
+which the proper ordering of `A` and `B` is `A < B`.  There may also be other
+languages for which `B < A` is the proper order.  There may be yet other
+languages for which `A == B` is the proper order.  As a concrete example, in
+Swedish `z < ö`, whereas in German `ö < z`.
+
+So, if I want to implement a simple function like this:
+
+    // Compare two code points for dictionary ordering.
+    bool impossible_less(uint32_t lhs, uint32_t rhs)
+    {
+        return /* What goes here? */;
+    }
+
+I can't, because I don't know what language we're using these _cps_ in.
+
+Sadly, collation is even more complicated than this.  Collation must also
+handle the different ordering priorities of different characteristics of _cps_
+within a single language or context.  For instance, I may want capitals first,
+implying that `G < g`, or I may want capitals last, implying `g < G`.  Some
+languages sort based on accents, and some do not; collation must know whether
+`o < ô` or `o == ô`.
+
+To handle this correctly, collation sort keys are created with support for
+four levels of comparison.  The primary level (/L1/) represents differences in
+the base letter or symbol being represented; the secondary level (/L2/)
+represents differences in accent; the tertiary level (/L3/) represents
+differences in case, or variants of symbols; and the quaternary level (/L4/)
+represents differences in punctuation.
+
+From the Unicode documentation:
+
+[table Comparison Levels
+    [[Level] [Description]     [Examples]]
+    [[L1]    [Base characters] [role < roles < rule]]
+    [[L2]    [Accents]         [role < rôle < roles]]
+    [[L3]    [Case/Variants]   [role < Role < rôle]]
+    [[L4]    [Punctuation]     [role < “role” < Role]]
+]
+
+When forming a sort key, all the L1 weights come first _emdash_ for all _cps_
+in the sequence _emdash_ then all the L2 weights, then the L3 weights, etc.
+This means that any L1 difference is treated as more important than any L2
+difference, and any L2 difference trumps any L3 difference, etc.
+
+It is possible to consider only a subset of levels (L1 through LN) when
+comparing sequences; this is known as the collation /strength/.  For example,
+L1 strength means "Ignore accents, case, and punctuation", and L2 strength
+means "Ignore case and punctuation".
+
+There are also parameters you can provide to the collation algorithm that
+create variations such as "Ignore accents, but do consider case".  See the
+_coll_flags_ for details.
+
+[heading Tailoring]
+
+Since there exists no unique mapping of _cps_ to collation weights that works
+for every language and context, there needs to be a means available for users
+of the Unicode collation algorithm of tailor collation to a particular
+language or use case.  _Text_ supports the _ldml_ format for specifying
+collation tailoring; see that website for details.  An example of this super
+simple and convenient format is:
+
+    [normalization on]
+    [reorder Grek]
+    &N<ñ<<<Ñ
+    &C<ch<<<Ch<<<CH
+    &l<ll<<<Ll<<<LL
+
+You should never need to write one of these tailoring scripts, but if you do,
+there's a full parser of the tailoring scripting language built into _Text_.
+For most users, it should be sufficient to use one of the canned tailoring
+scripts in the `boost/text/data/` directory.  These come from _cldr_, and the
+files use the _cldr_ locale naming scheme.  Just rummage about until you find
+the language you're looking for.  Note that many of the languages have
+multiple variants.
+
+There is also a default table that can be used for languages with no
+tailorings.
+
+[note Collation tailoring is quite expensive for some languages, typically the
+CJK (Chinese, Japanese, and Korean) language tailorings _emdash_ sometimes as
+much as multiple seconds.  There is serialization of collation tables to/from
+a buffer or to/from a `boost::filesystem::path`.  This enables you to do
+expensive tailorings offline, and just load the results at runtime.  See the
+headers _table_ser_ and _save_load_table_ for details.]
+
+[heading The Collation API]
+
+The collation-related functions all require a collation table.  There are two
+ways to collate two _cp_ sequences relative to one another.  First is to just
+call `collate()`.  This can be very expensive to call in a loop or other hot
+code path, because the sort keys are not kept for re-use.  The other way is to
+create the sort keys for the sequences, and then compare the keys yourself.
+Here is a simple example using the default table:
+
+[collation_simple]
+
+Here's a similar example, this time using the Danish collation tailorings.
+Note that we're using two overloads that respectively take _CPRngs_ and
+_GrRngs_.
+
+[collation_simple_tailored]
+
+I've made every effort to hide the messy details of collation configuration
+from you, because they are super confusing.  Instead, _Text_ uses a set of
+_coll_flags_ that have more recognizable semantics.  The flags map directly
+onto the low-level configuration settings.  Combinations of the flags that map
+to incompatible low-level settings will not compile.  The low-level
+configuration is still available for those already familiar with Unicode
+collation.
+
+When generating a sort key, the default configuration is to use tertiary
+strength (consider everything but punctuation), with no other options enabled.
+Other options can be specified to get different collations with the same
+table:
+
+[collation_configuration]
+
+[important The default Unicode collation algorithm requires the NFD
+normalization form, one of the least compact normalization forms.  NFC is the
+most widely-used normalization form (most European keyboards produce NFC, and
+W3C recommends NFC for all web text).  This means either keeping your data in
+the most interoperable normalization form (NFC), and paying the cost of
+normalization every time you do a collation, or the less interoperable NFD and
+not having to renormalize when collating.
+
+FCC is very similar to NFC, except that it is less compact in a few
+cases. _Text_'s collation implementation relies on the inputs being in either
+FCC or NFD, so the collation functions require inputs to be normalized FCC or
+NFD.  This happens automatically when using the collation API specific to the
+text layer types (_t_, _r_, etc.). ]
+
+[heading Associative Container Woes]
+
+One thing people use associative containers for is to make it easy to look for
+elements, while keeping the elements sorted.  Let's see how that goes in the
+world of Unicode:
+
+[collation_set_1]
+
+Hm.  Not well.  Ok, we can fix this by making a callable to use for
+comparisons:
+
+[collation_text_cmp_naive]
+
+Then we can make a set using that:
+
+[collation_set_2]
+
+But wait, I want to do a bunch of stuff /in Danish/, and I care about
+collation order.  In fact, I'm building a directory of old and new town names,
+and I want to print an index of them for end-users.  Ah, I'll just collate the
+values instead of binary-comparing them.
+
+First, my new callable:
+
+[collation_text_coll_cmp]
+
+And then the using code:
+
+[collation_set_3]
+
+The problem is that we're doing the very expensive operation of creating two
+sort keys for *each comparison*, and immediately throwing them away.
+
+[note Ordering sequences of _cps_ creates expectations about their order that
+can be misleading and/or confusing.  Some collation-incorrect sort orders are
+fine, because end-users will never see them; some sort orders must be
+collation-correct because end-users eventually /will/ see them.  _Text_
+therefore does not allow *implicit* ordering of sequences of _cps_.]
+
+Let's look at how much overhead we've incurred by doing all this repetitive
+collation.  Below is the result of running a pair of perf tests.  The first
+test is insertion of `N` _cp_ sequences into a `std::multiset` that just does
+binary comparison, like `set2` in the example above.  The second inserts the
+same `N` sequences into a `std::multiset` that does collation and throws away
+the keys, like `set3` in the other example above.
+
+[/ Before you can generate the tables below:
+   perf/text_set_compare_vs_collate_perf --benchmark_format=json > DATA
+/]
+
+[/ ./make_perf_table.py DATA BM_set_inserts_binary_compare_text_naive,CodePointBinaryComparison BM_set_inserts_collate,FullCollation /]
+
+[table Code Point Binary Comparison Vs. Unretained Key Collation
+    [ [N] [Code Point Binary Comparison] [Full Collation] [Code Point Binary Comparison / Full Collation] ]
+    [ [16] [4968 ns] [8680 ns] [0.572] ]
+    [ [64] [53410 ns] [82759 ns] [0.645] ]
+    [ [512] [791259 ns] [1232150 ns] [0.642] ]
+    [ [4096] [9450019 ns] [14795779 ns] [0.639] ]
+    [ [8192] [20675781 ns] [32193859 ns] [0.642] ]
+]
+
+So the collation is a significant cost.  But wait, isn't all that transcoding
+from UTF-8 to UTF-32 taking up a lot of time?  We can do better that the code
+point binary comparison above by doing `char` binary comparison instead:
+
+[collation_text_cmp]
+
+[collation_set_4]
+
+And here are the two binary comparison approaches compared to each other:
+
+[/ ./make_perf_table.py DATA BM_set_inserts_binary_compare_text_naive,CodePointBinaryComparison BM_set_inserts_binary_compare_text,CharBinaryComparison /]
+
+[table Code Point Binary Comparison Vs. `char` Binary Comparison (Tree Set)
+    [ [N] [Code Point Binary Comparison] [`char` Binary Comparison] [Code Point Binary Comparison / `char` Binary Comparison] ]
+    [ [16] [4968 ns] [4743 ns] [1.05] ]
+    [ [64] [53410 ns] [51537 ns] [1.04] ]
+    [ [512] [791259 ns] [759093 ns] [1.04] ]
+    [ [4096] [9450019 ns] [8932070 ns] [1.06] ]
+    [ [8192] [20675781 ns] [19541320 ns] [1.06] ]
+]
+
+Interestingly, getting rid of UTF-8 -> UTF-32 transcoding only amounts to a
+few percent.
+
+The cost of generating a collation sort key that can be used in comparison
+after comparison is very large.  It is roughly an order of magnitude slower
+than comparing two strings.
+
+In all these tests, I've intentionally chosen to use multisets and multimaps.
+Maps and sets have an unfair advantage, or a bug, depending on your use case.
+
+If you use a map instead of a multimap, you will not insert a value that has
+the same sort key as an element already in the map, even if that _cp_ sequence
+itself is *not* in the map.  That is, two _cp_ sequences can collate to the
+same sort key.  If you want to consider two _cp_ sequences equivalent when
+they collate the same, it is a feature, and a possibly large optimization, not
+to insert one of them.  If you want to keep all unique _cp_ sequences,
+regardless of their associated keys, this is a bug.
+
+[heading Associative Container Perf Bottom Line]
+
+As with everything else associated with Unicode, it's complicated:
+
+* When using sequences of _cps_ with associative containers, consider using
+  binary comparison if you *don't* care about the sort order being
+  collation-correct _emdash_ that is, when the user will not see the sort
+  order.
+
+* If you do binary comparisons of UTF-8 encoded types, consider comparing the
+  bytes of the underlying `char`s directly, though it's not a large effect.
+
+* If you *do* care about the sort order being collation-correct, you should
+  only use a container that retains the sort keys if the sort keys are very
+  long-lived, and are used very often _emdash_ often enough to justify the 10x
+  increased cost of generating a full sort key.
+
+[heading Hashing Containers]
+
+Associative containers are not the best choice when the key-type is a sequence
+of things, because comparing sequences is inherently expensive.  Why not use
+the unordered associative containers then?
+
+[collation_unordered_map]
+
+Hashing is your friend.  Hashing containers sidestep the question of
+misleading orderings ("Is this order collation-correct?") completely, because
+they are unordered.
+
+[endsect]
+
+
+[section Searching]
+
+This section concerns itself with collation-aware searching.  That is, given a
+string `S` and a pattern to search for `P`, the search operation uses
+collation comparison _emdash_ not binary comparison _emdash_ to find `P`
+within `S`.
+
+You can search any range in a variety of ways, using the standard algorithms
+and the string algorithms in _StringAlgo_.
+
+However, many of these algorithms do simple element equality using the default
+`operator==`, which is obviously not suitable for collation comparison.  Some
+of them have overloads that take a comparator, though in most cases the
+algorithm expects the comparator to be stateless; this is also not suitable
+for collation comparison, which is inherently stateful.
+
+_Text_ includes a collation-aware search API.  The benefit of using the
+general-purpose collation mechanism for search is that we get all the
+collation matching functionality included: tailoring plus the collation
+configury (consider case or not, accents or not, etc.).
+
+Our examples will all use this string to search within:
+
+[collation_search_string]
+
+Below is the simplest way to do a search using this API.  Here, we use a
+convenience function that does a brute-force search (much like a call to the
+non-searcher overloads of `std::search()`):
+
+[collation_search_covenience]
+
+That convenience function is equivalent to the code below.  Here, we're
+creating a searcher and passing it to `collation_search()`.  The rest of the
+collation search API uses this interface.
+
+[collation_search_simple]
+
+If we want to use a different searching algorithm, we can try that instead:
+
+[collation_search_bmh]
+
+And of course we can configure the search in the same way as we can configure
+collation; here we see a case-ignoring search:
+
+[collation_search_ignore_case]
+
+One more example _emdash_ one that uses a non-default collation:
+
+[collation_search_da]
+
+I've only shown the _GrRng_ overloads here for brevity, but there are
+overloads that take a _CPRng_ or a pair of _CPIters_ as well, just like the
+other APIs we've already seen.
+
+[important The searching API does not require inputs aligned to _gr_
+boundaries.  You can get correct but suspicious-seeming results when you try
+to match using _cps_ that may be part of longer _grs_ in the text being
+searched.
+
+Consider the NFD string `"a\u0300\u0301"` _emdash_ an `'a'` followed by a
+grave accent followed by an acute accent.  This string will not always be
+matched correctly by pattern `"a\u0300"` (or `"a\u0301"`), due to the
+arbitrary ordering of combining marks with the same canonical combining class
+(CCC).  This does not matter in the whole-_gr_ case, which handles this
+correctly.  It will only matter in _cp_ level searches, because you may search
+for partial _grs_, as in `collation_search("a\u0300", "a\u0300\u0301")`
+for example.
+
+If none of that made sense to you, don't worry.  Just use the text layer
+types, which always deal in whole _grs_, and you'll never have to consider
+this effect.]
+
+[endsect]
+
+
+[section Bidirectional Text]
+
+Most scripts supported by Unicode are written left-to-right (/LTR/).  Some,
+most notably Arabic and Hebrew, are written right-to-left (/RTL/).  Let's say
+you have some text that is mostly LTR, but which contains some RTL text.  If
+you want to present this text to the user, say by printing it to a terminal or
+showing it in a GUI, it becomes necessary to produce an ordering on the _cps_
+in the text that reverses the RTL subsequences, so they appear in their proper
+readable order, not in memory-order.  For example, if the capital letters in
+the string "car means CAR." were from an RTL script, the end-user should see
+"car means RAC."
+
+There are also times when you find RTL nested within LTR nested within RTL
+nested within LTR.  Unicode is hard.
+
+_Text_ has an implementation of the Unicode bidirectional algorithm.  The
+interface for simple uses is straightforward; you just call the algorithm with
+a sequence of _cps_, and it returns a lazy range of subranges.  Each subrange
+is a _bidi_cp_subrng_ (or _bidi_gr_subrng_ for the _GrRng_ overload):
+
+[bidi_simple]
+
+[note By default, `bidirectional_subranges()` auto-detects the overall
+direction of the text _emdash_ LTR or RTL.  This is known as the /embedding
+level/; even embedding levels are LTR, and odd embedding levels are RTL.  Even
+levels above `0` are found nested within RTL text.  Odd levels above `1` are
+found nested within LTR text.  This is what the /embedding/ part of /embedding
+level/ means.
+
+If you want to force a particular embedding level, say if you're laying out
+text in an HTML table, so the text you're processing is separate from the
+surrounding text, but you know that the surrounding text is all RTL, you may
+want to specify the optional `paragraph_embedding_level` parameter to
+`bidirectional_subranges()`.
+
+Most users can leave this parameter unchanged.]
+
+There is another form of `bidirectional_subranges()`.  This second form takes
+a line width extent and a callable to provide the extent of a subsequence of
+_cps_.  These parameters are the same as the ones passed to some of the line
+break overloads.
+
+This form is necessary because the locations of line breaks within the text
+can affect the output of the bidirectional algorithm.  Therefore, the
+bidirectional algorithm needs to know the positions of line breaks in order to
+operate correctly.  For example:
+
+[bidi_with_line_breaks]
+
+[important The extent-callable used in the line breaking API takes two
+parameters of exact type.  The extent-callable used above must take two
+parameters of any type that models _CPIter_.  This is because the callable is
+used with some internal iterator types that do not match the _CPIters_ in the
+top-level range that you pass to `bidirectional_subranges()`.]
+
+As with most of the other Unicode layer algorithms, overloads of the two forms
+above exist for _GrRng_, _CPRng_, and pair-of-_CPIter_ inputs.
+
+[endsect]
+
+[endsect]

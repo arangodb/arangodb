@@ -1,5 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+# IResearch currently won't run with [-Werror,-Wtautological-constant-out-of-range-compare] as errors.
+# Hence we moved this block here.
+# Need to be included in future builds.
+
+################################################################################
+## IResearch
+################################################################################
+
+
+add_subdirectory(iresearch)
+
 ################################################################################
 ## global definitions
 ################################################################################
@@ -34,9 +45,6 @@ include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
-
-set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 add_library(arango_basic_errors STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
@@ -79,6 +87,7 @@ add_library(arango_basic_utils STATIC
         Basics/NumberUtils.cpp
         Basics/ReadWriteSpinLock.cpp
         Basics/ResourceUsage.cpp
+        Basics/SharedPRNG.cpp
         Basics/StringBufferAdvanced.cpp
         Basics/SupervisedBuffer.h
         Basics/Utf8Helper.cpp
@@ -94,6 +103,7 @@ add_library(arango_basic_utils STATIC
 
         # arango_lightweight
         Basics/ArangoGlobalContext.cpp
+        Basics/BasicThread.cpp
         Basics/CleanupFunctions.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
         Basics/FileResult.cpp
@@ -111,7 +121,7 @@ add_library(arango_basic_utils STATIC
         Basics/StringBuffer.cpp
         Basics/StringHeap.cpp
         Basics/StringUtils.cpp
-        Basics/Thread.cpp
+        Basics/TransparentStringHash.h
         Basics/UnshackledMutex.cpp
         Basics/conversions.cpp
         Basics/debugging.cpp
@@ -144,6 +154,7 @@ add_library(arango_basic_utils STATIC
 
         Random/RandomGenerator.cpp
         Random/RandomFeature.cpp
+        Random/RandomOptionsProvider.cpp
         Random/UniformCharacter.cpp
 
         Zip/ioapi.cpp
@@ -161,6 +172,8 @@ target_link_libraries(arango_basic_utils
          linenoise-ng
          zlib_interface
          snappy
+         lz4_static
+         arango_activities_global
 )
 
 # Enterprise
@@ -186,22 +199,29 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         ApplicationFeatures/ApplicationFeaturePhase.cpp
         ApplicationFeatures/BumpFileDescriptorsFeature.cpp
+        ApplicationFeatures/BumpFileDescriptorsFeatureOptions.cpp
+        ApplicationFeatures/BumpFileDescriptorsOptionsProvider.cpp
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
+        ApplicationFeatures/ConfigOptionsProvider.cpp
         ApplicationFeatures/FileSystemFeature.cpp
+        ApplicationFeatures/FileSystemOptionsProvider.cpp
         ApplicationFeatures/GreetingsFeature.cpp
         ApplicationFeatures/LanguageFeature.cpp
+        ApplicationFeatures/LanguageOptionsProvider.cpp
         ApplicationFeatures/OptionsCheckFeature.cpp
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
-        ApplicationFeatures/VersionFeature.cpp
+        ApplicationFeatures/TempOptionsProvider.cpp
         ApplicationFeatures/ProcessEnvironmentFeature.cpp
+        ApplicationFeatures/ProcessEnvironmentOptionsProvider.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
          arango_inspection
          arango_basic_errors
          arango_futures
+         arango_basic_http_client
          absl::flat_hash_set
          fuerte
          s2
@@ -226,6 +246,7 @@ add_library(arango_basic_logger STATIC
         Logger/Logger.cpp
         Logger/LoggerFeature.cpp
         Logger/LoggerOptions.cpp
+        Logger/LoggerOptionsProvider.cpp
         Logger/LoggerStream.cpp
         Logger/LogTimeFormat.cpp
 )
@@ -258,6 +279,10 @@ add_library(arango_basic_http_client STATIC
         Ssl/SslFeature.cpp
         Ssl/SslInterface.cpp
         Ssl/ssl-helper.cpp
+        Ssl/jwt.cpp
+        Ssl/AuthInfo.cpp
+        Ssl/JwtKeys.cpp
+        Ssl/JwtSignature.cpp
 
         Endpoint/Endpoint.cpp
         Endpoint/EndpointIp.cpp
@@ -332,10 +357,9 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_activities_global
          arango_async
-         arango_task_registry_global
   PRIVATE date_interface
-          fmt
           arango_assertions
           arango_static_strings
           arango_futures
@@ -352,18 +376,6 @@ endif()
 
 add_library(arango STATIC
   ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
-  ApplicationFeatures/ApplicationFeaturePhase.cpp
-  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
-  ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/ConfigFeature.cpp
-  ApplicationFeatures/FileSystemFeature.cpp
-  ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/OptionsCheckFeature.cpp
-  ApplicationFeatures/ShutdownFeature.cpp
-  ApplicationFeatures/TempFeature.cpp
-  ApplicationFeatures/VersionFeature.cpp
-  ApplicationFeatures/ProcessEnvironmentFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp
@@ -378,6 +390,7 @@ target_link_libraries(arango
          boost_system
          boost_boost
          arango_futures
+         arango_basic_features
          arango_static_strings
          arango_crashhandler
          arango_basic_http_client
@@ -399,8 +412,6 @@ target_link_libraries(arango
 if (USE_V8)
   target_link_libraries(arango PUBLIC ${V8_LIBS})
 endif()
-
-target_link_libraries(arango PUBLIC fmt::fmt)
 
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -453,4 +464,4 @@ add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
-add_subdirectory(TaskMonitoring)
+add_subdirectory(Activities)

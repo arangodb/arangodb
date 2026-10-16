@@ -18,13 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
-
-#include <fmt/core.h>
-#include <fmt/ostream.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"

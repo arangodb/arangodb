@@ -23,7 +23,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
 // //////////////////////////////////////////////////////////////////////////////
 
 // contains common code for aql-profiler* tests

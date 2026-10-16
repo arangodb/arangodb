@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ViewTypesFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -66,8 +66,9 @@ InvalidViewFactory const kInvalid;
 
 namespace arangodb {
 
-ViewTypesFeature::ViewTypesFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ViewTypesFeature::ViewTypesFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

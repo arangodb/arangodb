@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerDefaults.h"
@@ -28,7 +27,8 @@
 
 using namespace arangodb;
 
-ServerDefaults::ServerDefaults(ArangodServer& server) {
+ServerDefaults::ServerDefaults(
+    application_features::ApplicationServer& server) {
   auto const& cl = server.getFeature<ClusterFeature>();
   writeConcern = cl.writeConcern();
   replicationFactor = cl.defaultReplicationFactor();

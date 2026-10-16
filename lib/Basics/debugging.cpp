@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -65,7 +64,7 @@ std::set<std::string, std::less<>> failurePoints;
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CrashHandler::setHardKill();
+  crash_handler::CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
@@ -102,8 +101,8 @@ void TRI_TerminateDebugging(std::string_view message) {
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     // intentionally crashes the program!
-    // If we instead try to dereference a nullptr, macOS might do SIGABRT
-    raise(SIGSEGV);
+    volatile int* p = nullptr;
+    *p = 42;
   } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
@@ -113,8 +112,8 @@ void TRI_TerminateDebugging(std::string_view message) {
 #endif
 
   // intentional crash - no need for a backtrace here
-  CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);
+  crash_handler::CrashHandler::disableBacktraces();
+  crash_handler::CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point

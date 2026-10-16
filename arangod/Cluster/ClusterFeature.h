@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <unordered_set>
 
@@ -40,7 +40,7 @@ class CommunicationFeaturePhase;
 class DatabaseFeaturePhase;
 }  // namespace application_features
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }
 namespace network {
 class ConnectionPool;
@@ -53,15 +53,17 @@ class ClusterInfo;
 class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public ArangodFeature {
+class ClusterFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
-  explicit ClusterFeature(Server& server);
+  explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::IRegistry& metricsRegistry,
+                          ClusterOptions options);
+  explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -227,8 +229,9 @@ class ClusterFeature : public ArangodFeature {
                             std::string const& endpoints);
 
  private:
-  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
-                 DatabaseFeature& database, size_t registration);
+  ClusterFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry, DatabaseFeature& database,
+                 std::type_index registration, ClusterOptions options);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();
@@ -237,11 +240,11 @@ class ClusterFeature : public ArangodFeature {
 
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   std::unique_ptr<ClusterInfo> _clusterInfo;
-  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  std::atomic<std::shared_ptr<HeartbeatThread>> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metricsRegistry;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   metrics::Counter* _followersDroppedCounter = nullptr;

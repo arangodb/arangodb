@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
@@ -54,7 +53,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -75,7 +73,8 @@ class Context;
 namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    ArangodServer& server, std::span<std::string const> skipRecoveryItems)
+    application_features::ApplicationServer& server,
+    std::span<std::string const> skipRecoveryItems)
     : _server{&server} {
   for (auto const& item : skipRecoveryItems) {
     if (item == "all") {
@@ -91,8 +90,7 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
 
 void IResearchRocksDBRecoveryHelper::prepare() {
   TRI_ASSERT(_server);
-  _engine =
-      &_server->getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  _engine = &_server->getFeature<StorageEngine, RocksDBEngine>();
   _dbFeature = &_server->getFeature<DatabaseFeature>();
   _documentCF = RocksDBColumnFamilyManager::get(
                     RocksDBColumnFamilyManager::Family::Documents)
@@ -309,9 +307,9 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
 
   for (auto&& index : collection->getPhysical()->getReadyIndexes()) {
     TRI_ASSERT(index != nullptr);
-    if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (index->type() == IndexType::Inverted) {
       add(_indexes, basics::downCast<IResearchRocksDBInvertedIndex>(*index));
-    } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    } else if (index->type() == IndexType::IResearchLink) {
       add(_links, basics::downCast<IResearchRocksDBLink>(*index));
     }
   }

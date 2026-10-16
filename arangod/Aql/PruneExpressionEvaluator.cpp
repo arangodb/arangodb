@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PruneExpressionEvaluator.h"
@@ -29,8 +28,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 PruneExpressionEvaluator::PruneExpressionEvaluator(
     transaction::Methods& trx, QueryContext& query,
@@ -50,7 +48,9 @@ PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 bool PruneExpressionEvaluator::evaluate() {
   bool mustDestroy = false;
   TRI_ASSERT(_pruneExpression != nullptr);
-  aql::AqlValue res = _pruneExpression->execute(&_ctx, mustDestroy);
-  arangodb::aql::AqlValueGuard guard(res, mustDestroy);
+  AqlValue res = _pruneExpression->execute(&_ctx, mustDestroy);
+  AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();
 }
+
+}  // namespace arangodb::aql

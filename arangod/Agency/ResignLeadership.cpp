@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/ResignLeadership.h"
@@ -38,8 +36,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+namespace arangodb::consensus {
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,
@@ -546,3 +544,5 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
 
   return result;
 }
+
+}  // namespace arangodb::consensus

@@ -18,21 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {
 
-class ServerIdFeature final : public ArangodFeature {
+class ServerIdFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ServerId"; }
 
-  explicit ServerIdFeature(Server& server);
+  explicit ServerIdFeature(application_features::ApplicationServer& server);
   ~ServerIdFeature();
 
   void start() override final;

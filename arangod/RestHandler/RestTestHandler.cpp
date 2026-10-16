@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTestHandler.h"
@@ -38,8 +37,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTestHandler::RestTestHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestTestHandler::RestTestHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestTestHandler::~RestTestHandler() = default;
@@ -66,6 +66,7 @@ ResultT<RequestLane> RestTestHandler::requestLaneFromString(
                 "Expected request-lane, found `" + str + "`");
 }
 
+// Mounted at /_api/test (prefix, only in ARANGODB_ENABLE_MAINTAINER_MODE)
 RestStatus RestTestHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -182,6 +181,6 @@ auto inspect(Inspector& f, UserTransactionOperation& x) {
 }  // namespace arangodb::replication2::replicated_state::document
 
 template<>
-struct fmt::formatter<
+struct std::formatter<
     arangodb::replication2::replicated_state::document::ReplicatedOperation>
     : arangodb::inspection::inspection_formatter {};

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogTopic.h"
@@ -198,11 +197,10 @@ TopicName LogTopic::lookup(size_t topicId) {
   return topic->name();
 }
 
-template<typename Topic>
-LogTopic::LogTopic(Topic) requires requires(Topic) {
-  Topic::name;
-} : LogTopic(Topic::name, Topic::defaultLevel,
-             logger::TopicList::index<Topic>()) {
+template<ValidTopicType Topic>
+LogTopic::LogTopic(Topic)
+    : LogTopic(Topic::name, Topic::defaultLevel,
+               logger::TopicList::index<Topic>()) {
   static_assert(logger::TopicList::contains<Topic>(),
                 "Topic not found in TopicList");
 }

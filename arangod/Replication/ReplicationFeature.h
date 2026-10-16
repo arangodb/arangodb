@@ -18,55 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Replication/ReplicationOptions.h"
-#include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class CommunicationFeaturePhase;
+}  // namespace application_features
 
 class GeneralResponse;
-class GlobalReplicationApplier;
 
-class ReplicationFeature final : public ArangodFeature {
+class ReplicationFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(Server& server);
+  ReplicationFeature(
+      application_features::ApplicationServer& server,
+      application_features::CommunicationFeaturePhase& commFeature,
+      metrics::IRegistry& metricsRegistry, ReplicationOptions options);
+  ReplicationFeature(
+      application_features::ApplicationServer& server,
+      application_features::CommunicationFeaturePhase& commFeature,
+      metrics::IRegistry& metricsRegistry);
   ~ReplicationFeature();
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
 
   httpclient::ConnectionCache& connectionCache();
-
-  /// @brief return a pointer to the global replication applier
-  GlobalReplicationApplier* globalReplicationApplier() const;
-
-  /// @brief disable replication appliers
-  void disableReplicationApplier();
-
-  /// @brief start the replication applier for a single database
-  void startApplier(TRI_vocbase_t* vocbase);
-
-  /// @brief stop the replication applier for a single database
-  void stopApplier(TRI_vocbase_t* vocbase);
 
   /// @brief returns the connect timeout for replication requests
   double connectTimeout() const;
@@ -116,27 +102,11 @@ class ReplicationFeature final : public ArangodFeature {
  private:
   ReplicationOptions _options;
 
-  /// @brief connection timeout for replication requests
-  double _connectTimeout;
-
-  /// @brief request timeout for replication requests
-  double _requestTimeout;
-
-  /// @brief whether or not the user-defined connect timeout is forced to be
-  /// used this is true only if the user set the connect timeout at startup
-  bool _forceConnectTimeout;
-
-  /// @brief whether or not the user-defined request timeout is forced to be
-  /// used this is true only if the user set the request timeout at startup
-  bool _forceRequestTimeout;
-
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
-
-  std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 
   metrics::Counter& _inventoryRequests;
 

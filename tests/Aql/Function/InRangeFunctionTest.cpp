@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -62,7 +61,7 @@ class InRangeFunctionTest : public ::testing::Test {
             warnings->insert(static_cast<int>(c));
           }
         });
-    TRI_vocbase_t mockVocbase(testDBInfo(server.server()));
+    TRI_vocbase_t mockVocbase(testDBInfo(server.server()), server.engine());
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });

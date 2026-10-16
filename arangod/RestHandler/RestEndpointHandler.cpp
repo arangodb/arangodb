@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEndpointHandler.h"
@@ -33,11 +32,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEndpointHandler::RestEndpointHandler(ArangodServer& server,
-                                         GeneralRequest* request,
-                                         GeneralResponse* response)
+RestEndpointHandler::RestEndpointHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/endpoint (prefix)
 RestStatus RestEndpointHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

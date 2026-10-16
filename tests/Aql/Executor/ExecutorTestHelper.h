@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,6 +45,9 @@
 #include "Aql/SharedQueryState.h"
 #include "Containers/Enumerate.h"
 
+#include <absl/strings/str_join.h>
+
+#include <format>
 #include <numeric>
 #include <tuple>
 
@@ -107,11 +109,11 @@ auto inline to_string(SplitType const& splitType) -> std::string {
   using namespace std::string_literals;
   return std::visit(overload{
                         [](std::vector<std::size_t> list) {
-                          return fmt::format("list{{{}}}",
-                                             fmt::join(list, ","));
+                          return std::format("list{{{}}}",
+                                             absl::StrJoin(list, ","));
                         },
                         [](std::size_t interval) {
-                          return fmt::format("interval{{{}}}", interval);
+                          return std::format("interval{{{}}}", interval);
                         },
                         [](std::monostate) { return "none"s; },
                     },

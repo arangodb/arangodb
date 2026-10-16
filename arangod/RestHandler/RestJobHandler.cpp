@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestJobHandler.h"
@@ -38,13 +37,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(ArangodServer& server, GeneralRequest* request,
+RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request,
                                GeneralResponse* response,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 
+// Mounted at /_api/job (prefix) and /_admin/job (prefix)
 RestStatus RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -96,7 +97,7 @@ void RestJobHandler::putJob() {
 
   TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
   TRI_ASSERT(response.get() != nullptr);
-  _response.reset(response.release());
+  _response = std::move(response);
   _response->setMessageId(messageId);
   // return the original response
 

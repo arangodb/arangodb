@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/FileSystemFeatureOptions.h"
+#include "Logger/LoggerFeature.h"
 
 namespace arangodb {
 namespace options {
@@ -37,19 +38,14 @@ class FileSystemFeature final
  public:
   static constexpr std::string_view name() noexcept { return "FileSystem"; }
 
-  template<typename Server>
-  explicit FileSystemFeature(Server& server)
-      : ApplicationFeature{server, *this} {
-    setOptional(false);
-    startsAfter<LoggerFeature, Server>();
-  }
+  explicit FileSystemFeature(application_features::ApplicationServer& server,
+                             FileSystemFeatureOptions options);
+  explicit FileSystemFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
-  // whether or not to use the splice() syscall on Linux
-  bool _useSplice = true;
+  FileSystemFeatureOptions _options;
 };
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,12 +29,19 @@
 namespace arangodb {
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*,
+                  GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
+
+ protected:
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
+  async<Result> checkApiVersionAccess() const override { co_return Result{}; }
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
   std::string generateJwt(std::string const& username,

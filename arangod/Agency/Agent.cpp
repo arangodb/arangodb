@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
@@ -34,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
@@ -41,12 +41,13 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
+#include "Utils/ExecContext.h"
 #include "Network/NetworkFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -85,8 +86,7 @@ DECLARE_COUNTER(arangodb_agency_write_no_leader_total,
                 "Agency write no leader");
 DECLARE_COUNTER(arangodb_agency_write_ok_total, "Agency write ok");
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 // Instanciations of some declarations in AgencyCommon.h:
 
@@ -95,12 +95,13 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
-             config_t const& config)
-    : arangodb::ServerThread<ArangodServer>(server, "Agent"),
+Agent::Agent(application_features::ApplicationServer& server,
+             metrics::IRegistry& metricsRegistry, config_t const& config)
+    // needs superuser permissions for log persistence: transactions via State
+    : arangodb::ServerThread(server, "Agent", ExecContext::superuserAsShared()),
       _constituent(server),
-      _supervision(std::make_unique<Supervision>(server, metrics)),
-      _state(metrics),
+      _supervision(std::make_unique<Supervision>(server, metricsRegistry)),
+      _state(metricsRegistry),
       _config(config),
       _commitIndex(0),
       _agentNeedsWakeup(false),
@@ -108,15 +109,18 @@ Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(metrics.add(arangodb_agency_write_ok_total{})),
-      _write_no_leader(metrics.add(arangodb_agency_write_no_leader_total{})),
-      _read_ok(metrics.add(arangodb_agency_read_ok_total{})),
-      _read_no_leader(metrics.add(arangodb_agency_read_no_leader_total{})),
-      _write_hist_msec(metrics.add(arangodb_agency_write_hist{})),
-      _commit_hist_msec(metrics.add(arangodb_agency_commit_hist{})),
-      _append_hist_msec(metrics.add(arangodb_agency_append_hist{})),
-      _compaction_hist_msec(metrics.add(arangodb_agency_compaction_hist{})),
-      _local_index(metrics.add(arangodb_agency_local_commit_index{})) {
+      _write_ok(metricsRegistry.add(arangodb_agency_write_ok_total{})),
+      _write_no_leader(
+          metricsRegistry.add(arangodb_agency_write_no_leader_total{})),
+      _read_ok(metricsRegistry.add(arangodb_agency_read_ok_total{})),
+      _read_no_leader(
+          metricsRegistry.add(arangodb_agency_read_no_leader_total{})),
+      _write_hist_msec(metricsRegistry.add(arangodb_agency_write_hist{})),
+      _commit_hist_msec(metricsRegistry.add(arangodb_agency_commit_hist{})),
+      _append_hist_msec(metricsRegistry.add(arangodb_agency_append_hist{})),
+      _compaction_hist_msec(
+          metricsRegistry.add(arangodb_agency_compaction_hist{})),
+      _local_index(metricsRegistry.add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   _inception = std::make_unique<Inception>(*this);
@@ -619,22 +623,18 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
-      // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular
-      // order.
-      bool needSnapshot = lastConfirmed < _state.firstIndex();
-      if (needSnapshot) {
-        lastConfirmed = _state.lastCompactionAt() - 1;
+      auto payloadResult = _state.buildAppendEntriesPayload(lastConfirmed, 99);
+      if (payloadResult.fail()) {
+        LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
+            << "Could not build AppendEntries payload for follower "
+            << followerId << ": " << payloadResult.errorMessage();
+        continue;
       }
-
-      LOG_TOPIC("7c578", TRACE, Logger::AGENCY)
-          << "Getting unconfirmed from " << lastConfirmed << " to "
-          << lastConfirmed + 99;
-      // If lastConfirmed is one minus the first log entry, then this is
-      // corrected in _state::get and we only get from the beginning of the
-      // log.
-      std::vector<log_t> unconfirmed =
-          _state.get(lastConfirmed, lastConfirmed + 99);
+      auto& payload = payloadResult.get();
+      std::vector<log_t>& unconfirmed = payload.entries;
+      if (payload.snapshot.has_value()) {
+        lastConfirmed = payload.snapshot->index - 1;
+      }
 
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
@@ -671,41 +671,12 @@ void Agent::sendAppendEntriesRPC() {
                    follower._lastAckedTime.time_since_epoch())
                    .count();
       }
-      index_t lowest = unconfirmed.front().index;
-
-      Store snapshot("snapshot");
-      index_t snapshotIndex;
-      term_t snapshotTerm;
-
-      if (lowest > lastConfirmed || needSnapshot) {
-        // Ooops, compaction has thrown away so many log entries that
-        // we cannot actually update the follower. We need to send our
-        // latest snapshot instead:
-        bool success = false;
-        try {
-          success = _state.loadLastCompactedSnapshot(snapshot, snapshotIndex,
-                                                     snapshotTerm);
-        } catch (std::exception const& e) {
-          LOG_TOPIC("f2287", WARN, Logger::AGENCY)
-              << "Exception thrown by loadLastCompactedSnapshot: " << e.what();
-        }
-        if (!success) {
-          LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
-              << "Could not load last compacted snapshot, not sending "
-                 "appendEntriesRPC!";
-          continue;
-        }
-        if (snapshotTerm == 0) {
-          // No shapshot yet
-          needSnapshot = false;
-        }
-      }
 
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
-      if (needSnapshot) {
-        prevLogIndex = snapshotIndex;
-        prevLogTerm = snapshotTerm;
+      if (payload.snapshot.has_value()) {
+        prevLogIndex = payload.snapshot->index;
+        prevLogTerm = payload.snapshot->term;
       }
 
       // Body
@@ -713,17 +684,15 @@ void Agent::sendAppendEntriesRPC() {
       Builder builder(buffer);
       builder.add(VPackValue(VPackValueType::Array));
 
-      if (needSnapshot) {
+      if (payload.snapshot.has_value()) {
+        VPackObjectBuilder guard(&builder);
+        builder.add(VPackValue("readDB"));
         {
-          VPackObjectBuilder guard(&builder);
-          builder.add(VPackValue("readDB"));
-          {
-            VPackArrayBuilder guard2(&builder);
-            snapshot.dumpToBuilder(builder);
-          }
-          builder.add("term", VPackValue(snapshotTerm));
-          builder.add("index", VPackValue(snapshotIndex));
+          VPackArrayBuilder guard2(&builder);
+          payload.snapshot->store.dumpToBuilder(builder);
         }
+        builder.add("term", VPackValue(payload.snapshot->term));
+        builder.add("index", VPackValue(payload.snapshot->index));
       }
 
       size_t toLog = 0;
@@ -795,9 +764,9 @@ void Agent::sendAppendEntriesRPC() {
       LOG_TOPIC("2d80d", DEBUG, Logger::AGENCY)
           << "Appending (" << (uint64_t)(TRI_microtime() * 1000000000.0) << ") "
           << unconfirmed.size() - 1 << " entries up to index " << highest
-          << (needSnapshot ? " and a snapshot" : "") << " to follower "
-          << followerId << ". Next real log contact to " << followerId
-          << " in: "
+          << (payload.snapshot.has_value() ? " and a snapshot" : "")
+          << " to follower " << followerId << ". Next real log contact to "
+          << followerId << " in: "
           << std::chrono::duration<double, std::milli>(earliestPackage -
                                                        steady_clock::now())
                  .count()
@@ -2374,5 +2343,4 @@ Agent::getFollower(std::string const& followerId) {
   return MutexGuard(it->second, std::move(guard));
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

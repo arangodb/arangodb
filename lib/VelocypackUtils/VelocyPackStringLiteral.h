@@ -18,15 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <velocypack/Buffer.h>
 #include <velocypack/String.h>
 
 namespace arangodb::velocypack {
 
 auto operator""_vpack(const char* json, size_t) -> VPackString;
+
+Buffer<uint8_t> toBuffer(VPackString const& s);
 
 }  // namespace arangodb::velocypack

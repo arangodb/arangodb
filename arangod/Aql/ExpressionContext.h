@@ -18,19 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "Basics/ICancellationToken.h"
 #include "Basics/ErrorCode.h"
 
 #include <string_view>
 #include <unicode/regex.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 struct ValidatorBase;
 namespace transaction {
 class Methods;
@@ -44,7 +43,7 @@ namespace aql {
 struct AqlValue;
 struct Variable;
 
-class ExpressionContext {
+class ExpressionContext : public arangodb::ICancellationToken {
  public:
   ExpressionContext() = default;
 
@@ -65,9 +64,9 @@ class ExpressionContext {
       bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
 
-  virtual TRI_vocbase_t& vocbase() const = 0;
+  virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
-  virtual bool killed() const = 0;
+  bool killed() const override = 0;
 
   // register a temporary variable in the ExpressionContext. the
   // slice used here is not owned by the QueryExpressionContext!

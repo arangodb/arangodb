@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -31,6 +30,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <thread>
 #include <type_traits>
@@ -64,7 +64,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
@@ -143,11 +143,8 @@ static constexpr bool IsDirSeparatorChar(char c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_NormalizePath(std::string& path) {
-  for (auto& it : path) {
-    if (IsDirSeparatorChar(it)) {
-      it = TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
+  std::filesystem::path p(path);
+  path = p.make_preferred().string();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -963,7 +960,7 @@ ErrorCode TRI_CreateLockFile(char const* filename) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   std::string buf = std::to_string(pid);
 
   int rv = TRI_WRITE(fd, buf.c_str(), static_cast<TRI_write_t>(buf.size()));
@@ -1155,45 +1152,6 @@ std::string TRI_GetFilename(std::string const& filename) {
     return filename;
   }
   return filename.substr(pos + 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the absolute path of a file
-/// in contrast to realpath() this function can also be used to determine the
-/// full path for files & directories that do not exist. realpath() would fail
-/// for those cases.
-/// It is the caller's responsibility to free the string created by this
-/// function
-////////////////////////////////////////////////////////////////////////////////
-
-std::string TRI_GetAbsolutePath(std::string const& fileName,
-                                std::string const& currentWorkingDirectory) {
-  if (fileName.empty()) {
-    return std::string();
-  }
-
-  // name is absolute if starts with either forward or backslash
-  // file is also absolute if contains a colon
-  bool isAbsolute = (fileName[0] == '/' || fileName[0] == '\\' ||
-                     fileName.find(':') != std::string::npos);
-
-  if (isAbsolute) {
-    return fileName;
-  }
-
-  std::string result;
-
-  if (!currentWorkingDirectory.empty()) {
-    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
-
-    result.append(currentWorkingDirectory);
-    if (currentWorkingDirectory.back() != '/') {
-      result.push_back('/');
-    }
-    result.append(fileName);
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1764,7 +1722,7 @@ ErrorCode TRI_GetTempName(char const* directory, std::string& result,
 
   int tries = 0;
   while (tries++ < 10) {
-    TRI_pid_t pid = Thread::currentProcessId();
+    TRI_pid_t pid = BasicThread::currentProcessId();
 
     std::string tempName =
         "tmp-" + std::to_string(pid) + '-' +
@@ -1849,10 +1807,6 @@ std::string TRI_LocateConfigDirectory(char const*) {
 }
 
 #endif
-
-bool TRI_PathIsAbsolute(std::string const& path) {
-  return path.starts_with('/');
-}
 
 /// @brief return the amount of total and free disk space for the given path
 arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,

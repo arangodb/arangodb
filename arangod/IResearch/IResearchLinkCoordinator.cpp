@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -42,7 +40,6 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -72,7 +69,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   return r;
 }
 
-IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
+IResearchDataStore::Stats IResearchLinkCoordinator::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()
@@ -128,7 +125,8 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-IResearchLinkCoordinator::IndexFactory::IndexFactory(ArangodServer& server)
+IResearchLinkCoordinator::IndexFactory::IndexFactory(
+    application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchLinkCoordinator::IndexFactory::equal(
@@ -160,7 +158,8 @@ Result IResearchLinkCoordinator::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchLinkCoordinator::IndexFactory>
-IResearchLinkCoordinator::createFactory(ArangodServer& server) {
+IResearchLinkCoordinator::createFactory(
+    application_features::ApplicationServer& server) {
   return std::make_shared<IResearchLinkCoordinator::IndexFactory>(server);
 }
 

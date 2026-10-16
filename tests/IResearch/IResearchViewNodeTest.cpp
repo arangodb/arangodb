@@ -18,10 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -75,7 +74,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -101,7 +99,8 @@ class IResearchViewNodeTest
   IResearchViewNodeTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -131,7 +130,7 @@ struct MockQuery final : arangodb::aql::Query {
 }  // namespace
 
 TEST_F(IResearchViewNodeTest, constructSortedView) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ "
@@ -289,7 +288,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, construct) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -900,7 +899,7 @@ TEST_F(IResearchViewNodeTest, construct) {
 }
 
 TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -1443,15 +1442,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        R"({ 
+        R"({
         "id":42, "depth":0, "totalNrRegs":0, "varInfoList":[],
         "nrRegs":[], "nrRegsHere":[], "regsToClear":[],
         "varsUsedLaterStack":[[]], "varsValid":[],
         "outVariable": {
           "name":"variable", "id":0
         },
-        "options": { 
-          "waitForSync" : true, 
+        "options": {
+          "waitForSync" : true,
           "collections":[],
           "parallelism": 2
         }, "viewId": ")" +
@@ -1976,7 +1975,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, clone) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -2436,7 +2435,7 @@ TEST_F(IResearchViewNodeTest, clone) {
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -3022,7 +3021,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 }
 
 TEST_F(IResearchViewNodeTest, serializeSortedView) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : "
@@ -3300,7 +3299,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, collections) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -3392,7 +3391,7 @@ TEST_F(IResearchViewNodeTest, collections) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -3537,7 +3536,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -3595,7 +3594,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1));
+  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1),
+                        server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -3661,7 +3661,8 @@ class IResearchViewVolatitlityTest
   IResearchViewVolatitlityTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -4078,7 +4079,8 @@ class IResearchViewBlockTest
   IResearchViewBlockTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();

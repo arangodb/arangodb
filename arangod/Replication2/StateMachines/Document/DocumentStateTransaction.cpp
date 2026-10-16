@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
@@ -50,7 +49,7 @@ auto DocumentStateTransaction::apply(
             TRI_ASSERT(false) << op;
             return OperationResult{
                 Result{TRI_ERROR_TRANSACTION_INTERNAL,
-                       fmt::format("Operation {} cannot be applied",
+                       std::format("Operation {} cannot be applied",
                                    ReplicatedOperation::fromOperationType(op))},
                 buildOperationOptions(std::nullopt)};
           },

@@ -1,0 +1,16 @@
+name: arangodb_vector_index_training_duration
+introducedIn: "3.12.9"
+help: |
+  Duration of vector index training seconds.
+unit: seconds
+type: histogram
+category: VectorIndex
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Histogram of wall-clock durations in seconds of vector index training
+  phases. Each completed training phase contributes one measurement.
+  The histogram also exposes the number of events and the total sum of
+  all measurements.

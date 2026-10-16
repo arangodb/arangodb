@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, db, arango, SYS_IS_V8_BUILD */
+/* global print, db, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 /* Modules: */
@@ -33,6 +32,7 @@ const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const {versionHas} = require("@arangodb/test-helper");
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -50,6 +50,7 @@ const testServerAuthInfo = {
 const testClientJwtAuthInfo = {
   jwtSecret: testsecret
 };
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get the items uniq to arr1 or arr2
@@ -149,11 +150,17 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nightly') !== -1 && options.skipNightly && !options.onlyNightly) {
-    whichFilter.filter = 'skip nightly';
-    return false;
+  if (testname.indexOf('-nightly') !== -1) {
+    if (options.skipNightly && !options.onlyNightly) {
+      whichFilter.filter = 'skip nightly';
+      return false;
+    }
+  } else {
+    if (options.onlyNightly) {
+      whichFilter.filter = 'only nightly';
+      return false;
+    }
   }
-
   if (testname.indexOf('-geo') !== -1 && options.skipGeo) {
     whichFilter.filter = 'geo';
     return false;
@@ -161,16 +168,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
     whichFilter.filter = 'nondeterministic';
-    return false;
-  }
-
-  if (testname.indexOf('-grey') !== -1 && options.skipGrey) {
-    whichFilter.filter = 'grey';
-    return false;
-  }
-
-  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
-    whichFilter.filter = 'grey';
     return false;
   }
 
@@ -190,13 +187,23 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nightly') === -1 && options.onlyNightly) {
-    whichFilter.filter = 'only nightly';
+  if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
+    whichFilter.filter = 'skip in valgrind';
     return false;
   }
 
-  if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
-    whichFilter.filter = 'skip in valgrind';
+  if ((testname.indexOf('-noarm') !== -1) && versionHas("arm")) {
+    whichFilter.filter = 'skip on AArch64 targets';
+    return false;
+  }
+
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
+    whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
@@ -220,15 +227,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
-    whichFilter.filter = 'skip when built with asan or tsan';
-    return false;
-  }
-
-  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
-    whichFilter.filter = 'skip when built with coverage';
-    return false;
-  }
 
   if ((testname.indexOf('-sjs') !== -1) && (options.skipServerJS)) {
     whichFilter.filter = 'skip when running the server without javascript enabled';
@@ -327,6 +325,7 @@ function scanTestPaths (paths, options, fun) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
+  allTestCases.sort();
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {
@@ -354,7 +353,6 @@ function scanTestPaths (paths, options, fun) {
 exports.testServerAuthInfo = testServerAuthInfo;
 exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
 
-
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
@@ -372,7 +370,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'skipNondeterministic': false,
     'skipGrey': false,
     'skipN': false,
-    'skipServerJS': !SYS_IS_V8_BUILD,
+    'skipServerJS': false,
     'onlyGrey': false,
     'onlyNightly': false,
     'skipTimeCritical': false,
@@ -386,7 +384,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     ' Testcase filtering:',
     '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
     '   - `skipNightly`: omit the nightly tests',
-    '   - `skipRanges`: if set to true the ranges tests are skipped',
     '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
     '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
     '   - `skipGrey`: if set, grey tests are skipped.',

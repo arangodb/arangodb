@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBKey.h"
@@ -27,20 +25,41 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VectorIndex/Definition.h"
 #include "Zkd/ZkdHelper.h"
 
 #include <cstdint>
 #include <iostream>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
+namespace {
+
+/// @brief Sentinel key slot for the per-index metadata record. Picked from
+/// the top of the uint64 range to stay within (indexId, indexId+1) bounds
+/// used by removeLargeRange on drop and never collide with an IVF list
+/// number.
+constexpr std::uint64_t vectorIndexMetadataSlot(
+    vector::FormatVersion version) noexcept {
+  switch (version) {
+    case vector::FormatVersion::kV1:
+      return std::numeric_limits<std::uint64_t>::max();
+    case vector::FormatVersion::kV2:
+      return std::numeric_limits<std::uint64_t>::max() - 1;
+  }
+}
+
+}  // namespace
+
 const char RocksDBKey::_stringSeparator = '\0';
 
-RocksDBKey::RocksDBKey(std::string* leased)
+RocksDBKey::RocksDBKey(ThreadLocalStringLeaser::Lease lease)
     : _type(RocksDBEntryType::Document),  // placeholder
       _local(),
-      _buffer(leased != nullptr ? leased : &_local) {}
+      _lease(std::move(lease)),
+      _buffer(_lease->get()) {}
 
 RocksDBKey::RocksDBKey(rocksdb::Slice slice)
     : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
@@ -50,6 +69,7 @@ RocksDBKey::RocksDBKey(rocksdb::Slice slice)
 RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
     : _type(other._type), _local(), _buffer(&_local) {
   _local.assign(std::move(*(other._buffer)));
+  other._lease.reset();
   other._buffer = &(other._local);
 }
 
@@ -160,6 +180,17 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 
   uint64ToPersistent(*_buffer, indexId);
   uint64ToPersistent(*_buffer, listNumber);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructVectorIndexTrainedData(
+    uint64_t indexId, vector::FormatVersion version) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  size_t constexpr keyLength = sizeof(uint64_t) + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  uint64ToPersistent(*_buffer, vectorIndexMetadataSlot(version));
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
@@ -334,17 +365,6 @@ void RocksDBKey::constructSettingsValue(RocksDBSettingsType st) {
   _buffer->reserve(keyLength);
   _buffer->push_back(static_cast<char>(_type));
   _buffer->push_back(static_cast<char>(st));
-  TRI_ASSERT(_buffer->size() == keyLength);
-}
-
-void RocksDBKey::constructReplicationApplierConfig(TRI_voc_tick_t databaseId) {
-  // databaseId may be 0 for global applier config
-  _type = RocksDBEntryType::ReplicationApplierConfig;
-  size_t keyLength = sizeof(char) + sizeof(uint64_t);
-  _buffer->clear();
-  _buffer->reserve(keyLength);
-  _buffer->push_back(static_cast<char>(_type));
-  uint64ToPersistent(*_buffer, databaseId);
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

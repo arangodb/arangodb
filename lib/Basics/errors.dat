@@ -249,6 +249,7 @@ ERROR_QUERY_BIND_PARAMETER_MISSING,1551,"no value specified for declared bind pa
 ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1552,"bind parameter '%s' was not declared in the query","Will be raised when a value gets specified for an undeclared bind parameter."
 ERROR_QUERY_BIND_PARAMETER_TYPE,1553,"bind parameter '%s' has an invalid value or type","Will be raised when a bind parameter has an invalid value or type."
 ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,1554,"failed vector search","APPROX_NEAR function could not apply vector search, either the vector index is missing or the query optimization could not apply vector index."
+ERROR_QUERY_VECTOR_INDEX_NOT_READY,1555,"vector index not ready","The vector index is not yet trained. Please wait for the index training to complete before executing vector search queries."
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
 ERROR_QUERY_ARRAY_EXPECTED,1563,"array expected","Will be raised when a non-array operand is used for an operation that expects an array argument operand."

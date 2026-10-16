@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,9 +26,12 @@
 
 namespace arangodb {
 
+class StorageEngine;
+
 class RocksDBRestWalHandler : public RestBaseHandler {
  public:
-  RocksDBRestWalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RocksDBRestWalHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*, StorageEngine*);
 
  public:
   RequestLane lane() const override final {
@@ -42,5 +44,7 @@ class RocksDBRestWalHandler : public RestBaseHandler {
   void flush();
   void transactions();
   void properties();
+
+  StorageEngine* _engine;
 };
 }  // namespace arangodb

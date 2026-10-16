@@ -1,5 +1,9 @@
 add_library(arango_crashhandler STATIC
-    CrashHandler.cpp)
+    CrashHandler.cpp
+    DataSourceRegistry.cpp
+    DumpWriter.cpp
+    DumpManager.cpp
+    DataSource.cpp)
 
 target_include_directories(arango_crashhandler
   PUBLIC

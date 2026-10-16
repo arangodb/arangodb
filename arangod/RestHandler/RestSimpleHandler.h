@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,8 +31,8 @@ class QueryRegistry;
 
 class RestSimpleHandler : public RestCursorHandler {
  public:
-  RestSimpleHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                    aql::QueryRegistry*);
+  RestSimpleHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, aql::QueryRegistry*);
 
  public:
   auto executeAsync() -> futures::Future<futures::Unit> override final;

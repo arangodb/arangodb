@@ -18,20 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceOptions.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 #include "Metrics/Fwd.h"
 
@@ -42,6 +39,7 @@
 #include <shared_mutex>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 namespace maintenance {
 enum ActionState;
@@ -78,11 +76,15 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public ArangodFeature {
+class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
-  explicit MaintenanceFeature(Server& server);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server,
+                              ClusterFeature* clusterFeature,
+                              MaintenanceOptions options);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server,
+                              ClusterFeature* clusterFeature);
 
   virtual ~MaintenanceFeature();
 
@@ -109,8 +111,6 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
 
   // @brief #databases last time we checked allDatabases
@@ -259,6 +259,18 @@ class MaintenanceFeature : public ArangodFeature {
                                    std::string const& shard,
                                    std::string const& indexId,
                                    std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  /**
+   * @brief clear a single index error from the error bucket
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index id to clear
+   */
+  void clearIndexError(std::string const& database,
+                       std::string const& collection, std::string const& shard,
+                       std::string const& indexId);
 
   /**
    * @brief remove 1+ errors from index error bucket

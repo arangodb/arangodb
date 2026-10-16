@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ast.h"
@@ -27,6 +26,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/AstNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
@@ -37,7 +37,6 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -52,6 +51,7 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/vocbase.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -2954,7 +2954,7 @@ bool Ast::getReferencedAttributesRecursive(
           // here we need to take special precautions that we normally
           // don't need
           if (expansionNode.getFilter()->type != NODE_TYPE_NOP ||
-              expansionNode.getOptions()->type != NODE_TYPE_NOP) {
+              expansionNode.getProjection()->type != NODE_TYPE_NOP) {
             // expansion has a filter or a projection set, e.g.
             // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
             // we currently cannot handle this.
@@ -3392,6 +3392,18 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
     return node;
   }
 
+  // Bind parameters report as constant (their eventual values are constant),
+  // but at parse time they are still NODE_TYPE_PARAMETER and cannot be cast
+  // via castToNumber() yet. This function is also invoked from the parser
+  // (grammar.y) before bind parameters are injected, so we must only fold
+  // operands that castToNumber() can handle without unresolved parameters.
+  // ATTRIBUTE_ACCESS is excluded here too: e.g. +@doc.attr is constant but
+  // still parameter-backed until bind injection.
+  if (operand->type != NODE_TYPE_VALUE && operand->type != NODE_TYPE_ARRAY &&
+      operand->type != NODE_TYPE_OBJECT) {
+    return node;
+  }
+
   // operand is a constant, now convert it into a number
   AstNode const* converted = operand->castToNumber(this);
 
@@ -3594,11 +3606,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
-        rhs->type == NODE_TYPE_ARRAY &&
+        rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-      // if the IN list contains a considerable amount of items, we will sort
-      // it, so we can find elements quicker later using a binary search
+      // only sort constant arrays; non-constant ones can't be sorted at compile
+      // time. if the IN list contains a considerable amount of items, we will
+      // sort it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
 
       // first copy the original node before sorting, as the node may be used
@@ -3638,144 +3651,35 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (lhs->isConstant() && rhs->isConstant()) {
-    // now calculate the expression result
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      // arithmetic +
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l + r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() +
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeSubtraction<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l - r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() -
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeMultiplication<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l * r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() *
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-
-        if (r == 0) {
-          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&_specialNodes.NullNode);
-        }
-
-        // check if the result would overflow
-        useDoublePrecision =
-            (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l / r);
-        }
-      }
-
-      if (right->getDoubleValue() == 0.0) {
-        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&_specialNodes.NullNode);
-      }
-
-      return createArithmeticResultNode(left->getDoubleValue() /
-                                        right->getDoubleValue());
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-
-        if (r == 0) {
-          _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&_specialNodes.NullNode);
-        }
-
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeDivision<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l % r);
-        }
-      }
-
-      if (right->getDoubleValue() == 0.0) {
-        _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&_specialNodes.NullNode);
-      }
-
-      return createArithmeticResultNode(
-          fmod(left->getDoubleValue(), right->getDoubleValue()));
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid operator");
+  if (!lhs->isConstant() || !rhs->isConstant()) {
+    return node;
   }
 
-  return node;
+  AstNode const* left = lhs->castToNumber(this);
+  AstNode const* right = rhs->castToNumber(this);
+  bool const isDivision = node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+                          node->type == NODE_TYPE_OPERATOR_BINARY_MOD;
+
+  if (!left->isDoubleValue() && !right->isDoubleValue()) {
+    if (isDivision && right->getIntValue() == 0) {
+      _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      return const_cast<AstNode*>(&_specialNodes.NullNode);
+    }
+    if (auto result = integerArithmetic(node->type, left->getIntValue(),
+                                        right->getIntValue());
+        result.has_value()) {
+      return createArithmeticResultNode(*result);
+    }
+  }
+
+  double const l = left->getDoubleValue();
+  double const r = right->getDoubleValue();
+  if (isDivision && r == 0.0) {
+    _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+    return const_cast<AstNode*>(&_specialNodes.NullNode);
+  }
+
+  return createArithmeticResultNode(doubleArithmetic(node->type, l, r));
 }
 
 /// @brief optimizes the ternary operator
@@ -4552,7 +4456,7 @@ Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
 
       // Found a traversal, shortest path, path search that uses
       // edge collection syntax
-      if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
+      if (match->type == NODE_TYPE_COLLECTION_LIST) {
         for (size_t i = 0; i < match->numMembers(); ++i) {
           auto const* member = match->getMemberUnchecked(i);
           auto collectionName = edgeCollectionNodeGetName(member);

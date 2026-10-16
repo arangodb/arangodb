@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Buffer.h>
@@ -27,6 +26,7 @@
 #include "RestAdminStatisticsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -37,9 +37,12 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAdminStatisticsHandler::RestAdminStatisticsHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/statistics (exact) and /_admin/statistics-description
+// (exact)
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -47,12 +50,11 @@ RestStatus RestAdminStatisticsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoring{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return RestStatus::DONE;
   }
 

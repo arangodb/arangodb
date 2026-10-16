@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Async/Registry/registry_variable.h"
 #include "Containers/Concurrent/thread.h"
 
 #include <csignal>
+#include <format>
 #include <iostream>
 #include <source_location>
 
@@ -34,23 +34,23 @@ auto breakpoint() { raise(SIGINT); }
 
 auto format(arangodb::basics::SourceLocationSnapshot const& loc)
     -> std::string {
-  return fmt::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name,
+  return std::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name,
                      loc.line);
 }
 auto format(arangodb::basics::ThreadId const& thread) -> std::string {
-  return fmt::format("LWPID {} (pthread {})", thread.kernel_id,
+  return std::format("LWPID {} (pthread {})", thread.kernel_id,
                      thread.posix_id);
 }
 auto format(arangodb::basics::ThreadInfo const& thread) -> std::string {
-  return fmt::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
+  return std::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
 }
 auto format(PromiseSnapshot const& snapshot) -> std::string {
   if (snapshot.thread == std::nullopt) {
-    return fmt::format("{}, owned by {}, {}", format(snapshot.source_location),
+    return std::format("{}, owned by {}, {}", format(snapshot.source_location),
                        format(snapshot.owning_thread),
                        arangodb::inspection::json(snapshot.state));
   } else {
-    return fmt::format("{}, owned by {}, {} on {}",
+    return std::format("{}, owned by {}, {} on {}",
                        format(snapshot.source_location),
                        format(snapshot.owning_thread),
                        arangodb::inspection::json(snapshot.state),
@@ -88,7 +88,7 @@ int main() {
     return Promise{CurrentRequester{current_thread},
                    std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -100,7 +100,7 @@ int main() {
 
   // works also with a currently non-running promise
   parent->data.running_thread.store(std::nullopt);
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -111,10 +111,10 @@ int main() {
   breakpoint();
 
   // add a promise that depends on parent promise
-  auto* child = thread_registry->add([&]() {
+  auto child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "    ┌ {}\n"
@@ -127,10 +127,10 @@ int main() {
   breakpoint();
 
   // add another promise that depends on parent promise
-  auto* second_child = thread_registry->add([&]() {
+  auto second_child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "    ┌ {}\n"
@@ -144,10 +144,10 @@ int main() {
   breakpoint();
 
   // add a child to a child promise
-  auto* child_of_child = thread_registry->add([&]() {
+  auto child_of_child = thread_registry->add([&]() {
     return Promise{{child->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "      ┌ {}\n"
@@ -163,10 +163,10 @@ int main() {
   breakpoint();
 
   // add a child to the second child promise
-  auto* child_of_second_child = thread_registry->add([&]() {
+  auto child_of_second_child = thread_registry->add([&]() {
     return Promise{{second_child->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "      ┌ {}\n"
@@ -184,11 +184,11 @@ int main() {
   breakpoint();
 
   // add a completely unrelated promise
-  auto* second_parent = thread_registry->add([&]() {
+  auto second_parent = thread_registry->add([&]() {
     return Promise{{arangodb::basics::ThreadInfo::current()},
                    std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -212,15 +212,18 @@ int main() {
   breakpoint();
 
   auto second_thread_registry = ThreadRegistry::make();
-  auto other_thread =
-      arangodb::basics::ThreadInfo{};  // simulate another thread
   test_registry.add(second_thread_registry);
 
   // add a new promise on another thread
-  auto* parent_on_other_thread = second_thread_registry->add([&]() {
-    return Promise{{other_thread}, std::source_location::current()};
+  auto other_thread =
+      arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>{
+          arangodb::basics::ThreadInfo{
+              5, "some_thread_name"}};  // simulate another thread
+  auto parent_on_other_thread = second_thread_registry->add([&]() {
+    return Promise{CurrentRequester{other_thread},
+                   std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -242,8 +245,10 @@ int main() {
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread.get_ref().value()), format(other_thread),
-      format(parent_on_other_thread->data.snapshot()), format(other_thread));
+      format(current_thread.get_ref().value()),
+      format(other_thread.get_ref().value()),
+      format(parent_on_other_thread->data.snapshot()),
+      format(other_thread.get_ref().value()));
 
   breakpoint();
 

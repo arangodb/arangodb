@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,12 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <queue>
-#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -39,24 +34,18 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
-#include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
-using namespace arangodb::httpclient;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
 static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
@@ -132,8 +121,8 @@ class ShardDistributionReporterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
                                             arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
@@ -178,7 +167,7 @@ class ShardDistributionReporterTest
 
   ShardDistributionReporterTest()
       : server(nullptr, nullptr),
-        engine(server),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()),
         ci(infoMock.get()),
         cicInst(infoCurrentMock.get()),
         cic(&cicInst, [](CollectionInfoCurrent*) {}),
@@ -201,19 +190,15 @@ class ShardDistributionReporterTest
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
 
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
-        server.addFeature<arangodb::DatabaseFeature>(),
-        false);  // required for TRI_vocbase_t::dropCollection(...)
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
+        dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            selector,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -221,14 +206,14 @@ class ShardDistributionReporterTest
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server), engine);
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
                                                         true);
 

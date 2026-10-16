@@ -18,17 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/FortuneFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -66,20 +64,17 @@ static char const* cookies[] = {
 
 }  // namespace
 
-FortuneFeature::FortuneFeature(Server& server)
-    : ArangodFeature{server, *this}, _fortune(false) {
+FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
+    : FortuneFeature(server, FortuneFeatureOptions{}) {}
+
+FortuneFeature::FortuneFeature(application_features::ApplicationServer& server,
+                               FortuneFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   startsAfter<BootstrapFeature>();
 }
 
-void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--fortune", "Show a fortune cookie on startup.",
-      new BooleanParameter(&_fortune),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
 void FortuneFeature::start() {
-  if (!_fortune) {
+  if (!_options.fortune) {
     return;
   }
 

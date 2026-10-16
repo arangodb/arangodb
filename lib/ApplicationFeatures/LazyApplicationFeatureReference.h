@@ -17,14 +17,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/arangod.h"
 
 #include <function2.hpp>
 
@@ -62,14 +60,10 @@ struct LazyApplicationFeatureReference {
 #endif
   // convenience constructor, should probably be removed/replaced later (see
   // comment above).
-  template<typename Server>
-  requires requires(Server& server) {
-    { server.template getFeature<FeatureT>() } -> std::same_as<FeatureT&>;
-  }
-  explicit LazyApplicationFeatureReference(Server& server)
-      : _factory([&server]() noexcept {
-          return &server.template getFeature<FeatureT>();
-        }) {}
+  explicit LazyApplicationFeatureReference(
+      application_features::ApplicationServer& server)
+      : _factory(
+            [&server]() noexcept { return &server.getFeature<FeatureT>(); }) {}
 
  private:
   Factory _factory;

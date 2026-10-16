@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollection.h"
@@ -275,7 +273,7 @@ Result CreateCollection::createCollectionReplication1(
   }
 
   std::shared_ptr<LogicalCollection> col;
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   auto res = Collections::createShard(vocbase, options, shard, collectionType,
                                       properties, col);
   if (col) {
@@ -322,7 +320,7 @@ Result CreateCollection::createCollectionReplication2(
     } else {
       res.reset(
           {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-           fmt::format("Leader of log {} not found while creating shard {}",
+           std::format("Leader of log {} not found while creating shard {}",
                        logId, shard)});
     }
   } else {

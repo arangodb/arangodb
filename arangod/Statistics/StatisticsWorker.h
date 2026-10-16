@@ -18,26 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Statistics/figures.h"
-#include "RestServer/arangod.h"
+#include "Utils/Thread.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
-class StatisticsWorker final : public ServerThread<ArangodServer> {
+struct Database;
+
+class StatisticsWorker final : public ServerThread {
  public:
-  explicit StatisticsWorker(TRI_vocbase_t& vocbase);
+  explicit StatisticsWorker(Database& vocbase);
   ~StatisticsWorker() { shutdown(); }
 
   void run() override;
@@ -96,8 +93,7 @@ class StatisticsWorker final : public ServerThread<ArangodServer> {
   velocypack::Builder _lastStoredValue;
 
   std::string _clusterId;
-  TRI_vocbase_t&
-      _vocbase;  // vocbase for querying/persisting statistics collections
+  Database& _vocbase;  // vocbase for querying/persisting statistics collections
 };
 
 }  // namespace arangodb

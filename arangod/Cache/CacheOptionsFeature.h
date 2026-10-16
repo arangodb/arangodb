@@ -18,32 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheOptionsProvider.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class CacheOptionsFeature final : public ArangodFeature,
-                                  public CacheOptionsProvider {
+class CacheOptionsFeature final
+    : public application_features::ApplicationFeature,
+      public CacheOptionsProvider {
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
-  explicit CacheOptionsFeature(Server& server);
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server,
+                               CacheOptions options);
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   CacheOptions getOptions() const override final;
 
  private:
-  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
-
   CacheOptions _options;
 };
 

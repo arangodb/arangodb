@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BumpFileDescriptorsFeature.h"
@@ -28,8 +27,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -42,43 +39,21 @@
 #include <string>
 
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
-void BumpFileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  // we do this initialization here so we don't need to include
-  // FileDescriptors.h in the header file.
-  _descriptorsMinimum = FileDescriptors::recommendedMinimum();
-
-  options
-      ->addOption(
-          _optionName,
-          "The minimum number of file descriptors needed to start (0 = no "
-          "minimum)",
-          new UInt64Parameter(&_descriptorsMinimum),
-          arangodb::options::makeFlags())
-      .setIntroducedIn(31200);
-}
-
-void BumpFileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  if (_descriptorsMinimum > 0 &&
-      (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
-       _descriptorsMinimum > FileDescriptors::maximumValue)) {
-    LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << _optionName << ". must be between "
-        << FileDescriptors::requiredMinimum << " and "
-        << FileDescriptors::maximumValue;
-    FATAL_ERROR_EXIT();
-  }
+BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
+    ApplicationServer& server, BumpFileDescriptorsFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+  setOptional(false);
+  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<LoggerFeature>();
 }
 
 void BumpFileDescriptorsFeature::prepare() {
   if (Result res = FileDescriptors::adjustTo(
-          static_cast<FileDescriptors::ValueType>(_descriptorsMinimum));
+          static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum));
       res.fail()) {
     LOG_TOPIC("97831", FATAL, Logger::SYSCALL) << res;
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
@@ -96,17 +71,17 @@ void BumpFileDescriptorsFeature::prepare() {
       << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
 
-  auto required =
-      std::max(static_cast<FileDescriptors::ValueType>(_descriptorsMinimum),
-               FileDescriptors::requiredMinimum);
+  auto required = std::max(
+      static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum),
+      FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
     auto message = absl::StrCat(
         "file-descriptors (nofiles) soft limit is too low, currently ",
         FileDescriptors::stringify(current.soft), ". please raise to at least ",
         required, " (e.g. via ulimit -n ", required,
-        ") or adjust the value of the startup option ", _optionName);
-    if (_descriptorsMinimum == 0) {
+        ") or adjust the value of the startup option ", _options.optionName);
+    if (_options.descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << message;
     } else {
       LOG_TOPIC("8c771", FATAL, Logger::SYSCALL) << message;

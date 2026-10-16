@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,7 +31,7 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Restore/arangorestore.h"
+#include "Restore/RestoreFeatureOptions.h"
 
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -42,22 +40,25 @@
 
 namespace arangodb {
 
+class ClientFeature;
+
 namespace basics {
 class StringBuffer;
 }
 
 class ManagedDirectory;
 
-class RestoreFeature final : public ArangoRestoreFeature {
+class RestoreFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Restore"; }
 
-  RestoreFeature(Server& server, int& exitCode);
+  RestoreFeature(application_features::ApplicationServer& server,
+                 ClientFeature& client, int& exitCode,
+                 RestoreFeatureOptions options);
+  RestoreFeature(application_features::ApplicationServer& server,
+                 ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -83,37 +84,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   void returnBuffer(std::unique_ptr<basics::StringBuffer> buffer) noexcept;
 
   /// @brief Holds configuration data to pass between methods
-  struct Options {
-    std::vector<std::string> collections{};
-    std::vector<std::string> views{};
-    std::string inputPath{};
-    uint64_t chunkSize{1024 * 1024 * 8};
-    uint64_t defaultNumberOfShards{1};     // deprecated
-    uint64_t defaultReplicationFactor{1};  // deprecated
-    uint64_t maxUnusedBufferSize{1024 * 1024 * 512};
-    std::vector<std::string> numberOfShards;
-    std::vector<std::string> replicationFactor;
-    std::vector<std::string> writeConcern;
-    uint32_t threadCount{2};
-    uint32_t initialConnectRetries{3};
-    bool clusterMode{false};
-    bool createDatabase{false};
-    bool force{false};
-    bool forceSameDatabase{false};
-    bool allDatabases{false};
-    bool ignoreDistributeShardsLikeErrors{false};
-    bool importData{true};
-    bool importStructure{true};
-    bool includeSystemCollections{false};
-    bool overwrite{true};
-    bool enableRevisionTrees{true};
-    bool continueRestore{false};
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    bool failOnUpdateContinueFile{false};
-#endif
-    bool cleanupDuplicateAttributes{false};
-    bool progress{true};
-  };
+  using Options = RestoreFeatureOptions;
 
   enum CollectionState {
     UNKNOWN = 0,
@@ -272,6 +243,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   std::vector<DatabaseInfo> determineDatabaseList(
       std::string const& databaseName);
 
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

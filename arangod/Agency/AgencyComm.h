@@ -18,33 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
-#include <mutex>
-#include <optional>
 #include <string>
-#include <string_view>
-#include <type_traits>
 #include <unordered_map>
-#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ErrorCode.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
 class Endpoint;
 class Result;
+class ClusterFeature;
+struct IDatabaseProvider;
 
 namespace application_features {
 class ApplicationServer;
@@ -586,9 +582,10 @@ class AgencyComm {
  public:
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] explicit AgencyComm(ArangodServer&);
-  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
-             DatabaseFeature&);
+      "dependency")]] explicit AgencyComm(application_features::
+                                              ApplicationServer&);
+  AgencyComm(application_features::ApplicationServer&, ClusterFeature&,
+             IDatabaseProvider&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -664,10 +661,9 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
-  ApplicationServer& _server;
+  application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
-  DatabaseFeature& _databaseFeature;
+  IDatabaseProvider& _databaseProvider;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 

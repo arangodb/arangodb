@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "GeneralServer/RestHandlerActivity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
@@ -56,6 +56,7 @@ class Future;
 template<typename>
 struct async;
 
+class AuthenticationFeature;
 class GeneralRequest;
 class RequestStatistics;
 class Result;
@@ -70,7 +71,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -89,14 +91,18 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// @brief called when the handler execution is finalized
   void trackTaskEnd() noexcept;
 
+  void startActivity();
+
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
 
-  ArangodServer& server() noexcept { return _server; }
-  ArangodServer const& server() const noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
+  application_features::ApplicationServer const& server() const noexcept {
+    return _server;
+  }
 
   [[nodiscard]] RequestStatistics::Item const& requestStatistics()
       const noexcept {
@@ -165,6 +171,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
+  // checks if the HTTP method is allowed and generates an error if not
+  bool isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed);
+
+  // checks if collection name is a numeric collection id
+  // and generates an error if so
+  bool rejectNumericCollectionId(std::string_view cname);
+
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,
@@ -184,6 +197,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// @brief Executes the RestHandler
   auto executeEngine() -> async<void>;
   void compressResponse();
+
+  enum class AuthenticationGrant { DENIED, GRANTED, GRANTED_EARLY };
+  virtual async<AuthenticationGrant> checkUserAuthentication() const;
+  virtual async<Result> checkApiVersionAccess() const;
+  virtual async<Result> checkDatabaseAccess() const;
 
   // The ValueBuilder, as it is, is unsuitable for composition. By composition,
   // I mean, for example, creating a builder in the base class with certain
@@ -213,11 +231,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   RequestStatistics::Item _statistics;
 
  private:
   mutable std::mutex _executionMutex;
+
+  async<void> handleAuthorizationChecks();
 
  protected:
   // TODO Move this in a separate header, side-by-side with SuspensionCounter?
@@ -273,6 +293,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
 
   std::atomic<bool> _canceled;
+
+  arangodb::rest::RestHandlerActivity::HandleType _activity;
 };
 
 }  // namespace rest

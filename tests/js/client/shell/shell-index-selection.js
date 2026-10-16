@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author 2018 Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TwoSidedEnumeratorOptions.h"
@@ -29,8 +27,12 @@ using namespace arangodb::graph;
 
 TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
                                                      size_t maxDepth,
-                                                     PathType::Type pathType)
-    : _minDepth(minDepth), _maxDepth(maxDepth), _pathType(pathType) {
+                                                     PathType::Type pathType,
+                                                     aql::QueryContext& query)
+    : _minDepth(minDepth),
+      _maxDepth(maxDepth),
+      _pathType(pathType),
+      _observer(query) {
   if (getPathType() == PathType::Type::AllShortestPaths) {
     setStopAtFirstDepth(true);
   } else if (getPathType() == PathType::Type::ShortestPath) {

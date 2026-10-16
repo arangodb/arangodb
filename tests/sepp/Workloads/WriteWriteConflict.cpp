@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WriteWriteConflict.h"
@@ -31,7 +30,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Indexes/Index.h"
-#include "RestServer/arangod.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"

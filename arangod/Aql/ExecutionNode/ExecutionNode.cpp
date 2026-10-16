@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
@@ -69,6 +68,7 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 
 #include <absl/strings/str_cat.h>
 #include <frozen/unordered_map.h>
@@ -194,6 +194,18 @@ ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
                                  "ArangoDB Enterprise Edition only.");
 }
 #endif
+
+ExecutionNode* createLocalGraphNode(ExecutionPlan*, velocypack::Slice);
+
+#ifndef USE_ENTERPRISE
+ExecutionNode* createLocalGraphNode(ExecutionPlan*, velocypack::Slice) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Local graph nodes are available in ArangoDB Enterprise Edition only.");
+}
+#endif
+
 }  // namespace arangodb::aql
 
 /// @brief resolve nodeType to a string_view.
@@ -392,11 +404,20 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case DISTRIBUTE:
       return new DistributeNode(plan, slice);
     case TRAVERSAL:
-      return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
-      return new ShortestPathNode(plan, slice);
-    case ENUMERATE_PATHS:
+    case ENUMERATE_PATHS: {
+      if (slice.hasKey(StaticStrings::ProtoCollection) &&
+          basics::VelocyPackHelper::getBooleanValue(
+              slice, StaticStrings::IsLocalGraphNode, false)) {
+        return createLocalGraphNode(plan, slice);
+      }
+      if (nodeType == TRAVERSAL) {
+        return new TraversalNode(plan, slice);
+      } else if (nodeType == SHORTEST_PATH) {
+        return new ShortestPathNode(plan, slice);
+      }
       return new EnumeratePathsNode(plan, slice);
+    }
     case REMOTE_SINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case REMOTE_MULTIPLE:

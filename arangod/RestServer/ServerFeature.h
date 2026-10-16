@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ServerFeatureOptions.h"
 
 namespace arangodb {
 
@@ -36,43 +35,39 @@ class AsyncJobManager;
 
 }  // namespace rest
 
-class ServerFeature final : public ArangodFeature {
+class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Server"; }
 
   static std::string operationModeString(OperationMode mode);
 
-  ServerFeature(Server& server, int* result);
+  ServerFeature(application_features::ApplicationServer& server, int* result,
+                ServerFeatureOptions options);
+  ServerFeature(application_features::ApplicationServer& server, int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
-  OperationMode operationMode() const { return _operationMode; }
+  OperationMode operationMode() const { return _options.operationMode; }
 
   std::string operationModeString() const {
     return operationModeString(operationMode());
   }
 
-  std::vector<std::string> const& scripts() const { return _scripts; }
+  std::vector<std::string> const& scripts() const { return _options.scripts; }
 
   bool isConsoleMode() const {
-    return (_operationMode == OperationMode::MODE_CONSOLE);
+    return (operationMode() == OperationMode::MODE_CONSOLE);
   }
 
  private:
   void waitForHeartbeat();
 
-  bool _console = false;
-  bool _restServer = true;
-  bool _validateUtf8Strings = true;
+  ServerFeatureOptions _options;
   bool _isStopping = false;
-  std::vector<std::string> _scripts;
   int* _result;
-  OperationMode _operationMode;
 };
 
 }  // namespace arangodb

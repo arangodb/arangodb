@@ -18,15 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "RestServer/arangod.h"
 
 #include "Endpoint/EndpointList.h"
+#include "RestServer/EndpointFeatureOptions.h"
 
 namespace arangodb {
 
@@ -34,10 +34,10 @@ class EndpointFeature final : public HttpEndpointProvider {
  public:
   static constexpr std::string_view name() noexcept { return "Endpoint"; }
 
-  explicit EndpointFeature(ArangodServer& server);
+  explicit EndpointFeature(application_features::ApplicationServer& server,
+                           EndpointFeatureOptions options);
+  explicit EndpointFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   std::vector<std::string> httpEndpoints() override;
@@ -47,9 +47,7 @@ class EndpointFeature final : public HttpEndpointProvider {
  private:
   void buildEndpointLists();
 
-  std::vector<std::string> _endpoints;
-  bool _reuseAddress;
-  uint64_t _backlogSize;
+  EndpointFeatureOptions _options;
 
   EndpointList _endpointList;
 };

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathNode.h"
@@ -28,7 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -419,7 +417,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
       0, std::numeric_limits<size_t>::max(),
-      arangodb::graph::PathType::Type::ShortestPath};
+      arangodb::graph::PathType::Type::ShortestPath, opts->query()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 
@@ -437,13 +435,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache());
+        opts->produceVertices(), opts->useCache(), opts->query());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
@@ -479,10 +478,10 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     using ClusterProvider = ClusterProvider<ClusterProviderStep>;
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
-    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices());
-    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices());
+    ClusterBaseProviderOptions forwardProviderOptions(
+        cache, engines(), false, opts->produceVertices(), opts->query());
+    ClusterBaseProviderOptions backwardProviderOptions(
+        cache, engines(), true, opts->produceVertices(), opts->query());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
@@ -692,7 +691,7 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
         _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ true);

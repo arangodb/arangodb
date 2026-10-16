@@ -18,10 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CrashHandler/CrashHandler.h"
 #include "AssertionConditionalLogger.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

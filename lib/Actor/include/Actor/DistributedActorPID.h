@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -51,7 +49,7 @@ struct DistributedActorPID {
 
 // TODO - remove in favor of inspection::json()
 template<>
-struct fmt::formatter<arangodb::actor::DistributedActorPID>
+struct std::formatter<arangodb::actor::DistributedActorPID>
     : arangodb::inspection::inspection_formatter {};
 
 namespace std {

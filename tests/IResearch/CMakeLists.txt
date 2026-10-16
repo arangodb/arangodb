@@ -102,6 +102,10 @@ if (USE_V8)
   target_link_libraries(arangodbtests-iresearch arango_v8server)
 endif ()
 
+if (USE_JEMALLOC)
+  target_link_libraries(arangodbtests-iresearch jemalloc)
+endif ()
+
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
@@ -122,6 +126,3 @@ endif ()
 
 target_link_libraries(arangodbtests-iresearch v8_interface)
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests-iresearch jemalloc_build)
-endif ()

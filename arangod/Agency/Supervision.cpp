@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
@@ -44,7 +43,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -200,9 +199,11 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(ArangodServer& server,
-                         metrics::MetricsFeature& metrics)
-    : arangodb::ServerThread<ArangodServer>(server, "Supervision"),
+Supervision::Supervision(ApplicationServer& server,
+                         metrics::IRegistry& metricsRegistry)
+    // operates on the agency store, may need to persist log entries
+    // via Agent::transact.
+    : ServerThread(server, "Supervision", ExecContext::superuserAsShared()),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),
@@ -219,11 +220,11 @@ Supervision::Supervision(ArangodServer& server,
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-          metrics.add(arangodb_agency_supervision_runtime_msec{})),
-      _supervision_runtime_wait_for_sync_msec(metrics.add(
+          metricsRegistry.add(arangodb_agency_supervision_runtime_msec{})),
+      _supervision_runtime_wait_for_sync_msec(metricsRegistry.add(
           arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
-      _supervision_failed_server_counter(
-          metrics.add(arangodb_agency_supervision_failed_server_total{})) {}
+      _supervision_failed_server_counter(metricsRegistry.add(
+          arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() { shutdown(); }
 
@@ -2345,21 +2346,20 @@ void Supervision::deleteBrokenDatabase(AgentInterface* agent,
   }
 }
 
-void Supervision::deleteBrokenCollection(AgentInterface* agent,
-                                         std::string const& database,
-                                         std::string const& collection,
-                                         std::string const& coordinatorID,
-                                         uint64_t rebootID,
-                                         bool coordinatorFound) {
+void Supervision::deleteBrokenCollection(
+    AgentInterface* agent, std::string const& database,
+    std::string const& collection, std::string const& coordinatorID,
+    std::vector<std::string> const& additionalCollections, uint64_t rebootID,
+    bool coordinatorFound) {
   velocypack::Builder envelope;
   {
     VPackArrayBuilder trxs(&envelope);
     {
-      std::string collection_path = plan()
-                                        ->collections()
-                                        ->database(database)
-                                        ->collection(collection)
-                                        ->str();
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
 
       VPackArrayBuilder trx(&envelope);
       {
@@ -2371,19 +2371,28 @@ void Supervision::deleteBrokenCollection(AgentInterface* agent,
         }
         // delete the collection from Plan/Collections/<db>
         {
-          VPackObjectBuilder o(&envelope, collection_path);
+          VPackObjectBuilder o(&envelope, collectionPath);
+          envelope.add("op", VPackValue("delete"));
+        }
+        for (auto const& additionalCollection : additionalCollections) {
+          std::string path = plan()
+                                 ->collections()
+                                 ->database(database)
+                                 ->collection(additionalCollection)
+                                 ->str();
+          VPackObjectBuilder o(&envelope, path);
           envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this collection is still in Plan and is building
         VPackObjectBuilder preconditions(&envelope);
-        envelope.add(collection_path + "/" + StaticStrings::AttrIsBuilding,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrIsBuilding,
                      VPackValue(true));
         envelope.add(
-            collection_path + "/" + StaticStrings::AttrCoordinatorRebootId,
+            collectionPath + "/" + StaticStrings::AttrCoordinatorRebootId,
             VPackValue(rebootID));
-        envelope.add(collection_path + "/" + StaticStrings::AttrCoordinator,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrCoordinator,
                      VPackValue(coordinatorID));
 
         {
@@ -2557,11 +2566,24 @@ void Supervision::checkBrokenCollections() {
             LOG_TOPIC("fe523", INFO, Logger::SUPERVISION)
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
-                << dbpair.first;
+                << dbpair.first << "/" << collectionPair.first;
+            // account for smart edge collections and delete their
+            // shadowCollections as well
+            std::vector<std::string> shadowCollections;
+            if (auto shadowCols =
+                    collectionPair.second->get("shadowCollections")) {
+              if (auto arr = shadowCols->getArray()) {
+                for (Node::VPackStringType const& colName : *arr) {
+                  shadowCollections.emplace_back(
+                      std::to_string(colName.getNumericValue<uint64_t>()));
+                }
+              }
+            }
+
             // delete this collection
             deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
-                                   ev.coordinatorId, ev.coordinatorRebootId,
-                                   ev.coordinatorFound);
+                                   ev.coordinatorId, shadowCollections,
+                                   ev.coordinatorRebootId, ev.coordinatorFound);
           });
 
       // also check all indexes of the collection to see if they are abandoned
@@ -2861,7 +2883,8 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     -> arangodb::agency::envelope try {
   if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
     auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-    return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+    return replication2::agency::methods::deleteReplicatedLogTrx(
+        std::move(envelope), dbName, logId);
   }
 
   std::optional<replication2::agency::Log> maybeLog;
@@ -3194,8 +3217,8 @@ void Supervision::cleanupReplicatedLogs() {
 
       // delete plan and target
       auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-      envelope =
-          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+      envelope = replication2::agency::methods::deleteReplicatedLogTrx(
+          std::move(envelope), dbName, logId);
     }
   }
 
@@ -3652,7 +3675,7 @@ void Supervision::checkUndoLeaderChangeActions() {
             Job::getReplicatedStateId(snapshot(), *database, *collection, id);
         if (!stateId.has_value()) {
           return Result{TRI_ERROR_BAD_PARAMETER,
-                        fmt::format("replicated log with ID {} missing", id)};
+                        std::format("replicated log with ID {} missing", id)};
         }
 
         return UndoAction{UndoAction::UndoMoveShardR2{
@@ -3684,7 +3707,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       auto logId = replication2::LogId::fromString(id);
       if (!logId.has_value()) {
         auto result = Result{TRI_ERROR_BAD_PARAMETER,
-                             fmt::format("Malformed replicated log ID {}", id)};
+                             std::format("Malformed replicated log ID {}", id)};
         TRI_ASSERT(false) << result;
         return result;
       }

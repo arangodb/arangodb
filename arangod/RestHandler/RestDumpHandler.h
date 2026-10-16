@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,7 +35,8 @@ class RocksDBDumpManager;
 
 class RestDumpHandler : public RestVocbaseBaseHandler {
  public:
-  RestDumpHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestDumpHandler(application_features::ApplicationServer&, GeneralRequest*,
+                  GeneralResponse*);
 
   char const* name() const override final { return "RestDumpHandler"; }
 

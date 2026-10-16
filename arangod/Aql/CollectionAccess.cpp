@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionAccess.h"
@@ -33,8 +32,7 @@
 
 #include <optional>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 auto CollectionAccess::collection() const noexcept -> aql::Collection const* {
   return _collection;
@@ -122,3 +120,5 @@ auto CollectionAccess::getRawSatelliteOf() const
     -> std::optional<ExecutionNodeId> {
   return _isSatelliteOf;
 }
+
+}  // namespace arangodb::aql

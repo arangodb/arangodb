@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const arangosh = require('@arangodb/arangosh');
@@ -479,6 +477,7 @@ function sanitizeStats (stats) {
   delete stats.intermediateCommits;
   delete stats.seeks;
   delete stats.documentLookups;
+  delete stats.searchParallelism;
   return stats;
 }
 

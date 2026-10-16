@@ -18,31 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Actions/ActionFeatureOptions.h"
 
 namespace arangodb {
 namespace application_features {
 class ClusterFeaturePhase;
 }
 
-class ActionFeature final : public ArangodFeature {
+class ActionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Action"; }
 
-  explicit ActionFeature(Server& server);
+  explicit ActionFeature(application_features::ApplicationServer& server,
+                         ActionFeatureOptions options);
+  explicit ActionFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void unprepare() override final;
 
   bool allowUseDatabase() const;
 
  private:
-  bool _allowUseDatabase;
+  ActionFeatureOptions _options;
 };
 
 }  // namespace arangodb

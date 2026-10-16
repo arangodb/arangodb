@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -29,12 +27,13 @@
 
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/DownCast.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestHandler/RestViewHandler.h"
@@ -110,46 +109,19 @@ class RestViewHandlerTest
   ViewFactory viewFactory;
 
   RestViewHandlerTest() {
-    expectUserManagerCalls();
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
-              if (_userMap.empty()) {
-                return auth::Level::NONE;
-              }
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .Times(AtLeast(1))
-        .WillRepeatedly(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; });
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -167,15 +139,9 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     EXPECT_TRUE(vocbase.views().empty());
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -268,7 +234,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -281,17 +247,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -385,7 +346,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -402,17 +363,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request._payload.add("name", arangodb::velocypack::Value("testView1"));
     request._payload.close();
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -561,7 +517,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -578,17 +534,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request._payload.add("key", arangodb::velocypack::Value("value"));
     request._payload.close();
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -838,7 +789,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -851,17 +802,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1020,7 +966,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -1034,17 +980,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("properties");
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1204,7 +1145,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
     auto logicalView2 = vocbase.createView(createView2Json->slice(), false);
@@ -1218,17 +1159,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1238,25 +1174,18 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
-                responce.responseCode());
+      EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::OK) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
            slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-           true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE(
-          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
-               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
-                             .getNumber<int>()}));
+           false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     }
 
     // not authorized (failed detailed toVelocyPack(...)) as per

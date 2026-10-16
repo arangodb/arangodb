@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -35,8 +34,13 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
-const toArgv = require('internal').toArgv;
-const download = require('internal').download;
+const inst = require('@arangodb/testutils/instance');
+const {
+  toArgv,
+  download,
+  time
+}  = require('internal');
+
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
@@ -65,7 +69,7 @@ function getTestCode(file, options, instanceManager) {
   }
   let ret = '';
   if (instanceManager != null) {
-    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};require('@arangodb/test-helper').pimpInstanceManager();\n`;
+    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};\n`;
   }
   return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
@@ -137,25 +141,28 @@ class runOnArangodRunner extends testRunnerBase{
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "onRemoteArangod";
+    this.httpOptions = {};
+  }
+  preRun() {
+      this.httpOptions = inst.makeAuthorizationHeaders(this.options, this.instanceManager.jwt_secret);
+      this.httpOptions.method = 'POST';
+
+      this.httpOptions.timeout = this.options.oneTestTimeout;
+      if (this.options.isSan) {
+        this.httpOptions.timeout *= 2;
+      }
+      if (this.options.valgrind) {
+        this.httpOptions.timeout *= 2;
+      }
+
+      this.httpOptions.returnBodyOnError = true;
   }
   runOneTest(file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
-      httpOptions.method = 'POST';
-
-      httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isSan) {
-        httpOptions.timeout *= 2;
-      }
-      if (this.options.valgrind) {
-        httpOptions.timeout *= 2;
-      }
-
-      httpOptions.returnBodyOnError = true;
       const reply = download(this.instanceManager.url + '/_admin/execute?returnAsJSON=true',
                              testCode,
-                             httpOptions);
+                             this.httpOptions);
       if (!reply.error && reply.code === 200) {
         return JSON.parse(reply.body);
       } else {
@@ -211,6 +218,7 @@ class runInArangoshRunner extends testRunnerBase {
   runOneTest(file) {
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
+    args['server.connection-timeout'] = this.options.httpTimeout;
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -273,8 +281,10 @@ class runLocalInArangoshRunner extends testRunnerBase {
       };
     }
 
+    let startTime = time();
     try {
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      arango.timeout(this.options.httpTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
@@ -283,14 +293,19 @@ class runLocalInArangoshRunner extends testRunnerBase {
           forceTerminate: true,
           status: false,
           message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
+          duration: (time() - startTime) * 1000,
         };
       }
       if (result === undefined) {
         return {
           timeout: true,
           status: false,
-          message: "test didn't return any result at all!"
+          message: "test didn't return any result at all!",
+          duration: (time() - startTime) * 1000,
         };
+      }
+      if (!result.hasOwnProperty('duration')) {
+        result.duration = (time() - startTime) * 1000;
       }
       return result;
     } catch (ex) {
@@ -303,7 +318,8 @@ class runLocalInArangoshRunner extends testRunnerBase {
         forceTerminate: true,
         status: false,
         message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
+        stack: ex.stack,
+        duration: (time() - startTime) * 1000,
       };
     }
   }
@@ -362,6 +378,55 @@ class shellv8Runner extends runLocalInArangoshRunner {
 }
 
 
+class runWithAllureReport extends testRunnerBase {
+  getAllureResults(testResultsDir, results, status, defaultName) {
+    // Allure containers describe fixtures, which can be shared by many tests.
+    // Test results, rather than fixture lifetimes, define the test cases.
+    const allResults = new Map();
+    fs.list(testResultsDir).filter(file => file.endsWith('-result.json')).sort().forEach(file => {
+      const testResult = JSON.parse(fs.read(fs.join(testResultsDir, file)));
+      allResults.set(testResult.uuid, testResult);
+    });
+
+    results.total = allResults.size;
+    results.failed = 0;
+    if (!results.hasOwnProperty('timeout')) {
+      results.timeout = false;
+    }
+    if (allResults.size === 0) {
+      results.status = false;
+      results.failed = 1;
+      results.message += `\nAllureRunner: did not find any test results in ${testResultsDir}`;
+      return;
+    }
+
+    let count = 0;
+    allResults.forEach(testResult => {
+      const passed = testResult.status === 'passed' || testResult.status === 'skipped';
+      const details = testResult.statusDetails || {};
+      const message = [details.message, details.trace].filter(part => part).join('\n\n');
+      // Keep parameterized tests with identical names separate, and avoid keys
+      // reserved for result metadata such as "status" or "message".
+      const name = `${defaultName}_${count++}: ${testResult.fullName || testResult.name || testResult.uuid}`;
+      results[name] = {
+        duration: testResult.stop - testResult.start,
+        status: passed,
+        skipped: testResult.status === 'skipped',
+        message: message || (passed ? '' : `Allure test status: ${testResult.status || 'unknown'}`)
+      };
+      if (!passed) {
+        results.failed++;
+      }
+    });
+    results.status = status && results.failed === 0;
+    if (!status && results.failed === 0 && !results.message) {
+      results.message = 'Test process failed although Allure reported no failed tests.';
+    }
+  }
+}
+
+
+
 exports.runOnArangodRunner = runOnArangodRunner;
 exports.runInArangoshRunner = runInArangoshRunner;
 exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
@@ -369,3 +434,4 @@ exports.shellv8Runner = shellv8Runner;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
 exports.getTestCode = getTestCode;
+exports.runWithAllureReport = runWithAllureReport;

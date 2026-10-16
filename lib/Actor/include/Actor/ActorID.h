@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -56,7 +54,7 @@ auto inspect(Inspector& f, ActorID& x) {
 }  // namespace arangodb::actor
 
 template<>
-struct fmt::formatter<arangodb::actor::ActorID>
+struct std::formatter<arangodb::actor::ActorID>
     : arangodb::inspection::inspection_formatter {};
 
 namespace std {

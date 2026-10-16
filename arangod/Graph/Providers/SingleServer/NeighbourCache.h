@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/Providers/SingleServer/ExpansionInfo.h"
 #include "Graph/Providers/TypeAliases.h"
 

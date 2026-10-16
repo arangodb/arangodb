@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -28,7 +27,7 @@
 
 namespace arangodb::containers {
 
-using Id = void*;
+using Id = void const*;
 
 template<typename Data>
 struct IndexedForest;
@@ -54,7 +53,7 @@ struct Forest {
     }
     return _node[position->second];
   }
-  auto index_by_awaitee() -> IndexedForest<Node> {
+  auto index_by_parent() -> IndexedForest<Node> {
     std::vector<std::vector<Id>> children{_parent.size(), std::vector<Id>{}};
     for (auto const& [id, position] : _position) {
       auto parent_position = _position.find(_parent[position]);
@@ -99,8 +98,8 @@ template<typename Node>
 struct ForestWithRoots : Forest<Node> {
   ForestWithRoots(Forest<Node> forest, std::vector<Id> roots)
       : Forest<Node>{std::move(forest)}, _roots{std::move(roots)} {}
-  auto index_by_awaitee() -> IndexedForestWithRoots<Node> {
-    return IndexedForestWithRoots{Forest<Node>::index_by_awaitee(),
+  auto index_by_parent() -> IndexedForestWithRoots<Node> {
+    return IndexedForestWithRoots{Forest<Node>::index_by_parent(),
                                   std::move(_roots)};
   }
   std::vector<Id> _roots;

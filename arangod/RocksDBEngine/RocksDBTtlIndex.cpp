@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTtlIndex.h"
@@ -63,6 +62,9 @@ void RocksDBTtlIndex::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
+  // We specifically want RocksDBIndex here, not the RocksDBVPackIndex that is
+  // next-in-line in the inheritance tree.
+  // NOLINTNEXTLINE(bugprone-parent-virtual-call)
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.add(StaticStrings::IndexEstimates, VPackValue(hasEstimates()));

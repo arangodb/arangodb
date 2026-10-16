@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockUtils.h"
@@ -27,9 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
+namespace arangodb::aql {
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
@@ -60,3 +57,5 @@ SharedAqlItemBlockPtr itemBlock::concatenate(
 
   return resultBlock;
 }
+
+}  // namespace arangodb::aql

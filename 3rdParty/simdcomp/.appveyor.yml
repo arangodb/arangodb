@@ -1,0 +1,78 @@
+
+version: "{branch}.build.{build}"
+
+clone_folder:  c:\projects\simdcomp
+
+#cache:
+#        c:\build-cache -> .appveyor.yml
+
+environment:
+        matrix:
+                - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+                  ARCH: x64
+# looks like vc14 has trouble with code on x86, at least on the AppVeyor image
+#                - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+#                  ARCH: x86
+                - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+                  ARCH: x64
+                - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+                  ARCH: x86
+
+build_script:
+        ps: |
+                cd c:\projects\simdcomp
+                echo "" | Out-File -Encoding "ASCII" task.bat
+                if ('Visual Studio 2015' -eq $env:APPVEYOR_BUILD_WORKER_IMAGE) {
+                        $VC = 14;
+                        $vs_shell_cmd = 'call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" ' + $env:ARCH + ' 2>&1'
+                } elseif ('Visual Studio 2017' -eq $env:APPVEYOR_BUILD_WORKER_IMAGE) {
+                        $VC = 15;
+                        if ('x64' -eq $env:ARCH) {
+                                $vs_shell_cmd = 'call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" 2>&1'
+                        } else {
+                                $vs_shell_cmd = 'call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat" 2>&1'
+                        }
+                }
+                mkdir 'c:\tmp_pack'
+                echo $vs_shell_cmd | Out-File -Encoding "ASCII" -Append task.bat
+                $move_cmd = 'move *.zip c:\tmp_pack'
+                if ($VC -gt 14) {
+                        # these won't be tested, just build and upload artifact, vc15 only
+                        $cmd = 'nmake /nologo /f makefile.vc AVX512=yes PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' 2>&1'
+                        echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        $cmd = 'nmake /nologo /f makefile.vc AVX512=yes PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' pack 2>&1'
+                        echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        echo $move_cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        echo 'nmake /nologo /f makefile.vc clean' | Out-File -Encoding "ASCII" -Append task.bat
+                        $cmd = 'nmake /nologo /f makefile.vc AVX2=yes PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' 2>&1'
+                        echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        $cmd = 'nmake /nologo /f makefile.vc AVX2=yes PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' pack 2>&1'
+                        echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        echo $move_cmd | Out-File -Encoding "ASCII" -Append task.bat
+                        echo 'nmake /nologo /f makefile.vc clean' | Out-File -Encoding "ASCII" -Append task.bat
+                }
+                $cmd = 'nmake /nologo /f makefile.vc PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' 2>&1'
+                echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                $cmd = 'nmake /nologo /f makefile.vc PKG_VERSION=' + $env:APPVEYOR_REPO_COMMIT.substring(0, 8) + ' MACHINE=' + $env:ARCH + ' pack 2>&1'
+                echo $cmd | Out-File -Encoding "ASCII" -Append task.bat
+                echo $move_cmd | Out-File -Encoding "ASCII" -Append task.bat
+                $here = (Get-Item -Path "." -Verbose).FullName
+                $task = $here + '\task.bat'
+                & $task
+
+after_build:
+        ps: |
+                Get-ChildItem 'c:\tmp_pack' -Filter *.zip |
+                Foreach-Object {
+                        Push-AppveyorArtifact $_.FullName
+                }
+
+test_script:
+        ps: |
+                cd c:\projects\simdcomp
+                echo "" | Out-File -Encoding "ASCII" task.bat
+                $here = (Get-Item -Path "." -Verbose).FullName
+                echo '.\unit.exe' | Out-File -Encoding "ASCII" -Append task.bat
+                $task = $here + '\task.bat'
+                & $task
+

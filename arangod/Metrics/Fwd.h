@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -45,5 +44,7 @@ template<typename Scale>
 class Histogram;
 
 class MetricsFeature;
+
+struct IRegistry;
 
 }  // namespace arangodb::metrics

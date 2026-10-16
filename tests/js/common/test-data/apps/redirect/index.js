@@ -20,4 +20,12 @@ router.post('/second-redirection', function (req, res) {
   return res;
 });
 
+router.get('/redirectloop/:count', function (req, res) {
+  res.set('location', `/test-redirect/redirectloop/${Number(req.pathParams.count)+1}`);
+  res.status(302);
+  return res;
+});
+
+
+
 module.context.use(router);

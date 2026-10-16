@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -232,6 +230,17 @@ exports.jwtAlgorithms = {
   HS512: {
     sign: jwtHmacSigner('sha512'),
     verify: jwtHmacVerifier('sha512')
+  },
+  ES256: {
+    sign: function (key, segments) {
+      const message = segments.join('.');
+      return jwtUrlEncode(internal.es256sign(key, message));
+    },
+    verify: function (key, segments) {
+      const message = segments.slice(0, 2).join('.');
+      let signatureBase64 = jwtUrlEncode(new Buffer(segments[2], "hex").toString("base64"));
+      return internal.es256verify(key, message, signatureBase64);
+    }
   },
   none: {
     sign: function (key) {

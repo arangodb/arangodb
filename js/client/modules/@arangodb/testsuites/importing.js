@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
@@ -435,7 +434,7 @@ const impTodos = [{
   create: undefined
 }];
 
-class importRunner extends trs.runInArangoshRunner {
+class importRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";
@@ -482,6 +481,9 @@ class importRunner extends trs.runInArangoshRunner {
           // if status === false, we make true out of it
           // if status === true, we make false out of it
           result[impTodo.id].status = !result[impTodo.id].status;
+          if (result[impTodo.id].status) {
+            result[impTodo.id].message = "";
+          }
         }
 
         if (result[impTodo.id].status !== true && !this.options.force) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlTransaction.h"
@@ -34,8 +33,7 @@
 #include "Enterprise/Transaction/IgnoreNoAccessAqlTransaction.h"
 #endif
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> transactionContext,
@@ -97,3 +95,5 @@ Result AqlTransaction::processCollection(aql::Collection& collection) {
   DataSourceId cid = resolver()->getCollectionId(collection.name());
   return addCollection(cid, collection.name(), collection.accessType());
 }
+
+}  // namespace arangodb::aql

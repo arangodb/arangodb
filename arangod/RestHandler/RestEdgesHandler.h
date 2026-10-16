@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 #include <velocypack/Builder.h>
 
@@ -40,7 +40,8 @@ struct Variable;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  explicit RestEdgesHandler(application_features::ApplicationServer&,
+                            GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

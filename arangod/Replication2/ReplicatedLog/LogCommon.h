@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,6 +48,8 @@
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>
 #include <Containers/ImmerMemoryPolicy.h>
+
+#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
 
 namespace arangodb::velocypack {
 class Builder;
@@ -261,26 +262,6 @@ auto inspect(Inspector& f, ParticipantFlags& x) {
 }
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
-
-// These settings are initialised by the ReplicatedLogFeature based on command
-// line arguments
-struct ReplicatedLogGlobalSettings {
- public:
-  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 *
-                                                                       1024};
-  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
-
-  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{
-      1024 * 1024};
-  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 *
-                                                                        1024};
-  static inline constexpr std::size_t defaultThresholdLogCompaction{1000};
-
-  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
-  std::size_t _thresholdRocksDBWriteBatchSize{
-      defaultThresholdRocksDBWriteBatchSize};
-  std::size_t _thresholdLogCompaction{defaultThresholdLogCompaction};
-};
 
 namespace replicated_log {
 /*
@@ -585,11 +566,11 @@ struct velocypack::Extractor<replication2::LogId> {
 }  // namespace arangodb
 
 template<>
-struct fmt::formatter<arangodb::replication2::LogId>
-    : fmt::formatter<arangodb::basics::Identifier> {};
+struct std::formatter<arangodb::replication2::LogId>
+    : std::formatter<arangodb::basics::Identifier> {};
 
 template<>
-struct fmt::formatter<arangodb::replication2::GlobalLogIdentifier>
+struct std::formatter<arangodb::replication2::GlobalLogIdentifier>
     : arangodb::inspection::inspection_formatter {};
 
 template<>

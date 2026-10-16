@@ -1,0 +1,53 @@
+_hwy = get_path_info("hwy", "abspath")
+
+hwy_public = [
+  # Public
+  "$_hwy/aligned_allocator.h",
+  "$_hwy/base.h",
+  "$_hwy/cache_control.h",
+  "$_hwy/per_target.h",
+  "$_hwy/print.h",
+
+  # Public, textual
+  "$_hwy/foreach_target.h",
+  "$_hwy/highway_export.h",
+  "$_hwy/highway.h",
+  "$_hwy/print-inl.h",
+
+  # Private
+  "$_hwy/detect_compiler_arch.h",
+  "$_hwy/detect_targets.h",
+  "$_hwy/targets.h",
+
+  # Private, textual:
+  "$_hwy/ops/arm_neon-inl.h",
+  "$_hwy/ops/arm_sve-inl.h",
+  "$_hwy/ops/emu128-inl.h",
+  "$_hwy/ops/generic_ops-inl.h",
+  "$_hwy/ops/scalar-inl.h",
+  "$_hwy/ops/set_macros-inl.h",
+  "$_hwy/ops/shared-inl.h",
+  "$_hwy/ops/x86_128-inl.h",
+  "$_hwy/ops/x86_256-inl.h",
+  "$_hwy/ops/x86_512-inl.h",
+]
+
+hwy_sources = [
+  "$_hwy/aligned_allocator.cc",
+  "$_hwy/per_target.cc",
+  "$_hwy/print.cc",
+  "$_hwy/targets.cc",
+]
+
+hwy_contrib_public = [
+  "$_hwy/contrib/algo/copy-inl.h",
+  "$_hwy/contrib/algo/find-inl.h",
+  "$_hwy/contrib/algo/transform-inl.h",
+  "$_hwy/contrib/dot/dot-inl.h",
+  "$_hwy/contrib/image/image.h",
+  "$_hwy/contrib/math/math-inl.h",
+]
+
+hwy_contrib_sources = [
+  "$_hwy/contrib/image/image.cc",
+]

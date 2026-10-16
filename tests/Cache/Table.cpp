@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -27,19 +25,16 @@
 #include <cstdint>
 #include <memory>
 
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
-#include "RestServer/SharedPRNGFeature.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace tests::mocks;
 
 TEST(CacheTableTest, test_static_allocation_size_method) {
   for (std::uint32_t i = Table::kMinLogSize; i <= Table::kMaxLogSize; i++) {
@@ -54,11 +49,9 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  CacheOptions co;
-  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  basics::SharedPRNG prng;
+  CacheOptions co(16ULL * 1024ULL * 1024ULL);
+  Manager manager(prng, postFn, co);
 
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
     auto table = std::make_shared<Table>(i, &manager);
@@ -76,11 +69,9 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  CacheOptions co;
-  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  basics::SharedPRNG prng;
+  CacheOptions co(16ULL * 1024ULL * 1024ULL);
+  Manager manager(prng, postFn, co);
 
   auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
   ASSERT_NE(table.get(), nullptr);
@@ -107,8 +98,8 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
 class CacheTableMigrationTest : public ::testing::Test {
  protected:
   MockScheduler scheduler;
-  MockMetricsServer server;
   CacheOptions co;
+  basics::SharedPRNG prng;
   Manager manager;
   std::shared_ptr<Table> small;
   std::shared_ptr<Table> large;
@@ -116,9 +107,9 @@ class CacheTableMigrationTest : public ::testing::Test {
 
   CacheTableMigrationTest()
       : scheduler(4),
-        co{.cacheSize = 16ULL * 1024ULL * 1024ULL},
+        co(16ULL * 1024ULL * 1024ULL),
         manager(
-            server.getFeature<SharedPRNGFeature>(),
+            prng,
             [this](std::function<void()> fn) -> bool {
               scheduler.post(fn);
               return true;

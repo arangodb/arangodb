@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCache.h"
@@ -44,10 +43,12 @@ using namespace arangodb::consensus;
 DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
               "Current number of entries in agency cache callbacks table");
 
-AgencyCache::AgencyCache(ArangodServer& server,
+AgencyCache::AgencyCache(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
-    : ServerThread(server, "AgencyCache"),
+    // agency polling only; callbacks do not require an ExecContext
+    // (and if one needs it in the future, should bring their own)
+    : ServerThread(server, "AgencyCache", nullptr),
       _commitIndex(0),
       _readDB("readDB"),
       _shutdownCode(shutdownCode),
@@ -513,8 +514,8 @@ void AgencyCache::run() {
 void AgencyCache::triggerWaiting(index_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
 
-  auto promisesToResolve =
-      std::vector<std::shared_ptr<futures::Promise<Result>>>{};
+  auto promisesToResolve = std::vector<futures::Promise<Result>>{};
+  auto resolveResult = this->isStopping() ? _shutdownCode : TRI_ERROR_NO_ERROR;
   {
     std::lock_guard w(_waitLock);
 
@@ -524,12 +525,13 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
         break;
       }
       auto&& [promise, executor] = pit->second;
-      auto pp = std::make_shared<futures::Promise<Result>>(std::move(promise));
       if (executor == Executor::Scheduler && scheduler && !this->isStopping()) {
         scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                         [pp] { pp->setValue(Result()); });
+                         [resolveResult, pp = std::move(promise)]() mutable {
+                           pp.setValue(resolveResult);
+                         });
       } else {
-        promisesToResolve.emplace_back(std::move(pp));
+        promisesToResolve.emplace_back(std::move(promise));
       }
       pit = _waiting.erase(pit);
     }
@@ -537,8 +539,8 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
   // Resolving promises without posting them on the scheduler can lead to
   // deadlocks. At least release the mutex before, otherwise deadlocks are at
   // least in our tests guaranteed.
-  for (auto const& pp : promisesToResolve) {
-    pp->setValue(Result(_shutdownCode));
+  for (auto& pp : promisesToResolve) {
+    pp.setValue(resolveResult);
   }
 }
 

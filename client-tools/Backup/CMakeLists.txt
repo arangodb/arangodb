@@ -2,7 +2,9 @@ if (USE_ENTERPRISE)
 
   add_executable(${BIN_ARANGOBACKUP}
     ${ProductVersionFiles_arangobackup}
+    ArangoBackupServer.cpp
     BackupFeature.cpp
+    BackupOptionsProvider.cpp
     arangobackup.cpp
   )
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
@@ -16,6 +18,9 @@ if (USE_ENTERPRISE)
     clienttools_utils
     fuerte
   )
+  if (USE_JEMALLOC)
+    target_link_libraries(${BIN_ARANGOBACKUP} jemalloc)
+  endif ()
 
   install(
     TARGETS ${BIN_ARANGOBACKUP}
@@ -27,10 +32,6 @@ if (USE_ENTERPRISE)
 
   # use ICU 64 for the client tools
   add_dependencies(${BIN_ARANGOBACKUP} iculegacy_build)
-
-  if (USE_JEMALLOC)
-    add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
-  endif ()
 
   add_dependencies(${BIN_ARANGOBACKUP} man)
 endif () # USE_ENTERPRISE

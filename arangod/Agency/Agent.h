@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,11 +32,11 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
+#include "Utils/Thread.h"
 #include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <chrono>
@@ -56,12 +55,11 @@ namespace arangodb::consensus {
 
 class Supervision;
 
-class Agent final : public arangodb::ServerThread<ArangodServer>,
-                    public AgentInterface {
+class Agent final : public arangodb::ServerThread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
-        config_t const&);
+  Agent(application_features::ApplicationServer& server,
+        metrics::IRegistry& metricsRegistry, config_t const&);
 
   /// @brief Clean up
   ~Agent();

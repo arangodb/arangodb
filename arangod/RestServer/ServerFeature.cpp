@@ -18,16 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -35,11 +35,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -50,117 +47,24 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(Server& server, int* res)
-    : ArangodFeature{server, *this},
-      _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+ServerFeature::ServerFeature(ApplicationServer& server, int* res)
+    : ServerFeature(server, res, ServerFeatureOptions{}) {}
+
+ServerFeature::ServerFeature(ApplicationServer& server, int* res,
+                             ServerFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
 }
 
-void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--console",
-                  "Start the server with a JavaScript emergency console.",
-                  new BooleanParameter(&_console))
-      .setLongDescription(R"(In this exclusive emergency mode, all networking
-and HTTP interfaces of the server are disabled. No requests can be made to the
-server in this mode, and the only way to work with the server in this mode is by
-using the emergency console.
-
-The server cannot be started in this mode if it is already running in this or
-another mode.)");
-
-  options->addSection("server", "server features");
-
-  options->addOption(
-      "--server.rest-server", "Start a REST server.",
-      new BooleanParameter(&_restServer),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--server.validate-utf8-strings",
-      "Perform UTF-8 string validation for incoming JSON and VelocyPack "
-      "data.",
-      new BooleanParameter(&_validateUtf8Strings),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.script", "Run the script and exit.",
-                     new VectorParameter<StringParameter>(&_scripts));
-
-  // add obsolete MMFiles WAL options (obsoleted in 3.7)
-  options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
-  options->addObsoleteOption(
-      "--wal.allow-oversize-entries",
-      "allow entries that are bigger than '--wal.logfile-size'", false);
-  options->addObsoleteOption("--wal.use-mlock",
-                             "mlock WAL logfiles in memory (may require "
-                             "elevated privileges or limits)",
-                             false);
-  options->addObsoleteOption("--wal.directory", "logfile directory", true);
-  options->addObsoleteOption(
-      "--wal.historic-logfiles",
-      "maximum number of historic logfiles to keep after collection", true);
-  options->addObsoleteOption(
-      "--wal.ignore-logfile-errors",
-      "ignore logfile errors. this will read recoverable data from corrupted "
-      "logfiles but ignore any unrecoverable data",
-      false);
-  options->addObsoleteOption(
-      "--wal.ignore-recovery-errors",
-      "continue recovery even if re-applying operations fails", false);
-  options->addObsoleteOption("--wal.flush-timeout",
-                             "flush timeout (in milliseconds)", true);
-  options->addObsoleteOption("--wal.logfile-size",
-                             "size of each logfile (in bytes)", true);
-  options->addObsoleteOption("--wal.open-logfiles",
-                             "maximum number of parallel open logfiles", true);
-  options->addObsoleteOption("--wal.reserve-logfiles",
-                             "maximum number of reserve logfiles to maintain",
-                             true);
-  options->addObsoleteOption("--wal.slots", "number of logfile slots to use",
-                             true);
-  options->addObsoleteOption(
-      "--wal.sync-interval",
-      "interval for automatic, non-requested disk syncs (in milliseconds)",
-      true);
-  options->addObsoleteOption(
-      "--wal.throttle-when-pending",
-      "throttle writes when at least this many operations are waiting for "
-      "collection (set to 0 to deactivate write-throttling)",
-      true);
-  options->addObsoleteOption(
-      "--wal.throttle-wait",
-      "maximum wait time per operation when write-throttled (in milliseconds)",
-      true);
-}
-
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  int count = 0;
-
-  if (_console) {
-    _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_scripts.empty()) {
-    _operationMode = OperationMode::MODE_SCRIPT;
-    ++count;
-  }
-
-  if (1 < count) {
-    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
-        << "cannot combine '--console', '--javascript.unit-tests' and "
-        << "'--javascript.script'";
-    FATAL_ERROR_EXIT();
-  }
-
+void ServerFeature::prepare() {
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
-
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
+  if (operationMode() == OperationMode::MODE_SERVER && !_options.restServer &&
       !db.upgrade() &&
-      !options->processingResult().touched("rocksdb.verify-sst")) {
+      !server().options()->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
@@ -169,69 +73,42 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   bool supportsV8 = false;
 #ifdef USE_V8
-  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
+  V8DealerFeature* v8dealer = server().hasFeature<V8DealerFeature>()
+                                  ? &server().getFeature<V8DealerFeature>()
+                                  : nullptr;
 
-  if (v8dealer.isEnabled()) {
-    if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumExecutors(2);
+  if (v8dealer != nullptr && v8dealer->isEnabled()) {
+    if (operationMode() == OperationMode::MODE_SCRIPT) {
+      v8dealer->setMinimumExecutors(2);
     } else {
-      v8dealer.setMinimumExecutors(1);
+      v8dealer->setMinimumExecutors(1);
     }
     supportsV8 = true;
   }
 #endif
-  if (!supportsV8 && _operationMode != OperationMode::MODE_SERVER) {
+  if (!supportsV8 && operationMode() != OperationMode::MODE_SERVER) {
     LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
   }
 
-  auto disableDeamonAndSupervisor = [&]() {
-    if constexpr (Server::contains<DaemonFeature>()) {
-      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
-    }
-    if constexpr (Server::contains<SupervisorFeature>()) {
-      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
-    }
-  };
-
-  if (!_restServer) {
-    server().disableFeatures(std::array{
-        Server::id<HttpEndpointProvider>(),
-        Server::id<GeneralServerFeature>(),
-        Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(),
-    });
-    disableDeamonAndSupervisor();
-
-    if (!options->processingResult().touched("replication.auto-start")) {
-      // turn off replication applier when we do not have a rest server
-      // but only if the config option is not explicitly set (the recovery
-      // test want the applier to be enabled for testing it)
-      ReplicationFeature& replicationFeature =
-          server().getFeature<ReplicationFeature>();
-      replicationFeature.disableReplicationApplier();
-    }
-  }
-
 #ifdef USE_V8
-  if (_operationMode == OperationMode::MODE_CONSOLE) {
-    disableDeamonAndSupervisor();
-    v8dealer.setMinimumExecutors(2);
+  if (operationMode() == OperationMode::MODE_CONSOLE) {
+    // --console requires javascriptRequestedViaOptions(), so it's registered
+    TRI_ASSERT(v8dealer != nullptr);
+    v8dealer->setMinimumExecutors(2);
   }
 #endif
 
-  if (_operationMode == OperationMode::MODE_SERVER ||
-      _operationMode == OperationMode::MODE_CONSOLE) {
+  if (operationMode() == OperationMode::MODE_SERVER ||
+      operationMode() == OperationMode::MODE_CONSOLE) {
     server().getFeature<ShutdownFeature>().disable();
   }
-}
 
-void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
-      _validateUtf8Strings;
+      _options.validateUtf8Strings;
 }
 
 void ServerFeature::start() {
@@ -239,7 +116,7 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
-  switch (_operationMode) {
+  switch (operationMode()) {
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;

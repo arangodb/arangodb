@@ -1,7 +1,9 @@
 add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
   arangobench.cpp
+  ArangoBenchServer.cpp
   BenchFeature.cpp
+  BenchOptionsProvider.cpp
   BenchmarkOperation.cpp
   testcases/helpers.cpp
 )
@@ -14,6 +16,9 @@ target_link_libraries(${BIN_ARANGOBENCH}
   arango_shell
   clienttools_utils
 )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOBENCH} jemalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGOBENCH}
@@ -25,9 +30,5 @@ add_dependencies(${BIN_ARANGOBENCH} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGOBENCH} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOBENCH} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGOBENCH} man)

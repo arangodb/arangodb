@@ -1,6 +1,28 @@
 #!/bin/bash
 
 ARANGO_SOURCE="$(pwd)"
+ulimit -n 65536
+
+STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" "${ARANGO_SOURCE}/VERSIONS")
+RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+_[0-9]+" "${ARANGO_SOURCE}/VERSIONS")
+RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" "${ARANGO_SOURCE}/VERSIONS")
+ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" "${ARANGO_SOURCE}/ARANGO-VERSION")
+
+arch=$(uname -m)
+if test "$arch" == "x64" -o "$arch" == "x86_64"; then
+    arch="amd64"
+elif test "$arch" == "aarch64"; then
+    arch="arm64"
+fi
+
+if test ! -f "${ARANGO_SOURCE}/build/bin/arangodb" ; then
+    curl -s -L -o "${ARANGO_SOURCE}/build/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
+    chmod a+x "${ARANGO_SOURCE}/build/bin/arangodb"
+fi
+if test ! -f "${ARANGO_SOURCE}/build/bin/rclone-arangodb" ; then 
+    curl -s -L -o "${ARANGO_SOURCE}/build/bin/rclone-arangodb" "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+    chmod a+x "${ARANGO_SOURCE}/build/bin/rclone-arangodb"
+fi
 
 if test ! -d ../release-test-automation; then
     ( \
@@ -30,8 +52,6 @@ if test "${ARCH}" == "-x86_64"; then
 else
     ARCH="-arm64v8"
 fi
-
-
 
 VERSION=$(cat VERSION.json)
 git status
@@ -120,6 +140,7 @@ if test -n "${SAN}"; then
 fi
 # we need --init since our upgrade leans on zombies not happening:
 $DOCKER run \
+        --ulimit nofile=65536 \
        "${DOCKER_ARGS[@]}" \
        --env="ASAN_OPTIONS=${ASAN_OPTIONS}" \
        --env="LSAN_OPTIONS=${LSAN_OPTIONS}" \

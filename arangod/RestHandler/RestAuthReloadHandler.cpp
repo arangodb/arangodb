@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAuthReloadHandler.h"
@@ -35,14 +34,17 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAuthReloadHandler::RestAuthReloadHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+RestAuthReloadHandler::RestAuthReloadHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/auth/reload (exact)
 RestStatus RestAuthReloadHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminAuthReload{});
+      r.fail()) {
+    generateError(r);
     return RestStatus::DONE;
   }
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -101,7 +99,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   size_t memory() const final {
     // FIXME return in memory size
-    return stats().indexSize;
+    return getStats().indexSize;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +115,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
+  IndexType type() const final { return IndexType::IResearchLink; }
 
   char const* typeName() const final { return oldtypeName(); }
 
@@ -136,7 +134,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     friend class IResearchRocksDBLink;
 
    private:
-    IndexFactory(ArangodServer& server);
+    IndexFactory(application_features::ApplicationServer& server);
 
    public:
     bool equal(VPackSlice lhs, VPackSlice rhs,
@@ -151,7 +149,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                              TRI_vocbase_t const& vocbase) const final;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
+  static std::shared_ptr<IndexFactory> createFactory(
+      application_features::ApplicationServer&);
 };
 
 }  // namespace iresearch

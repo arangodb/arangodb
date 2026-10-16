@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 #include <fuerte/requests.h>
@@ -52,7 +51,7 @@ struct RetryableRequest {
 };
 }  // namespace network
 
-class NetworkFeature final : public ArangodFeature {
+class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   using RequestCallback = std::function<void(
       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
@@ -60,12 +59,13 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
-                 network::ConnectionPool::Config);
+  NetworkFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry, NetworkOptions options);
+  NetworkFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry,
+                 network::ConnectionPool::Config config);
   ~NetworkFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
   void beginShutdown() override;
@@ -145,7 +145,7 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metricsRegistry;
 };
 
 }  // namespace arangodb

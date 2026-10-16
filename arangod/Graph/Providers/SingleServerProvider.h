@@ -18,14 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <unordered_map>
+#include <list>
 #include "Graph/Cache/RefactoredTraverserCache.h"
+#include "Graph/Cursors/SingleServerNeighbourCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
@@ -70,6 +70,7 @@ class SingleServerProvider {
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
+  using NeighbourCursor = SingleServerNeighbourCursor<Step>;
 
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
@@ -87,10 +88,8 @@ class SingleServerProvider {
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
-  using CursorId = size_t;
-  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
-                         std::function<void(Step)> const& callback) -> bool;
-  auto addExpansionIterator(CursorId id, Step const& from) -> void;
+  auto createNeighbourCursor(Step const& step, size_t position)
+      -> SingleServerNeighbourCursor<Step>&;
   auto clear() -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge,
@@ -127,7 +126,7 @@ class SingleServerProvider {
 
   [[nodiscard]] ResourceMonitor& monitor();
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
+  [[nodiscard]] Database const& vocbase() const;
 
   aql::TraversalStats stealStats();
 
@@ -157,8 +156,7 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
-  std::unordered_map<CursorId, SingleServerNeighbourProvider<Step>>
-      _neighbourCursors;
+  std::list<SingleServerNeighbourCursor<Step>> _neighbourCursors;
   aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph

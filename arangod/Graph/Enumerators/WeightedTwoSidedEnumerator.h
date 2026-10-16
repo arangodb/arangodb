@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,7 +29,7 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathValidator.h"
-#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Queues/CursorWeightedQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/Types/VertexRef.h"
@@ -83,7 +81,8 @@ template<class ProviderType>
 class WeightedTwoSidedEnumerator {
  private:
   using Step = typename ProviderType::Step;
-  using QueueType = WeightedQueue<Step>;
+  using QueueType =
+      CursorWeightedQueue<Step, typename ProviderType::NeighbourCursor>;
   using PathStoreType = PathStore<Step>;
   using PathValidatorType =
       PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::PATH,
@@ -93,7 +92,7 @@ class WeightedTwoSidedEnumerator {
 
   enum Direction { FORWARD, BACKWARD };
 
-  using Edge = ProviderType::Step::EdgeType;
+  using Edge = typename ProviderType::Step::EdgeType;
   using EdgeSet =
       arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 

@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -65,7 +62,7 @@ class GeneralServer {
   SslServerFeature::SslContextList sslContexts();
   SSL_CTX* getSSL_CTX(size_t index);
 
-  ArangodServer& server() const;
+  application_features::ApplicationServer& server() const;
 
   Result reloadTLS();
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +35,8 @@ namespace rest {
 
 class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyCallbacksHandler(ArangodServer& server, GeneralRequest* request,
-                             GeneralResponse* response,
+  RestAgencyCallbacksHandler(application_features::ApplicationServer& server,
+                             GeneralRequest* request, GeneralResponse* response,
                              AgencyCallbackRegistry* agencyCallbackRegistry);
 
  public:

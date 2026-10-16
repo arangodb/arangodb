@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -85,7 +84,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph,
                 std::unique_ptr<Expression> pruneExpression,
@@ -96,7 +95,7 @@ class TraversalNode : public virtual GraphNode {
   ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
-  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
                 std::vector<Collection*> const& edgeColls,
                 std::vector<Collection*> const& vertexColls,
                 Variable const* inVariable, std::string vertexId,
@@ -159,6 +158,14 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
+
+  /// @brief all variables referenced by the conditions, prune and post-filter
+  /// expressions of this traversal. These are the variables whose values have
+  /// to be made available to the condition evaluation at run time (and, in the
+  /// cluster, have to be shipped to the DB servers). This is a subset of
+  /// getVariablesUsedHere(), which additionally contains the start vertex
+  /// input variable.
+  void getConditionVariables(VarSet& result) const;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;

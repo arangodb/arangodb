@@ -18,35 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Thread.h"
-#include "V8Server/V8Executor.h"
-#include "RestServer/arangod.h"
+#include "Utils/Thread.h"
 
 #include <mutex>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class V8ExecutorGuard;
 class V8LineEditor;
-}  // namespace arangodb
 
-namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final : public ServerThread<ArangodServer> {
+class ConsoleThread final : public ServerThread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
  public:
-  ConsoleThread(Server&, TRI_vocbase_t*);
+  ConsoleThread(Server&, Database*);
   ~ConsoleThread();
 
   void run() override;
@@ -60,7 +54,7 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
  private:
   void inner(V8ExecutorGuard&);
 
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
   std::atomic<bool> _userAborted;
 };
 }  // namespace arangodb

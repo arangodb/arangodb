@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 const tasks = require("@arangodb/tasks");
 
@@ -37,7 +36,11 @@ exports.checker = class {
     this.taskCount = 0;
   }
   filterTasksList(taskList) {
-    return taskList.filter(task => !task.hasOwnProperty('id') || task.id !== 'foxx-queue-manager');
+    return taskList.filter(
+      task => !task.hasOwnProperty('id') || (
+        task.id !== 'foxx-queue-manager' &&
+        task.id !== 'self-heal'
+      ));
   }
   setUp (te) {
     try {

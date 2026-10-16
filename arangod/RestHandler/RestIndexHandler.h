@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,18 +28,22 @@
 #include <thread>
 
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 template<typename>
 struct async;
 
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestIndexHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
   char const* name() const final { return "RestIndexHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
@@ -53,6 +56,22 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   async<void> dropIndex();
   void syncCaches();
 
-  std::shared_ptr<LogicalCollection> collection(std::string const& cName);
+  // Wait for a vector index to reach a definitive training outcome. On
+  // DBServer/SingleServer delegates to BuildManager. On
+  // Coordinator, polls shard training states from CollectionInfoCurrent
+  // until all report "ready" or "unusable", or a timeout is reached.
+  [[nodiscard]] futures::Future<ResultT<std::string>> waitForVectorIndexReady(
+      std::shared_ptr<LogicalCollection> const& coll, IndexId indexId);
+
+  // If the created index is a synchronous vector index, wait for training
+  // and refresh the response with up-to-date training state.
+  [[nodiscard]] futures::Future<Result> awaitAndRefreshVectorIndex(
+      std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
+      velocypack::Builder& response);
+
+  ResultT<std::shared_ptr<LogicalCollection>> collection(
+      std::string const& cName);
+
+  ClusterFeature& _clusterFeature;
 };
 }  // namespace arangodb

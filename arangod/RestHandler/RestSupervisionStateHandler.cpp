@@ -18,23 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSupervisionStateHandler.h"
 
-#include <chrono>
-
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -42,12 +35,16 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestSupervisionStateHandler::RestSupervisionStateHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/supervisionState (exact)
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminSupervisionState{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 

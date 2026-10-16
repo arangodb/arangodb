@@ -18,10 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexExecutor.h"
@@ -186,7 +182,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     bool oneIndexCondition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
-    IndexNode::IndexFilterCoveringVars filterCoveringVars)
+    IndexNode::IndexFilterCoveringVars filterCoveringVars,
+    std::vector<PerIndexCovering> perIndexCovering)
     : _strategy(strategy),
       _indexes(std::move(indexes)),
       _condition(condition),
@@ -204,7 +201,10 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outputRegisterId(outputRegister),
       _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
       _oneIndexCondition(oneIndexCondition),
-      _readOwnWrites(readOwnWrites) {
+      _readOwnWrites(readOwnWrites),
+      _perIndexCovering(std::move(perIndexCovering)) {
+  // IndexIteratorOptions only sees killed() func, not the query itself here
+  _options.token = &query;
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -318,6 +318,16 @@ bool IndexExecutorInfos::hasNonConstParts() const {
   return !_nonConstExpressions._expressions.empty();
 }
 
+bool IndexExecutorInfos::hasPerIndexCovering() const noexcept {
+  return !_perIndexCovering.empty();
+}
+
+PerIndexCovering const& IndexExecutorInfos::perIndexCoveringAt(
+    size_t idx) const {
+  TRI_ASSERT(idx < _perIndexCovering.size());
+  return _perIndexCovering[idx];
+}
+
 void IndexExecutor::CursorStats::incrCursorsCreated(
     std::uint64_t value) noexcept {
   cursorsCreated += value;
@@ -356,7 +366,7 @@ IndexExecutor::CursorReader::CursorReader(
     transaction::Methods& trx, IndexExecutorInfos& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
     DocumentProducingFunctionContext& context, CursorStats& cursorStats,
-    bool checkUniqueness)
+    bool checkUniqueness, IndexNode::Strategy strategyOverride)
     : _trx(trx),
       _infos(infos),
       _condition(condition),
@@ -367,7 +377,7 @@ IndexExecutor::CursorReader::CursorReader(
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _cursorStats(cursorStats),
-      _strategy(infos.strategy()),
+      _strategy(strategyOverride),
       _checkUniqueness(checkUniqueness) {
   TRI_ASSERT(
       (_strategy != IndexNode::Strategy::kCoveringFilterOnly &&
@@ -679,7 +689,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
-#ifdef USE_v8
+#ifdef USE_V8
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {
@@ -782,10 +792,20 @@ bool IndexExecutor::advanceCursor() {
   }
   while (_currentIndex < numTotal) {
     TRI_ASSERT(_currentIndex <= _cursors.size());
+    size_t infoIndex =
+        _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
+
+    // Per-cursor covering: switch projections BEFORE cursor creation/reset.
+    // buildDocumentCallback asserts !usesCoveringIndex() for kDocument,
+    // so we must set the right projections before the CursorReader ctor runs.
+    if (_infos.hasPerIndexCovering()) {
+      auto const& pic = _infos.perIndexCoveringAt(infoIndex);
+      _documentProducingFunctionContext.setActiveProjections(
+          &pic.projections, &pic.projectionsForRegisters);
+    }
+
     if (_currentIndex == _cursors.size() && _currentIndex < numTotal) {
       // First access to this index. Let's create it.
-      size_t infoIndex =
-          _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
       AstNode const* conditionNode = nullptr;
       if (_infos.getCondition() != nullptr) {
         if (_infos.isOneIndexCondition()) {
@@ -798,10 +818,13 @@ bool IndexExecutor::advanceCursor() {
           conditionNode = _infos.getCondition()->getMember(infoIndex);
         }
       }
+      auto cursorStrategy = _infos.hasPerIndexCovering()
+                                ? _infos.perIndexCoveringAt(infoIndex).strategy
+                                : _infos.strategy();
       _cursors.emplace_back(_trx, _infos, conditionNode,
                             _infos.getIndexes()[infoIndex],
                             _documentProducingFunctionContext, _cursorStats,
-                            needsUniquenessCheck());
+                            needsUniquenessCheck(), cursorStrategy);
     } else {
       // Next index exists, need a reset.
       getCursor().reset();

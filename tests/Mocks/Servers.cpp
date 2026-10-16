@@ -18,14 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Servers.h"
 
 #include <algorithm>
+#include <typeindex>
 
 #include "Agency/AgencyStrings.h"
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeature.h"
+#include "Ssl/SslFeature.h"
+#include "gmock/gmock.h"
+#ifdef USE_V8
+#include "V8/V8PlatformFeature.h"
+#endif
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -38,7 +50,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "Async/async.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
 #include "Basics/files.h"
@@ -50,12 +62,13 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -65,6 +78,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/common.h"
 #include "Logger/LogMacros.h"
@@ -85,7 +99,6 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
@@ -96,8 +109,6 @@
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -132,56 +143,62 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
     return "HttpEndpointProviderMock";
   }
 
-  explicit HttpEndpointProviderMock(ArangodServer& server)
+  explicit HttpEndpointProviderMock(
+      application_features::ApplicationServer& server)
       : HttpEndpointProvider{server, *this} {}
 
   virtual std::vector<std::string> httpEndpoints() final { return {}; }
 };
 
 static void SetupGreetingsPhase(MockServer& server) {
-  server.addFeature<GreetingsFeaturePhase>(false, std::false_type{});
+  server.addFeature<application_features::GreetingsFeaturePhase>(
+      false, std::false_type{});
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
   // We do not need any further features from this phase
 }
 
 static void SetupBasicFeaturePhase(MockServer& server) {
   SetupGreetingsPhase(server);
-  server.addFeature<BasicFeaturePhaseServer>(false);
+  server.addFeature<application_features::BasicFeaturePhaseServer>(false);
   server.addFeature<ShardingFeature>(false);
   server.addFeature<DatabasePathFeature>(false);
 }
 
 static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
-  server.addFeature<DatabaseFeaturePhase>(false);  // true ??
+  auto& metrics = server.getFeature<metrics::MetricsFeature>();
+  server.addFeature<application_features::DatabaseFeaturePhase>(
+      false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
-  server.addFeature<transaction::ManagerFeature>(false);
-  server.addFeature<DatabaseFeature>(false);
-  server.addFeature<EngineSelectorFeature>(false);
-  server.addFeature<StorageEngineFeature>(false);
+  server.addFeature<transaction::ManagerFeature>(false, metrics,
+                                                 server.engine());
+  auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
-  server.addFeature<InitDatabaseFeature>(true, std::vector<size_t>{});
+  server.addFeature<InitDatabaseFeature>(true,
+                                         std::span<const std::type_index>{});
   server.addFeature<ViewTypesFeature>(false);  // true ??
-  server.addFeature<VectorIndexFeature>(true);
+  server.addFeature<MaintenanceFeature>(false,
+                                        nullptr);  // do not start the thread
+  server.addFeature<VectorIndexFeature>(true, databaseFeature);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LicenseFeature>(false);
+  server.addFeature<LicenseFeature>(false,
+                                    server.getFeature<DatabasePathFeature>());
   server.addFeature<EncryptionFeature>(false);
 #endif
 }
 
 static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
-  server.addFeature<ClusterFeaturePhase>(false);
-  server.addFeature<ClusterFeature>(false);
+  auto& metrics = server.getFeature<metrics::MetricsFeature>();
+  server.addFeature<application_features::ClusterFeaturePhase>(false);
+  server.addFeature<ClusterFeature>(false, metrics);
   // set default replication factor to 1 for tests. otherwise the default value
   // is 0, which will lead to follow up errors if it is not corrected later.
   server.getFeature<ClusterFeature>().defaultReplicationFactor(1);
@@ -195,39 +212,43 @@ static void SetupClusterFeaturePhase(MockServer& server) {
 static void SetupCommunicationFeaturePhase(MockServer& server) {
   SetupClusterFeaturePhase(server);
   server.addFeature<HttpEndpointProvider, HttpEndpointProviderMock>(false);
-  server.addFeature<CommunicationFeaturePhase>(false);
+  server.addFeature<application_features::CommunicationFeaturePhase>(false);
   // This phase is empty...
 }
 
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
 #ifdef USE_V8
-  server.addFeature<V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(
-      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
-  server.addFeature<V8SecurityFeature>(false);
+  auto& metrics = server.getFeature<metrics::MetricsFeature>();
+  server.addFeature<application_features::V8FeaturePhase>(false);
+  server.addFeature<V8DealerFeature>(false, metrics);
+  server.addFeature<V8SecurityFeature>(false, AllowListStrictness::NONSTRICT);
 #endif
 }
 
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
-  server.addFeature<AqlFeaturePhase>(false);
-  server.addFeature<QueryRegistryFeature>(
-      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
-  server.addFeature<TemporaryStorageFeature>(false);
-
-  server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
-  {
-    auto& feature =
-        server.addFeature<arangodb::iresearch::IResearchFeature>(true);
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
-  }
-
+  auto& metrics = server.getFeature<metrics::MetricsFeature>();
+  server.addFeature<application_features::AqlFeaturePhase>(false);
+  server.addFeature<QueryRegistryFeature>(false, metrics);
+  auto& dbPath = server.getFeature<DatabasePathFeature>();
+  server.addFeature<TemporaryStorageFeature>(false, dbPath);
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
   server.addFeature<aql::QueryInfoLoggerFeature>(true);
   server.addFeature<AqlFeature>(true);
+
+  server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      true,
+      arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
+          server.server()));
+  {
+    auto& provider = server.addOptionsProvider<
+        arangodb::iresearch::IResearchOptionsProvider>();
+    provider.validateOptions(server.server().options());
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        true, metrics, provider.options());
+  }
 
 #ifdef USE_ENTERPRISE
   server.addFeature<HotBackupFeature>(false);
@@ -237,10 +258,10 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(
-          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
+  _engine = &addFeatureUntracked<StorageEngine, StorageEngineMock>(
+      injectClusterIndexes);
   _oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(myRole);
   _originalMockingState = ClusterEngine::Mocking;
@@ -259,13 +280,16 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();
   _oldRebootId = ServerState::instance()->getRebootId();
 
-  _server.setStateUnsafe(ApplicationServer::State::IN_WAIT);
+  _server.setStateUnsafe(
+      application_features::ApplicationServer::State::IN_WAIT);
   transaction::Methods::clearDataSourceRegistrationCallbacks();
 
   // many other places rely on the reboot id being initialized,
@@ -283,15 +307,6 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
-
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
-  }
-
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     if (info != _features.end()) {
@@ -303,13 +318,12 @@ void MockServer::startFeatures() {
         f.prepare();
         if (f.name() == AuthenticationFeature::name()) {
           auto& auth = static_cast<AuthenticationFeature&>(f);
-          std::unique_ptr<auth::UserManager> userManager(
-              new testing::StrictMock<auth::UserManagerMock>());
           if (auth.userManager() != nullptr) {
             // prepare should have created a userManager
             // If there is none, there was a reason for that, we do not want to
             // overwrite that.
-            auth.setUserManager(std::move(userManager));
+            auto testerPtr = std::make_unique<auth::UserManagerTester>();
+            auth.setUserManager(std::move(testerPtr));
           }
         }
       } catch (...) {
@@ -415,7 +429,6 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
-  addFeature<EngineSelectorFeature>(false);
 
   if (start) {
     MockMetricsServer::startFeatures();
@@ -560,7 +573,8 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   _server.getFeature<ClusterFeature>().allocateMembers();
 
-  addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
+  addFeature<UpgradeFeature>(false, &_dummy,
+                             std::span<const std::type_index>{});
   addFeature<ServerSecurityFeature>(false);
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
   addFeature<ReplicatedLogFeature>(false);
@@ -603,7 +617,8 @@ void MockClusterServer::startFeatures() {
   AgencyCommHelper::initialize("arango");
   AsyncAgencyCommManager::initialize(server());
   AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
-  AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
+  AsyncAgencyCommManager::INSTANCE->updateAgents(
+      {{ServerID{}, "tcp://localhost:4000/"}});
   AgencyComm(server()).ensureStructureInitialized();
   std::string st =
       "{\"" + ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
@@ -612,10 +627,11 @@ void MockClusterServer::startFeatures() {
 
   // register factories & normalizers
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  auto& factory =
-      getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
+  _iresearchLinkFactory =
+      iresearch::IResearchLinkCoordinator::createFactory(server());
   indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType}, factory);
+      std::string{iresearch::StaticStrings::ViewArangoSearchType},
+      *_iresearchLinkFactory);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 
@@ -849,11 +865,14 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
 MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER,
                         serverId) {
-  addFeature<FlushFeature>(false);        // do not start the thread
-  addFeature<MaintenanceFeature>(false);  // do not start the thread
+  auto& metrics = _server.getFeature<metrics::MetricsFeature>();
+  auto& comm =
+      _server.getFeature<application_features::CommunicationFeaturePhase>();
+  addFeature<FlushFeature>(false, metrics);  // do not start the thread
 
   // turn off auto-repairing of revision trees for unit tests
-  auto& rf = addFeature<arangodb::ReplicationFeature>(false);  // do not start
+  auto& rf = addFeature<arangodb::ReplicationFeature>(false, comm,
+                                                      metrics);  // do not start
   rf.autoRepairRevisionTrees(false);
 
   if (start) {
@@ -919,8 +938,15 @@ void MockDBServer::createShard(std::string const& dbName,
     // We may allow this for tests that do not write documents into the
     // collection.
     TRI_ASSERT(clusterCollection.replicationFactor() < 2);
-    props->add(StaticStrings::ReplicationFactor,
-               VPackValue(clusterCollection.replicationFactor()));
+    if (clusterCollection.isSatellite()) {
+      // every writer the maintenance reads from spells a replicationFactor of
+      // 0 as "satellite", so the mock has to spell it the same way
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      props->add(StaticStrings::ReplicationFactor,
+                 VPackValue(clusterCollection.replicationFactor()));
+    }
     props->add(StaticStrings::InternalValidatorTypes,
                VPackValue(clusterCollection.getInternalValidatorTypes()));
   }

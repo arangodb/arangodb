@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,6 +26,7 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Graph/Cursors/ClusterNeighbourCursor.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
@@ -36,6 +35,7 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Network/Methods.h"
 
+#include <list>
 #include <vector>
 
 namespace arangodb {
@@ -68,6 +68,7 @@ class ClusterProvider {
  public:
   using Options = ClusterBaseProviderOptions;
   using Step = StepImpl;
+  using NeighbourCursor = ClusterNeighbourCursor<Step>;
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext,
@@ -90,10 +91,8 @@ class ClusterProvider {
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
-  using CursorId = size_t;
-  auto addExpansionIterator(CursorId id, Step const& from) -> void;
-  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
-                         std::function<void(Step)> const& callback) -> bool;
+  auto createNeighbourCursor(Step const& step, size_t position)
+      -> ClusterNeighbourCursor<Step>&;
 
   void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
@@ -122,7 +121,7 @@ class ClusterProvider {
   void destroyEngines();
 
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
+  [[nodiscard]] Database const& vocbase() const;
 
   void prepareIndexExpressions(aql::Ast* ast);
 
@@ -153,8 +152,7 @@ class ClusterProvider {
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;
 
-  using EngineRequest = std::pair<ServerID, futures::Future<network::Response>>;
-  std::unordered_map<CursorId, std::vector<EngineRequest>> _edgeRequests;
+  std::list<ClusterNeighbourCursor<Step>> _neighbourCursors;
 };
 }  // namespace graph
 }  // namespace arangodb

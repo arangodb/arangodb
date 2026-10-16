@@ -36,12 +36,12 @@ var complex1 = {
                 new Date(),
                 new Error(),
                 new RegExp(),
-                // eslint-disable-next-line no-undef
+
                 new Map(),
                 new Set(),
-                // eslint-disable-next-line no-undef
+
                 new WeakMap(),
-                // eslint-disable-next-line no-undef
+
                 new WeakSet(),
             ],
         },

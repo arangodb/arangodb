@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
@@ -42,11 +41,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestEdgesHandler::RestEdgesHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/edges (prefix)
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -107,7 +107,7 @@ std::string queryString(TRI_edge_direction_e dir) {
   return "RETURN {}";
 }
 
-aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
+aql::QueryResult queryEdges(Database& vocbase, std::string const& cname,
                             TRI_edge_direction_e dir,
                             std::string const& vertexId, bool allowDirtyReads) {
   auto bindParameters = std::make_shared<VPackBuilder>();

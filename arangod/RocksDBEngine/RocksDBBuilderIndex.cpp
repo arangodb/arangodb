@@ -18,25 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBuilderIndex.h"
 
+#include "Indexes/Index.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
-#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/FlushFeature.h"
+#include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -49,12 +46,8 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
-#include "RocksDBVectorIndex.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -66,7 +59,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -258,6 +250,12 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
 /// @brief return a VelocyPack representation of the index
 void RocksDBBuilderIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
+  // inventory (dump/restore) gets the wrapped definition, without the
+  // builder-only fields below
+  if (Index::hasFlag(flags, Index::Serialize::Inventory)) {
+    _wrapped->toVelocyPack(builder, flags);
+    return;
+  }
   VPackBuilder inner;
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
@@ -347,13 +345,18 @@ static Result fillIndex(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
-  if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
+
+  if (ridx.type() == IndexType::Vector) {
+    auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
-    return dynamic_cast<RocksDBVectorIndex&>(ridx).ingestVectors(rootDB,
-                                                                 std::move(it));
+    res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
+    if (res.ok()) {
+      res = trx.commit();
+    }
+    return res;
   }
 
-  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
       numThreads > 1) {
@@ -377,19 +380,19 @@ static Result fillIndex(
   return res;
 }
 
-void RocksDBBuilderIndex::beforeCreate() {
+Result RocksDBBuilderIndex::beforeCreate() {
   RocksDBIndex* internal = _wrapped.get();
-  TRI_ASSERT(_wrapped.get() != nullptr);
+  TRI_ASSERT(internal != nullptr);
+  if (_wrapped->type() != IndexType::Vector) {
+    return {};
+  }
+
   rocksdb::Snapshot const* snap = nullptr;
 
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -397,7 +400,6 @@ void RocksDBBuilderIndex::beforeCreate() {
   rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
   RocksDBBatchedMethods methods(&batch, memoryTracker);
 
-  // From fillIndex
   auto const mode =
       snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   LogicalCollection const& coll = internal->collection();
@@ -427,7 +429,7 @@ void RocksDBBuilderIndex::beforeCreate() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, docCF));
 
   it->Seek(bounds.start());
-  _wrapped->prepareIndex(std::move(it), upper, &methods);
+  return _wrapped->prepareIndex(std::move(it), upper, &methods);
 }
 
 Result RocksDBBuilderIndex::fillIndexForeground(
@@ -440,11 +442,7 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -865,9 +863,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
       std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
-  auto& flushFeature =
-      _collection.vocbase().server().getFeature<FlushFeature>();
-  flushFeature.registerFlushSubscription(lowerBoundTracker);
+  _engine.getFlushControl().registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();
 
@@ -878,11 +874,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);

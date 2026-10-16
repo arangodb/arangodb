@@ -17,48 +17,51 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
 #include <type_traits>
 
+#include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
+#include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "Transaction/Methods.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "Aql/Expression.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryContext.h"
-#include "Aql/RegisterId.h"
-#include "Aql/Variable.h"
 
-#include <faiss/MetricType.h>
+#include <faiss/IndexIVF.h>
+#include <rocksdb/iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
-namespace faiss {
-struct IndexIVF;
-}  // namespace faiss
+namespace rocksdb {
+class DB;
+}  // namespace rocksdb
 
 namespace arangodb {
-class LogicalCollection;
-class RocksDBMethods;
 
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
+enum class VectorIndexTrainingState : std::uint8_t {
+  kUnusable,
+  kTraining,
+  kIngesting,
+  kReady
+};
 
-using VectorIndexLabelId = faiss::idx_t;
+std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                      arangodb::velocypack::Slice info);
+  ~RocksDBVectorIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
+  IndexType type() const override { return IndexType::Vector; }
 
   bool isSorted() const override { return false; }
 
@@ -70,38 +73,81 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
-  void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
-                    RocksDBMethods* methods) override;
-
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  UserVectorIndexDefinition const& getDefinition() const noexcept {
+  vector::UserDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
-  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs, SearchParameters const& searchParameters,
-      RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-      std::shared_ptr<LogicalCollection> collection, std::size_t count,
-      std::size_t topK, aql::Expression* filterExpression,
-      aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
-      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
-          filterVarsToRegs,
-      aql::Variable const* documentVariable, bool isCovered);
+  vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
+                                 vector::VectorSearchContext const& ctx) const;
 
-  UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserDefinition const& getVectorIndexDefinition() const override;
 
-  Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
+  bool isVectorIndexReady() const noexcept override;
+
+  bool isLinearScanEnabled() const noexcept override;
 
   Result readDocumentVectorData(velocypack::Slice doc,
-                                std::vector<float>& vector);
+                                std::vector<float>& vector) const;
+
+  std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
+    return _faissIndex;
+  }
+
+  std::optional<std::size_t> resolvedNLists() const noexcept {
+    if (auto const state = _trainingState.load();
+        state == VectorIndexTrainingState::kIngesting ||
+        state == VectorIndexTrainingState::kReady) {
+      return _faissIndex->nlist;
+    }
+    return std::nullopt;
+  }
+
+  // Absolute minimum number of vectors required for training, might give false
+  // positives with sparse indexes
+  std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }
+
+  void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
+                           vector::TrainedData trainedData);
 
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;
 
+  /// @brief On-disk format version for this index's list entries. Internal
+  /// detail; never surfaced through toVelocyPack or the REST API.
+  vector::FormatVersion formatVersion() const noexcept {
+    return _formatVersion;
+  }
+
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
+
+  Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                      rocksdb::Slice upper, RocksDBMethods* methods) override;
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) override;
+
+  bool setTrainingState(VectorIndexTrainingState expected,
+                        VectorIndexTrainingState desired) noexcept;
+
+  VectorIndexTrainingState trainingState() const noexcept {
+    return _trainingState.load(std::memory_order_acquire);
+  }
+
+  void resetTrainingState() noexcept;
+
+  void setTrainingError(std::string error) noexcept;
+
+  std::string trainingError() const;
+
  protected:
+  ResultT<std::vector<float>> preModificationCheck(std::string_view operation,
+                                                   velocypack::Slice doc) const;
+
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options, bool performChecks) override;
@@ -111,10 +157,47 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  UserVectorIndexDefinition _definition;
+  //  Helper functions for bruteForceSearch
+  void captureDocument(
+      vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink,
+      LocalDocumentId docId, velocypack::Slice docSlice) const;
+
+  bool filterDocuments(vector::VectorSearchConfig const& config,
+                       vector::VectorSearchContext const& ctx,
+                       velocypack::Slice docSlice) const;
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2,
+                        bool isDescending) const;
+
+  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice,
+                                       vector::Vector& vec) const;
+
+  std::pair<vector::Labels, vector::Distances> bruteForceSearch(
+      vector::Vector& searchVector, vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink) const;
+
+  vector::Metadata loadVectorIndexMetadata(velocypack::Slice info) const;
+
+  vector::UserDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  std::optional<TrainedData> _trainedData;
+  vector::TrainedData _trainedData;
+  vector::FormatVersion _formatVersion{
+      vector::kCurrentVectorIndexFormatVersion};
   StoredValues const _storedValues;
+
+  std::size_t _trainingThreshold{0};
+  std::atomic<VectorIndexTrainingState> _trainingState{
+      VectorIndexTrainingState::kUnusable};
+
+  mutable std::mutex _trainingErrorMutex;
+  // Placeholder used while the build manager hasn't yet diagnosed why the
+  // index is unusable (e.g. between ensureIndex and the first scan).
+  std::string _trainingError{StaticStrings::VectorIndexDefaultTrainingError};
 };
 
 }  // namespace arangodb

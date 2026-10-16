@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,14 +28,12 @@ namespace arangodb {
 
 class RestLicenseHandler : public RestBaseHandler {
  public:
-  RestLicenseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestLicenseHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestLicenseHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-
- protected:
-  arangodb::Result verifyPermitted();
 };
 }  // namespace arangodb

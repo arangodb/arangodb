@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Containers/Concurrent/snapshot.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -54,11 +55,8 @@ concept HasExernalGarbageCollection = requires(T t) {
 template<typename List>
 requires HasItemType<List> && HasExernalGarbageCollection<List>
 struct ListOfNonOwnedLists {
- private:
-  std::vector<std::weak_ptr<List>> _lists;
-
  protected:
-  std::mutex _mutex;
+  Guarded<std::vector<std::weak_ptr<List>>> _lists;
 
  public:
   /**
@@ -70,10 +68,11 @@ struct ListOfNonOwnedLists {
     if (!list) {
       return;
     }
-    auto guard = std::lock_guard(_mutex);
     // make sure that expired nodes are deleted
-    std::erase_if(_lists, [&](auto const& list) { return list.expired(); });
-    _lists.emplace_back(list);
+    _lists.doUnderLock([list](auto& lists) {
+      std::erase_if(lists, [&](auto const& list) { return list.expired(); });
+      lists.emplace_back(list);
+    });
   }
 
   /**
@@ -82,27 +81,30 @@ struct ListOfNonOwnedLists {
   template<typename F>
   requires IteratorOverSnapshots<List, F>
   auto for_node(F&& function) -> void {
-    auto lists = [&] {
-      auto guard = std::lock_guard(_mutex);
-      return _lists;
-    }();
-
-    for (auto& weak_list : _lists) {
+    auto lists = _lists.copy();
+    for (auto& weak_list : lists) {
       if (auto list = weak_list.lock()) {
         list->for_node(function);
       }
     }
   }
 
+  auto size() -> size_t {
+    size_t count = 0;
+    auto lists = _lists.copy();
+    for (auto& weak_list : lists) {
+      if (auto list = weak_list.lock()) {
+        count += list->size();
+      }
+    }
+    return count;
+  }
+
   /**
      Executes the external garbage collection on each inner list.
    */
   void run_external_cleanup() noexcept {
-    auto lists = [&] {
-      auto guard = std::lock_guard(_mutex);
-      return _lists;
-    }();
-
+    auto lists = _lists.copy();
     for (auto& weak_list : lists) {
       if (auto list = weak_list.lock()) {
         list->garbage_collect_external();

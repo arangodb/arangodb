@@ -1,0 +1,20 @@
+name: arangodb_http_response_code_total
+introducedIn: "3.12.10"
+help: |
+  Total number of HTTP responses by response code.
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter reflects the total number of HTTP responses by response code
+  which have hit this particular instance of `arangod`. Note that this counter
+  is ever growing during the lifetime of the `arangod` process. However,
+  when the process is restarted, it starts from scratch. In the Grafana
+  dashboards, it is usually visualized as a rate per second, averaged
+  with a sliding window of a minute.

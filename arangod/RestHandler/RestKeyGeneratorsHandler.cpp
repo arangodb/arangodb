@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestKeyGeneratorsHandler.h"
@@ -30,11 +29,12 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestKeyGeneratorsHandler::RestKeyGeneratorsHandler(ArangodServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
+RestKeyGeneratorsHandler::RestKeyGeneratorsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/key-generators (prefix)
 RestStatus RestKeyGeneratorsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

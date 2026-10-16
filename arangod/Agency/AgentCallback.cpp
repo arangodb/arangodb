@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgentCallback.h"
@@ -30,8 +29,9 @@
 #include "Basics/system-functions.h"
 
 using namespace arangodb::application_features;
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 AgentCallback::AgentCallback()
     : _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
@@ -113,3 +113,5 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) const {
   }
   return true;
 }
+
+}  // namespace arangodb::consensus

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,10 +31,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-namespace aragndob::velocypack {
-class Builder;
-}
 
 namespace arangodb::options {
 struct Option;
@@ -55,6 +50,13 @@ class ProgramOptions {
   // filter function returns false for any option to be filtered out,
   // and true for all options to include in the output.
   static std::function<bool(std::string const&)> const defaultOptionsFilter;
+
+  // filter function to select only the publicly-visible options for the
+  // HTTP REST API: GET /_admin/options-public
+  // filter function returns true only for options that should be publicly
+  // accessible to any authenticated database user.
+  static std::function<bool(std::string const&)> const
+      defaultPublicOptionsFilter;
 
   // struct containing the option processing result
   class ProcessingResult {
@@ -116,6 +118,7 @@ class ProgramOptions {
   );
 
   std::string progname() const;
+  char const* binaryPath() const noexcept;
 
   // sets a value translator
   void setTranslator(std::function<std::string(std::string const&,
@@ -258,7 +261,7 @@ class ProgramOptions {
   void addOption(Option&& option);
 
   // modernize an option name
-  std::string const& modernize(std::string const& name);
+  std::string modernize(std::string const& name);
 
   // determine maximum width of all options labels
   size_t optionsWidth() const;

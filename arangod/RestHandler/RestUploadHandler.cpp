@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUploadHandler.h"
@@ -37,13 +36,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUploadHandler::RestUploadHandler(ArangodServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response)
+RestUploadHandler::RestUploadHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestUploadHandler::~RestUploadHandler() = default;
 
+// Mounted at /_api/upload (prefix)
 RestStatus RestUploadHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();

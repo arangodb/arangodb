@@ -18,17 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/AstNode.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
-#include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
 
@@ -39,7 +36,12 @@
 #include <filesystem>
 
 namespace arangodb {
+struct Database;
+class DatabasePathFeature;
 struct IndexTypeFactory;
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
 
 namespace aql {
 
@@ -94,25 +96,27 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
 }
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       TRI_vocbase_t& database);
+                                       Database& database);
 
-void cleanupDatabase(TRI_vocbase_t& database);
+void cleanupDatabase(Database& database);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchFeature final : public ArangodFeature {
+class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
-  explicit IResearchFeature(Server& server);
+  explicit IResearchFeature(application_features::ApplicationServer& server,
+                            metrics::IRegistry& metricsRegistry,
+                            IResearchOptions options);
+  explicit IResearchFeature(application_features::ApplicationServer& server,
+                            metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void stop() final;
   void unprepare() final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
@@ -126,9 +130,6 @@ class IResearchFeature final : public ArangodFeature {
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
-
-  template<typename Engine>
-  IndexTypeFactory& factory();
 
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
@@ -158,6 +159,10 @@ class IResearchFeature final : public ArangodFeature {
   void setDefaultParallelism(uint32_t v) noexcept {
     _options.defaultParallelism = v;
   }
+  void setMaintenanceThreads(uint32_t commit, uint32_t consolidation) noexcept {
+    _options.commitThreads = commit;
+    _options.consolidationThreads = consolidation;
+  }
 #endif
 
  private:
@@ -175,8 +180,7 @@ class IResearchFeature final : public ArangodFeature {
   irs::IResourceManager& _columnsCacheMemoryUsed;
 #endif
 
-  std::shared_ptr<IndexTypeFactory> _clusterFactory;
-  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
+  std::shared_ptr<IndexTypeFactory> _factory;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

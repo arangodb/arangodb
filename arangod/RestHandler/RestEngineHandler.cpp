@@ -18,14 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEngineHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -34,11 +32,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(ArangodServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+RestEngineHandler::RestEngineHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<StorageEngine>()) {}
 
+// Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -67,12 +67,11 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoringInternal{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return;
   }
 
@@ -82,16 +81,14 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getCapabilities(result);
+  _engine.getCapabilities(result, _request->requestedApiVersion());
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RestEngineHandler::getStats() {
   VPackBuilder result;
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getStatistics(result);
+  _engine.getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

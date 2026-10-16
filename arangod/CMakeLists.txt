@@ -44,13 +44,22 @@ add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
   ${ProductVersionFiles}
 )
-  
+
+# Override __sanitizer_report_error_summary to write per-report timestamps to a
+# sidecar file. Must be a direct source of the executable, not part of
+# arangoserver (static library) — the linker only pulls .a members that resolve
+# undefined symbols, and the sanitizer runtime already provides a weak
+# definition, so the override would be silently dropped.
+if (BASE_CXX_FLAGS MATCHES "-fsanitize")
+  target_sources(${BIN_ARANGOD} PRIVATE RestServer/SanitizerReportHook.cpp)
+endif()
+
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
 
 if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+  target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
@@ -58,9 +67,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOD} v8_build)
 endif ()
 add_dependencies(${BIN_ARANGOD} iculegacy_build)
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOD} jemalloc_build)
-endif ()
 add_dependencies(${BIN_ARANGOD} man)
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
@@ -100,12 +106,20 @@ install_config(arango-init-database)
 get_target_property(IRESEARCH_INCLUDE
   iresearch-static INCLUDE_DIRECTORIES)
 
+# arangoserver aggregates the per-subdir arango_<X> archives declared below.
+# It has no direct sources of its own; SystemMonitor subdirs still add sources
+# to it via target_sources(), so the target must exist before those subdirs
+# are processed.
 include(arangoserver.cmake)
+add_subdirectory(Actions)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
+add_subdirectory(Auth)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
+add_subdirectory(FeaturePhases)
+add_subdirectory(GeneralServer)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(IResearch)
@@ -116,12 +130,16 @@ add_subdirectory(Replication2)
 add_subdirectory(RestHandler)
 add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
+add_subdirectory(Sharding)
 add_subdirectory(StorageEngine)
 add_subdirectory(SystemMonitor)
+add_subdirectory(Transaction)
 add_subdirectory(Utils)
 if (USE_V8)
   add_subdirectory(V8Server)
 endif()
+add_subdirectory(VectorIndex)
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)
 add_subdirectory(Scheduler)
+add_subdirectory(Statistics)

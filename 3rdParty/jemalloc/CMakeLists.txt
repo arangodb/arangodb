@@ -81,15 +81,26 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_PROF}
         ${JEMALLOC_CHECKS}
     BUILD_COMMAND
-      $(MAKE) build_lib_static
+      ${MAKE} ${MAKE_JOBS} build_lib_static
+    BUILD_BYPRODUCTS
+      ${JEMALLOC_LIB}
     INSTALL_COMMAND
-      $(MAKE) install_include
+      ${MAKE} ${MAKE_JOBS} install_include
         && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
         && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${JEMALLOC_LIB} jemalloc
   )
 
-  set(JEMALLOC_HOME "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
-  set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
+  set(JEMALLOC_HOME "${CMAKE_CURRENT_BINARY_DIR}")
+  set(JEMALLOC_LIB "${JEMALLOC_LIB}")
+  set(JEMALLOC_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
+
+  add_library(jemalloc STATIC IMPORTED GLOBAL)
+  add_dependencies(jemalloc jemalloc_build)
+  file(MAKE_DIRECTORY ${JEMALLOC_INCLUDE_DIRS})
+  set_target_properties(
+    jemalloc
+    PROPERTIES IMPORTED_LOCATION ${JEMALLOC_LIB}
+               INTERFACE_INCLUDE_DIRECTORIES ${JEMALLOC_INCLUDE_DIRS})
 endif ()
