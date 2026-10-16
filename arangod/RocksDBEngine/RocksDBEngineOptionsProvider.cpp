@@ -383,8 +383,7 @@ Only use this option for testing purposes! It is bad for performance and
 disables a few features like parallel index generation!)");
 #endif
 
-  // TODO: consider moving this option to --rocksdb.export-read-write-metrics
-  opts->addOption("--server.export-read-write-metrics",
+  opts->addOption("--rocksdb.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
                   new BooleanParameter(&options.exportReadWriteMetrics),
                   arangodb::options::makeFlags(
@@ -406,6 +405,10 @@ additional metrics via the `GET /_admin/metrics` endpoint:
 - `arangodb_collection_truncates_replication_total`
 - `arangodb_collection_truncate_time`
 )");
+
+  opts->addOldOption("--server.export-read-write-metrics",
+                     "--rocksdb.export-read-write-metrics");
+
 #ifdef USE_ENTERPRISE
   enterprise::RocksDBEngineEEOptionsProvider::declareOptions(opts,
                                                              options.eeOptions);

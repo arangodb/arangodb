@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-  
+
+* Rename `--server.export-read-write-metrics` startup option to
+  `--rocksdb.export-read-write-metrics`
+
 * Updated ArangoDB Starter to v0.20.0-preview-19 to fix BTS-2482.
 
 * Upgraded included rclone to v1.75.1 with go1.26.9 and non-vulnerable
