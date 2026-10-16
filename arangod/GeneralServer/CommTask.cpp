@@ -1031,6 +1031,7 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
             "a decoding error occurred while handling Content-Encoding: lz4"};
       }
       req.setPayload(std::move(dst));
+      req.setPayloadMemory(std::move(scope));
       // as we have decoded, remove the encoding header.
       // this prevents duplicate decoding
       req.removeHeader(header);

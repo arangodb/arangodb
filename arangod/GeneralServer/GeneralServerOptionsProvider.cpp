@@ -144,6 +144,19 @@ Requests exceeding the limit are rejected with HTTP 413.
 Note that this limits the body size *after* decompression. The size of the
 request as it arrives on the wire is limited separately.)");
 
+  opts->addOption("--http.decompression-memory-limit",
+                  "The maximum combined size of all decompressed request "
+                  "bodies held by the server at the same time (in bytes).",
+                  new UInt64Parameter(&options.decompressionGlobalMemoryLimit),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(Each lz4-compressed request body reserves its
+decompressed size from this budget until the request is finished. Requests
+that would exceed the budget are rejected with HTTP 413.
+
+The default is 10% of the physical memory. A value of `0` disables the limit.)");
+
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",

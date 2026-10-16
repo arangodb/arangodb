@@ -38,15 +38,16 @@ struct GeneralServerOptions {
   bool proxyCheck = true;
   bool returnQueueTimeHeader = true;
   bool permanentRootRedirect = true;
+  uint64_t numIoThreads;  // initialized in ctor
   uint64_t compressResponseThreshold = 0;
   uint64_t maxUncompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
+  uint64_t decompressionGlobalMemoryLimit = 0;
   std::vector<std::string> trustedProxies;
   std::vector<std::string> accessControlAllowOrigins;
   std::string redirectRootTo = "/_admin/aardvark/index.html";
   std::string supportInfoApiPolicy = "admin";
   std::string optionsApiPolicy = "jwt";
-  uint64_t numIoThreads;  // initialized in ctor
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::vector<std::string> failurePoints;

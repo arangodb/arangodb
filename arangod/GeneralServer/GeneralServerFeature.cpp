@@ -376,6 +376,10 @@ void GeneralServerFeature::prepare() {
 
   std::atomic_store(&_handlerFactory, std::move(hf));
 
+  _decompressionGlobal.memoryLimit(static_cast<std::int64_t>(
+      std::min<uint64_t>(_options.decompressionGlobalMemoryLimit,
+                         std::numeric_limits<std::int64_t>::max())));
+
   buildServers();
 
   if (_options.allowEarlyConnections) {
