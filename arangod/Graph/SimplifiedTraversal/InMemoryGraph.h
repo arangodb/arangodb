@@ -38,6 +38,8 @@ struct InMemoryGraph {
           {EdgeId{_next_edge_id++}, Edge{VertexId{fromId}, VertexId{toId}}});
     }
   }
+  auto includesEdge(VertexIdLabel const& from, VertexIdLabel const& to)
+      -> bool {}
 
   auto includesVertex(VertexIdLabel const& vertex) -> bool {
     auto it = std::find(_vertexIdLabels.begin(), _vertexIdLabels.end(), vertex);
@@ -47,7 +49,8 @@ struct InMemoryGraph {
     return true;
   }
   std::vector<VertexIdLabel> _vertexIdLabels;
-  std::unordered_map<EdgeId, Edge> _edges;
+  // from        // to
+  std::vector<std::vector<VertexIdLabel>> _adjacentVertices;
 
  private:
   size_t _next_edge_id = 0;
@@ -98,6 +101,11 @@ struct InMemoryGraphView : IGraphView {
     }
     size_t distance = std::distance(_vertexIdLabels.begin(), it);
     return VertexId{distance};
+  }
+
+  auto queryEdge(VertexId const& from, VertexId const& to)
+      -> std::optional<EdgeId> {
+    // TODO
   }
 
   auto retrieveDocument(VertexId const& id)

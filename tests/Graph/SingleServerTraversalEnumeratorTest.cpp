@@ -104,37 +104,39 @@ TEST(SingleServerTraversalEnumeratorTest,
 //   assertEqual(*nextPath, expected);
 // }
 
-// TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {
-//   auto v0 = std::string{"v/0"};
-//   auto v0Ref = VertexRef{velocypack::HashedStringRef{
-//       v0.c_str(), static_cast<uint32_t>(v0.length())}};
-//   auto v1 = std::string{"v/1"};
-//   auto v1Ref = VertexRef{velocypack::HashedStringRef{
-//       v1.c_str(), static_cast<uint32_t>(v1.length())}};
-//   auto graph = experimental::InMemoryGraph{{VertexIdLabel{v0},
-//   VertexIdLabel{v1}}}; auto graphView =
-//       experimental::InMemoryGraphView({}, {{v0Ref, v1Ref}});
-//   auto enumerator = SingleServerTraversalEnumerator(graph);
-//   enumerator.reset(v0Ref);
+TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {
+  auto v0 = std::string{"v/0"};
+  auto v1 = std::string{"v/1"};
+  auto graph =
+      experimental::InMemoryGraph{{VertexIdLabel{v0}, VertexIdLabel{v1}},
+                                  {{VertexIdLabel{v0}, VertexIdLabel{v1}}}};
+  auto graphView = experimental::InMemoryGraphView(graph);
+  auto enumerator = SingleServerTraversalEnumerator(graphView);
+  enumerator.reset(VertexRef{velocypack::HashedStringRef{
+      v0.c_str(), static_cast<uint32_t>(v0.length())}});
+  auto vertexIdv0 = graphView.queryVertex(VertexIdLabel{v0});
+  EXPECT_TRUE(vertexIdv0.has_value());
+  auto vertexIdv1 = graphView.queryVertex(VertexIdLabel{v1});
+  EXPECT_TRUE(vertexIdv1.has_value());
+  auto edgeId = graphView.queryEdge(vertexIdv0, vertexIdv1);
+  EXPECT_TRUE(edgeId.has_value());
 
-//   {
-//     auto nextPath = enumerator.getNextPath();
-//     EXPECT_NE(nextPath, nullptr);
-//     auto expected = SingleServerPathResult{{v0Ref, v1Ref},
-//                                            {Edge{.from = v0Ref, .to =
-//                                            v1Ref}}};
-//     // TODO make this work
-//     assertEqual(*nextPath, expected);
+  {
+    auto nextPath = enumerator.getNextPath();
+    EXPECT_NE(nextPath, nullptr);
+    auto expected = SingleServerPathResult{
+        {vertexIdv0.value(), vertexIdv1.value()}, {edgeId.value()}};
+    // TODO make this work
+    assertEqual(*nextPath, expected);
 
-//     // TODO make this work
-//     // TODO really false? or directly true here?
-//     EXPECT_FALSE(enumerator.isDone());
-//   }
+    // TODO make this work
+    EXPECT_FALSE(enumerator.isDone());
+  }
 
-//   {
-//     auto nextPath = enumerator.getNextPath();
-//     // TODO make this work
-//     EXPECT_EQ(nextPath, nullptr);
-//     EXPECT_TRUE(enumerator.isDone());
-//   }
-// }
+  {
+    auto nextPath = enumerator.getNextPath();
+    // TODO make this work
+    EXPECT_EQ(nextPath, nullptr);
+    EXPECT_TRUE(enumerator.isDone());
+  }
+}
