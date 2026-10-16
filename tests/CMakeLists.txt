@@ -169,6 +169,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/RangeFunctionTest.cpp
   Aql/Function/StringFunctions/CharLengthFunctionTest.cpp
   Aql/Function/StringFunctions/ConcatSeparatorFunctionTest.cpp
+  Aql/Function/StringFunctions/ContainsFunctionTest.cpp
+  Aql/Function/StringFunctions/FindFirstLastFunctionTest.cpp
   Aql/Function/StringFunctions/LeftRightFunctionTest.cpp
   Aql/Function/StringFunctions/LowerUpperFunctionTest.cpp
   Aql/Function/StringFunctions/RepeatFunctionTest.cpp
