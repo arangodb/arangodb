@@ -103,7 +103,10 @@ std::optional<int64_t> searchInRange(ExpressionContext* ctx,
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
   search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  // ICU 64 misreports matches with next()/previous(), so only use following().
+  // ICU 64 previous functions have a bug documented in:
+  // https://github.com/arangodb/arangodb/pull/23455
+  // and the official report is here:
+  // https://unicode-org.atlassian.net/browse/ICU-22393
   int64_t found = -1;
   auto from = static_cast<int32_t>(startOffset);
   while (from < text.length()) {
