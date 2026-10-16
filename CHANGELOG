@@ -1,5 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
+  or `--default-language`) for case mapping instead of the process locale.
+  This changes results only for Greek, Turkish, Azeri and Lithuanian.
+
 * COR-1137: Fixed a memory leak in the AQL analyzer when converting
   non-string values to strings.
 
