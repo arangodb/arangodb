@@ -68,6 +68,20 @@ TEST_F(StringFunctionTest, contains_index_counts_utf16_code_units) {
   expectResult(contains(ctx, str("😀😀x"), str("😀"), &json("true")), 0);
 }
 
+TEST_F(StringFunctionTest, contains_invalid_utf8_bytes_count_as_one_character) {
+  expectResult(contains(ctx,
+                        str("\xf8"
+                            "x"),
+                        str("x"), &json("true")),
+               1);
+  expectResult(contains(ctx,
+                        str("\xff\xff"
+                            "x"),
+                        str("x"), &json("true")),
+               2);
+  expectBool(contains(ctx, str("\xff"), str("x"), nullptr), false);
+}
+
 TEST_F(StringFunctionTest, contains_matches_canonically_equivalent_characters) {
   expectResult(contains(ctx, str("caf\u00e9"), str("e\u0301"), &json("true")),
                3);
