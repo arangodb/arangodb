@@ -23,9 +23,11 @@
 #include "gtest/gtest.h"
 
 #include <stdint.h>
+#include <limits>
 #include <memory>
 
 #include "Basics/SpinLocker.h"
+#include "Cache/Manager.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
@@ -106,4 +108,65 @@ TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
   metadata.changeTable(512);
   ASSERT_EQ(metadata.tableSize, 512);
   ASSERT_EQ(metadata.allocatedSize, 1536 + overhead);
+}
+
+// regression test: newLimit() computed 4 * hardUsageLimit, which overflows for
+// hardUsageLimit >= 2^62 and yielded a tiny (or zero) new limit
+TEST(CacheMetadataTest, new_limit_does_not_overflow) {
+  constexpr std::uint64_t max = std::numeric_limits<std::uint64_t>::max();
+  std::uint64_t usageLimit = std::uint64_t(1) << 62;
+  Metadata metadata(usageLimit, 0, 0, max);
+
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
+
+  // deserved == allocated, so the new limit is the current hard limit
+  ASSERT_EQ(usageLimit, metadata.newLimit());
+
+  // with a huge deserved size, the new limit must not shrink
+  metadata.adjustDeserved(max);
+  ASSERT_EQ(max - Manager::kCacheRecordOverhead, metadata.newLimit());
+  ASSERT_GE(metadata.newLimit(), metadata.hardUsageLimit);
+}
+
+// regression test: adjustLimits() checked (limit + fixed <= deserved), which
+// wrapped around for huge limits and approved them, making allocatedSize
+// overflow
+TEST(CacheMetadataTest, adjust_limits_rejects_overflowing_limits) {
+  constexpr std::uint64_t max = std::numeric_limits<std::uint64_t>::max();
+  std::uint64_t fixed = 128;
+  std::uint64_t table = Table::allocationSize(Table::kMinLogSize);
+  Metadata metadata(1024, fixed, table, max);
+
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
+
+  std::uint64_t allocatedBefore = metadata.allocatedSize;
+  std::uint64_t huge = max - 16;
+  ASSERT_FALSE(metadata.adjustLimits(huge, huge));
+  ASSERT_EQ(1024, metadata.softUsageLimit);
+  ASSERT_EQ(1024, metadata.hardUsageLimit);
+  ASSERT_EQ(allocatedBefore, metadata.allocatedSize);
+}
+
+// regression test: migrationAllowed() must not approve a table size whose sum
+// with the other sizes wraps around
+TEST(CacheMetadataTest, migration_allowed_does_not_overflow) {
+  constexpr std::uint64_t max = std::numeric_limits<std::uint64_t>::max();
+  Metadata metadata(1024, 0, 512, max);
+
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
+
+  ASSERT_FALSE(metadata.migrationAllowed(max - 512));
+}
+
+// decreasing the usage must always succeed, even if the usage is above the
+// (already lowered) hard limit. otherwise freed memory is never accounted for
+TEST(CacheMetadataTest, usage_decrease_always_allowed) {
+  Metadata metadata(1024, 0, 0, 4096);
+
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
+
+  metadata.usage.store(2048);
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(-512));
+  ASSERT_EQ(1536, metadata.usage.load());
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(1));
 }
