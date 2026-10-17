@@ -1046,15 +1046,28 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
     return results
 
 
-def denied_collection_for(suite_filter):
+SUITE_MAX_MAJOR = {"100": 4}
+
+
+def suite_runs(suite, suite_filter, major=None):
+    """Whether `suite` is both selected and supported by the server under test."""
+    if suite_filter and suite not in suite_filter:
+        return False
+    ceiling = SUITE_MAX_MAJOR.get(suite)
+    if ceiling is not None and major is not None and major >= ceiling:
+        return False
+    return True
+
+
+def denied_collection_for(suite_filter, major=None):
     """A collection the selected suites really create.
 
     The deny-precedence scenario is only meaningful if the workload actually
     touches the denied resource; otherwise it would pass vacuously.
     """
-    if not suite_filter or "100" in suite_filter:
+    if suite_runs("100", suite_filter, major):
         return "cgeo_0"  # 100_collections.js: cgeo_${dbCount}
-    if "400" in suite_filter:
+    if suite_runs("400", suite_filter, major):
         return "old_cview1_0"  # 400_views.js: old_cview1_${dbCount}
     return None
 
@@ -1067,11 +1080,10 @@ def denied_collection_for(suite_filter):
 WRITE_ON_RERUN_SUITES = ("100", "400")
 
 
-def writes_on_rerun(suite_filter):
+def writes_on_rerun(suite_filter, major=None):
     """Whether the selected suites write on a re-run over existing data."""
-    if not suite_filter:
-        return True  # no filter means every suite, which includes writers
-    return any(suite in suite_filter for suite in WRITE_ON_RERUN_SUITES)
+    return any(suite_runs(suite, suite_filter, major)
+               for suite in WRITE_ON_RERUN_SUITES)
 
 
 def main():
@@ -1187,7 +1199,8 @@ def main():
     caps = selfcheck.capabilities(binary=config.arangod)
     print(selfcheck.describe_capabilities(caps))
 
-    denied = denied_collection_for(config.suite_filter)
+    major = selfcheck.major_version()
+    denied = denied_collection_for(config.suite_filter, major)
 
     tokens = Tokens(config)
     if args.bootstrap_user or args.remove_bootstrap_user:
@@ -1246,7 +1259,7 @@ def main():
                   f"'{config.suite_filter}' creates no collection this script knows "
                   "how to target.")
 
-    if not writes_on_rerun(config.suite_filter):
+    if not writes_on_rerun(config.suite_filter, major):
         vacuous = [s for s in all_scenarios if s.needs_write_on_rerun]
         all_scenarios = [s for s in all_scenarios if not s.needs_write_on_rerun]
         for scenario in vacuous:

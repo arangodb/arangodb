@@ -27,6 +27,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
 SERVICE_IMPL = os.path.join(SOURCE_ROOT, "arangod", "Auth", "Rbac", "ServiceImpl.cpp")
+CMAKELISTS = os.path.join(SOURCE_ROOT, "CMakeLists.txt")
+
+VERSION_MAJOR_RE = re.compile(r'set\(ARANGODB_VERSION_MAJOR\s+"(\d+)"')
 
 # `return "db:Read";` in actionToWireString()
 ACTION_RE = re.compile(r'return\s+"(db:[A-Za-z]+)"\s*;')
@@ -82,6 +85,22 @@ def _binary_contains(path, needles):
                 break
             tail = window[-overlap:]
     return found
+
+
+def major_version(path=CMAKELISTS):
+    """The major version of the tree under test, or None if unreadable.
+
+    makedata suites gate themselves on the server version, so naming one in
+    --test is not the same as it running. Read from the source for the same
+    reason capabilities() does: it must work before a server exists, and
+    --list has to stay serverless.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            match = VERSION_MAJOR_RE.search(handle.read())
+    except OSError:
+        return None
+    return int(match.group(1)) if match else None
 
 
 def capabilities(path=SERVICE_IMPL, binary=ARANGOD_BINARY):
