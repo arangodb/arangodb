@@ -5,6 +5,15 @@
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.
 
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+  for more fine-grained permission setting for aql queries.
+
+* BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
+
+* AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
+  or `--default-language`) for case mapping instead of the process locale.
+  This changes results only for Greek, Turkish, Azeri and Lithuanian.
+
 * COR-1137: Fixed a memory leak in the AQL analyzer when converting
   non-string values to strings.
 
@@ -749,6 +758,8 @@
 
 * Improve the output of fields `dbStats` for every column family
   when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* Return proper exit code if `arangoimport` fails.
 
 * COR-53: Fixed handling of forced vector index hints in AQL, so it is
   handled properly by changing the order of optimization rules.

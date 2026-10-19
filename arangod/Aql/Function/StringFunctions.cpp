@@ -103,7 +103,10 @@ std::optional<int64_t> searchInRange(ExpressionContext* ctx,
   icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
   search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
 
-  // ICU 64 misreports matches with next()/previous(), so only use following().
+  // ICU 64 previous functions have a bug documented in:
+  // https://github.com/arangodb/arangodb/pull/23455
+  // and the official report is here:
+  // https://unicode-org.atlassian.net/browse/ICU-22393
   int64_t found = -1;
   auto from = static_cast<int32_t>(startOffset);
   while (from < text.length()) {
@@ -480,7 +483,8 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toLower(nullptr);
+  unicodeStr.toLower(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -502,7 +506,8 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toUpper(nullptr);
+  unicodeStr.toUpper(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
