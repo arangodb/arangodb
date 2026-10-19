@@ -39,6 +39,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/jwt.h"
 #include "Utils/ExecContext.h"
+#include "Utils/ForeignAccess.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
@@ -49,7 +50,7 @@
 #include <functional>
 #include <ranges>
 #include <string>
-#include <unordered_map>
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -58,29 +59,12 @@ namespace {
 enum class QueriesMode { Current, Slow };
 
 /**
- * Remembers per query owner whether the calling identity may monitor that
- * owner's queries.
- *
- * the exec context is asked at most once per owner, so a list with many queries
- * of the same user asks a single question only.
+ * Owner of a serialized query entry; empty when the entry has no user
  */
-class MonitorQueryAccess {
- public:
-  /// @brief whether the calling identity may access this query entry
-  auto isAccessible(velocypack::Slice const entry) -> bool {
-    auto const user = entry.get("user");
-    auto const owner = user.isString() ? user.copyString() : std::string{};
-    if (auto const known = _decisions.find(owner); known != _decisions.end()) {
-      return known->second;
-    }
-    auto const accessible = ExecContext::current().canMonitorQuery(owner).ok();
-    _decisions.emplace(owner, accessible);
-    return accessible;
-  }
-
- private:
-  std::unordered_map<std::string, bool> _decisions;
-};
+auto queryOwner(velocypack::Slice const entry) -> std::string_view {
+  auto const user = entry.get("user");
+  return user.isString() ? user.stringView() : std::string_view{};
+}
 
 /**
  * Headers for fanning a request out to the other coordinators
@@ -181,7 +165,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
   // build the result, containing only the queries the caller may see
   MonitorQueryAccess access;
   auto const isAccessible = [&access](velocypack::Slice const entry) {
-    return access.isAccessible(entry);
+    return access.isAccessible(queryOwner(entry));
   };
   auto const toSlice = [](std::shared_ptr<velocypack::String> const& query) {
     return query->slice();
@@ -273,7 +257,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
   // requires the same permission as listing them
   MonitorQueryAccess access;
   auto const shouldClear = [&access](velocypack::Slice const entry) {
-    return access.isAccessible(entry);
+    return access.isAccessible(queryOwner(entry));
   };
 
   if (allDatabases) {
