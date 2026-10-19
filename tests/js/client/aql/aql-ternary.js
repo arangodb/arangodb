@@ -489,6 +489,70 @@ RETURN NOOPT(true) ?
       assertEqual(true, result[0]);
     },
 
+    testUntakenOperandWithExpansionIsNotExecuted : function () {
+      const sub = `(FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[0]`;
+      const operands = [
+        `[1, 2][* RETURN ASSERT(false, 'boom')]`,
+        `[1, 2][* FILTER ${sub}]`,
+        `[1, 2][* RETURN ${sub}]`,
+        `[1, 2][* LIMIT ${sub}]`,
+        `[1, 2][* LIMIT ${sub}, 1]`,
+        `[1, 2][? FILTER ${sub}]`,
+        `[1, 2][? AT LEAST (${sub}) FILTER true]`,
+        `[1, 2][? ${sub} FILTER true]`,
+        `[[1], [2]][** FILTER ${sub}]`,
+        `[[1], [2]][*][* FILTER ${sub}]`,
+        `[1, 2][* RETURN [3][* FILTER ${sub}]]`,
+        `(FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[* RETURN CURRENT]`,
+        `[[1], [2]][*][${sub}]`,
+        `[1, 2][* RETURN (RETURN ASSERT(CURRENT == 0, 'boom'))[0]]`,
+      ];
+      operands.forEach((operand) => {
+        [
+          `RETURN NOOPT(true) ? 'ok' : ${operand}`,
+          `RETURN NOOPT(false) ? ${operand} : 'ok'`,
+          `RETURN NOOPT('ok') ? : ${operand}`,
+        ].forEach((query) => {
+          assertEqual(['ok'], db._query(query).toArray(), query);
+        });
+      });
+    },
+
+    testTakenOperandWithSubqueryInExpansion : function () {
+      const cases = [
+        [`[1, 2][* FILTER (RETURN true)[0]]`, [1, 2]],
+        [`[1, 2][* RETURN (RETURN 7)[0]]`, [7, 7]],
+        [`[1, 2][* LIMIT (RETURN 1)[0]]`, [1]],
+        [`[1, 2][* LIMIT (RETURN 1)[0], 1]`, [2]],
+        [`[1, 2][? FILTER (RETURN true)[0]]`, true],
+        [`[1, 2][? AT LEAST ((RETURN 2)[0]) FILTER true]`, true],
+        [`[1, 2][? (RETURN 2)[0] FILTER true]`, true],
+        [`[[1], [2]][** FILTER (RETURN true)[0]]`, [1, 2]],
+        [`[[1], [2]][*][* FILTER (RETURN true)[0]]`, [[1], [2]]],
+        [`[1, 2][* RETURN [3][* FILTER (RETURN true)[0]]]`, [[3], [3]]],
+        [`(FOR y IN 1..2 RETURN y)[* RETURN CURRENT]`, [1, 2]],
+        [`[[1], [2]][*][(RETURN 0)[0]]`, [1, 2]],
+        [`[1, 2, 3][* RETURN (RETURN CURRENT * 10)[0]]`, [10, 20, 30]],
+      ];
+      cases.forEach(([operand, expected]) => {
+        const query = `RETURN NOOPT(false) ? 'ok' : ${operand}`;
+        assertEqual([expected], db._query(query).toArray(), query);
+      });
+    },
+
+    testTernaryInsideExpansionOnlyExecutesChosenOperand : function () {
+      let query = `
+RETURN [1, 2][* FILTER CURRENT > 5 ? (FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[0] : true]
+`;
+      assertEqual([[1, 2]], db._query(query).toArray(), query);
+
+      query = `
+RETURN [1, 6][* RETURN CURRENT > 5 ? (RETURN ASSERT(CURRENT > 5, 'boom'))[0] : false]
+`;
+      assertEqual([[false, true]], db._query(query).toArray(), query);
+    },
+
+
     testShortcutTernary : function () {
       const query = `
 RETURN NOOPT(true) ? : ASSERT(false, 'fail')
