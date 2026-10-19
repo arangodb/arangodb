@@ -5,6 +5,10 @@
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.
 
+* Add `--http.decompressed-request-body-global-memory-limit` startup option,
+  which limits the combined size of all decompressed request bodies. Requests that 
+  would exceed it are rejected with 503. The default is 10% of the physical memory.
+
 * COR-1081: Adapt permissions for `PUT /_api/query/properties`.
 
 * COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for

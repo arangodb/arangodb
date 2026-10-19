@@ -29,6 +29,7 @@ namespace arangodb {
 
 GeneralServerOptions::GeneralServerOptions()
     : numIoThreads(NetworkFeature::defaultIOThreads()),
-      decompressionGlobalMemoryLimit(PhysicalMemory::getValue() / 10) {}
+      decompressedRequestBodyGlobalMemoryLimit(PhysicalMemory::getValue() /
+                                               10) {}
 
 }  // namespace arangodb

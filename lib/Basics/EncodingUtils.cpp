@@ -79,9 +79,10 @@ ErrorCode uncompressStream(z_stream& strm, T& uncompressed,
         uncompressed.append(outbuffer, chunk);
       }
     } while (ret == Z_OK);
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (arangodb::basics::Exception const&) {
+    // global budget exhausted
     uncompressed.clear();
-    return ex.code();
+    return TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
     // we can get here only if uncompressed.reserve() or uncompressed.append()
     // throw
@@ -240,8 +241,9 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   if (scope != nullptr) {
     try {
       scope->increase(uncompressedLength);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
+    } catch (arangodb::basics::Exception const&) {
+      // global budget exhausted
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 

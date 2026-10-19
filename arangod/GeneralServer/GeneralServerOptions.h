@@ -42,7 +42,7 @@ struct GeneralServerOptions {
   uint64_t compressResponseThreshold = 0;
   uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
-  uint64_t decompressionGlobalMemoryLimit = 0;
+  uint64_t decompressedRequestBodyGlobalMemoryLimit = 0;
   std::vector<std::string> trustedProxies;
   std::vector<std::string> accessControlAllowOrigins;
   std::string redirectRootTo = "/_admin/aardvark/index.html";
