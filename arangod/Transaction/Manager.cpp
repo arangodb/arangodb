@@ -1815,7 +1815,11 @@ bool Manager::canUse(ManagedTrx const& trx) const {
 }
 
 bool Manager::canMonitor(ManagedTrx const& trx) const {
-  if (trx.db != contextDatabaseName()) {
+  // an empty name means there is no request context, which only the superuser
+  // has (see contextDatabaseName()); it then addresses any database, as an
+  // empty database does in canKill()
+  auto const database = contextDatabaseName();
+  if (!database.empty() && trx.db != database) {
     return false;
   }
   return ExecContext::current().canMonitorTransaction(trx.user).ok();
