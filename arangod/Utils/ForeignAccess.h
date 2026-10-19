@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Assertions/Assert.h"
 #include "Basics/Result.h"
 #include "Utils/ExecContext.h"
 
@@ -39,6 +40,10 @@ namespace arangodb {
  * per operation, and only once a foreign resource shows up. Own resources are
  * decided by ExecContext without a question.
  *
+ * One instance serves one operation of one identity: create it on the stack
+ * of that operation. It must not be stored, copied or used from another
+ * execution context, so that a cached answer can never reach another caller.
+ *
  * Example:
  *   MonitorQueryAccess access;
  *   auto const isAccessible = [&access](Entry const& entry) {
@@ -51,9 +56,15 @@ namespace arangodb {
 template<Result (ExecContext::*question)(std::string_view) const>
 class ForeignAccess {
  public:
+  ForeignAccess() = default;
+  ForeignAccess(ForeignAccess const&) = delete;
+  auto operator=(ForeignAccess const&) -> ForeignAccess& = delete;
+
   /// @brief whether the calling identity may act on a resource of `owner`
   auto isAccessible(std::string_view owner) -> bool {
     auto const& exec = ExecContext::current();
+    TRI_ASSERT(&exec == _exec)
+        << "ForeignAccess used across execution contexts";
     if (owner == exec.user()) {
       // own resources: ExecContext answers without asking, so there is
       // nothing to cache, and caching it here would let foreign ones through
@@ -68,6 +79,8 @@ class ForeignAccess {
   }
 
  private:
+  // the identity this instance answers for; see the class comment
+  ExecContext const* _exec = &ExecContext::current();
   std::optional<bool> _foreignAccessible;
 };
 
