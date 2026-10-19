@@ -1137,10 +1137,12 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     ManagedTrx& mtrx = it->second;
     // aborting another user's transaction needs AdminKillTransactions,
     // committing it is reserved to the owner (or the superuser)
-    bool const allowed = (status == transaction::Status::ABORTED)
-                             ? canKill(mtrx, database)
-                             : (::authorized(mtrx.user) &&
-                                (database.empty() || mtrx.db == database));
+    bool const allowed =
+        (status == transaction::Status::ABORTED)
+            ? canKill(mtrx, database)
+            : (::authorized(mtrx.user) &&
+               // operate across any database if database is empty
+               (database.empty() || mtrx.db == database));
     if (!allowed) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ true));
@@ -1759,20 +1761,20 @@ bool Manager::canMonitor(ManagedTrx const& trx) const {
 
 bool Manager::canMonitor(ManagedTrx const& trx,
                          std::string_view database) const {
-  auto const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
+  if (trx.db != database) {
+    return false;
   }
-  return trx.db == database && exec.canMonitorTransaction(trx.user).ok();
+  return ExecContext::current().canMonitorTransaction(trx.user).ok();
 }
 
 bool Manager::canKill(ManagedTrx const& trx, std::string_view database) const {
-  auto const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
+  // the request addresses a transaction of `database`; a transaction of
+  // another database is "not found" for every identity, including the
+  // superuser. Internal callers pass an empty database to address any.
+  if (!database.empty() && trx.db != database) {
+    return false;
   }
-  return (database.empty() || trx.db == database) &&
-         exec.canKillTransaction(trx.user).ok();
+  return ExecContext::current().canKillTransaction(trx.user).ok();
 }
 
 bool Manager::canUse(ManagedTrx const& trx, std::string_view database) const {
