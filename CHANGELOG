@@ -6,6 +6,8 @@
   `AdminKillTransactions`. Committing another user's transaction remains
   reserved to its owner and the superuser.
 
+* COR-1081: Adapt permissions for `PUT /_api/query/properties`.
+
 * COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow
   for more fine-grained permission setting for aql queries.
 
