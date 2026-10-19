@@ -6,7 +6,7 @@
   `AdminKillTransactions`. Committing another user's transaction remains
   reserved to its owner and the superuser.
 
-* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow
   for more fine-grained permission setting for aql queries.
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
