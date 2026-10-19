@@ -71,6 +71,7 @@
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
+#include <iterator>
 #include <optional>
 #include <ranges>
 #include <string_view>
@@ -99,27 +100,36 @@ struct ListedTransaction {
 };
 
 /**
- * Remembers whether the calling identity may see other users' transactions
+ * Remembers whether the calling identity may act on other users' resources
  *
- * Seeing a foreign transaction is the same AdminMonitorTransactions question
- * for every owner, so the exec context is asked at most once per listing, and
- * only once a foreign transaction shows up. Own transactions are decided by
- * ExecContext::canMonitorTransaction without a question.
+ * `question` is an owner-based ExecContext check such as
+ * &ExecContext::canKillTransaction. Acting on a foreign resource is the same
+ * admin question for every owner, so the exec context is asked at most once
+ * per operation, and only once a foreign resource shows up. Own resources are
+ * decided by ExecContext without a question.
+ *
+ * Example:
+ *   MonitorTransactionAccess access;
+ *   auto const isAccessible = [&access](ListedTransaction const& item) {
+ *     return access.isAccessible(item.owner);
+ *   };
+ *   for (auto const& item : listed | std::views::filter(isAccessible)) { ... }
  */
-class MonitorTransactionAccess {
+template<Result (ExecContext::*question)(std::string_view) const>
+class ForeignAccess {
  public:
-  /// @brief whether the calling identity may see a transaction of `owner`
+  /// @brief whether the calling identity may act on a resource of `owner`
   auto isAccessible(std::string_view owner) -> bool {
     auto const& exec = ExecContext::current();
     if (owner == exec.user()) {
-      // own transactions: ExecContext answers without asking, so there is
+      // own resources: ExecContext answers without asking, so there is
       // nothing to cache, and caching it here would let foreign ones through
-      return exec.canMonitorTransaction(owner).ok();
+      return (exec.*question)(owner).ok();
     }
-    // foreign transactions: the same AdminMonitorTransactions question for
-    // every owner, so ask it once and reuse the answer
+    // foreign resources: the same admin question for every owner, so ask it
+    // once and reuse the answer
     if (!_foreignAccessible.has_value()) {
-      _foreignAccessible = exec.canMonitorTransaction(owner).ok();
+      _foreignAccessible = (exec.*question)(owner).ok();
     }
     return _foreignAccessible.value();
   }
@@ -127,6 +137,14 @@ class MonitorTransactionAccess {
  private:
   std::optional<bool> _foreignAccessible;
 };
+
+/// @brief may the caller see other users' transactions (listing)
+using MonitorTransactionAccess =
+    ForeignAccess<&ExecContext::canMonitorTransaction>;
+/// @brief may the caller abort other users' transactions (bulk abort)
+using KillTransactionAccess = ForeignAccess<&ExecContext::canKillTransaction>;
+/// @brief may the caller kill other users' queries (bulk abort)
+using KillQueryAccess = ForeignAccess<&ExecContext::canKillQuery>;
 
 bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
                         std::vector<std::string>& writes,
@@ -1129,6 +1147,29 @@ futures::Future<Result> Manager::abortManagedTrx(TransactionId tid,
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
                                   bool clearServers,
                                   std::string const& database) {
+  auto const authorize = [this, status, &database](ManagedTrx const& mtrx) {
+    // aborting another user's transaction needs AdminKillTransactions,
+    if (status == transaction::Status::ABORTED) {
+      return canKill(mtrx, database);
+    }
+    // committing it is reserved to the owner (or the superuser)
+    // (operate across any database if database is empty)
+    return ::authorized(mtrx.user) && (database.empty() || mtrx.db == database);
+  };
+  return updateTransactionIf(tid, status, clearServers, database, authorize);
+}
+
+Result Manager::updateAuthorizedTransaction(TransactionId tid,
+                                            transaction::Status status,
+                                            bool clearServers) {
+  return updateTransactionIf(tid, status, clearServers, /*database*/ "",
+                             [](ManagedTrx const&) { return true; });
+}
+
+Result Manager::updateTransactionIf(
+    TransactionId tid, transaction::Status status, bool clearServers,
+    std::string const& database,
+    std::function<bool(ManagedTrx const&)> const& authorize) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
@@ -1175,15 +1216,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     }
 
     ManagedTrx& mtrx = it->second;
-    // aborting another user's transaction needs AdminKillTransactions,
-    // committing it is reserved to the owner (or the superuser)
-    bool const allowed =
-        (status == transaction::Status::ABORTED)
-            ? canKill(mtrx, database)
-            : (::authorized(mtrx.user) &&
-               // operate across any database if database is empty
-               (database.empty() || mtrx.db == database));
-    if (!allowed) {
+    if (!authorize(mtrx)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ true));
     }
@@ -1472,37 +1505,45 @@ bool Manager::garbageCollect(bool abortAll) {
 }
 
 /// @brief abort all transactions matching
-bool Manager::abortManagedTrx(
-    std::function<bool(TransactionState const&, std::string const&)> cb) {
-  containers::SmallVector<TransactionId, 8> toAbort;
+std::vector<Manager::SelectedTrx> Manager::selectManagedTrx(
+    std::function<bool(TransactionState const&, std::string const&)> const&
+        select) const {
+  std::vector<SelectedTrx> selected;
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
-    auto it = _transactions[bucket]._managed.begin();
-    while (it != _transactions[bucket]._managed.end()) {
-      ManagedTrx& mtrx = it->second;
-      if (mtrx.type == MetaType::Managed) {
-        TRI_ASSERT(mtrx.state != nullptr);
-        TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
-        if (tryGuard.isLocked() && cb(*mtrx.state, mtrx.user)) {
-          toAbort.emplace_back(it->first);
-        }
+    for (auto const& [tid, mtrx] : _transactions[bucket]._managed) {
+      if (mtrx.type != MetaType::Managed) {
+        continue;
       }
-
-      ++it;  // next
+      TRI_ASSERT(mtrx.state != nullptr);
+      TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
+      if (tryGuard.isLocked() && select(*mtrx.state, mtrx.user)) {
+        selected.emplace_back(SelectedTrx{.tid = tid, .owner = mtrx.user});
+      }
     }
   }
+  return selected;
+}
 
-  for (TransactionId tid : toAbort) {
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+bool Manager::abortSelectedTrx(std::vector<SelectedTrx> const& selected) {
+  for (auto const& trx : selected) {
+    Result res = updateAuthorizedTransaction(trx.tid, Status::ABORTED,
+                                             /*clearSrvs*/ true);
     if (res.fail() &&
         !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)
-          << "error aborting transaction " << tid << ": " << res.errorMessage();
+          << "error aborting transaction " << trx.tid << ": "
+          << res.errorMessage();
     }
   }
-  return !toAbort.empty();
+  return !selected.empty();
+}
+
+bool Manager::abortManagedTrx(
+    std::function<bool(TransactionState const&, std::string const&)> cb) {
+  return abortSelectedTrx(selectManagedTrx(cb));
 }
 
 void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
@@ -1640,8 +1681,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
           // note: expiry timestamp is a system clock value that indicates
           // number of seconds since the OS was started.
           entry.add("expiryTime",
-                    VPackValue(TRI_StringTimeStamp(
-                        trx.expiryTime, Logger::getUseLocalTime())));
+                    VPackValue(TRI_StringTimeStamp(trx.expiryTime,
+                                                   Logger::getUseLocalTime())));
           if (!ServerState::instance()->isDBServer()) {
             // proper user information is only present on single servers
             // and coordinators
@@ -1677,23 +1718,36 @@ Result Manager::abortAllManagedWriteTrx(std::string_view username,
       << "aborting all " << (fanout ? "" : "local ") << "write transactions";
   Result res;
 
+  // queries: the read-only filter is free; the admin question is asked at most
+  // once for the whole operation, across all databases
+  KillQueryAccess queryAccess;
   DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
-  databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
+  databaseFeature.enumerate([&queryAccess](TRI_vocbase_t* vocbase) {
     auto queryList = vocbase->queryList();
     TRI_ASSERT(queryList != nullptr);
     queryList->kill(
-        [](aql::Query& query) {
-          return ExecContext::current().canKillQuery(query.user()).ok() &&
-                 query.isModificationQuery();
+        [&queryAccess](aql::Query& query) {
+          return query.isModificationQuery() &&
+                 queryAccess.isAccessible(query.user());
         },
         false);
   });
 
-  // abort local transactions
-  abortManagedTrx([](TransactionState const& state, std::string const& user) {
-    return ExecContext::current().canKillTransaction(user).ok() &&
-           !state.isReadOnlyTransaction();
-  });
+  // local transactions: select the write transactions under the registry
+  // locks, decide the permission outside of them (at most one admin question
+  // for the whole operation), and abort without asking again
+  KillTransactionAccess trxAccess;
+  auto const isAccessible = [&trxAccess](SelectedTrx const& trx) {
+    return trxAccess.isAccessible(trx.owner);
+  };
+  auto const selected = selectManagedTrx(
+      [](TransactionState const& state, std::string const& /*owner*/) {
+        return !state.isReadOnlyTransaction();
+      });
+  std::vector<SelectedTrx> toAbort;
+  std::ranges::copy(selected | std::views::filter(isAccessible),
+                    std::back_inserter(toAbort));
+  abortSelectedTrx(toAbort);
 
   if (fanout && ServerState::instance()->isCoordinator()) {
     auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();

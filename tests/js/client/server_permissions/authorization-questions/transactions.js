@@ -137,17 +137,19 @@ function transactionApiAuthzSuite () {
   return {
     setUpAll: function () {
       setUpApiTestData();
-      // alice may write to the test database, bob may only read it; root
-      // keeps read-write access to _system and is therefore an admin
+      // alice and carol may write to the test database, bob may only read it;
+      // root keeps read-write access to _system and is therefore an admin
       users.save('alice', password);
       users.grantDatabase('alice', DB, 'rw');
       users.save('bob', password);
       users.grantDatabase('bob', DB, 'ro');
+      users.save('carol', password);
+      users.grantDatabase('carol', DB, 'rw');
     },
 
     tearDownAll: function () {
       abortAllAsRoot();
-      ['alice', 'bob'].forEach((user) => {
+      ['alice', 'bob', 'carol'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -391,6 +393,28 @@ function transactionApiAuthzSuite () {
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       assertFalse(transactionIdsAsRoot().includes(id));
+    },
+
+    // the admin question is the same for every foreign owner and is asked
+    // once per bulk abort, not per transaction; read-only transactions are
+    // filtered out before any question is asked
+    testAbortAllWriteTransactionsAsAdminAsksOnce: function () {
+      const aliceWrite = beginTrxAs('alice', { write: [c] });
+      const carolWrite = beginTrxAs('carol', { write: [c] });
+      const bobRead = beginTrxAs('bob', { read: [c] });
+
+      beginObserve();
+      const res = arango.DELETE_RAW(`${transactionApi}/write`);
+      const observed = endObserve();
+      assertPermissions(killQuestions, observed);
+      assertEqual(1, observed.filter((question) => question === 'AdminKillTransactions').length,
+                  JSON.stringify(observed));
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      const remaining = transactionIdsAsRoot();
+      assertFalse(remaining.includes(aliceWrite), JSON.stringify(remaining));
+      assertFalse(remaining.includes(carolWrite), JSON.stringify(remaining));
+      assertTrue(remaining.includes(bobRead), JSON.stringify(remaining));
     },
   };
 }
