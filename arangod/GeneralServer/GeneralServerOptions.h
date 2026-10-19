@@ -40,7 +40,7 @@ struct GeneralServerOptions {
   bool permanentRootRedirect = true;
   uint64_t numIoThreads;  // initialized in ctor
   uint64_t compressResponseThreshold = 0;
-  uint64_t maxUncompressedRequestBodySize =
+  uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
   uint64_t decompressionGlobalMemoryLimit = 0;
   std::vector<std::string> trustedProxies;

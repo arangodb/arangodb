@@ -503,8 +503,8 @@ uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
   return _options.compressResponseThreshold;
 }
 
-uint64_t GeneralServerFeature::maxUncompressedRequestBodySize() const noexcept {
-  return _options.maxUncompressedRequestBodySize;
+uint64_t GeneralServerFeature::maxDecompressedRequestBodySize() const noexcept {
+  return _options.maxDecompressedRequestBodySize;
 }
 
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
