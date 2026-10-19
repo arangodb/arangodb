@@ -200,9 +200,16 @@ std::uint64_t Metadata::newLimit() const noexcept {
 bool Metadata::migrationAllowed(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLocked());
   std::uint64_t bound = std::min(deservedSize, maxSize);
-  std::uint64_t fixed =
-      fixedSize + newTableSize + Manager::kCacheRecordOverhead;
-  return (bound >= fixed) && (hardUsageLimit <= bound - fixed);
+  if (fixedSize > bound) {
+    return false;
+  }
+  bound -= fixedSize;
+  if (newTableSize > bound) {
+    return false;
+  }
+  bound -= newTableSize;
+  return (bound >= Manager::kCacheRecordOverhead) &&
+         (hardUsageLimit <= bound - Manager::kCacheRecordOverhead);
 }
 
 void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
