@@ -966,30 +966,33 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
     size_t len = raw.size();
 
     if (encoding == StaticStrings::EncodingGzip) {
+      ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::gzipUncompress(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxUncompressedRequestBodySize(), &scope);
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
                   "uncompressed size of Content-Encoding: gzip body exceeds "
-                  "the allowed maximum"};
+                  "the allowed maximum or the server's decompression budget"};
         }
         return {
             r,
             "a decoding error occurred while handling Content-Encoding: gzip"};
       }
       req.setPayload(std::move(dst));
+      req.setPayloadMemory(std::move(scope));
       // as we have decoded, remove the encoding header.
       // this prevents duplicate decoding
       req.removeHeader(header);
       return {};
     } else if (encoding == StaticStrings::EncodingDeflate) {
+      ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::zlibInflate(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxUncompressedRequestBodySize(), &scope);
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
@@ -1001,25 +1004,17 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
                 "deflate"};
       }
       req.setPayload(std::move(dst));
+      req.setPayloadMemory(std::move(scope));
       // as we have decoded, remove the encoding header.
       // this prevents duplicate decoding
       req.removeHeader(header);
       return {};
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
       ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
-      if (auto declared = arangodb::encoding::lz4UncompressedLength(src, len)) {
-        try {
-          scope.increase(*declared);
-        } catch (basics::Exception const&) {
-          return {TRI_ERROR_RESOURCE_LIMIT,
-                  "decompressed request bodies held by the server would exceed "
-                  "the allowed total"};
-        }
-      }
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::lz4Uncompress(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxUncompressedRequestBodySize(), &scope);
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
