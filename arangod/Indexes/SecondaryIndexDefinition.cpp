@@ -22,7 +22,6 @@
 
 #include "SecondaryIndexDefinition.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
@@ -49,25 +48,4 @@ Result SecondaryIndexDefinition::normalize(velocypack::Builder& normalized,
 
   return IndexFactory::enhanceJsonIndexGeneric(definition, normalized,
                                                isCreation);
-}
-
-std::shared_ptr<Index> SecondaryIndexDefinition::create(
-    IIndexFactory const& factory, LogicalCollection& collection,
-    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
-  // this class backs three IndexType values that share one set of
-  // normalize()/equal() rules but each need a different concrete Index class
-  switch (_type) {
-    case IndexType::Hash:
-      return factory.createHash(collection, definition, id,
-                                isClusterConstructor);
-    case IndexType::Persistent:
-      return factory.createPersistent(collection, definition, id,
-                                      isClusterConstructor);
-    case IndexType::Skiplist:
-      return factory.createSkiplist(collection, definition, id,
-                                    isClusterConstructor);
-    default:
-      TRI_ASSERT(false) << "SecondaryIndexDefinition used for " << int(_type);
-      return nullptr;
-  }
 }

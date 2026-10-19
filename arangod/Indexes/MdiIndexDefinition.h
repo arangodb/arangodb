@@ -26,18 +26,13 @@
 
 namespace arangodb {
 
-// shared by Zkd/MDI for the same reason as SecondaryIndexDefinition
+// Zkd (legacy name) and MDI share the same normalize() rules
 struct MdiIndexDefinition : public IndexDefinition {
   explicit MdiIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
-
-  std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                LogicalCollection& collection,
-                                velocypack::Slice definition, IndexId id,
-                                bool isClusterConstructor) const override;
 };
 
 }  // namespace arangodb

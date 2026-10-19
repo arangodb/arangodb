@@ -32,14 +32,6 @@ struct MdiPrefixedIndexDefinition : public IndexDefinition {
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
-
-  std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                LogicalCollection& collection,
-                                velocypack::Slice definition, IndexId id,
-                                bool isClusterConstructor) const override {
-    return factory.createMdiPrefixed(collection, definition, id,
-                                     isClusterConstructor);
-  }
 };
 
 }  // namespace arangodb

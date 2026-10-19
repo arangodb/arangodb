@@ -26,20 +26,13 @@
 
 namespace arangodb {
 
-// shared by Hash/Persistent/Skiplist: identical normalize() rules, but each
-// one is a different RocksDB/ClusterIndex class, so create() still needs to
-// pick the right createXxx() by the instance's own type
+// Hash/Persistent/Skiplist share the same normalize() rules
 struct SecondaryIndexDefinition : public IndexDefinition {
   explicit SecondaryIndexDefinition(IndexType type) : IndexDefinition(type) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
-
-  std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                LogicalCollection& collection,
-                                velocypack::Slice definition, IndexId id,
-                                bool isClusterConstructor) const override;
 };
 
 }  // namespace arangodb

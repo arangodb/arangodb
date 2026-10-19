@@ -22,7 +22,6 @@
 
 #include "MdiIndexDefinition.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
@@ -49,15 +48,4 @@ Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
   normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
   return IndexFactory::enhanceJsonIndexMdi(definition, normalized, isCreation);
-}
-
-std::shared_ptr<Index> MdiIndexDefinition::create(
-    IIndexFactory const& factory, LogicalCollection& collection,
-    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
-  // this class backs both Zkd (legacy name) and MDI
-  if (_type == IndexType::Zkd) {
-    return factory.createZkd(collection, definition, id, isClusterConstructor);
-  }
-  TRI_ASSERT(_type == IndexType::MDI);
-  return factory.createMdi(collection, definition, id, isClusterConstructor);
 }

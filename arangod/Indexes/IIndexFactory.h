@@ -24,6 +24,8 @@
 
 #include <memory>
 
+#include "Indexes/IndexType.h"
+
 namespace arangodb {
 
 class Index;
@@ -34,61 +36,13 @@ namespace velocypack {
 class Slice;
 }  // namespace velocypack
 
-// Visitor interface: one engine-specific "create" method per index type.
-// IndexDefinition::create() is the matching "accept" side - it knows which
-// of these methods belongs to its own type, so adding a type here without
-// implementing it in some engine is a compile error, not a runtime gap.
+// one switch-on-type entry point per engine, replacing a virtual per type
 struct IIndexFactory {
   virtual ~IIndexFactory() = default;
 
-  virtual std::shared_ptr<Index> createPrimary(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createEdge(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createGeo(LogicalCollection& collection,
-                                           velocypack::Slice definition,
-                                           IndexId id,
-                                           bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createGeo1(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createGeo2(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createHash(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createPersistent(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createSkiplist(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createTtl(LogicalCollection& collection,
-                                           velocypack::Slice definition,
-                                           IndexId id,
-                                           bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createFulltext(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createZkd(LogicalCollection& collection,
-                                           velocypack::Slice definition,
-                                           IndexId id,
-                                           bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createMdi(LogicalCollection& collection,
-                                           velocypack::Slice definition,
-                                           IndexId id,
-                                           bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createMdiPrefixed(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createVector(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-  virtual std::shared_ptr<Index> createInverted(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+  virtual std::shared_ptr<Index> createIndex(
+      IndexType type, LogicalCollection& collection,
+      velocypack::Slice definition, IndexId id,
       bool isClusterConstructor) const = 0;
 
   // the arangosearch link is added by a feature at startup (see

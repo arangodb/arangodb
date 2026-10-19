@@ -22,7 +22,6 @@
 
 #include "PrimaryIndexDefinition.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 
@@ -45,16 +44,4 @@ Result PrimaryIndexDefinition::normalize(velocypack::Builder& normalized,
                  velocypack::Value(Index::oldtypeName(IndexType::Primary)));
 
   return TRI_ERROR_INTERNAL;
-}
-
-std::shared_ptr<Index> PrimaryIndexDefinition::create(
-    IIndexFactory const& factory, LogicalCollection& collection,
-    velocypack::Slice definition, IndexId id, bool isClusterConstructor) const {
-  if (!isClusterConstructor) {
-    // this index type cannot be created directly
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot create primary index");
-  }
-  return factory.createPrimary(collection, definition, id,
-                               isClusterConstructor);
 }

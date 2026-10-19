@@ -37,14 +37,6 @@ struct VectorIndexDefinition : public IndexDefinition {
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
 
-  std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                LogicalCollection& collection,
-                                velocypack::Slice definition, IndexId id,
-                                bool isClusterConstructor) const override {
-    return factory.createVector(collection, definition, id,
-                                isClusterConstructor);
-  }
-
  protected:
   IVectorIndexProvider const& _vectorIndexProvider;
 };

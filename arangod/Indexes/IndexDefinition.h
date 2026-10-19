@@ -45,10 +45,7 @@ class Builder;
 bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
                            velocypack::Slice rhs, bool attributeOrderMatters);
 
-// the engine-agnostic rules of an index type: name/normalize/equal are
-// shared by both engines (see IndexTypeCatalog); create() is the "accept"
-// side of the visitor in IIndexFactory.h - it knows which of the engine's
-// createXxx() methods matches its own type, the engine only knows how
+// name/normalize/equal are engine-agnostic; create() routes to the engine.
 struct IndexDefinition {
   explicit IndexDefinition(IndexType type) : _type(type) {}
   virtual ~IndexDefinition() = default;
@@ -73,13 +70,15 @@ struct IndexDefinition {
     return true;
   }
 
-  /// @brief dispatch to the matching create*() method on the engine's
-  ///        IIndexFactory implementation
+  /// @brief create the index via the engine's IIndexFactory
   virtual std::shared_ptr<Index> create(IIndexFactory const& factory,
                                         LogicalCollection& collection,
                                         velocypack::Slice definition,
                                         IndexId id,
-                                        bool isClusterConstructor) const = 0;
+                                        bool isClusterConstructor) const {
+    return factory.createIndex(_type, collection, definition, id,
+                               isClusterConstructor);
+  }
 
  protected:
   IndexType const _type;
