@@ -25,11 +25,13 @@
 #include "Basics/Result.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -50,6 +52,8 @@ class ShardingInfo {
  public:
   ShardingInfo() = delete;
   ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection);
+  ShardingInfo(CollectionDescriptor const& descriptor,
+               LogicalCollection* collection);
   ShardingInfo(ShardingInfo const& other, LogicalCollection* collection);
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
@@ -119,8 +123,23 @@ class ShardingInfo {
                                  size_t replicationFactor,
                                  std::vector<std::string>& shardKeys);
 
+  static Result extractShardKeys(
+      std::optional<std::vector<std::string>> const& input,
+      size_t replicationFactor, std::vector<std::string>& shardKeys);
+
  private:
   void makeSatellite();
+
+  // @brief zeroes the shard count for a smart edge parent, then rejects a
+  // count of zero everywhere it is not allowed
+  void resolveNumberOfShards(bool isSmart);
+
+  // @brief stores both values, rejecting invalid combinations of the two
+  void applyReplicationFactorAndWriteConcern(
+      bool isSmart, size_t replicationFactor,
+      std::optional<size_t> writeConcern);
+
+  void initializeShardingStrategy(CollectionDescriptor const& descriptor);
 
   // @brief the logical collection we are working for
   LogicalCollection* _collection;

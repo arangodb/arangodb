@@ -452,6 +452,22 @@ databases, finds them present and does nothing. Those scenarios carry
 contains `100` or `400`. Measured: `--test 050` made both report `pass`;
 `--test 050,400` made both deny.
 
+**Under TSAN the clients get an extra suppression.** The matrix reads a
+non-zero arangosh exit as a failed authorization outcome, so a sanitizer report
+in the client turns a passing scenario into a `MISMATCH`. Seen on TSAN: a data
+race in V8's `ThreadManager` during `V8ShellFeature::start()`. `race:v8::*` in
+`tsan_arangodb_suppressions.txt` cannot catch it - V8 is uninstrumented, so the
+*racing access* stacks hold no V8 frames at all (`operator delete` called from
+`ApplicationServer::start`); V8 appears only in the mutex- and thread-creation
+stacks, which TSan does not match race suppressions against.
+
+The only pattern that matches is the top frame, `operator delete`, and putting
+that in the shared file would blind TSan to genuine double-free and
+use-after-free races in arangod. So `run_scenarios.py` concatenates the project
+file with `tsan_client_suppressions.txt` and points **only the arangosh
+children** at the result (`client_env()`); arangod keeps the project's full
+strictness. Without `TSAN_OPTIONS` in the environment nothing changes.
+
 **Deny scenarios are slow.** rta-makedata's `createSafe()` retries a failing create 50 times with a growing sleep before giving up, so a step that is *meant* to be denied still takes roughly two minutes. `--phase-timeout` defaults to 1800s to accommodate it.
 
 **How a denial is recognised.** `deny` requires a non-zero exit **and** evidence of a permission decision in the output — in practice `One of the requests has been denied`, the policy decision point's batch message propagated verbatim by arangod. Anything else that merely exited non-zero is reported as `error`, so a crash cannot satisfy a `deny` expectation.

@@ -99,7 +99,7 @@ class DatabaseManagerThread final : public ServerThread {
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
 #ifdef USE_V8
-  V8DealerFeature& _dealer;
+  V8DealerFeature* _dealer;
 #endif
 };
 
@@ -247,6 +247,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+#ifdef USE_V8
+  V8DealerFeature* _dealer{nullptr};
+#endif
 
   using DatabasesList = containers::FlatHashMap<std::string, Database*>;
   class DatabasesListGuard {

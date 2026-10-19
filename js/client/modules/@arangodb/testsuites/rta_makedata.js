@@ -43,7 +43,6 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -186,7 +185,7 @@ function makeDataWrapper (options) {
       print(`\n${(new Date()).toISOString()}${GREEN}[============] RBAC scenarios: ` +
             `${argv.join(' ')}${RESET}`);
       const start = time();
-      const rc = executeExternalAndWait('python3', argv);
+      const rc = rbac.runScenarioDriver(this.options, this.instanceManager, argv);
       res[whichRTA].duration = time() - start;
       res.total += 1;
       res.duration += res[whichRTA].duration;
@@ -207,9 +206,13 @@ function makeDataWrapper (options) {
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
       let rc;
       try {
+        this.instanceManager.disconnect();
+        this.instanceManager.reconnect(true);
         rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+        this.instanceManager.disconnect();
+        this.instanceManager.reconnect(true);
       } catch (ex) {
-        print(`${RED}$(Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
+        print(`${RED}${Date()} caught exception: ${ex} while ${messages[count-1]} ${ex} - ${ex.stack}${RESET}`);
         throw ex;
       }
       res[whichRTA] = rc;
@@ -307,11 +310,13 @@ function makeDataWrapper (options) {
                 }
               });
             } catch(e) {
+              let msg = `upgradeCycle failed by: ${e.message}\n${e.stack}`;
+              print(`${RED}${Date()}${msg}${RESET}`);
               res.status = false;
               res.failed += 1;
               res[whichRTA] = {
                 'forceTerminate': true,
-                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'message': msg,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
@@ -449,6 +454,7 @@ function makeDataWrapper (options) {
       localOptions.dbServers = 3;
     }
     localOptions.password = "cluster";
+    localOptions.jwtSecret = "makedata_jwt_secret"; // cluster Waitdata needs JWT to access _users
   } else {
     localOptions.password = "single";
   }

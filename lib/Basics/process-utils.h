@@ -175,8 +175,13 @@ void TRI_ClosePipe(ExternalProcess* process, bool read);
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer,
-                               size_t bufferSize);
+// Blocks until `bufferSize` bytes have been read, or until the other side
+// closed the pipe. If `deadlineReached` is specified, it is invoked while
+// waiting for data to arrive, and the read is aborted - returning whatever has
+// been read so far - as soon as it returns true.
+TRI_read_return_t TRI_ReadPipe(
+    ExternalProcess const* process, char* buffer, size_t bufferSize,
+    std::function<bool()> const& deadlineReached = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes

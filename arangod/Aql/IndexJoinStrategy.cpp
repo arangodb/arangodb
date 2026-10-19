@@ -36,14 +36,22 @@
 namespace arangodb::aql {
 
 namespace {
+template<IndexJoinKeyOrder order>
 struct VPackSliceComparator {
   auto operator()(VPackSlice left, VPackSlice right) const {
-    return basics::VelocyPackHelper::compare(left, right, true) <=> 0;
+    if constexpr (order == IndexJoinKeyOrder::kBinary) {
+      return basics::VelocyPackHelper::compare(left, right, false) <=> 0;
+    } else if constexpr (order == IndexJoinKeyOrder::kVPackLegacy) {
+      return basics::VelocyPackHelper::compareLegacy(left, right, true) <=> 0;
+    } else {
+      return basics::VelocyPackHelper::compare(left, right, true) <=> 0;
+    }
   }
 };
-}  // namespace
-auto IndexJoinStrategyFactory::createStrategy(
-    std::vector<Descriptor> desc,
+
+template<typename Comparator>
+auto createStrategyWithComparator(
+    std::vector<IndexJoinStrategyFactory::Descriptor> desc,
     aql::QueryOptions::JoinStrategyType joinStrategy)
     -> std::unique_ptr<AqlIndexJoinStrategy> {
   if (desc.size() == 2 &&
@@ -51,18 +59,39 @@ auto IndexJoinStrategyFactory::createStrategy(
     if (desc[0].isUniqueStream && desc[1].isUniqueStream) {
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<
-          velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
-          std::move(desc));
+          velocypack::Slice, LocalDocumentId, Comparator>>(std::move(desc));
     } else {
       // build optimized merge join strategy for two non-unique indices
-      return std::make_unique<TwoIndicesMergeJoin<
-          velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
+      return std::make_unique<
+          TwoIndicesMergeJoin<velocypack::Slice, LocalDocumentId, Comparator>>(
           std::move(desc));
     }
   }
-  return std::make_unique<GenericMergeJoin<velocypack::Slice, LocalDocumentId,
-                                           VPackSliceComparator>>(
+  return std::make_unique<
+      GenericMergeJoin<velocypack::Slice, LocalDocumentId, Comparator>>(
       std::move(desc));
+}
+}  // namespace
+
+auto IndexJoinStrategyFactory::createStrategy(
+    std::vector<Descriptor> desc,
+    aql::QueryOptions::JoinStrategyType joinStrategy,
+    IndexJoinKeyOrder keyOrder) -> std::unique_ptr<AqlIndexJoinStrategy> {
+  switch (keyOrder) {
+    case IndexJoinKeyOrder::kBinary:
+      return createStrategyWithComparator<
+          VPackSliceComparator<IndexJoinKeyOrder::kBinary>>(std::move(desc),
+                                                            joinStrategy);
+    case IndexJoinKeyOrder::kVPackLegacy:
+      return createStrategyWithComparator<
+          VPackSliceComparator<IndexJoinKeyOrder::kVPackLegacy>>(
+          std::move(desc), joinStrategy);
+    case IndexJoinKeyOrder::kVPack:
+      break;
+  }
+  return createStrategyWithComparator<
+      VPackSliceComparator<IndexJoinKeyOrder::kVPack>>(std::move(desc),
+                                                       joinStrategy);
 }
 
 }  // namespace arangodb::aql

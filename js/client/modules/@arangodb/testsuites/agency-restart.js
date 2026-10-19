@@ -83,7 +83,7 @@ function runArangodRecovery (params, agencyMgr) {
     params['instance'] = new inst.instance(
       params.options, inst.instanceRole.agent, 'tcp',
       agencyMgr, args,
-      params.rootDir, '', '',
+      params.rootDir, '',
       '', 0);
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));

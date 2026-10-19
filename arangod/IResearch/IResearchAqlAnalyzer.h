@@ -104,6 +104,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   static irs::analysis::analyzer::ptr make_json(std::string_view args);
 
   explicit AqlAnalyzer(Options const& options);
+  ~AqlAnalyzer() override;
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<AqlAnalyzer>::id();

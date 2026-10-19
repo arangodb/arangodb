@@ -1,9 +1,90 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
-* Adapt permissions for `PUT /_api/query/properties`.
+* COR-1081: Adapt permissions for `PUT /_api/query/properties`.
+
+* BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
+
+* AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
+  or `--default-language`) for case mapping instead of the process locale.
+  This changes results only for Greek, Turkish, Azeri and Lithuanian.
+
+* COR-1137: Fixed a memory leak in the AQL analyzer when converting
+  non-string values to strings.
+
+* COR-1146: Fix AQL arithmetic operators losing precision on integers above
+  2^53 when operands are not constant, e.g. document attributes. This fixes
+  issue #23400.
+
+* Fix AQL ROUND() changing large integers such as 4503599627370497 and
+  rounding 0.49999999999999994 up to 1. This fixes issue #23350.
+
+* COR-1142: Fix AQL TO_NUMBER() returning 0 for strings holding subnormal
+  numbers such as "1e-308". This fixes issue #23358.
+
+* COR-1062: Fixed wrong AQL query results when two expressions differ only in
+  grouping, e.g. `(a - b) - c` vs. `a - (b - c)`. The optimizer rules
+  `remove-redundant-calculations`, `remove-redundant-or`, `replace-or-with-in`
+  and `remove-filter-covered-by-index` treated such expressions as the same.
+  This fixes issue #23397.
+
+* COR-1089: Replaces deprecated OpenSSL function calls in LicenseFeature,
+  Also replaces call with proper EVP_ variants.
+
+* COR-1067: Fixed AT LEAST (<n>) quantifier to no longer evaluate to true
+  when n exceeds array's length. Also emmitting a warning if n is
+  negative, non-numeric or not an integer.
+
+* COR-1135: AQL `FIND_LAST()` now behaves like `FIND_FIRST()`, fixing missed
+  matches of accented characters at the end of the search range. Fixed
+  `FIND_FIRST()` and `FIND_LAST()` missing overlapping matches.
+
+* COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
+  indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
+  matches of accented characters at the end of the search range.
+
+* Updated ArangoDB Starter to v0.19.29.
+
+* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+  dependencies.
+
+* COR-1083 / github issue #23425:
+  Fixed the incorrect usage of released pool analyzer.
+
+* BTS-2456: Fixed a data race on DB-Servers where the intermediate commit of a
+  replicated AQL modification ran on a network thread while other snippets of
+  the same query were executing. We commit first and then replicate.
+
+* Fixed a cluster race where a database could be dropped while it was
+  still being created. Now databases remain hidden while building
+  and cannot be deleted until creation completes.
+
+* Hotbackups always produce a valid timestamps, even if META files are
+  missing.
+
+* BTS-2483: The AQL optimizer rule `propagate-constant-attributes` ignores
+  comparisons on function or subquery results, such as
+  `FIRST(<subquery>).attr == 'value'`. Applying them led to wrong results.
 
 * COR-1023: Adapt permissions of `GET /_api/query/current`, `GET /_api/query/slow`,
   `DELETE /_api/query/{id}` and `DELETE /_api/query/slow`.
+
+* Updated VelocyPack to fix JSON number parsing, so AQL `JSON_PARSE` returns
+  correctly rounded numbers. This fixes issues #23349, #23385 and #23386.
+
+* AQL `DATE_ROUND` does not crash with a SIGFPE anymore due to integer overflow and division by 0
+
+* AQL `DATE_ROUND` rounds down correctly for dates before the epoch
+
+* AQL `DATE_ISO8601` applies negative offset correctly to minutes as well
+
+* Fix AQL SUBSTITUTE() with several search values skipping an occurrence that
+  starts right after a replaced match. This fixes issue #23399.
+
+* COR-1147: The AQL optimizer rule `smart-joins` only joins two collections
+  locally on the DB-Servers if every `FOR` loop between them is over a
+  SatelliteCollection.
+
+* Upgraded OpenSSL to 3.5.9.
 
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
@@ -36,7 +117,11 @@
   reversing a string, and reverses strings containing U+FFFF completely.
   This fixes issue #23360.
 
-* Updated ArangoDB Starter to v0.19.28.
+* The AQL optimizer uses a sparse index for a branch of an `OR` condition
+  only if that branch itself rules out `null` for the indexed attribute.
+  For example, `FILTER doc.b < 5 AND (doc.b >= 0 OR doc.a == 1)` returns
+  documents in which `doc.b` is `null` and `doc.a` is `1`.
+  This fixes issue #23396.
 
 * Fix AQL SUBSTITUTE() with an empty search string. It previously returned
   null with a warning; it now matches at every character position, e.g.
@@ -86,6 +171,22 @@
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
   the hnsw_stats and rabitq_stats internal counters.
 
+* AQL index joins with constant index fields return the correct rows for
+  queries that skip rows, such as `LIMIT offset, count`, instead of crashing
+  the server.
+
+* AQL index joins whose post-filters only read stored index values work in
+  clusters with more than one shard of the joined collections per DB server.
+
+* AQL index joins honor the `forceOneShardAttributeValue` query option and
+  only read the shard that the option selects.
+
+* The `join-index-nodes` optimizer rule no longer uses non-deterministic
+  expressions or expressions that need V8, such as user-defined AQL
+  functions, as constant index lookup values.
+
+* AQL Index Join no longer mixed primary indexes and persistent indexes.
+  This caused wrong results previously.
 
 3.12.12 (2026-09-21)
 --------------------
@@ -651,6 +752,8 @@
 
 * Improve the output of fields `dbStats` for every column family
   when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* Return proper exit code if `arangoimport` fails.
 
 * COR-53: Fixed handling of forced vector index hints in AQL, so it is
   handled properly by changing the order of optimization rules.

@@ -96,7 +96,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
       testee->keyOptions));
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
-  EXPECT_FALSE(testee->smartGraphAttribute.has_value());
 }
 
 TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
@@ -171,9 +170,6 @@ class CollectionConstantSmartPropertiesTest
 
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isDisjoint);
-
-GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
-                                    smartGraphAttribute);
 
 GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
                                     smartJoinAttribute);
