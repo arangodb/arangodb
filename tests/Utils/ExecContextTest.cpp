@@ -346,11 +346,12 @@ TEST(ExecContextTest,
 // --- canChangeQueryProperties ---
 
 TEST(ExecContextTest,
-     canChangeQueryProperties_database_write_access_is_enough) {
+     canChangeQueryProperties_database_write_access_is_not_enough) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
 
-  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+            TRI_ERROR_HTTP_FORBIDDEN);
 }
 
 TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
@@ -358,7 +359,7 @@ TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
       makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
 
   EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
-            TRI_ERROR_FORBIDDEN);
+            TRI_ERROR_HTTP_FORBIDDEN);
 }
 
 TEST(ExecContextTest,
