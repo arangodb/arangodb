@@ -390,6 +390,18 @@ class instance {
     }
   }
 
+  // config file and js tree; both belong to the current binary set
+  _makeConfigArgs () {
+    let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
+    return {
+      'configuration': fs.join(pu.CONFIG_DIR, config),
+      'define': 'TOP_DIR=' + pu.TOP_DIR
+    };
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -419,13 +431,8 @@ class instance {
       this.appDir = fs.getTempPath();
     }
 
-    let config = 'arangod-' + this.instanceRole + '.conf';
-    if (this.options.arangodConfig !== undefined) {
-      config = this.options.arangodConfig;
-    }
     let default_args = {
-      'configuration': fs.join(pu.CONFIG_DIR, config),
-      'define': 'TOP_DIR=' + pu.TOP_DIR,
+      ...this._makeConfigArgs(),
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -602,6 +609,8 @@ class instance {
 
   _executeArangod (moreArgs, instanceJson) {
     let cmd = pu.ARANGOD_BIN;
+    // the binary set may have changed since the constructor ran
+    Object.assign(this.args, this._makeConfigArgs());
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
     if (this.options.valgrind) {
@@ -651,6 +660,8 @@ class instance {
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
     subEnv.push(`INSTANCEINFO=${instanceJson}`);
+    // make arangod use the ICU data of the build it comes from
+    subEnv.push(`ICU_DATA=${pu.BIN_DIR}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
@@ -743,7 +754,23 @@ class instance {
       print(".");
       sleep(1);
     }
-    print(`${Date()} upgrade of ${this.name} finished.`);
+    print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
+    this.processSanitizerReports();
+    if (this.exitStatus.hasOwnProperty('signal') &&
+        ((this.exitStatus === 11) ||
+         (this.exitStatus === 6))) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+      this.analyzeServerCrash(msg);
+      this.serverCrashedLocal = true;
+      this.message += msg;
+      msg = " runUpgrade: Marking crashy";
+      pu.serverCrashed = true;
+      this.message += msg;
+      print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+      this.pid = null;
+      return false;
+    }
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -821,8 +848,10 @@ class instance {
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+    let count = 0;
 
     while (true) {
+      count += 1;
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
         this.exitStatus = null;
@@ -833,7 +862,7 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.jwt_secret !== '') {
-            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
+            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url} - deadline ${deadline}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  undefined,
@@ -864,6 +893,9 @@ class instance {
         }
       } catch (ex) {
         if (time() < deadline) {
+          if ((count % 10) === 0) {
+            print(`${Date()} ping failed by: ${ex}`);
+          }
           print('.');
           sleep(1);
         } else {
@@ -918,7 +950,10 @@ class instance {
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      const ret = arango.reconnect(this.endpoint,
+                                   '_system', 'root',
+                                   this.hasSetPassvoid ? this.options.password: '',
+                                   true);
       this.connectionHandle = arango.getConnectionHandle();
       this.dumpConnectionTable();
       return ret;
