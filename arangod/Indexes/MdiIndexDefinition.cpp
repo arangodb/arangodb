@@ -29,7 +29,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
                                      velocypack::Slice definition,
@@ -49,3 +49,5 @@ Result MdiIndexDefinition::normalize(velocypack::Builder& normalized,
 
   return IndexFactory::enhanceJsonIndexMdi(definition, normalized, isCreation);
 }
+
+}  // namespace arangodb

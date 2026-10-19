@@ -48,51 +48,10 @@ class RocksDBIndexFactory final : public IndexFactory {
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
 
-  std::shared_ptr<Index> createPrimary(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createEdge(LogicalCollection& collection,
-                                    velocypack::Slice definition, IndexId id,
-                                    bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createGeo(LogicalCollection& collection,
-                                   velocypack::Slice definition, IndexId id,
-                                   bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createGeo1(LogicalCollection& collection,
-                                    velocypack::Slice definition, IndexId id,
-                                    bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createGeo2(LogicalCollection& collection,
-                                    velocypack::Slice definition, IndexId id,
-                                    bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createHash(LogicalCollection& collection,
-                                    velocypack::Slice definition, IndexId id,
-                                    bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createPersistent(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createSkiplist(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createTtl(LogicalCollection& collection,
-                                   velocypack::Slice definition, IndexId id,
-                                   bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createFulltext(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createZkd(LogicalCollection& collection,
-                                   velocypack::Slice definition, IndexId id,
-                                   bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createMdi(LogicalCollection& collection,
-                                   velocypack::Slice definition, IndexId id,
-                                   bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createMdiPrefixed(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createVector(LogicalCollection& collection,
-                                      velocypack::Slice definition, IndexId id,
-                                      bool isClusterConstructor) const override;
-  std::shared_ptr<Index> createInverted(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createIndex(IndexType type,
+                                     LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override;
 };
 
 }  // namespace arangodb

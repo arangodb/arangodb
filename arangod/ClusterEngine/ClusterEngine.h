@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/Common.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
 

@@ -55,6 +55,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
@@ -78,8 +79,6 @@
 #include "VocBase/LogicalView.h"
 
 #include <absl/strings/str_cat.h>
-
-#include <type_traits>
 
 using namespace std::chrono_literals;
 
@@ -841,6 +840,8 @@ IResearchFeature::IResearchFeature(
 #endif
 }
 
+IResearchFeature::~IResearchFeature() = default;
+
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
 
@@ -1033,9 +1034,10 @@ void IResearchFeature::registerIndexFactory() {
   auto& engine = server().getFeature<StorageEngine>();
 
   auto addDefinition = [&]() {
-    _linkDefinition = std::make_unique<IResearchLinkDefinition>(server());
+    // register before replacing, so a failed add() can't leave a dangling ptr
+    auto newDefinition = std::make_unique<IResearchLinkDefinition>(server());
     auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
-                                           *_linkDefinition);
+                                           *newDefinition);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1043,6 +1045,7 @@ void IResearchFeature::registerIndexFactory() {
                        "index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
+    _linkDefinition = std::move(newDefinition);
   };
 
   if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {

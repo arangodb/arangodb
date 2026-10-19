@@ -63,49 +63,29 @@ class IndexTypeCatalog final {
   IndexTypeCatalog(application_features::ApplicationServer& server,
                    IVectorIndexProvider const& vectorIndexProvider);
 
-  IndexType resolve(std::string_view name) const noexcept;
+  [[nodiscard]] IndexType resolve(std::string_view name) const noexcept;
 
   // the definition registered under this name, or nullptr if unknown; used
   // by IndexFactory::prepareIndexFromSlice to dispatch create() without a
   // second, independent name->IndexType mapping
-  IndexDefinition const* definitionFor(std::string_view name) const noexcept;
+  [[nodiscard]] IndexDefinition const* definitionFor(
+      std::string_view name) const noexcept;
 
-  Result normalizeType(std::string_view name, velocypack::Builder& normalized,
-                       velocypack::Slice definition, bool isCreation,
-                       Database const& vocbase) const;
+  [[nodiscard]] Result normalizeType(std::string_view name,
+                                     velocypack::Builder& normalized,
+                                     velocypack::Slice definition,
+                                     bool isCreation,
+                                     Database const& vocbase) const;
 
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const;
+  [[nodiscard]] bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+                           std::string const& dbname) const;
 
-  std::vector<std::pair<std::string_view, std::string_view>> aliases(
-      uint32_t apiVersion) const;
+  [[nodiscard]] std::vector<std::pair<std::string_view, std::string_view>>
+  aliases(uint32_t apiVersion) const;
 
   // definition must outlive the catalog
-  Result add(std::string_view name, IndexDefinition const& definition);
-
-  EdgeIndexDefinition const& edge() const noexcept { return _edge; }
-  FulltextIndexDefinition const& fulltext() const noexcept { return _fulltext; }
-  GeoIndexDefinition const& geo() const noexcept { return _geo; }
-  Geo1IndexDefinition const& geo1() const noexcept { return _geo1; }
-  Geo2IndexDefinition const& geo2() const noexcept { return _geo2; }
-  SecondaryIndexDefinition const& hash() const noexcept { return _hash; }
-  SecondaryIndexDefinition const& persistent() const noexcept {
-    return _persistent;
-  }
-  SecondaryIndexDefinition const& skiplist() const noexcept {
-    return _skiplist;
-  }
-  PrimaryIndexDefinition const& primary() const noexcept { return _primary; }
-  TtlIndexDefinition const& ttl() const noexcept { return _ttl; }
-  MdiIndexDefinition const& zkd() const noexcept { return _zkd; }
-  MdiIndexDefinition const& mdi() const noexcept { return _mdi; }
-  MdiPrefixedIndexDefinition const& mdiPrefixed() const noexcept {
-    return _mdiPrefixed;
-  }
-  VectorIndexDefinition const& vector() const noexcept { return _vector; }
-  iresearch::IResearchInvertedIndexDefinition const& inverted() const noexcept {
-    return _inverted;
-  }
+  [[nodiscard]] Result add(std::string_view name,
+                           IndexDefinition const& definition);
 
  private:
   EdgeIndexDefinition _edge;

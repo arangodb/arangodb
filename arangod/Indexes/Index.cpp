@@ -22,7 +22,6 @@
 
 #include "Index.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/Variable.h"
@@ -571,9 +570,6 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 /// contents are the same
 bool Index::compare(IndexTypeCatalog const& catalog, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  if (!lhs.get(arangodb::StaticStrings::IndexType).isString()) {
-    return false;
-  }
   return catalog.equal(lhs, rhs, dbname);
 }
 

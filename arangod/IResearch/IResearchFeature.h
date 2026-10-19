@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/AstNode.h"
-#include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
 #include "resource_manager.hpp"
@@ -57,6 +56,7 @@ class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
 
 struct IResearchExecutionPool;
+struct IResearchLinkDefinition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -112,6 +112,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
                             IResearchOptions options);
   explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
+  ~IResearchFeature() override;
 
   void prepare() final;
   void start() final;

@@ -32,7 +32,6 @@
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchInvertedClusterIndex.h"
-#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -59,128 +58,69 @@ std::shared_ptr<Index> ClusterIndexFactory::createGeneric(
                                         type, definition);
 }
 
-std::shared_ptr<Index> ClusterIndexFactory::createPrimary(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId,
-    bool isClusterConstructor) const {
-  if (!isClusterConstructor) {
-    // this index type cannot be created directly
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot create primary index");
-  }
-  return createGeneric(IndexType::Primary, collection, definition,
-                       IndexId::primary());
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createEdge(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool isClusterConstructor) const {
-  if (!isClusterConstructor) {
-    // this index type cannot be created directly
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot create edge index");
-  }
-  return createGeneric(IndexType::Edge, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createGeo(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Geo, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createGeo1(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Geo1, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createGeo2(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Geo2, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createHash(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Hash, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createPersistent(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Persistent, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createSkiplist(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Skiplist, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createTtl(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::TTL, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createFulltext(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Fulltext, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createZkd(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Zkd, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createMdi(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::MDI, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createMdiPrefixed(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::MDIPrefixed, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createVector(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  return createGeneric(IndexType::Vector, collection, definition, id);
-}
-
-std::shared_ptr<Index> ClusterIndexFactory::createInverted(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
-  using namespace arangodb::iresearch;
-  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
-  std::string indexName;
-  if (!nameSlice.isNone()) {
-    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
-      LOG_TOPIC("91ebe", ERR, TOPIC)
-          << "failed to initialize index from definition, error in attribute "
-             "'" +
-                 arangodb::StaticStrings::IndexName +
-                 "': " + definition.toString();
-      return nullptr;
+std::shared_ptr<Index> ClusterIndexFactory::createIndex(
+    IndexType type, LogicalCollection& collection, velocypack::Slice definition,
+    IndexId id, bool isClusterConstructor) const {
+  switch (type) {
+    case IndexType::Primary:
+      if (!isClusterConstructor) {
+        // this index type cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "cannot create primary index");
+      }
+      return createGeneric(IndexType::Primary, collection, definition,
+                           IndexId::primary());
+    case IndexType::Edge:
+      if (!isClusterConstructor) {
+        // this index type cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "cannot create edge index");
+      }
+      return createGeneric(IndexType::Edge, collection, definition, id);
+    case IndexType::Geo:
+    case IndexType::Geo1:
+    case IndexType::Geo2:
+    case IndexType::Hash:
+    case IndexType::Persistent:
+    case IndexType::Skiplist:
+    case IndexType::TTL:
+    case IndexType::Fulltext:
+    case IndexType::Zkd:
+    case IndexType::MDI:
+    case IndexType::MDIPrefixed:
+    case IndexType::Vector:
+      return createGeneric(type, collection, definition, id);
+    case IndexType::Inverted: {
+      using namespace arangodb::iresearch;
+      auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+      std::string indexName;
+      if (!nameSlice.isNone()) {
+        if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+          LOG_TOPIC("91ebe", ERR, TOPIC)
+              << "failed to initialize index from definition, error in "
+                 "attribute '" +
+                     arangodb::StaticStrings::IndexName +
+                     "': " + definition.toString();
+          return nullptr;
+        }
+        indexName = nameSlice.copyString();
+      }
+      auto objectId = basics::VelocyPackHelper::stringUInt64(
+          definition, arangodb::StaticStrings::ObjectId);
+      auto index = std::make_shared<IResearchInvertedClusterIndex>(
+          id, objectId, collection, indexName);
+      bool pathExists = false;
+      if (index->init(definition, pathExists).fail()) {
+        return nullptr;
+      }
+      index->initFields();
+      return index;
     }
-    indexName = nameSlice.copyString();
+    default:
+      TRI_ASSERT(false) << "ClusterIndexFactory::createIndex called for "
+                        << int(type);
+      return nullptr;
   }
-  auto objectId = basics::VelocyPackHelper::stringUInt64(
-      definition, arangodb::StaticStrings::ObjectId);
-  auto index = std::make_shared<IResearchInvertedClusterIndex>(
-      id, objectId, collection, indexName);
-  bool pathExists = false;
-  if (index->init(definition, pathExists).fail()) {
-    return nullptr;
-  }
-  index->initFields();
-  return index;
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

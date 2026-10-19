@@ -24,8 +24,6 @@
 
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchInvertedIndexDefinition.h"
-#include "Indexes/IndexDefinition.h"
-#include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {

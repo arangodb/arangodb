@@ -28,7 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 Result PrimaryIndexDefinition::normalize(velocypack::Builder& normalized,
                                          velocypack::Slice /*definition*/,
@@ -45,3 +45,5 @@ Result PrimaryIndexDefinition::normalize(velocypack::Builder& normalized,
 
   return TRI_ERROR_INTERNAL;
 }
+
+}  // namespace arangodb

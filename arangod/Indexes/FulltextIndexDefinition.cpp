@@ -29,7 +29,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 Result FulltextIndexDefinition::normalize(velocypack::Builder& normalized,
                                           velocypack::Slice definition,
@@ -42,3 +42,5 @@ Result FulltextIndexDefinition::normalize(velocypack::Builder& normalized,
   return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
                                                 isCreation);
 }
+
+}  // namespace arangodb

@@ -22,10 +22,16 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/StaticStrings.h"
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "Mocks/Servers.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include <string_view>
 #include <utility>
@@ -88,4 +94,162 @@ TEST_F(IndexTypeCatalogTest, aliasesForApiVersion0) {
 TEST_F(IndexTypeCatalogTest, aliasesForApiVersion1) {
   using Alias = std::pair<std::string_view, std::string_view>;
   EXPECT_EQ(catalog.aliases(1), (std::vector<Alias>{{"zkd", "mdi"}}));
+}
+
+namespace {
+
+size_t countObjectId(velocypack::Slice normalized) {
+  size_t count = 0;
+  for (auto it : velocypack::ObjectIterator(normalized)) {
+    if (it.key.stringView() == StaticStrings::ObjectId) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+}  // namespace
+
+class RocksDBIndexFactoryTest : public IndexTypeCatalogTest {
+ protected:
+  RocksDBIndexFactory factory{mockServer.server(), catalog};
+};
+
+TEST_F(RocksDBIndexFactoryTest, invertedIndexGetsExactlyOneObjectId) {
+  auto definition = velocypack::Parser::fromJson(R"({"type": "inverted"})");
+  velocypack::Builder normalized;
+  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
+                                            /*isCreation*/ true,
+                                            mockServer.getSystemDatabase());
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(countObjectId(normalized.slice()), 1);
+}
+
+TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNotCreating) {
+  auto definition = velocypack::Parser::fromJson(R"({"type": "inverted"})");
+  velocypack::Builder normalized;
+  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
+                                            /*isCreation*/ false,
+                                            mockServer.getSystemDatabase());
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(countObjectId(normalized.slice()), 0);
+}
+
+TEST_F(RocksDBIndexFactoryTest, noExtraObjectIdWhenAlreadyPresent) {
+  auto definition = velocypack::Parser::fromJson(
+      R"({"type": "inverted", "objectId": "123"})");
+  velocypack::Builder normalized;
+  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
+                                            /*isCreation*/ true,
+                                            mockServer.getSystemDatabase());
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(countObjectId(normalized.slice()), 1);
+}
+
+TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNormalizeFails) {
+  auto definition = velocypack::Parser::fromJson(R"({"type": "nosuchtype"})");
+  velocypack::Builder normalized;
+  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
+                                            /*isCreation*/ true,
+                                            mockServer.getSystemDatabase());
+  EXPECT_TRUE(res.fail());
+}
+
+TEST_F(IndexTypeCatalogTest, geo2EqualChecksGeoJson) {
+  auto a = velocypack::Parser::fromJson(
+      R"({"type": "geo2", "fields": ["x"], "geoJson": true})");
+  auto b = velocypack::Parser::fromJson(
+      R"({"type": "geo2", "fields": ["x"], "geoJson": false})");
+  EXPECT_FALSE(catalog.equal(a->slice(), b->slice(), "_system"));
+}
+
+TEST_F(IndexTypeCatalogTest, geo1EqualChecksGeoJson) {
+  auto a = velocypack::Parser::fromJson(
+      R"({"type": "geo1", "fields": ["x"], "geoJson": true})");
+  auto b = velocypack::Parser::fromJson(
+      R"({"type": "geo1", "fields": ["x"], "geoJson": false})");
+  EXPECT_FALSE(catalog.equal(a->slice(), b->slice(), "_system"));
+}
+
+TEST_F(IndexTypeCatalogTest, zkdIsAliasOfMdiForEqual) {
+  auto zkd =
+      velocypack::Parser::fromJson(R"({"type": "zkd", "fields": ["x"]})");
+  auto mdi =
+      velocypack::Parser::fromJson(R"({"type": "mdi", "fields": ["x"]})");
+  EXPECT_TRUE(catalog.equal(zkd->slice(), mdi->slice(), "_system"));
+}
+
+TEST_F(IndexTypeCatalogTest, invertedEqualChecksFields) {
+  auto a =
+      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["x"]})");
+  auto b =
+      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["y"]})");
+  EXPECT_FALSE(catalog.equal(a->slice(), b->slice(), "_system"));
+}
+
+TEST_F(IndexTypeCatalogTest, equalDoesNotThrowOnNonStringType) {
+  auto a = velocypack::Parser::fromJson(R"({"type": "persistent"})");
+  auto b = velocypack::Parser::fromJson(R"({"type": 1})");
+  EXPECT_FALSE(catalog.equal(a->slice(), b->slice(), "_system"));
+}
+
+TEST_F(IndexTypeCatalogTest, rocksdbAliasNormalizesToPersistent) {
+  auto definition =
+      velocypack::Parser::fromJson(R"({"type": "rocksdb", "fields": ["x"]})");
+  velocypack::Builder normalized;
+  normalized.openObject();
+  auto res = catalog.normalizeType("rocksdb", normalized, definition->slice(),
+                                   /*isCreation*/ true,
+                                   mockServer.getSystemDatabase());
+  normalized.close();
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(normalized.slice().get(StaticStrings::IndexType).stringView(),
+            "persistent");
+}
+
+TEST_F(IndexTypeCatalogTest, zkdNormalizeKeepsOwnName) {
+  auto definition =
+      velocypack::Parser::fromJson(R"({"type": "zkd", "fields": ["x"]})");
+  velocypack::Builder normalized;
+  normalized.openObject();
+  auto res = catalog.normalizeType("zkd", normalized, definition->slice(),
+                                   /*isCreation*/ true,
+                                   mockServer.getSystemDatabase());
+  normalized.close();
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(normalized.slice().get(StaticStrings::IndexType).stringView(),
+            "zkd");
+}
+
+TEST_F(IndexTypeCatalogTest, ttlNormalizeRequiresExpireAfter) {
+  auto definition = velocypack::Parser::fromJson(
+      R"({"type": "ttl", "fields": ["x"], "expireAfter": 600})");
+  velocypack::Builder normalized;
+  normalized.openObject();
+  auto res = catalog.normalizeType("ttl", normalized, definition->slice(),
+                                   /*isCreation*/ true,
+                                   mockServer.getSystemDatabase());
+  normalized.close();
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_EQ(normalized.slice().get(StaticStrings::IndexType).stringView(),
+            "ttl");
+
+  auto missingExpire =
+      velocypack::Parser::fromJson(R"({"type": "ttl", "fields": ["x"]})");
+  velocypack::Builder normalized2;
+  normalized2.openObject();
+  auto res2 = catalog.normalizeType("ttl", normalized2, missingExpire->slice(),
+                                    /*isCreation*/ true,
+                                    mockServer.getSystemDatabase());
+  EXPECT_TRUE(res2.fail());
+}
+
+TEST_F(IndexTypeCatalogTest, vectorNormalizeFailsWhenFeatureDisabled) {
+  auto definition = velocypack::Parser::fromJson(R"({"type": "vector"})");
+  velocypack::Builder normalized;
+  normalized.openObject();
+  auto res = catalog.normalizeType("vector", normalized, definition->slice(),
+                                   /*isCreation*/ true,
+                                   mockServer.getSystemDatabase());
+  EXPECT_TRUE(res.fail());
 }

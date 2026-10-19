@@ -95,17 +95,22 @@ Result IndexTypeCatalog::normalizeType(std::string_view name,
 
 bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
                              std::string const& dbname) const {
+  auto lhsTypeSlice = lhs.get(StaticStrings::IndexType);
+  auto rhsTypeSlice = rhs.get(StaticStrings::IndexType);
+  if (!lhsTypeSlice.isString() || !rhsTypeSlice.isString()) {
+    return false;
+  }
+
   // zkd is the old name of mdi
   auto typeName = [](velocypack::Slice s) -> std::string_view {
-    TRI_ASSERT(s.isString());
     if (s.stringView() == "zkd") {
       return "mdi";
     }
     return s.stringView();
   };
 
-  auto lhsType = typeName(lhs.get(StaticStrings::IndexType));
-  auto rhsType = typeName(rhs.get(StaticStrings::IndexType));
+  auto lhsType = typeName(lhsTypeSlice);
+  auto rhsType = typeName(rhsTypeSlice);
   if (lhsType != rhsType) {
     return false;
   }

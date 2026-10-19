@@ -63,8 +63,6 @@ class IndexFactory : public IIndexFactory {
                IndexTypeCatalog const& catalog);
   ~IndexFactory() override = default;
 
-  IndexTypeCatalog const& catalog() const noexcept { return _catalog; }
-
   // the arangosearch link is created by a function IResearchFeature injects
   // at startup, not by the engines directly - see the comment on
   // IIndexFactory::createIResearchLink
