@@ -1,3 +1,4 @@
+/*jshint globalstrict:false, strict:false */
 /* global getOptions, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,49 +23,76 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-'use strict';
 if (getOptions === true) {
   return {
-    // 1 MiB: small enough to exceed with one request, large enough for the
-    // framework's own requests
-    'http.decompressed-request-body-global-memory-limit': '1048576',
+    'http.max-decompressed-request-body-size': String(768 * 1024),
+    'http.decompressed-request-body-global-memory-limit': String(1024 * 1024),
   };
 }
 const jsunity = require('jsunity');
-const {assertEqual} = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
 const internal = require('internal');
+
+// bodies are deflate-compressed by arangosh (compress-request-threshold = 10)
+const padding = 'x'.repeat(600 * 1024);
+
+// keeps failure messages small: echo responses contain the whole body
+const summary = (res) => JSON.stringify({
+  code: res.code,
+  errorNum: res.parsedBody && res.parsedBody.errorNum,
+  errorMessage: res.parsedBody && res.parsedBody.errorMessage,
+});
 
 function DecompressedRequestBodyGlobalMemoryLimitSuite() {
   let compressTransfer;
+
+  // keeps ~600 KiB reserved until the query finishes
+  const startSlowRequest = () => {
+    const res = arango.POST_RAW('/_api/cursor',
+      { query: 'LET p = @pad RETURN SLEEP(5)', bindVars: { pad: padding } },
+      { 'x-arango-async': 'store' });
+    assertEqual(202, res.code, summary(res));
+    return res.headers['x-arango-async-id'];
+  };
+
+  const waitForJob = (id) => {
+    for (let i = 0; i < 300; ++i) {
+      const res = arango.PUT_RAW(`/_api/job/${id}`, {});
+      if (res.code !== 204) {  // 204: job still running
+        return res;
+      }
+      internal.sleep(0.1);
+    }
+    assertTrue(false, 'job did not finish');
+  };
+
   return {
-    setUpAll: function() {
-      // arangosh sends bodies >= 10 bytes deflate-compressed in tests
+    setUpAll: function () {
       compressTransfer = arango.compressTransfer();
       arango.compressTransfer(true);
     },
-    tearDownAll: function() {
+    tearDownAll: function () {
       arango.compressTransfer(compressTransfer);
     },
 
-    testBodyOverBudgetGets503: function() {
-      const res = arango.POST_RAW('/_admin/echo', 'x'.repeat(4 * 1024 * 1024));
-      assertEqual(503, res.code, res);
+    testBodyWithinBudgetStillWorks: function () {
+      const res = arango.POST_RAW('/_admin/echo', padding);
+      assertEqual(200, res.code, summary(res));
+      assertEqual(padding.length, res.parsedBody.requestBody.length);
+    },
+
+    testConcurrentBodiesOverBudgetGet503: function () {
+      const id = startSlowRequest();
+      // 600 KiB held + 600 KiB more > 1 MiB budget
+      const res = arango.POST_RAW('/_admin/echo', padding);
+      assertEqual(503, res.code, summary(res));
       assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, res.parsedBody.errorNum);
-    },
 
-    testBodyWithinBudgetStillWorks: function() {
-      const body = 'x'.repeat(256 * 1024);
-      const res = arango.POST_RAW('/_admin/echo', body);
-      assertEqual(200, res.code, res);
-      assertEqual(body, res.parsedBody.requestBody);
-    },
-
-    testBudgetIsReleasedAfterRejection: function() {
-      // repeated rejections must not use up the budget
-      for (let i = 0; i < 5; ++i) {
-        assertEqual(503, arango.POST_RAW('/_admin/echo', 'x'.repeat(4 * 1024 * 1024)).code);
-      }
-      assertEqual(200, arango.POST_RAW('/_admin/echo', 'x'.repeat(256 * 1024)).code);
+      const job = waitForJob(id);
+      assertEqual(201, job.code, summary(job));
+      // the finished request released its share
+      const after = arango.POST_RAW('/_admin/echo', padding);
+      assertEqual(200, after.code, summary(after));
     },
   };
 }
