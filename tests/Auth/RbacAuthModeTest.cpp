@@ -473,6 +473,16 @@ TEST_F(RbacAuthModeTest, AdminQueryCache) {
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
 }
 
+TEST_F(RbacAuthModeTest, AdminMonitorAqlQueries) {
+  check(p::AdminMonitorAqlQueries{});
+  expectSingle(rbac::Action::AdminMonitorAqlQueries, "<none>");
+}
+
+TEST_F(RbacAuthModeTest, AdminKillAqlQueries) {
+  check(p::AdminKillAqlQueries{});
+  expectSingle(rbac::Action::AdminKillAqlQueries, "<none>");
+}
+
 // ---------------------------------------------------------------------------
 // API versions
 // ---------------------------------------------------------------------------
