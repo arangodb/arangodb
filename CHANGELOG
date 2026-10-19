@@ -1,6 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
+  extending left from the end, which could return extra characters.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
