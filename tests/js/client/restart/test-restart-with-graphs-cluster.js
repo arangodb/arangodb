@@ -91,9 +91,7 @@ function testSuite() {
       coordinator.exitStatus = null;
       coordinator.pid = null;
 
-      coordinator.restartOneInstance({
-        "server.jwt-secret": jwtSecret
-      });
+      coordinator.restartOneInstance();
         
       coordinator.pingUntilReady(IM.httpJWTAuthOptions, 30);
       
