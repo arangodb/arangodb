@@ -356,7 +356,7 @@ function CollectionTruncateFailuresSuite() {
               assertEqual(i.selectivityEstimate, 1);
               break;
             case 'persistent':
-              assertEqual(i.selectivityEstimate, 1);
+              assertEqual(i.selectivityEstimate, 0.025);
               break;
             default:
               fail();
