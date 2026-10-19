@@ -49,7 +49,8 @@ struct DisabledVectorIndexProvider final : IVectorIndexProvider {
 
 class IndexTypeCatalogTest : public ::testing::Test {
  protected:
-  tests::mocks::MockRestServer mockServer;
+  // needs IResearchAnalyzerFeature, which MockRestServer lacks
+  tests::mocks::MockAqlServer mockServer;
   DisabledVectorIndexProvider vectorIndexProvider;
   IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
 };
