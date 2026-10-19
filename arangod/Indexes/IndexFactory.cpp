@@ -96,15 +96,14 @@ void IndexFactory::setLinkCreator(LinkCreator creator) {
 }
 
 std::shared_ptr<Index> IndexFactory::createIResearchLink(
-    LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-    bool isClusterConstructor) const {
+    IndexCreationContext const& ctx) const {
   if (!_linkCreator) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "invalid index type '" +
             std::string{iresearch::StaticStrings::ViewArangoSearchType} + "'");
   }
-  return _linkCreator(collection, definition, id, isClusterConstructor);
+  return _linkCreator(ctx);
 }
 
 Result IndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -190,8 +189,8 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
         absl::StrCat("invalid index type '", type.stringView(), "'"));
   }
 
-  std::shared_ptr<Index> index =
-      def->create(*this, collection, definition, id, isClusterConstructor);
+  IndexCreationContext ctx{collection, definition, id, isClusterConstructor};
+  std::shared_ptr<Index> index = def->create(*this, ctx);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

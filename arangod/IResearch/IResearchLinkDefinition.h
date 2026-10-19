@@ -48,12 +48,10 @@ struct IResearchLinkDefinition final : public IndexDefinition {
                                           vocbase, defaultVersion);
   }
 
-  std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                LogicalCollection& collection,
-                                velocypack::Slice definition, IndexId id,
-                                bool isClusterConstructor) const override {
-    return factory.createIResearchLink(collection, definition, id,
-                                       isClusterConstructor);
+  std::shared_ptr<Index> create(
+      IIndexFactory const& factory,
+      IndexCreationContext const& ctx) const override {
+    return factory.createIResearchLink(ctx);
   }
 
  private:

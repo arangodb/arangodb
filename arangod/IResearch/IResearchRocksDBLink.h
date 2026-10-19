@@ -129,9 +129,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
 // construction logic for a RocksDB arangosearch link; registered with
 // IndexFactory::setLinkCreator by IResearchFeature::registerIndexFactory
-std::shared_ptr<Index> createRocksDBLink(LogicalCollection& collection,
-                                         velocypack::Slice definition,
-                                         IndexId id, bool isOpening);
+std::shared_ptr<Index> createRocksDBLink(IndexCreationContext const& ctx);
 
 }  // namespace iresearch
 }  // namespace arangodb

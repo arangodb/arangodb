@@ -93,9 +93,8 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-std::shared_ptr<Index> createRocksDBLink(LogicalCollection& collection,
-                                         VPackSlice definition, IndexId id,
-                                         bool isOpening) {
+std::shared_ptr<Index> createRocksDBLink(IndexCreationContext const& ctx) {
+  auto const& [collection, definition, id, isOpening] = ctx;
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);

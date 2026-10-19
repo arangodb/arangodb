@@ -35,10 +35,11 @@
 namespace arangodb {
 namespace iresearch {
 
-std::shared_ptr<Index> createRocksDBInvertedIndex(LogicalCollection& collection,
-                                                  velocypack::Slice definition,
-                                                  IndexId id,
-                                                  bool isClusterConstructor) {
+std::shared_ptr<Index> createRocksDBInvertedIndex(
+    IndexCreationContext const& ctx) {
+  auto& collection = ctx.collection;
+  auto definition = ctx.definition;
+  auto id = ctx.id;
   auto const clusterWideIndex =
       collection.id() == collection.planId() && collection.isAStub();
   auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);

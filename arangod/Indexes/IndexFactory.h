@@ -66,12 +66,11 @@ class IndexFactory : public IIndexFactory {
   // the arangosearch link is created by a function IResearchFeature injects
   // at startup, not by the engines directly - see the comment on
   // IIndexFactory::createIResearchLink
-  using LinkCreator = std::function<std::shared_ptr<Index>(
-      LogicalCollection&, velocypack::Slice, IndexId, bool)>;
+  using LinkCreator =
+      std::function<std::shared_ptr<Index>(IndexCreationContext const&)>;
   void setLinkCreator(LinkCreator creator);
   std::shared_ptr<Index> createIResearchLink(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override;
+      IndexCreationContext const& ctx) const override;
 
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,

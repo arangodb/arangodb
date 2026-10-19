@@ -125,11 +125,10 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-std::shared_ptr<Index> createLinkCoordinator(LogicalCollection& collection,
-                                             VPackSlice definition, IndexId id,
-                                             bool /*isClusterConstructor*/) {
-  auto link = std::make_shared<IResearchLinkCoordinator>(id, collection);
-  auto res = link->init(definition);
+std::shared_ptr<Index> createLinkCoordinator(IndexCreationContext const& ctx) {
+  auto link =
+      std::make_shared<IResearchLinkCoordinator>(ctx.id, ctx.collection);
+  auto res = link->init(ctx.definition);
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

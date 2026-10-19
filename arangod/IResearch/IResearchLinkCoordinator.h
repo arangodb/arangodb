@@ -110,10 +110,7 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
 // construction logic for a coordinator-side arangosearch link; registered
 // with IndexFactory::setLinkCreator by
 // IResearchFeature::registerIndexFactory
-std::shared_ptr<Index> createLinkCoordinator(LogicalCollection& collection,
-                                             velocypack::Slice definition,
-                                             IndexId id,
-                                             bool isClusterConstructor);
+std::shared_ptr<Index> createLinkCoordinator(IndexCreationContext const& ctx);
 
 }  // namespace iresearch
 }  // namespace arangodb

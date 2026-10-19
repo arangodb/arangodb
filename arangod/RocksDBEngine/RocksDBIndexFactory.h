@@ -48,10 +48,8 @@ class RocksDBIndexFactory final : public IndexFactory {
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
 
-  std::shared_ptr<Index> createIndex(IndexType type,
-                                     LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const override;
+  std::shared_ptr<Index> createIndex(
+      IndexType type, IndexCreationContext const& ctx) const override;
 };
 
 }  // namespace arangodb

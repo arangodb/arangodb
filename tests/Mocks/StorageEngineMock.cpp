@@ -93,11 +93,9 @@ struct IndexFactoryMock : arangodb::IndexFactory {
         std::string{"invalid index type '"} + name + "'");
   }
 
-  std::shared_ptr<arangodb::Index> createIndex(arangodb::IndexType type,
-                                               arangodb::LogicalCollection&,
-                                               arangodb::velocypack::Slice,
-                                               arangodb::IndexId,
-                                               bool) const override {
+  std::shared_ptr<arangodb::Index> createIndex(
+      arangodb::IndexType type,
+      arangodb::IndexCreationContext const&) const override {
     return invalid(arangodb::Index::oldtypeName(type));
   }
 

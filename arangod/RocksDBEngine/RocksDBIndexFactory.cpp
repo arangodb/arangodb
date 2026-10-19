@@ -57,8 +57,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
     : IndexFactory(server, catalog) {}
 
 std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
-    IndexType type, LogicalCollection& collection, velocypack::Slice definition,
-    IndexId id, bool isClusterConstructor) const {
+    IndexType type, IndexCreationContext const& ctx) const {
+  auto const& [collection, definition, id, isClusterConstructor] = ctx;
   switch (type) {
     case IndexType::Primary:
       if (!isClusterConstructor) {
@@ -108,8 +108,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
     case IndexType::Vector:
       return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
     case IndexType::Inverted:
-      return iresearch::createRocksDBInvertedIndex(collection, definition, id,
-                                                   isClusterConstructor);
+      return iresearch::createRocksDBInvertedIndex(ctx);
     default:
       TRI_ASSERT(false) << "RocksDBIndexFactory::createIndex called for "
                         << int(type);

@@ -59,8 +59,8 @@ std::shared_ptr<Index> ClusterIndexFactory::createGeneric(
 }
 
 std::shared_ptr<Index> ClusterIndexFactory::createIndex(
-    IndexType type, LogicalCollection& collection, velocypack::Slice definition,
-    IndexId id, bool isClusterConstructor) const {
+    IndexType type, IndexCreationContext const& ctx) const {
+  auto const& [collection, definition, id, isClusterConstructor] = ctx;
   switch (type) {
     case IndexType::Primary:
       if (!isClusterConstructor) {

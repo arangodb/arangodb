@@ -25,33 +25,37 @@
 #include <memory>
 
 #include "Indexes/IndexType.h"
+#include "VocBase/Identifiers/IndexId.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
 class Index;
 class LogicalCollection;
-class IndexId;
 
-namespace velocypack {
-class Slice;
-}  // namespace velocypack
+// the inputs every create*() call needs, bundled so they don't repeat
+// across every method/call site
+struct IndexCreationContext {
+  LogicalCollection& collection;
+  velocypack::Slice definition;
+  IndexId id;
+  bool isClusterConstructor;
+};
 
 // one switch-on-type entry point per engine, replacing a virtual per type
 struct IIndexFactory {
   virtual ~IIndexFactory() = default;
 
   virtual std::shared_ptr<Index> createIndex(
-      IndexType type, LogicalCollection& collection,
-      velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
+      IndexType type, IndexCreationContext const& ctx) const = 0;
 
   // the arangosearch link is added by a feature at startup (see
   // IndexFactory::setLinkCreator), not implemented by the engines directly -
   // this keeps RocksDBIndexFactory/ClusterIndexFactory free of a compile-time
   // dependency on iresearch
   virtual std::shared_ptr<Index> createIResearchLink(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
+      IndexCreationContext const& ctx) const = 0;
 };
 
 }  // namespace arangodb

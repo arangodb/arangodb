@@ -25,7 +25,6 @@
 #include "Basics/Result.h"
 #include "Indexes/IIndexFactory.h"
 #include "Indexes/IndexType.h"
-#include "VocBase/Identifiers/IndexId.h"
 
 #include <velocypack/Slice.h>
 
@@ -33,7 +32,6 @@ namespace arangodb {
 
 struct Database;
 class Index;
-class LogicalCollection;
 
 namespace velocypack {
 
@@ -72,12 +70,8 @@ struct IndexDefinition {
 
   /// @brief create the index via the engine's IIndexFactory
   virtual std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                        LogicalCollection& collection,
-                                        velocypack::Slice definition,
-                                        IndexId id,
-                                        bool isClusterConstructor) const {
-    return factory.createIndex(_type, collection, definition, id,
-                               isClusterConstructor);
+                                        IndexCreationContext const& ctx) const {
+    return factory.createIndex(_type, ctx);
   }
 
  protected:
