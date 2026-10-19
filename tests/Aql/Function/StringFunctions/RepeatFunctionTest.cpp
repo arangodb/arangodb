@@ -25,12 +25,15 @@
 #include "Aql/Function/StringFunctions.h"
 #include "StringFunctionTestHelper.h"
 
+#include <limits>
 #include <string>
 
 namespace arangodb::tests::aql {
 
 using arangodb::aql::functions::repeat;
 constexpr int64_t kMaxOutputLength = 16 * 1024 * 1024;
+auto const kMaxRepetitions =
+    std::to_string(std::numeric_limits<int64_t>::max());
 
 TEST_F(StringFunctionTest, repeat_value_is_repeated_the_given_number_of_times) {
   expectResult(repeat(ctx, str("foo"), json("1"), nullptr), "foo");
@@ -110,6 +113,19 @@ TEST_F(StringFunctionTest, repeat_output_over_16mb_is_rejected) {
   expectError(repeat(ctx, str("abcd"),
                      json(std::to_string(kMaxOutputLength / 4 + 1)), nullptr),
               TRI_ERROR_RESOURCE_LIMIT);
+}
+
+TEST_F(StringFunctionTest, repeat_separators_count_towards_the_output_limit) {
+  auto const& separator = str(std::string(1024, 'x'));
+  for (auto const* value : {&json("null"), &str("")}) {
+    expectError(repeat(ctx, *value, json("20000"), &separator),
+                TRI_ERROR_RESOURCE_LIMIT);
+  }
+}
+
+TEST_F(StringFunctionTest, repeat_empty_value_without_separator_is_empty) {
+  expectResult(repeat(ctx, str(""), json(kMaxRepetitions), nullptr), "");
+  expectResult(repeat(ctx, json("null"), json(kMaxRepetitions), &str("")), "");
 }
 
 }  // namespace arangodb::tests::aql
