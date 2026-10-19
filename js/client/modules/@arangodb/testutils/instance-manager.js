@@ -156,8 +156,9 @@ class instanceManager {
       this.addArgs['server.jwt-secret-keyfile'] = writeJwtSecretToFile(this.rootDir, this.options.jwtSecret);
     }
 
-    this.forceJWT = (this.addArgs.hasOwnProperty('server.jwt-secret') &&
-                     this.addArgs.hasOwnProperty('server.authentication'));
+    this.forceJWT = ((this.addArgs.hasOwnProperty('server.jwt-secret') &&
+                      this.addArgs.hasOwnProperty('server.authentication')) ||
+                     this.addArgs.hasOwnProperty('server.failure-point'));
     if (this.addArgs.hasOwnProperty('server.jwt-secret-folder')) {
       this.options.jwtFiles = fs.list(this.addArgs['server.jwt-secret-folder']);
       this.options.jwtFiles = this.options.jwtFiles.sort();
@@ -686,7 +687,7 @@ class instanceManager {
       if (hasTimedOut) {
         print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
       } else {
-        print(`${RED}${Date()} Startup failed! Forcefully shutting down:\n${e.message}${e.stack}\n${RESET}`);
+        print(`${RED}${Date()} Startup failed! Forcefully shutting down:\n${e.message}\n${e.stack}\n${RESET}`);
       }
       this.arangods.forEach(arangod => {
         try {
@@ -1585,7 +1586,6 @@ class instanceManager {
       this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
-
     try {
       if (this.endpoint !== null) {
         if (passvoid === undefined) {

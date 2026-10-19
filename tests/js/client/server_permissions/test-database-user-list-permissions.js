@@ -86,7 +86,7 @@ function testSuite() {
       // exempted and still requires access to _system; the user is rejected
       // before even reaching the handler, with "no read access to database"
       let result = arango.GET_RAW("/_db/_system/_api/database");
-      assertEqual(401, result.code, JSON.stringify(result));
+      assertEqual(403, result.code, JSON.stringify(result));
       assertTrue(result.parsedBody.error, JSON.stringify(result));
     },
   };

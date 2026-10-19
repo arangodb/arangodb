@@ -300,7 +300,7 @@ TEST(ExecContextTest, canAccessQuery_foreign_query_requires_admin) {
 
   auto const result = cec.execContext->canAccessQuery("bob");
   // FakeGeneralRequest is API v0, so classic admin checks report HTTP_FORBIDDEN
-  EXPECT_EQ(result.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN);
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
 
 TEST(ExecContextTest, canAccessQuery_system_read_only_is_not_admin) {
