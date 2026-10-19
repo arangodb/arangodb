@@ -119,7 +119,6 @@ TEST(CacheMetadataTest, new_limit_does_not_overflow) {
 
   SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
 
-  // deserved == allocated, so the new limit is the current hard limit
   ASSERT_EQ(usageLimit, metadata.newLimit());
 
   // with a huge deserved size, the new limit must not shrink

@@ -403,11 +403,7 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
   ASSERT_TRUE(bigRequestLimit > bigManager.globalAllocation());
 }
 
-// regression test: once the global allocation exceeded the highwater mark,
-// Manager::increaseAllowed() computed (highwaterMark - globalAllocation) with
-// an unsigned underflow and granted every grow request. caches could then grow
-// their usage limits without bound (up to UINT64_MAX), and the global
-// allocation grew far beyond the configured cache size.
+// regression test: to ES-2308. guard against growth beyond watermark
 TEST_F(CacheManagerTest, test_no_growth_beyond_highwater_mark) {
   std::uint64_t requestLimit = 16 * 1024 * 1024;
 

@@ -133,11 +133,6 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
                             std::uint64_t hardLimit) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
   uint64_t fixed = tableSize + fixedSize + Manager::kCacheRecordOverhead;
-  // overflow-safe check for (limit + fixed <= min(deservedSize, maxSize))
-  auto fits = [&](std::uint64_t limit) -> bool {
-    std::uint64_t bound = std::min(deservedSize, maxSize);
-    return (bound >= fixed) && (limit <= bound - fixed);
-  };
   auto approve = [&]() -> bool {
     softUsageLimit = softLimit;
     hardUsageLimit = hardLimit;
@@ -161,7 +156,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
 
   // general case: start shrinking
   if ((hardLimit == hardUsageLimit) && (softLimit < hardLimit) &&
-      fits(softLimit)) {
+      fits(softLimit, tableSize)) {
     return approve();
   }
 
@@ -172,7 +167,8 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
   }
 
   // general case: adjust both above usage but below deserved/maxSize
-  if ((softLimit == hardLimit) && (usage <= hardLimit) && fits(hardLimit)) {
+  if ((softLimit == hardLimit) && (usage <= hardLimit) &&
+      fits(hardLimit, tableSize)) {
     return approve();
   }
 
@@ -197,12 +193,17 @@ std::uint64_t Metadata::newLimit() const noexcept {
              : std::min((deservedSize - fixed), maxGrowth);
 }
 
+bool Metadata::fits(std::uint64_t limit, std::uint64_t table) const noexcept {
+  TRI_ASSERT(_lock.isLocked());
+  // overflow-safe check for (limit + fixed <= min(deservedSize, maxSize))
+  std::uint64_t bound = std::min(deservedSize, maxSize);
+  std::uint64_t fixed = fixedSize + table + Manager::kCacheRecordOverhead;
+  return (bound >= fixed) && (limit <= bound - fixed);
+}
+
 bool Metadata::migrationAllowed(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLocked());
-  std::uint64_t bound = std::min(deservedSize, maxSize);
-  std::uint64_t fixed =
-      fixedSize + newTableSize + Manager::kCacheRecordOverhead;
-  return (bound >= fixed) && (hardUsageLimit <= bound - fixed);
+  return fits(hardUsageLimit, newTableSize);
 }
 
 void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
