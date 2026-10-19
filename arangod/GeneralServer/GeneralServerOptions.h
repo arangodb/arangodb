@@ -39,7 +39,7 @@ struct GeneralServerOptions {
   bool returnQueueTimeHeader = true;
   bool permanentRootRedirect = true;
   uint64_t compressResponseThreshold = 0;
-  uint64_t maxUncompressedRequestBodySize =
+  uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
   std::vector<std::string> trustedProxies;
   std::vector<std::string> accessControlAllowOrigins;

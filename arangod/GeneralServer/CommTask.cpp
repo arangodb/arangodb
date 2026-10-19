@@ -969,11 +969,11 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::gzipUncompress(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxDecompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
-                  "uncompressed size of Content-Encoding: gzip body exceeds "
+                  "decompressed size of Content-Encoding:gzip body exceeds "
                   "the allowed maximum"};
         }
         return {
@@ -989,11 +989,11 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::zlibInflate(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxDecompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
-                  "uncompressed size of Content-Encoding: deflate body exceeds "
+                  "decompressed size of Content-Encoding:deflate body exceeds "
                   "the allowed maximum"};
         }
         return {r,
@@ -1009,11 +1009,11 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::lz4Uncompress(
               src, len, dst,
-              _generalServerFeature.maxUncompressedRequestBodySize());
+              _generalServerFeature.maxDecompressedRequestBodySize());
           r != TRI_ERROR_NO_ERROR) {
         if (r == TRI_ERROR_RESOURCE_LIMIT) {
           return {r,
-                  "uncompressed size of Content-Encoding: lz4 body exceeds the "
+                  "decompressed size of Content-Encoding:lz4 body exceeds the "
                   "allowed maximum"};
         }
         return {
