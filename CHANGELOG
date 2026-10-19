@@ -49,6 +49,10 @@
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
+* COR-1173: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
 * AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
   or `--default-language`) for case mapping instead of the process locale.
   This changes results only for Greek, Turkish, Azeri and Lithuanian.
