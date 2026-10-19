@@ -243,7 +243,12 @@ class ExecContext {
   /// @brief returns true if the user can be read
   Result canReadUser(std::string_view userName) const;
 
-  [[nodiscard]] Result canAccessQuery(std::string_view queryUser) const;
+  /// @brief returns true if the AQL query of the given user may be seen in
+  /// the running or slow query list, or removed from the latter.
+  [[nodiscard]] Result canMonitorQuery(std::string_view queryUser) const;
+
+  /// @brief returns true if the AQL query of the given user may be killed.
+  [[nodiscard]] Result canKillQuery(std::string_view queryUser) const;
 
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?

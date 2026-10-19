@@ -150,8 +150,11 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
 TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     IndexStreamData const& left, IndexStreamData const& right) {
-  if (!left.exhausted && right.exhausted) {
-    return std::weak_ordering::less;
+  // an exhausted stream sorts after all other streams
+  if (left.exhausted || right.exhausted) {
+    return left.exhausted == right.exhausted ? std::weak_ordering::equivalent
+           : left.exhausted                  ? std::weak_ordering::greater
+                                             : std::weak_ordering::less;
   }
 
   return cmp(left._position, right._position);

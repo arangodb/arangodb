@@ -1108,24 +1108,26 @@ TEST_F(CompareAstNodesTest, additionCommutative) {
   EXPECT_EQ(0, compare(plus12, plus21));
 }
 
-TEST_F(CompareAstNodesTest, binaryAndCommutative) {
+// In AQL `x.a AND x.b` is not equivalent to `x.b AND x.a`
+TEST_F(CompareAstNodesTest, binaryAndIsNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(a),
                             createRefNode(b));
   auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(b),
                             createRefNode(a));
-  EXPECT_EQ(0, compare(ab, ba));
+  EXPECT_NE(compare(ab, ba), 0);
 }
 
-TEST_F(CompareAstNodesTest, binaryOrCommutative) {
+// In AQL `x.a OR x.b` is not equivalent to `x.b OR x.a`
+TEST_F(CompareAstNodesTest, binaryOrIsNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
                             createRefNode(b));
   auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
                             createRefNode(a));
-  EXPECT_EQ(0, compare(ab, ba));
+  EXPECT_NE(compare(ab, ba), 0);
 }
 
 TEST_F(CompareAstNodesTest, multiplicationCommutative) {
@@ -1202,7 +1204,9 @@ TEST_F(CompareAstNodesTest, fcallNonDeterministicNeverEqual) {
 // --- NARY operators
 // -----------------------------------------------------------
 
-TEST_F(CompareAstNodesTest, naryAndOrderIndependent) {
+// `x.a AND x.b AND x.c` is not equivalent to `x.c AND x.a AND x.b`
+// In AQL, the order matters
+TEST_F(CompareAstNodesTest, naryAndIsNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* c = makeVar("c");
@@ -1210,7 +1214,7 @@ TEST_F(CompareAstNodesTest, naryAndOrderIndependent) {
                      {createRefNode(a), createRefNode(b), createRefNode(c)});
   auto* cab = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
                      {createRefNode(c), createRefNode(a), createRefNode(b)});
-  EXPECT_EQ(0, compare(abc, cab));
+  EXPECT_NE(0, compare(abc, cab));
 }
 
 TEST_F(CompareAstNodesTest, naryAndDifferentMembersNotEqual) {
@@ -1235,14 +1239,17 @@ TEST_F(CompareAstNodesTest, naryAndDifferentCountsNotEqual) {
   EXPECT_NE(0, compare(ab, abc));
 }
 
-TEST_F(CompareAstNodesTest, naryOrOrderIndependent) {
+// `x.a OR x.b OR x.c` is not equivalent to `x.c OR x.a OR x.b`
+// In AQL, the order matters
+TEST_F(CompareAstNodesTest, naryOrIsNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab =
-      naryOp(NODE_TYPE_OPERATOR_NARY_OR, {createRefNode(a), createRefNode(b)});
-  auto* ba =
-      naryOp(NODE_TYPE_OPERATOR_NARY_OR, {createRefNode(b), createRefNode(a)});
-  EXPECT_EQ(0, compare(ab, ba));
+  auto* c = makeVar("c");
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  auto* bac = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(b), createRefNode(a), createRefNode(c)});
+  EXPECT_NE(0, compare(abc, bac));
 }
 
 TEST_F(CompareAstNodesTest, naryOrDifferentCountsNotEqual) {
