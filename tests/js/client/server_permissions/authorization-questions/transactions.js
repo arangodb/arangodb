@@ -286,6 +286,24 @@ function transactionApiAuthzSuite () {
       assertTrue(res.parsedBody.transactions.some((trx) => trx.id === id));
     },
 
+    // the admin question is the same for every foreign owner, so it is asked
+    // once per listing, not once per transaction or per owner
+    testListForeignTransactionsAsAdminAsksOnce: function () {
+      const aliceTrx = beginTrxAs('alice', { read: [c] });
+      const bobTrx = beginTrxAs('bob', { read: [c] });
+
+      beginObserve();
+      const res = arango.GET_RAW(transactionApi);
+      const observed = endObserve();
+      assertPermissions(monitorQuestions, observed);
+      assertEqual(1, observed.filter((question) => question === 'AdminMonitorTransactions').length,
+                  JSON.stringify(observed));
+
+      assertEqual(200, res.code, JSON.stringify(res.parsedBody));
+      const ids = res.parsedBody.transactions.map((trx) => trx.id);
+      assertTrue(ids.includes(aliceTrx) && ids.includes(bobTrx), JSON.stringify(ids));
+    },
+
     testGetForeignTransactionStateAsUser: function () {
       const id = beginTrxAs('alice', { read: [c] });
 

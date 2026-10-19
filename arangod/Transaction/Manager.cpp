@@ -72,8 +72,10 @@
 
 #include <algorithm>
 #include <optional>
+#include <ranges>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 using namespace arangodb;
 
@@ -87,6 +89,44 @@ bool authorized(std::string const& user) {
 }
 
 auto currentUser() { return arangodb::ExecContext::current().user(); }
+
+/**
+ * One listed transaction: its owner and its serialized entry
+ */
+struct ListedTransaction {
+  std::string owner;
+  VPackBuilder entry;
+};
+
+/**
+ * Remembers whether the calling identity may see other users' transactions
+ *
+ * Seeing a foreign transaction is the same AdminMonitorTransactions question
+ * for every owner, so the exec context is asked at most once per listing, and
+ * only once a foreign transaction shows up. Own transactions are decided by
+ * ExecContext::canMonitorTransaction without a question.
+ */
+class MonitorTransactionAccess {
+ public:
+  /// @brief whether the calling identity may see a transaction of `owner`
+  auto isAccessible(std::string_view owner) -> bool {
+    auto const& exec = ExecContext::current();
+    if (owner == exec.user()) {
+      // own transactions: ExecContext answers without asking, so there is
+      // nothing to cache, and caching it here would let foreign ones through
+      return exec.canMonitorTransaction(owner).ok();
+    }
+    // foreign transactions: the same AdminMonitorTransactions question for
+    // every owner, so ask it once and reuse the answer
+    if (!_foreignAccessible.has_value()) {
+      _foreignAccessible = exec.canMonitorTransaction(owner).ok();
+    }
+    return _foreignAccessible.value();
+  }
+
+ private:
+  std::optional<bool> _foreignAccessible;
+};
 
 bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
                         std::vector<std::string>& writes,
@@ -1544,27 +1584,30 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
     }
   }
 
-  // merge with local transactions
+  // merge with local transactions: collect the transactions in scope while
+  // the registry buckets are locked; no authorization question is asked
+  // under these locks
+  // a details listing by the superuser, or with authentication disabled,
+  // covers every database (registry introspection)
+  bool const everyDatabase =
+      details && ExecContext::current().isSuperuserOrDisabled();
+  std::vector<ListedTransaction> listed;
   iterateManagedTrx(
-      [this, &builder, &database, details](TransactionId tid,
-                                           ManagedTrx const& trx) {
-        bool authorized = canMonitor(trx, database);
-        if (details &&
-            arangodb::ExecContext::current().isSuperuserOrDisabled()) {
-          authorized = true;
-        }
-        if (!authorized) {
+      [&listed, database, details, everyDatabase](TransactionId tid,
+                                                  ManagedTrx const& trx) {
+        if (!everyDatabase && trx.db != database) {
           return;
         }
 
-        builder.openObject(true);
-        builder.add("id", VPackValue(std::to_string(tid.id())));
+        auto& entry =
+            listed.emplace_back(ListedTransaction{.owner = trx.user}).entry;
+        entry.openObject(true);
+        entry.add("id", VPackValue(std::to_string(tid.id())));
         if (trx.state == nullptr) {
-          builder.add("state", VPackValue("none"));
+          entry.add("state", VPackValue("none"));
         } else {
-          builder.add(
-              "state",
-              VPackValue(transaction::statusString(trx.state->status())));
+          entry.add("state",
+                    VPackValue(transaction::statusString(trx.state->status())));
         }
         if (details) {
           std::string_view idType = "unknown";
@@ -1577,40 +1620,48 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
           } else if (tid.isLegacyTransactionId()) {
             idType = "legacy id";
           }
-          builder.add("idType", VPackValue(idType));
+          entry.add("idType", VPackValue(idType));
           if (!ServerState::instance()->isSingleServer()) {
-            builder.add("coordinatorId",
-                        VPackValue(tid.asCoordinatorTransactionId().id()));
+            entry.add("coordinatorId",
+                      VPackValue(tid.asCoordinatorTransactionId().id()));
           }
-          builder.add("context", VPackValue(trx.context));
-          builder.add("type", VPackValue(typeName(trx.type)));
+          entry.add("context", VPackValue(trx.context));
+          entry.add("type", VPackValue(typeName(trx.type)));
           if (trx.type != MetaType::Tombstone) {
-            builder.add("expired", VPackValue(trx.expired()));
+            entry.add("expired", VPackValue(trx.expired()));
           }
-          builder.add("hasPerformedIntermediateCommits",
-                      VPackValue(trx.hasPerformedIntermediateCommits()));
-          builder.add(
-              "sideUsers",
-              VPackValue(trx.sideUsers.load(std::memory_order_relaxed)));
-          builder.add("finalStatus",
-                      VPackValue(transaction::statusString(trx.finalStatus)));
-          builder.add("timeToLive", VPackValue(trx.timeToLive));
+          entry.add("hasPerformedIntermediateCommits",
+                    VPackValue(trx.hasPerformedIntermediateCommits()));
+          entry.add("sideUsers",
+                    VPackValue(trx.sideUsers.load(std::memory_order_relaxed)));
+          entry.add("finalStatus",
+                    VPackValue(transaction::statusString(trx.finalStatus)));
+          entry.add("timeToLive", VPackValue(trx.timeToLive));
           // note: expiry timestamp is a system clock value that indicates
           // number of seconds since the OS was started.
-          builder.add("expiryTime",
-                      VPackValue(TRI_StringTimeStamp(
-                          trx.expiryTime, Logger::getUseLocalTime())));
+          entry.add("expiryTime",
+                    VPackValue(TRI_StringTimeStamp(
+                        trx.expiryTime, Logger::getUseLocalTime())));
           if (!ServerState::instance()->isDBServer()) {
             // proper user information is only present on single servers
             // and coordinators
-            builder.add("user", VPackValue(trx.user));
+            entry.add("user", VPackValue(trx.user));
           }
-          builder.add("database", VPackValue(trx.db));
-          builder.add("server", VPackValue(ServerState::instance()->getId()));
+          entry.add("database", VPackValue(trx.db));
+          entry.add("server", VPackValue(ServerState::instance()->getId()));
         }
-        builder.close();
+        entry.close();
       },
       details);
+
+  // decide visibility now, with no registry lock held
+  MonitorTransactionAccess access;
+  auto const isAccessible = [&access](ListedTransaction const& item) {
+    return access.isAccessible(item.owner);
+  };
+  for (auto const& item : listed | std::views::filter(isAccessible)) {
+    builder.add(item.entry.slice());
+  }
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1756,12 +1807,7 @@ bool Manager::canUse(ManagedTrx const& trx) const {
 }
 
 bool Manager::canMonitor(ManagedTrx const& trx) const {
-  return canMonitor(trx, contextDatabaseName());
-}
-
-bool Manager::canMonitor(ManagedTrx const& trx,
-                         std::string_view database) const {
-  if (trx.db != database) {
+  if (trx.db != contextDatabaseName()) {
     return false;
   }
   return ExecContext::current().canMonitorTransaction(trx.user).ok();

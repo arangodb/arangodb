@@ -324,9 +324,8 @@ class Manager final : public IManager {
   bool canUse(ManagedTrx const& trx) const;
   bool canUse(ManagedTrx const& trx, std::string_view database) const;
 
-  /// @brief whether the current identity may see `trx` (list, state)
+  /// @brief whether the current identity may see the state of `trx`
   bool canMonitor(ManagedTrx const& trx) const;
-  bool canMonitor(ManagedTrx const& trx, std::string_view database) const;
 
   /// @brief whether the current identity may abort `trx`
   bool canKill(ManagedTrx const& trx, std::string_view database) const;
