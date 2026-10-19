@@ -376,9 +376,13 @@ void GeneralServerFeature::prepare() {
 
   std::atomic_store(&_handlerFactory, std::move(hf));
 
+  // global budget should be larger than the per-request max limit
+  uint64_t budget = _options.decompressedRequestBodyGlobalMemoryLimit;
+  if (budget != 0) {
+    budget = std::max(budget, _options.maxDecompressedRequestBodySize);
+  }
   _decompressionGlobal.memoryLimit(static_cast<std::int64_t>(
-      std::min<uint64_t>(_options.decompressedRequestBodyGlobalMemoryLimit,
-                         std::numeric_limits<std::int64_t>::max())));
+      std::min<uint64_t>(budget, std::numeric_limits<std::int64_t>::max())));
 
   buildServers();
 

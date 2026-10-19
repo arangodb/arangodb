@@ -68,11 +68,11 @@ ErrorCode uncompressStream(z_stream& strm, T& uncompressed,
       ret = inflate(&strm, Z_NO_FLUSH);
 
       if (uncompressed.size() < strm.total_out) {
-        size_t const chunk = strm.total_out - uncompressed.size();
-        if (uncompressed.size() + chunk > maxUncompressedSize) {
+        if (strm.total_out > maxUncompressedSize) {
           uncompressed.clear();
           return TRI_ERROR_RESOURCE_LIMIT;
         }
+        size_t const chunk = strm.total_out - uncompressed.size();
         if (scope != nullptr) {
           scope->increase(chunk);  // throws if the budget is exhausted
         }
