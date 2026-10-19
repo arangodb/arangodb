@@ -115,6 +115,12 @@ TEST_F(StringFunctionTest, repeat_output_over_16mb_is_rejected) {
               TRI_ERROR_RESOURCE_LIMIT);
 }
 
+TEST_F(StringFunctionTest, repeat_single_value_over_16mb_is_rejected) {
+  expectError(repeat(ctx, str(std::string(kMaxOutputLength + 1, 'x')),
+                     json("1"), nullptr),
+              TRI_ERROR_RESOURCE_LIMIT);
+}
+
 TEST_F(StringFunctionTest, repeat_separators_count_towards_the_output_limit) {
   auto const& separator = str(std::string(1024, 'x'));
   for (auto const* value : {&json("null"), &str("")}) {
