@@ -125,6 +125,9 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{promise->id});
 
       co_await std::move(fn);
+      // fn finished and detached before we were resumed, and the Future inside
+      // the awaitable temporary died with the co_await expression
+      EXPECT_FALSE(find_promise_by_name("awaited_by_awaited_fn").has_value());
 
       co_return;
     };
@@ -143,6 +146,8 @@ TYPED_TEST(
 
       co_await std::move(fn);
 
+      EXPECT_FALSE(find_promise_by_name("awaited_fn").has_value());
+
       co_return;
     };
   };
@@ -157,7 +162,8 @@ TYPED_TEST(FutureTest,
            promises_in_async_registry_know_their_requester_with_move) {
   using TestType = decltype(this);
   struct Functions {
-    static auto awaited_fn(TestType test) -> Future<Unit> {
+    static auto awaited_fn(TestType test)
+        -> Future<arangodb::async_registry::PromiseSnapshot> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
       EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
@@ -165,9 +171,13 @@ TYPED_TEST(FutureTest,
 
       co_await test->wait;
 
-      co_return;
+      promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(promise.has_value());
+      co_return promise.value();
     };
-    static auto waiter_fn(Future<Unit>&& fn) -> Future<Unit> {
+    static auto waiter_fn(
+        Future<arangodb::async_registry::PromiseSnapshot>&& fn)
+        -> Future<Unit> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
       EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
@@ -181,30 +191,26 @@ TYPED_TEST(FutureTest,
             awaited_promise->requester));
       }
 
-      co_await std::move(fn);
-
-      // The registry entry of fn is owned by its SharedState, which is deleted
-      // as soon as the coroutine frame (Promise side) and the Future inside
-      // the awaitable temporary (consumer side) have both detached.
-      awaited_promise = find_promise_by_name("awaited_fn");
+      auto awaited_promise_coawaited = co_await std::move(fn);
       if constexpr (std::is_same<TypeParam, async_tests::WaitSlot>::value) {
-        // fn resolves inside its own callback, which resumes this coroutine
-        // synchronously: the SharedState is still attached while we run here
-        EXPECT_TRUE(awaited_promise.has_value());
+        // fn was suspended while we co_awaited it, so it saw the updated
+        // requester when it took its snapshot after being resumed
+        EXPECT_EQ(awaited_promise_coawaited.requester,
+                  arangodb::async_registry::Requester{waiter_promise->id});
       } else if constexpr (std::is_same<TypeParam,
                                         async_tests::NoWait>::value) {
-        // fn already finished before this coroutine started, so only the
-        // Future kept its SharedState alive. That Future died with the
-        // awaitable temporary at the end of the co_await expression.
-        EXPECT_FALSE(awaited_promise.has_value());
+        // fn ran to completion before this coroutine even existed, so its
+        // snapshot predates the co_await and still shows the thread
+        EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
+            awaited_promise_coawaited.requester));
       }
-      // ConcurrentNoWait: either of the above, depending on whether the worker
-      // thread finished fn before the co_await. Whenever the entry is still
-      // visible, its requester must have been updated by the co_await.
-      if (awaited_promise.has_value()) {
-        EXPECT_EQ(awaited_promise->requester,
-                  arangodb::async_registry::Requester{waiter_promise->id});
-      }
+      // ConcurrentNoWait: the worker thread races the co_await, so either of
+      // the above can happen
+
+      // fn finished its frame and detached before we were resumed, and the
+      // Future inside the awaitable temporary died with the co_await
+      // expression: the registry entry is gone for every wait type
+      EXPECT_FALSE(find_promise_by_name("awaited_fn").has_value());
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");

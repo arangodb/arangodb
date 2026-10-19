@@ -68,16 +68,27 @@ struct future_promise_base {
     promise.update_state(arangodb::async_registry::State::Running);
     return std_coro::suspend_never{};
   }
+  /**
+     Publishes the result and hands control to the awaiting coroutine
+
+     The frame is destroyed before the result is published, so an awaiting
+     coroutine is resumed (by symmetric transfer) only after this coroutine,
+     its Promise and the callback that stored the result are all gone. The
+     awaitable itself lives in the frame: nothing may touch `this` or
+     `_promise` after destroy().
+   */
   auto final_suspend() noexcept {
-    // TODO use symmetric transfer here
     struct awaitable {
       bool await_ready() noexcept { return false; }
-      bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+      auto await_suspend(std::coroutine_handle<promise_type> self) noexcept
+          -> std::coroutine_handle<> {
         _promise->context.set();
-        // we have to destroy the coroutine frame before
-        // we resolve the promise
-        _promise->promise.setTry(std::move(_promise->result));
-        return false;
+        auto promise = std::move(_promise->promise);
+        auto result = std::move(_promise->result);
+        self.destroy();
+        // the local promise detaches from the shared state when it goes out of
+        // scope, i.e. before the returned handle is resumed
+        return promise.setTryAndGetContinuation(std::move(result));
       }
       void await_resume() noexcept {}
 
@@ -212,11 +223,17 @@ auto operator co_await(Future<T>&& f) noexcept {
     [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
     bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
       std::move(_future).thenFinal(
-          [coro, this](futures::Try<T>&& result) mutable noexcept {
+          [coro, this](futures::Try<T>&& result) mutable noexcept
+              -> std::coroutine_handle<> {
             _result = std::move(result);
             if (_counter.fetch_sub(1) == 1) {
-              coro.resume();
+              // the result arrived after we suspended: whoever fulfills the
+              // future resumes `coro`, a coroutine does so by symmetric
+              // transfer
+              return coro;
             }
+            // the result was already there: await_suspend returns false below
+            return std::noop_coroutine();
           });
       // returning false resumes `coro`
       return _counter.fetch_sub(1) != 1;
@@ -243,11 +260,16 @@ struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     std::move(_future).thenFinal(
-        [coro, this](futures::Try<T>&& result) noexcept {
+        [coro, this](futures::Try<T>&& result) noexcept
+            -> std::coroutine_handle<> {
           _result = F::operator()(std::move(result));
           if (_counter.fetch_sub(1) == 1) {
-            coro.resume();
+            // the result arrived after we suspended: whoever fulfills the
+            // future resumes `coro`, a coroutine does so by symmetric transfer
+            return coro;
           }
+          // the result was already there: await_suspend returns false below
+          return std::noop_coroutine();
         });
     // returning false resumes `coro`
     return _counter.fetch_sub(1) != 1;

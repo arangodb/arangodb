@@ -24,6 +24,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <coroutine>
 #include <mutex>
 #include <source_location>
 #include <thread>
@@ -419,13 +420,17 @@ class [[nodiscard]] Future {
     return future;
   }
 
-  /// Variant: function returns void and accepts Try<T>&&
-  /// When this Future has completed, execute func which is a function that
-  /// can be called with either `T&&` or `Try<T>&&`.
+  /// Variant: function accepts Try<T>&& and returns void or a coroutine handle
+  /// When this Future has completed, execute func. A returned coroutine handle
+  /// is resumed by whoever fulfills the future once the shared state has let
+  /// go of the callback (see detail::SharedState::setResult); this is how
+  /// co_await on a Future resumes the awaiting coroutine.
   template<typename F,
            typename R = typename std::invoke_result<F&&, Try<T>&&>::type>
-  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(
-      F&& fn) && {
+  typename std::enable_if<
+      std::is_same<R, void>::value ||
+      std::is_same<R, std::coroutine_handle<>>::value>::type
+  thenFinal(F&& fn) && {
     getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 

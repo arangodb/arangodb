@@ -23,8 +23,11 @@
 #pragma once
 
 #include <atomic>
+#include <coroutine>
 #include <function2.hpp>
 #include <source_location>
+#include <type_traits>
+#include <utility>
 
 #include "Assertions/Assert.h"
 #include "Async/Registry/promise.h"
@@ -148,15 +151,16 @@ class SharedState : public async_registry::AddToAsyncRegistry {
   ///
   /// See FSM graph for allowed transitions.
   ///
-  /// If it transitions to Done, synchronously initiates a call to the callback,
-  /// and might also synchronously execute that callback (e.g., if there is no
-  /// executor or if the executor is inline).
+  /// The callback either returns void or a coroutine handle that is to be
+  /// resumed once this shared state has let go of the callback (see
+  /// setResult). If this call transitions to Done, it synchronously executes
+  /// the callback and resumes the handle it returned.
   template<typename F>
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
 
     // construct _callback first; TODO maybe try to avoid this?
-    _callback = std::forward<F>(func);
+    _callback = asContinuationCallback(std::forward<F>(func));
 
     auto state = _state.load(std::memory_order_acquire);
     switch (state) {
@@ -171,7 +175,7 @@ class SharedState : public async_registry::AddToAsyncRegistry {
         // acquire is actually correct here
         if (_state.compare_exchange_strong(state, State::Done,
                                            std::memory_order_acquire)) {
-          doCallback();
+          doCallback().resume();
           return;
         }
         [[fallthrough]];
@@ -186,10 +190,13 @@ class SharedState : public async_registry::AddToAsyncRegistry {
   ///
   /// See FSM graph for allowed transitions.
   ///
-  /// If it transitions to Done, synchronously initiates a call to the callback,
-  /// and might also synchronously execute that callback (e.g., if there is no
-  /// executor or if the executor is inline).
-  void setResult(Try<T>&& t) {
+  /// If it transitions to Done, synchronously executes the callback. Returns
+  /// the coroutine handle the callback asked to be resumed, or
+  /// std::noop_coroutine() if there is none or no callback ran. By the time
+  /// it returns, this shared state has let go of the callback and of its own
+  /// reference, so the caller may resume the handle directly or by symmetric
+  /// transfer after dropping its own reference.
+  [[nodiscard]] auto setResult(Try<T>&& t) -> std::coroutine_handle<> {
     TRI_ASSERT(t.valid());
     TRI_ASSERT(!hasResult());
     // call move constructor of content
@@ -202,7 +209,7 @@ class SharedState : public async_registry::AddToAsyncRegistry {
         if (_state.compare_exchange_strong(state, State::OnlyResult,
                                            std::memory_order_release)) {
           update_state(async_registry::State::Resolved);
-          return;
+          return std::noop_coroutine();
         }
         TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
         [[fallthrough]];
@@ -210,13 +217,13 @@ class SharedState : public async_registry::AddToAsyncRegistry {
         // acquire is actually correct here
         if (_state.compare_exchange_strong(state, State::Done,
                                            std::memory_order_acquire)) {
-          doCallback();
-          return;
+          return doCallback();
         }
         [[fallthrough]];
 
       default:
         TRI_ASSERT(false);  // unexpected state
+        return std::noop_coroutine();
     }
   }
 
@@ -276,7 +283,10 @@ class SharedState : public async_registry::AddToAsyncRegistry {
     }
   }
 
-  void doCallback() {
+  /// Runs the callback with the result and hands back the coroutine handle it
+  /// wants resumed. The callback and this shared state's own reference are
+  /// released before returning, so resuming the handle may well delete this.
+  [[nodiscard]] auto doCallback() -> std::coroutine_handle<> {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
 
@@ -287,13 +297,36 @@ class SharedState : public async_registry::AddToAsyncRegistry {
     SharedStateScope scope(this);  // will call detachOne()
     // TODO make this line noexcept
     // [&]() noexcept { _callback(std::move(_result)); }();
-    _callback(std::move(_result));
+    auto const continuation = _callback(std::move(_result));
 
     update_state(async_registry::State::Resolved);
+    return continuation;
   }
 
  private:
-  using Callback = fu2::unique_function<void(Try<T>&&)>;
+  using Callback =
+      fu2::unique_function<std::coroutine_handle<>(Try<T>&&)>;
+
+  /// Wraps a callback so that it reports which coroutine to resume
+  ///
+  /// A callback returning void has nothing to resume and is wrapped to return
+  /// std::noop_coroutine(); one returning a coroutine handle is used as is.
+  template<typename F>
+  static auto asContinuationCallback(F&& func) -> Callback {
+    using ReturnType = std::invoke_result_t<std::decay_t<F>&, Try<T>&&>;
+    if constexpr (std::is_void_v<ReturnType>) {
+      return [func = std::forward<F>(func)](Try<T>&& result) mutable
+                 -> std::coroutine_handle<> {
+        func(std::move(result));
+        return std::noop_coroutine();
+      };
+    } else {
+      static_assert(std::is_convertible_v<ReturnType, std::coroutine_handle<>>,
+                    "a future callback returns void or a coroutine handle");
+      return std::forward<F>(func);
+    }
+  }
+
   Callback _callback;
   union {  // avoids having to construct the result
     Try<T> _result;

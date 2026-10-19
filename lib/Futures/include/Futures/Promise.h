@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <coroutine>
+
 #include "Async/Registry/promise.h"
 #include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
@@ -105,9 +107,19 @@ class Promise {
   }
 
   /// Fulfill the Promise with the specified Try (value or exception).
-  void setTry(Try<T>&& t) {
+  /// A coroutine awaiting the result is resumed inline.
+  void setTry(Try<T>&& t) { setTryAndGetContinuation(std::move(t)).resume(); }
+
+  /// Fulfill the Promise with the specified Try (value or exception) and hand
+  /// back the coroutine awaiting the result instead of resuming it
+  ///
+  /// Returns std::noop_coroutine() if no coroutine awaits. A coroutine's final
+  /// suspension uses this to resume the awaiting coroutine by symmetric
+  /// transfer once its own frame is gone.
+  [[nodiscard]] auto setTryAndGetContinuation(Try<T>&& t)
+      -> std::coroutine_handle<> {
     throwIfFulfilled();
-    getState().setResult(std::move(t));
+    return getState().setResult(std::move(t));
   }
 
   /// Fulfill this Promise with the result of a function that takes no
@@ -115,7 +127,7 @@ class Promise {
   template<class F>
   void setWith(F&& func) {
     throwIfFulfilled();
-    getState().setResult(makeTryWith(std::forward<F>(func)));
+    getState().setResult(makeTryWith(std::forward<F>(func))).resume();
   }
 
   arangodb::futures::Future<T> getFuture();
@@ -175,7 +187,7 @@ class Promise {
       if (!_state->hasResult()) {
         auto ptr =
             std::make_exception_ptr(FutureException(ErrorCode::BrokenPromise));
-        _state->setResult(Try<T>(std::move(ptr)));
+        _state->setResult(Try<T>(std::move(ptr))).resume();
       }
       _state->detachPromise();
       _state = nullptr;
