@@ -25,7 +25,7 @@
 
 // Authorization questions asked by GET /_api/query/current, GET /_api/query/slow,
 // DELETE /_api/query/{id} and DELETE /_api/query/slow when a query of another
-// user is involved (COR-1023).
+// user is involved, and by PUT /_api/query/properties.
 //
 // Handlers: arangod/RestHandler/RestQueryHandler.cpp,
 //           arangod/VocBase/Methods/Queries.cpp
@@ -162,12 +162,17 @@ function queryApiAuthzSuite () {
         users.save(user, password);
         users.grantDatabase(user, DB, 'ro');
       });
+      // carol is an admin (read-write access to _system) who may
+      // only read the test database. root is an admin with access everywhere.
+      users.save('carol', password);
+      users.grantDatabase('carol', '_system', 'rw');
+      users.grantDatabase('carol', DB, 'ro');
       arango.PUT(`${queryApi}/properties`, { slowQueryThreshold: 0.1 });
     },
 
     tearDownAll: function () {
       killAllSleepQueriesAsRoot();
-      ['alice', 'bob'].forEach((user) => {
+      ['alice', 'bob', 'carol'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -355,6 +360,32 @@ function queryApiAuthzSuite () {
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       assertEqual(0, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
+    },
+
+    // ── PUT /_api/query/properties ───────────────────────────────────────
+
+    testSetQueryPropertiesWithoutDatabaseWriteAccess: function () {
+      const before = arango.GET(`${queryApi}/properties`);
+
+      beginObserve();
+      const res = sendAs('bob', 'PUT', `${queryApi}/properties`, { enabled: false });
+      assertPermissions(baseQuestions.concat(['AdminAqlQueries']),
+                        endObserve());
+
+      assertEqual(403, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.error, JSON.stringify(res.json));
+      assertEqual(before.enabled, arango.GET(`${queryApi}/properties`).enabled);
+    },
+
+    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('carol', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(baseQuestions.concat(['AdminAqlQueries', 'IsReadOnly']),
+                        endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertEqual(48, res.json.maxSlowQueries);
+      arango.PUT(`${queryApi}/properties`, { maxSlowQueries: 64 });
     }
   };
 }
