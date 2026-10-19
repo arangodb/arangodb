@@ -2,6 +2,9 @@
 --------------------
 * COR-1081: Adapt permissions for `PUT /_api/query/properties`.
 
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+  for more fine-grained permission setting for aql queries.
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
