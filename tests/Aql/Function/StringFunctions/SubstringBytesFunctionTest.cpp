@@ -25,6 +25,9 @@
 #include "Aql/Function/StringFunctions.h"
 #include "StringFunctionTestHelper.h"
 
+#include <format>
+#include <string>
+
 namespace arangodb::tests::aql {
 
 using arangodb::aql::functions::substringBytes;
@@ -163,6 +166,21 @@ TEST_F(StringFunctionTest,
   expectResult(substringBytes(ctx, str("abcde"), json("2"), &json("1"),
                               &json("1"), nullptr),
                "bcd");
+}
+
+TEST_F(StringFunctionTest,
+       substring_bytes_left_extension_from_the_end_stays_inside_the_string) {
+  // the 64-byte string's head byte 0x80 looks like a UTF-8 continuation byte
+  auto const& array =
+      json(std::format(R"(["abc", "{}"])", std::string(64, 'x')));
+  AqlValue const text{
+      arangodb::aql::AqlValueHintSliceNoCopy{array.slice().at(0)}};
+  expectResult(
+      substringBytes(ctx, text, json("3"), &json("0"), &json("1"), nullptr),
+      "c");
+  expectResult(substringBytes(ctx, str("a🤡"), json("5"), &json("0"),
+                              &json("1"), nullptr),
+               "🤡");
 }
 
 TEST_F(StringFunctionTest,
