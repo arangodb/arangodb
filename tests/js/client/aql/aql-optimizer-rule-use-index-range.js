@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -69,6 +69,10 @@ function optimizerRuleUseIndexRangeTester () {
         colls.push(coll);
       }
       collNoInd = colls[0];
+      // byte order and ICU collation disagree on this value vs "c", which is
+      // exactly what COR-1152 needs to expose
+      collNoInd.insert({"a":100, "s":"{"});
+      collNoInd.insert({"a":101, "s":"a"});
       collSkipInd = colls[1];
       collSkipInd.ensureIndex({ type: "skiplist", fields: ["a"] });
       collHashInd = colls[2];
@@ -197,6 +201,40 @@ function optimizerRuleUseIndexRangeTester () {
           }
         }
         assertTrue(foundNoResults, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that string ranges are not falsely detected as impossible just
+/// because byte order and ICU collation disagree (COR-1152)
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesNotFalselyDetectedForUtf8Strings : function () {
+      var queries = [
+        // IN-list pruning (Condition.cpp IN-merging)
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['{'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        // plain comparator merging (Condition.cpp useUtf8Comparison &&-gate),
+        // one case per ordering operator
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s <= 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'a' && i.s > '{' RETURN i.s", [ "a" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'a' && i.s >= '{' RETURN i.s", [ "a" ] ],
+        // operand order must not matter
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s < 'c' && i.s == '{' RETURN i.s", [ "{" ] ],
+        // OR distribution (ConditionPart.cpp isCoveredBy &&-gate)
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER (i.s == '{' || i.s == 'zzz') && i.s < 'c' RETURN i.s", [ "{" ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._createStatement({query: query[0], bindVars: { }, options: paramAll}).explain();
+        var foundNoResults = false;
+        for (var t in result.plan.nodes) {
+          if (result.plan.nodes[t].type === "NoResultsNode") {
+            foundNoResults = true;
+          }
+        }
+        assertFalse(foundNoResults, query);
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
       });
     },
 

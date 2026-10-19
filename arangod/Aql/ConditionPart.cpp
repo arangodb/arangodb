@@ -312,9 +312,10 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  // == / != use byte comparison; mirror that so NFC/NFD aren't collapsed
+  // use Unicode comparison whenever either side is an ordering op;
+  // == / != falls back to byte so NFC/NFD aren't collapsed
   bool const useUtf8Comparison =
-      other.whichCompareOperation() > 1 && whichCompareOperation() > 1;
+      other.whichCompareOperation() > 1 || whichCompareOperation() > 1;
   CompareResult res =
       ResultsTable[compareAstNodes(other.valueNode, valueNode,
                                    useUtf8Comparison) +
