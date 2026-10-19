@@ -3,7 +3,7 @@
 
 * Add `--http.max-decompression-request-body-size` startup option, which limits
   how large a compressed HTTP request body may be after decompression. The default
-  is 512 GiB.
+  is 512 MiB.
 
 * COR-1137: Fixed a memory leak in the AQL analyzer when converting
   non-string values to strings.
