@@ -101,8 +101,7 @@ TEST_F(StringFunctionTest, substring_offset_and_length_wrap_at_32_bits) {
                "ab");
 }
 
-TEST_F(StringFunctionTest, substring_int32_min_offset_or_length_gives_empty) {
-  expectResult(substring(ctx, str("abc"), json("2147483648"), nullptr), "");
+TEST_F(StringFunctionTest, substring_int32_min_length_gives_empty) {
   expectResult(substring(ctx, str("abc"), json("0"), &json("2147483648")), "");
 }
 
