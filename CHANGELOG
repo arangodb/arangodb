@@ -4,6 +4,11 @@
 * BTS-2308: Fixes miscalculation of soft, hard limits and allocated
   values in cache manager.
 
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
+  for more fine-grained permission setting for aql queries.
+
+* BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
+
 * AQL `UPPER()` and `LOWER()` now use the server language (`--icu-language`
   or `--default-language`) for case mapping instead of the process locale.
   This changes results only for Greek, Turkish, Azeri and Lithuanian.
