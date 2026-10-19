@@ -48,6 +48,7 @@ function error_handlingSuite () {
       db._drop(cn);
     },
 
+    // v1 API does not support number collection identifier anymore 
     test_returns_an_error_if_collection_identifier_is_unknown: function() {
       let cmd = api + "/123456/123456";
       let doc = arango.GET_RAW(cmd);
