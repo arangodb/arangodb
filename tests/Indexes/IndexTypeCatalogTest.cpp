@@ -117,7 +117,8 @@ class RocksDBIndexFactoryTest : public IndexTypeCatalogTest {
 };
 
 TEST_F(RocksDBIndexFactoryTest, invertedIndexGetsExactlyOneObjectId) {
-  auto definition = velocypack::Parser::fromJson(R"({"type": "inverted"})");
+  auto definition =
+      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["x"]})");
   velocypack::Builder normalized;
   auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
                                             /*isCreation*/ true,
@@ -127,7 +128,8 @@ TEST_F(RocksDBIndexFactoryTest, invertedIndexGetsExactlyOneObjectId) {
 }
 
 TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNotCreating) {
-  auto definition = velocypack::Parser::fromJson(R"({"type": "inverted"})");
+  auto definition =
+      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["x"]})");
   velocypack::Builder normalized;
   auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
                                             /*isCreation*/ false,
@@ -138,7 +140,7 @@ TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNotCreating) {
 
 TEST_F(RocksDBIndexFactoryTest, noExtraObjectIdWhenAlreadyPresent) {
   auto definition = velocypack::Parser::fromJson(
-      R"({"type": "inverted", "objectId": "123"})");
+      R"({"type": "inverted", "fields": ["x"], "objectId": "123"})");
   velocypack::Builder normalized;
   auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
                                             /*isCreation*/ true,
@@ -209,8 +211,8 @@ TEST_F(IndexTypeCatalogTest, rocksdbAliasNormalizesToPersistent) {
 }
 
 TEST_F(IndexTypeCatalogTest, zkdNormalizeKeepsOwnName) {
-  auto definition =
-      velocypack::Parser::fromJson(R"({"type": "zkd", "fields": ["x"]})");
+  auto definition = velocypack::Parser::fromJson(
+      R"({"type": "zkd", "fields": ["x"], "fieldValueTypes": "double"})");
   velocypack::Builder normalized;
   normalized.openObject();
   auto res = catalog.normalizeType("zkd", normalized, definition->slice(),
