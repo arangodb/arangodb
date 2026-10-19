@@ -702,16 +702,57 @@ def wait_until_visible(config, sidecar, scenario):
     if config.dry_run:
         print("    [dry-run] wait for propagation")
         return
+    _wait_for_effect(config, sidecar, scenario.user, "db:Read",
+                     "db:database:_system", "Allow",
+                     f"the binding for {scenario.user}")
+    for statement in scenario.policy:
+        if statement.get("effect") != "Deny":
+            continue
+        for resource in statement.get("resources", []):
+            if "*" in resource:
+                continue
+            action = statement["actions"][0]
+            _wait_for_effect(config, sidecar, scenario.user, action, resource,
+                             "Deny", f"the Deny on {resource} ({action})")
+
+
+def report_undenied(config, sidecar, scenario):
+    if config.dry_run:
+        return
+    probed = False
+    for statement in scenario.policy or []:
+        if statement.get("effect") != "Deny":
+            continue
+        for resource in statement.get("resources", []):
+            if "*" in resource:
+                continue
+            for action in statement.get("actions", []):
+                effect = sidecar.evaluate(scenario.user, action, resource)
+                probed = True
+                print(f"    PDP says {effect} for {action} on {resource} "
+                      f"(as {scenario.user})")
+    if probed:
+        print("    Deny here means the decision point was right and arangod did "
+              "not enforce it; Allow means the policy was not in force.")
+
+
+def _wait_for_effect(config, sidecar, user, action, resource, want, what):
+    """Block until the PDP answers `want` for one action/resource pair."""
     deadline = time.time() + config.propagation_timeout
+    started = time.time()
     while True:
-        effect = sidecar.evaluate(scenario.user, "db:Read", "db:database:_system")
-        if effect == "Allow":
+        effect = sidecar.evaluate(user, action, resource)
+        if effect == want:
+            waited = time.time() - started
+            # Propagation lag is the difference between a real denial and fake
+            if config.verbose or waited >= 2:
+                print(f"    {what} became visible as {want} after {waited:.1f}s")
             return
         if time.time() >= deadline:
             raise RuntimeError(
-                f"the binding for {scenario.user} was not visible to the policy "
-                f"decision point within {config.propagation_timeout}s "
-                f"(last effect: {effect}). Documented worst case is ~30s."
+                f"{what} was not visible to the policy decision point as {want} "
+                f"within {config.propagation_timeout}s (last effect: {effect}). "
+                f"Documented worst case is ~30s."
             )
         time.sleep(2)
 
@@ -987,6 +1028,8 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
             f"expected {step.expect:<4} got {actual:<5}{detail} -> {verdict}{note}"
         )
         if not result.ok:
+            if step.expect == DENY and actual == PASS:
+                report_undenied(config, sidecar, scenario)
             # Stop this scenario: later steps assume the earlier ones behaved.
             print(f"    ---- last 40 lines of {step.phase} output ----")
             for line in (output.strip().splitlines() or ["<no output>"])[-40:]:
