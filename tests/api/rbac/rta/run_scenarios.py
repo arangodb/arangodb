@@ -1242,8 +1242,10 @@ def main():
     caps = selfcheck.capabilities(binary=config.arangod)
     print(selfcheck.describe_capabilities(caps))
 
-    major = selfcheck.major_version()
+    major, version_source = selfcheck.major_version(binary=config.arangod)
     denied = denied_collection_for(config.suite_filter, major)
+    print(f"server major version: {major} (from {version_source}); "
+          f"deny-precedence target: {denied or '<none - scenario skipped>'}")
 
     tokens = Tokens(config)
     if args.bootstrap_user or args.remove_bootstrap_user:
