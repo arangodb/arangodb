@@ -52,12 +52,10 @@
 
 namespace arangodb::replication2::test {
 
-auto inline operator"" _Lx(unsigned long long x) -> LogIndex {
+auto inline operator""_Lx(unsigned long long x) -> LogIndex {
   return LogIndex{x};
 }
-auto inline operator"" _T(unsigned long long x) -> LogTerm {
-  return LogTerm{x};
-}
+auto inline operator""_T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
 
 struct LogArguments {
   std::variant<LogRange, std::vector<LogPayload>> initialLogRange = {};
@@ -354,13 +352,17 @@ struct LogContainer : IHasScheduler {
   }
 
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  auto contains() const { return std::holds_alternative<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  auto contains() const {
+    return std::holds_alternative<T>(_log);
+  }
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  [[nodiscard]] auto getAs() -> T& { return std::get<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  [[nodiscard]] auto getAs() -> T& {
+    return std::get<T>(_log);
+  }
   [[nodiscard]] auto getAsParticipant() -> ParticipantWithFakes& {
     return getAs<ParticipantWithFakes>();
   }
@@ -567,7 +569,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   template<std::size_t replicationFactor>
-  requires requires { replicationFactor >= 1; }
+    requires requires { replicationFactor >= 1; }
   auto createLogs(LogConfig config)
       -> std::pair<LogContainer,
                    std::array<LogContainer, replicationFactor - 1>> {
