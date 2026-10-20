@@ -1870,12 +1870,52 @@ function ahuacatlStringFunctionsTestSuite () {
 
   testFindFirstMatchShorterThanPattern: function () {
     // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
-    const decomposed = "한";
+    const decomposed = "\u1112\u1161\u11AB";
     assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("한", @s)`, { s: decomposed }));
     assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("x한y", @s, 0, 1)`, { s: decomposed }));
     // text has precomposed \u00e9 (1 unit), search is decomposed e\u0301 (2 units)
     assertEqual([ 3 ], getQueryResults(`RETURN FIND_FIRST("caf\u00e9", "e\u0301", 0, 3)`));
     assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("한", @s, true)`, { s: decomposed }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 1)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 4)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first and find_last with the largest end offset
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindMaxEndOffset: function () {
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 1, 9223372036854775807)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("😀😀", "😀", 1)`));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1993,6 +2033,61 @@ function ahuacatlStringFunctionsTestSuite () {
       var actual = getQueryResults(`RETURN FIND_LAST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ', ' + v[3] + ', ' + (v[4] === undefined ? null : v[4]) + ')');
       assertEqual([ v[0] ], actual);
     });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with a match shorter than the pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastMatchShorterThanPattern: function () {
+    // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
+    const decomposed = "\u1112\u1161\u11AB";
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("한x한", @s)`, { s: decomposed }));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
+    // \u00e9 and e\u0301 are both represented as é
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST(@t, @s, 0, 3)`, { t: "caf\u00e9", s: "e\u0301" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaa", "aa")`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa")`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 3)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 0, 2)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a last match that only fits the end bound truncated
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastTruncatedMatchLength: function () {
+    // U+1D400 is a surrogate pair, U+FE0F a variation selector
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀")`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST(@t, "a", 0, 2)`, { t: "a\uFE0Fa\uFE0F" }));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST(@t, "a")`, { t: "a\uFE0Fa\uFE0F" }));
   },
 
 // //////////////////////////////////////////////////////////////////////////////

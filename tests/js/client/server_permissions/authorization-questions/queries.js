@@ -25,17 +25,19 @@
 
 // Authorization questions asked by GET /_api/query/current, GET /_api/query/slow,
 // DELETE /_api/query/{id} and DELETE /_api/query/slow when a query of another
-// user is involved (COR-1023).
+// user is involved, and by PUT /_api/query/properties.
 //
 // Handlers: arangod/RestHandler/RestQueryHandler.cpp,
-//           arangod/VocBase/Methods/Queries.cpp (ExecContext::canAccessQuery)
+//           arangod/VocBase/Methods/Queries.cpp
+//           (ExecContext::canMonitorQuery / canKillQuery)
 //
 // A user's own queries are always accessible; listing, killing or clearing
 // them asks nothing beyond the base checks. As soon as a query of another
-// user is encountered, the server asks `AdminAqlQueries` (classic auth mode:
-// read-write access to _system) exactly once per request. A read-only user
-// therefore neither sees nor kills nor clears the other user's query, an
-// admin does.
+// user is encountered, the server asks exactly once per request for
+// `AdminMonitorAqlQueries` (lists, and clearing other users' slow queries)
+// or `AdminKillAqlQueries` (kill). In classic auth mode both mean
+// read-write access to _system. A read-only user therefore neither sees nor
+// kills nor clears the other user's query, an admin does.
 //
 // The requests of the read-only users are sent through the request module
 // with basic auth, so the arangosh connection stays root for the observer.
@@ -72,7 +74,8 @@ const baseQuestions = [
   'UseApiVersion version=0',
   `UseDatabase name=${DB} level=read`
 ];
-const foreignQueryQuestions = baseQuestions.concat(['AdminAqlQueries']);
+const monitorQuestions = baseQuestions.concat(['AdminMonitorAqlQueries']);
+const killQuestions = baseQuestions.concat(['AdminKillAqlQueries']);
 
 const password = 'testi';
 const secret = 'alice-secret-4711';
@@ -159,12 +162,17 @@ function queryApiAuthzSuite () {
         users.save(user, password);
         users.grantDatabase(user, DB, 'ro');
       });
+      // carol is an admin (read-write access to _system) who may
+      // only read the test database. root is an admin with access everywhere.
+      users.save('carol', password);
+      users.grantDatabase('carol', '_system', 'rw');
+      users.grantDatabase('carol', DB, 'ro');
       arango.PUT(`${queryApi}/properties`, { slowQueryThreshold: 0.1 });
     },
 
     tearDownAll: function () {
       killAllSleepQueriesAsRoot();
-      ['alice', 'bob'].forEach((user) => {
+      ['alice', 'bob', 'carol'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -198,14 +206,14 @@ function queryApiAuthzSuite () {
       assertEqual('alice', found[0].user);
     },
 
-    // a read-only user is asked for AdminAqlQueries and does not get to see
+    // a read-only user is asked for AdminMonitorAqlQueries and does not get to see
     // the other user's query, its query string or its bind variables
     testListCurrentForeignQueryAsUser: function () {
       startQueryAs('alice');
 
       beginObserve();
       const res = sendAs('bob', 'GET', `${queryApi}/current`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.status, JSON.stringify(res.json));
       const body = JSON.stringify(res.json);
@@ -219,7 +227,7 @@ function queryApiAuthzSuite () {
 
       beginObserve();
       const res = arango.GET_RAW(`${queryApi}/current`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       const found = sleepQueries(res.parsedBody);
@@ -240,14 +248,14 @@ function queryApiAuthzSuite () {
       assertEqual(200, res.status, JSON.stringify(res.json));
     },
 
-    // a read-only user is asked for AdminAqlQueries, gets 403 and the query
+    // a read-only user is asked for AdminKillAqlQueries, gets 403 and the query
     // keeps running
     testKillForeignQueryAsUser: function () {
       const id = startQueryAs('alice');
 
       beginObserve();
       const res = sendAs('bob', 'DELETE', `${queryApi}/${id}`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(killQuestions, endObserve());
 
       assertEqual(403, res.status, JSON.stringify(res.json));
       assertTrue(res.json.error, JSON.stringify(res.json));
@@ -259,7 +267,7 @@ function queryApiAuthzSuite () {
 
       beginObserve();
       const res = arango.DELETE_RAW(`${queryApi}/${id}`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(killQuestions, endObserve());
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
     },
@@ -295,7 +303,7 @@ function queryApiAuthzSuite () {
 
       beginObserve();
       const res = sendAs('bob', 'GET', `${queryApi}/slow`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.status, JSON.stringify(res.json));
       const body = JSON.stringify(res.json);
@@ -308,7 +316,7 @@ function queryApiAuthzSuite () {
 
       beginObserve();
       const res = arango.GET_RAW(`${queryApi}/slow`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       const found = sleepQueries(res.parsedBody);
@@ -318,6 +326,9 @@ function queryApiAuthzSuite () {
 
     // ── DELETE /_api/query/slow ──────────────────────────────────────────
 
+    // the slow query list is monitoring data, so clearing other users' entries
+    // asks the monitor permission; a read-only user does not have it and the
+    // entry survives
     testClearSlowOwnQuery: function () {
       runSlowQueryAs('alice');
 
@@ -329,14 +340,12 @@ function queryApiAuthzSuite () {
       assertEqual(0, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
     },
 
-    // a read-only user is asked for AdminAqlQueries and the other user's
-    // entry survives the clear
     testClearSlowForeignQueryAsUser: function () {
       runSlowQueryAs('alice');
 
       beginObserve();
       const res = sendAs('bob', 'DELETE', `${queryApi}/slow`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.status, JSON.stringify(res.json));
       assertEqual(1, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
@@ -347,10 +356,36 @@ function queryApiAuthzSuite () {
 
       beginObserve();
       const res = arango.DELETE_RAW(`${queryApi}/slow`);
-      assertPermissions(foreignQueryQuestions, endObserve());
+      assertPermissions(monitorQuestions, endObserve());
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       assertEqual(0, sleepQueries(arango.GET(`${queryApi}/slow`)).length);
+    },
+
+    // ── PUT /_api/query/properties ───────────────────────────────────────
+
+    testSetQueryPropertiesWithoutDatabaseWriteAccess: function () {
+      const before = arango.GET(`${queryApi}/properties`);
+
+      beginObserve();
+      const res = sendAs('bob', 'PUT', `${queryApi}/properties`, { enabled: false });
+      assertPermissions(baseQuestions.concat(['AdminAqlQueries']),
+                        endObserve());
+
+      assertEqual(403, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.error, JSON.stringify(res.json));
+      assertEqual(before.enabled, arango.GET(`${queryApi}/properties`).enabled);
+    },
+
+    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('carol', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(baseQuestions.concat(['AdminAqlQueries', 'IsReadOnly']),
+                        endObserve());
+
+      assertEqual(200, res.status, JSON.stringify(res.json));
+      assertEqual(48, res.json.maxSlowQueries);
+      arango.PUT(`${queryApi}/properties`, { maxSlowQueries: 64 });
     }
   };
 }

@@ -754,7 +754,23 @@ class instance {
       print(".");
       sleep(1);
     }
-    print(`${Date()} upgrade of ${this.name} finished.`);
+    print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
+    this.processSanitizerReports();
+    if (this.exitStatus.hasOwnProperty('signal') &&
+        ((this.exitStatus === 11) ||
+         (this.exitStatus === 6))) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+      this.analyzeServerCrash(msg);
+      this.serverCrashedLocal = true;
+      this.message += msg;
+      msg = " runUpgrade: Marking crashy";
+      pu.serverCrashed = true;
+      this.message += msg;
+      print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+      this.pid = null;
+      return false;
+    }
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -832,8 +848,10 @@ class instance {
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+    let count = 0;
 
     while (true) {
+      count += 1;
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
         this.exitStatus = null;
@@ -844,7 +862,7 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.jwt_secret !== '') {
-            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
+            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url} - deadline ${deadline}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  undefined,
@@ -875,6 +893,9 @@ class instance {
         }
       } catch (ex) {
         if (time() < deadline) {
+          if ((count % 10) === 0) {
+            print(`${Date()} ping failed by: ${ex}`);
+          }
           print('.');
           sleep(1);
         } else {
@@ -929,7 +950,10 @@ class instance {
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      const ret = arango.reconnect(this.endpoint,
+                                   '_system', 'root',
+                                   this.hasSetPassvoid ? this.options.password: '',
+                                   true);
       this.connectionHandle = arango.getConnectionHandle();
       this.dumpConnectionTable();
       return ret;
