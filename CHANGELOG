@@ -1,5 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Add `--http.max-decompressed-request-body-size` startup option, which limits
+  how large a compressed HTTP request body may be after decompression. The default
+  is 512 MiB.
+
 * COR-1086: Replaced deprecated OpenSSL functions with the proper newer, 
   higher level envelope calls. Removed unused functions and refactored some
   minor parts of the SslInterface.
