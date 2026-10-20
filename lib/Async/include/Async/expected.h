@@ -124,11 +124,11 @@ struct expected {
   }
   T& operator*() noexcept {
     TRI_ASSERT(_state == kValue);
-    return &_value;
+    return _value;
   }
   T const& operator*() const noexcept {
     TRI_ASSERT(_state == kValue);
-    return &_value;
+    return _value;
   }
 
   ~expected() noexcept(std::is_nothrow_destructible_v<T>) { reset(); }

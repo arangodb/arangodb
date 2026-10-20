@@ -3,6 +3,7 @@ add_library(arango_utils STATIC
   ExecContext.cpp
   OperationOptions.cpp
   SupportInfoBuilder.cpp
+  Thread.cpp
   UrlHelper.cpp
 )
 
@@ -17,7 +18,6 @@ target_link_libraries(arango_utils
   arango_basic_errors
   arango_basic_utils
   arango_indexes
-  immer
 )
 
 target_include_directories(arango_utils PRIVATE

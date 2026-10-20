@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/CrashHandlerFeature.h"
@@ -35,8 +34,16 @@ namespace arangodb {
 CrashHandlerFeature::CrashHandlerFeature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DumpManager> dumpManager)
+    : CrashHandlerFeature(server, std::move(dumpManager),
+                          CrashHandlerFeatureOptions{}) {}
+
+CrashHandlerFeature::CrashHandlerFeature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    CrashHandlerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      _dumpManager(std::move(dumpManager)) {
+      _dumpManager(std::move(dumpManager)),
+      _options(std::move(options)) {
   setOptional(false);
   // Feature must start after DatabasePathFeature
   // otherwise it won't be able to set the crashes directory
@@ -48,12 +55,6 @@ void CrashHandlerFeature::start() {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
     _dumpManager->setCrashesDirectory(path);
   }
-}
-
-void CrashHandlerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::crash_handler::CrashHandlerOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 std::shared_ptr<crash_handler::DumpManager>

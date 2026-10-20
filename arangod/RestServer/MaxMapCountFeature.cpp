@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxMapCountFeature.h"
@@ -39,13 +38,6 @@ MaxMapCountFeature::MaxMapCountFeature(
     : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void MaxMapCountFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.check-max-memory-mappings",
-      "check the maximum number of memory mappings at startup", true);
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {

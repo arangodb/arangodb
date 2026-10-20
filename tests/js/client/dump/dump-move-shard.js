@@ -22,11 +22,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
 let internal = require("internal");
 let jsunity = require("jsunity");
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -86,11 +86,9 @@ function dumpTestSuite () {
               return;
           }
 
-          let body = {fromServer, toServer, database, collection, shard};
-          let result = arango.POST("_admin/cluster/moveShard", body);
-          assertFalse(result.error);
-          assertEqual(result.code, 202);
-          pending.push(result.id);
+          let id = IM.moveShard(database, collection, shard, fromServer, toServer, -1);
+          assertTrue(id !== false);
+          pending.push(id);
           i++;
         });
 

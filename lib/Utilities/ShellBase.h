@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

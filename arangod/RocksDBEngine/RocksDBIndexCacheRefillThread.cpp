@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexCacheRefillThread.h"
@@ -26,12 +25,13 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -45,20 +45,20 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
 
-using application_features::ApplicationServer;
-
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
-    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
+    DatabaseFeature& databaseFeature, metrics::IRegistry& metricsRegistry,
     size_t maxCapacity)
-    : Thread("RocksDBCacheRefiller"),
+    // needs superuser permissions to open SingleCollectionTransactions to
+    // refill index caches
+    : Thread("RocksDBCacheRefiller", ExecContext::superuserAsShared()),
       _databaseFeature(databaseFeature),
       _maxCapacity(maxCapacity),
       _numQueued(0),
       _proceeding(0),
       _totalNumQueued(
-          metricsFeature.add(rocksdb_cache_auto_refill_loaded_total{})),
+          metricsRegistry.add(rocksdb_cache_auto_refill_loaded_total{})),
       _totalNumDropped(
-          metricsFeature.add(rocksdb_cache_auto_refill_dropped_total{})) {}
+          metricsRegistry.add(rocksdb_cache_auto_refill_dropped_total{})) {}
 
 RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 

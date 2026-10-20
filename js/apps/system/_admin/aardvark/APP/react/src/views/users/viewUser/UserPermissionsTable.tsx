@@ -7,6 +7,7 @@ import {
 } from "./CollectionsPermissionsTable";
 import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
 import { useUsername } from "./useFetchDatabasePermissions";
+import { useInferredRbacMode } from "../../../utils/usePermissions";
 import {
   UserPermissionsContextProvider,
   useUserPermissionsContext
@@ -28,6 +29,21 @@ const UserPermissionsTableInner = () => {
   }, [username]);
 
   const { isManagedUser, isRootUser } = tableInstance.options.meta as any;
+  const inferredRbacMode = useInferredRbacMode();
+
+  if (inferredRbacMode) {
+    return (
+      <Stack padding="4">
+        <Alert status="info">
+          <AlertIcon />
+          <AlertDescription>
+            Classic database permissions are not available in RBAC mode. Access
+            is granted through roles instead.
+          </AlertDescription>
+        </Alert>
+      </Stack>
+    );
+  }
 
   return (
     <Stack padding="4">

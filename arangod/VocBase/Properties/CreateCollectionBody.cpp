@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollectionBody.h"
@@ -131,7 +130,7 @@ bool hasDistributeShardsLike(VPackSlice fullBody,
                              DatabaseConfiguration const& config) {
   // Only true if we have a non-empty string as DistributeShardsLike
   // Always false on SingleServer.
-  return config.isOneShardDB ||
+  return config.oneShardDBConfiguration.has_value() ||
          (fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
           fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
           !fullBody.get(StaticStrings::DistributeShardsLike)
@@ -358,7 +357,7 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
     // We ignore the null.
     return;
   }
-  if (!config.isOneShardDB) {
+  if (!config.oneShardDBConfiguration.has_value()) {
     if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer
 
@@ -473,6 +472,17 @@ auto logDeprecationMessage(Result const& res) -> void {
          "and "
          "will be rejected in the future: "
       << res;
+}
+
+/// @brief Attributes that parse as "unset" when null, because stored data
+/// predates the typed parse. A user sending null still gets the deprecation
+/// warning, since the parse no longer fails and triggers it on its own.
+auto hasDeprecatedNullAttribute(VPackSlice body) -> bool {
+  if (!body.isObject()) {
+    return false;
+  }
+  return body.get(StaticStrings::NumberOfShards).isNull() ||
+         body.get(StaticStrings::DistributeShardsLike).isNull();
 }
 
 auto makeRestoreAllowList() -> std::unordered_map<
@@ -697,6 +707,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     }
     return compatibleRes;
   }
+  if (res.ok() && ::hasDeprecatedNullAttribute(input)) {
+    logDeprecationMessage(
+        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
+  }
   return res;
 }
 
@@ -755,6 +769,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     }
     return compatibleRes;
   }
+  if (res.ok() && ::hasDeprecatedNullAttribute(properties)) {
+    logDeprecationMessage(
+        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
+  }
   return res;
 }
 
@@ -778,7 +796,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
 
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
-            config.defaultDistributeShardsLike.empty()) {
+            !config.oneShardDBConfiguration.has_value()) {
           col.shardingStrategy = "hash";
         }
       });
@@ -801,7 +819,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
           col.id = config.idGenerator();
           if (!col.shardingStrategy.has_value() &&
               !col.distributeShardsLike.has_value() &&
-              config.defaultDistributeShardsLike.empty()) {
+              !config.oneShardDBConfiguration.has_value()) {
             const bool isSmart =
 #if USE_ENTERPRISE
                 col.isSmart;
@@ -886,4 +904,16 @@ arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
     return VPackCollection::remove(builder.slice(), attributesToErase);
   }
   return builder;
+}
+
+CollectionDescriptor CreateCollectionBody::toDescriptor() const {
+  CollectionDescriptor d;
+  d.constant = static_cast<CollectionConstantProperties const&>(*this);
+  d.mutableProps = static_cast<CollectionMutableProperties const&>(*this);
+  d.internal = static_cast<CollectionInternalProperties const&>(*this);
+  d.clusteringConstant =
+      static_cast<ClusteringConstantProperties const&>(*this);
+  d.clusteringMutable = static_cast<ClusteringMutableProperties const&>(*this);
+  // storage.objectId is assigned by the storage engine, not by the user
+  return d;
 }

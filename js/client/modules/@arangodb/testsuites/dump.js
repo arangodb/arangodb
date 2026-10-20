@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const tu = require('@arangodb/testutils/test-utils');
@@ -95,6 +92,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
     if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
       if (!PTK.runSetupSuite(setupFile) ||
           !PTK.runRtaMakedata() ||
+          !PTK.runRtaWaitData() ||
           !PTK.dumpFrom('_system', true) ||
           !PTK.dumpFrom('UnitTestsDumpSrc', true) ||
           !PTK.dumpFromRta() ||
@@ -114,6 +112,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
     } else {
       if (!PTK.runSetupSuite(setupFile) ||
           !PTK.runRtaMakedata() ||
+          !PTK.runRtaWaitData() ||
           !PTK.dumpSrc() ||
           !PTK.dumpFromRta() ||
           !PTK.dumpFrom('_system', false) ||
@@ -176,7 +175,6 @@ function dump (options) {
   if (opts.cluster) {
     opts.dbServers = 3;
   }
-  opts.extraArgs['vector-index'] = true;
 
   let c = getClusterStrings(opts);
   let tstFiles = {
@@ -196,10 +194,8 @@ function dumpMixedClusterSingle (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
-  clusterOptions.extraArgs['vector-index'] = true;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
-  singleOptions.extraArgs['vector-index'] = true;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
@@ -215,18 +211,19 @@ function dumpMixedClusterSingle (options) {
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
-                                      // BTS-1617: disable 404 for now
-                                      '--skip', '404'], true);
+                                      // BTS-1617: disable 404 for now.
+                                      // 120, 052, 575, 585  are single-server-only: it is not
+                                      // created on the cluster source, so it cannot be verified on the single
+                                      // server destination.
+                                      '--skip', '404,120,052,575,585'], true);
 }
 
 function dumpMixedSingleCluster (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
-  clusterOptions.extraArgs['vector-index'] = true;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
-  singleOptions.extraArgs['vector-index'] = true;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
   let tstFiles = {
@@ -242,7 +239,11 @@ function dumpMixedSingleCluster (options) {
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
-                                      '--skip', '550,900,960'], true);
+                                      // 120 (autoincrement key generator) is single-server-only: it is
+                                      // created on the single server source but the cluster destination
+                                      // check would need cluster support, so keep make/check symmetric by
+                                      // skipping it in this mixed scenario as well.
+                                      '--skip', '550,900,960,120,052,575,585'], true);
 }
 
 function dumpMultipleTwo (options) {
@@ -253,7 +254,7 @@ function dumpMultipleTwo (options) {
     deactivateCompression: true,
     parallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -277,7 +278,7 @@ function dumpMultipleSame (options) {
     deactivateCompression: true,
     parallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -305,7 +306,7 @@ function dumpWithCrashes (options) {
     threads: 1,
     useParallelDump: true,
     splitFiles: true,
-    extraArgs: { 'vector-index': true },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -331,7 +332,7 @@ function dumpWithCrashesNonParallel (options) {
     threads: 1,
     useParallelDump: false,
     splitFiles: false,
-    extraArgs: { 'vector-index': true },
+    extraArgs: {},
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -364,7 +365,6 @@ function dumpAuthentication (options) {
 
   _.defaults(dumpAuthOpts, options);
   _.defaults(restoreAuthOpts, options);
-  dumpAuthOpts.extraArgs['vector-index'] = true;
   dumpAuthOpts.dbServers = 3;
   dumpAuthOpts.useParallelDump = false;
   restoreAuthOpts.dbServers = 3;
@@ -405,7 +405,7 @@ function dumpJwt (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    extraArgs: { 'vector-index': true },
+    extraArgs: { },
     multipleDumps: true,
     dbServers: 3
   });
@@ -426,7 +426,6 @@ function dumpEncrypted (options) {
   };
 
   let dumpOptions = _.clone(options);
-  dumpOptions.extraArgs['vector-index'] = true;
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   dumpOptions.dbServers = 3;
@@ -451,7 +450,6 @@ function dumpNonParallel (options) {
   dumpOptions.useParallelDump = false;
   dumpOptions.splitFiles = false;
   dumpOptions.dbServers = 3;
-  dumpOptions.extraArgs['vector-index'] = true;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -476,7 +474,7 @@ function dumpMaskings (options) {
   };
 
   let dumpMaskingsOpts = {
-    extraArgs: { 'vector-index': true },
+    extraArgs: { },
     maskings: 'maskings1.json',
     dbServers: 3
   };

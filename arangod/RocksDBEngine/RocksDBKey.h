@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -52,7 +50,7 @@ struct LogIndex;
 };  // namespace replication2
 
 namespace vector {
-enum class VectorIndexFormatVersion : std::uint8_t;
+enum class FormatVersion : std::uint8_t;
 }  // namespace vector
 
 class RocksDBKey {
@@ -167,11 +165,6 @@ class RocksDBKey {
   void constructCounterValue(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for a replication applier config
-  //////////////////////////////////////////////////////////////////////////////
-  void constructReplicationApplierConfig(TRI_voc_tick_t databaseId);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for index estimate values of
   ///        a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -210,8 +203,8 @@ class RocksDBKey {
   /// @brief Build the sentinel key under which the per-index vector metadata
   /// record is stored in the VectorIndex CF. The format version selects which
   /// sentinel slot is used.
-  void constructVectorIndexTrainedData(
-      uint64_t indexId, vector::VectorIndexFormatVersion version);
+  void constructVectorIndexTrainedData(uint64_t indexId,
+                                       vector::FormatVersion version);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection

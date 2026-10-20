@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,6 +33,12 @@
 namespace arangodb {
 
 using TopicName = std::string_view;
+
+template<typename T>
+concept ValidTopicType = requires {
+  { T::name } -> std::convertible_to<TopicName>;
+  { T::defaultLevel } -> std::convertible_to<LogLevel>;
+};
 
 class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
@@ -52,10 +57,8 @@ class LogTopic {
 
   virtual ~LogTopic() = default;
 
-  template<typename Topic>
-  LogTopic(Topic) requires requires(Topic) {
-    Topic::name;
-  };
+  template<ValidTopicType Topic>
+  LogTopic(Topic);
 
   LogTopic(LogTopic const& that)
       : _id(that._id), _name(that._name), _displayName(that._displayName) {

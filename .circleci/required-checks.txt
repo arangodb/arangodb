@@ -1,0 +1,10 @@
+# Required status checks for merging into devel, one context per line.
+# security-governance compares this list against live branch protection and
+# against the workflows a real pipeline emits; drift in either direction is
+# a broken merge gate. Read off the live configuration, never hand-derived;
+# GitHub sees one check per CircleCI workflow, so these are workflow names.
+# The Trivy gates live in the nightly-packages pipeline. They fail that
+# workflow but block neither the merge nor the nightly publish.
+
+aarch64-pr
+x64-pr

@@ -81,7 +81,8 @@ defmodule Toast.Env do
     {:debugger, "TOAST_DEBUGGER", :debugger, :auto},
     {:attach_debugger, "TOAST_ATTACH_DEBUGGER", :bool, false},
     {:rr, "TOAST_RR", :string, nil},
-    {:dump_agency_on_error, "TOAST_DUMP_AGENCY", :opt_bool, true}
+    {:dump_agency_on_error, "TOAST_DUMP_AGENCY", :opt_bool, true},
+    {:capture_traffic, "TOAST_CAPTURE_TRAFFIC", :bool, false}
   ]
 
   @spec load(keyword()) :: map()

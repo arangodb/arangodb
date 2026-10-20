@@ -21,12 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
 const internal = require('internal');
+const path = require('path');
 
 //  first inst - tmp  --                 /tmp/xxx-arangosh/
 //  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
@@ -51,6 +50,7 @@ if (getOptions === true) {
 
 
 const topLevelForbidden = fs.join(testFilesDir, 'forbidden');
+const topLevelAllowedHazardSubFiles = fs.join(testFilesDir, "bad_files_inside");
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const forbiddenJSFileName = fs.join(topLevelForbidden, 'forbidden.js');
 const topLevelForbiddenRecursive = fs.join(testFilesDir, 'forbidden_recursive');
@@ -66,33 +66,35 @@ const intoTopLevelAllowed = fs.join(topLevelForbidden, 'into_allowed.txt');
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
-// N/A const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
+const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
 const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
 const intoSubLevelAllowed = topLevelForbidden + '/allowed/aoeu';
 
 const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
-// N/A const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
+const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
 
 const topLevelAllowedWriteFile = fs.join(topLevelAllowed, 'allowed_write.txt');
 const topLevelForbiddenWriteFile = fs.join(topLevelForbidden, 'forbidden_write.txt');
 const subLevelAllowedWriteFile = fs.join(subLevelAllowed, 'allowed_write.txt');
-// N/A const subLevelForbiddenWriteFile = fs.join(subLevelForbidden, 'forbidden_write.txt');
+const subLevelForbiddenWriteFile = fs.join(subLevelForbidden, 'forbidden_write.txt');
 
 const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_csv.txt');
 const topLevelForbiddenReadCSVFile = fs.join(topLevelForbidden, 'forbidden_csv.txt');
 const subLevelAllowedReadCSVFile = fs.join(subLevelAllowed, 'allowed_csv.txt');
-// N/A const subLevelForbiddenReadCSVFile = fs.join(subLevelForbidden, 'forbidden_csv.txt');
+const subLevelForbiddenReadCSVFile = fs.join(subLevelForbidden, 'forbidden_csv.txt');
 
 const topLevelAllowedReadJSONFile = fs.join(topLevelAllowed, 'allowed_json.txt');
 const topLevelForbiddenReadJSONFile = fs.join(topLevelForbidden, 'forbidden_json.txt');
 const subLevelAllowedReadJSONFile = fs.join(subLevelAllowed, 'allowed_json.txt');
-// N/A const subLevelForbiddenReadJSONFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+const subLevelForbiddenReadJSONFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
 
 
 const topLevelAllowedCopyFile = fs.join(topLevelAllowed, 'allowed_copy.txt');
 const topLevelForbiddenCopyFile = fs.join(topLevelForbidden, 'forbidden_copy.txt');
 const subLevelAllowedCopyFile = fs.join(subLevelAllowed, 'allowed_copy.txt');
-// N/A const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+
+const relativePathZipFile = path.resolve(internal.pathForTesting('common'), 'test-data', 'permissions', 'zip-with-relative-paths.zip');
 
 const CSV = 'a,b\n1,2\n3,4\n';
 const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
@@ -100,16 +102,17 @@ const JSONText = '{"a": true, "b":false, "c": "abc"}\n{"a": true, "b":false, "c"
 const JSONParsed = { "a" : true, "b" : false, "c" : "abc"};
 
 if (getOptions === true) {
-  // N/A fs.makeDirectoryRecursive(subLevelForbidden);
+  fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
   fs.makeDirectoryRecursive(subLevelAllowed);
   fs.makeDirectoryRecursive(topLevelAllowedRecursive);
   fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.makeDirectoryRecursive(topLevelAllowedUnZip);
+  fs.makeDirectoryRecursive(topLevelAllowedHazardSubFiles);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
-   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+  fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
   fs.write(forbiddenJSFileName, `print('hello world');\n`);
   fs.write(allowedJSFileName, `print('hello world');\n`);
@@ -118,11 +121,12 @@ if (getOptions === true) {
   fs.write(topLevelAllowedCopyFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenCopyFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedCopyFile, 'this file is allowed.\n');
-   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
+  fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
   try {
     fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
     fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+    fs.linkFile('/etc/passwd', fs.join(topLevelAllowedHazardSubFiles, 'passwd'));
   } catch (ex) {
     internal.print("unable to create symlinks" + ex);
   }
@@ -134,7 +138,6 @@ if (getOptions === true) {
   fs.write(topLevelAllowedReadJSONFile, JSONText);
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
-
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-allowlist': [
@@ -142,6 +145,9 @@ if (getOptions === true) {
      fs.escapePath('^' + topLevelAllowed),
      fs.escapePath('^' + subLevelAllowed),
      fs.escapePath('^' + topLevelAllowedRecursive)
+    ],
+    'javascript.files-denylist': [
+      fs.escapePath('^' + subLevelForbidden)
     ]
   };
 }
@@ -565,11 +571,20 @@ function testSuite() {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: ' + err);
     }
   }
+
+  function tryZipFileForbiddenList(zip, sn, listOfFiles) {
+    try {
+      let rc = fs.zipFile(zip, sn, listOfFiles);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: '+ listOfFiles + ' ' + err);
+    }
+  }
   function tryZipFileAllowed(zip, sn) {
     let files = [];
     try {
       files = fs.list(sn).filter(function (fn) {
-        if (fn === 'into_forbidden.txt') {
+        if (fn === 'into_forbidden.txt' || fn === 'forbidden') {
           return false;
         }
         return fs.isFile(fs.join(sn, fn));
@@ -580,7 +595,6 @@ function testSuite() {
     }
     tryExistsAllowed(zip, true);
   }
-
   function tryUnZipFileForbidden(zip, sn) {
     try {
       let rc = fs.unzipFile(zip, sn, undefined, true);
@@ -641,7 +655,7 @@ function testSuite() {
       tryReadForbidden('/etc/passwd');
       tryReadForbidden('/var/log/mail.log');
       tryReadForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryReadForbidden(subLevelForbiddenFile);
 
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -649,7 +663,7 @@ function testSuite() {
       tryAdler32Forbidden('/etc/passwd');
       tryAdler32Forbidden('/var/log/mail.log');
       tryAdler32Forbidden(topLevelForbiddenFile);
-      // N/A tryAdler32Forbidden(subLevelForbiddenFile);
+      tryAdler32Forbidden(subLevelForbiddenFile);
 
       tryAdler32Allowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryAdler32Allowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -658,7 +672,7 @@ function testSuite() {
       tryReadBufferForbidden('/etc/passwd');
       tryReadBufferForbidden('/var/log/mail.log');
       tryReadBufferForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryReadForbidden(subLevelForbiddenFile);
 
       tryReadBufferAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadBufferAllowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -668,7 +682,7 @@ function testSuite() {
       tryRead64Forbidden('/etc/passwd');
       tryRead64Forbidden('/var/log/mail.log');
       tryRead64Forbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryReadForbidden(subLevelForbiddenFile);
 
       tryRead64Allowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryRead64Allowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -677,7 +691,7 @@ function testSuite() {
       tryReadCSVForbidden('/etc/passwd');
       tryReadCSVForbidden('/var/log/mail.log');
       tryReadCSVForbidden(topLevelForbiddenReadCSVFile);
-      // N/A tryReadCSVForbidden(subLevelForbiddenReadCSVFile);
+      tryReadCSVForbidden(subLevelForbiddenReadCSVFile);
 
       tryReadCSVAllowed(topLevelAllowedReadCSVFile, CSV);
       tryReadCSVAllowed(subLevelAllowedReadCSVFile, CSV);
@@ -686,7 +700,7 @@ function testSuite() {
       tryReadJSONForbidden('/etc/passwd');
       tryReadJSONForbidden('/var/log/mail.log');
       tryReadJSONForbidden(topLevelForbiddenReadJSONFile);
-      // N/A tryReadJSONForbidden(subLevelForbiddenReadJSONFile);
+      tryReadJSONForbidden(subLevelForbiddenReadJSONFile);
 
       tryReadJSONAllowed(topLevelAllowedReadJSONFile, JSONText);
       tryReadJSONAllowed(subLevelAllowedReadJSONFile, JSONText);
@@ -707,7 +721,7 @@ function testSuite() {
       tryChmodForbidden('/etc/passwd');
       tryChmodForbidden('/var/log/mail.log');
       tryChmodForbidden(topLevelForbiddenFile);
-      // N/A tryChmodForbidden(subLevelForbiddenFile);
+      tryChmodForbidden(subLevelForbiddenFile);
 
       tryChmodAllowed(topLevelAllowedFile);
       tryChmodAllowed(subLevelAllowedFile);
@@ -716,7 +730,7 @@ function testSuite() {
       tryExistsForbidden('/etc/passwd');
       tryExistsForbidden('/var/log/mail.log');
       tryExistsForbidden(topLevelForbiddenFile);
-      // N/A tryExistsForbidden(subLevelForbiddenFile);
+      tryExistsForbidden(subLevelForbiddenFile);
 
       tryExistsAllowed(topLevelAllowedFile, true);
       tryExistsAllowed(subLevelAllowedFile, true);
@@ -725,7 +739,7 @@ function testSuite() {
       tryFileSizeForbidden('/etc/passwd');
       tryFileSizeForbidden('/var/log/mail.log');
       tryFileSizeForbidden(topLevelForbiddenFile);
-      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+      tryFileSizeForbidden(subLevelForbiddenFile);
 
       tryFileSizeAllowed(topLevelAllowedFile);
       tryFileSizeAllowed(subLevelAllowedFile);
@@ -734,7 +748,7 @@ function testSuite() {
       tryIsDirectoryForbidden('/etc/passwd');
       tryIsDirectoryForbidden('/var/log/mail.log');
       tryIsDirectoryForbidden(topLevelForbiddenFile);
-      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+      tryFileSizeForbidden(subLevelForbiddenFile);
 
       tryIsDirectoryAllowed(topLevelAllowedFile, false);
       tryIsDirectoryAllowed(subLevelAllowedFile, false);
@@ -776,7 +790,7 @@ function testSuite() {
       tryIsFileForbidden('/etc/passwd');
       tryIsFileForbidden('/var/log/mail.log');
       tryIsFileForbidden(topLevelForbiddenFile);
-      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+      tryFileSizeForbidden(subLevelForbiddenFile);
 
       tryIsFileAllowed(topLevelAllowedFile, true);
       tryIsFileAllowed(subLevelAllowedFile, true);
@@ -789,12 +803,12 @@ function testSuite() {
       tryListFileForbidden('/var/log/');
       tryListFileForbidden(topLevelForbidden);
       tryListFileForbidden(topLevelForbiddenFile);
-      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+      tryFileSizeForbidden(subLevelForbiddenFile);
 
       tryListFileAllowed(topLevelAllowedFile, 0);
       tryListFileAllowed(subLevelAllowedFile, 0);
 
-      tryListFileAllowed(topLevelAllowed, 7);
+      tryListFileAllowed(topLevelAllowed, 8);
       tryListFileAllowed(subLevelAllowed, 6);
     },
     testListTree : function() {
@@ -802,7 +816,7 @@ function testSuite() {
       tryListTreeForbidden('/var/log/');
       tryListTreeForbidden(topLevelForbidden);
       tryListTreeForbidden(topLevelForbiddenFile);
-      // N/A tryFileSizeForbidden(subLevelForbiddenFile);
+      tryFileSizeForbidden(subLevelForbiddenFile);
 
       tryListTreeAllowed(topLevelAllowedFile, 1);
       tryListTreeAllowed(subLevelAllowedFile, 1);
@@ -838,12 +852,24 @@ function testSuite() {
       tryZipFileForbidden(allowedZipFileName, '/etc/');
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowedHazardSubFiles, ['passwd']);
+
+      let prefixEscape = '';
+      for (let i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
+        prefixEscape += "../";
+      }
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
+      fs.remove(allowedZipFileName);
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
 
       tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
       tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
       tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
+
+      // Should try to unzip into the toplevel allowed directory
+      // with a relative path
+      tryUnZipFileForbidden(relativePathZipFile, topLevelAllowed);
     },
     testEval : function() {
       tryJSParseFileForbidden(forbiddenJSFileName);
@@ -854,9 +880,7 @@ function testSuite() {
       // we can not forbid snippet evaluation.
       // Access is file access based for now.
       require("internal").parse(`print('hello world')`);
-    }
-
-
+    },
   };
 }
 jsunity.run(testSuite);

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "promise.h"
 
@@ -30,8 +29,8 @@ using namespace arangodb::async_registry;
 
 Promise::Promise(CurrentRequester requester, std::source_location entry_point)
     : owning_thread{basics::ThreadInfo::current()},
-      requester{
-          AtomicRequester::from(requester)},  // TODO hand this in via function
+      requester{AtomicRequester::from(
+          std::move(requester))},  // TODO hand this in via function
       state{State::Running},
       running_thread{basics::ThreadId::current()},
       source_location{entry_point.file_name(), entry_point.function_name(),
@@ -54,7 +53,7 @@ AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
 
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (node_in_registry != nullptr) {
-    node_in_registry->list->mark_for_deletion(node_in_registry.get());
+    node_in_registry->mark_for_deletion();
   }
 }
 auto AddToAsyncRegistry::update_requester(std::optional<PromiseId> requester)

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,13 +28,10 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
-#include "Transaction/Hints.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 #include <function2.hpp>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace futures {
@@ -67,7 +63,7 @@ struct Indexes {
       arangodb::velocypack::Builder&, transaction::Methods* trx = nullptr);
 
   static futures::Future<arangodb::Result> createIndex(
-      LogicalCollection&, Index::IndexType, std::vector<std::string> const&,
+      LogicalCollection&, IndexType, std::vector<std::string> const&,
       bool unique, bool sparse, bool estimates);
 
   static futures::Future<arangodb::Result> ensureIndex(

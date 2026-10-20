@@ -18,25 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Basics/UnshackledMutex.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/voc-types.h"
 #include "Transaction/OperationOrigin.h"
 
-#include <shared_mutex>
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 struct ShardID;
-}
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -80,7 +75,7 @@ struct IDocumentStateShardHandler {
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
   explicit DocumentStateShardHandler(
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      Database& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IMaintenanceActionExecutor> maintenance);
 
   auto ensureShard(ShardID const& shard, TRI_col_type_e collectionType,
@@ -117,7 +112,7 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
  private:
   GlobalLogIdentifier _gid;
   std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

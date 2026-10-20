@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConnectionPool.h"
@@ -33,7 +32,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/NetworkFeature.h"
 
 #include <fuerte/connection.h>
@@ -461,9 +460,9 @@ ConnectionPool::Metrics createMetrics(Gen&& g, std::string_view name) {
 }  // namespace
 
 ConnectionPool::Metrics ConnectionPool::Metrics::fromMetricsFeature(
-    metrics::MetricsFeature& metricsFeature, std::string_view name) {
+    metrics::IRegistry& metricsRegistry, std::string_view name) {
   return createMetrics(
-      [&](auto&& builder) { return &metricsFeature.add(std::move(builder)); },
+      [&](auto&& builder) { return &metricsRegistry.add(std::move(builder)); },
       name);
 }
 

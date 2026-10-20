@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -33,7 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Cluster/ClusterUpgradeOptionsProvider.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
@@ -49,19 +47,17 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 ClusterUpgradeFeature::ClusterUpgradeFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature)
+    : ClusterUpgradeFeature(server, databaseFeature,
+                            ClusterUpgradeFeatureOptions{}) {}
+
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterUpgradeFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
-}
 
-void ClusterUpgradeFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ClusterUpgradeFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }

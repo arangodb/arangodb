@@ -22,8 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgnes
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');

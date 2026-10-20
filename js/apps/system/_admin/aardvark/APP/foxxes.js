@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -232,7 +230,7 @@ installer.put('/generate', (req, res) => {
   const tempDir = fs.getTempFile('aardvark', false);
   const generated = FoxxGenerator.generate(req.body);
   FoxxGenerator.write(tempDir, generated.files, generated.folders);
-  const tempFile = fmu.zipDirectory(tempDir);
+  const tempFile = fs.zipDirectory(tempDir);
   req.body = fs.readFileSync(tempFile);
   try {
     fs.removeDirectoryRecursive(tempDir, true);

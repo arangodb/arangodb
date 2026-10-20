@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
@@ -35,8 +34,10 @@
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
 #include "gtest/gtest.h"
@@ -607,18 +608,13 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::RO,
+      arangodb::auth::Level::RO);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)
@@ -628,7 +624,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 
   tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"write\": [\"42\"]}}");
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                               transaction::OperationOriginTestCase{}, false)
             .waitAndGet();
@@ -644,23 +640,146 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::NONE,
+      arangodb::auth::Level::NONE);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)
           .waitAndGet();
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             access to other users' transactions
+// -----------------------------------------------------------------------------
+
+namespace {
+
+/**
+ * Begins a write transaction on `testCollection` as user "alice" and returns
+ * once it is running
+ */
+void beginTransactionAsAlice(TRI_vocbase_t& vocbase, transaction::Manager& mgr,
+                             TransactionId tid) {
+  auto json =
+      VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+  ASSERT_NE(vocbase.createCollection(json->slice()), nullptr);
+
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+
+  auto collections = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  ASSERT_TRUE(mgr.ensureManagedTrx(vocbase, tid, collections->slice(),
+                                   transaction::OperationOriginTestCase{},
+                                   false)
+                  .waitAndGet()
+                  .ok());
+}
+
+/// @brief ids of the transactions the current identity may see in `database`
+std::vector<std::string> visibleTransactionIds(transaction::Manager& mgr,
+                                               std::string const& database) {
+  arangodb::velocypack::Builder builder;
+  {
+    arangodb::velocypack::ArrayBuilder guard(&builder);
+    mgr.toVelocyPack(builder, database, "", /*fanout*/ false,
+                     /*details*/ false);
+  }
+  std::vector<std::string> ids;
+  for (auto const entry :
+       arangodb::velocypack::ArrayIterator(builder.slice())) {
+    ids.push_back(entry.get("id").copyString());
+  }
+  return ids;
+}
+
+}  // namespace
+
+TEST_F(TransactionManagerTest, admin_can_abort_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  // classic admin: read-write access to _system
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, user_cannot_abort_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  {
+    auto const bob = arangodb::tests::mocks::makeClassicExecContext(
+        "bob", vocbase.name(), arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO);
+    arangodb::ExecContextScope scope(bob.execContext);
+
+    auto const res = mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet();
+    EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_NOT_FOUND);
+  }
+
+  // the transaction is still there: its owner can abort it
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, admin_cannot_commit_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  auto const res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_NOT_FOUND);
+  // aborting it is allowed, though
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, admin_sees_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  EXPECT_EQ(visibleTransactionIds(*mgr, vocbase.name()),
+            std::vector<std::string>{std::to_string(tid.id())});
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, user_does_not_see_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  {
+    auto const bob = arangodb::tests::mocks::makeClassicExecContext(
+        "bob", vocbase.name(), arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO);
+    arangodb::ExecContextScope scope(bob.execContext);
+
+    EXPECT_TRUE(visibleTransactionIds(*mgr, vocbase.name()).empty());
+  }
+
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
 }
 
 TEST_F(TransactionManagerTest, transaction_invalid_mode) {

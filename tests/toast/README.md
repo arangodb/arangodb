@@ -157,6 +157,7 @@ mix toast --include edge_case
 | `--test-buckets TOTAL/INDEX` | Run only bucket INDEX of TOTAL (0-indexed). See [Test Bucketing](#test-bucketing). |
 | `--ci` | Enable CI mode (packages results for upload) |
 | `--force-all-tiers` | Package all tiers regardless of outcome (CI only) |
+| `--capture-traffic` | Capture network traffic with tcpdump for post-mortem analysis |
 | `--no-agency-dump` | Skip agency state dump on error |
 
 ### Filtering Options
@@ -630,8 +631,32 @@ directory specified by `--result-dir`):
 | 0 | All tests passed |
 | 1 | Test failures |
 | 2 | Sanitizer errors detected |
-| 3 | Infrastructure failure (deployment failed to start, etc.) |
+| 3 | Infrastructure failure (deployment failed to start, port exhaustion, etc.) |
 | 4 | Server crash |
+
+### Port Exhaustion Detection
+
+Between tests, Toast monitors the system's TCP socket count to detect port
+exhaustion before it causes cascading test failures. Two thresholds are
+checked:
+
+- **System threshold** (15,000): total TCP sockets on the system. Catches
+  catastrophic exhaustion regardless of source.
+- **Deployment threshold** (500 per server): sockets added since the
+  deployment started, scaled by server count. Catches connection leaks
+  within the deployment earlier than the system threshold would.
+
+When either threshold is reached, the suite aborts with an infrastructure
+issue. The post-execution summary shows a per-server breakdown (inbound vs
+outbound sockets by TCP state), and `mix toast.analyze detail infrastructure`
+includes a trajectory showing which tests contributed the most sockets.
+
+The check uses `ss` (preferred) or `netstat` (fallback) for the routine count.
+The detailed per-server breakdown (requiring more expensive PID resolution) is
+only gathered once when a threshold is actually breached.
+
+If neither `ss` nor `netstat` is available, the check is disabled with a
+warning.
 
 ### CI Mode
 
@@ -672,9 +697,10 @@ mix toast.analyze detail 3
 # Show detail for a range of issues
 mix toast.analyze detail 2-4
 
-# Show only crash or sanitizer issues
+# Show only specific issue types
 mix toast.analyze detail crashes
 mix toast.analyze detail sanitizer
+mix toast.analyze detail infrastructure
 
 # Overview of diagnostics file contents
 mix toast.analyze info
@@ -694,7 +720,88 @@ mix toast.analyze detail all --logs --log-servers dbserver-0 --log-window -20000
 
 # Control coredump backtrace output
 mix toast.analyze detail all --threads all --backtrace-frames 30
+
+# Show captured HTTP traffic around issues
+mix toast.analyze detail all --traffic
+
+# Show traffic interleaved with server logs
+mix toast.analyze detail all --traffic --logs
+
+# Filter traffic by server
+mix toast.analyze detail all --traffic --traffic-servers dbserver-0
+
+# Filter traffic by HTTP method
+mix toast.analyze detail all --traffic --traffic-methods POST,PUT
+
+# Filter traffic by endpoint
+mix toast.analyze detail all --traffic --traffic-endpoints /_api/document
+
+# Filter traffic by status code range
+mix toast.analyze detail all --traffic --traffic-status 400-599
+
+# Custom time window for traffic
+mix toast.analyze detail all --traffic --traffic-window -30000,5000
 ```
+
+## Network Traffic Capture
+
+Toast can capture network traffic during test runs using tcpdump and make it
+available for post-mortem analysis. Traffic is captured on the loopback
+interface for the duration of each suite's deployment.
+
+### Prerequisites
+
+- `tcpdump` must be installed and in PATH
+- `tcpdump` needs the `CAP_NET_RAW` capability: `sudo setcap cap_net_raw+ep $(which tcpdump)`
+- `tshark` (from Wireshark) must be installed for post-processing captured traffic
+
+### Capturing Traffic
+
+```bash
+mix toast --build-dir /path/to/build --capture-traffic
+```
+
+When enabled, Toast starts a tcpdump process that captures all traffic on the
+loopback interface for the duration of each suite. The raw pcap file is written
+to `{base_dir}/traffic/{suite_name}.pcap`. After the suite completes, tshark
+extracts HTTP request/response data and stores it in the diagnostics file for
+offline analysis.
+
+### Analyzing Captured Traffic
+
+Use `--traffic` with the `detail` subcommand to view HTTP traffic around issues:
+
+```bash
+# Show traffic for all issues
+mix toast.analyze detail all --traffic
+
+# Interleave traffic with server logs
+mix toast.analyze detail all --traffic --logs
+```
+
+Traffic entries show HTTP requests and responses with decoded bodies (including
+VelocyPack). Entries are filtered by the issue's time window, just like server
+logs.
+
+#### Traffic Filter Options
+
+| Option | Description |
+|---|---|
+| `--traffic` | Enable traffic display |
+| `--traffic-servers <spec>` | Filter by server (same syntax as `--log-servers`) |
+| `--traffic-window <before>,<after>` | Override time window (milliseconds, same as `--log-window`) |
+| `--traffic-methods <methods>` | Filter by HTTP method (comma-separated, e.g., `POST,PUT`) |
+| `--traffic-endpoints <specs>` | Filter by URI substring (comma-separated) |
+| `--traffic-status <range>` | Filter by status code or range (e.g., `500` or `400-599`) |
+| `--traffic-body-limit <n>` | Max bytes of body to display (default: 200, `0` or `unlimited` for no limit) |
+| `--traffic-raw-body` | Show raw bytes instead of decoding VelocyPack bodies |
+| `--traffic-all-headers` | Show all HTTP headers (default: only interesting ones) |
+
+### CI Packaging
+
+In CI mode, raw pcap files are packaged in Tier 3 artifacts (compressed).
+The extracted HTTP traffic data is included in the diagnostics ETF file
+(Tier 1), so `--traffic` works in analyze even without the raw pcap.
 
 ## Test Bucketing
 
@@ -746,8 +853,10 @@ differs from the current weight are shown.
 
 ## Interactive Mode
 
-`ToastTest.Interactive` lets you run individual test modules against a
-manually-started deployment, useful for debugging.
+`ToastTest.Interactive` lets you run individual test modules or complete suites
+against a manually-started deployment, useful for debugging. A single `run/2`
+function infers the target type automatically -- pass a file, directory, test
+module, or suite module.
 
 Start an interactive interactive session with `TOAST_BUILD_DIR=path/to/build-dir iex -S mix`.
 Alternatively one can use a [Local Config File](#local-config-file) with a predefined build directory
@@ -757,21 +866,36 @@ Inside the session:
 ```elixir
 {:ok, deployment} = Toast.Deployment.start_cluster("/path/to/work-dir")
 
-# Run a test file
+# Run a single test file
 ToastTest.Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
 
-# Run a specific test by name
-ToastTest.Interactive.run(Smoke.VersionTest,
-  deployment: deployment,
-  test: "returns arango server info"
-)
+# Run a single test module
+ToastTest.Interactive.run(Smoke.VersionTest, deployment: deployment)
+
+# Run a complete suite by directory
+ToastTest.Interactive.run("suites/smoke/", deployment: deployment)
+
+# Run a complete suite by module
+ToastTest.Interactive.run(Smoke.Suite, deployment: deployment)
+
+# Filter by test name substring (works for both single modules and suites)
+ToastTest.Interactive.run(Smoke.Suite, deployment: deployment, test: "arango")
 
 # When done
 Toast.Deployment.stop(deployment)
 ```
 
-Be aware that when you are in an interactive session, files that end with .exs are automatically recompiled 
-when changed but not .ex files. Execute `recompile` in the interactive shell to recompile these as well.
+All files in the suite directory are always compiled, so cross-module
+dependencies work regardless of which entry point you use. When a suite module
+is passed, `setup_deployment/1` and `teardown_deployment/1` callbacks are called
+automatically. Compared to `mix toast`, interactive mode does not run
+between-tests health checks, enforce timeouts, collect diagnostics, or produce
+result files.
+
+Be aware that when you are in an interactive session, .exs and .ex files in the
+suites folder are automatically recompiled when changed, but not .ex files of toast
+itself. Execute `recompile` in the interactive shell to recompile these as well.
+
 
 ## Generating Suites
 
@@ -833,6 +957,7 @@ for CI pipelines or shell aliases:
 | `TOAST_DEBUGGER` | -- | Core dump debugger: `gdb`, `lldb`, `auto`, `none` |
 | `TOAST_DUMP_AGENCY` | `--no-agency-dump` | Dump agency state on error (cluster mode) |
 | `TOAST_COREDUMP_TIMEOUT` | -- | Timeout for coredump analysis in ms |
+| `TOAST_CAPTURE_TRAFFIC` | `--capture-traffic` | Enable network traffic capture |
 | `TOAST_COREDUMP_DIR` | -- | Directory to search for core dumps |
 
 <a id="local-config-file"></a>

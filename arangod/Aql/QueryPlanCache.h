@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Aql/QueryString.h"
 #include "Auth/Common.h"
+#include "Auth/Permissions.h"
 #include "Metrics/Fwd.h"
 
 #include <velocypack/Buffer.h>
@@ -107,8 +107,8 @@ class QueryPlanCache {
     // actual name of the datasource
     std::string name;
 
-    // datasource access level. will either be read or write.
-    auth::Level level;
+    // datasource access level. will either be read or writedata.
+    CollectionAccessLevel level;
   };
 
   struct Value {

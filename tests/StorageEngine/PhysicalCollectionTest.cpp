@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -27,17 +26,15 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
-#include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -50,6 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -64,23 +62,24 @@ class PhysicalCollectionTest
       arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                      arangodb::LogLevel::WARN> {
  protected:
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
       features;
 
-  PhysicalCollectionTest() : server(nullptr, nullptr), engine(server) {
+  PhysicalCollectionTest()
+      : server(nullptr, nullptr),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()) {
     // setup required application features
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(dbFeature);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -94,8 +93,6 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
-
     for (auto& f : features) {
       f.get().unprepare();
     }
@@ -112,7 +109,8 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
 
-  auto physical = engine.createPhysicalCollection(*collection, json->slice());
+  auto physical = engine.createPhysicalCollection(
+      *collection, arangodb::LocalStorageProperties{});
 
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", "
@@ -216,7 +214,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 class MockIndex : public Index {
  public:
   MockIndex(
-      Index::IndexType type, bool needsReversal, arangodb::IndexId id,
+      IndexType type, bool needsReversal, arangodb::IndexId id,
       LogicalCollection& collection, const std::string& name,
       std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
       bool unique, bool sparse)
@@ -236,7 +234,7 @@ class MockIndex : public Index {
   void unload() override {}
 
  private:
-  Index::IndexType _type;
+  IndexType _type;
   bool _needsReversal;
 };
 
@@ -247,26 +245,26 @@ TEST_F(PhysicalCollectionTest, test_index_ordeing) {
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, false, arangodb::IndexId{2}, *collection,
-      "4", dummyFields, false, false));
+  test_container.insert(
+      std::make_shared<MockIndex>(IndexType::Hash, false, arangodb::IndexId{2},
+                                  *collection, "4", dummyFields, false, false));
   // Edge index- should go right after primary and after all other
   // non-reversable edge indexes
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, true, arangodb::IndexId{3}, *collection,
-      "3", dummyFields, false, false));
+  test_container.insert(
+      std::make_shared<MockIndex>(IndexType::Edge, true, arangodb::IndexId{3},
+                                  *collection, "3", dummyFields, false, false));
   // Edge index- non-reversable should go right after primary
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_EDGE_INDEX, false, arangodb::IndexId{4}, *collection,
-      "2", dummyFields, false, false));
+  test_container.insert(
+      std::make_shared<MockIndex>(IndexType::Edge, false, arangodb::IndexId{4},
+                                  *collection, "2", dummyFields, false, false));
   // Primary index. Should be first!
   test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_PRIMARY_INDEX, true, arangodb::IndexId{5},
-      *collection, "1", dummyFields, true, false));
+      IndexType::Primary, true, arangodb::IndexId{5}, *collection, "1",
+      dummyFields, true, false));
   // should execute last - regular index with reversal possible
-  test_container.insert(std::make_shared<MockIndex>(
-      Index::TRI_IDX_TYPE_HASH_INDEX, true, arangodb::IndexId{1}, *collection,
-      "5", dummyFields, false, false));
+  test_container.insert(
+      std::make_shared<MockIndex>(IndexType::Hash, true, arangodb::IndexId{1},
+                                  *collection, "5", dummyFields, false, false));
 
   arangodb::IndexId prevId{5};
   for (auto idx : test_container) {

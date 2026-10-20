@@ -14,7 +14,9 @@ export const CancelQueryButton = ({
       await getCurrentDB().job(asyncJobId).cancel();
       onRemoveResult(asyncJobId);
       window.arangoHelper.arangoNotification("Query cancelled");
-    } catch (e) {}
+    } catch {
+      /* ignore */
+    }
   };
   return (
     <Button

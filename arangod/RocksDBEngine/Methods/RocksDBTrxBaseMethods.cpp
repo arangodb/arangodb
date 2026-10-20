@@ -18,19 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTrxBaseMethods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
@@ -454,7 +451,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   // we may need to block intermediate commits
   ExecContext const& exec = ExecContext::current();
-  bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+  bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled();
   if (exec.isCanceled() || cancelRW) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
   }

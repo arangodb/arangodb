@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Daniel H. Larkin
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVPackIndex.h"
@@ -35,7 +32,6 @@
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/Enumerate.h"
@@ -49,7 +45,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -1228,15 +1223,13 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        info, StaticStrings::CacheEnabled, false),
                    /*cacheManager*/
                    collection.vocbase()
-                       .server()
-                       .getFeature<CacheManagerFeature>()
+                       .engine<RocksDBEngine>()
+                       .getCacheManagerProvider()
                        .manager(),
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()),
-      _forceCacheRefill(collection.vocbase()
-                            .server()
-                            .getFeature<RocksDBIndexCacheRefillFeature>()
-                            .autoRefill()),
+      _forceCacheRefill(
+          collection.vocbase().engine<RocksDBEngine>().autoRefillIndexCaches()),
       _deduplicate(basics::VelocyPackHelper::getBooleanValue(
           info, StaticStrings::IndexDeduplicate, true)),
       _estimates(true),
@@ -2106,7 +2099,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+    if (type() == IndexType::Hash) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");
@@ -2403,7 +2396,7 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
   TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
     // mmfiles failure point compat
     // the hash index is a derived type of the vpack index...
-    if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    if (this->type() == IndexType::Hash) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }

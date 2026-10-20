@@ -18,10 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 #include "Basics/files.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -30,14 +31,17 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+TempFeature::TempFeature(application_features::ApplicationServer& server,
+                         std::string const& appname)
+    : TempFeature(server, appname, TempFeatureOptions{}) {}
 
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.validateOptions(options, _options);
+TempFeature::TempFeature(application_features::ApplicationServer& server,
+                         std::string const& appname, TempFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _appname(appname) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void TempFeature::prepare() {

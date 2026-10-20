@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -38,11 +36,12 @@
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -124,42 +123,7 @@ class V8AnalyzerTest
 
   V8AnalyzerTest() {
     arangodb::tests::v8Init();  // one-time initialize V8
-    expectUserManagerCalls();
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view const cname) {
-          auto const it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .Times(AtLeast(1))
-        .WillRepeatedly(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; });
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t* v8g,
@@ -207,7 +171,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         ignored);
@@ -227,17 +191,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                     arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(!analyzer);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
@@ -260,8 +219,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   v8g->_vocbase = &vocbase;
@@ -510,7 +468,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         ignored);
@@ -538,17 +496,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
             .ok());
   }
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
@@ -573,8 +526,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
 
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
@@ -997,7 +949,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
         std::string("[ {\"name\" : \"testVocbase\"} ]"));
     ASSERT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases->slice()));
   }
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1026,17 +978,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                             VPackSlice::noneSlice(),
                             arangodb::transaction::OperationOriginTestCase{})
                    .ok()));
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
@@ -1061,8 +1008,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   v8::Context::Scope contextScope(context);
 
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   v8g->ArangoErrorTempl.Reset(
       isolate,
       v8::ObjectTemplate::New(
@@ -1431,7 +1377,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1462,17 +1408,12 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
                           arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
   TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());
@@ -1495,8 +1436,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
@@ -1804,7 +1744,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1862,17 +1802,12 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                               arangodb::transaction::OperationOriginTestCase{})
                      .ok()));
   }
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
   TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());
@@ -1895,8 +1830,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);

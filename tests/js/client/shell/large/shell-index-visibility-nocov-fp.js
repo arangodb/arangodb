@@ -21,14 +21,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
 const sleep = require('internal').sleep;
-const { getDBServerEndpoints } = require("@arangodb/test-helper");
 const isCluster = internal.isCluster();
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CpuUsageFeature.h"
@@ -64,8 +63,8 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(
   constexpr size_t bufferSize = 4096;
 
   // none of the following methods will throw an exception
-  rewind(_statFile);
-  fflush(_statFile);
+  rewind(_statFile);  // NOLINT(bugprone-unsafe-functions)
+  fflush(_statFile);  // NOLINT(clang-analyzer-unix.Errno)
 
   char buffer[bufferSize];
   buffer[0] = '\0';

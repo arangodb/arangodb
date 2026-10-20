@@ -1,5 +1,8 @@
 add_library(arango_restore
+  ArangoRestoreServer.cpp
   RestoreFeature.cpp
+  RestoreFeatureOptions.cpp
+  RestoreOptionsProvider.cpp
 )
 target_include_directories(arango_restore PUBLIC ${PROJECT_SOURCE_DIR}/client-tools)
 if (USE_ENTERPRISE)

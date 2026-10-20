@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Activities/RegistryGlobalVariable.h"
@@ -26,7 +25,7 @@
 namespace arangodb::activities {
 
 Registry registry;
-thread_local ActivityHandle Registry::_currentlyExecutingActivity{nullptr};
+thread_local CurrentlyExecuting Registry::_currentlyExecutingActivity{nullptr};
 
 const ActivityHandle Root{nullptr};
 }  // namespace arangodb::activities

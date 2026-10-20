@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionCollection.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
@@ -34,11 +32,7 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -57,15 +51,13 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numUpdates(0),
       _numRemoves(0),
       _usageLocked(false),
-      _exclusiveWrites(trx->vocbase()
-                           .server()
-                           .getFeature<arangodb::RocksDBOptionFeature>()
-                           .exclusiveWrites()) {}
+      _exclusiveWrites(
+          trx->vocbase().engine<RocksDBEngine>().exclusiveWrites()) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {
   try {
     // cppcheck-suppress virtualCallInConstructor
-    releaseUsage();
+    releaseUsage();  // NOLINT(clang-analyzer-optin.cplusplus.VirtualCall)
   } catch (...) {
   }
 }
@@ -328,9 +320,8 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
     return;
   }
 
-  auto& refiller = _collection->vocbase()
-                       .server()
-                       .getFeature<RocksDBIndexCacheRefillFeature>();
+  auto& refiller =
+      _collection->vocbase().engine<RocksDBEngine>().getIndexCacheRefill();
 
   for (auto const& it : _trackedCacheRefills) {
     refiller.trackRefill(_collection, it.first, std::move(it.second));

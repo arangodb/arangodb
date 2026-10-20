@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,10 +40,13 @@
 namespace arangodb {
 class ApiRecordingFeature;
 class AuthenticationFeature;
+class DatabaseFeature;
 class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServerFeature;
+class RbacFeature;
+class ServerSecurityFeature;
 class RequestStatistics;
 
 namespace rest {
@@ -100,6 +101,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   void setStatistics(uint64_t id, RequestStatistics::Item&& stat);
 
+  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
@@ -109,7 +112,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                             RequestStatistics::Item) = 0;
 
   enum class Flow : bool { Continue = true, Abort = false };
-  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
@@ -171,11 +173,15 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   GeneralServer& _server;
   GeneralServerFeature& _generalServerFeature;
   ApiRecordingFeature& _apiRecordingFeature;
+  // TODO make this a reference
+  AuthenticationFeature* _auth;
+  DatabaseFeature& _databaseFeature;
+  RbacFeature& _rbacFeature;
+  ServerSecurityFeature& _securityFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
-  AuthenticationFeature* _auth;
 
   // contains value of "x-arango-source"
   std::string _requestSource;

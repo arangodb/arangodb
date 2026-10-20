@@ -18,26 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Identifier.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
-#include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "VocBase/voc-types.h"
 
 #include <absl/hash/hash.h>
 
@@ -50,6 +47,14 @@
 namespace arangodb {
 class TransactionState;
 
+namespace application_features {
+class ApplicationServer;
+}  // namespace application_features
+
+namespace metrics {
+class Counter;
+}  // namespace metrics
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -58,7 +63,6 @@ class Slice;
 namespace transaction {
 class Context;
 class CounterGuard;
-class ManagerFeature;
 class Hints;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class History;
@@ -87,7 +91,7 @@ class Manager final : public IManager {
   static std::string_view typeName(MetaType type);
 
   struct ManagedTrx {
-    ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
+    ManagedTrx(ManagerFeatureOptions const& options, MetaType type, double ttl,
                std::shared_ptr<TransactionState> state,
                arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
@@ -139,7 +143,8 @@ class Manager final : public IManager {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature);
+  Manager(application_features::ApplicationServer& server,
+          ManagerFeatureOptions options, metrics::Counter& expiredTransactions);
   ~Manager();
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
@@ -164,13 +169,12 @@ class Manager final : public IManager {
 
   /// @brief create managed transaction, also generate a tranactionId
   futures::Future<ResultT<TransactionId>> createManagedTrx(
-      TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+      Database& vocbase, velocypack::Slice trxOpts,
       OperationOrigin operationOrigin, bool allowDirtyReads);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
-  futures::Future<Result> ensureManagedTrx(TRI_vocbase_t& vocbase,
-                                           TransactionId tid,
+  futures::Future<Result> ensureManagedTrx(Database& vocbase, TransactionId tid,
                                            velocypack::Slice trxOpts,
                                            OperationOrigin operationOrigin,
                                            bool isFollowerTransaction);
@@ -178,7 +182,7 @@ class Manager final : public IManager {
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   futures::Future<Result> ensureManagedTrx(
-      TRI_vocbase_t& vocbase, TransactionId tid,
+      Database& vocbase, TransactionId tid,
       std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
@@ -203,19 +207,39 @@ class Manager final : public IManager {
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
 
-  /// @brief abort all transactions matching
+  /// @brief a managed transaction selected for a bulk operation
+  struct SelectedTrx {
+    TransactionId tid;
+    std::string owner;
+  };
+
+  /// @brief the managed transactions matching `select`
+  ///
+  /// `select` runs under the registry locks, so it must be cheap and must not
+  /// ask the authorization service; decide permissions on the result instead
+  std::vector<SelectedTrx> selectManagedTrx(
+      std::function<bool(TransactionState const&, std::string const&)> const&
+          select) const;
+
+  /// @brief aborts the given transactions without a permission check: the
+  /// caller selected them and decided the permission already. Returns whether
+  /// any transaction was given.
+  bool abortSelectedTrx(std::vector<SelectedTrx> const& selected);
+
+  /// @brief abort all transactions matching; the predicate is the only
+  /// permission check (see abortSelectedTrx)
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
 
   /// @brief abort all managed write transactions
-  Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
+  Result abortAllManagedWriteTrx(std::string_view username, bool fanout);
 
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
   /// will use database and username to fan-out the request to the other
   /// coordinators in a cluster
   void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    std::string const& database, std::string const& username,
+                    std::string_view database, std::string_view username,
                     bool fanout, bool details) const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -264,7 +288,7 @@ class Manager final : public IManager {
  private:
   /// @brief create managed transaction, also generate a tranactionId
   futures::Future<ResultT<TransactionId>> createManagedTrx(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
+      Database& vocbase, std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
       OperationOrigin operationOrigin);
@@ -275,7 +299,7 @@ class Manager final : public IManager {
       transaction::Options const& options) const;
 
   futures::Future<Result> addCollections(
-      TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+      Database& vocbase, std::shared_ptr<TransactionState> state,
       std::vector<std::string> const& exclusiveCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& readCollections);
@@ -295,18 +319,34 @@ class Manager final : public IManager {
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
       TransactionId tid, ManagedTrx& mtrx);
 
+  /// @brief changes the status of a managed transaction after checking that
+  /// the current identity may do so (see canKill, and the owner rule for
+  /// commits)
   Result updateTransaction(
       TransactionId tid, transaction::Status status, bool clearServers,
       // TODO - use a better solution
       std::string const& database =
           "" /* leave empty to operate across all databases */);
 
+  /// @brief changes the status of a managed transaction without a permission
+  /// check: the caller decided that already (see abortSelectedTrx)
+  Result updateAuthorizedTransaction(TransactionId tid,
+                                     transaction::Status status,
+                                     bool clearServers);
+
+  /// @brief the status change shared by the two functions above; `authorize`
+  /// is evaluated under the bucket write lock
+  Result updateTransactionIf(
+      TransactionId tid, transaction::Status status, bool clearServers,
+      std::string const& database,
+      std::function<bool(ManagedTrx const&)> const& authorize);
+
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(
       std::function<void(TransactionId, ManagedTrx const&)> const& callback,
       bool details) const;
 
-  static double ttlForType(ManagerFeature const& feature,
+  static double ttlForType(ManagerFeatureOptions const& options,
                            Manager::MetaType type);
 
   bool transactionIdExists(TransactionId tid) const;
@@ -315,14 +355,28 @@ class Manager final : public IManager {
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
 
-  bool isAuthorized(ManagedTrx const& trx) const;
-  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
+  /// @brief whether the current identity may use `trx`, i.e. operate inside
+  /// it (lease and return it)
+  bool canUse(ManagedTrx const& trx) const;
+  bool canUse(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief whether the current identity may see the state of `trx`
+  bool canMonitor(ManagedTrx const& trx) const;
+
+  /// @brief whether the current identity may abort `trx`
+  bool canKill(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief name of the database of the current request context; empty when
+  /// the superuser acts without one
+  std::string contextDatabaseName() const;
 
   static std::string buildContextFromState(TransactionState& state,
                                            MetaType type);
 
  private:
-  ManagerFeature& _feature;
+  application_features::ApplicationServer& _server;
+  ManagerFeatureOptions const _options;
+  metrics::Counter& _expiredTransactions;
 
   struct {
     // a lock protecting _managed

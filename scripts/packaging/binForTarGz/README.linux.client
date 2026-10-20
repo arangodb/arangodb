@@ -1,0 +1,14 @@
+ArangoDB
+--------
+
+In order to use a tar installation simply add the `@ARANGODB_PACKAGE_NAME@/bin`
+directory to your path.
+
+For bash, use
+
+    unix> export PATH="/full/path/to/unpacked/@ARANGODB_PACKAGE_NAME@/bin:$PATH"
+
+If you have additionally installed arangodb as Debian or RPM package, 
+you need to ensure that `@ARANGODB_PACKAGE_NAME@` comes first in the PATH
+variable. Otherwise the binaries from the installed `arangodb` package 
+will be used and not the ones from the tar file.

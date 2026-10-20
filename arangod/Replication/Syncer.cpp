@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
@@ -549,13 +548,13 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(
-    Syncer* syncer, ReplicationApplierConfiguration const& configuration)
+    Syncer* syncer, ReplicationSyncConfiguration const& configuration)
     : syncerId{newSyncerId()},
-      applier{configuration},
+      config{configuration},
       connection{syncer, configuration},
       leader{configuration} {}
 
-Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
+Syncer::Syncer(ReplicationSyncConfiguration const& configuration)
     : _state{this, configuration} {
   if (!ServerState::instance()->isSingleServer() &&
       !ServerState::instance()->isDBServer()) {
@@ -564,15 +563,15 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
         "the replication functionality is supposed to be invoked only on a "
         "single server or DB server");
   }
-  if (!_state.applier._database.empty()) {
+  if (!_state.config._database.empty()) {
     // use name from configuration
-    _state.databaseName = _state.applier._database;
+    _state.databaseName = _state.config._database;
   }
 
-  if (_state.applier._chunkSize == 0) {
-    _state.applier._chunkSize = 2 * 1024 * 1024;  // default: 2 MB
-  } else if (_state.applier._chunkSize < 16 * 1024) {
-    _state.applier._chunkSize = 16 * 1024;
+  if (_state.config._chunkSize == 0) {
+    _state.config._chunkSize = 2 * 1024 * 1024;  // default: 2 MB
+  } else if (_state.config._chunkSize < 16 * 1024) {
+    _state.config._chunkSize = 16 * 1024;
   }
 
   // get our own server-id
@@ -580,7 +579,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.localServerIdString =
       basics::StringUtils::itoa(_state.localServerId.id());
 
-  _state.leader.endpoint = _state.applier._endpoint;
+  _state.leader.endpoint = _state.config._endpoint;
 }
 
 Syncer::~Syncer() = default;
@@ -634,7 +633,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
-    auto& server = _state.applier._server;
+    auto& server = _state.config._server;
     auto vocbase = server.getFeature<DatabaseFeature>().useDatabase(name);
 
     if (vocbase == nullptr) {
@@ -685,8 +684,8 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
                                          TRI_replication_operation_e type,
                                          velocypack::Slice slice,
                                          std::string& conflictingDocumentKey) {
-  if (_state.applier._lockTimeoutRetries > 0) {
-    decltype(_state.applier._lockTimeoutRetries) tries = 0;
+  if (_state.config._lockTimeoutRetries > 0) {
+    decltype(_state.config._lockTimeoutRetries) tries = 0;
 
     while (true) {
       Result res = ::applyCollectionDumpMarkerInternal(
@@ -697,7 +696,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
       }
 
       // lock timeout
-      if (++tries > _state.applier._lockTimeoutRetries) {
+      if (++tries > _state.config._lockTimeoutRetries) {
         // timed out
         return res;
       }

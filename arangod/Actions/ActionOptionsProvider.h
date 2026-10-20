@@ -31,9 +31,10 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct ActionOptionsProvider : OptionsProvider<ActionFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ActionFeatureOptions& options) override;
+struct ActionOptionsProvider
+    : OptionsProviderImpl<ActionOptionsProvider, ActionFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ActionFeatureOptions& options);
 };
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DBServerIndexCursor.h"
@@ -190,7 +189,7 @@ uint64_t DBServerIndexCursor::nextBatch(EdgeCursor::Callback const& callback,
 
   do {
     if (!_cursor->hasMore()) {
-      return false;
+      return successfulItems;
     }
     auto sizeToCache = (batchSize - successfulItems) > 1000
                            ? (batchSize - successfulItems)
@@ -209,7 +208,7 @@ uint64_t DBServerIndexCursor::nextBatch(EdgeCursor::Callback const& callback,
 
   TRI_ASSERT(!_cache.empty());
   TRI_ASSERT(_cachePos < _cache.size());
-  successfulItems += executeOnCache(callback, batchSize);
+  successfulItems += executeOnCache(callback, batchSize - successfulItems);
   return successfulItems;
 }
 

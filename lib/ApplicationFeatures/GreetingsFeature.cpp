@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <string>
@@ -33,15 +32,10 @@
 
 namespace arangodb {
 
-char const* LGPLNotice =
-    "This executable uses the GNU C library (glibc), which is licensed under "
-    "the GNU Lesser General Public License (LGPL), see "
-    "https://www.gnu.org/copyleft/lesser.html and "
-    "https://www.gnu.org/licenses/gpl.html";
-
 void logLGPLNotice(void) {
 #ifdef __GLIBC__
-  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
+  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME)
+      << rest::Version::getLGPLNotice();
 #endif
 }
 

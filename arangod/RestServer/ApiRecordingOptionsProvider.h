@@ -28,12 +28,13 @@
 namespace arangodb {
 
 struct ApiRecordingOptionsProvider
-    : OptionsProvider<ApiRecordingFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ApiRecordingFeatureOptions& options) override;
+    : OptionsProviderImpl<ApiRecordingOptionsProvider,
+                          ApiRecordingFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ApiRecordingFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       ApiRecordingFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           ApiRecordingFeatureOptions& options);
 };
 
 }  // namespace arangodb

@@ -90,7 +90,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
               }}
             />
             <ClusterFields isShardsRequired />
-            {(window.frontendConfig.isCluster || true) && (
+            {(window.frontendConfig.isCluster) && (
               <FormField
                 field={{
                   ...CLUSTER_GRAPH_FIELDS_MAP.satellites,

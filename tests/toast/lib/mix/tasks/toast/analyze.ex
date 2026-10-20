@@ -60,8 +60,23 @@ defmodule Mix.Tasks.Toast.Analyze do
       --log-min-level <spec>          Filter log entries by level (default: show all)
                                       Examples: --log-min-level info
                                                 --log-min-level info,crash=debug
-      --log-exclude <ids>              Exclude log entries by ID (comma-separated)
-      --log-events <level>            Event detail in log output: none, basic (default), full
+      --log-exclude <ids>             Exclude log entries by ID (comma-separated)
+
+  ## Event options (detail only)
+
+      --events <level>                Event detail: none, basic, full (default: basic when logs/traffic enabled)
+
+  ## Traffic options (detail only)
+
+      --traffic                       Enable HTTP traffic display
+      --traffic-servers <spec>        Server filter (same syntax as --log-servers)
+      --traffic-window <before>,<after>  Signed milliseconds relative to issue time bounds
+      --traffic-methods <methods>     Filter by HTTP method (comma-separated, e.g. POST,PUT)
+      --traffic-endpoints <specs>     Filter by endpoint substring (comma-separated)
+      --traffic-status <range>        Filter by status code (e.g. 500 or 400-499)
+      --traffic-body-limit <N>        Max bytes of body to display (default: 200, "unlimited" or 0 for no limit)
+      --traffic-raw-body              Show raw bytes instead of decoding VPack bodies
+      --traffic-all-headers           Show all HTTP headers (default: only interesting ones)
 
   ## Backtrace options (detail only)
 
@@ -93,9 +108,18 @@ defmodule Mix.Tasks.Toast.Analyze do
     logs: :boolean,
     log_servers: :string,
     log_window: :string,
-    log_events: :string,
+    events: :string,
     log_exclude: :string,
     log_min_level: :string,
+    traffic: :boolean,
+    traffic_servers: :string,
+    traffic_window: :string,
+    traffic_methods: :string,
+    traffic_endpoints: :string,
+    traffic_status: :string,
+    traffic_body_limit: :string,
+    traffic_raw_body: :boolean,
+    traffic_all_headers: :boolean,
     coredumps: :boolean,
     threads: :string,
     backtrace_frames: :integer,

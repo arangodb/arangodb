@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/BootstrapFeature.h"
@@ -38,7 +37,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
-#include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #ifdef USE_V8
@@ -74,6 +72,27 @@ BootstrapFeature::BootstrapFeature(
     V8DealerFeature* v8DealerFeature
 #endif
     )
+    : BootstrapFeature(server, clusterFeature, databaseFeature,
+                       systemDatabaseFeature, clusterUpgradeFeature
+#ifdef USE_V8
+                       ,
+                       v8DealerFeature
+#endif
+                       ,
+                       BootstrapFeatureOptions{}) {
+}
+
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+    ,
+    V8DealerFeature* v8DealerFeature
+#endif
+    ,
+    BootstrapFeatureOptions options)
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
       _databaseFeature(databaseFeature),
@@ -82,6 +101,7 @@ BootstrapFeature::BootstrapFeature(
 #ifdef USE_V8
       _v8DealerFeature(v8DealerFeature),
 #endif
+      _options(std::move(options)),
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
@@ -121,11 +141,6 @@ SystemDatabaseFeature* BootstrapFeature::systemDatabaseFeature() {
 
 ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
   return _clusterUpgradeFeature;
-}
-
-void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::bootstrap::BootstrapOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 // Local Helper functions

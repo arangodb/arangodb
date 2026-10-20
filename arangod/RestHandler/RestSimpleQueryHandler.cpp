@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleQueryHandler.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -42,6 +41,8 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
+// Mounted at /_api/simple/all, /_api/simple/all-keys and
+// /_api/simple/by-example (prefix)
 auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();

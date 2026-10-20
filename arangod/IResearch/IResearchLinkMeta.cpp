@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkMeta.h"
@@ -27,14 +25,8 @@
 #include "frozen/map.h"
 
 #include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "index/norm.hpp"
-#include "utils/hash_utils.hpp"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Containers/FlatHashSet.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
@@ -188,6 +180,7 @@ bool FieldMeta::init(
       _analyzers = defaults._analyzers;
       _primitiveOffset = defaults._primitiveOffset;
     } else {
+      TRI_ASSERT(server.hasFeature<IResearchAnalyzerFeature>());
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       bool const extendedNames =
           server.getFeature<DatabaseFeature>().extendedNames();
@@ -496,7 +489,7 @@ bool FieldMeta::init(
 bool FieldMeta::json(application_features::ApplicationServer& server,
                      velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
-                     TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
+                     Database const* defaultVocbase /*= nullptr*/,
                      Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
@@ -956,7 +949,7 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
                              velocypack::Builder& builder,
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-                             TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
+                             Database const* defaultVocbase /*= nullptr*/,
                              Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;

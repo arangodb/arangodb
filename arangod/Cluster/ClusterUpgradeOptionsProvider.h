@@ -33,11 +33,10 @@ class ProgramOptions;
 namespace arangodb::upgrade {
 
 struct ClusterUpgradeOptionsProvider
-    : OptionsProvider<ClusterUpgradeFeatureOptions> {
-  ClusterUpgradeOptionsProvider() = default;
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ClusterUpgradeFeatureOptions& options) override;
+    : OptionsProviderImpl<ClusterUpgradeOptionsProvider,
+                          ClusterUpgradeFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ClusterUpgradeFeatureOptions& options);
 };
 
 }  // namespace arangodb::upgrade

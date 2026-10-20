@@ -62,13 +62,6 @@ defmodule Toast.Deployment.CommandBuilderTest do
   end
 
   describe "build_args/3 role args" do
-    test "single includes storage engine args" do
-      result =
-        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
-
-      assert has_flag_value?(result, "--server.storage-engine", "rocksdb")
-    end
-
     test "agent includes agency args" do
       result =
         CommandBuilder.build_args(%{role: :agent, port: 8529, args: %{}}, @paths, @repo_root)
@@ -136,9 +129,7 @@ defmodule Toast.Deployment.CommandBuilderTest do
                "--log.ids",
                "true",
                "--log.process",
-               "true",
-               "--server.storage-engine",
-               "rocksdb"
+               "true"
              ]
     end
 

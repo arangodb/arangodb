@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup, assertEqual, assertTrue, assertNotEqual, arango */
+/* global runSetup, getOptions, assertEqual, assertTrue, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jure Bajic
-// / @author Copyright 2025, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 // Test that crash dumps are created when a dbserver crashes and can be 
@@ -33,6 +31,11 @@ const request = require('@arangodb/request');
 const IM = global.instanceManager;
 const crashesEndpoint = '/_admin/crashes';
 
+if (getOptions === true) {
+  return {
+    "server.authentication": false,
+  };
+}
 if (runSetup === true) {
   'use strict';
   

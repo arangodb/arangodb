@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
@@ -88,128 +87,20 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
 
 }  // namespace
 
-void V8SecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "JavaScript engine and execution");
-  options->addOption(
-      "--javascript.allow-port-testing",
-      "Allow the testing of ports from within JavaScript actions.",
-      new BooleanParameter(&_options.allowPortTesting),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness)
+    : V8SecurityFeature(server, strictness, V8SecurityFeatureOptions{}) {}
 
-  options->addOption(
-      "--javascript.allow-external-process-control",
-      "Allow the execution and control of external processes from "
-      "within JavaScript actions.",
-      new BooleanParameter(&_options.allowProcessControl),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.harden",
-                     "Disable access to JavaScript functions in the internal "
-                     "module: getPid() and logLevel().",
-                     new BooleanParameter(&_options.hardenInternalModule),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.startup-options-allowlist",
-      "Startup options whose names match this regular "
-      "expression are allowed and exposed to JavaScript.",
-      new VectorParameter<StringParameter>(&_options.startupOptionsAllowList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.startup-options-denylist",
-      "Startup options whose names match this regular "
-      "expression are not exposed (if not in the allowlist) to "
-      "JavaScript actions.",
-      new VectorParameter<StringParameter>(&_options.startupOptionsDenyList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption("--javascript.environment-variables-allowlist",
-                     "Environment variables that are accessible in JavaScript.",
-                     new VectorParameter<StringParameter>(
-                         &_options.environmentVariablesAllowList),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOption("--javascript.environment-variables-denylist",
-                     "Environment variables that are inaccessible in "
-                     "JavaScript (if not in the allowlist).",
-                     new VectorParameter<StringParameter>(
-                         &_options.environmentVariablesDenyList),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.endpoints-allowlist",
-      "Endpoints that can be connected to via the "
-      "`@arangodb/request` module in JavaScript actions.",
-      new VectorParameter<StringParameter>(&_options.endpointsAllowList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.endpoints-denylist",
-      "Endpoints that cannot be connected to via the "
-      "`@arangodb/request` module in JavaScript actions "
-      "(if not in the allowlist).",
-      new VectorParameter<StringParameter>(&_options.endpointsDenyList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOption(
-      "--javascript.files-allowlist",
-      "Filesystem paths that are accessible from within "
-      "JavaScript actions.",
-      new VectorParameter<StringParameter>(&_options.filesAllowList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("--javascript.startup-options-whitelist",
-                        "--javascript.startup-options-allowlist");
-  options->addOldOption("--javascript.startup-options-blacklist",
-                        "--javascript.startup-options-denylist");
-  options->addOldOption("--javascript.environment-variables-whitelist",
-                        "--javascript.environment-variables-allowlist");
-  options->addOldOption("--javascript.environment-variables-blacklist",
-                        "--javascript.environment-variables-denylist");
-  options->addOldOption("--javascript.endpoints-whitelist",
-                        "--javascript.endpoints-allowlist");
-  options->addOldOption("--javascript.endpoints-blacklist",
-                        "--javascript.endpoints-denylist");
-  options->addOldOption("--javascript.files-whitelist",
-                        "--javascript.files-allowlist");
-}
-
-void V8SecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness, V8SecurityFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _strictness(strictness) {
+  setOptional(false);
+  startsAfter<TempFeature>();
+  startsAfter<V8PlatformFeature>();
   {
     if (_strictness == AllowListStrictness::NONSTRICT &&
         _options.startupOptionsAllowList.empty()) {
@@ -258,8 +149,7 @@ void V8SecurityFeature::validateOptions(
       _options.filesAllowList.emplace_back(".*");
     }
 
-    // file access (a denylist for file access does not exist (yet))
-    auto denyRegex = std::nullopt;
+    auto denyRegex = optionToRegex(_options.filesDenyList, "files", "deny");
     auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
 
     _files = DenyAllow(denyRegex, allowRegex);
@@ -276,6 +166,7 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
       << "files allowed by user:" << _options.filesAllowList
+      << ", files denied by user:" << _options.filesDenyList
       << ", internal read allow list:" << inspection::json(_internalReadAllow)
       << ", internal write allow list:" << inspection::json(_internalWriteAllow)
       << ", internal startup options allow list:"
@@ -350,9 +241,8 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(
   return _environmentVariables.check(name) == DenyAllowResult::ALLOWED;
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(
-    v8::Isolate* isolate, std::string const& endpoint,
-    std::string const& originalEndpoint) const {
+bool V8SecurityFeature::isAllowedToConnectToUrl(v8::Isolate* isolate,
+                                                std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -361,14 +251,8 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
-  // The distinction between endpoint and originalEndpoint is used
-  // in the context of redirects in JS_download: if accessing the original
-  // endpoint redirects, we check every redirect for permission too
-  auto endpointCheck = _endpoints.check(endpoint);
-  auto originalEndpointCheck = _endpoints.check(originalEndpoint);
-
-  return (endpointCheck == DenyAllowResult::ALLOWED) &&
-         (originalEndpointCheck == DenyAllowResult::ALLOWED);
+  auto urlCheck = _endpoints.check(url);
+  return (urlCheck == DenyAllowResult::ALLOWED);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,

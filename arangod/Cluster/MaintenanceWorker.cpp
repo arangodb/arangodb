@@ -18,23 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <thread>
 
 #include "MaintenanceWorker.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Utils/ExecContext.h"
+
+#include <thread>
 
 namespace arangodb {
 
@@ -43,7 +40,8 @@ namespace maintenance {
 MaintenanceWorker::MaintenanceWorker(
     arangodb::MaintenanceFeature& feature, int minimalPriorityAllowed,
     std::unordered_set<std::string> const& labels)
-    : Thread(feature.server(), "MaintenanceWorker"),
+    // needs superuser permissions to execute maintenance actions
+    : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
@@ -53,7 +51,8 @@ MaintenanceWorker::MaintenanceWorker(
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
-    : Thread(feature.server(), "MaintenanceWorker"),
+    // needs superuser permissions to execute maintenance actions
+    : Thread("MaintenanceWorker", ExecContext::superuserAsShared()),
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),

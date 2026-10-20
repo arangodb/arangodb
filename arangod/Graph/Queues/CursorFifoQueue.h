@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -140,30 +139,32 @@ class CursorFifoQueue {
   }
 
   std::optional<Step> pop() {
-    if (isEmpty()) {
-      return std::nullopt;
+    while (true) {
+      if (isEmpty()) {
+        return std::nullopt;
+      }
+      if (not _queue.empty()) {
+        auto first = std::move(_queue.front());
+        LOG_TOPIC("9c2a4", TRACE, Logger::GRAPHS)
+            << "<BatchedFifoQueue> Pop: " << first.toString();
+        _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+        _queue.pop_front();
+        return {first};
+      }
+      // if _queue is empty, pop next iterator
+      LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
+          << "<BatchedFifoQueue> Pop: next batch";
+      auto& cursor = _continuationQueue.front().get();
+      if (not cursor.hasMore()) {
+        _resourceMonitor.decreaseMemoryUsage(sizeof(CursorRef));
+        _continuationQueue.pop_front();
+        cursor.markForDeletion();
+        continue;
+      }
+      for (auto&& step : cursor.next()) {
+        append(step);
+      }
     }
-    if (not _queue.empty()) {
-      auto first = std::move(_queue.front());
-      LOG_TOPIC("9c2a4", TRACE, Logger::GRAPHS)
-          << "<BatchedFifoQueue> Pop: " << first.toString();
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-      _queue.pop_front();
-      return {first};
-    }
-    // if _queue is empty, pop next iterator
-    LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
-        << "<BatchedFifoQueue> Pop: next batch";
-    auto& cursor = _continuationQueue.front().get();
-    if (not cursor.hasMore()) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(CursorRef));
-      _continuationQueue.pop_front();
-      return pop();
-    }
-    for (auto&& step : cursor.next()) {
-      append(step);
-    }
-    return pop();
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {

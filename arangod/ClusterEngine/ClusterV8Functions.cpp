@@ -18,21 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterV8Functions.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
@@ -82,7 +78,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& feature = v8g->server().getFeature<ClusterFeature>();
   Result res =
       flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
@@ -175,23 +171,11 @@ static void JS_EstimateCollectionSize(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_WaitForEstimatorSync(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-
-  v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
 void ClusterV8Functions::registerResources() {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =
@@ -219,7 +203,4 @@ void ClusterV8Functions::registerResources() {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "WAIT_FOR_ESTIMATOR_SYNC"),
-      JS_WaitForEstimatorSync, true);
 }

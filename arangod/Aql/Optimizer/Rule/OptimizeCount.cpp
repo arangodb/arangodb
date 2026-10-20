@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizeCount.h"
@@ -41,7 +39,7 @@
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
-#include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 #include <unordered_map>
 #include <unordered_set>

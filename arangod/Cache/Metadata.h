@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -138,6 +137,13 @@ struct Metadata {
   void toggleResizing() noexcept { _resizing = !_resizing; }
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks overflow-safe whether a usage limit together with a table
+  /// of the given size and the fixed overhead stays within the deserved and
+  /// maximum size. Requires record to be read-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  bool fits(std::uint64_t limit, std::uint64_t table) const noexcept;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkInvariants() const noexcept;
 #else

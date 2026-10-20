@@ -18,8 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
 #include "IResearch/common.h"
@@ -120,7 +120,7 @@ class IResearchInvertedIndexIteratorTestBase
     auto& dbFeature = _server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(_server.server()), _vocbase);
 
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         _analyzers);

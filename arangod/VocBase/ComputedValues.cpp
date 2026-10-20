@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
@@ -180,7 +179,7 @@ ComputedValues::ComputedValue::ComputedValue(
   aql::Ast* ast = _queryContext->ast();
 
   auto qs = aql::QueryString(expressionString);
-  aql::Parser parser(*_queryContext, *ast, qs);
+  aql::Parser parser(*_queryContext, &_queryContext->warnings(), *ast, qs);
   // force the condition of the ternary operator (condition ? truePart :
   // falsePart) to be always inlined and not be extracted into its own LET node.
   // if we don't set this boolean flag here, then a ternary operator could

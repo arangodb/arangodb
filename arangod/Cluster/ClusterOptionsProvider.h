@@ -27,12 +27,16 @@
 
 namespace arangodb {
 
-struct ClusterOptionsProvider : OptionsProvider<ClusterOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ClusterOptions& options) override;
+struct ClusterOptionsProvider
+    : OptionsProviderImpl<ClusterOptionsProvider, ClusterOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ClusterOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       ClusterOptions& options) override;
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ClusterOptions& options);
+
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           ClusterOptions const& options);
 };
 
 }  // namespace arangodb

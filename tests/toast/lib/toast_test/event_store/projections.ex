@@ -44,6 +44,8 @@ defmodule ToastTest.EventStore.Projections do
         pid_sets: %{},
         unexpected_crashes: [],
         timeout_kills: [],
+        netstat_snapshots: [],
+        infrastructure_issues: [],
         deployments: %{},
         servers: %{}
       },
@@ -167,6 +169,14 @@ defmodule ToastTest.EventStore.Projections do
     update_server_in(acc, did, sid, fn server -> %{server | arango_id: arango_id} end)
   end
 
+  defp process_event(%{event: :netstat_snapshot} = e, acc) do
+    %{acc | netstat_snapshots: [e | acc.netstat_snapshots]}
+  end
+
+  defp process_event(%{event: :infrastructure_issue} = e, acc) do
+    %{acc | infrastructure_issues: [e | acc.infrastructure_issues]}
+  end
+
   defp process_event(_, acc), do: acc
 
   defp collect_pid(acc, sid, pid) do
@@ -238,6 +248,8 @@ defmodule ToastTest.EventStore.Projections do
       pids_by_server: Map.new(acc.pids_by_server, fn {k, v} -> {k, Enum.reverse(v)} end),
       unexpected_crashes: Enum.reverse(acc.unexpected_crashes),
       timeout_kills: Enum.reverse(acc.timeout_kills),
+      netstat_snapshots: Enum.reverse(acc.netstat_snapshots),
+      infrastructure_issues: Enum.reverse(acc.infrastructure_issues),
       deployments: acc.deployments,
       servers: finalize_servers(acc.servers)
     }

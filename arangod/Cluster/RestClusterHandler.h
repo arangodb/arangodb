@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,6 +34,9 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   virtual char const* name() const override { return "RestClusterHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+
+ protected:
+  async<Result> checkDatabaseAccess() const override;
 
  private:
   /// _api/cluster/endpoints

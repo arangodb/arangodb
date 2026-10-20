@@ -23,7 +23,7 @@
 #include "TempOptionsProvider.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void TempOptionsProvider::declareOptions(
+void TempOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, TempFeatureOptions& opts) {
   options->addOldOption("temp-path", "temp.path");
 
@@ -56,11 +56,11 @@ If you set the temporary path to the same directory as the instance's database
 directory, a startup error is logged and the startup is aborted.)");
 }
 
-void TempOptionsProvider::validateOptions(
+void TempOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, TempFeatureOptions& opts) {
   if (!opts.path.empty()) {
     opts.path = basics::StringUtils::replace(
-        opts.path, "$PID", std::to_string(Thread::currentProcessId()));
+        opts.path, "$PID", std::to_string(BasicThread::currentProcessId()));
     opts.path = std::filesystem::absolute(opts.path).string();
   }
 }

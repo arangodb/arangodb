@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerIdFeature.h"
@@ -48,7 +47,7 @@ ServerIdFeature::ServerIdFeature(
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-
+  startsAfter<DatabasePathFeature>();
   startsAfter<DatabaseFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<SystemDatabaseFeature>();

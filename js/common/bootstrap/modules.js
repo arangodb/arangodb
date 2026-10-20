@@ -25,8 +25,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Alan Plum
-// / @author Copyright 2015-2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
   const NATIVE_MODULES = global.SCAFFOLDING_MODULES;

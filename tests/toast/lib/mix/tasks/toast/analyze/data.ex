@@ -28,7 +28,8 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
     "crash" => :crash,
     "test_failure" => :test_failure,
     "sanitizer_report" => :sanitizer_report,
-    "timeout" => :timeout
+    "timeout" => :timeout,
+    "infrastructure" => :infrastructure
   }
 
   def load_results(result_dir) do
@@ -47,6 +48,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
 
   def collect_issues(results, opts) do
     results
+    |> maybe_filter_suite(opts[:suite])
     |> Enum.flat_map(fn result ->
       all_servers = flatten_servers(result.deployments)
       deployments = Map.get(result, :deployments, %{})
@@ -61,15 +63,13 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
         |> Map.put(:servers, all_servers)
         |> Map.put(:deployments, deployments)
         |> Map.put(:events, events)
+        |> Map.put(:modules, result.modules)
+        |> Map.put(:traffic, Map.get(result, :traffic, []))
       end)
       |> Enum.map(&Issues.attach_test_location(&1, result.modules))
       |> then(&Issues.resolve_coredumps(&1, coredump_index))
     end)
-    |> apply_filters(opts)
-  end
-
-  def indexed_issues(issues) do
-    Enum.with_index(issues, 1)
+    |> filter_by_type(opts[:type])
   end
 
   def maybe_filter_suite(results, nil), do: results
@@ -92,14 +92,11 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
     end
   end
 
-  def format_type(issue) do
-    type = issue.type |> Atom.to_string()
-
-    case format_server(issue) do
-      s when s in ["", "\u2014"] -> type
-      server -> "#{type} (#{server})"
-    end
+  def format_type(%{type: :infrastructure, detail: %{subtype: subtype}}) do
+    "infrastructure (#{subtype})"
   end
+
+  def format_type(%{type: type}), do: Atom.to_string(type)
 
   def format_server(%{type: :crash, detail: %{server: server}}), do: server
   def format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
@@ -150,29 +147,15 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
   end
 
   defp attach_time_bounds(
-         %{type: :sanitizer_report, detail: %{timestamp: ts}} = issue,
+         %{type: type, detail: %{timestamp: ts}} = issue,
          _modules
        )
-       when is_integer(ts) do
-    Map.put(issue, :time_bounds, {ts, ts})
-  end
-
-  defp attach_time_bounds(
-         %{type: :timeout, detail: %{timestamp: ts}} = issue,
-         _modules
-       )
-       when is_integer(ts) do
+       when type in [:sanitizer_report, :timeout, :infrastructure] and is_integer(ts) do
     Map.put(issue, :time_bounds, {ts, ts})
   end
 
   defp attach_time_bounds(issue, _modules) do
     Map.put(issue, :time_bounds, nil)
-  end
-
-  defp apply_filters(issues, opts) do
-    issues
-    |> filter_by_type(opts[:type])
-    |> filter_by_suite(opts[:suite])
   end
 
   defp filter_by_type(issues, nil), do: issues
@@ -185,11 +168,5 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
         )
 
     Enum.filter(issues, &(&1.type == type))
-  end
-
-  defp filter_by_suite(issues, nil), do: issues
-
-  defp filter_by_suite(issues, suite) do
-    Enum.filter(issues, &(&1.suite == suite))
   end
 end

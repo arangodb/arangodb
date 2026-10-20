@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ConditionCoverage.h"
@@ -49,7 +48,7 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
   size_t const n = andNode->numMembers();
 
-  auto normalize = [plan](AstNode const* node) -> std::string {
+  auto normalize = [plan](AstNode const* node) -> AstNode const* {
     if (node->type == NODE_TYPE_REFERENCE) {
       auto setter =
           plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
@@ -60,8 +59,7 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         node = cn->expression()->node();
       }
     }
-    // return string representation
-    return node->toString();
+    return node;
   };
 
   try {
@@ -93,7 +91,8 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               }
               // non-constant condition
               else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(rhs)) {
+                       compareAstNodes<false>(normalize(me.valueNode),
+                                              normalize(rhs), false) == 0) {
                 return true;
               }
             }
@@ -124,7 +123,8 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                   opType = Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
-                    normalize(me.valueNode) == normalize(lhs)) {
+                    compareAstNodes<false>(normalize(me.valueNode),
+                                           normalize(lhs), false) == 0) {
                   return true;
                 }
               }

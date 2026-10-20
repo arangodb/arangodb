@@ -1,16 +1,12 @@
 add_library(arango_replication STATIC
   DatabaseInitialSyncer.cpp
   DatabaseTailingSyncer.cpp
-  GlobalInitialSyncer.cpp
-  GlobalReplicationApplier.cpp
-  GlobalTailingSyncer.cpp
   InitialSyncer.cpp
-  ReplicationApplier.cpp
-  ReplicationApplierConfiguration.cpp
-  ReplicationApplierState.cpp
+  ReplicationSyncConfiguration.cpp
   ReplicationClients.cpp
   ReplicationFeature.cpp
   ReplicationMetricsFeature.cpp
+  ReplicationOptionsProvider.cpp
   Syncer.cpp
   SyncerId.cpp
   TailingSyncer.cpp

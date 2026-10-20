@@ -18,9 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include <cstdint>
 
 #include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"

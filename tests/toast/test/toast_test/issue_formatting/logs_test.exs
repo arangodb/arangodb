@@ -22,7 +22,8 @@
 defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.LogAnalysis, as: Logs
+  alias ToastTest.Analyze.IssueStreams
+  alias ToastTest.Analyze.Logs
   alias ToastTest.Formatting.Logs, as: LogFormatting
 
   import Toast.Utils, only: [maybe_put: 3]
@@ -35,7 +36,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
   describe "parse_server_filter/1" do
     test "nil returns default (exclude agents)" do
-      result = Logs.parse_server_filter(nil)
+      result = IssueStreams.parse_server_filter(nil)
       assert {:role, :coordinator} in result
       assert {:role, :dbserver} in result
       assert {:role, :single} in result
@@ -47,25 +48,25 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "\"all\" returns :all" do
-      assert Logs.parse_server_filter("all") == :all
+      assert IssueStreams.parse_server_filter("all") == :all
     end
 
     test "known roles become :role filters" do
-      assert Logs.parse_server_filter("coordinator,dbserver") == [
+      assert IssueStreams.parse_server_filter("coordinator,dbserver") == [
                {:role, :coordinator},
                {:role, :dbserver}
              ]
     end
 
     test "unknown strings become :prefix filters" do
-      assert Logs.parse_server_filter("coordinator1,agent1") == [
+      assert IssueStreams.parse_server_filter("coordinator1,agent1") == [
                {:prefix, "coordinator1"},
                {:prefix, "agent1"}
              ]
     end
 
     test "mixed roles and prefixes" do
-      assert Logs.parse_server_filter("coordinator,agent1") == [
+      assert IssueStreams.parse_server_filter("coordinator,agent1") == [
                {:role, :coordinator},
                {:prefix, "agent1"}
              ]
@@ -76,15 +77,15 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
   describe "parse_window_spec/1" do
     test "nil returns nil" do
-      assert Logs.parse_window_spec(nil) == nil
+      assert IssueStreams.parse_window_spec(nil) == nil
     end
 
     test "single number" do
-      assert Logs.parse_window_spec("30") == {30, 0}
+      assert IssueStreams.parse_window_spec("30") == {30, 0}
     end
 
     test "before,after" do
-      assert Logs.parse_window_spec("30,5") == {30, 5}
+      assert IssueStreams.parse_window_spec("30,5") == {30, 5}
     end
   end
 
@@ -114,34 +115,34 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
   describe "server_matches?/3" do
     test ":all matches everything" do
-      assert Logs.server_matches?("coordinator1", :all, :coordinator)
-      assert Logs.server_matches?("agent1", :all, :agent)
+      assert IssueStreams.server_matches?("coordinator1", :all, :coordinator)
+      assert IssueStreams.server_matches?("agent1", :all, :agent)
     end
 
     test "role matching" do
       filter = [{:role, :coordinator}]
-      assert Logs.server_matches?("coordinator1", filter, :coordinator)
-      assert Logs.server_matches?("coordinator2", filter, :coordinator)
-      refute Logs.server_matches?("dbserver1", filter, :dbserver)
+      assert IssueStreams.server_matches?("coordinator1", filter, :coordinator)
+      assert IssueStreams.server_matches?("coordinator2", filter, :coordinator)
+      refute IssueStreams.server_matches?("dbserver1", filter, :dbserver)
     end
 
     test "prefix matching" do
       filter = [{:prefix, "coordinator1"}]
-      assert Logs.server_matches?("coordinator1", filter, :coordinator)
-      refute Logs.server_matches?("coordinator2", filter, :coordinator)
+      assert IssueStreams.server_matches?("coordinator1", filter, :coordinator)
+      refute IssueStreams.server_matches?("coordinator2", filter, :coordinator)
     end
 
     test "multiple filters compose as union" do
       filter = [{:role, :coordinator}, {:prefix, "agent1"}]
-      assert Logs.server_matches?("coordinator1", filter, :coordinator)
-      assert Logs.server_matches?("agent1", filter, :agent)
-      refute Logs.server_matches?("dbserver1", filter, :dbserver)
-      refute Logs.server_matches?("agent2", filter, :agent)
+      assert IssueStreams.server_matches?("coordinator1", filter, :coordinator)
+      assert IssueStreams.server_matches?("agent1", filter, :agent)
+      refute IssueStreams.server_matches?("dbserver1", filter, :dbserver)
+      refute IssueStreams.server_matches?("agent2", filter, :agent)
     end
 
     test "role from metadata takes precedence over server ID" do
       filter = [{:role, :single}]
-      assert Logs.server_matches?("single-00", filter, :single)
+      assert IssueStreams.server_matches?("single-00", filter, :single)
     end
   end
 
@@ -150,13 +151,13 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
   describe "display_window/2" do
     test "nil time_bounds returns nil" do
       issue = %{type: :crash, time_bounds: nil}
-      assert Logs.display_window(issue, nil) == nil
+      assert IssueStreams.display_window(issue, nil) == nil
     end
 
     test "crash default window" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :crash, time_bounds: {ts, ts}}
-      {start_us, end_us} = Logs.display_window(issue, nil)
+      {start_us, end_us} = IssueStreams.display_window(issue, nil)
       assert ts - start_us == 5 * @usec_per_sec
       assert end_us - ts == 0
     end
@@ -165,7 +166,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       s = to_us(~U[2026-03-09 10:00:00Z])
       f = to_us(~U[2026-03-09 10:00:05Z])
       issue = %{type: :test_failure, time_bounds: {s, f}}
-      {start_us, end_us} = Logs.display_window(issue, nil)
+      {start_us, end_us} = IssueStreams.display_window(issue, nil)
       assert s - start_us == 100 * @usec_per_ms
       assert end_us - f == 100 * @usec_per_ms
     end
@@ -173,7 +174,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     test "timeout default window" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :timeout, time_bounds: {ts, ts}}
-      {start_us, end_us} = Logs.display_window(issue, nil)
+      {start_us, end_us} = IssueStreams.display_window(issue, nil)
       assert ts - start_us == 5 * @usec_per_sec
       assert end_us - ts == 0
     end
@@ -181,7 +182,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     test "sanitizer_report default window" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :sanitizer_report, time_bounds: {ts, ts}}
-      {start_us, end_us} = Logs.display_window(issue, nil)
+      {start_us, end_us} = IssueStreams.display_window(issue, nil)
       assert ts - start_us == 100 * @usec_per_ms
       assert end_us - ts == 100 * @usec_per_ms
     end
@@ -189,7 +190,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     test "custom window spec overrides defaults" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :crash, time_bounds: {ts, ts}}
-      {start_us, end_us} = Logs.display_window(issue, {-30_000, 10_000})
+      {start_us, end_us} = IssueStreams.display_window(issue, {-30_000, 10_000})
       assert ts - start_us == 30 * @usec_per_sec
       assert end_us - ts == 10 * @usec_per_sec
     end
@@ -218,50 +219,6 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
     test "unconventional name with role from metadata" do
       assert LogFormatting.server_tag("single-00", :single) == "SNG00"
-    end
-  end
-
-  # --- merge_streams/1 ---
-
-  describe "merge_streams/1" do
-    test "empty" do
-      assert Logs.merge_streams([]) == []
-    end
-
-    test "single server returns entries tagged with server id" do
-      entries = [
-        entry(~U[2026-03-09 10:00:00Z], message: "msg1"),
-        entry(~U[2026-03-09 10:00:01Z], message: "msg2")
-      ]
-
-      result = Logs.merge_streams([{"coordinator1", entries}])
-
-      assert length(result) == 2
-      assert Enum.all?(result, fn {id, _} -> id == "coordinator1" end)
-      assert Enum.at(result, 0) |> elem(1) |> Map.get(:message) == "msg1"
-      assert Enum.at(result, 1) |> elem(1) |> Map.get(:message) == "msg2"
-    end
-
-    test "interleaves multiple servers chronologically" do
-      co_entries = [
-        entry(~U[2026-03-09 10:00:00Z], message: "co-msg1"),
-        entry(~U[2026-03-09 10:00:02Z], message: "co-msg2")
-      ]
-
-      db_entries = [
-        entry(~U[2026-03-09 10:00:01Z], message: "db-msg1"),
-        entry(~U[2026-03-09 10:00:03Z], message: "db-msg2")
-      ]
-
-      result =
-        Logs.merge_streams([{"coordinator1", co_entries}, {"dbserver1", db_entries}])
-
-      assert Enum.map(result, &elem(&1, 0)) == [
-               "coordinator1",
-               "dbserver1",
-               "coordinator1",
-               "dbserver1"
-             ]
     end
   end
 
@@ -324,60 +281,6 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
   end
 
-  # --- format_merged/2 ---
-
-  describe "format_merged/2" do
-    test "empty list returns empty string" do
-      assert LogFormatting.format_merged([], false) == ""
-    end
-
-    test "single server produces untagged lines" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
-      merged = [{"s1", e1}, {"s1", e2}]
-      result = LogFormatting.format_merged(merged, false)
-      assert result =~ "line1"
-      assert result =~ "line2"
-    end
-
-    test "multi-server adds server tags" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
-      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
-      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, false, :basic, roles)
-      assert result =~ "[CO1]"
-      assert result =~ "[DB1]"
-    end
-
-    test "multi-server with color enabled includes ANSI escape sequences" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
-      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
-      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, true, :basic, roles)
-      assert result =~ "\e[38;5;"
-    end
-
-    test "WARNING level gets bright emphasis when color enabled" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], level: :warning, message: "msg")
-      e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
-      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
-      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, true, :basic, roles)
-      assert result =~ IO.ANSI.bright()
-    end
-
-    test "ERROR level gets inverse emphasis when color enabled" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], level: :error, message: "msg")
-      e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
-      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
-      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, true, :basic, roles)
-      assert result =~ IO.ANSI.inverse()
-    end
-  end
-
   # --- server_tag/2 with hyphenated IDs ---
 
   describe "server_tag/2 with hyphenated IDs" do
@@ -408,24 +311,24 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "with :all filter returns all servers", %{servers: servers} do
-      result = Logs.filter_servers(servers, :all)
+      result = IssueStreams.filter_servers(servers, :all)
       assert length(result) == 3
     end
 
     test "with role filter returns only matching roles", %{servers: servers} do
-      result = Logs.filter_servers(servers, [{:role, :coordinator}])
+      result = IssueStreams.filter_servers(servers, [{:role, :coordinator}])
       assert [{_id, _meta}] = result
       assert {"coordinator1", _} = hd(result)
     end
 
     test "with prefix filter returns matching prefix", %{servers: servers} do
-      result = Logs.filter_servers(servers, [{:prefix, "db"}])
+      result = IssueStreams.filter_servers(servers, [{:prefix, "db"}])
       assert [{"dbserver1", _}] = result
     end
 
     test "default filter excludes agents", %{servers: servers} do
-      filter = Logs.parse_server_filter(nil)
-      result = Logs.filter_servers(servers, filter)
+      filter = IssueStreams.parse_server_filter(nil)
+      result = IssueStreams.filter_servers(servers, filter)
       ids = Enum.map(result, &elem(&1, 0))
       assert "coordinator1" in ids
       assert "dbserver1" in ids
@@ -447,17 +350,17 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "with :all filter returns all servers", %{servers: servers} do
-      result = Logs.matching_servers(servers, :all)
+      result = IssueStreams.matching_servers(servers, :all)
       assert length(result) == 3
     end
 
     test "with role filter returns only matching roles", %{servers: servers} do
-      result = Logs.matching_servers(servers, [{:role, :coordinator}])
+      result = IssueStreams.matching_servers(servers, [{:role, :coordinator}])
       assert result == ["coordinator1"]
     end
 
     test "results are sorted", %{servers: servers} do
-      result = Logs.matching_servers(servers, :all)
+      result = IssueStreams.matching_servers(servers, :all)
       assert result == Enum.sort(result)
     end
   end
@@ -493,14 +396,14 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
       # Crash display default: 5s before, 0s after
       issue = %{type: :crash, time_bounds: {ts, ts}}
-      window = Logs.display_window(issue, nil)
+      window = IssueStreams.display_window(issue, nil)
 
       %{servers: servers, window: window, ts: ts}
     end
 
     test "pre-filtered servers exclude agents", %{servers: servers, window: window} do
-      filter = Logs.parse_server_filter(nil)
-      filtered = Map.new(Logs.filter_servers(servers, filter))
+      filter = IssueStreams.parse_server_filter(nil)
+      filtered = Map.new(IssueStreams.filter_servers(servers, filter))
       result = Logs.extract(filtered, window)
       server_ids = Enum.map(result, &elem(&1, 0))
       assert "coordinator1" in server_ids
@@ -514,7 +417,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "filters entries by time window", %{servers: servers, window: window} do
-      filtered = Map.new(Logs.filter_servers(servers, [{:role, :coordinator}]))
+      filtered = Map.new(IssueStreams.filter_servers(servers, [{:role, :coordinator}]))
       [{_server, entries}] = Logs.extract(filtered, window)
 
       messages = Enum.map(entries, & &1.message)
@@ -545,7 +448,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       ]
 
       window = {to_us(~U[2026-03-09 10:00:00Z]), to_us(~U[2026-03-09 10:00:10Z])}
-      result = Logs.extract_events(events, window)
+      result = IssueStreams.extract_events(events, window)
 
       assert length(result) == 1
       assert hd(result).event == :test_started
@@ -562,60 +465,14 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       ]
 
       window = {to_us(~U[2026-03-09 10:00:00Z]), to_us(~U[2026-03-09 10:00:10Z])}
-      assert Logs.extract_events(events, window) == []
+      assert IssueStreams.extract_events(events, window) == []
     end
 
     test "includes events at window boundaries" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       events = [%{event: :test_started, timestamp: ts, module: Mod, name: "t"}]
       window = {ts, ts}
-      assert length(Logs.extract_events(events, window)) == 1
-    end
-  end
-
-  # --- merge_streams/2 with events ---
-
-  describe "merge_streams/2 with events" do
-    test "events interleaved with server logs chronologically" do
-      co_entries = [
-        entry(~U[2026-03-09 10:00:00Z], message: "co-msg1"),
-        entry(~U[2026-03-09 10:00:04Z], message: "co-msg2")
-      ]
-
-      events = [
-        %{
-          event: :test_started,
-          timestamp: to_us(~U[2026-03-09 10:00:02Z]),
-          module: Mod,
-          name: "t"
-        }
-      ]
-
-      result = Logs.merge_streams([{"coordinator1", co_entries}], events)
-
-      assert Enum.map(result, &elem(&1, 0)) == ["coordinator1", :event, "coordinator1"]
-    end
-
-    test "events only (no server entries)" do
-      events = [
-        %{
-          event: :test_started,
-          timestamp: to_us(~U[2026-03-09 10:00:00Z]),
-          module: Mod,
-          name: "t"
-        }
-      ]
-
-      result = Logs.merge_streams([], events)
-      assert length(result) == 1
-      assert {:event, _} = hd(result)
-    end
-
-    test "empty events preserves original behavior" do
-      entries = [entry(~U[2026-03-09 10:00:00Z], message: "msg")]
-      result = Logs.merge_streams([{"s1", entries}], [])
-      assert length(result) == 1
-      assert {"s1", _} = hd(result)
+      assert length(IssueStreams.extract_events(events, window)) == 1
     end
   end
 
@@ -734,132 +591,6 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     test "custom event with empty payload" do
       event = %{event: :custom, kind: :checkpoint, payload: %{}, timestamp: 0}
       assert LogFormatting.format_event(event) == ">>> custom:checkpoint"
-    end
-  end
-
-  # --- format_merged/2 with events ---
-
-  describe "format_merged with events" do
-    @roles %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
-
-    test "single server with events uses tagged format" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-
-      event = %{
-        event: :test_started,
-        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
-        module: Mod,
-        name: "t"
-      }
-
-      roles = %{"coordinator1" => :coordinator}
-      merged = [{"coordinator1", e1}, {:event, event}]
-      result = LogFormatting.format_merged(merged, false, :basic, roles)
-
-      assert result =~ "line1"
-      assert result =~ ">>> test_started"
-      assert result =~ "[CO1]"
-    end
-
-    test "multi-server: events render without server color" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-      e2 = entry(~U[2026-01-01 00:00:02Z], message: "line2")
-
-      event = %{
-        event: :server_crashed,
-        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
-        server_id: "db1",
-        pid: 1,
-        signal: 11
-      }
-
-      merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, true, :basic, @roles)
-
-      lines = String.split(result, "\n")
-      event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
-
-      assert event_line != nil
-      refute event_line =~ "\e[38;5;"
-      assert event_line =~ ">>> server_crashed"
-    end
-
-    test "multi-server: event lines are padded to align with tags" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-      e2 = entry(~U[2026-01-01 00:00:02Z], message: "line2")
-
-      event = %{
-        event: :test_started,
-        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
-        module: Mod,
-        name: "t"
-      }
-
-      merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = LogFormatting.format_merged(merged, false, :basic, @roles)
-
-      lines = String.split(result, "\n")
-      tag_line = Enum.find(lines, &String.contains?(&1, "[CO1]"))
-      event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
-
-      assert event_line =~ ">>> test_started"
-      assert String.starts_with?(tag_line, "[CO1")
-    end
-
-    test "events only renders without tags" do
-      event = %{
-        event: :test_started,
-        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
-        module: Mod,
-        name: "t"
-      }
-
-      result = LogFormatting.format_merged([{:event, event}], false)
-      assert result =~ ">>> test_started"
-    end
-
-    test "full detail includes inspect of the event map" do
-      event = %{
-        event: :server_started,
-        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
-        server_id: "db1",
-        pid: 123
-      }
-
-      result = LogFormatting.format_merged([{:event, event}], false, :full)
-      assert result =~ ">>> server_started db1 (pid=123)"
-      assert result =~ "server_id: \"db1\""
-      assert result =~ "pid: 123"
-    end
-
-    test "basic detail does not include inspect output" do
-      event = %{
-        event: :server_started,
-        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
-        server_id: "db1",
-        pid: 123
-      }
-
-      result = LogFormatting.format_merged([{:event, event}], false, :basic)
-      assert result =~ ">>> server_started db1 (pid=123)"
-      refute result =~ "server_id: \"db1\""
-    end
-
-    test "multi-server full detail includes inspect after event line" do
-      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
-
-      event = %{
-        event: :server_started,
-        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
-        server_id: "db1",
-        pid: 123
-      }
-
-      roles = %{"coordinator1" => :coordinator}
-      merged = [{"coordinator1", e1}, {:event, event}]
-      result = LogFormatting.format_merged(merged, false, :full, roles)
-      assert result =~ ">>> server_started db1 (pid=123)"
-      assert result =~ "server_id: \"db1\""
     end
   end
 
@@ -1067,6 +798,167 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       excluded = Logs.parse_exclude("e6460")
       [{_server, entries}] = Logs.extract(servers, window, excluded_ids: excluded)
       assert length(entries) == 1
+    end
+  end
+
+  # --- merge/1 ---
+
+  describe "merge/1" do
+    test "empty input returns empty list" do
+      assert IssueStreams.merge([]) == []
+    end
+
+    test "single stream returns entries tagged with stream tag" do
+      entries = [
+        entry(~U[2026-03-09 10:00:00Z], message: "first"),
+        entry(~U[2026-03-09 10:00:01Z], message: "second")
+      ]
+
+      result = IssueStreams.merge([{"coordinator1", entries}])
+
+      assert [{"coordinator1", e1}, {"coordinator1", e2}] = result
+      assert e1.message == "first"
+      assert e2.message == "second"
+    end
+
+    test "two streams interleaved chronologically" do
+      co_entries = [
+        entry(~U[2026-03-09 10:00:00Z], message: "co-1"),
+        entry(~U[2026-03-09 10:00:02Z], message: "co-2")
+      ]
+
+      db_entries = [
+        entry(~U[2026-03-09 10:00:01Z], message: "db-1"),
+        entry(~U[2026-03-09 10:00:03Z], message: "db-2")
+      ]
+
+      result = IssueStreams.merge([{"coordinator1", co_entries}, {"dbserver1", db_entries}])
+
+      assert Enum.map(result, &elem(&1, 0)) == [
+               "coordinator1",
+               "dbserver1",
+               "coordinator1",
+               "dbserver1"
+             ]
+
+      assert Enum.map(result, fn {_, e} -> e.message end) == [
+               "co-1",
+               "db-1",
+               "co-2",
+               "db-2"
+             ]
+    end
+
+    test "events as explicit stream using :timestamp key" do
+      events = [
+        %{
+          event: :test_started,
+          timestamp: to_us(~U[2026-03-09 10:00:00Z]),
+          module: Mod,
+          name: "t"
+        },
+        %{
+          event: :test_finished,
+          timestamp: to_us(~U[2026-03-09 10:00:02Z]),
+          module: Mod,
+          name: "t",
+          outcome: :passed
+        }
+      ]
+
+      result = IssueStreams.merge([{:event, events}])
+
+      assert [{:event, e1}, {:event, e2}] = result
+      assert e1.event == :test_started
+      assert e2.event == :test_finished
+    end
+
+    test "traffic as explicit stream using :timestamp key" do
+      traffic = [
+        %{timestamp: to_us(~U[2026-03-09 10:00:00Z]), method: "GET", path: "/api/v1"},
+        %{timestamp: to_us(~U[2026-03-09 10:00:01Z]), method: "POST", path: "/api/v1"}
+      ]
+
+      result = IssueStreams.merge([{:traffic, traffic}])
+
+      assert [{:traffic, t1}, {:traffic, t2}] = result
+      assert t1.method == "GET"
+      assert t2.method == "POST"
+    end
+
+    test "mixed log, event, and traffic streams merged by time" do
+      logs = [
+        entry(~U[2026-03-09 10:00:00Z], message: "log-1"),
+        entry(~U[2026-03-09 10:00:03Z], message: "log-2")
+      ]
+
+      events = [
+        %{
+          event: :test_started,
+          timestamp: to_us(~U[2026-03-09 10:00:01Z]),
+          module: Mod,
+          name: "t"
+        }
+      ]
+
+      traffic = [
+        %{timestamp: to_us(~U[2026-03-09 10:00:02Z]), method: "GET", path: "/api"}
+      ]
+
+      result =
+        IssueStreams.merge([
+          {"coordinator1", logs},
+          {:event, events},
+          {:traffic, traffic}
+        ])
+
+      assert Enum.map(result, &elem(&1, 0)) == [
+               "coordinator1",
+               :event,
+               :traffic,
+               "coordinator1"
+             ]
+    end
+
+    test "empty streams are filtered out" do
+      entry1 = entry(~U[2026-03-09 10:00:00Z], message: "only-entry")
+
+      result = IssueStreams.merge([{"s1", []}, {"s2", [entry1]}])
+
+      assert [{"s2", e}] = result
+      assert e.message == "only-entry"
+    end
+
+    test "single entry per stream merges chronologically" do
+      e1 = entry(~U[2026-03-09 10:00:02Z], message: "second")
+      e2 = entry(~U[2026-03-09 10:00:00Z], message: "first")
+      e3 = entry(~U[2026-03-09 10:00:01Z], message: "middle")
+
+      result = IssueStreams.merge([{"a", [e1]}, {"b", [e2]}, {"c", [e3]}])
+
+      assert Enum.map(result, fn {tag, _} -> tag end) == ["b", "c", "a"]
+
+      assert Enum.map(result, fn {_, e} -> e.message end) == [
+               "first",
+               "middle",
+               "second"
+             ]
+    end
+
+    test "preserves tag unchanged for atom, string, and tuple tags" do
+      atom_entry = %{timestamp: to_us(~U[2026-03-09 10:00:00Z]), data: "atom-tagged"}
+      string_entry = entry(~U[2026-03-09 10:00:01Z], message: "string-tagged")
+      tuple_entry = %{timestamp: to_us(~U[2026-03-09 10:00:02Z]), data: "tuple-tagged"}
+
+      result =
+        IssueStreams.merge([
+          {:my_atom, [atom_entry]},
+          {"my_string", [string_entry]},
+          {{:deployment, "d1"}, [tuple_entry]}
+        ])
+
+      tags = Enum.map(result, &elem(&1, 0))
+      assert tags == [:my_atom, "my_string", {:deployment, "d1"}]
     end
   end
 

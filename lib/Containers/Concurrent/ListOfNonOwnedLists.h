@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -88,6 +87,17 @@ struct ListOfNonOwnedLists {
         list->for_node(function);
       }
     }
+  }
+
+  auto size() -> size_t {
+    size_t count = 0;
+    auto lists = _lists.copy();
+    for (auto& weak_list : lists) {
+      if (auto list = weak_list.lock()) {
+        count += list->size();
+      }
+    }
+    return count;
   }
 
   /**

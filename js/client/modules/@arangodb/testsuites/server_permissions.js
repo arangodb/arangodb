@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -54,12 +53,15 @@ const RESET = internal.COLORS.COLOR_RESET;
 
 const functionsDocumentation = {
   'server_permissions': 'permissions test for the server',
-  'server_parameters': 'specifies startup parameters for the instance'
+  'server_parameters': 'specifies startup parameters for the instance',
+  'server_secrets': 'tests the server secrets handling'
 };
 
 const testPaths = {
-  'server_permissions': [tu.pathForTesting('client/server_permissions')],
-  'server_parameters': [tu.pathForTesting('client/server_parameters')]
+  'server_permissions': [tu.pathForTesting('client/server_permissions'),
+                         tu.pathForTesting('client/server_permissions/authorization-questions')],
+  'server_parameters': [tu.pathForTesting('client/server_parameters')],
+  'server_secrets': [tu.pathForTesting('client/server_secrets')]
 };
 
 class permissionsRunner extends trs.runLocalInArangoshRunner {
@@ -100,6 +102,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        delete paramsSecondRun['runSetup'];
         if (paramsSecondRun.hasOwnProperty('opts')) {
           _.defaults(paramsSecondRun.opts, clonedOpts);
           clonedOpts = _.clone(paramsSecondRun.opts);
@@ -206,6 +209,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
+          this.instanceManager.launchTcpDump("");
           global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
@@ -246,10 +250,15 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         }
 
         this.results[te] = this.runOneTest(te);
-        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") &&
-            this.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
+        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") ||
+            this.instanceManager.addArgs.hasOwnProperty("server.jwt-secret")) {
           // Reconnect to set the server credentials right
-          arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
+          let hasJWT = this.instanceManager.jwt_secret !== "";
+          arango.reconnect(arango.getEndpoint(),
+                           '_system',
+                           hasJWT ? "root":undefined,
+                           hasJWT ? "":undefined,
+                           true,
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
         this.results.status = this.results.status && this.results[te].status;

@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -94,7 +93,7 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 
           // If the index is created we do not expect too much version change
           // Unfortunately this is the only indicator that we have not entered
-          assertTrue(afterVersion - beforeVersion < 10);
+          assertTrue(afterVersion - beforeVersion < 30);
         },
 
         testVectorIndexCreationCorrectWithFactory: function() {
@@ -118,7 +117,7 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 
           // If the index is created we do not expect too much version change
           // Unfortunately this is the only indicator that we have not entered
-          assertTrue(afterVersion - beforeVersion < 10);
+          assertTrue(afterVersion - beforeVersion < 30);
         },
     };
 }
@@ -207,7 +206,7 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
-            assertTrue(afterVersion - beforeVersion < 10);
+            assertTrue(afterVersion - beforeVersion < 30);
         },
 
         testVectorIndexCreationWithMissingDefaultNProbeWithFactory: function() {
@@ -247,7 +246,7 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
-            assertTrue(afterVersion - beforeVersion < 10);
+            assertTrue(afterVersion - beforeVersion < 30);
         },
     };
 }

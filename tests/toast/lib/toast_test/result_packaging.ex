@@ -136,11 +136,17 @@ defmodule ToastTest.ResultPackaging do
   defp package_tier3(opts, result_dir) do
     tool = Toast.Utils.Compression.detect_tool()
 
-    opts
-    |> Keyword.get(:suite_diagnostics, [])
+    suite_diagnostics = Keyword.get(opts, :suite_diagnostics, [])
+
+    suite_diagnostics
     |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
     |> Enum.filter(&File.exists?/1)
     |> Enum.each(&package_core_dump(&1, result_dir, tool))
+
+    suite_diagnostics
+    |> Enum.flat_map(&Map.get(&1, :pcap_files, []))
+    |> Enum.filter(&File.exists?/1)
+    |> Enum.each(&package_large_file(&1, result_dir, tool))
 
     package_base_dir(opts, result_dir)
   end
@@ -170,34 +176,42 @@ defmodule ToastTest.ResultPackaging do
     end
   end
 
-  defp package_core_dump(core_path, result_dir, tool) do
-    basename = Path.basename(core_path)
+  defp package_core_dump(path, result_dir, tool) do
+    package_large_file(path, result_dir, tool, warn_on_no_tool: true)
+  end
+
+  defp package_large_file(path, result_dir, tool, opts \\ [])
+
+  defp package_large_file(path, result_dir, tool, opts) do
+    basename = Path.basename(path)
 
     case tool do
       nil ->
-        Logger.warning(
-          "No compression tool (zstd, gzip) available; copying #{core_path} uncompressed"
-        )
+        if Keyword.get(opts, :warn_on_no_tool, false) do
+          Logger.warning(
+            "No compression tool (zstd, gzip) available; copying #{path} uncompressed"
+          )
+        end
 
-        File.cp!(core_path, Path.join(result_dir, basename))
+        File.cp!(path, Path.join(result_dir, basename))
 
       :zstd ->
         dest = Path.join(result_dir, basename <> ".zst")
-        compress_core(core_path, dest, &Toast.Utils.Compression.compress_with_zstd/2)
+        compress_file(path, dest, &Toast.Utils.Compression.compress_with_zstd/2)
 
       :gzip ->
         dest = Path.join(result_dir, basename <> ".gz")
-        compress_core(core_path, dest, &Toast.Utils.Compression.compress_with_gzip/2)
+        compress_file(path, dest, &Toast.Utils.Compression.compress_with_gzip/2)
     end
   end
 
-  defp compress_core(core_path, dest, compress_fn) do
-    case compress_fn.(core_path, dest) do
+  defp compress_file(path, dest, compress_fn) do
+    case compress_fn.(path, dest) do
       {:ok, _} ->
         :ok
 
       {:error, reason} ->
-        Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
+        Logger.warning("Failed to compress #{path}: #{inspect(reason)}")
     end
   end
 

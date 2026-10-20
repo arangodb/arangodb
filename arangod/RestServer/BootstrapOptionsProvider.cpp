@@ -29,7 +29,7 @@ namespace arangodb::bootstrap {
 
 using namespace arangodb::options;
 
-void BootstrapOptionsProvider::declareOptions(
+void BootstrapOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, BootstrapFeatureOptions& opts) {
   options->addOption(
       "--hund", "Make ArangoDB bark on startup.",

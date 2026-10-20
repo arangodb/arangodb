@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTransactionState.h"
@@ -31,16 +30,12 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -49,8 +44,9 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
     : TransactionState(vocbase, tid, options, operationOrigin),
+      _manager(manager),
       _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
@@ -76,10 +72,7 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
 
   // set hints
   _hints = hints;
-  auto& stats = _vocbase.server()
-                    .getFeature<metrics::MetricsFeature>()
-                    .serverStatistics()
-                    ._transactionsStatistics;
+  auto& stats = statistics();
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
@@ -103,11 +96,8 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
     ++stats._transactionsStarted;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
-
-  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
-                                           isFollowerTransaction());
+  _counterGuard = _manager.registerTransaction(id(), isReadOnlyTransaction(),
+                                               isFollowerTransaction());
 
   if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
@@ -154,12 +144,8 @@ futures::Future<Result> ClusterTransactionState::commitTransaction(
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }
-
   updateStatus(transaction::Status::COMMITTED);
-  ++_vocbase.server()
-        .getFeature<metrics::MetricsFeature>()
-        .serverStatistics()
-        ._transactionsStatistics._transactionsCommitted;
+  ++statistics()._transactionsCommitted;
 
   return Result{};
 }
@@ -172,10 +158,7 @@ Result ClusterTransactionState::abortTransaction(
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   updateStatus(transaction::Status::ABORTED);
-  ++_vocbase.server()
-        .getFeature<metrics::MetricsFeature>()
-        .serverStatistics()
-        ._transactionsStatistics._transactionsAborted;
+  ++statistics()._transactionsAborted;
 
   return {};
 }

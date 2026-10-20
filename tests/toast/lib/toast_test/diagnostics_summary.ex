@@ -34,6 +34,10 @@ defmodule ToastTest.DiagnosticsSummary do
   @spec has_sanitizer_errors?([map()]) :: boolean()
   def has_sanitizer_errors?(suites), do: has_issue_type?(suites, :sanitizer_report)
 
+  @doc "Check whether any suite has infrastructure issues (e.g., port exhaustion)."
+  @spec has_infrastructure?([map()]) :: boolean()
+  def has_infrastructure?(suites), do: has_issue_type?(suites, :infrastructure)
+
   defp has_issue_type?(suites, type) do
     Enum.any?(suites, fn
       %{suite_result: %ToastTest.SuiteResult{issues: issues}} ->
@@ -57,7 +61,8 @@ defmodule ToastTest.DiagnosticsSummary do
           name: inspect(suite[:suite_module]),
           log_files: extract_log_files(sr.deployments),
           sanitizer_files: extract_sanitizer_files(sr.issues),
-          core_dumps: extract_core_dumps(sr.issues)
+          core_dumps: extract_core_dumps(sr.issues),
+          pcap_files: List.wrap(sr.pcap_path)
         }
 
       suite ->
@@ -65,7 +70,8 @@ defmodule ToastTest.DiagnosticsSummary do
           name: inspect(suite[:suite_module]),
           log_files: [],
           sanitizer_files: [],
-          core_dumps: []
+          core_dumps: [],
+          pcap_files: []
         }
     end)
   end

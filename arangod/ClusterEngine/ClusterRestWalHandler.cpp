@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestWalHandler.h"
@@ -27,8 +26,6 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
-#include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -44,6 +41,7 @@ ClusterRestWalHandler::ClusterRestWalHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/wal (prefix, cluster engine)
 RestStatus ClusterRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
@@ -78,13 +76,14 @@ RestStatus ClusterRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce a cluster info dump");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 #endif
-    server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
+    server().getFeature<StorageEngine>().waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,7 +29,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -62,7 +61,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                      arangodb::velocypack::Slice info);
   ~RocksDBVectorIndex();
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
+  IndexType type() const override { return IndexType::Vector; }
 
   bool isSorted() const override { return false; }
 
@@ -77,16 +76,18 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  vector::UserVectorIndexDefinition const& getDefinition() const noexcept {
+  vector::UserDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
   vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
-                                 vector::VectorSearchContext const& ctx);
+                                 vector::VectorSearchContext const& ctx) const;
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserDefinition const& getVectorIndexDefinition() const override;
 
   bool isVectorIndexReady() const noexcept override;
+
+  bool isLinearScanEnabled() const noexcept override;
 
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector) const;
@@ -117,7 +118,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   /// @brief On-disk format version for this index's list entries. Internal
   /// detail; never surfaced through toVelocyPack or the REST API.
-  vector::VectorIndexFormatVersion formatVersion() const noexcept {
+  vector::FormatVersion formatVersion() const noexcept {
     return _formatVersion;
   }
 
@@ -156,13 +157,36 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  vector::VectorIndexMetadata loadVectorIndexMetadata(
-      velocypack::Slice info) const;
+  //  Helper functions for bruteForceSearch
+  void captureDocument(
+      vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink,
+      LocalDocumentId docId, velocypack::Slice docSlice) const;
 
-  vector::UserVectorIndexDefinition _definition;
+  bool filterDocuments(vector::VectorSearchConfig const& config,
+                       vector::VectorSearchContext const& ctx,
+                       velocypack::Slice docSlice) const;
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2,
+                        bool isDescending) const;
+
+  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice,
+                                       vector::Vector& vec) const;
+
+  std::pair<vector::Labels, vector::Distances> bruteForceSearch(
+      vector::Vector& searchVector, vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink) const;
+
+  vector::Metadata loadVectorIndexMetadata(velocypack::Slice info) const;
+
+  vector::UserDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
-  vector::VectorIndexFormatVersion _formatVersion{
+  vector::FormatVersion _formatVersion{
       vector::kCurrentVectorIndexFormatVersion};
   StoredValues const _storedValues;
 

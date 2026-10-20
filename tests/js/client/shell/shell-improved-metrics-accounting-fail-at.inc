@@ -21,14 +21,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Alexey Bakharew
 // //////////////////////////////////////////////////////////////////////////////
-var IM = global.instanceManager;
 
 (function () {
   'use strict';
 
+  var IM = global.instanceManager;
   const db = require('@arangodb').db;
   const internal = require("internal");
   const { getCompleteMetricsValues, waitForEstimatorSync } = require('@arangodb/test-helper');

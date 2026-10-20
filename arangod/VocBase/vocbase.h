@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,9 +37,10 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -95,17 +95,14 @@ class Future;
 class CursorRepository;
 struct DatabaseConfiguration;
 struct DatabaseJavaScriptCache;
-class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
 struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
-class VersionTracker;
 struct VocBaseLogManager;
 struct VocbaseMetrics;
-}  // namespace arangodb
 
 /// @brief document handle separator as character
 inline constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -120,11 +117,11 @@ inline constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 inline constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief database
-struct TRI_vocbase_t {
+struct Database {
   friend class arangodb::StorageEngine;
 
-  explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                         arangodb::StorageEngine& engine);
+  explicit Database(arangodb::CreateDatabaseInfo&& info,
+                    arangodb::StorageEngine& engine);
 
   // note: isInternal=true is currently only used for the special internal
   // vocbase object that is used to execute IResearchAqlAnalyzer computations,
@@ -133,32 +130,30 @@ struct TRI_vocbase_t {
   // the isInternal flag is necessary for a slightly different setup of the
   // internal vocbase object, which does not use the MetricsFeature, because
   // it can outlive the entire ApplicationServer stack.
-  TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                arangodb::StorageEngine& engine,
-                arangodb::VersionTracker& versionTracker, bool extendedNames,
-                bool isInternal = false);
-  TEST_VIRTUAL ~TRI_vocbase_t();
+  Database(arangodb::CreateDatabaseInfo&& info, arangodb::StorageEngine& engine,
+           arangodb::IDatabaseProvider& databaseProvider,
+           bool isInternal = false);
+  TEST_VIRTUAL ~Database();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info,
-                arangodb::StorageEngine& engine,
-                arangodb::VersionTracker& versionTracker, bool extendedNames);
+  Database(MockConstruct, arangodb::CreateDatabaseInfo&& info,
+           arangodb::StorageEngine& engine,
+           arangodb::IDatabaseProvider& databaseProvider);
 #endif
 
  private:
   // explicitly document implicit behavior (due to presence of locks)
-  TRI_vocbase_t(TRI_vocbase_t&&) = delete;
-  TRI_vocbase_t(TRI_vocbase_t const&) = delete;
-  TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
-  TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
+  Database(Database&&) = delete;
+  Database(Database const&) = delete;
+  Database& operator=(Database&&) = delete;
+  Database& operator=(Database const&) = delete;
 
   arangodb::application_features::ApplicationServer& _server;
   arangodb::StorageEngine& _engine;
-  arangodb::VersionTracker& _versionTracker;
-  bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
+  arangodb::IDatabaseProvider& _databaseProvider;
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -192,17 +187,20 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
 
-  std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
       _replicationClients;
 
  public:
   arangodb::StorageEngine& engine() const noexcept { return _engine; }
 
-  auto extendedNames() const noexcept -> bool { return _extendedNames; }
+  auto extendedNames() const noexcept -> bool {
+    return _databaseProvider.extendedNames();
+  }
 
-  auto versionTracker() noexcept -> arangodb::VersionTracker& {
-    return _versionTracker;
+  /// @brief record a DDL change on this database (bumps the global schema
+  /// version). The reason is used for tracing only.
+  void notifyDdlChange(char const* reason) {
+    _databaseProvider.notifyDdlChange(reason);
   }
 
   arangodb::VocbaseMetrics const& metrics() const noexcept { return *_metrics; }
@@ -210,6 +208,7 @@ struct TRI_vocbase_t {
   template<typename As>
   As& engine() const noexcept
       requires(std::derived_from<As, arangodb::StorageEngine>) {
+    TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
 
@@ -280,15 +279,11 @@ struct TRI_vocbase_t {
   decltype(auto) sharding() const { return _info.sharding(); }
   bool isOneShard() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result,
+                    uint32_t apiVersion) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
-
-  arangodb::DatabaseReplicationApplier* replicationApplier() const {
-    return _replicationApplier.get();
-  }
-  void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::aql::QueryPlanCache& queryPlanCache() const {
@@ -428,6 +423,9 @@ struct TRI_vocbase_t {
       arangodb::velocypack::Slice infoSlice,
       bool allowEnterpriseCollectionsOnSingleServer);
 
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
+      std::vector<CollectionDescriptor> descriptors);
+
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
   createCollections(std::vector<arangodb::CreateCollectionBody> const&
@@ -442,6 +440,9 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      CollectionDescriptor descriptor);
+
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem);
@@ -449,6 +450,11 @@ struct TRI_vocbase_t {
   /// @brief validate parameters for collection creation.
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief validate a collection descriptor before it is used to create a
+  /// collection.
+  arangodb::Result validateCollectionDescriptor(
+      arangodb::CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
@@ -477,6 +483,9 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       arangodb::velocypack::Slice data, bool isAStub);
 
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
+      CollectionDescriptor descriptor, bool isAStub);
+
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes) for storage. The object is augmented
   /// with storage engine-specific data (e.g. objectId). the object only exists
@@ -503,6 +512,11 @@ struct TRI_vocbase_t {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.
@@ -559,3 +573,7 @@ struct TRI_vocbase_t {
 /// the result is the object excluding _id, _key and _rev
 void TRI_SanitizeObject(arangodb::velocypack::Slice slice,
                         arangodb::velocypack::Builder& builder);
+
+}  // namespace arangodb
+
+using TRI_vocbase_t = arangodb::Database;

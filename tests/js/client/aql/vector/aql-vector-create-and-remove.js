@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -58,6 +57,35 @@ function VectorIndexCreateAndRemoveTestSuite() {
     const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
     const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
+
+    const assertUsesVectorIndex = (query, bindVars) => {
+        const plan = db._createStatement({
+            query,
+            bindVars
+        }).explain().plan;
+        const indexNodes = plan.nodes.filter(
+            n => n.type === "EnumerateNearVectorNode");
+        assertEqual(1, indexNodes.length);
+    };
+
+    const assertSearchOnEmptyCollectionReturnsNothing = () => {
+        const query = "FOR d IN " +
+            collection.name() +
+            " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) " +
+            "LIMIT 5 RETURN d._key";
+        const bindVars = {
+            qp: randomPoint
+        };
+        assertUsesVectorIndex(query, bindVars);
+
+        assertEqual([], db._query(query, bindVars).toArray());
+
+        const withFullCount = db._query(query, bindVars, {
+            fullCount: true
+        });
+        assertEqual([], withFullCount.toArray());
+        assertEqual(0, withFullCount.getExtra().stats.fullCount);
+    };
 
     return {
         setUp: function() {
@@ -206,6 +234,26 @@ function VectorIndexCreateAndRemoveTestSuite() {
             assertEqual(5, closesDocKeysPostRemove.length);
 
             assertNotEqual(closesDocKeysPreRemove, closesDocKeysPostRemove);
+        },
+
+        testSearchOnTruncatedCollectionKeepsReadyIndexAndReturnsNothing: function() {
+            collection.truncate();
+            assertEqual(0, collection.count());
+            assertTrue(waitForVectorIndexState(collection, "vector_l2",
+                VectorIndexTrainingState.kReady, 1));
+
+            assertSearchOnEmptyCollectionReturnsNothing();
+        },
+
+        testSearchAfterRemovingAllDocumentsReturnsNothing: function() {
+            collection.remove(insertedDocs.map(item => ({
+                "_key": item._key
+            })));
+            assertEqual(0, collection.count());
+            assertTrue(waitForVectorIndexState(collection, "vector_l2",
+                VectorIndexTrainingState.kReady, 1));
+
+            assertSearchOnEmptyCollectionReturnsNothing();
         },
     };
 }
@@ -888,10 +936,183 @@ function VectorIndexInsertDuringTrainingSuite() {
     };
 }
 
+// Dropping a collection mid-build must not wedge the single build thread.
+function VectorIndexDropDuringBuildSuite() {
+    const IM = global.instanceManager;
+    const dim = 100;
+    const nLists = 10;
+    const numDocs = nLists + 500;
+    const indexName = "vec_l2";
+    const ingestionPauseFP = "RocksDBVectorIndex::pauseBeforeIngestion";
+    const docs = generateDocs(randomNumberGeneratorFloat(generateSeed()),
+        numDocs, dim);
+
+    function createIndexedCollection(name) {
+        const collection = db._create(name, {numberOfShards: 1});
+        collection.insert(docs);
+        collection.ensureIndex({
+            name: indexName,
+            type: "vector",
+            fields: ["vector"],
+            inBackground: true,
+            params: {metric: "l2", dimension: dim, nLists, trainingIterations: 10},
+        });
+        return collection;
+    }
+
+    function startPausedBuildAndDrop(name) {
+        IM.debugSetFailAt(ingestionPauseFP);
+        const collection = createIndexedCollection(name);
+        assertTrue(
+            waitForVectorIndexState(collection, indexName,
+                VectorIndexTrainingState.kIngesting),
+            "Index should reach ingesting state and pause at the FP");
+        db._drop(name);
+    }
+
+    return {
+        setUp: function() {
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+        },
+
+        tearDown: function() {
+            if (IM && IM.debugCanUseFailAt()) {
+                IM.debugClearFailAt();
+            }
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+        },
+
+        testReleaseFpAfterDropAllowsNewBuildToComplete: function() {
+            if (!IM || !IM.debugCanUseFailAt() || isCluster) {
+                return;
+            }
+            startPausedBuildAndDrop("pausedColl");
+            IM.debugClearFailAt();
+
+            const fresh = createIndexedCollection("freshColl");
+            assertTrue(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kReady),
+                "New vector index must reach ready, proving the build thread " +
+                "was not wedged by the drop");
+        },
+
+        testKeepFpAfterDropStillPicksUpNewBuild: function() {
+            if (!IM || !IM.debugCanUseFailAt() || isCluster) {
+                return;
+            }
+            startPausedBuildAndDrop("pausedColl");
+
+            const fresh = createIndexedCollection("freshColl");
+            assertTrue(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kIngesting),
+                "New vector index must reach ingesting, proving the build " +
+                "thread was not wedged by the drop");
+            assertFalse(
+                waitForVectorIndexState(fresh, indexName,
+                    VectorIndexTrainingState.kReady),
+                "New vector index must not reach ready while the FP is set");
+        },
+    };
+}
+
+function VectorIndexFactoryStringTestSuite() {
+    let collection;
+    const dimension = 128;
+    const indexName = "vector_factory";
+    const seed = generateSeed();
+    const docsPerShard = 100;
+
+    const ensureIndexWithParams = (params) => collection.ensureIndex({
+        name: indexName,
+        type: "vector",
+        fields: ["vector"],
+        inBackground: false,
+        params: { metric: "l2", dimension, ...params },
+    });
+
+    const assertEnsureIndexRejected = (params) => {
+        try {
+            ensureIndexWithParams(params);
+            fail();
+        } catch (e) {
+            assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+        }
+        assertEqual(undefined,
+            collection.getIndexes().find(i => i.name === indexName));
+    };
+
+    const assertIndexReady = (expectedNLists) => {
+        assertTrue(waitForVectorIndexState(collection, indexName,
+            VectorIndexTrainingState.kReady));
+        const idx = collection.getIndexes().find(i => i.name === indexName);
+        assertEqual(expectedNLists, idx.params.nLists);
+    };
+
+    return {
+        setUp: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards });
+            const shards = isCluster ? numberOfShards : 1;
+            collection.insert(generateDocs(randomNumberGeneratorFloat(seed),
+                docsPerShard * shards, dimension));
+        },
+
+        tearDown: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testFixedFactoryWithMatchingNLists: function() {
+            ensureIndexWithParams({ factory: "IVF15,Flat", nLists: 15 });
+            assertIndexReady(15);
+        },
+
+        testFactoryTemplateWithFixedNLists: function() {
+            ensureIndexWithParams({ factory: "IVF{},Flat", nLists: 15 });
+            assertIndexReady(15);
+        },
+
+        testFixedFactoryWithMismatchedNListsFails: function() {
+            assertEnsureIndexRejected({ factory: "IVF15,Flat", nLists: 20 });
+        },
+
+        testFixedFactoryWithoutNListsFails: function() {
+            // nLists defaults to a scaling spec, which a fixed IVF count
+            // contradicts.
+            assertEnsureIndexRejected({ factory: "IVF15,Flat" });
+        },
+
+        testNonIvfFactoryFails: function() {
+            assertEnsureIndexRejected({ factory: "Flat", nLists: 15 });
+        },
+
+        testUnparseableFactoryFails: function() {
+            assertEnsureIndexRejected({ factory: "IVF15,Random", nLists: 15 });
+        },
+
+        testFactoryIncompatibleWithDimensionFails: function() {
+            // PQ requires the dimension to be divisible by the number of
+            // sub-quantizers.
+            assertEnsureIndexRejected({ factory: "IVF15,PQ7", nLists: 15 });
+        },
+    };
+}
+
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
 jsunity.run(VectorIndexStoredValuesTestSuite);
 
 jsunity.run(VectorIndexTestCreationWithVectors);
 jsunity.run(VectorIndexInsertDuringTrainingSuite);
+jsunity.run(VectorIndexDropDuringBuildSuite);
+jsunity.run(VectorIndexFactoryStringTestSuite);
 
 return jsunity.done();

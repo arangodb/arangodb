@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author 
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 // TODO add some test which don't use number values!
 
@@ -667,6 +665,14 @@ function NewAqlRemoveRedundantORTestSuite () {
         + " FILTER 1 <= i || 1 >= i RETURN i";
       ruleIsNotUsed(query, {});
     },
+
+    testDudDifferentAttributes : function () {
+      var query = "FOR x IN [ { i: 2, j: 1, k: 1, arr: [ 10, 20, 30, 40 ] } ] "
+        + " FILTER x.arr[(x.i - x.j) - x.k] < 15 || x.arr[x.i - (x.j - x.k)] < 25 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
 
 // Regression test of https://arangodb.atlassian.net/browse/BTS-340
 // Previously, `val <= true || val` was erroneously reduced to `val <= true`.

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDumpHandler.h"
@@ -41,7 +40,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
 #include <cstdint>
+#include <thread>
 #include <vector>
 
 using namespace arangodb;
@@ -59,6 +60,7 @@ RestDumpHandler::RestDumpHandler(
 }
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/dump (prefix)
 RestStatus RestDumpHandler::execute() {
   if (!ServerState::instance()->isDBServer() &&
       !ServerState::instance()->isSingleServer()) {
@@ -86,6 +88,7 @@ RestStatus RestDumpHandler::execute() {
     // already validated by validateRequest()
     TRI_ASSERT(len == 1);
     // end a dump
+    // permission checked in DumpManager
     handleCommandDumpFinished();
   } else if (type == rest::RequestType::POST) {
     if (len == 1) {
@@ -95,6 +98,7 @@ RestStatus RestDumpHandler::execute() {
     } else if (len == 2) {
       TRI_ASSERT(suffixes[0] == "next");
       // fetch next data from a dump
+      // permission checked in DumpManager
       handleCommandDumpNext();
     } else {
       // unreachable. already validated by validateRequest()
@@ -163,8 +167,12 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
-                                   ServerState::instance()->isSingleServer());
+  // TODO What permission should this check? It was _system RW (admin) check
+  //      before. Should it be specific to `database`?
+  //      Should isSingleServer() be part of the permission check?
+  ExecContextSuperuserScope escope(
+      ExecContext::current().canUseAdminAction(auth::perms::AdminDump{}).ok() &&
+      ServerState::instance()->isSingleServer());
 
   auto guard =
       _dumpManager->createContext(std::move(opts), user, database, useVPack);
@@ -207,14 +215,25 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();
 
+  TRI_IF_FAILURE("RestDumpHandler::slow-next") {
+    // slow down every fetch so that a dump outlives a short-lived JWT
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+
   TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
-    // busy loop when we are the first fetch
-    // exist busy loop with second fetch
+    // the first fetch waits here until a second fetch arrives, so that it
+    // stays observable as a running activity in the meantime.
+    // the wait also ends when the failure point is cleared or the server
+    // stops: otherwise a second fetch that never reaches this point would
+    // keep this handler, and with it the dump context and its collection
+    // locks, alive forever.
     static std::atomic<bool> firstFetch{false};
-    if (!firstFetch.load()) {
-      firstFetch.store(true);
-      while (firstFetch.load()) {
+    if (!firstFetch.exchange(true)) {
+      while (firstFetch.load() && !server().isStopping() &&
+             TRI_ShouldFailDebugging("RestDumpHandler::fetch-delay")) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
+      firstFetch.store(false);
     } else {
       firstFetch.store(false);
     }
@@ -300,16 +319,15 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
+      RocksDBDumpContextOptions opts;
+      velocypack::deserializeUnsafe(body, opts);
+
+      if (opts.shards.empty()) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "expecting at least one entry in 'shards'"};
+      }
+
       if (!ServerState::instance()->isDBServer()) {
-        // make this version of dump compatible with the previous version of
-        // arangodump. the previous version assumed that as long as you are
-        // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-
-        // validate permissions for all participating shards
-        RocksDBDumpContextOptions opts;
-        velocypack::deserializeUnsafe(body, opts);
-
         for (auto const& it : opts.shards) {
           // get collection name
           std::string collectionName;
@@ -323,11 +341,10 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (!ExecContext::current().canUseCollection(
-                  _request->databaseName(), collectionName, auth::Level::RO)) {
-            return {TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("insufficient permissions to access shard ",
-                                 it, " of collection ", collectionName)};
+          if (auto r = ExecContext::current().canDumpCollection(
+                  _request->databaseName(), collectionName);
+              !r.ok()) {
+            return r;
           }
         }
       }

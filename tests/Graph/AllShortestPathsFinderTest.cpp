@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Anthony Mahanna
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"

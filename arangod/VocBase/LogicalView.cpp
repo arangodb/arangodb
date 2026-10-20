@@ -18,10 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogicalView.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -83,7 +83,7 @@ bool readIsSystem(velocypack::Slice definition) {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-                         TRI_vocbase_t& vocbase, velocypack::Slice definition,
+                         Database& vocbase, velocypack::Slice definition,
                          bool isUserRequest)
     : LogicalDataSource{*this,
                         vocbase,
@@ -132,17 +132,7 @@ Result LogicalView::appendVPack(velocypack::Builder& build, Serialization ctx,
   return appendVPackImpl(build, ctx, safe);
 }
 
-bool LogicalView::canUse(auth::Level const& level) {
-  return ExecContext::current().canUseDatabase(vocbase().name(), level);
-  // TODO per-view authentication checks disabled as per
-  // https://github.com/arangodb/backlog/issues/459
-  // return !ctx || (  // authentication not enabled
-  //   ctx->canUseDatabase(vocbase.name(), level) &&  // can use vocbase
-  //   ctx->canUseCollection(vocbase.name(), name(), level)  // can use view
-  // ));
-}
-
-Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result LogicalView::create(LogicalView::ptr& view, Database& vocbase,
                            velocypack::Slice definition, bool isUserRequest) {
   // extract view name
   std::string name;
@@ -173,6 +163,13 @@ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 }
 
 Result LogicalView::drop() {
+  // TODO We mark a view as deleted before doing any permission checks (or maybe
+  //      check for other failure conditions), but happily report it as deleted
+  //      in the meantime.
+  //      So if one user tries to drop the view, but it fails (e.g. due to
+  //      missing permissions); and a second user tries to drop it while the
+  //      first try is running, it will see a success, but the view is still
+  //      there.
   if (deleted()) {
     return {};  // view already dropped
   }
@@ -190,8 +187,19 @@ Result LogicalView::drop() {
   }
 }
 
+std::vector<std::string> LogicalView::linkedCollectionNames() const {
+  std::vector<std::string> names;
+  visitCollections([&](DataSourceId cid, Indexes*) {
+    if (auto collection = vocbase().lookupCollection(cid); collection) {
+      names.push_back(collection->name());
+    }
+    return true;
+  });
+  return names;
+}
+
 bool LogicalView::enumerate(
-    TRI_vocbase_t& vocbase,
+    Database& vocbase,
     std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback) {
   TRI_ASSERT(callback);
   if (!ServerState::instance()->isCoordinator()) {
@@ -217,7 +225,7 @@ bool LogicalView::enumerate(
   return true;
 }
 
-Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result LogicalView::instantiate(LogicalView::ptr& view, Database& vocbase,
                                 velocypack::Slice definition,
                                 bool isUserRequest) {
   auto& server = vocbase.server();
@@ -249,7 +257,7 @@ Result LogicalView::rename(std::string&& newName) {
 
 namespace cluster_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept {
   auto& server = vocbase.server();
   if (!server.hasFeature<ClusterFeature>()) {
@@ -287,7 +295,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     view = engine.getView(vocbase.name(), id);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
-      // and original behavior of TRI_vocbase_t::createView
+      // and original behavior of Database::createView
       view->open();
     } else {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -340,7 +348,7 @@ Result properties(LogicalView const& view, bool safe) noexcept {
 }  // namespace cluster_helper
 namespace storage_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept {
   return safeCall([&]() -> Result {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)
@@ -367,7 +375,7 @@ Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
   auto& engine = vocbase.engine();
   return safeCall([&]() -> Result {
-    if (engine.inRecovery()) {
+    if (!engine.isReady()) {
       return {};
     }
     velocypack::Builder b;

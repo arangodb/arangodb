@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BatchMaterializeDocuments.h"
@@ -44,8 +43,7 @@ using EN = ExecutionNode;
 namespace {
 
 bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
-  if (auto type = indexHandle->type();
-      type == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+  if (auto type = indexHandle->type(); type == IndexType::Inverted) {
     LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
              << "index type explicitly excluded.";
     return false;
@@ -133,6 +131,9 @@ void batchMaterializeDocumentsRule(Optimizer* opt,
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
         *newOutVariable, *oldOutVariable);
+    if (indexNode->collection()->isSatellite()) {
+      materialized->useAsSatelliteOf(indexNode->id());
+    }
 
     plan->insertAfter(indexNode, materialized);
 

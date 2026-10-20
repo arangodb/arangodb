@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestCollectionHandler.h"
@@ -40,9 +39,10 @@ futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(coll->name(),
-                                                 auth::Level::RW)) {
-      co_return Result(TRI_ERROR_FORBIDDEN);
+    if (auto r = ExecContext::current().canUseCollection(
+            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta);
+        !r.ok()) {
+      co_return r;
     }
 
     auto physical = toRocksDBCollection(coll->getPhysical());

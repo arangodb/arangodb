@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -80,14 +79,14 @@ class GraphNode : public ExecutionNode {
 
  protected:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
             AstNode const* direction, AstNode const* graph,
             std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, velocypack::Slice base);
 
   /// @brief Internal constructor to clone the node.
-  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
             std::vector<Collection*> const& edgeColls,
             std::vector<Collection*> const& vertexColls,
             TRI_edge_direction_e defaultDirection,
@@ -134,7 +133,7 @@ class GraphNode : public ExecutionNode {
   bool isHybridDisjoint() const;
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const;
+  Database* vocbase() const;
 
   /// @brief return the vertex out variable
   Variable const* vertexOutVariable() const;
@@ -254,7 +253,7 @@ class GraphNode : public ExecutionNode {
 
  protected:
   /// @brief the database
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   /// @brief vertex output variable
   Variable const* _vertexOutVariable;

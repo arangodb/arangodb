@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ -d /run/systemd/system ] ; then
+    deb-systemd-invoke stop arangodb3.service >/dev/null
+else
+    if [ -x "/etc/init.d/arangodb3" ]; then
+    	invoke-rc.d arangodb3 stop || exit $?
+    fi
+fi

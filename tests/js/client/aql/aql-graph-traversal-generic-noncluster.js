@@ -22,8 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Tobias Gödderz
-/// @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
 const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');

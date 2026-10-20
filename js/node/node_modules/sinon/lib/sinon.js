@@ -1,5 +1,7 @@
-"use strict";
+'use strict';
 
-const createApi = require("./create-sinon-api");
+var createSinonApi = require('./create-sinon-api.js');
 
-module.exports = createApi();
+const sinon = createSinonApi();
+
+module.exports = sinon;

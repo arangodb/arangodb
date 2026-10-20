@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "segmentation_token_stream.hpp"

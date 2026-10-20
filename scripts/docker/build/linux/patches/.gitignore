@@ -1,0 +1,2 @@
+# Un-ignore patch files in this directory so the Dockerfile COPY instruction works.
+!*.patch

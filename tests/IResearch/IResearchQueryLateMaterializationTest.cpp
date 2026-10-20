@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <absl/strings/str_replace.h>

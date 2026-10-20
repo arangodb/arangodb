@@ -18,14 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -33,15 +31,14 @@ using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : ServerSecurityFeature(server, ServerSecurityFeatureOptions{}) {}
+
+ServerSecurityFeature::ServerSecurityFeature(
+    application_features::ApplicationServer& server,
+    ServerSecurityFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void ServerSecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::security::ServerSecurityOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ServerSecurityFeature::disableFoxxApi() noexcept {
@@ -58,20 +55,6 @@ bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
-}
-
-bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
-  bool allowAccess = !isRestApiHardened();
-
-  if (!allowAccess) {
-    ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser()) {
-      // also allow access if there is not authentication
-      // enabled or when the user is an administrator
-      allowAccess = true;
-    }
-  }
-  return allowAccess;
 }
 
 bool ServerSecurityFeature::foxxAllowInstallFromRemote() const noexcept {

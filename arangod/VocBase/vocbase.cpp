@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "vocbase.h"
@@ -46,34 +45,27 @@
 #include "Cluster/ServerState.h"
 #include "Containers/Helpers.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
-#include "Network/NetworkFeature.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
 #ifdef USE_V8
 #include "V8Server/v8-user-structures.h"
@@ -98,14 +90,13 @@
 #include <exception>
 #include <memory>
 #include <thread>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
-using namespace arangodb;
+namespace arangodb {
 using namespace arangodb::basics;
 
-bool TRI_vocbase_t::use() noexcept {
+bool Database::use() noexcept {
   auto v = _refCount.load(std::memory_order_relaxed);
   do {
     if ((v & 1) != 0) {
@@ -119,47 +110,47 @@ bool TRI_vocbase_t::use() noexcept {
   return true;
 }
 
-void TRI_vocbase_t::forceUse() noexcept {
+void Database::forceUse() noexcept {
   _refCount.fetch_add(2, std::memory_order_relaxed);
 }
 
-void TRI_vocbase_t::release() noexcept {
+void Database::release() noexcept {
   [[maybe_unused]] auto v = _refCount.fetch_sub(2, std::memory_order_release);
   TRI_ASSERT(v >= 2);
 }
 
-arangodb::VocbasePtr TRI_vocbase_t::getSharedPtr() noexcept {
+arangodb::VocbasePtr Database::getSharedPtr() noexcept {
   return VocbasePtr{use() ? this : nullptr};
 }
 
-bool TRI_vocbase_t::isDangling() const noexcept {
+bool Database::isDangling() const noexcept {
   auto const v = _refCount.load(std::memory_order_acquire);
   TRI_ASSERT((v & 1) == 0 || !isSystem());
   return v == 1;
 }
 
-bool TRI_vocbase_t::isDropped() const noexcept {
+bool Database::isDropped() const noexcept {
   auto const v = _refCount.load(std::memory_order_acquire);
   TRI_ASSERT((v & 1) == 0 || !isSystem());
   return (v & 1) != 0;
 }
 
-bool TRI_vocbase_t::markAsDropped() noexcept {
+bool Database::markAsDropped() noexcept {
   TRI_ASSERT(!isSystem());
   auto const v = _refCount.fetch_or(1, std::memory_order_acq_rel);
   return (v & 1) == 0;
 }
 
-bool TRI_vocbase_t::isSystem() const noexcept {
+bool Database::isSystem() const noexcept {
   return _info.getName() == StaticStrings::SystemDatabase;
 }
 
-void TRI_vocbase_t::checkCollectionInvariants() const noexcept {
+void Database::checkCollectionInvariants() const noexcept {
   TRI_ASSERT(_dataSourceByName.size() == _dataSourceById.size());
   TRI_ASSERT(_dataSourceByUuid.size() == _dataSourceById.size());
 }
 
-void TRI_vocbase_t::registerCollection(
+void Database::registerCollection(
     bool doLock, std::shared_ptr<LogicalCollection> const& collection) {
   auto const& name = collection->name();
   auto const id = collection->id();
@@ -213,7 +204,7 @@ void TRI_vocbase_t::registerCollection(
   }
 }
 
-void TRI_vocbase_t::unregisterCollection(LogicalCollection& collection) {
+void Database::unregisterCollection(LogicalCollection& collection) {
   // pre-condition
   checkCollectionInvariants();
 
@@ -238,8 +229,8 @@ void TRI_vocbase_t::unregisterCollection(LogicalCollection& collection) {
   checkCollectionInvariants();
 }
 
-void TRI_vocbase_t::registerView(bool doLock,
-                                 std::shared_ptr<LogicalView> const& view) {
+void Database::registerView(bool doLock,
+                            std::shared_ptr<LogicalView> const& view) {
   TRI_ASSERT(view);
   auto const& name = view->name();
   auto id = view->id();
@@ -288,7 +279,7 @@ void TRI_vocbase_t::registerView(bool doLock,
   }
 }
 
-bool TRI_vocbase_t::unregisterView(LogicalView const& view) {
+bool Database::unregisterView(LogicalView const& view) {
   // pre-condition
   checkCollectionInvariants();
 
@@ -315,7 +306,7 @@ bool TRI_vocbase_t::unregisterView(LogicalView const& view) {
   return true;
 }
 
-bool TRI_vocbase_t::dropCollectionCallback(LogicalCollection& collection) {
+bool Database::dropCollectionCallback(LogicalCollection& collection) {
   // remove from list of collections
   auto& vocbase = collection.vocbase();
 
@@ -350,7 +341,7 @@ bool TRI_vocbase_t::dropCollectionCallback(LogicalCollection& collection) {
 }
 
 #ifndef USE_ENTERPRISE
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollectionObject(
+std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     velocypack::Slice data, bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
@@ -359,9 +350,23 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollectionObject(
 
   return std::make_shared<LogicalCollection>(*this, data, isAStub);
 }
+
+std::shared_ptr<LogicalCollection> Database::createCollectionObject(
+    CollectionDescriptor descriptor, bool isAStub) {
+  // every collection object on coordinators must be a stub
+  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  // collection objects on single servers must not be stubs
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
+  if (!isAStub) {
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
+  }
+
+  return std::make_shared<LogicalCollection>(*this, descriptor, isAStub);
+}
 #endif
 
-void TRI_vocbase_t::persistCollection(
+void Database::persistCollection(
     std::shared_ptr<LogicalCollection> const& collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -392,8 +397,8 @@ void TRI_vocbase_t::persistCollection(
   }
 }
 
-Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
-                                     bool checkPermissions) {
+Result Database::loadCollection(LogicalCollection& collection,
+                                bool checkPermissions) {
   TRI_ASSERT(collection.id().isSet());
 
   // read lock, need this already to call name() !
@@ -401,10 +406,10 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
 
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
-    if (!ExecContext::current().canUseCollection(dbName, collection.name(),
-                                                 auth::Level::RO)) {
-      return {TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") +
-                                       collection.name() + "'"};
+    if (auto r = ExecContext::current().canUseCollection(
+            dbName, collection.name(), AccessLevel::Read);
+        !r.ok()) {
+      return r;
     }
   }
 
@@ -418,7 +423,7 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
   return {};
 }
 
-Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
+Result Database::dropCollectionWorker(LogicalCollection& collection) {
   std::string const colName(collection.name());
   std::string const& dbName = _info.getName();
 
@@ -507,16 +512,11 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
   return res;
 }
 
-void TRI_vocbase_t::stop() {
+void Database::stop() {
   queryPlanCache().invalidateAll();
 
   try {
     shutdownReplicatedLogs();
-
-    // stop replication
-    if (_replicationApplier != nullptr) {
-      _replicationApplier->stopAndJoin();
-    }
 
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
@@ -529,7 +529,7 @@ void TRI_vocbase_t::stop() {
   }
 }
 
-void TRI_vocbase_t::shutdown() {
+void Database::shutdown() {
   stop();
 
   std::vector<std::shared_ptr<LogicalCollection>> collections;
@@ -562,7 +562,7 @@ void TRI_vocbase_t::shutdown() {
   _collections = {};
 }
 
-std::vector<std::string> TRI_vocbase_t::collectionNames() const {
+std::vector<std::string> Database::collectionNames() const {
   std::vector<std::string> result;
 
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
@@ -582,7 +582,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() const {
   return result;
 }
 
-void TRI_vocbase_t::inventory(
+void Database::inventory(
     VPackBuilder& result, TRI_voc_tick_t maxTick,
     std::function<bool(LogicalCollection const*)> const& nameFilter) {
   TRI_ASSERT(result.isOpenObject());
@@ -643,7 +643,7 @@ void TRI_vocbase_t::inventory(
       continue;
     }
 
-    if (!exec.canUseCollection(dbName, collection->name(), auth::Level::RO)) {
+    if (exec.canSeeCollection(dbName, collection->name()).fail()) {
       continue;
     }
 
@@ -671,7 +671,7 @@ void TRI_vocbase_t::inventory(
   result.close();  // </views>
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
+std::shared_ptr<LogicalCollection> Database::lookupCollection(
     DataSourceId id) const noexcept {
   auto ptr = lookupDataSource(id);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
@@ -680,7 +680,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
+std::shared_ptr<LogicalCollection> Database::lookupCollection(
     std::string_view nameOrId) const noexcept {
   auto ptr = lookupDataSource(nameOrId);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
@@ -689,7 +689,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
   return basics::downCast<LogicalCollection>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
+std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
     std::string_view uuid) const noexcept {
   // otherwise we'll look up the collection by name
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
@@ -704,7 +704,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
   return basics::downCast<LogicalCollection>(it->second);
 }
 
-std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+std::shared_ptr<LogicalDataSource> Database::lookupDataSource(
     DataSourceId id) const noexcept {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceById.find(id);
@@ -712,7 +712,7 @@ std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
   return itr == _dataSourceById.end() ? nullptr : itr->second;
 }
 
-std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+std::shared_ptr<LogicalDataSource> Database::lookupDataSource(
     std::string_view nameOrId) const noexcept {
   if (nameOrId.empty()) {
     return nullptr;
@@ -739,7 +739,7 @@ std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
   return itrUuid == _dataSourceByUuid.end() ? nullptr : itrUuid->second;
 }
 
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(DataSourceId id) const {
+std::shared_ptr<LogicalView> Database::lookupView(DataSourceId id) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto ptr = lookupDataSource(id);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kView) {
@@ -748,7 +748,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(DataSourceId id) const {
   return basics::downCast<LogicalView>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
+std::shared_ptr<LogicalView> Database::lookupView(
     std::string_view nameOrId) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto ptr = lookupDataSource(nameOrId);
@@ -758,8 +758,8 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   return basics::downCast<LogicalView>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection>
-TRI_vocbase_t::createCollectionObjectForStorage(velocypack::Slice parameters) {
+std::shared_ptr<LogicalCollection> Database::createCollectionObjectForStorage(
+    velocypack::Slice parameters) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // augment collection parameters with storage-engine specific data
@@ -777,7 +777,7 @@ TRI_vocbase_t::createCollectionObjectForStorage(velocypack::Slice parameters) {
   return createCollectionObject(parameters, /*isAStub*/ false);
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
+std::shared_ptr<LogicalCollection> Database::createCollection(
     velocypack::Slice parameters) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -803,10 +803,51 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
-    _versionTracker.track("create collection");
+    _databaseProvider.notifyDdlChange("create collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
+    }
+
+    return collection;
+  } catch (basics::Exception const& ex) {
+    events::CreateCollection(dbName, name, ex.code());
+    throw;
+  } catch (std::exception const&) {
+    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
+    throw;
+  }
+}
+
+std::shared_ptr<LogicalCollection> Database::createCollection(
+    CollectionDescriptor descriptor) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+  std::string name = descriptor.mutableProps.name;
+
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  try {
+    auto collection =
+        createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+
+    {
+      READ_LOCKER(readLocker, _inventoryLock);
+      persistCollection(collection);
+    }
+
+    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
+    _databaseProvider.notifyDdlChange("create collection");
+
+    // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount();
     }
 
@@ -821,46 +862,8 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 }
 
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-TRI_vocbase_t::createCollections(
+Database::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
-    bool allowEnterpriseCollectionsOnSingleServer) {
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
-  VPackBuilder builder =
-      CreateCollectionBody::toCreateCollectionProperties(collections);
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
-  try {
-    // Here we do have a single server setup, or we're either on a DBServer
-    // / Agency. In that case, we're not batching collection creating.
-    // Therefore, we need to iterate over the infoSlice and create each
-    // collection one by one.
-    auto result =
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
-
-    // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer()) {
-      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
-          result.size());
-    }
-
-    return {result};
-
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
-  }
-}
-
-std::vector<std::shared_ptr<LogicalCollection>>
-TRI_vocbase_t::createCollections(
-    velocypack::Slice infoSlice,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -873,6 +876,37 @@ TRI_vocbase_t::createCollections(
   }
 #endif
 
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // typed path: hand the properties down as a descriptor instead of
+  // serializing them and parsing them again
+  try {
+    std::vector<CollectionDescriptor> descriptors;
+    descriptors.reserve(collections.size());
+    for (auto const& c : collections) {
+      descriptors.emplace_back(c.toDescriptor());
+    }
+
+    auto result = createCollections(std::move(descriptors));
+
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+          result.size());
+    }
+    return {result};
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    velocypack::Slice infoSlice,
+    bool allowEnterpriseCollectionsOnSingleServer) {
   auto const& dbName = _info.getName();
 
   // first validate all collections
@@ -933,11 +967,48 @@ TRI_vocbase_t::createCollections(
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
 
-  _versionTracker.track("create collection");
+  _databaseProvider.notifyDdlChange("create collection");
   return collections;
 }
 
-Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    std::vector<CollectionDescriptor> descriptors) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+
+  for (auto const& descriptor : descriptors) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+      events::CreateCollection(dbName, descriptor.mutableProps.name,
+                               res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(descriptors.size());
+  for (auto& descriptor : descriptors) {
+    auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+    TRI_ASSERT(col != nullptr);
+    collections.emplace_back(std::move(col));
+  }
+
+  {
+    READ_LOCKER(readLocker, _inventoryLock);
+    for (auto& col : collections) {
+      persistCollection(col);
+    }
+  }
+
+  for (auto& col : collections) {
+    events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
+  }
+
+  _databaseProvider.notifyDdlChange("create collection");
+  return collections;
+}
+
+Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
   auto collection = lookupCollection(cid);
   auto const& dbName = _info.getName();
 
@@ -946,7 +1017,7 @@ Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && collection->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && collection->system() && _engine.isReady()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
@@ -968,10 +1039,11 @@ Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
 
   if (res.ok()) {
     collection->deferDropCollection(dropCollectionCallback);
-    _versionTracker.track("drop collection");
+    _databaseProvider.notifyDdlChange("drop collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().decrementCollectionCount();
     }
   }
@@ -979,8 +1051,7 @@ Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
   return res;
 }
 
-Result TRI_vocbase_t::validateCollectionParameters(
-    velocypack::Slice parameters) {
+Result Database::validateCollectionParameters(velocypack::Slice parameters) {
   if (!parameters.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "collection parameters should be an object"};
@@ -990,8 +1061,8 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  if (auto res =
-          CollectionNameValidator::validateName(isSystem, _extendedNames, name);
+  if (auto res = CollectionNameValidator::validateName(isSystem,
+                                                       extendedNames(), name);
       res.fail()) {
     return res;
   }
@@ -1010,20 +1081,51 @@ Result TRI_vocbase_t::validateCollectionParameters(
   return validateExtendedCollectionParameters(parameters);
 }
 
+Result Database::validateCollectionDescriptor(
+    CollectionDescriptor const& descriptor) {
+  auto const& name = descriptor.mutableProps.name;
+  if (auto res = CollectionNameValidator::validateName(
+          descriptor.constant.isSystem, extendedNames(), name);
+      res.fail()) {
+    return res;
+  }
+
+  auto collectionType = descriptor.constant.getType();
+  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" + name + "'"};
+  }
+
+  if (auto status =
+          CollectionDescriptor::Invariants::isSmartConfiguration(descriptor);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  // needed for EE
+  return validateEnterpriseLicense(descriptor);
+}
+
 #ifndef USE_ENTERPRISE
-void TRI_vocbase_t::addSmartGraphCollections(
+void Database::addSmartGraphCollections(
     std::shared_ptr<LogicalCollection> const& /*collection*/,
     std::vector<std::shared_ptr<LogicalCollection>>& /*collections*/) const {
   // nothing to be done here. more in EE version
 }
 
-Result TRI_vocbase_t::validateExtendedCollectionParameters(velocypack::Slice) {
+Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
+  // nothing to be done here. more in EE version
+  return {};
+}
+
+Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};
 }
 #endif
 
-Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
+Result Database::renameView(DataSourceId cid, std::string_view oldName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
   if (!view) {
@@ -1041,7 +1143,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   }
 
   if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
-                                                 _extendedNames, newName);
+                                                 extendedNames(), newName);
       res.fail()) {
     return res;
   }
@@ -1065,8 +1167,8 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   // Important to save it here, before emplace in map
   auto dataSource = it1->second;
   TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
-  // skip persistence while in recovery since definition already from engine
-  if (!_engine.inRecovery()) {
+  // not ready means this definition already came from the engine
+  if (_engine.isReady()) {
     velocypack::Builder build;
     build.openObject();
     auto r = view->properties(
@@ -1094,8 +1196,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result TRI_vocbase_t::renameCollection(DataSourceId cid,
-                                       std::string_view newName) {
+Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
   auto collection = lookupCollection(cid);
 
   if (!collection) {
@@ -1116,8 +1217,8 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
-                                                       _extendedNames, newName);
+  if (auto res = CollectionNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames(), newName);
       res.fail()) {
     return res;
   }
@@ -1200,17 +1301,17 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
 
   locker.unlock();
   writeLocker.unlock();
-  _versionTracker.track("rename collection");
+  _databaseProvider.notifyDdlChange("rename collection");
 
   return TRI_ERROR_NO_ERROR;
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
+std::shared_ptr<LogicalCollection> Database::useCollection(
     DataSourceId cid, bool checkPermissions) {
   return useCollectionInternal(lookupCollection(cid), checkPermissions);
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
+std::shared_ptr<LogicalCollection> Database::useCollection(
     std::string_view name, bool checkPermissions) {
   // check that we have an existing name
   std::shared_ptr<LogicalCollection> collection;
@@ -1228,7 +1329,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
   return useCollectionInternal(collection, checkPermissions);
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollectionInternal(
+std::shared_ptr<LogicalCollection> Database::useCollectionInternal(
     std::shared_ptr<LogicalCollection> const& collection,
     bool checkPermissions) {
   if (!collection) {
@@ -1243,12 +1344,12 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollectionInternal(
   return collection;
 }
 
-void TRI_vocbase_t::releaseCollection(LogicalCollection* collection) noexcept {
+void Database::releaseCollection(LogicalCollection* collection) noexcept {
   collection->statusLock().unlock();
 }
 
-std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
-    velocypack::Slice parameters, bool isUserRequest) {
+std::shared_ptr<LogicalView> Database::createView(velocypack::Slice parameters,
+                                                  bool isUserRequest) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::string const& dbName = _info.getName();
 
@@ -1259,7 +1360,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
                                             StaticStrings::DataSourceName, "");
 
     valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
-                                             _extendedNames, name)
+                                             extendedNames(), name)
                  .ok();
   }
 
@@ -1306,14 +1407,14 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
   }
 
   events::CreateView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-  _versionTracker.track("create view");
+  _databaseProvider.notifyDdlChange("create view");
 
   view->open();  // And lets open it.
 
   return view;
 }
 
-Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
+Result Database::dropView(DataSourceId cid, bool allowDropSystem) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
   std::string const& dbName = _info.getName();
@@ -1323,7 +1424,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && view->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && view->system() && _engine.isReady()) {
     events::DropView(dbName, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }
@@ -1351,25 +1452,21 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   writeLocker.unlock();
 
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-  _versionTracker.track("drop view");
+  _databaseProvider.notifyDdlChange("drop view");
 
   return {};
 }
 
-TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                             arangodb::StorageEngine& engine)
-    : TRI_vocbase_t(
-          std::move(info), engine,
-          info.server().getFeature<DatabaseFeature>().versionTracker(),
-          info.server().getFeature<DatabaseFeature>().extendedNames()) {}
+Database::Database(arangodb::CreateDatabaseInfo&& info,
+                   arangodb::StorageEngine& engine)
+    : Database(std::move(info), engine,
+               info.server().getFeature<DatabaseFeature>()) {}
 
-TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info, StorageEngine& engine,
-                             VersionTracker& versionTracker, bool extendedNames,
-                             bool isInternal)
+Database::Database(CreateDatabaseInfo&& info, StorageEngine& engine,
+                   IDatabaseProvider& databaseProvider, bool isInternal)
     : _server(info.server()),
       _engine(engine),
-      _versionTracker(versionTracker),
-      _extendedNames(extendedNames),
+      _databaseProvider(databaseProvider),
       _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
@@ -1429,21 +1526,18 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info, StorageEngine& engine,
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
-                             CreateDatabaseInfo&& info,
-                             arangodb::StorageEngine& engine,
-                             arangodb::VersionTracker& versionTracker,
-                             bool extendedNames)
+Database::Database(Database::MockConstruct, CreateDatabaseInfo&& info,
+                   arangodb::StorageEngine& engine,
+                   arangodb::IDatabaseProvider& databaseProvider)
     : _server(info.server()),
       _engine(engine),
-      _versionTracker(versionTracker),
-      _extendedNames(extendedNames),
+      _databaseProvider(databaseProvider),
       _info(std::move(info)),
       _metrics(std::make_unique<VocbaseMetrics>()),
       _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
-TRI_vocbase_t::~TRI_vocbase_t() {
+Database::~Database() {
   // do a final cleanup of collections
   for (auto& coll : _collections) {
     try {  // simon: this status lock is terrible software design
@@ -1455,7 +1549,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
   TRI_ASSERT(_logManager->_guardedData.getLockedGuard()->statesAndLogs.empty());
 
-  // clear before deallocating TRI_vocbase_t members
+  // clear before deallocating Database members
   _collections.clear();
   _deadCollections.clear();
   _dataSourceById.clear();
@@ -1463,53 +1557,47 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   _dataSourceByUuid.clear();
 }
 
-std::string TRI_vocbase_t::path() const { return _engine.databasePath(); }
+std::string Database::path() const { return _engine.databasePath(); }
 
-bool TRI_vocbase_t::isOneShard() const {
+bool Database::isOneShard() const {
   return _info.sharding() == StaticStrings::ShardingSingle;
 }
 
-std::uint32_t TRI_vocbase_t::replicationFactor() const {
+std::uint32_t Database::replicationFactor() const {
   return _info.replicationFactor();
 }
 
-std::uint32_t TRI_vocbase_t::writeConcern() const {
-  return _info.writeConcern();
-}
+std::uint32_t Database::writeConcern() const { return _info.writeConcern(); }
 
-replication::Version TRI_vocbase_t::replicationVersion() const {
+replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void TRI_vocbase_t::addReplicationApplier() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto* applier = DatabaseReplicationApplier::create(*this);
-  _replicationApplier.reset(applier);
-}
-
-void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
+void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
-    result.add("path", VPackValue("none"));
+  if (apiVersion == 0) {
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue("none"));
+    } else {
+      result.add("path", VPackValue(path()));
+    }
   }
 }
 
-void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
+void Database::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
 }
 
-void TRI_vocbase_t::setSharding(std::string_view sharding) {
+void Database::setSharding(std::string_view sharding) {
   _info.setSharding(sharding);
 }
 
-ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
+ShardingPrototype Database::shardingPrototype() const {
   return _info.shardingPrototype();
 }
 
-std::string const& TRI_vocbase_t::shardingPrototypeName() const {
+std::string const& Database::shardingPrototypeName() const {
   switch (_info.shardingPrototype()) {
     case ShardingPrototype::Users:
       // Specifically set defaults should win
@@ -1528,7 +1616,7 @@ std::string const& TRI_vocbase_t::shardingPrototypeName() const {
   }
 }
 
-std::vector<std::shared_ptr<LogicalView>> TRI_vocbase_t::views() const {
+std::vector<std::shared_ptr<LogicalView>> Database::views() const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::vector<std::shared_ptr<LogicalView>> views;
 
@@ -1550,7 +1638,7 @@ std::vector<std::shared_ptr<LogicalView>> TRI_vocbase_t::views() const {
   return views;
 }
 
-void TRI_vocbase_t::processCollectionsOnShutdown(
+void Database::processCollectionsOnShutdown(
     std::function<void(LogicalCollection*)> const& cb) {
   std::vector<std::shared_ptr<LogicalCollection>> collections;
 
@@ -1566,7 +1654,7 @@ void TRI_vocbase_t::processCollectionsOnShutdown(
   }
 }
 
-void TRI_vocbase_t::processCollections(
+void Database::processCollections(
     std::function<void(LogicalCollection*)> const& cb) {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -1582,7 +1670,7 @@ void TRI_vocbase_t::processCollections(
   }
 }
 
-std::vector<std::shared_ptr<LogicalCollection>> TRI_vocbase_t::collections(
+std::vector<std::shared_ptr<LogicalCollection>> Database::collections(
     bool includeDeleted) const {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -1609,21 +1697,19 @@ std::vector<std::shared_ptr<LogicalCollection>> TRI_vocbase_t::collections(
 
 using namespace replication2;
 
-void TRI_vocbase_t::shutdownReplicatedLogs() noexcept {
-  _logManager->resignAll();
-}
+void Database::shutdownReplicatedLogs() noexcept { _logManager->resignAll(); }
 
-void TRI_vocbase_t::dropReplicatedLogs() noexcept {
+void Database::dropReplicatedLogs() noexcept {
   return _logManager->prepareDropAll();
 }
 
-auto TRI_vocbase_t::updateReplicatedState(
+auto Database::updateReplicatedState(
     LogId id, agency::LogPlanTermSpecification const& term,
     agency::ParticipantsConfig const& config) -> Result {
   return _logManager->updateReplicatedState(id, term, config);
 }
 
-auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
+auto Database::getReplicatedLogLeaderById(LogId id)
     -> std::shared_ptr<replicated_log::ILogLeader> {
   auto log = getReplicatedLogById(id);
   auto participant = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
@@ -1634,7 +1720,7 @@ auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
   return participant;
 }
 
-auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
+auto Database::getReplicatedLogFollowerById(LogId id)
     -> std::shared_ptr<replicated_log::ILogFollower> {
   auto log = getReplicatedLogById(id);
   auto participant = std::dynamic_pointer_cast<replicated_log::ILogFollower>(
@@ -1645,7 +1731,7 @@ auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
   return participant;
 }
 
-auto TRI_vocbase_t::getReplicatedLogById(LogId id)
+auto Database::getReplicatedLogById(LogId id)
     -> std::shared_ptr<replicated_log::ReplicatedLog> {
   auto guard = _logManager->_guardedData.getLockedGuard();
   if (auto iter = guard->statesAndLogs.find(id);
@@ -1657,32 +1743,32 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
   }
 }
 
-auto TRI_vocbase_t::getReplicatedLogsStatusMap() const
+auto Database::getReplicatedLogsStatusMap() const
     -> std::unordered_map<LogId, maintenance::LogStatus> {
   return _logManager->getReplicatedLogsStatusMap();
 }
 
-auto TRI_vocbase_t::getReplicatedStatesStatus() const
+auto Database::getReplicatedStatesStatus() const
     -> std::unordered_map<LogId, replicated_log::LogStatus> {
   return _logManager->getReplicatedStatesStatus();
 }
 
-auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type,
-                                          VPackSlice parameter)
+auto Database::createReplicatedState(LogId id, std::string_view type,
+                                     VPackSlice parameter)
     -> ResultT<std::shared_ptr<replicated_state::ReplicatedStateBase>> {
   return _logManager->createReplicatedState(id, type, parameter);
 }
 
-auto TRI_vocbase_t::dropReplicatedState(LogId id) noexcept -> Result {
+auto Database::dropReplicatedState(LogId id) noexcept -> Result {
   return _logManager->dropReplicatedState(id);
 }
 
-auto TRI_vocbase_t::getReplicatedStateById(LogId id)
+auto Database::getReplicatedStateById(LogId id)
     -> ResultT<std::shared_ptr<replicated_state::ReplicatedStateBase>> {
   return _logManager->getReplicatedStateById(id);
 }
 
-void TRI_vocbase_t::registerReplicatedState(
+void Database::registerReplicatedState(
     replication2::LogId id,
     std::unique_ptr<replication2::storage::IStorageEngineMethods> methods) {
   _logManager->registerReplicatedState(id, std::move(methods));
@@ -1703,45 +1789,36 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   }
 }
 
-[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
+[[nodiscard]] auto Database::getDatabaseConfiguration()
     -> DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
 
-  auto config = std::invoke([&]() -> DatabaseConfiguration {
-    if (!ServerState::instance()->isCoordinator() &&
-        !ServerState::instance()->isDBServer()) {
-      return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    } else {
-      auto& ci = cl.clusterInfo();
-      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    }
-  });
+  std::function<DataSourceId()> idGenerator;
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isDBServer()) {
+    idGenerator = []() { return DataSourceId(TRI_NewTickServer()); };
+  } else {
+    auto& ci = cl.clusterInfo();
+    idGenerator = [&ci]() { return DataSourceId(ci.uniqid(1)); };
+  }
+
+  DatabaseConfiguration config{
+      std::move(idGenerator),
+      [this](
+          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+        CollectionNameResolver resolver{*this};
+        auto c = resolver.getCollection(name);
+        if (c == nullptr) {
+          return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                        absl::StrCat("Collection not found: ", name,
+                                     " in database ", this->name())};
+        }
+        return c->getCollectionProperties();
+      }};
 
   config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = _extendedNames;
+  config.allowExtendedNames = extendedNames();
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();
@@ -1749,15 +1826,14 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
   config.defaultWriteConcern = writeConcern();
-
-  config.isOneShardDB = cl.forceOneShard() || isOneShard();
-  if (config.isOneShardDB) {
-    config.defaultDistributeShardsLike = shardingPrototypeName();
-  } else {
-    config.defaultDistributeShardsLike = "";
+  if (cl.forceOneShard() || isOneShard()) {
+    config.oneShardDBConfiguration =
+        OneShardDatabaseConfiguration{shardingPrototypeName()};
   }
 
   config.replicationVersion = replicationVersion();
 
   return config;
 }
+
+}  // namespace arangodb

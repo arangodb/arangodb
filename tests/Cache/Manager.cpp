@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -33,7 +31,7 @@
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Random/RandomGenerator.h"
@@ -403,6 +401,56 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
 
   ASSERT_TRUE(1024ULL * 1024ULL < bigManager.globalAllocation());
   ASSERT_TRUE(bigRequestLimit > bigManager.globalAllocation());
+}
+
+// regression test: to ES-2308. guard against growth beyond watermark
+TEST_F(CacheManagerTest, test_no_growth_beyond_highwater_mark) {
+  std::uint64_t requestLimit = 16 * 1024 * 1024;
+
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 0;
+  Manager manager(prng, postFn, co);
+
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
+  ASSERT_NE(nullptr, cache);
+
+  std::uint64_t const initialSize = cache->size();
+  std::uint64_t const initialUsageLimit = cache->usageLimit();
+
+  // push the global allocation above the highwater mark, but keep it below
+  // the global limit
+  auto highwaterMark = static_cast<std::uint64_t>(
+      co.highwaterMultiplier * static_cast<double>(requestLimit));
+  std::uint64_t const extra =
+      highwaterMark + 1024 * 1024 - manager.globalAllocation();
+  manager.adjustGlobalAllocation(static_cast<std::int64_t>(extra));
+  auto extraGuard = scopeGuard([&]() noexcept {
+    manager.adjustGlobalAllocation(-static_cast<std::int64_t>(extra));
+  });
+  ASSERT_GT(manager.globalAllocation(), highwaterMark);
+  ASSERT_LT(manager.globalAllocation(), requestLimit);
+
+  // insert more data than the global limit allows. every rejected insert
+  // triggers a grow request, which must be denied
+  std::string value(8 * 1024, 'x');
+  for (std::uint64_t i = 0; i < 4096; ++i) {
+    CachedValue* cv =
+        CachedValue::construct(&i, sizeof(i), value.data(), value.size());
+    TRI_ASSERT(cv != nullptr);
+    if (cache->insert(cv) != TRI_ERROR_NO_ERROR) {
+      delete cv;
+    }
+
+    ASSERT_LE(cache->usageLimit(), initialUsageLimit) << "iteration " << i;
+    ASSERT_LE(cache->size(), initialSize) << "iteration " << i;
+  }
+
+  ASSERT_LE(cache->usage(), initialUsageLimit);
+  ASSERT_LE(manager.globalAllocation(), requestLimit);
+
+  manager.destroyCache(std::move(cache));
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

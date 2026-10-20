@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -98,13 +97,19 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   /// @brief whether or not the index is sorted
   bool isSorted() const override { return _wrapped->isSorted(); }
 
-  /// @brief if true this index should not be shown externally
+  /// @brief hide building indexes, except the vector index which stays visible
+  /// through its build phases
   bool isHidden() const override {
-    return true;  // do not show building indexes
+    return _wrapped->type() != IndexType::Vector;
   }
 
   bool inProgress() const override {
     return true;  // do not show building indices
+  }
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    return _wrapped->coveredFields();
   }
 
   size_t memory() const override { return _wrapped->memory(); }

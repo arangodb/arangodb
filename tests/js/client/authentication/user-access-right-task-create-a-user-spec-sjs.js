@@ -21,19 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
-// / @author Mark Vollmary
-// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const errors = require('@arangodb').errors;
@@ -48,6 +44,7 @@ const testUser = `${namePrefix}TestUser`;
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 const db = require('internal').db;
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -62,7 +59,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const dropKeySpace = (keySpaceId) => {
@@ -70,7 +67,7 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const setKey = (keySpaceId, name) => {
@@ -78,16 +75,7 @@ const setKey = (keySpaceId, name) => {
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + '/_admin/execute?returnAsJSON=true',
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.removeAllUsers();
@@ -95,7 +83,7 @@ helper.generateAllUsers();
 
 describe('User Rights Management', () => {
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    assertTrue(userSet.size > 0); 
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -110,7 +98,7 @@ describe('User Rights Management', () => {
           before(() => {
             // What are defaults if unchanged?
             helper.switchUser(name);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+            assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
           });
 
           after(() => {
@@ -168,16 +156,16 @@ describe('User Rights Management', () => {
                 tasks.register(task);
                 wait(keySpaceId, name);
                 if (systemLevel['rw'].has(name)) {
-                  expect(rootTestUser()).to.equal(true, 'User creation reported success, but User was not found afterwards.');
+                  assertTrue(rootTestUser(), 'User creation reported success, but User was not found afterwards.');
                 } else {
-                  expect(rootTestUser()).to.equal(false, `${name} was able to create a user with insufficent rights`);
+                  assertFalse(rootTestUser(), `${name} was able to create a user with insufficent rights`);
                 }
               } else {
                 try {
                   tasks.register(task);
-                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  assertFalse(true, `${name} managed to register a task with insufficient rights`);
                 } catch (e) {
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                 }
               }
             });

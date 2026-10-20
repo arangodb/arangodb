@@ -31,7 +31,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ReplicationTimeoutOptionsProvider::declareOptions(
+void ReplicationTimeoutOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     ReplicationTimeoutFeatureOptions& opts) {
   options
@@ -103,7 +103,7 @@ the same value on all DB-Servers.)");
 the same value on all DB-Servers.)");
 }
 
-void ReplicationTimeoutOptionsProvider::validateOptions(
+void ReplicationTimeoutOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     ReplicationTimeoutFeatureOptions& opts) {
   if (opts.upperLimit < opts.lowerLimit) {

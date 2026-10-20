@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestExplainHandler.h"
@@ -39,6 +38,7 @@ RestExplainHandler::RestExplainHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/explain (prefix)
 RestStatus RestExplainHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

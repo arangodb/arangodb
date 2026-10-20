@@ -18,10 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Michael Hackstein
-/// @author Tobias Gödderz
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegisterPlan.h"
@@ -45,6 +41,7 @@ VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
 MissingVariablesException::MissingVariablesException(
     Variable const* variable, ExecutionNode const* node,
     basics::SourceLocation location)
+    // NOLINTNEXTLINE(bugprone-throw-keyword-missing)
     : Exception(TRI_ERROR_INTERNAL,
                 createMissingVariablesExceptionMessage(variable, node),
                 location),

@@ -18,25 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+struct Database;
 class DatabaseFeature;
 class ClusterFeature;
 struct OperationOptions;
@@ -45,23 +42,18 @@ namespace methods {
 
 struct Databases {
   static std::vector<std::string> list(
-      application_features::ApplicationServer& server,
-      std::string const& user = "");
+      application_features::ApplicationServer& server, bool onlyCurrentUser);
   static std::vector<std::string> list(DatabaseFeature& databaseFeature,
                                        ClusterFeature* clusterFeature,
-                                       std::string const& user = "");
-  static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
+                                       bool onlyCurrentUser);
   static Result create(application_features::ApplicationServer& server,
                        StorageEngine& engine, ExecContext const& context,
                        std::string const& dbName, velocypack::Slice users,
                        velocypack::Slice options);
-  static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
+  static Result drop(ExecContext const& context, Database* systemVocbase,
                      std::string const& dbName);
 
  private:
-  /// @brief will retry for at most <timeout> seconds
-  static Result grantCurrentUser(CreateDatabaseInfo const& info);
-
   static Result createCoordinator(CreateDatabaseInfo const& info);
   static Result createOther(CreateDatabaseInfo const& info);
 };

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVectorIndexList.h"
@@ -39,7 +38,6 @@
 
 namespace arangodb::vector {
 
-namespace {
 // Copy a non-owning slice's bytes into a fresh owning SharedSlice.
 velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
   velocypack::Buffer<uint8_t> buf;
@@ -47,20 +45,19 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
   return velocypack::SharedSlice{std::move(buf)};
 }
 
-// Single switch on VectorIndexFormatVersion so the compiler flags an
+// Single switch on FormatVersion so the compiler flags an
 // unhandled version when a new on-disk format is added.
 template<template<typename> typename Iter, typename... Args>
 faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
-    VectorIndexFormatVersion version, Args&&... args) {
+    FormatVersion version, Args&&... args) {
   switch (version) {
-    case VectorIndexFormatVersion::kV1:
+    case FormatVersion::kV1:
       return new Iter<WithStoredValuesV1Strategy>(std::forward<Args>(args)...);
-    case VectorIndexFormatVersion::kV2:
+    case FormatVersion::kV2:
       return new Iter<WithStoredValuesV2Strategy>(std::forward<Args>(args)...);
   }
   ADB_UNREACHABLE;
 }
-}  // namespace
 
 /// RocksDBInvertedListsIteratorBase
 RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
@@ -240,9 +237,13 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   idsToValue.reserve(kBatchSize);
   ids.reserve(kBatchSize);
 
-  for (size_t i{0};
-       i < kBatchSize && RocksDBInvertedListsIteratorBase::is_available();
-       ++i, _it->Next()) {
+  // As the Base need the `_filteredIdsIt` for its `is_available` condition
+  // We need to call the Base-Parent.
+  auto isAvailable = [this] {
+    // NOLINTNEXTLINE(bugprone-parent-virtual-call)
+    return RocksDBInvertedListsIteratorBase::is_available();
+  };
+  for (size_t i{0}; i < kBatchSize && isAvailable(); ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     ids.emplace_back(id);
     std::vector<uint8_t> value(_it->value().data(),
@@ -343,9 +344,13 @@ requires(Strategy::hasStoredValues) bool RocksDBInvertedListsFilteringStoredValu
   std::vector<std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>> items;
   items.reserve(kBatchSize);
 
-  for (size_t i{0};
-       i < kBatchSize && RocksDBInvertedListsIteratorBase::is_available();
-       ++i, _it->Next()) {
+  // As the Base need the `_filteredIdsIt` for its `is_available` condition
+  // We need to call the Base-Parent.
+  auto isAvailable = [this] {
+    // NOLINTNEXTLINE(bugprone-parent-virtual-call)
+    return RocksDBInvertedListsIteratorBase::is_available();
+  };
+  for (size_t i{0}; i < kBatchSize && isAvailable(); ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     auto entryValue =
         Strategy::extractVectorIndexValue(_it->value(), _codeSize);

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaterializeForEnumerateNear.h"
@@ -29,7 +28,8 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/RewriteProjectionAttributeAccesses.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
@@ -48,7 +48,7 @@ namespace {
 // is consumed).
 Projections collectProjections(EnumerateNearVectorNode& vectorNode) {
   containers::FlatHashSet<AttributeNamePath> attributes;
-  bool const projectable = utils::findProjections(
+  bool const projectable = optimizer::findProjections(
       &vectorNode, vectorNode.outVariable(), /*expectedAttribute*/ "",
       /*excludeStartNodeFilterCondition*/ false, attributes);
   if (!projectable || attributes.empty() ||
@@ -95,7 +95,7 @@ void materializeForEnumerateNear(Optimizer* opt,
 
     if (indexCoversProjections || filterLoadsDocument) {
       if (!projections.empty()) {
-        utils::rewriteProjectionAttributeAccesses(
+        optimizer::rewriteProjectionAttributeAccesses(
             *plan, vectorNode, vectorNode->outVariable(), projections,
             /*index*/ 0);
         vectorNode->setProjections(std::move(projections));

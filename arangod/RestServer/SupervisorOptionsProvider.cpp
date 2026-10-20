@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void SupervisorOptionsProvider::declareOptions(
+void SupervisorOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, SupervisorFeatureOptions& opts) {
   options
       ->addOption(

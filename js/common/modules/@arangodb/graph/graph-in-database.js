@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Roman Rabinovich
 // //////////////////////////////////////////////////////////////////////////////
 
 const graphName = "UnitTest_pregel";

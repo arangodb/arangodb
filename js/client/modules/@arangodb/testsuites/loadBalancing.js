@@ -22,8 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -44,7 +42,8 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'load_balancing': [tu.pathForTesting('client/load-balancing')]
+  'load_balancing': [tu.pathForTesting('client/load-balancing')],
+  'load_balancing_auth': [tu.pathForTesting('client/load-balancing')]
 };
 
 ////////////////////////////////////////////////////////////////////////////////

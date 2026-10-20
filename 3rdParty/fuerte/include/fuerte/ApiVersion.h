@@ -58,4 +58,35 @@ constexpr auto to_string(ApiVersion v) -> std::string {
   }
 }
 
+constexpr auto from(uint32_t v) -> std::optional<ApiVersion> {
+  switch (v) {
+    case 0:
+      return ApiVersion::V0;
+    case 1:
+      return ApiVersion::V1;
+    case 2:
+      return ApiVersion::Experimental;
+    default:
+      return std::nullopt;
+  }
+}
+
+// the inspector only works when we link with the inspector library
+template <typename Inspector>
+auto inspect(Inspector& f, ApiVersion& x) {
+  if constexpr (Inspector::isLoading) {
+    auto str = std::string{};
+    auto res = f.apply(str);
+    if (!res.ok()) {
+      return res;
+    }
+    if (auto opt = from(str); opt.has_value()) {
+      x = *opt;
+    }
+    return decltype(res){"invalid ApiVersion: " + str};
+  } else {
+    return f.apply(to_string(x));
+  }
+}
+
 }}}}  // namespace arangodb::fuerte::api_version::v1

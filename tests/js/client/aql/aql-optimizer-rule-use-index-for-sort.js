@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -962,7 +960,7 @@ function optimizerRuleTestSuite() {
     },
     
     testSortAscWithFilterNonConst : function () {
-      var query = "FOR v IN " + colName + " FILTER v.d == NOOPT(123) SORT v.d ASC RETURN v";
+      var query = "FOR v IN " + colName + " FILTER v.d == NOEVAL(123) SORT v.d ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
@@ -981,7 +979,7 @@ function optimizerRuleTestSuite() {
     },
     
     testSortAscWithFilterNonConstMulti : function () {
-      var query = "FOR v IN " + colName + " FILTER v.a == NOOPT(123) SORT v.b ASC RETURN v";
+      var query = "FOR v IN " + colName + " FILTER v.a == NOEVAL(123) SORT v.b ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
@@ -1082,7 +1080,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortDescWithFilterNonConst : function () {
-      var query = "FOR v IN " + colName + " FILTER v.d == NOOPT(123) SORT v.d DESC RETURN v";
+      var query = "FOR v IN " + colName + " FILTER v.d == NOEVAL(123) SORT v.d DESC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
@@ -1101,7 +1099,7 @@ function optimizerRuleTestSuite() {
     },
     
     testSortDescWithFilterNonConstMulti : function () {
-      var query = "FOR v IN " + colName + " FILTER v.a == NOOPT(123) SORT v.b DESC RETURN v";
+      var query = "FOR v IN " + colName + " FILTER v.a == NOEVAL(123) SORT v.b DESC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));

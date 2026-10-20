@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/ResignLeadership.h"

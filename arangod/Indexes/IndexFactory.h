@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,10 +25,10 @@
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
+struct Database;
 class Index;
 class LogicalCollection;
 
@@ -59,7 +58,7 @@ struct IndexTypeFactory {
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(Index::IndexType type, velocypack::Slice lhs,
+  virtual bool equal(IndexType type, velocypack::Slice lhs,
                      velocypack::Slice rhs, bool attributeOrderMatters) const;
 
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -73,7 +72,7 @@ struct IndexTypeFactory {
   /// @brief normalize an Index definition prior to instantiation/persistence
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
-                           TRI_vocbase_t const& vocbase) const = 0;
+                           Database const& vocbase) const = 0;
 
   /// @brief the order of attributes matters by default
   virtual bool attributeOrderMatters() const {
@@ -96,7 +95,7 @@ class IndexFactory {
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
                                         bool isCreation,
-                                        TRI_vocbase_t const& vocbase) const;
+                                        Database const& vocbase) const;
 
   /// @brief returns factory for the specified type or a failing placeholder if
   /// no such type
@@ -110,12 +109,13 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string_view> supportedIndexes() const;
+  virtual std::vector<std::string_view> supportedIndexes(
+      uint32_t apiVersion) const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
   virtual std::vector<std::pair<std::string_view, std::string_view>>
-  indexAliases() const;
+  indexAliases(uint32_t apiVersion) const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

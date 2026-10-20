@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,8 +37,6 @@ class RestSystemReportHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-  bool isAdminUser() const;
-
   static std::mutex _exclusive;
   std::unordered_map<std::string, std::string> const cmds;
 };

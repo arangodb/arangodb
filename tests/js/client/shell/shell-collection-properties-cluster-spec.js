@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andreas Streichardt
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -280,64 +278,4 @@ describe('Replication factor constraints', function() {
         expect(db._collection(cn2)).to.be.null;
     });
     */
-});
-
-describe('SupportsRBAC property', function() {
-    const cnTest = "UnitTestSupportsRBAC";
-
-    beforeEach(function() {
-        db._useDatabase("_system");
-    });
-
-    afterEach(function() {
-        db._useDatabase("_system");
-        try {
-            db._drop(cnTest);
-        } catch (e) {}
-    });
-
-    it('should have supportsRBAC=true by default', function() {
-        db._create(cnTest);
-        const coll = db._collection(cnTest);
-        const props = coll.properties();
-        expect(props.supportsRBAC).to.equal(true);
-    });
-
-    it('should allow creating collection with supportsRBAC=false', function() {
-        db._create(cnTest, {supportsRBAC: false});
-        const coll = db._collection(cnTest);
-        const props = coll.properties();
-        expect(props.supportsRBAC).to.equal(false);
-    });
-
-    it('should allow creating collection with supportsRBAC=true', function() {
-        db._create(cnTest, {supportsRBAC: true});
-        const coll = db._collection(cnTest);
-        const props = coll.properties();
-        expect(props.supportsRBAC).to.equal(true);
-    });
-
-    it('should allow updating supportsRBAC to false', function() {
-        db._create(cnTest, {supportsRBAC: true});
-        const coll = db._collection(cnTest);
-
-        let props = coll.properties({supportsRBAC: false});
-        expect(props.supportsRBAC).to.equal(false);
-
-        // Verify it persists
-        props = coll.properties();
-        expect(props.supportsRBAC).to.equal(false);
-    });
-
-    it('should allow updating supportsRBAC to true', function() {
-        db._create(cnTest, {supportsRBAC: false});
-        const coll = db._collection(cnTest);
-
-        let props = coll.properties({supportsRBAC: true});
-        expect(props.supportsRBAC).to.equal(true);
-
-        // Verify it persists
-        props = coll.properties();
-        expect(props.supportsRBAC).to.equal(true);
-    });
 });

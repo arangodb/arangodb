@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateDatabase.h"
@@ -34,8 +32,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/OperationOptions.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
@@ -90,8 +89,9 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    res = Databases::create(server, df.engine(), ExecContext::current(),
-                            _description.get(DATABASE), users, properties());
+    res = Databases::create(server, server.getFeature<StorageEngine>(),
+                            ExecContext::current(), _description.get(DATABASE),
+                            users, properties());
     result(res);
     if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)

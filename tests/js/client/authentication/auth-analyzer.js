@@ -1,21 +1,16 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, fail */
 
 
 const jsunity = require('jsunity');
-const internal = require('internal');
-const error = internal.errors;
-const print = internal.print;
-const arango = internal.arango;
-
+const {assertEqual, assertTrue, assertFalse} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
 const db = require("@arangodb").db;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
-const endpoint = arango.getEndpoint();
-const base64Encode = require('internal').base64Encode;
+let IM = global.instanceManager;
 
 function testSuite() {
-  const jwtSecret = 'haxxmann';
   const user = 'bob';
 
   const system = "_system";
@@ -37,6 +32,7 @@ function testSuite() {
 
   return {
     setUp: function() {
+      IM.rememberConnection();
 
       db._createDatabase(rodb);
       db._createDatabase(rwdb);
@@ -67,6 +63,8 @@ function testSuite() {
       db._dropDatabase(rodb);
 
       arango.DELETE("/_api/analyzer/" + name + "?force=true");
+
+      IM.reconnectMe();
     },
 
     testAnalyzerGet : function() {

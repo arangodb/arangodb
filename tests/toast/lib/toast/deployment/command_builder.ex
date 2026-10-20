@@ -54,9 +54,7 @@ defmodule Toast.Deployment.CommandBuilder do
   defp config_file(:coordinator), do: "etc/testing/arangod-coordinator.conf"
   defp config_file(:dbserver), do: "etc/testing/arangod-dbserver.conf"
 
-  defp role_args(:single) do
-    [{"--server.storage-engine", "rocksdb"}]
-  end
+  defp role_args(:single), do: []
 
   defp role_args(:agent) do
     [

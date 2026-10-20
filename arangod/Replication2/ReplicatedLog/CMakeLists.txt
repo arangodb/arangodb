@@ -7,7 +7,8 @@ target_sources(arango_replication2 PRIVATE
   ReplicatedLog.cpp
   SupervisionAgencyTrx.cpp
   ReplicatedLogFeature.cpp
-  ReplicatedLogMetrics.tpp
+  ReplicatedLogOptionsProvider.cpp
+  ReplicatedLogMetrics.cpp
   DefaultRebootIdCache.cpp DefaultRebootIdCache.h
   )
 
@@ -27,7 +28,7 @@ target_sources(arango_replication2_pure PRIVATE
   LogStatus.cpp
   NetworkMessages.cpp
   ReplicatedLog.cpp
-  ReplicatedLogMetrics.tpp
+  ReplicatedLogMetrics.cpp
   Supervision.cpp
   SupervisionAction.cpp
   TermIndexMapping.cpp

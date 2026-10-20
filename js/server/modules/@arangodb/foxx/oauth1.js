@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const assert = require('assert');

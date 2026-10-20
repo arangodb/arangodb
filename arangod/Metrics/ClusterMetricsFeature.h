@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -34,7 +34,6 @@
 #include "Metrics/CollectMode.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/Parse.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb::metrics {
@@ -83,11 +82,11 @@ class ClusterMetricsFeature final
     LeaderResponse packed;
     Metrics metrics;
   };
+  ClusterMetricsFeature(application_features::ApplicationServer& server,
+                        ClusterMetricsOptions options);
   explicit ClusterMetricsFeature(
       application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;

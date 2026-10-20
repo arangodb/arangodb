@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplaceEqualAttributeAccess.h"
@@ -40,7 +38,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"

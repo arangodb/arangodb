@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -52,6 +51,7 @@ const internalMembers = [
   'crashreport',
   'code',
   'exitCode',
+  'exit',
   'error',
   'status',
   'skipped',

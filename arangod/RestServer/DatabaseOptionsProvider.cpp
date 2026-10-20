@@ -31,7 +31,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DatabaseOptionsProvider::declareOptions(
+void DatabaseOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, DatabaseFeatureOptions& options) {
   opts->addSection("database", "database options");
 

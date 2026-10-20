@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBValue.h"
@@ -134,10 +132,6 @@ RocksDBValue RocksDBValue::VectorIndexValueV2(
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::View, data);
-}
-
-RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice data) {
-  return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
 }
 
 RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice data) {

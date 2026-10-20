@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SystemDatabaseFeature.h"
@@ -29,6 +27,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -44,6 +43,8 @@ SystemDatabaseFeature::SystemDatabaseFeature(
     TRI_vocbase_t* vocbase /*= nullptr*/)
     : ApplicationFeature{server, *this}, _vocbase(vocbase) {
   startsAfter<DatabaseFeature>();
+  // start() below looks up the already-bootstrapped _system database
+  startsAfter<StorageEngine>();
 }
 
 void SystemDatabaseFeature::start() {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,7 +36,7 @@ class ApplicationServer;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
 ////////////////////////////////////////////////////////////////////////////////
-bool isExecutionDeadlineReached();
+bool isExecutionDeadlineReachedPlain();
 bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(

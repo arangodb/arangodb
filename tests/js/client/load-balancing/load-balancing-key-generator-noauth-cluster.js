@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -33,38 +31,25 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-
-const servers = getCoordinatorEndpoints();
 const ERRORS = require("@arangodb").errors;
+
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function KeyGeneratorSuite() {
   'use strict';
   let cn = 'UnitTestsCollection';
   let coordinators = [];
 
-  function sendRequest(method, db, endpoint, body, headers, usePrimary) {
-    let res;
-    const i = usePrimary ? 0 : 1;
-    try {
-      arango.reconnect(`${coordinators[i]}`, db, '', '');
-      res = arango[method](endpoint, body, headers);
-    } catch (err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
-      return {};
-    }
-    return res;
-  }
-
-  function waitForCoordinatorsToBeReady(name) {
-    const url = "/_db/" + cn + "/_api/collection/" + name;
+ function waitForCoordinatorsToBeReady(name) {
+    const path = "/_db/" + cn + "/_api/collection/" + name;
     for (let coord of coordinators) {
       let success = false;
       for (let i = 0; i < 10; ++i) {
         try {
-          arango.reconnect(coord, cn, '', '');
-          const res = arango.GET_RAW(url);
-          if (res.code === 200) {
+          if (coord.toThisInstance(() => {
+            return arango.GET_RAW(path);
+          }).code  === 200) {
             success = true;
             break;
           }
@@ -74,14 +59,14 @@ function KeyGeneratorSuite() {
         require("internal").sleep(0.5);
       }
       if (!success) {
-        throw "Database or collection did not show up on coordinator " + coord + " in time";
+        throw "Database or collection did not show up on coordinator " + coord.name + " in time";
       }
     }
   }
 
   function generateCollectionAndTest(name) {
     let lastKey = null;
-    let url = "/_db/" + cn + "/_api/document/" + name;
+    let path = "/_db/" + cn + "/_api/document/" + name;
     let keyOptions = {};
     let increment = 1;
     if (Number(name[name.length - 1]) === 1) {
@@ -99,17 +84,19 @@ function KeyGeneratorSuite() {
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
     for (let i = 0; i < 10000; ++i) {
-      let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-      assertEqual(result.code, 202, JSON.stringify(result));
-      let key = result.parsedBody._key;
-      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
-      lastKey = key;
+      coordinators[i % 2].toThisInstance(() => {
+        let result = arango.POST_RAW(path, {});
+        assertEqual(result.code, 202, JSON.stringify(result));
+        let key = result.parsedBody._key;
+        assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
+        lastKey = key;
+      });
     }
   }
 
   return {
     setUpAll: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
@@ -127,14 +114,16 @@ function KeyGeneratorSuite() {
 
       try {
         let lastKey = null;
-        let url = "/_api/document/" + cn;
+        let path = "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', '_system', url, /*payload*/ {}, {}, i % 2 === 0);
-          assertEqual(result.code, 202);
-          let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
-          lastKey = key;
+          coordinators[i % 2].toThisInstance(() => {
+            let result = arango.POST_RAW(path, {});
+            assertEqual(result.code, 202);
+            let key = result.parsedBody._key;
+            assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+            lastKey = key;
+          });
         }
       } finally {
         db._drop(cn);
@@ -159,14 +148,16 @@ function KeyGeneratorSuite() {
         assertNotEqual("", db[cn].properties().distributeShardsLike);
 
         let lastKey = null;
-        let url = "/_db/" + cn + "/_api/document/" + cn;
+        let path = "/_db/" + cn + "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-          assertEqual(result.code, 202);
-          let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
-          lastKey = key;
+          coordinators[i % 2].toThisInstance(() => {
+            let result = arango.POST_RAW(path, {});
+            assertEqual(result.code, 202);
+            let key = result.parsedBody._key;
+            assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+            lastKey = key;
+          });
         }
       } finally {
         db._useDatabase("_system");

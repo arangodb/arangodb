@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue */
+/*global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,15 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
-const expect = require('chai').expect;
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -53,15 +53,14 @@ function AuthSuite() {
     }, 'HS256');
 
     var res = request.get({
-      url: baseUrl(arango.getEndpoint()) + "/_admin/cluster/health",
+      url: IM.url + "/_admin/cluster/health",
       auth: {
         bearer: jwt,
       }
     });
-    expect(res).to.be.an.instanceof(request.Response);
-    expect(res).to.have.property('statusCode', 200);
-    expect(res).to.have.property('json');
-    expect(res.json).to.have.property('Health');
+    assertEqual(res.statusCode, 200);
+    assertNotUndefined(res.json);
+    assertNotUndefined(res.json.Health);
 
     return Object.keys(res.json.Health).filter(serverId => {
       return serverId.substr(0, 4) === role;
@@ -75,7 +74,8 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
+      IM.rememberConnection();
+      arango.reconnect(IM.endpoint, db._name(), "root", "");
 /*
       try {
         users.remove(user);
@@ -89,6 +89,7 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+      IM.reconnectMe();
       /*try {
         users.remove(user);
       }
@@ -103,48 +104,42 @@ function AuthSuite() {
       }, 'HS256');
 
       let coordinators = getServersWithRole("CRDN");
-      expect(coordinators).to.be.a('array');
-      expect(coordinators.length).to.be.gt(0);
+      assertTrue(coordinators.length > 0);
       coordinators.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 200);
+        assertEqual(res.statusCode, 200);
       });
 
       let dbservers = getServersWithRole("PRMR");
-      expect(dbservers).to.be.a('array');
-      expect(dbservers.length).to.be.gt(0);
+      assertTrue(dbservers.length > 0);
       dbservers.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 401);
+        assertEqual(res.statusCode, 401);
       });
 
       let agencies = getServersWithRole("AGNT");
-      expect(agencies).to.be.a('array');
-      expect(agencies.length).to.be.gt(0);
+      assertTrue(agencies.length > 0);
       agencies.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 401);
+        assertEqual(res.statusCode, 401);
       });
     },
 
@@ -155,48 +150,42 @@ function AuthSuite() {
       }, 'HS256');
 
       let coordinators = getServersWithRole("CRDN");
-      expect(coordinators).to.be.a('array');
-      expect(coordinators.length).to.be.gt(0);
+      assertTrue(coordinators.length > 0);
       coordinators.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 200);
+        assertEqual(res.statusCode, 200);
       });
 
       let dbservers = getServersWithRole("PRMR");
-      expect(dbservers).to.be.a('array');
-      expect(dbservers.length).to.be.gt(0);
+      assertTrue(dbservers.length > 0);
       dbservers.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 200);
+        assertEqual(res. statusCode, 200);
       });
 
       let agencies = getServersWithRole("AGNT");
-      expect(agencies).to.be.a('array');
-      expect(agencies.length).to.be.gt(0);
+      assertTrue(agencies.length > 0);
       agencies.forEach(cc => {
-        expect(cc).to.have.property('Endpoint');
+        assertNotUndefined(cc.Endpoint);
         var res = request.get({
           url: baseUrl(cc.Endpoint) + "/_api/version",
           auth: {
             bearer: jwt,
           }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', 200);
+        assertEqual(res.statusCode, 200);
       });
     }
 
@@ -229,11 +218,10 @@ function JwtAllowedPathsClusterSuite() {
     }, 'HS256');
 
     var res = request.get({
-      url: baseUrl(arango.getEndpoint()) + "/_admin/cluster/health",
+      url: IM.url + "/_admin/cluster/health",
       auth: { bearer: jwt }
     });
-    expect(res).to.be.an.instanceof(request.Response);
-    expect(res).to.have.property('statusCode', 200);
+    assertEqual(res.statusCode, 200);
 
     return Object.keys(res.json.Health).filter(serverId => {
       return serverId.substr(0, 4) === role;
@@ -262,16 +250,14 @@ function JwtAllowedPathsClusterSuite() {
     ];
     roles.forEach(({ code, name }) => {
       let servers = getServersWithRole(code);
-      expect(servers).to.be.an('array');
-      expect(servers.length).to.be.gt(0);
+      assertTrue(servers.length > 0);
       servers.forEach(server => {
-        expect(server).to.have.property('Endpoint');
+        assertNotUndefined(server.Endpoint);
         var res = request.get({
           url: baseUrl(server.Endpoint) + path,
           auth: { bearer: jwt }
         });
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res).to.have.property('statusCode', expectedStatus,
+        assertEqual(res.statusCode, expectedStatus,
           `expected ${expectedStatus} on ${name} ${server.Endpoint} for path ${path}, but got ${JSON.stringify(res.statusCode)}`);
       });
     });

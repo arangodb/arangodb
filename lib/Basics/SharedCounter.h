@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,7 +26,7 @@
 #include <functional>
 
 #include "Basics/SharedAtomic.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
 
@@ -38,7 +37,7 @@ template<uint64_t stripes = 64, bool everywhereNonNegative = false>
 struct SharedCounter {
   typedef std::function<uint64_t()> IdFunc;
   static uint64_t DefaultIdFunc() {
-    return fasthash64_uint64(Thread::currentThreadNumber(),
+    return fasthash64_uint64(BasicThread::currentThreadNumber(),
                              0xdeadbeefdeadbeefULL);
   }
 
@@ -57,9 +56,9 @@ struct SharedCounter {
     }
   }
 
-  explicit SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
+  explicit SharedCounter(SharedCounter const& other) { copy(other); }
 
-  SharedCounter<stripes>& operator=(SharedCounter<stripes> const& other) {
+  SharedCounter& operator=(SharedCounter const& other) {
     copy(other);
     return *this;
   }
@@ -103,7 +102,7 @@ struct SharedCounter {
   IdFunc _id;
   uint64_t _mask;
 
-  void copy(SharedCounter<stripes> const& other) {
+  void copy(SharedCounter const& other) {
     if (this != &other) {
       _id = other._id;
       _mask = other._mask;

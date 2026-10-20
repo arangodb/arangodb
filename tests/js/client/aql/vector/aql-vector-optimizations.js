@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -32,13 +31,27 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndAssertIndex,
+    insertDocsAndAssertIndexStates,
+    waitForVectorIndexState,
+    VectorIndexTrainingState
 } = require("@arangodb/testutils/vector-index-common");
+const {deriveTestSuite} = require("@arangodb/test-helper-common");
 const isCluster = require("internal").isCluster();
-
-const dbName = "vectorIteratorScenariosDb";
-const collName = "vectorColl";
+const IM = global.instanceManager;
 const numberOfShards = 3;
+
+const ITERATOR_SCENARIO_CONFIGS = [
+    {
+        name: "trainedIndex",
+        numberOfDocs: 1000,
+        nProbeAndNlists: 8,
+    },
+    {
+        name: "linearScan",
+        numberOfDocs: 100,
+        nProbeAndNlists: 101,
+    },
+];
 
 const verifyResultsMatchFilter = function(results, filterFn, message) {
     for (let i = 0; i < results.length; ++i) {
@@ -69,14 +82,18 @@ const verifyTopK = function(results, k) {
 //
 // The collection has storedValues = ["val", "category"]. `extra` is NOT in
 // storedValues, so it forces scF=F or scP=F when used.
-function VectorIndexIteratorScenariosTestSuite() {
+function VectorIndexIteratorScenariosTestSuite(config) {
     let collection;
     let randomPoint;
     const dimension = 16;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
-    const numberOfDocs = 1000 * numberOfDocsFactor;
+    const numberOfDocs = config.numberOfDocs * numberOfDocsFactor;
+    const nProbeAndNlists = config.nProbeAndNlists;
+    const dbName = "vectorIteratorScenariosDb_" + config.name;
+    const collName = "vectorColl_" + config.name;
+    const indexName = "vector_l2_scenarios_" + config.name;
+
     const seed = generateSeed();
-    const nProbeAndNlists = 8;
 
     const indexNode = function(plan) {
         const ns = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
@@ -158,9 +175,9 @@ function VectorIndexIteratorScenariosTestSuite() {
                 });
             }
 
-            insertDocsAndAssertIndex({
+            insertDocsAndAssertIndexStates({
                 collection, docs, seed,
-                indexName: "vector_l2_scenarios",
+                indexName: indexName,
                 indexDef: {
                     type: "vector",
                     fields: ["vector"],
@@ -174,6 +191,7 @@ function VectorIndexIteratorScenariosTestSuite() {
                     },
                     storedValues: ["val", "category"],
                 },
+                allowedVectorIndexStates: [VectorIndexTrainingState.kReady, VectorIndexTrainingState.kUnusable]
             });
         },
 
@@ -371,6 +389,120 @@ function VectorIndexIteratorScenariosTestSuite() {
     };
 }
 
-jsunity.run(VectorIndexIteratorScenariosTestSuite);
+// During index creation there existins RocksDBBuilderIndex which acts diffrently
+// then normal index when asked if it covers the given projections
+function VectorCoveredProjectionDuringIngestionRegressionSuite() {
+    const dbName = "vectorCoveredIngestionDB";
+    const collName = "vectorCoveredIngestionColl";
+    const indexName = "vec_l2_stored_ingestion";
+    const dimension = 16;
+    const nLists = 4;
+    const numberOfDocs = 3000;
+    const topK = 10;
+
+    const seed = generateSeed();
+    let collection;
+    let queryPoint;
+
+    return {
+        setUp: function () {
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+            collection = db._create(collName, {numberOfShards: 1});
+
+            const gen = randomNumberGeneratorFloat(seed);
+            const docs = [];
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({length: dimension}, () => gen());
+                if (i === Math.floor(numberOfDocs / 2)) {
+                    queryPoint = vector;
+                }
+                docs.push({vector, val: i, category: i % 4, extra: i * 2});
+            }
+            const batchSize = 500;
+            for (let i = 0; i < docs.length; i += batchSize) {
+                collection.insert(docs.slice(i, i + batchSize));
+            }
+        },
+
+        tearDown: function () {
+            IM.debugClearFailAt();
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+        },
+
+        testCoveredProjectionWhileIndexIsIngesting: function () {
+            if (!isCluster || !IM.debugCanUseFailAt()) {
+                return;
+            }
+
+            IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeIngestion");
+
+            collection.ensureIndex({
+                name: indexName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: true,
+                params: {metric: "l2", dimension, nLists},
+                storedValues: ["val", "category"],
+            });
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kIngesting, 120),
+                "index should reach (and hold) the ingesting state");
+
+            const query = `FOR d IN ${collName}
+                FILTER d.extra < 100000
+                LET dist = APPROX_NEAR_L2(@qp, d.vector)
+                SORT dist LIMIT @topK
+                RETURN {val: d.val, category: d.category, dist}`;
+            const bindVars = {qp: queryPoint, topK};
+
+            // Must be COVERED on the coordinator -- that is what makes the DB
+            // server re-check covers() against the swapped-in wrapper.
+            const node = db._createStatement({query, bindVars})
+                .explain().plan.nodes
+                .find(n => n.type === "EnumerateNearVectorNode");
+            assertTrue(node !== undefined, "expected an EnumerateNearVectorNode");
+            assertEqual("covering", node.projectionMode);
+            assertEqual("document", node.filterMode);
+
+            // Pre-fix this aborts the DB server in
+            // EnumerateNearVectorNode::createBlock (covers() assertion).
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(topK, results.length, "expected top-K results");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val !== undefined, "covered val missing");
+                assertTrue(results[i].category !== undefined,
+                    "covered category missing");
+            }
+            for (let i = 1; i < results.length; ++i) {
+                assertTrue(results[i - 1].dist <= results[i].dist,
+                    `distances must be ascending: ${JSON.stringify(results)}`);
+            }
+
+            IM.debugClearFailAt();
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kReady, 120),
+                "index should reach ready state after clearing failure point");
+        },
+    };
+}
+
+for (const config of ITERATOR_SCENARIO_CONFIGS) {
+    jsunity.run(function () {
+        let suite = {};
+        deriveTestSuite(VectorIndexIteratorScenariosTestSuite(config), suite,
+                        "_" + config.name);
+        return suite;
+    });
+}
+
+jsunity.run(VectorCoveredProjectionDuringIngestionRegressionSuite);
 
 return jsunity.done();

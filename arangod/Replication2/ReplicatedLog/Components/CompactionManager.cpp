@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CompactionManager.h"
@@ -151,7 +150,7 @@ void CompactionManager::triggerAsyncCompaction(
 
       auto threshold = guard->_fullCompactionNextRound
                            ? 0
-                           : self->options->_thresholdLogCompaction;
+                           : self->options->thresholdLogCompaction;
       auto [index, reason] = calculateCompactionIndex(
           guard->releaseIndex, guard->lowestIndexToKeep, logBounds, threshold);
       guard->_fullCompactionNextRound = false;

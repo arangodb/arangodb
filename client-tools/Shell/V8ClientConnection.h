@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -76,9 +74,9 @@ class V8ClientConnection {
 
   bool isConnected() const;
 
-  void prepareConnection();
-  void connect();
-  void reconnect();
+  ResultT<std::string> prepareConnection();
+  ResultT<std::string> connect();
+  ResultT<std::string> reconnect();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void reconnectWithNewPassword(std::string const& password);
@@ -162,6 +160,9 @@ class V8ClientConnection {
   void disconnectHandle(v8::Isolate* isolate,
                         v8::FunctionCallbackInfo<v8::Value> const& args,
                         std::string const& handle);
+  void flushConnectionCache(v8::Isolate* isolate,
+                            v8::FunctionCallbackInfo<v8::Value> const& args,
+                            std::string const& handle);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
@@ -205,14 +206,15 @@ class V8ClientConnection {
   // Helper function to authenticate via /_open/auth endpoint
   ResultT<std::string> authenticateViaOpenAuth();
 
-  // Helper function to extract expiration time from JWT token
-  std::optional<double> extractJwtExpiration(std::string const& jwt);
-
   // Helper function to check if JWT token needs renewal
   bool needsTokenRenewal();
 
   // Helper function to renew JWT token
-  void renewJwtToken();
+  ResultT<std::string> renewJwtToken();
+
+  // Switches the connection to a --server.jwt-token that the ClientFeature
+  // renewed in the background; no-op for all other authentication modes
+  void adoptRenewedJwtToken();
 
  private:
   application_features::ApplicationServer& _server;

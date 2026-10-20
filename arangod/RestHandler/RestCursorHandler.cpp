@@ -18,12 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCursorHandler.h"
 
-#include "Activities/GuardedActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -37,12 +35,12 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -75,6 +73,7 @@ RequestLane RestCursorHandler::lane() const {
   return RequestLane::CLIENT_AQL;
 }
 
+// Mounted at /_api/cursor (prefix)
 futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
@@ -97,7 +96,8 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
     // POST /_api/cursor/cursor-id/batch-id
     co_await showLatestBatch();
     co_return;
-  } else if (type == rest::RequestType::PUT) {
+  } else if (type == rest::RequestType::PUT &&
+             _request->requestedApiVersion() == 0) {
     co_await modifyQueryCursor();
     co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {

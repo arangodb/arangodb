@@ -18,10 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -77,6 +73,7 @@ class SubqueryEndExecutor;
 class EnumerateNearVectorsExecutor;
 
 template<typename T, typename... Es>
+// NOLINTNEXTLINE(misc-redundant-expression)
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 
 template<typename Executor>

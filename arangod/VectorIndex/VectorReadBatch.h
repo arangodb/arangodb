@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -52,7 +51,11 @@ namespace vector {
 
 // FAISS uses int64_t labels; the static_assert in RocksDBVectorIndex.cpp
 // guards this assumption against future faiss changes.
-using VectorIndexLabelId = std::int64_t;
+using Vector = std::vector<float>;
+using LabelId = std::int64_t;
+using Labels = std::vector<LabelId>;
+using Distance = float;
+using Distances = std::vector<Distance>;
 
 // Static per-search configuration. Built once by EnumerateNearVectorNode in
 // createBlock and reused for every readBatch call within an executor.
@@ -81,7 +84,7 @@ struct VectorSearchContext {
 };
 
 struct SearchResult {
-  std::vector<VectorIndexLabelId> labels;
+  std::vector<LabelId> labels;
   std::vector<float> distances;
   // Per-survivor VPack: a storedValues array (when strategy.projection ==
   // kCovered) or a full document Object (kDocument). Empty unless

@@ -18,20 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/Wildcard/Options.h"
 #include "Aql/ExpressionContext.h"
 #include "IResearch/Wildcard/Analyzer.h"
 #include "Basics/DownCast.h"
+#include "Basics/Exceptions.h"
 
 namespace arangodb::iresearch::wildcard {
 
 Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
                  aql::ExpressionContext* ctx) {
-  auto& ngram = basics::downCast<wildcard::Analyzer>(*analyzer.get()).ngram();
+  auto analyzerInstance = analyzer.get();
+  if (!analyzerInstance) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "failed to instantiate wildcard analyzer");
+  }
+
+  auto& ngram = basics::downCast<wildcard::Analyzer>(*analyzerInstance).ngram();
   auto const* term = irs::get<irs::term_attribute>(ngram);
+  TRI_ASSERT(term);
   auto makePartsImpl = [&](std::string_view v) {
     if (!ngram.reset(v)) {
       return false;

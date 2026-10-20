@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
-/// @author Andrei Lobov
-/// @author Alexey Bakharew
 // //////////////////////////////////////////////////////////////////////////////
 (function () {
 

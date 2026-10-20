@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCrashHandler.h"
@@ -37,11 +36,13 @@ RestCrashHandler::RestCrashHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/crashes (prefix)
 futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   // Require admin access
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights for crash management operations");
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminCrashHandler{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 
@@ -66,6 +67,12 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   } else if (suffixes.size() == 1) {
     // /_admin/crashes/{id}
     auto const& crashId = suffixes[0];
+
+    if (!DumpManager::isValidCrashId(crashId)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid crash ID");
+      co_return;
+    }
 
     if (_request->requestType() == rest::RequestType::GET) {
       handleGetCrash(dumpManager, crashId);

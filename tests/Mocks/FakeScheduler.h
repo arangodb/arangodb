@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -56,6 +55,14 @@ struct FakeScheduler : Scheduler {
   std::size_t queueSize();
   void runOnce();
   void runOne(std::size_t idx);
+
+  // Create a Scheduler::WorkItem directly, without going through a
+  // scheduler queue; used by tests that verify WorkItem::invoke()
+  // semantics.
+  template<typename F>
+  static std::unique_ptr<WorkItemBase> makeWorkItem(F&& fn) {
+    return std::make_unique<WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
+  }
 
   std::vector<std::unique_ptr<WorkItemBase>> _queue;
 };

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -79,7 +77,6 @@ class RocksDBValue {
       uint8_t const* encodedValue, size_t encodedSize,
       velocypack::SharedSlice const& storedValues);
   static RocksDBValue View(VPackSlice data);
-  static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
   static RocksDBValue LogEntry(replication2::LogEntry const& entry);

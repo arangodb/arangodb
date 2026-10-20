@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/AqlItemBlockHelper.h"
 #include "Aql/RowFetcherHelper.h"
-#include "Mocks/LogLevels.h"
 #include "Mocks/MockGraphProvider.h"
 #include "Mocks/Servers.h"
 #include "Mocks/Servers.h"
@@ -32,7 +31,6 @@
 #include <velocypack/Slice.h>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockHelper.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Executor/ShortestPathExecutor.h"
@@ -40,10 +38,10 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/Stats.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/ResourceUsage.h"
-#include "Graph/EdgeDocumentToken.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"

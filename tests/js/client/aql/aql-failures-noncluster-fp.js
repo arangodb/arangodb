@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Michael Hackstein
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -431,7 +428,7 @@ function ahuacatlFailureSuite () {
       idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       IM.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(CONCAT('1','2')) RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOEVAL(CONCAT('1','2')) RETURN i");
     },
 
     testConditionFinder1 : function () {

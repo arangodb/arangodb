@@ -8,7 +8,7 @@ const internal = require('internal');
 const db = internal.db;
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'arango-auth'));
 let connectionHandle = arango.getConnectionHandle();
-const url = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+const url = global.instanceManager.url;
 
 describe('Foxx arangoUser', function () {
   let mount;

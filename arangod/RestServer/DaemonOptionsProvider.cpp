@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DaemonOptionsProvider::declareOptions(
+void DaemonOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DaemonFeatureOptions& opts) {
   options->addOption(
       "--daemon",
@@ -55,7 +55,7 @@ void DaemonOptionsProvider::declareOptions(
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 }
 
-void DaemonOptionsProvider::validateOptions(
+void DaemonOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, DaemonFeatureOptions& opts) {
   if (!opts.daemon) {
     return;

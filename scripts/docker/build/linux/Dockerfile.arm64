@@ -23,6 +23,7 @@ RUN apt-get update --fix-missing && \
       gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
+      rpm debugedit dwz elfutils clamav cpio \
   && rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY --from=glibcdebs /root/debs /debs
@@ -150,12 +151,12 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
 # Fetch libomp
 COPY --from=openmp /opt/omp /opt/omp 
 
-# Build openssl and openldap libraries in specific versions and with static
+# Build the openssl library in a specific version and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "6" ]
+RUN [ "/tools/install.sh", "3.5", "9" ]
 
 COPY ./scripts /scripts
 

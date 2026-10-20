@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
@@ -103,7 +102,8 @@ const impTodos = [{
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportCsvNonoCreate',
   type: 'csv',
-  create: 'false'
+  create: 'false',
+  expectFailure: true,
 }, {
   id: 'csv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
@@ -270,6 +270,7 @@ const impTodos = [{
   coll: 'UnitTestsImportCsvBrokenHeaders',
   type: 'csv',
   create: 'true',
+  expectFailure: true,
 }, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
@@ -435,7 +436,7 @@ const impTodos = [{
   create: undefined
 }];
 
-class importRunner extends trs.runInArangoshRunner {
+class importRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";

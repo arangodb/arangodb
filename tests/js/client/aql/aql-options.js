@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Christoph Uhde
-/// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -50,6 +48,60 @@ function aqlOptionsTestSuite () {
       }
     },
 
+    testMaxRuntimeStopsSlowRegexTest : function () {
+      const q = 
+        `RETURN REGEX_TEST(NOOPT(CONCAT(REPEAT("a", 28), "!")), "(a+)+$")`;
+      try {
+        internal.db._query(q, {}, { maxRuntime : 1 });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code, q);
+      }
+    },
+
+    testMaxRuntimeStopsSlowLike : function () {
+      const q = 
+        `RETURN LIKE(NOOPT(CONCAT(REPEAT("a", 160), "!")), "%a%a%a%a%b")`;
+      try {
+        internal.db._query(q, {}, { maxRuntime : 1});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code, q);
+      }
+    },
+
+    testMaxRuntimeStopsSlowRegexMatches : function () {
+      const q = 
+        `RETURN REGEX_MATCHES(NOOPT(CONCAT(REPEAT("a", 28), "!")), "(a+)+$")`;
+      try {
+        internal.db._query(q, {}, { maxRuntime : 1 });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code, q);
+      }
+    },
+
+    testMaxRuntimeStopsSlowRegexSplit : function () {
+      const q = 
+        `RETURN REGEX_SPLIT(NOOPT(CONCAT(REPEAT("a", 28), "!")), "(a+)+$")`;
+      try {
+        internal.db._query(q, {}, { maxRuntime : 1 });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code, q);
+      }
+    },
+
+    testMaxRuntimeStopsSlowRegexReplace : function () {
+      const q = 
+        `RETURN REGEX_REPLACE(NOOPT(CONCAT(REPEAT("a", 28), "!")), "(a+)+$", "x")`;
+      try {
+        internal.db._query(q, {}, { maxRuntime : 1 });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code, q);
+      }
+    },
   };
 }
 

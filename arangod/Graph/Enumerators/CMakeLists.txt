@@ -1,6 +1,6 @@
 target_sources(arango_graph PRIVATE
+	ITraversalEnumerator.cpp
   OneSidedEnumerator.cpp
-  OneSidedEnumeratorInterface.cpp
   WeightedShortestPathEnumerator.cpp
   WeightedTwoSidedEnumerator.cpp
   TwoSidedEnumerator.cpp

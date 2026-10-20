@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OneSidedEnumerator.h"
@@ -263,7 +261,7 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
  */
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::getNextPath()
-    -> std::unique_ptr<PathResultInterface> {
+    -> std::unique_ptr<IPathResult> {
   if constexpr (std::is_same_v<ResultList,
                                enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,21 +46,12 @@ class BumpFileDescriptorsFeature
   }
 
   explicit BumpFileDescriptorsFeature(
-      application_features::ApplicationServer& server, std::string optionName)
-      : application_features::ApplicationFeature{server, *this},
-        _optionName(std::move(optionName)) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase>();
-    startsAfter<LoggerFeature>();
-  }
+      application_features::ApplicationServer& server,
+      BumpFileDescriptorsFeatureOptions options = {});
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
-  std::string const _optionName;
-
   BumpFileDescriptorsFeatureOptions _options;
 };
 

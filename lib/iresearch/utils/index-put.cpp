@@ -590,9 +590,10 @@ int put(const std::string& path, const std::string& dir_type,
         }
 
         {
+          irs::IndexWriter::ConsolidationProgress progress;
           std::cout << "[CONSOLIDATE]" << std::flush;
           SCOPED_TIMER("Consolidation time");
-          writer->Consolidate(policy);
+          writer->Consolidate(policy, progress);
         }
 
         {
@@ -651,8 +652,10 @@ int put(const std::string& path, const std::string& dir_type,
     // merge all segments into a single segment
     SCOPED_TIMER("Consolidating all time");
     std::cout << "Consolidating all segments:" << std::endl;
+    irs::IndexWriter::ConsolidationProgress progress;
     writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      progress);
     writer->Commit();
   }
 

@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const pu = require('@arangodb/testutils/process-utils');
@@ -58,7 +55,8 @@ if (versionHas('asan') || versionHas('tsan')) {
 
 class persistenceToolkit extends trs.runLocalInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
-    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
+    super(firstRunOptions, which + firstRunOptions.suffix, serverOptions, tr.sutFilters.checkUsers);
+    this.which = which + firstRunOptions.suffix;
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
@@ -84,7 +82,6 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.rtaDisabledTests = [];
     this.rtaDisabledTestsFull = [];
     this.rtaNegFilter = "";
-    this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
     this.restoreConfig = false;
@@ -181,11 +178,16 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
-    this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
-    this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    // 3.11 arangodump has no --parallel-dump, and its --split-files needs
+    // --use-experimental-dump; use the classic dump there
+    if (!(this.firstRunOptions.oldSource !== undefined && pu.currentBinarySet === 0 &&
+          db._version().startsWith('3.11.'))) {
+      this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
+      this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    }
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
+      if (!fs.exists(this.keyDir)) {
         fs.makeDirectory(this.keyDir);
       }
       let keyFile = fs.join(this.keyDir, 'secret-for-dump');
@@ -487,6 +489,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
   restoreOld(directory) {
     this.print('restoreOld');
     db._useDatabase('_system');
+    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     this.restoreOldConfig.setInputDirectory(directory, true);
     this.results.restoreOld = this.arangorestoreOld();
     return this.validate(this.results.restoreOld);
@@ -649,6 +652,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
+    this.instanceManager.disconnect();
     this.instanceManager.reconnect();
     return true;
   }
@@ -662,9 +666,8 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
     let rc = ct.run.rtaMakedata(this.instanceManager.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      let rx = new RegExp(/\\n/g);
-      this.results.RtaMakedata = {
-        message:  'Makedata:\n' + fs.read(logFile).replace(rx, '\n'),
+      this.results[`${this.which}_RtaMakedata`] = {
+        message:  'Makedata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         duration: rc.duration
       };
@@ -672,7 +675,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaMakedata = rc;
+      this.results[`${this.which}_RtaMakedata`] = rc;
       return true;
     }
   }
@@ -752,9 +755,8 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      let rx = new RegExp(/\\n/g);
-      this.results.RtaCheckdata = {
-        message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
+      this.results[`${this.which}_RtaCheckdata`] = {
+        message: 'Checkdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
         duration: rc.duration,
@@ -763,7 +765,31 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
+        status: true,
+        failed: 0,
+        duration: rc.duration,
+      };
+      return true;
+    }
+  }
+
+  runRtaWaitData() {
+    let res = {};
+    let logFile = fs.join(fs.getTempPath(), `rta_out_waitdata.log`);
+    let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 2, "waiting for the SUT to come in sync", logFile, this.rtaArgs);
+    if (!rc.status) {
+      this.results[`${this.which}_RtaWaitdata`] = {
+        message: 'Waitdata:\n' + ct.run.readRtaErrorLog(logFile),
+        status: false,
+        failed: 1,
+        duration: rc.duration,
+      };
+      this.results.failed += 1;
+      return false;
+    } else {
+      fs.remove(logFile);
+      this.results[`${this.which}_RtaCheckdata`] = {
         status: true,
         failed: 0,
         duration: rc.duration,

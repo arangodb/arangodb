@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -65,9 +64,7 @@ struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
 
   bool isDeprecated() const noexcept override { return false; }
 
-  static std::atomic<uint64_t> _counter;
+  static inline std::atomic<uint64_t> _counter{0};
 };
-
-std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 }  // namespace arangodb::arangobench

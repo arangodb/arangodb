@@ -38,7 +38,7 @@ defmodule Mix.Tasks.Toast.Analyze.Issues do
   end
 
   defp print_issues_table(issues, color) do
-    indexed = Data.indexed_issues(issues)
+    indexed = Enum.with_index(issues, 1)
 
     indexed
     |> Enum.group_by(fn {issue, _idx} -> issue.suite end)
@@ -53,9 +53,13 @@ defmodule Mix.Tasks.Toast.Analyze.Issues do
 
       rows =
         Enum.map(suite_indexed, fn {issue, idx} ->
+          type = Data.format_type(issue)
+          server = Data.format_server(issue)
+          type_label = if server == "—", do: type, else: "#{type} (#{server})"
+
           %{
             idx: to_string(idx),
-            type: Data.format_type(issue),
+            type: type_label,
             scope: Data.format_scope(issue)
           }
         end)

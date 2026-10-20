@@ -54,7 +54,7 @@ struct SchedulerMetrics {
       _metricsDequeueTimes;
   std::array<metrics::Gauge<uint64_t>*, 4> _metricsQueueLengths;
 
-  SchedulerMetrics(metrics::MetricsFeature& metrics);
+  SchedulerMetrics(metrics::IRegistry& metricsRegistry);
 };
 
 }  // namespace arangodb

@@ -6,15 +6,17 @@ add_library(arango_indexes STATIC
   SortedIndexAttributeMatcher.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Index.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Covering.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp)
+  ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/VectorIndex/FaissFactory.cpp)
 
 target_link_libraries(arango_indexes
-  arango_geo
-  boost_boost
-  arango::validation
-  arango_replication2
-  immer
-  date_interface)
+  PUBLIC
+    arango_replication2
+    arango_geo
+    arango::validation
+    faiss
+  PRIVATE
+    date_interface)
   
 target_include_directories(arango_indexes
     PUBLIC ${IRESEARCH_INCLUDE}

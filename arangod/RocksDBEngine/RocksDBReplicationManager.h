@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,8 +32,6 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -83,7 +80,7 @@ class RocksDBReplicationManager {
                bool deleted);
 
   /// @brief drop contexts by database
-  void drop(TRI_vocbase_t& vocbase);
+  void drop(Database& vocbase);
 
   /// @brief drop contexts by collection
   void drop(LogicalCollection& collection);
