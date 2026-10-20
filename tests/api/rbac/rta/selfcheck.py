@@ -22,6 +22,7 @@ Run standalone, or as `run_scenarios.py --self-check`. Needs no server.
 
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -87,20 +88,27 @@ def _binary_contains(path, needles):
     return found
 
 
-def major_version(path=CMAKELISTS):
-    """The major version of the tree under test, or None if unreadable.
+def major_version(binary=ARANGOD_BINARY, path=CMAKELISTS):
+    """Major version of the *server* under test, with where it came from.
 
-    makedata suites gate themselves on the server version, so naming one in
-    --test is not the same as it running. Read from the source for the same
-    reason capabilities() does: it must work before a server exists, and
-    --list has to stay serverless.
+    Returns (major, source) - major is None if neither can be read.
     """
+    try:
+        completed = subprocess.run([binary, "--version"], capture_output=True,
+                                   text=True, timeout=60)
+        match = re.match(r"\s*(\d+)\.", completed.stdout)
+        if match:
+            return int(match.group(1)), "arangod --version"
+    except (OSError, subprocess.SubprocessError):
+        pass
     try:
         with open(path, "r", encoding="utf-8") as handle:
             match = VERSION_MAJOR_RE.search(handle.read())
     except OSError:
-        return None
-    return int(match.group(1)) if match else None
+        return None, "unreadable"
+    if match is None:
+        return None, "unreadable"
+    return int(match.group(1)), "CMakeLists.txt"
 
 
 def capabilities(path=SERVICE_IMPL, binary=ARANGOD_BINARY):
