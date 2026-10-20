@@ -62,14 +62,15 @@ faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
 /// RocksDBInvertedListsIteratorBase
 RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
     RocksDBVectorIndex* index, LogicalCollection* collection,
-    transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
+    IteratorContext const& ctx, std::size_t listNumber, std::size_t codeSize)
     : InvertedListsIterator(),
       _index(index),
       _collection(collection),
       _listNumber(listNumber),
-      _codeSize(codeSize) {
+      _codeSize(codeSize),
+      _visitedIds(ctx.visitedIds) {
   RocksDBTransactionMethods* mthds =
-      RocksDBTransactionState::toMethods(trx, collection->id());
+      RocksDBTransactionState::toMethods(ctx.trx, collection->id());
 
   _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
     TRI_ASSERT(opts.prefix_same_as_start);
@@ -95,6 +96,24 @@ void RocksDBInvertedListsIteratorBase::on_heap_changed(faiss::idx_t newId,
   captureSurvivor(LocalDocumentId{static_cast<uint64_t>(newId)});
 }
 
+bool RocksDBInvertedListsIteratorBase::isVisited(LocalDocumentId id) const {
+  return _visitedIds != nullptr && _visitedIds->contains(id);
+}
+
+void RocksDBInvertedListsIteratorBase::markVisited(LocalDocumentId id) {
+  if (_visitedIds != nullptr) {
+    _visitedIds->emplace(id);
+  }
+}
+
+void RocksDBInvertedListsIteratorBase::skipVisitedEntries() {
+  // NOLINTNEXTLINE(bugprone-parent-virtual-call)
+  while (RocksDBInvertedListsIteratorBase::is_available() &&
+         isVisited(LocalDocumentId(RocksDBKey::indexDocumentId(_it->key())))) {
+    _it->Next();
+  }
+}
+
 void RocksDBInvertedListsIteratorBase::captureSurvivor(LocalDocumentId id) {
   if (!_currentCaptureData.isNone()) {
     _sink->insert_or_assign(id, std::move(_currentCaptureData));
@@ -106,22 +125,25 @@ template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     IteratorContext const& ctx, std::size_t listNumber, std::size_t codeSize)
-    : RocksDBInvertedListsIteratorBase(index, collection, ctx.trx, listNumber,
+    : RocksDBInvertedListsIteratorBase(index, collection, ctx, listNumber,
                                        codeSize) {
   if constexpr (Strategy::hasStoredValues) {
     _sink = ctx.capturedDocuments;
     has_search_callbacks_ = (_sink != nullptr);
   }
+  skipVisitedEntries();
 }
 
 template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::next() {
   _it->Next();
+  skipVisitedEntries();
 }
 
 template<VectorIndexStoredValuesStrategy Strategy>
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
+  markVisited(LocalDocumentId(RocksDBKey::indexDocumentId(_it->key())));
   if constexpr (Strategy::kSupportsView) {
     // Zero-allocation: _currentEntry points into the iterator's value buffer.
     auto const docId = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
@@ -176,7 +198,7 @@ RocksDBInvertedListsFilteringIteratorBase::
         RocksDBVectorIndex* index, LogicalCollection* collection,
         IteratorFilterContext& filterContext, std::size_t listNumber,
         std::size_t codeSize)
-    : RocksDBInvertedListsIteratorBase(index, collection, filterContext.trx,
+    : RocksDBInvertedListsIteratorBase(index, collection, filterContext,
                                        listNumber, codeSize),
       _filterContext(filterContext) {
   TRI_ASSERT(filterContext.filterExpression != nullptr);
@@ -192,6 +214,7 @@ RocksDBInvertedListsFilteringIteratorBase::
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsFilteringIteratorBase::get_id_and_codes() {
+  markVisited(_filteredIdsIt->id);
   if (_sink != nullptr) {
     _currentCaptureData = std::move(_filteredIdsIt->captureData);
   }
@@ -243,8 +266,11 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
     // NOLINTNEXTLINE(bugprone-parent-virtual-call)
     return RocksDBInvertedListsIteratorBase::is_available();
   };
-  for (size_t i{0}; i < kBatchSize && isAvailable(); ++i, _it->Next()) {
+  for (; ids.size() < kBatchSize && isAvailable(); _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
+    if (isVisited(id)) {
+      continue;
+    }
     ids.emplace_back(id);
     std::vector<uint8_t> value(_it->value().data(),
                                _it->value().data() + _it->value().size());
@@ -350,8 +376,11 @@ requires(Strategy::hasStoredValues) bool RocksDBInvertedListsFilteringStoredValu
     // NOLINTNEXTLINE(bugprone-parent-virtual-call)
     return RocksDBInvertedListsIteratorBase::is_available();
   };
-  for (size_t i{0}; i < kBatchSize && isAvailable(); ++i, _it->Next()) {
+  for (; items.size() < kBatchSize && isAvailable(); _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
+    if (isVisited(id)) {
+      continue;
+    }
     auto entryValue =
         Strategy::extractVectorIndexValue(_it->value(), _codeSize);
 
