@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -61,6 +62,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "VectorIndex/FaissFactory.h"
+#include "VectorIndex/ListAssignment.h"
 #include "VectorIndex/TrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -454,7 +456,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
   struct EncodedVectors {
     std::vector<LocalDocumentId> docIds;
-    std::unique_ptr<faiss::idx_t[]> lists;
+    ListAssignments assignments;
+    // One code per assignment
     std::unique_ptr<uint8_t[]> codes;
     std::vector<velocypack::SharedSlice> storedValues;
   };
@@ -477,6 +480,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
   std::atomic<std::size_t> countBatches{0};
   std::atomic<std::size_t> countDocuments{0};
+  std::atomic<std::size_t> countAssignments{0};
 
   std::atomic<bool> hasError{false};
   Result firstError;
@@ -598,26 +602,42 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         countBatches += 1;
         countDocuments += n;
 
-        float* x = item->vectors.data();
-        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
-        faissIndex->quantizer->assign(n, x, coarse_idx.get());
+        float const* x = item->vectors.data();
+        auto assignments =
+            assignToLists(*faissIndex, ListAssignmentConfig{}, n, x);
+        auto const m = assignments.listIds.size();
+        countAssignments += m;
+
+        // Secondaries repeat their vector, so lay out one vector per
+        // assignment for encode_vectors
+        std::vector<float> gathered;
+        if (m != n) {
+          gathered.resize(m * dim);
+          for (std::size_t k = 0; k < m; ++k) {
+            auto const* src = x + assignments.vectorIndices[k] * dim;
+            std::copy(src, src + dim, gathered.begin() + k * dim);
+          }
+          x = gathered.data();
+        }
+
         auto code_size = faissIndex->code_size;
-        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[m * code_size]);
 
         // TODO: since we only use IVTFlat this is just copying the data.
         //  Probably we want to use some PQ encoding later on.
-        faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+        faissIndex->encode_vectors(m, x, assignments.listIds.data(),
+                                   flat_codes.get());
 
         auto encoded = std::make_unique<EncodedVectors>();
         encoded->docIds = std::move(item->docIds);
-        encoded->lists = std::move(coarse_idx);
+        encoded->assignments = std::move(assignments);
         encoded->codes = std::move(flat_codes);
         encoded->storedValues = std::move(item->storedValues);
 
         LOG_TOPIC("e168b", INFO, Logger::ENGINES)
             << "[shard=" << shardName << ", index=" << indexId << "] "
-            << "ENCODE encoded " << encoded->docIds.size()
-            << " vectors, code size: " << code_size;
+            << "ENCODE encoded " << encoded->docIds.size() << " vectors into "
+            << m << " list entries, code size: " << code_size;
         bool pushBlocked = false;
         std::tie(shouldStop, pushBlocked) =
             encodedChannel.push(std::move(encoded));
@@ -630,26 +650,28 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     }
   };
 
+  // k indexes assignments; stored values are per document
   using MakeValueFn =
-      RocksDBValue (*)(EncodedVectors&, size_t k, size_t codeSize);
+      RocksDBValue (*)(EncodedVectors const&, size_t k, size_t codeSize);
   auto const makeValue = std::invoke([&]() -> MakeValueFn {
     if (!hasStored) {
-      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+      return [](EncodedVectors const& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
         return RocksDBValue::VectorIndexValue(ptr, codeSize);
       };
     } else if (formatVersion == FormatVersion::kV2) {
-      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+      return [](EncodedVectors const& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
-        return RocksDBValue::VectorIndexValueV2(ptr, codeSize,
-                                                item.storedValues[k]);
+        return RocksDBValue::VectorIndexValueV2(
+            ptr, codeSize,
+            item.storedValues[item.assignments.vectorIndices[k]]);
       };
     } else {
-      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+      return [](EncodedVectors const& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
         RocksDBVectorIndexEntryValue v;
         v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
-        v.storedValues = std::move(item.storedValues[k]);
+        v.storedValues = item.storedValues[item.assignments.vectorIndices[k]];
         return RocksDBValue::VectorIndexValueV1(v);
       };
     }
@@ -671,8 +693,11 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         RocksDBKey key;
         rocksdb::Status status;
 
-        for (size_t k = 0; k < item->docIds.size(); k++) {
-          key.constructVectorIndexValue(oid, item->lists[k], item->docIds[k]);
+        auto const& assignments = item->assignments;
+        for (size_t k = 0; k < assignments.listIds.size(); k++) {
+          key.constructVectorIndexValue(
+              oid, assignments.listIds[k],
+              item->docIds[assignments.vectorIndices[k]]);
 
           auto const value = makeValue(*item, k, codeSize);
 
@@ -714,8 +739,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   if (firstError.ok()) {
     LOG_TOPIC("41658", INFO, Logger::ENGINES)
         << "[shard=" << shardName << ", index=" << indexId << "] "
-        << "Ingestion done. Encoded " << countDocuments << " vectors in "
-        << countBatches
+        << "Ingestion done. Encoded " << countDocuments << " vectors into "
+        << countAssignments << " list entries in " << countBatches
         << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
         << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
         << " " << counters.writeConsumeBlocked;
