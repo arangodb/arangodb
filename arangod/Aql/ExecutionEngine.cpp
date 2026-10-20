@@ -916,8 +916,8 @@ void ExecutionEngine::initializeConstValueBlock(
         [&, regPlan = plan.root()->getRegisterPlan(),
          block = mgr.getConstValueBlock()](Variable* var) {
           if (var->type() == Variable::Type::Const) {
-            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
-            if (reg.value() != RegisterId::maxRegisterId) {
+            RegisterId reg = regPlan->constVariableToRegisterId(var->id);
+            if (reg.isValid()) {
               TRI_ASSERT(reg.isConstRegister());
               AqlValue owned = var->extractOwnedConstantValue();
               block->emplaceValue(0, reg.value(), std::move(owned));
@@ -925,8 +925,8 @@ void ExecutionEngine::initializeConstValueBlock(
                   block->getValueReference(0, reg.value()).slice());
             }
           } else if (var->type() == Variable::Type::BindParameter) {
-            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
-            if (reg.value() != RegisterId::maxRegisterId) {
+            RegisterId reg = regPlan->constVariableToRegisterId(var->id);
+            if (reg.isValid()) {
               auto [slice, node] = bindParameters.get(var->bindParameterName());
               if (slice.isNone()) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING);

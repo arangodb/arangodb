@@ -814,7 +814,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         generateExpression(remainderCondition, indexCondition);
 
     auto container = aql::optimizer::extractNonConstPartsOfIndexCondition(
-        ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
+        ast, inputRegisterResolver(), false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
                                 memberToUpdate, std::move(expression),
@@ -992,13 +992,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet{};
-  auto& varInfo = getRegisterPlan()->varInfo;
-  RegisterId inputRegister{RegisterId::maxRegisterId};
+  RegisterId inReg = RegisterId::makeInvalid();
   if (usesInVariable()) {
-    auto it = varInfo.find(inVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters.emplace(it->second.registerId);
-    inputRegister = it->second.registerId;
+    inReg = inputRegister(inVariable());
+    inputRegisters.emplace(inReg);
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = RegIdSet{};
@@ -1007,29 +1004,22 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       outputRegisterMapping;
 
   if (isVertexOutVariableUsedLater()) {
-    auto it = varInfo.find(vertexOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    outputRegisters.emplace(it->second.registerId);
+    auto const reg = outputRegister(vertexOutVariable());
+    outputRegisters.emplace(reg);
     outputRegisterMapping.try_emplace(
-        TraversalExecutorInfosHelper::OutputName::VERTEX,
-        it->second.registerId);
+        TraversalExecutorInfosHelper::OutputName::VERTEX, reg);
   }
   if (isEdgeOutVariableUsedLater()) {
-    auto it = varInfo.find(edgeOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    outputRegisters.emplace(it->second.registerId);
+    auto const reg = outputRegister(edgeOutVariable());
+    outputRegisters.emplace(reg);
     outputRegisterMapping.try_emplace(
-        TraversalExecutorInfosHelper::OutputName::EDGE, it->second.registerId);
+        TraversalExecutorInfosHelper::OutputName::EDGE, reg);
   }
   if (isPathOutVariableUsedLater()) {
-    auto it = varInfo.find(pathOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    outputRegisters.emplace(it->second.registerId);
+    auto const reg = outputRegister(pathOutVariable());
+    outputRegisters.emplace(reg);
     outputRegisterMapping.try_emplace(
-        TraversalExecutorInfosHelper::OutputName::PATH, it->second.registerId);
+        TraversalExecutorInfosHelper::OutputName::PATH, reg);
   }
   TraverserOptions* opts = this->options();
 
@@ -1057,9 +1047,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             pathRegIdx = pruneRegs.size();
             pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
           } else {
-            auto it = varInfo.find(v->id);
-            TRI_ASSERT(it != varInfo.end());
-            pruneRegs.emplace_back(it->second.registerId);
+            pruneRegs.emplace_back(inputRegister(v));
           }
         }
 
@@ -1088,9 +1076,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           } else if (v == pathOutVariable()) {
             TRI_ASSERT(false);
           } else {
-            auto it = varInfo.find(v->id);
-            TRI_ASSERT(it != varInfo.end());
-            postFilterRegs.emplace_back(it->second.registerId);
+            postFilterRegs.emplace_back(inputRegister(v));
           }
         }
 
@@ -1119,9 +1105,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         // We can never optimize the path variable here. We can just do a normal
         // post filtering then. This should only avoid building path to aql.
         TRI_ASSERT(v != pathOutVariable());
-        auto it = varInfo.find(v->id);
-        TRI_ASSERT(it != varInfo.end());
-        postFilterRegs.emplace_back(it->second.registerId);
+        postFilterRegs.emplace_back(inputRegister(v));
       }
     }
     // We need to select at least one of vertex or edge for this filter.
@@ -1143,11 +1127,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   for (const auto* variable : conditionVars) {
     if (variable == _tmpObjVariable) continue;
 
-    auto itVarInfo = varInfo.find(variable->id);
-    TRI_ASSERT(itVarInfo != varInfo.end());
-    filterConditionVariables.emplace_back(
-        std::make_pair(variable, itVarInfo->second.registerId));
-    inputRegisters.emplace(itVarInfo->second.registerId);
+    auto const reg = inputRegister(variable);
+    filterConditionVariables.emplace_back(std::make_pair(variable, reg));
+    inputRegisters.emplace(reg);
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
@@ -1161,8 +1143,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (isSmart() && !isDisjoint()) {
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inputRegister,
-                         std::move(registerInfos), engines(), true /*isSmart*/);
+                         outputRegisterMapping, inReg, std::move(registerInfos),
+                         engines(), true /*isSmart*/);
 
     } else {
 #endif
@@ -1171,8 +1153,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        */
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inputRegister,
-                         std::move(registerInfos), engines());
+                         outputRegisterMapping, inReg, std::move(registerInfos),
+                         engines());
 
 #ifdef USE_ENTERPRISE
     }
@@ -1192,8 +1174,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   return createBlock(engine, std::move(filterConditionVariables),
                      checkPruneAvailability, checkPostFilterAvailability,
-                     outputRegisterMapping, inputRegister,
-                     std::move(registerInfos), nullptr);
+                     outputRegisterMapping, inReg, std::move(registerInfos),
+                     nullptr);
 }
 
 /// @brief clone ExecutionNode recursively

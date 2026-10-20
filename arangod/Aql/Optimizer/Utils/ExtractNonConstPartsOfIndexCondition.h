@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 
 namespace arangodb {
 
@@ -15,8 +15,8 @@ struct NonConstExpressionContainer;
 
 namespace optimizer {
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable);
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable);
 
 }
 }  // namespace aql

@@ -24,19 +24,12 @@
 
 #include "RegisterPlan.tpp"
 
+#include "Aql/Variable.h"
+
+#include <format>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
-// Requires RegisterPlan to be defined
-VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
-    : depth(depth), registerId(registerId) {
-  if (!registerId.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_RESOURCE_LIMIT,
-        std::format("too many registers ({}) needed for AQL query",
-                    registerId.value()));
-  }
-}
 
 MissingVariablesException::MissingVariablesException(
     Variable const* variable, ExecutionNode const* node,

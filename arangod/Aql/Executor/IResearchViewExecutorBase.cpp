@@ -130,7 +130,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::IResearchViewStoredValues const& storedValues,
     ExecutionPlan const& plan, Variable const& outVariable,
     AstNode const& filterCondition, std::pair<bool, bool> volatility,
-    uint32_t immutableParts, VarInfoMap const& varInfoMap, int depth,
+    uint32_t immutableParts, RegisterResolver registers,
     iresearch::IResearchViewNode::ViewValuesRegisters&&
         outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
@@ -153,7 +153,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan{plan},
       _outVariable{outVariable},
       _filterCondition{filterCondition},
-      _varInfoMap{varInfoMap},
+      _registers{registers},
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
       _filterOptimization{filterOptimization},
@@ -162,7 +162,6 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _parallelism{parallelism},
       _meta{meta},
       _parallelExecutionPool{parallelExecutionPool},
-      _depth{depth},
       _immutableParts{immutableParts},
       _filterConditionIsEmpty{
           iresearch::isFilterConditionEmpty(&_filterCondition) &&

@@ -27,7 +27,7 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/types.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/VarInfoMap.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/Function.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
@@ -98,7 +98,7 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
  * later execution. Extracts all required variables and retains their registers,
  * s.t. all necessary pieces are stored in the container.
  */
-void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
+void captureNonConstExpression(Ast* ast, RegisterResolver const& registers,
                                AstNode* expression,
                                std::vector<size_t> selectedMembersFromRoot,
                                NonConstExpressionContainer& result) {
@@ -118,10 +118,9 @@ void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
       std::move(e), std::move(selectedMembersFromRoot)));
 
   for (auto const& v : innerVars) {
-    auto it = varInfo.find(v->id);
-    TRI_ASSERT(it != varInfo.cend());
-    TRI_ASSERT(it->second.registerId.isValid());
-    result._varToRegisterMapping.emplace_back(v->id, it->second.registerId);
+    // these expressions are evaluated against the input rows of the node that
+    // owns the index condition, so `registers` must be bound to that depth
+    result._varToRegisterMapping.emplace_back(v->id, registers.resolve(*v));
   }
 
   TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
@@ -130,13 +129,13 @@ void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result);
 
 void captureFCallArgumentExpressions(
-    Ast* ast, VarInfoMap const& varInfo, AstNode const* fCallExpression,
+    Ast* ast, RegisterResolver const& registers, AstNode const* fCallExpression,
     std::vector<size_t> selectedMembersFromRoot, Variable const* indexVariable,
     NonConstExpressionContainer& result) {
   TRI_ASSERT(fCallExpression->type == NODE_TYPE_FCALL);
@@ -152,13 +151,13 @@ void captureFCallArgumentExpressions(
         !accessesNonRegisterVariable(child)) {
       std::vector<size_t> idx = selectedMembersFromRoot;
       idx.emplace_back(k);
-      captureNonConstExpression(ast, varInfo, child, std::move(idx), result);
+      captureNonConstExpression(ast, registers, child, std::move(idx), result);
     }
   }
 }
 
 void captureArrayFilterArgumentExpressions(
-    Ast* ast, VarInfoMap const& varInfo, AstNode const* filter,
+    Ast* ast, RegisterResolver const& registers, AstNode const* filter,
     std::vector<size_t> const& selectedMembersFromRoot, bool evaluateFCalls,
     Variable const* indexVariable, NonConstExpressionContainer& result) {
   for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
@@ -173,10 +172,10 @@ void captureArrayFilterArgumentExpressions(
         // We will capture only Min and Max members as we do not want
         // entire array to be evaluated (like if someone writes
         // query 1..1234567890)
-        captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
+        captureNonConstExpression(ast, registers, member->getMemberUnchecked(0),
                                   std::move(path1), result);
         path.emplace_back(1);
-        captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(1),
+        captureNonConstExpression(ast, registers, member->getMemberUnchecked(1),
                                   std::move(path), result);
       } else if (member->type == NODE_TYPE_QUANTIFIER) {
         auto quantifierType =
@@ -186,12 +185,12 @@ void captureArrayFilterArgumentExpressions(
           auto atLeastNodeValue = member->getMemberUnchecked(0);
           if (!atLeastNodeValue->isConstant()) {
             path.emplace_back(0);
-            captureNonConstExpression(ast, varInfo, atLeastNodeValue,
+            captureNonConstExpression(ast, registers, atLeastNodeValue,
                                       std::move(path), result);
           }
         }
       } else {
-        auto preVisitor = [&path, ast, &varInfo, &result, indexVariable,
+        auto preVisitor = [&path, ast, &registers, &result, indexVariable,
                            evaluateFCalls](AstNode const* node) -> bool {
           auto sg = ScopeGuard([&path]() noexcept { ++path.back(); });
           if (node->isConstant()) {
@@ -203,7 +202,7 @@ void captureArrayFilterArgumentExpressions(
             TRI_ASSERT(acessedVar);
             if (acessedVar->needsRegister() && acessedVar != indexVariable) {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), path, result);
+                  ast, registers, const_cast<AstNode*>(node), path, result);
             }
             // never dive into attribute access
             return false;
@@ -219,11 +218,11 @@ void captureArrayFilterArgumentExpressions(
             // it we need here to have index type and check supported
             // functions accordingly
             if (!evaluateFCalls || iresearch::isFilter(*fn)) {
-              captureFCallArgumentExpressions(ast, varInfo, node, path,
+              captureFCallArgumentExpressions(ast, registers, node, path,
                                               indexVariable, result);
             } else {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), path, result);
+                  ast, registers, const_cast<AstNode*>(node), path, result);
             }
             return false;
           } else if (node->type == NODE_TYPE_REFERENCE) {
@@ -231,7 +230,7 @@ void captureArrayFilterArgumentExpressions(
             TRI_ASSERT(acessedVar);
             if (acessedVar->needsRegister() && acessedVar != indexVariable) {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), path, result);
+                  ast, registers, const_cast<AstNode*>(node), path, result);
             }
             return false;
           }
@@ -254,8 +253,8 @@ void captureArrayFilterArgumentExpressions(
 }
 
 void extractNonConstPartsOfLeafNode(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode* leaf, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode* leaf, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   if (leaf->isConstant()) {
@@ -266,7 +265,7 @@ void extractNonConstPartsOfLeafNode(
     case NODE_TYPE_FCALL:
       // FCALL at this level is most likely a geo index
       captureFCallArgumentExpressions(
-          ast, varInfo, leaf, selectedMembersFromRoot, indexVariable, result);
+          ast, registers, leaf, selectedMembersFromRoot, indexVariable, result);
       return;
     case NODE_TYPE_EXPANSION:
       if (leaf->numMembers() > 2 &&
@@ -277,7 +276,7 @@ void extractNonConstPartsOfLeafNode(
         if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
           auto path = selectedMembersFromRoot;
           path.emplace_back(2);
-          captureArrayFilterArgumentExpressions(ast, varInfo, filter,
+          captureArrayFilterArgumentExpressions(ast, registers, filter,
                                                 std::move(path), evaluateFCalls,
                                                 indexVariable, result);
         }
@@ -293,7 +292,7 @@ void extractNonConstPartsOfLeafNode(
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(0);
-      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, index,
+      extractNonConstPartsOfLeafNode(ast, registers, evaluateFCalls, index,
                                      negatedNode, indexVariable,
                                      std::move(path), result);
       return;
@@ -312,14 +311,14 @@ void extractNonConstPartsOfLeafNode(
       if (!valueNode->isConstant()) {
         auto path = selectedMembersFromRoot;
         path.emplace_back(0);
-        captureNonConstExpression(ast, varInfo, valueNode, std::move(path),
+        captureNonConstExpression(ast, registers, valueNode, std::move(path),
                                   result);
       }
       return;
     }
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_OPERATOR_NARY_AND:
-      extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls,
+      extractNonConstPartsOfJunctionCondition(ast, registers, evaluateFCalls,
                                               index, leaf, indexVariable,
                                               selectedMembersFromRoot, result);
       return;
@@ -347,7 +346,7 @@ void extractNonConstPartsOfLeafNode(
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(1);
-      captureNonConstExpression(ast, varInfo, rhs, std::move(path), result);
+      captureNonConstExpression(ast, registers, rhs, std::move(path), result);
     }
   } else {
     auto path = selectedMembersFromRoot;
@@ -367,17 +366,17 @@ void extractNonConstPartsOfLeafNode(
     if (lhs->type == NODE_TYPE_FCALL &&
         (!evaluateFCalls || isInvertedIndexFunc())) {
       // most likely a geo index condition
-      captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path),
+      captureFCallArgumentExpressions(ast, registers, lhs, std::move(path),
                                       indexVariable, result);
     } else if (!lhs->isConstant()) {
-      captureNonConstExpression(ast, varInfo, lhs, std::move(path), result);
+      captureNonConstExpression(ast, registers, lhs, std::move(path), result);
     }
   }
 }
 
 void extractNonConstPartsOfAndPart(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* andNode, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* andNode, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // in case of a geo spatial index a might take the form
@@ -388,15 +387,15 @@ void extractNonConstPartsOfAndPart(
     if (!leaf->isConstant()) {
       auto path = selectedMembersFromRoot;
       path.emplace_back(j);
-      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, index, leaf,
-                                     indexVariable, path, result);
+      extractNonConstPartsOfLeafNode(ast, registers, evaluateFCalls, index,
+                                     leaf, indexVariable, path, result);
     }
   }
 }
 
 void extractNonConstPartsOfJunctionCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable,
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
@@ -413,12 +412,12 @@ void extractNonConstPartsOfJunctionCondition(
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(i);
-      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, index,
+      extractNonConstPartsOfAndPart(ast, registers, evaluateFCalls, index,
                                     andNode, indexVariable, std::move(path),
                                     result);
     }
   } else {
-    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, index,
+    extractNonConstPartsOfAndPart(ast, registers, evaluateFCalls, index,
                                   condition, indexVariable,
                                   selectedMembersFromRoot, result);
   }
@@ -427,8 +426,8 @@ void extractNonConstPartsOfJunctionCondition(
 }  // namespace
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
-    AstNode const* condition, Variable const* indexVariable) {
+    Ast* ast, RegisterResolver const& registers, bool evaluateFCalls,
+    Index* index, AstNode const* condition, Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
   TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -436,7 +435,7 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   TRI_ASSERT(indexVariable != nullptr);
 
   NonConstExpressionContainer result;
-  extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, index,
+  extractNonConstPartsOfJunctionCondition(ast, registers, evaluateFCalls, index,
                                           condition, indexVariable, {}, result);
   return result;
 }
