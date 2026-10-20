@@ -166,12 +166,10 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
 #endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
-    if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
-      TRI_ASSERT(_readWriteBatch != nullptr);
-      TRI_ASSERT(opts.iterate_lower_bound == nullptr);
-      TRI_ASSERT(opts.iterate_upper_bound == nullptr);
-      iterator.reset(
-          _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
+    if (_readWriteBatch != nullptr &&
+        _readWriteBatch->GetWriteBatch()->GetDataSize() > 0) {
+      iterator.reset(_readWriteBatch->NewIteratorWithBase(
+          cf, _db->NewIterator(opts, cf), &opts));
     } else {
       // we either have an empty _readWriteBatch or no _readWriteBatch at all
       // in this case, we can get away with the DB snapshot iterator
@@ -288,9 +286,7 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(
   // If we have a non-empty _readWriteBatch we always need to check the bounds,
   // because we need to consider the WriteBatch for read operations, even if
   // we don't need to read own writes.
-  return readOwnWrites == ReadOwnWrites::yes ||
-         (_readWriteBatch != nullptr &&
-          _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
+  return false;
 }
 
 void RocksDBTrxMethods::beginQuery(
