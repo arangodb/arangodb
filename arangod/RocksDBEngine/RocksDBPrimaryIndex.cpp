@@ -75,8 +75,7 @@ using PrimaryIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 // family's timestamp-aware comparator.
 RocksDBColumnFamilyManager::Family primaryIndexFamily(
     LogicalCollection& collection) {
-  return static_cast<RocksDBCollection*>(collection.getPhysical())
-                 ->timeTravelEnabled()
+  return collection.timeTravelEnabled()
              ? RocksDBColumnFamilyManager::Family::PrimaryIndex_TT
              : RocksDBColumnFamilyManager::Family::PrimaryIndex;
 }

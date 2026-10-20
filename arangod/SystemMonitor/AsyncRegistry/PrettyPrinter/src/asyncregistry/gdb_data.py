@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Iterable
 from dataclasses import dataclass
-import gdb
 
 @dataclass
 class State:
@@ -65,6 +64,7 @@ class Requester:
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
+        import gdb
         num_flag_bits = 1
         flag_mask = (1 << num_flag_bits) - 1
         BIT_WIDTH_64 = 64
@@ -176,7 +176,9 @@ class AsyncRegistry:
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
-        return cls(ThreadRegistry.from_gdb(registry) for registry in GdbVector(value['_lists']['_M_impl']))
+        # _lists is a Guarded<std::vector<...>> (see ListOfNonOwnedLists), so
+        # the actual vector lives behind Guarded's _value member.
+        return cls(ThreadRegistry.from_gdb(registry) for registry in GdbVector(value['_lists']['_value']['_M_impl']))
 
     def promises(self) -> Iterable[Promise]:
         for registry in self.thread_registries:

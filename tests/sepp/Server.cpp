@@ -144,7 +144,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   // Features
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
-      LazyApplicationFeatureReference<DatabaseFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
@@ -213,7 +212,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
-  _server.addFeature<transaction::ManagerFeature>(metrics);
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();
   _server.addFeature<aql::OptimizerRulesFeature>();
@@ -221,8 +219,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
   _server.addFeature<RocksDBOptionFeature>();
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -236,12 +232,13 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  _server.addFeature<RocksDBEngine>(
+  auto& engine = _server.addFeature<StorageEngine, RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
+  _server.addFeature<transaction::ManagerFeature>(metrics, engine);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

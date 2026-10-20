@@ -554,6 +554,7 @@ class RepositoryConfig:
     git_branch: Optional[str] = None
     init_command: Optional[str] = None
     container_suffix: Optional[str] = None  # Docker image suffix (e.g., '-js:')
+    maven_cache: bool = False  # cache ~/.m2/repository between runs
 
     def __post_init__(self):
         """Validate repository configuration."""
@@ -576,6 +577,7 @@ class RepositoryConfig:
             git_branch=data.get("git_branch"),
             init_command=data.get("init_command"),
             container_suffix=data.get("container_suffix"),
+            maven_cache=data.get("maven_cache", False),
         )
 
 
@@ -885,6 +887,7 @@ class TestDefinitionFile:
                     "git_branch": job_properties.get("branch"),
                     "init_command": job_properties.get("init_command"),
                     "container_suffix": job_properties.get("container_suffix"),
+                    "maven_cache": job_properties.get("maven_cache", False),
                 }
 
             # Parse the tests list

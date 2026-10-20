@@ -48,15 +48,16 @@ function error_handlingSuite () {
       db._drop(cn);
     },
 
+    // v1 API does not support number collection identifier anymore 
     test_returns_an_error_if_collection_identifier_is_unknown: function() {
       let cmd = api + "/123456/123456";
       let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_FORBIDDEN.code);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_FORBIDDEN.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_FORBIDDEN.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_returns_an_error_if_index_identifier_is_unknown: function() {

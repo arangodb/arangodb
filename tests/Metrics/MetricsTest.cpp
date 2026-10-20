@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 #include "Basics/system-compiler.h"
 
+#include "Metrics/CounterBuilder.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
@@ -32,12 +33,8 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
-#include <functional>
 #include <future>
-#include <iterator>
 #include <random>
-#include <thread>
 #include <vector>
 
 namespace {
@@ -47,6 +44,28 @@ constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 
 using namespace arangodb;
 using namespace arangodb::metrics;
+
+namespace {
+DECLARE_COUNTER(test_label_escaping_counter, "Counter with escaped labels");
+}
+
+TEST(MetricsTest, test_label_values_are_escaped_for_prometheus) {
+  auto builder = test_label_escaping_counter{}
+                     .withLabel("db", "my\"db")
+                     .withLabel("collection", "back\\slash")
+                     .withLabel("shard", "line\nfeed")
+                     .withLabel("plain", "untouched");
+
+  ASSERT_EQ(builder.labels(),
+            "db=\"my\\\"db\",collection=\"back\\\\slash\","
+            "shard=\"line\\nfeed\",plain=\"untouched\"");
+}
+
+TEST(MetricsTest, test_escape_label_value_cannot_forge_labels) {
+  ASSERT_EQ(escapeLabelValue("x\",injected=\"y"), "x\\\",injected=\\\"y");
+  ASSERT_EQ(escapeLabelValue("plain"), "plain");
+  ASSERT_EQ(escapeLabelValue(""), "");
+}
 
 TEST(MetricsTest, test_counter_concurrency) {
   Counter c(0, "counter", "Counter", "");

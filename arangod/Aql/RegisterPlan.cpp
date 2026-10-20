@@ -34,6 +34,7 @@ using namespace arangodb::aql;
 MissingVariablesException::MissingVariablesException(
     Variable const* variable, ExecutionNode const* node,
     basics::SourceLocation location)
+    // NOLINTNEXTLINE(bugprone-throw-keyword-missing)
     : Exception(TRI_ERROR_INTERNAL,
                 createMissingVariablesExceptionMessage(variable, node),
                 location),

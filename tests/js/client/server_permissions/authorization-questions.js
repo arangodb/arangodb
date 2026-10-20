@@ -36,7 +36,9 @@ if (getOptions === true) {
     // not be written by the logging thread
     'log.force-direct': 'true',
     // keep background threads from accessing collections while we observe
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
