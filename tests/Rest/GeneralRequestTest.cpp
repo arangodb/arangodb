@@ -25,10 +25,10 @@
 #include <limits>
 #include <string>
 
+#include "Basics/ApiVersion.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/Exceptions.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb;
@@ -40,7 +40,7 @@ using namespace arangodb;
 struct DetectResult {
   bool ok;
   std::string remaining;  // path from advanced start to end
-  uint32_t apiVersion;
+  ApiVersion apiVersion;
   ErrorCode errorNumber;
   std::string errorMessage;
 };
@@ -107,7 +107,7 @@ TEST_F(ApiVersionDetectionTest, PathEndingAtVersion) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v0");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(0u, r.apiVersion);
+  EXPECT_EQ(ApiVersion::V0, r.apiVersion);
   EXPECT_EQ("", r.remaining);
 }
 
@@ -180,7 +180,7 @@ TEST_F(ApiVersionDetectionTest, ValidApiVersionV0) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v0/path");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(0u, r.apiVersion);
+  EXPECT_EQ(ApiVersion::V0, r.apiVersion);
   EXPECT_EQ("/path", r.remaining);
 }
 
@@ -250,9 +250,9 @@ TEST_F(ApiVersionDetectionTest, UnsupportedLargeVersionNotStripped) {
   EXPECT_EQ(path, r.remaining);
 }
 
-// Test: Check that default API version constant is accessible and is 0
+// Test: Check that default API version constant is accessible and is V0
 TEST_F(ApiVersionDetectionTest, DefaultApiVersionConstant) {
-  EXPECT_EQ(0u, api_version::defaultApiVersion);
+  EXPECT_EQ(ApiVersion::V0, api_version::defaultApiVersion);
 }
 
 // Test: Verify default version is applied to new requests

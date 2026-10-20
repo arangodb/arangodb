@@ -22,18 +22,16 @@
 
 #include "GeneralRequest.h"
 
-#include <cctype>
-#include <limits>
-
+#include "Basics/ApiVersion.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/debugging.h"
-#include "Basics/error.h"
 #include "Logger/LogMacros.h"
-#include "Rest/ApiVersion.h"
 
-using namespace arangodb;
+#include <charconv>
+
+namespace arangodb {
+
 using namespace arangodb::basics;
 
 namespace {
@@ -107,11 +105,11 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
 }
 
 rest::RequestType GeneralRequest::translateMethod(std::string_view method) {
-  auto ret = ::translateMethodHelper(method);
+  auto ret = translateMethodHelper(method);
   if (RequestType::ILLEGAL == ret) {
     std::string methodString(method.data(), method.size());
     StringUtils::toupperInPlace(methodString);
-    return ::translateMethodHelper(std::string_view(methodString));
+    return translateMethodHelper(std::string_view(methodString));
   }
   return ret;
 }
@@ -326,10 +324,6 @@ void GeneralRequest::setStringValue(std::string& target, std::string&& value) {
   TRI_ASSERT(_memoryUsage >= old);
   _memoryUsage -= old;
 }
-
-// needs to be here because of a gcc bug with templates and namespaces
-// https://stackoverflow.com/a/25594741/1473569
-namespace arangodb {
 
 template<>
 auto GeneralRequest::parsedValue(std::string const& key)

@@ -767,7 +767,7 @@ async<Result> RestHandler::checkDatabaseAccess() const {
 
   LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
       << "Access forbidden to " << request()->requestPath();
-  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
+  if (_request->requestedApiVersion() == ApiVersion::V0 && ec->isClassic()) {
     co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
                      "No read access to database.");
   } else {
@@ -821,7 +821,7 @@ async<void> RestHandler::handleAuthorizationChecks() {
   if (auto res = co_await checkDatabaseAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       // This one here is very special. Due to backwards compatibility
       // requirements, we have to produce exactly the following combination
       // here, which cannot be achieved with the `generateError` method

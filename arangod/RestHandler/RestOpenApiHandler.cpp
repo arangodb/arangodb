@@ -23,7 +23,7 @@
 #include "RestOpenApiHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/ApiVersion.h"
+#include "Basics/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 
 using namespace arangodb;
@@ -49,26 +49,26 @@ RestOpenApiHandler::RestOpenApiHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
+std::string_view RestOpenApiHandler::getOpenApiSpec(
+    ApiVersion apiVersion) const {
   switch (apiVersion) {
-    case 0:
+    case ApiVersion::V0:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV0),
                               sizeof(kOpenApiV0));
-    case 1:
+    case ApiVersion::V1:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV1),
                               sizeof(kOpenApiV1));
-    case api_version::experimentalApiVersion:
+    case ApiVersion::Experimental:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV2),
                               sizeof(kOpenApiV2));
-    default:
-      return std::string_view();
   }
+  return std::string_view();
 }
 
 // Mounted at /openapi.json (exact)
 futures::Future<futures::Unit> RestOpenApiHandler::executeAsync() {
   // Get requested API version (already parsed by GeneralRequest)
-  uint32_t apiVersion = _request->requestedApiVersion();
+  ApiVersion apiVersion = _request->requestedApiVersion();
 
   // Get the OpenAPI spec for this version
   std::string_view spec = getOpenApiSpec(apiVersion);
@@ -77,7 +77,7 @@ futures::Future<futures::Unit> RestOpenApiHandler::executeAsync() {
     // No spec available for this version
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "OpenAPI specification not available for API version " +
-                      std::to_string(apiVersion));
+                      to_string(apiVersion));
     co_return;
   }
 

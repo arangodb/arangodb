@@ -119,7 +119,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 #endif
 
   auto& serverFeature = server().getFeature<ServerFeature>();
-  if (_request->requestedApiVersion() == 0) {
+  if (_request->requestedApiVersion() == ApiVersion::V0) {
     result.add(
         "mode",
         VPackValue(serverFeature.operationModeString()));  // to be deprecated
@@ -159,7 +159,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       result.add(
           "writeOpsEnabled",
           VPackValue(
@@ -202,7 +202,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
       }
 
       if (serverState->isCoordinator() &&
-          _request->requestedApiVersion() == 0) {
+          _request->requestedApiVersion() == ApiVersion::V0) {
         result.add("coordinator", VPackValue(VPackValueType::Object));
 
         result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));

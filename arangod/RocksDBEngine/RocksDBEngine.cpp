@@ -2954,7 +2954,7 @@ DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
 DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
 void RocksDBEngine::getCapabilities(velocypack::Builder& builder,
-                                    uint32_t apiVersion) const {
+                                    ApiVersion apiVersion) const {
   // get generic capabilities
   VPackBuilder main;
   StorageEngine::getCapabilities(main, apiVersion);

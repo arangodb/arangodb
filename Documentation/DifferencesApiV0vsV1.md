@@ -13,7 +13,7 @@ with, and by inspecting the route registration table in
 `arangod/GeneralServer/GeneralServerFeature.cpp`, which determines which
 endpoints exist at all under a given API version.
 
-> **Status note:** As of this writing, `lib/Rest/ApiVersion.h` only lists
+> **Status note:** As of this writing, `lib/Basics/ApiVersion.h` only lists
 > `{0}` in `supportedApiVersions`. API version 1 is not yet an officially
 > supported/released version; it can currently only be reached in builds
 > compiled with `ARANGODB_ENABLE_FAILURE_TESTS` by activating the failure
@@ -424,7 +424,7 @@ the request under V1.
 
 ## Source locations referenced
 
-* `lib/Rest/ApiVersion.h`
+* `lib/Basics/ApiVersion.h`
 * `lib/Rest/GeneralRequest.cpp` / `lib/Rest/GeneralRequest.h`
 * `lib/Rest/GeneralResponse.cpp` (error-to-HTTP-status mapping)
 * `arangod/GeneralServer/RestHandlerFactory.cpp` / `.h`

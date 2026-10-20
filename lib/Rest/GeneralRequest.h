@@ -22,6 +22,14 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -29,17 +37,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-
-#include "Basics/Result.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Endpoint/Endpoint.h"
-#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 class ExecContext;
@@ -211,7 +209,9 @@ class GeneralRequest {
   }
 
   /// @brief get the requested API version
-  uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
+  ApiVersion requestedApiVersion() const noexcept {
+    return _requestedApiVersion;
+  }
 
   /// @brief detect and strip /_arango/vX or /_arango/experimental prefix.
   /// @param start  reference to current position pointer; advanced past the
@@ -267,7 +267,7 @@ class GeneralRequest {
   rest::AuthenticationMethod _authenticationMethod;
 
   // API version requested (0 by default, max for experimental)
-  uint32_t _requestedApiVersion;
+  ApiVersion _requestedApiVersion = api_version::defaultApiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..

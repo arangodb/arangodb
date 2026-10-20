@@ -126,22 +126,22 @@ TEST(ExecContextTest, canUseApiVersion_classic_grants_every_version) {
   auto cec = makeClassicExecContext("user", "mydb", auth::Level::NONE,
                                     auth::Level::NONE);
 
-  EXPECT_TRUE(cec.execContext->canUseApiVersion(0).ok());
-  EXPECT_TRUE(cec.execContext->canUseApiVersion(1).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::V0).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::V1).ok());
 }
 
 TEST(ExecContextTest, canUseApiVersion_superuser_grants_every_version) {
   auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
                                      VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canUseApiVersion(1).ok());
+  EXPECT_TRUE(ctx->canUseApiVersion(ApiVersion::V1).ok());
 }
 
 TEST(ExecContextTest, canUseApiVersion_unauthenticated_is_denied) {
   auto ctx = createSharedExecContext(
       AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
 
-  auto const result = ctx->canUseApiVersion(1);
+  auto const result = ctx->canUseApiVersion(ApiVersion::V1);
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
   EXPECT_TRUE(result.errorMessage().find("API version '1'") !=
               std::string_view::npos)

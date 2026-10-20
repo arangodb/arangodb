@@ -199,7 +199,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 void buildHealthResult(
     VPackBuilder& builder,
     std::vector<futures::Try<agentConfigHealthResult>> const& config,
-    VPackSlice store, uint32_t apiVersion) {
+    VPackSlice store, ApiVersion apiVersion) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
   using server_set = std::unordered_set<std::string>;
@@ -263,7 +263,7 @@ void buildHealthResult(
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        if (apiVersion == 0) {
+        if (apiVersion == ApiVersion::V0) {
           builder.add(VPackObjectIterator(member.value));
         } else {
           for (auto const& agentIter : VPackObjectIterator(member.value)) {
@@ -423,10 +423,11 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_await handleNodeEngine();
       co_return;
     } else if (command == NodeStatistics &&
-               _request->requestedApiVersion() == 0) {
+               _request->requestedApiVersion() == ApiVersion::V0) {
       co_await handleNodeStatistics();
       co_return;
-    } else if (command == Statistics && _request->requestedApiVersion() == 0) {
+    } else if (command == Statistics &&
+               _request->requestedApiVersion() == ApiVersion::V0) {
       co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {
@@ -672,7 +673,7 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
     co_return;
   }
 
-  if (request()->requestedApiVersion() > 0 &&
+  if (request()->requestedApiVersion() > ApiVersion::V0 &&
       !ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
@@ -813,7 +814,7 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
     }
 
     // In the future, only allow collection names here:
-    if (request()->requestedApiVersion() > 0) {
+    if (request()->requestedApiVersion() > ApiVersion::V0) {
       if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
         generateError(r);
         co_return;
