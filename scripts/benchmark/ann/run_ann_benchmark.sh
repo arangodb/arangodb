@@ -238,15 +238,8 @@ load_results() {
     return
   fi
   log "Loading run into results store at ${RESULTS_ARANGO_URL}"
-  local meta="${ANN_OUTPUT_DIR}/run_meta.json"
-  python3 "${SCRIPT_DIR}/load_run.py" \
-    --csv "${ANN_OUTPUT_DIR}/results.csv" \
-    --url "${RESULTS_ARANGO_URL}" \
-    --password "${RESULTS_ARANGO_PASSWORD}" \
-    --arangodb-version "$(jq -r '.arangodb_version_full' "${meta}")" \
-    --docker-image "$(jq -r '.image' "${meta}")" \
-    --started-at "$(jq -r '.started_at' "${meta}")" \
-    --ended-at "$(jq -r '.ended_at' "${meta}")"
+  python3 "${SCRIPT_DIR}/load_run.py" "${ANN_OUTPUT_DIR}" \
+    --url "${RESULTS_ARANGO_URL}" --password "${RESULTS_ARANGO_PASSWORD}"
   if [[ -n "${GRAFANA_URL}" ]]; then
     log "Dashboard: ${GRAFANA_URL}/d/ann-bench"
   fi

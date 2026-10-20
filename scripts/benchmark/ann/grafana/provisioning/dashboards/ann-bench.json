@@ -50,6 +50,45 @@
         "sort": 0
       },
       {
+        "name": "major",
+        "label": "Major version",
+        "type": "query",
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "bench"
+        },
+        "refresh": 1,
+        "query": {
+          "queryType": "infinity",
+          "infinityQuery": {
+            "refId": "major",
+            "type": "json",
+            "source": "url",
+            "format": "table",
+            "parser": "backend",
+            "url": "http://arangodb:8529/_db/bench/_api/cursor",
+            "url_options": {
+              "method": "POST",
+              "body_type": "raw",
+              "body_content_type": "application/json",
+              "data": "{\"query\": \"FOR r IN run COLLECT major = r.major_version SORT major RETURN {__text: major, __value: major}\"}"
+            },
+            "root_selector": "result",
+            "columns": []
+          },
+          "query": ""
+        },
+        "definition": "FOR r IN run COLLECT major = r.major_version SORT major RETURN {__text: major, __value: major}",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "sort": 0,
+        "multi": true,
+        "includeAll": true
+      },
+      {
         "name": "run",
         "label": "Run",
         "type": "query",
@@ -71,14 +110,14 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"FOR r IN run FILTER r.major_version IN [${major:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}\"}"
             },
             "root_selector": "result",
             "columns": []
           },
           "query": ""
         },
-        "definition": "FOR r IN run SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}",
+        "definition": "FOR r IN run FILTER r.major_version IN [${major:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}",
         "current": {
           "text": "All",
           "value": "$__all"

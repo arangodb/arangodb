@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """Load one ann-benchmarks run into ArangoDB (schema.js).
 
+The argument is a run directory holding `results.csv` and `run_meta.json`, as
+written by run_ann_benchmark.sh (or unpacked from the CI artifact's `site/`).
+
 Input is the CSV produced by ann-benchmarks `data_export.py`, which already
 computes the metrics we want (k-nn recall, epsilon recall, p50/p95/p99 latency,
 qps, build time) using ann-benchmarks' own metric functions. Each CSV row is one
 (dataset, algorithm, parameters) configuration; we fan it out into the three
 measurement collections.
 
-Everything is written in a single stream transaction = one `run`; on any error the
-transaction is aborted and nothing is left behind. Every invocation creates a new
-`run` document with its own copy of the measurements; datasets and index setups are
-shared across runs (UPSERT). Build time is stored once per distinct (dataset, value)
+Each run is written in a single stream transaction = one `run`; on any error the
+transaction is aborted and nothing is left behind. A run whose version and
+started_at are already stored is skipped; datasets and index setups are shared
+across runs (UPSERT). Build time is stored once per distinct (dataset, value)
 within a run, because ann-benchmarks repeats it on every query-parameter row.
 
 Standard library only; talks to ArangoDB over its HTTP API.
 
 Usage:
-  ./load_run.py --csv run.csv \
-      --arangodb-version 3.12.12-devel --docker-image arangodb:3.12 \
-      --started-at 2026-08-28T10:00:00Z --ended-at 2026-08-28T10:42:00Z \
-      --url http://localhost:8529
+  ./load_run.py ~/Downloads/run1 --url http://localhost:8529
 
   # inspect without a database:
-  ./load_run.py --csv run.csv --arangodb-version x --docker-image y --dry-run
+  ./load_run.py ~/Downloads/run1 --dry-run
 """
 
 import argparse
@@ -34,7 +34,6 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 
 # CSV column -> meaning. Adjust here if your ann-benchmarks fork names columns
 # differently (print the header with --dry-run to check).
@@ -143,11 +142,8 @@ def to_float(row, col):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Load one ann-benchmarks run into ArangoDB.")
-    p.add_argument("--csv", required=True, help="CSV from ann-benchmarks data_export.py")
-    p.add_argument("--arangodb-version", required=True)
-    p.add_argument("--docker-image", required=True)
-    p.add_argument("--started-at", help="ISO-8601; default: now")
-    p.add_argument("--ended-at", help="ISO-8601; default: now")
+    p.add_argument("run_dir",
+                   help="directory with results.csv and run_meta.json")
     p.add_argument("--url", default=os.environ.get("ARANGO_URL", "http://localhost:8529"),
                    help="ArangoDB endpoint (env ARANGO_URL)")
     p.add_argument("--db", default="bench", help="database name")
@@ -159,10 +155,12 @@ def parse_args():
     return p.parse_args()
 
 
-def read_rows(path):
-    with open(path, newline="") as f:
+def read_run(run_dir):
+    with open(os.path.join(run_dir, "run_meta.json")) as f:
+        meta = json.load(f)
+    with open(os.path.join(run_dir, "results.csv"), newline="") as f:
         reader = csv.DictReader(f)
-        return reader.fieldnames, list(reader)
+        return meta, reader.fieldnames, list(reader)
 
 
 def validate(fieldnames, rows):
@@ -177,19 +175,19 @@ def validate(fieldnames, rows):
             raise ValueError(f"CSV line {n}: empty value for {empty}")
 
 
-def iso(ts):
-    if ts is None:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc) \
-        .strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def load(db, args, rows):
+def load(db, meta, rows):
+    run = {"arangodb_version": meta["arangodb_version_full"],
+           "started_at": meta["started_at"]}
+    existing = db.aql("FOR r IN run FILTER r.arangodb_version == @arangodb_version "
+                      "AND r.started_at == @started_at RETURN r._key", run)
+    if existing:
+        print(f"run _key={existing[0]}: already loaded, skipped")
+        return
     run_id = db.one(
-        "INSERT {arangodb_version: @version, docker_image_version: @image, "
-        "started_at: @started, ended_at: @ended} INTO run RETURN NEW._key",
-        {"version": args.arangodb_version, "image": args.docker_image,
-         "started": iso(args.started_at), "ended": iso(args.ended_at)},
+        "INSERT MERGE(@run, {major_version: @major, docker_image_version: @image, "
+        "ended_at: @ended}) INTO run RETURN NEW._key",
+        {"run": run, "major": meta["arangodb_version"].split(".")[0],
+         "image": meta["image"], "ended": meta["ended_at"]},
     )
 
     dataset_ids = {}
@@ -283,7 +281,7 @@ def dry_run(fieldnames, rows):
 
 def main():
     args = parse_args()
-    fieldnames, rows = read_rows(args.csv)
+    meta, fieldnames, rows = read_run(args.run_dir)
     if not rows:
         print("no rows in CSV", file=sys.stderr)
         return 1
@@ -301,7 +299,7 @@ def main():
     db = Arango(args.url, args.db, args.user, args.password)
     try:
         db.begin(WRITE_COLLECTIONS)
-        load(db, args, rows)
+        load(db, meta, rows)
         db.commit()
     except Exception as e:
         db.abort()

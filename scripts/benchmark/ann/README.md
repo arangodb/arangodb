@@ -38,6 +38,20 @@ ARANGO_PORT=8530 ANN_DATASETS="sift-128-euclidean glove-100-angular" ANN_RUNS=3 
 The container uses host networking. On Docker Desktop without it, set
 `ARANGO_HOST=host.docker.internal`.
 
+To also load the run into Grafana, start the results store with `docker compose up -d` (see
+below). It takes host port 8529, so run your arangod on another port:
+
+```bash
+ARANGO_PORT=8530 RESULTS_ARANGO_URL=http://127.0.0.1:8529 GRAFANA_URL=http://localhost:3000 \
+  run_local.sh
+```
+
+Without Docker, run the script directly; it needs `python3` (with `venv`), `git`, `curl` and `jq`:
+
+```bash
+ANN_OUTPUT_DIR=./ann-output ANN_DATASET_CACHE=~/.cache/ann-benchmarks ./run_ann_benchmark.sh
+```
+
 ## CI mode
 
 The CircleCI job `ann-benchmark` (manual, pipeline parameter `run-ann-benchmark`) runs
@@ -71,6 +85,8 @@ The normal test pipeline is skipped for that run. Artifacts are under `ann-bench
 | `ANN_RUNS` | `1` | best-of runs per query config |
 | `ANN_FORK_URL` / `ANN_FORK_REF` | arangodb fork, pinned sha | harness source |
 | `ANN_OUTPUT_DIR` / `ANN_DATASET_CACHE` / `ANN_WORKDIR` | temp dir | layout |
+| `ANN_STAMP` | `unknown` | label for the run, written to `site/METADATA.txt` |
+| `ANN_HARNESS_IMAGE` | `ann-bench-harness` | image tag `run_local.sh` builds and runs |
 
 Apply the schema once to the shared results store:
 
@@ -90,25 +106,21 @@ The harness benchmarks `arangod-sut` (host port 8530), loads the run into `arang
 http://localhost:3000/d/ann-bench. `ARANGODB_IMAGE=<tag>` swaps the SUT image, `ANN_DATASETS` /
 `ANN_RUNS` pass through.
 
-Without the profile, `docker compose up -d` brings up only the store + Grafana, e.g. to load a
-CSV from a CI artifact by hand:
+Without the profile, `docker compose up -d` brings up only the store + Grafana, e.g. to load
+CI runs by hand. Each run is a directory with `results.csv` and `run_meta.json` (the
+artifact's `site/`); runs already in the store are skipped:
 
 ```bash
-tar -xzf ann-benchmark-site.tar.gz
-./load_run.py --csv site/results.csv \
-  --arangodb-version "$(jq -r .arangodb_version_full site/run_meta.json)" \
-  --docker-image     "$(jq -r .image site/run_meta.json)" \
-  --started-at       "$(jq -r .started_at site/run_meta.json)" \
-  --ended-at         "$(jq -r .ended_at site/run_meta.json)"
+for r in ~/Downloads/run*; do ./load_run.py "$r"; done
 ```
 
-`--dry-run` checks a CSV without touching a database.
+`--dry-run` checks a run without touching a database.
 
 ## Grafana
 
 The provisioned "ann-benchmarks" dashboard overlays all selected runs on recall-vs-QPS and
 recall-vs-p50-latency charts and shows index build time per run as a bar chart and a table,
-with `dataset` and (multi-select) `run` variables.
+with `dataset`, (multi-select) `major` version and `run` variables.
 
 To add a panel: datasource `bench`, type **JSON**, source **URL**, method **POST**,
 URL `http://arangodb:8529/_db/bench/_api/cursor`, body type raw / JSON, root selector `result`:
