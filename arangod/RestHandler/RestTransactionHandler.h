@@ -29,8 +29,6 @@
 
 namespace arangodb {
 
-class V8Executor;
-
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
