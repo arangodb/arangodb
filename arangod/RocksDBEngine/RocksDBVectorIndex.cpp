@@ -27,8 +27,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
-#include <functional>
 #include <cstring>
+#include <optional>
+#include <span>
+#include <vector>
 
 #include "Aql/AstNode.h"
 #include "Aql/AqlFunctionsInternalCache.h"
@@ -59,6 +61,7 @@
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VectorIndex/Definition.h"
+#include "VectorIndex/ListAssignment.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -104,11 +107,13 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
     vector::VectorSearchConfig const& config,
     vector::VectorSearchContext const& ctx,
     containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
-        captureSink) {
+        captureSink,
+    containers::FlatHashSet<LocalDocumentId>* visitedIds) {
   if (config.strategy.filter == FilterMode::kNone) {
     vector::IteratorContext simpleCtx;
     simpleCtx.trx = ctx.trx;
     simpleCtx.capturedDocuments = captureSink;
+    simpleCtx.visitedIds = visitedIds;
     return simpleCtx;
   }
   TRI_ASSERT(ctx.queryContext != nullptr);
@@ -126,6 +131,7 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
   searchCtx.useStoredValuesIterator =
       (config.strategy.filter == FilterMode::kStoredValues);
   searchCtx.capturedDocuments = captureSink;
+  searchCtx.visitedIds = visitedIds;
   // Scenario 6: filter loaded the doc, projections need the doc -> stash
   // the doc itself. Scenario 8: filter loaded the doc but projections are
   // covered -> stash only the storedValues array (cheaper).
@@ -134,6 +140,25 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
           ? CaptureShape::kFullDocument
           : CaptureShape::kStoredValues;
   return searchCtx;
+}
+
+RocksDBValue makeVectorIndexValue(
+    std::span<uint8_t const> codes,
+    std::optional<velocypack::SharedSlice> const& storedValues,
+    vector::FormatVersion formatVersion) {
+  if (!storedValues.has_value()) {
+    // Store raw encoded values directly for better performance and
+    // backwards compatibility
+    return RocksDBValue::VectorIndexValue(codes.data(), codes.size());
+  }
+  if (formatVersion == vector::FormatVersion::kV2) {
+    return RocksDBValue::VectorIndexValueV2(codes.data(), codes.size(),
+                                            *storedValues);
+  }
+  RocksDBVectorIndexEntryValue rocksdbEntryValue;
+  rocksdbEntryValue.encodedValue.assign(codes.begin(), codes.end());
+  rocksdbEntryValue.storedValues = *storedValues;
+  return RocksDBValue::VectorIndexValueV1(rocksdbEntryValue);
 }
 
 }  // namespace
@@ -489,7 +514,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
+  containers::FlatHashSet<LocalDocumentId> visitedIds;
+  auto faissSearchContext =
+      makeFaissIteratorContext(config, ctx, captureSink, &visitedIds);
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
@@ -645,41 +672,33 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     return {};
   }
 
-  faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
-  _faissIndex->quantizer->assign(1, input.data(), &listId);
+  auto const assignments = vector::assignToLists(
+      *_faissIndex, vector::ListAssignmentConfig{}, 1, input.data());
+
+  std::optional<velocypack::SharedSlice> storedValues;
+  if (hasStoredValues()) {
+    auto const extractedAttributeValues =
+        transaction::extractAttributeValues(trx, _storedValues, doc, true);
+    storedValues = extractedAttributeValues->get()->sharedSlice();
+  }
 
   RocksDBKey rocksdbKey;
-  rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
-  std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
-  _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
-
-  auto value = std::invoke([&]() {
-    if (hasStoredValues()) {
-      auto const extractedAttributeValues =
-          transaction::extractAttributeValues(trx, _storedValues, doc, true);
-      auto storedValues = extractedAttributeValues->get()->sharedSlice();
-
-      if (_formatVersion == vector::FormatVersion::kV2) {
-        return RocksDBValue::VectorIndexValueV2(
-            flat_codes.get(), _faissIndex->code_size, storedValues);
-      }
-      RocksDBVectorIndexEntryValue rocksdbEntryValue;
-      rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
-          flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
-      rocksdbEntryValue.storedValues = std::move(storedValues);
-      return RocksDBValue::VectorIndexValueV1(rocksdbEntryValue);
-    } else {
-      // Store raw encoded values directly for better performance and
-      // backwards compatibility
-      return RocksDBValue::VectorIndexValue(flat_codes.get(),
-                                            _faissIndex->code_size);
+  std::vector<uint8_t> codes(_faissIndex->code_size);
+  for (auto const listId : assignments.listIds) {
+    // Codes of residual encoders depend on the list
+    _faissIndex->encode_vectors(1, input.data(), &listId, codes.data());
+    rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
+    auto const value =
+        makeVectorIndexValue(codes, storedValues, _formatVersion);
+    if (auto const status =
+            methods->Put(_cf, rocksdbKey, value.string(), false);
+        !status.ok()) {
+      return rocksutils::convertStatus(status);
     }
-  });
+  }
 
-  auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
-
-  return rocksutils::convertStatus(status);
+  return {};
 }
 
 /// @brief removes a document from the index
@@ -698,17 +717,17 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
     return {};
   }
 
-  faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
-  _faissIndex->quantizer->assign(1, input.data(), &listId);
+  auto const assignments = vector::assignToLists(
+      *_faissIndex, vector::ListAssignmentConfig{}, 1, input.data());
 
   RocksDBKey rocksdbKey;
-  rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
-  auto const status = methods->Delete(_cf, rocksdbKey);
-
-  if (!status.ok()) {
-    auto const res = rocksutils::convertStatus(status);
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  for (auto const listId : assignments.listIds) {
+    rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
+    if (auto const status = methods->Delete(_cf, rocksdbKey); !status.ok()) {
+      auto const res = rocksutils::convertStatus(status);
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
   }
 
   return {};

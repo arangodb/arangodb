@@ -7,7 +7,8 @@ add_library(arango_indexes STATIC
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Index.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Covering.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/VectorIndex/FaissFactory.cpp)
+  ${PROJECT_SOURCE_DIR}/arangod/VectorIndex/FaissFactory.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/VectorIndex/ListAssignment.cpp)
 
 target_link_libraries(arango_indexes
   PUBLIC

@@ -25,6 +25,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/Definition.h"
 #include "RocksDBIndex.h"
@@ -102,10 +103,15 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 // stashes a SharedSlice per surviving entry so the executor can serve
 // projections without re-reading RocksDB. Shape depends on which iterator
 // runs -- see the selection table above.
+//
+// `visitedIds` holds the documents already handed to FAISS during this
+// search. A document can be in more than one list, and every iterator skips
+// the ones already seen so it reaches the topK heap only once.
 struct IteratorContext {
   transaction::Methods* trx;
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
       capturedDocuments{nullptr};
+  containers::FlatHashSet<LocalDocumentId>* visitedIds{nullptr};
 };
 
 // What the filtering iterator should put into capturedDocuments. Only
@@ -267,7 +273,7 @@ struct WithStoredValuesV2Strategy {
 struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   RocksDBInvertedListsIteratorBase(RocksDBVectorIndex* index,
                                    LogicalCollection* collection,
-                                   transaction::Methods* trx,
+                                   IteratorContext const& ctx,
                                    std::size_t listNumber,
                                    std::size_t codeSize);
 
@@ -282,6 +288,12 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   // _currentCaptureData. V2 overrides to promote a non-owning view.
   virtual void captureSurvivor(LocalDocumentId id);
 
+  // Only marks on consumption: FAISS also builds throwaway iterators to test
+  // whether a list is empty.
+  bool isVisited(LocalDocumentId id) const;
+  void markVisited(LocalDocumentId id);
+  void skipVisitedEntries();
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
@@ -289,6 +301,7 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   std::size_t _codeSize;
 
   std::unique_ptr<rocksdb::Iterator> _it;
+  containers::FlatHashSet<LocalDocumentId>* _visitedIds{nullptr};
 
   // When capture is wanted, derived classes wire _sink in their ctor and
   // refresh _currentCaptureData from get_id_and_codes; on_heap_changed
