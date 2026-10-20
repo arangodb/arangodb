@@ -46,6 +46,18 @@ and Grafana are expected to be running already; their location comes from the
 `ann-benchmark-store` context. Until that context exists the load step logs
 `RESULTS_ARANGO_URL unset - skipping results load` and the job still publishes the site.
 
+To start it, open the branch in CircleCI, choose **Trigger Pipeline** and add the boolean
+parameter `run-ann-benchmark` = `true`. Or through the API, with a personal API token:
+
+```bash
+curl -X POST https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline \
+  -H "Circle-Token: ${CIRCLECI_TOKEN}" -H "Content-Type: application/json" \
+  -d '{"branch": "<branch>", "parameters": {"run-ann-benchmark": true}}'
+```
+
+The normal test pipeline is skipped for that run. Artifacts are under `ann-benchmark/`:
+`ann-benchmark-site.tar.gz` (site + CSV + logs) and the unpacked `site/`.
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `ARANGO_HOST` / `ARANGO_PORT` | `127.0.0.1` / `8529` | arangod under test |

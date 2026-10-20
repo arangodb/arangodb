@@ -355,6 +355,7 @@ jobs:
       ANN_OUTPUT_DIR: /tmp/ann-output
       ANN_DATASETS: glove-100-angular
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
+      PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
     steps:
       - checkout
@@ -367,6 +368,11 @@ jobs:
           keys:
             - ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
             - ann-datasets-v1-
+      # The script pins the fork (and so its requirements.txt).
+      - restore_cache:
+          keys:
+            - ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
+            - ann-pip-v1-
       - run:
           name: Run ANN benchmark
           no_output_timeout: 3h
@@ -376,6 +382,10 @@ jobs:
           key: ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
           paths:
             - /tmp/ann-benchmarks-data
+      - save_cache:
+          key: ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
+          paths:
+            - /tmp/ann-pip-cache
       - store_artifacts:
           # Upload even when the benchmark step fails (e.g. incomplete results),
           # so a failed run is still debuggable via site/, run.log, arangod.log.
