@@ -4170,9 +4170,9 @@ static void JS_PBKDF2HS1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int iterations = (int)TRI_ObjectToInt64(isolate, args[2]);
   int keyLength = (int)TRI_ObjectToInt64(isolate, args[3]);
 
-  std::string result =
-      SslInterface::sslPBKDF2HS1(salt.c_str(), salt.size(), password.c_str(),
-                                 password.size(), iterations, keyLength);
+  std::string result = SslInterface::sslPBKDF2(
+      salt.c_str(), salt.size(), password.c_str(), password.size(), iterations,
+      keyLength, SslInterface::Algorithm::SHA1);
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }

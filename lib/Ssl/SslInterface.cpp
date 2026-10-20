@@ -25,7 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/memory.h"
 #include "Random/UniformCharacter.h"
 
 #include "Logger/LogMacros.h"
@@ -120,25 +119,17 @@ void sslHEX(char const* inputStr, size_t const length,
   TRI_ASSERT(static_cast<size_t>(p - outputStr) == 2 * length);
 }
 
-std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
-                         size_t passLength, int iter, int keyLength) {
-  unsigned char* dk = (unsigned char*)TRI_Allocate(keyLength + 1);
-  if (dk == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
-
-  PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
-                    (int)saltLength, iter, EVP_sha1(), keyLength, dk);
-
-  // return value as hex
-  return StringUtils::encodeHex((char*)dk, keyLength);
-}
-
 std::string sslPBKDF2(char const* salt, size_t const saltLength,
                       char const* pass, size_t const passLength, int const iter,
                       int const keyLength, Algorithm const algorithm) {
+  // PBKDF2 allows for longer keys than the digest returns,
+  // there is no security benefit to that, it just wastes cpu.
+  // The biggest digest here is SHA512 with its 512bits -> 64bytes;
+  constexpr int kMaxKeyLength = 64;
+  if (keyLength < 1 || keyLength > kMaxKeyLength) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
   EVP_MD const* evp_md = [algorithm]() -> EVP_MD const* {
     switch (algorithm) {
       case Algorithm::SHA256:
@@ -157,20 +148,12 @@ std::string sslPBKDF2(char const* salt, size_t const saltLength,
     return nullptr;
   }();
   ADB_PROD_ASSERT(evp_md != nullptr);
-
-  unsigned char* dk = static_cast<unsigned char*>(TRI_Allocate(keyLength + 1));
-  if (dk == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
-
+  unsigned char dk[kMaxKeyLength];
   PKCS5_PBKDF2_HMAC(pass, static_cast<int>(passLength),
-                    reinterpret_cast<const unsigned char*>(salt),
+                    reinterpret_cast<unsigned char const*>(salt),
                     static_cast<int>(saltLength), iter, evp_md, keyLength, dk);
 
-  // return value as hex
-  return StringUtils::encodeHex(reinterpret_cast<char*>(dk), keyLength);
+  return StringUtils::encodeHex(reinterpret_cast<char const*>(dk), keyLength);
 }
 
 std::string sslHMAC(char const* key, size_t const keyLength,
