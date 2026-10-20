@@ -32,7 +32,7 @@ ARANGODB_IMAGE="${ARANGODB_IMAGE:-}"
 
 # ann-benchmarks fork, pinned. The circle-ci branch carries the CI sweep:
 # arangodb-ivf = single nLists=16384 build + nProbe query sweep.
-ANN_FORK_URL="${ANN_FORK_URL:-https://github.com/jbajic/ann-benchmarks.git}"
+ANN_FORK_URL="${ANN_FORK_URL:-https://github.com/arangodb/ann-benchmarks.git}"
 ANN_FORK_REF="${ANN_FORK_REF:-1967a1c9b6be75f7213c89d8be29d05715e2850c}"
 ANN_ALGORITHM="${ANN_ALGORITHM:-arangodb-ivf}"
 # TODO ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"

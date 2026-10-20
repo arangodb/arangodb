@@ -57,7 +57,7 @@ and Grafana are expected to be running already; their location comes from the
 | `ANN_ALGORITHM` | `arangodb-ivf` | algorithm name in the fork's `config.yml` |
 | `ANN_DATASETS` | `glove-100-angular` | space-separated |
 | `ANN_RUNS` | `1` | best-of runs per query config |
-| `ANN_FORK_URL` / `ANN_FORK_REF` | jbajic fork, pinned sha | harness source |
+| `ANN_FORK_URL` / `ANN_FORK_REF` | arangodb fork, pinned sha | harness source |
 | `ANN_OUTPUT_DIR` / `ANN_DATASET_CACHE` / `ANN_WORKDIR` | temp dir | layout |
 
 Apply the schema once to the shared results store:
