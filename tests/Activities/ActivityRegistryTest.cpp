@@ -31,6 +31,7 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Futures/Utilities.h"
+#include "Helper.h"
 
 #include <gtest/gtest.h>
 #include <velocypack/Iterator.h>
@@ -56,20 +57,13 @@ auto isInRegistry(velocypack::SharedSlice snap, ActivityId idToCheck) -> bool {
   return false;
 }
 
-auto garbageCollectAll() -> void {
-  size_t deletedCount = 0;
-  do {
-    deletedCount = get_thread_registry().garbage_collect();
-  } while (deletedCount > 0);
-}
-
 }  // namespace
 
 struct ActivityRegistryTest : ::testing::Test {
-  static void SetUpTestSuite() { garbageCollectAll(); }
+  static void SetUpTestSuite() { tests::garbageCollectAllOnCurrentThread(); }
   ActivityRegistryTest() {}
   ~ActivityRegistryTest() {
-    garbageCollectAll();
+    tests::garbageCollectAllOnCurrentThread();
     EXPECT_EQ(registry.size(), 0);
   }
 };

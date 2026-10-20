@@ -90,10 +90,6 @@ struct Activity : containers::ThreadOwnedList<ActivityPtr>::Node {
   auto threads() const noexcept -> std::vector<basics::ThreadInfo>;
   auto addCurrentThread() -> ThreadListIterator;
   auto removeThread(ThreadListIterator it) -> void;
-
-  virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status {
-    return inspection::Status{};
-  };
   auto snapshot() -> Snapshot {
     return Snapshot{.id = id(),
                     .parentId = parentId(),

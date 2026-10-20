@@ -166,6 +166,7 @@ struct Feature::PromiseCleanupThread {
 
   ~PromiseCleanupThread() {
     _thread.request_stop();
+    _thread.join();
     _cv.notify_one();
   }
 

@@ -88,7 +88,7 @@ struct ThreadOwnedList
         : data{create_data()}, next{next}, list{list} {}
 
     template<typename U = T>
-    requires std::movable<U> Node(T data, ThreadOwnedList<T>& list)
+    requires std::movable<U> Node(U data, ThreadOwnedList<U>& list)
         : data{std::move(data)}, list{list} {}
 
     virtual ~Node() = default;

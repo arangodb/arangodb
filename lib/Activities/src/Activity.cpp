@@ -4,9 +4,7 @@
 
 namespace arangodb::activities {
 
-auto arangodb::activities::ActivityPtr::snapshot() const -> Snapshot {
-  return a->snapshot();
-}
+auto ActivityPtr::snapshot() const -> Snapshot { return a->snapshot(); }
 
 Activity::Activity(ActivityId id, ActivityHandle parent, ActivityType type)
     : Node{ActivityPtr{this}, registry.get_thread_registry()},

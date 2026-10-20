@@ -45,6 +45,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/RequestOptions.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Helper.h"
 
 using namespace arangodb;
 
@@ -164,19 +165,14 @@ auto requestActivitiesInRegistry()
   return requestActivities;
 }
 
-auto garbageCollectAllOnCurrentThread() -> void {
-  size_t deletedCount = 0;
-  do {
-    deletedCount = activities::get_thread_registry().garbage_collect();
-  } while (deletedCount > 0);
-}
-
 }  // namespace
 
 struct InternalRequestActivityTest : ::testing::Test {
-  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
+  static void SetUpTestSuite() {
+    activities::tests::garbageCollectAllOnCurrentThread();
+  }
   static void TearDownTestSuite() {
-    garbageCollectAllOnCurrentThread();
+    activities::tests::garbageCollectAllOnCurrentThread();
     EXPECT_EQ(activities::registry.size(), 0);
   }
 

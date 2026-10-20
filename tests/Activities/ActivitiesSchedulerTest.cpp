@@ -27,20 +27,14 @@
 #include "Scheduler/SupervisedScheduler.h"
 #include "gtest/gtest.h"
 #include "Metrics/MetricsFeature.h"
+#include "Helper.h"
 
 using namespace arangodb;
 
-namespace {
-auto garbageCollectAllOnCurrentThread() -> void {
-  size_t deletedCount = 0;
-  do {
-    deletedCount = activities::get_thread_registry().garbage_collect();
-  } while (deletedCount > 0);
-}
-}  // namespace
-
 struct ActivitiesSchedulerTest : ::testing::Test {
-  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
+  static void SetUpTestSuite() {
+    activities::tests::garbageCollectAllOnCurrentThread();
+  }
 
   ActivitiesSchedulerTest()
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
@@ -64,7 +58,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   }
 
   ~ActivitiesSchedulerTest() {
-    garbageCollectAllOnCurrentThread();
+    activities::tests::garbageCollectAllOnCurrentThread();
     EXPECT_EQ(arangodb::activities::registry.size(), 0);
   }
 

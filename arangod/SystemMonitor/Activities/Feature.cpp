@@ -95,6 +95,7 @@ struct Feature::CleanupThread {
 
   ~CleanupThread() {
     _thread.request_stop();
+    _thread.join();
     _cv.notify_one();
   }
 

@@ -27,6 +27,7 @@
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "Inspection/JsonPrintInspector.h"
+#include "Helper.h"
 #include <gtest/gtest.h>
 
 #include <coroutine>
@@ -47,18 +48,11 @@ auto promise_count_in_registry() -> uint {
       });
   return promise_count;
 }
-
-auto garbageCollectAllOnCurrentThread() -> void {
-  size_t deletedCount = 0;
-  do {
-    deletedCount = get_thread_registry().garbage_collect();
-  } while (deletedCount > 0);
-}
 }  // namespace
 
 template<typename WaitType>
 struct ActivitiesAsyncTest : ::testing::Test {
-  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
+  static void SetUpTestSuite() { tests::garbageCollectAllOnCurrentThread(); }
 
   ActivitiesAsyncTest() {
     activityData["TestCase"] =
@@ -67,7 +61,7 @@ struct ActivitiesAsyncTest : ::testing::Test {
 
   ~ActivitiesAsyncTest() {
     arangodb::async_registry::get_thread_registry().garbage_collect();
-    garbageCollectAllOnCurrentThread();
+    tests::garbageCollectAllOnCurrentThread();
     // cleans up everything in here because we only create activities on this
     // thread (never after a co_await)
     EXPECT_EQ(activities::registry.size(), 0);
