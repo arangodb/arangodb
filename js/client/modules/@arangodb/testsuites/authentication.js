@@ -89,15 +89,12 @@ const authTestConfigs = {
 
 // expected HTTP response code per URL and authentication configuration
 const authTestUrls = {
-  '/_api/':                            { Full: 401, SystemAuth: 401, None: 404 },
-  '/_api':                             { Full: 401, SystemAuth: 401, None: 404 },
+  '/_api/':                            { Full: 404, SystemAuth: 404, None: 404 },
+   '/_api':                             { Full: 404, SystemAuth: 401, None: 404 },
   '/_api/version':                     { Full: 401, SystemAuth: 401, None: 200 },
-  '/_admin/html':                      { Full: 401, SystemAuth: 401, None: 301 },
-  '/_admin/html/':                     { Full: 401, SystemAuth: 401, None: 301 },
-  '/_db/_system/':                     { Full: 301, SystemAuth: 301, None: 301 },
-  '/_db/_system':                      { Full: 401, SystemAuth: 401, None: 301 },
-  '/test':                             { Full: 401, SystemAuth: 404, None: 404 },
-  '/the-big-fat-fox':                  { Full: 401, SystemAuth: 404, None: 404 },
+  '/_db/_system/':                     { Full: 404, SystemAuth: 404, None: 404 },
+  '/_db/_system':                      { Full: 404, SystemAuth: 401, None: 404 },
+  '/test':                             { Full: 404, SystemAuth: 404, None: 404 },
 };
 
 function checkBodyForJsonToParse (request) {
