@@ -37,25 +37,8 @@
 #include "Maskings/ParseResult.h"
 
 namespace arangodb::maskings {
-class Maskings;
 
-struct MaskingsResult {
-  enum StatusCode : int {
-    VALID,
-    CANNOT_PARSE_FILE,
-    CANNOT_READ_FILE,
-    ILLEGAL_DEFINITION
-  };
-
-  MaskingsResult(StatusCode s, std::string const& m)
-      : status(s), message(m), maskings(nullptr) {}
-  explicit MaskingsResult(std::unique_ptr<Maskings>&& m)
-      : status(StatusCode::VALID), maskings(std::move(m)) {}
-
-  StatusCode status;
-  std::string message;
-  std::unique_ptr<Maskings> maskings;
-};
+struct MaskingsResult;
 
 class Maskings {
  public:
@@ -89,6 +72,24 @@ class Maskings {
   bool _hasDefaultCollection = false;
   Collection _defaultCollection;
   uint64_t _randomSeed = 0;
+};
+
+struct MaskingsResult {
+  enum StatusCode : int {
+    VALID,
+    CANNOT_PARSE_FILE,
+    CANNOT_READ_FILE,
+    ILLEGAL_DEFINITION
+  };
+
+  MaskingsResult(StatusCode s, std::string const& m)
+      : status(s), message(m), maskings(nullptr) {}
+  explicit MaskingsResult(std::unique_ptr<Maskings>&& m)
+      : status(StatusCode::VALID), maskings(std::move(m)) {}
+
+  StatusCode status;
+  std::string message;
+  std::unique_ptr<Maskings> maskings;
 };
 
 }  // namespace arangodb::maskings
