@@ -208,16 +208,25 @@ class GeneralRequest {
     _authenticationMethod = method;
   }
 
-  /// @brief get the requested API version
-  ApiVersion requestedApiVersion() const noexcept {
-    return _requestedApiVersion;
+  /// @brief false if the path carried a /_arango/ prefix with an invalid API
+  /// version. Such a request must be rejected before anything reads
+  /// requestedApiVersion().
+  bool hasValidApiVersion() const noexcept {
+    return _requestedApiVersion.has_value();
   }
 
+  /// @brief get the requested API version
+  /// @pre hasValidApiVersion()
+  ApiVersion requestedApiVersion() const noexcept;
+
   /// @brief detect and strip /_arango/vX or /_arango/experimental prefix.
+  /// If the path has no such prefix, requestedApiVersion stays unchanged.
+  /// If the prefix contains a valid version, requestedApiVersion is set
+  /// accordingly and the prefix is stripped; otherwise, nothing is stripped and
+  /// requestedApiVersion is cleared (i.e., hasValidApiVersion() becomes false).
   /// @param start  reference to current position pointer; advanced past the
   ///               prefix on success
   /// @param end    one-past-the-end pointer of the URL buffer
-  /// @throws ArangoException if /_arango prefix is present but invalid
   void detectAndStripApiVersion(char const*& start, char const* end);
 
  protected:
@@ -266,8 +275,9 @@ class GeneralRequest {
 
   rest::AuthenticationMethod _authenticationMethod;
 
-  // API version requested (0 by default, max for experimental)
-  ApiVersion _requestedApiVersion = api_version::defaultApiVersion;
+  // API version requested; empty if the request asked for an invalid one
+  std::optional<ApiVersion> _requestedApiVersion =
+      api_version::defaultApiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..

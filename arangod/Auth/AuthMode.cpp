@@ -241,7 +241,7 @@ auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
   return std::format("grant permissions to user '{}'", perm.name);
 }
 auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
-  return std::format("use API version '{}'", toNumber(perm.version));
+  return std::format("use API version '{}'", to_string(perm.version));
 }
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {

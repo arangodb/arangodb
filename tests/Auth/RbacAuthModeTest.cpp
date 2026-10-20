@@ -75,7 +75,7 @@ std::string resourceStr(rbac::Resource const& resource) {
                         },
                         [](rbac::resources::ApiVersion const& r) {
                           return std::string{"apiversion:"} +
-                                 to_string(r.version);
+                                 std::string{to_string(r.version)};
                         },
                     },
                     resource);
@@ -479,12 +479,12 @@ TEST_F(RbacAuthModeTest, AdminQueryCache) {
 
 TEST_F(RbacAuthModeTest, UseApiVersionAsksForTheVersionAsResource) {
   EXPECT_TRUE(check(p::UseApiVersion{.version = ApiVersion::V1}).ok());
-  expectSingle(rbac::Action::UseApiVersion, "apiversion:1");
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:v1");
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDistinguishesVersions) {
   check(p::UseApiVersion{.version = ApiVersion::V0});
-  expectSingle(rbac::Action::UseApiVersion, "apiversion:0");
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:v0");
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {

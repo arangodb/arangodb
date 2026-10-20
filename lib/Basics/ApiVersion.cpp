@@ -29,12 +29,8 @@
 
 namespace arangodb {
 
-std::string to_string(ApiVersion version) {
-  return std::to_string(toNumber(version));
-}
-
 std::ostream& operator<<(std::ostream& os, ApiVersion version) {
-  return os << toNumber(version);
+  return os << to_string(version);
 }
 
 namespace api_version {

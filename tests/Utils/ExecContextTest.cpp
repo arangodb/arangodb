@@ -143,7 +143,7 @@ TEST(ExecContextTest, canUseApiVersion_unauthenticated_is_denied) {
 
   auto const result = ctx->canUseApiVersion(ApiVersion::V1);
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
-  EXPECT_TRUE(result.errorMessage().find("API version '1'") !=
+  EXPECT_TRUE(result.errorMessage().find("API version 'v1'") !=
               std::string_view::npos)
       << result.errorMessage();
 }

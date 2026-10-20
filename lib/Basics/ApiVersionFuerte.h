@@ -32,10 +32,15 @@
 
 namespace arangodb {
 
-/// @brief translate to fuerte's ApiVersion. The switch is exhaustive on
-/// purpose: adding an enumerator to arangodb::ApiVersion without giving it a
-/// fuerte counterpart is a compile error (-Wswitch), which is what keeps the
-/// two definitions in lockstep.
+// The two enums are kept in lockstep by three checks:
+// - toFuerte and fromFuerte switch exhaustively over one enum each, so an
+//   enumerator added on either side without a counterpart is a compile error
+//   (-Wswitch, which fails the build only with -Werror).
+// - The round trips below catch a wrong mapping in either direction.
+// - The value checks below fail unconditionally if an enumerator is inserted
+//   or reordered on either side.
+
+/// @brief translate to fuerte's ApiVersion
 constexpr fuerte::api_version::ApiVersion toFuerte(ApiVersion version) {
   switch (version) {
     case ApiVersion::V0:
@@ -48,15 +53,37 @@ constexpr fuerte::api_version::ApiVersion toFuerte(ApiVersion version) {
   return fuerte::api_version::ApiVersion::V0;
 }
 
-// The mapping above keeps the enumerator *sets* in lockstep; these keep the
-// numeric values in lockstep, which matters wherever either enum is
-// serialized as a number.
-static_assert(toNumber(ApiVersion::V0) ==
+/// @brief translate from fuerte's ApiVersion
+constexpr ApiVersion fromFuerte(fuerte::api_version::ApiVersion version) {
+  switch (version) {
+    case fuerte::api_version::ApiVersion::V0:
+      return ApiVersion::V0;
+    case fuerte::api_version::ApiVersion::V1:
+      return ApiVersion::V1;
+    case fuerte::api_version::ApiVersion::Experimental:
+      return ApiVersion::Experimental;
+  }
+  return ApiVersion::V0;
+}
+
+static_assert(fromFuerte(toFuerte(ApiVersion::V0)) == ApiVersion::V0);
+static_assert(fromFuerte(toFuerte(ApiVersion::V1)) == ApiVersion::V1);
+static_assert(fromFuerte(toFuerte(ApiVersion::Experimental)) ==
+              ApiVersion::Experimental);
+static_assert(toFuerte(fromFuerte(fuerte::api_version::ApiVersion::V0)) ==
+              fuerte::api_version::ApiVersion::V0);
+static_assert(toFuerte(fromFuerte(fuerte::api_version::ApiVersion::V1)) ==
+              fuerte::api_version::ApiVersion::V1);
+static_assert(
+    toFuerte(fromFuerte(fuerte::api_version::ApiVersion::Experimental)) ==
+    fuerte::api_version::ApiVersion::Experimental);
+
+static_assert(static_cast<unsigned>(ApiVersion::V0) ==
               static_cast<unsigned>(fuerte::api_version::ApiVersion::V0));
-static_assert(toNumber(ApiVersion::V1) ==
+static_assert(static_cast<unsigned>(ApiVersion::V1) ==
               static_cast<unsigned>(fuerte::api_version::ApiVersion::V1));
 static_assert(
-    toNumber(ApiVersion::Experimental) ==
+    static_cast<unsigned>(ApiVersion::Experimental) ==
     static_cast<unsigned>(fuerte::api_version::ApiVersion::Experimental));
 
 }  // namespace arangodb

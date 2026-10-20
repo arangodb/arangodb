@@ -26,7 +26,7 @@
 #include <array>
 #include <cstdint>
 #include <iosfwd>
-#include <string>
+#include <string_view>
 
 namespace arangodb {
 
@@ -35,13 +35,16 @@ namespace arangodb {
 // whose switch makes an unmapped enumerator a compile error.
 enum class ApiVersion : std::uint8_t { V0 = 0, V1 = 1, Experimental = 2 };
 
-/// @brief the version number, promoted so that it formats and streams as a
-/// number. Casting to the underlying type instead would stream as a character.
-constexpr unsigned toNumber(ApiVersion version) noexcept {
-  return static_cast<unsigned>(version);
+constexpr std::string_view to_string(ApiVersion version) noexcept {
+  switch (version) {
+    case ApiVersion::V0:
+      return "v0";
+    case ApiVersion::V1:
+      return "v1";
+    case ApiVersion::Experimental:
+      return "experimental";
+  }
 }
-
-std::string to_string(ApiVersion version);
 
 std::ostream& operator<<(std::ostream& os, ApiVersion version);
 
@@ -73,9 +76,8 @@ constexpr bool isApiVersionSupported(ApiVersion version) {
          supportedApiVersions.end();
 }
 
-// The highest version any handler may be registered for, and therefore the
-// upper bound on a parsed /_arango/vX prefix. Experimental is included because
-// it is routable even though it is not "supported".
+// The highest version any handler may be registered for. Experimental is
+// included because it is routable even though it is not "supported".
 constexpr ApiVersion maxApiVersion() {
   ApiVersion maxVersion = experimentalApiVersion;
   for (ApiVersion version : supportedApiVersions) {

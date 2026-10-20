@@ -30,42 +30,26 @@
 
 using namespace arangodb;
 
-// ApiVersion's underlying type is std::uint8_t, which streams as a *character*.
-// These tests pin the promotion-safe conversions that callers must use instead
-// of casting to the underlying type themselves.
+// A version is presented by its name, the same one that selects it in a
+// /_arango/<name> prefix - never by its numeric value.
 
-TEST(ApiVersionTest, ToNumberYieldsTheVersionNumber) {
-  EXPECT_EQ(0u, toNumber(ApiVersion::V0));
-  EXPECT_EQ(1u, toNumber(ApiVersion::V1));
-  EXPECT_EQ(2u, toNumber(ApiVersion::Experimental));
+TEST(ApiVersionTest, ToStringYieldsTheNameAndCoexistsWithStdToString) {
+  using std::to_string;
+  EXPECT_EQ("v0", to_string(ApiVersion::V0));
+  EXPECT_EQ("v1", to_string(ApiVersion::V1));
+  EXPECT_EQ("experimental", to_string(ApiVersion::Experimental));
 }
 
-TEST(ApiVersionTest, StreamingYieldsDigitsNotControlCharacters) {
+TEST(ApiVersionTest, StreamingYieldsTheName) {
   auto streamed = [](ApiVersion v) {
     std::ostringstream os;
     os << v;
     return os.str();
   };
 
-  EXPECT_EQ("0", streamed(ApiVersion::V0));
-  EXPECT_EQ("1", streamed(ApiVersion::V1));
-  EXPECT_EQ("2", streamed(ApiVersion::Experimental));
-}
-
-TEST(ApiVersionTest, ToStringYieldsDigitsAndCoexistsWithStdToString) {
-  using std::to_string;
-  EXPECT_EQ("0", to_string(ApiVersion::V0));
-  EXPECT_EQ("1", to_string(ApiVersion::V1));
-  EXPECT_EQ("2", to_string(ApiVersion::Experimental));
-}
-
-TEST(ApiVersionTest, StreamingEmitsNoUnprintableBytes) {
-  std::ostringstream os;
-  os << ApiVersion::V0;
-  auto const s = os.str();
-  ASSERT_EQ(1u, s.size());
-  EXPECT_GE(static_cast<unsigned char>(s[0]), 0x20u)
-      << "streamed a control byte instead of a digit";
+  EXPECT_EQ("v0", streamed(ApiVersion::V0));
+  EXPECT_EQ("v1", streamed(ApiVersion::V1));
+  EXPECT_EQ("experimental", streamed(ApiVersion::Experimental));
 }
 
 TEST(ApiVersionTest, ToFuerteMapsEveryEnumerator) {

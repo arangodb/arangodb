@@ -39,14 +39,14 @@ using namespace arangodb::rest;
 
 namespace {
 
-// Emits ["vN", ...] newest first. The tables are compile-time constants kept
-// in ascending order (see the static_asserts in ApiVersion.h), hence the
+// Emits the version names newest first. The tables are compile-time constants
+// kept in ascending order (see the static_asserts in ApiVersion.h), hence the
 // reverse iteration
 void addVersionArray(VPackBuilder& result, std::string_view name,
                      std::span<ApiVersion const> versions) {
   result.add(name, VPackValue(VPackValueType::Array));
   for (auto it = versions.rbegin(); it != versions.rend(); ++it) {
-    result.add(VPackValue("v" + to_string(*it)));
+    result.add(VPackValue(to_string(*it)));
   }
   result.close();
 }
@@ -142,8 +142,7 @@ void RestVersionHandler::getVersion(
   addApiVersions(result);
 
   // Add the requested API version that was used to call this handler
-  result.add("requestedApiVersion",
-             VPackValue("v" + to_string(requestedApiVersion)));
+  result.add("requestedApiVersion", VPackValue(to_string(requestedApiVersion)));
 
   result.close();
 }

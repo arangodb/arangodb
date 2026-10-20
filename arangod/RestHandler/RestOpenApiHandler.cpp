@@ -26,6 +26,8 @@
 #include "Basics/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
@@ -75,9 +77,10 @@ futures::Future<futures::Unit> RestOpenApiHandler::executeAsync() {
 
   if (spec.empty()) {
     // No spec available for this version
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "OpenAPI specification not available for API version " +
-                      to_string(apiVersion));
+    generateError(
+        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+        absl::StrCat("OpenAPI specification not available for API version ",
+                     to_string(apiVersion)));
     co_return;
   }
 
