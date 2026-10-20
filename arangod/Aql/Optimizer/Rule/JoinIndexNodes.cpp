@@ -738,16 +738,19 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     }
 
     // if there is a post filter, make sure it only accesses variables
-    // that are available before all index nodes
+    // that are available before all index nodes, or the candidate's own
+    // document.
     if (candidate->hasFilter()) {
       VarSet vars;
       candidate->filter()->variables(vars);
 
-      for (auto* other : candidates) {
-        if (other != candidate && other->setsVariable(vars)) {
+      for (auto const* var : vars) {
+        if (var != candidate->outVariable() &&
+            !knownConstVariables->contains(var)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's post filter "
-                                     "accesses variables that are "
-                                     "not available before all "
+                                     "accesses variable "
+                                  << var->name
+                                  << " that is not available before all "
                                      "index nodes";
           return {false, {}};
         }
