@@ -40,8 +40,6 @@ const en = "UnitTestsEdge";
 const IM = global.instanceManager;
 
 function testSuite() {
-  const jwtSecret = 'haxxmann';
-
   return {
     tearDownAll : function() {
       try {
