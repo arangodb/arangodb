@@ -18,10 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "gtest/gtest.h"
 
 #include "analysis/token_attributes.hpp"
@@ -37,6 +36,7 @@
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/common.h"
 #include "IResearch/MakeViewSnapshot.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -46,7 +46,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/files.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -62,7 +62,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -137,17 +136,18 @@ class IResearchViewTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  StorageEngineMock& _engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::string testFilesystemPath;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
-  IResearchViewTest() : server(false) {
+  IResearchViewTest() : server(false), _engine(server.engine()) {
     arangodb::tests::init();
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
-    expectUserManagerCalls();
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -174,32 +174,6 @@ class IResearchViewTest
   ~IResearchViewTest() override {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view const cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; });
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 // -----------------------------------------------------------------------------
@@ -218,7 +192,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 
   // view definition with LogicalView (for persistence)
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .create(view, vocbase, json->slice(), true)
@@ -256,7 +230,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 
   // view definition with LogicalView
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                     .create(view, vocbase, json->slice(), true)
@@ -297,7 +271,7 @@ TEST_F(IResearchViewTest, test_defaults) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
         "\"links\": { \"testCollection\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     arangodb::LogicalView::ptr view;
     auto res = arangodb::iresearch::IResearchView::factory().create(
@@ -314,7 +288,7 @@ TEST_F(IResearchViewTest, test_defaults) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
         "\"links\": { \"testCollection\": 42 } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
@@ -335,21 +309,16 @@ TEST_F(IResearchViewTest, test_defaults) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"links\": { "
         "\"testCollection\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -370,7 +339,7 @@ TEST_F(IResearchViewTest, test_defaults) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
         "\"links\": { \"testCollection\": {} } }");
 
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
@@ -436,7 +405,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
       "  } "
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
@@ -792,7 +761,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
       "  } "
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
@@ -1144,7 +1113,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
       "  } "
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
@@ -1497,7 +1466,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
       "  } "
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
@@ -1849,7 +1818,7 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
       "  } "
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
@@ -1921,7 +1890,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\":\"arangosearch\", "
       "\"cleanupIntervalStep\":1, \"consolidationIntervalMsec\": 1000 }");
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView = vocbase.createView(json->slice(), false);
@@ -1986,7 +1955,7 @@ TEST_F(IResearchViewTest, test_consolidate) {
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\":\"arangosearch\", "
       "\"consolidationIntervalMsec\": 1000 }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
   ASSERT_TRUE((false == !logicalView));
   // FIXME TODO write test to check that long-running consolidation aborts on
@@ -1999,7 +1968,7 @@ TEST_F(IResearchViewTest, test_consolidate) {
 }
 
 TEST_F(IResearchViewTest, test_drop) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   std::string dataPath =
       ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
@@ -2040,7 +2009,7 @@ TEST_F(IResearchViewTest, test_drop) {
 }
 
 TEST_F(IResearchViewTest, test_drop_with_link) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   std::string dataPath =
       ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
@@ -2097,38 +2066,12 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    // not authorised (NONE collection) as per
-    // https://github.com/arangodb/backlog/issues/459
-    {
-      arangodb::auth::UserMap userMap;
-      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
-                       .first->second;
-      user.grantCollection(
-          vocbase.name(), "testCollection",
-          arangodb::auth::Level::NONE);   // for missing collections
-                                          // User::collectionAuthLevel(...)
-                                          // returns database auth::Level
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
-
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == view->drop().errorNumber()));
-      EXPECT_TRUE(
-          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
-      EXPECT_TRUE((false == !vocbase.lookupView("testView")));
-      EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
-    }
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // authorised (RO collection)
     {
@@ -2159,7 +2102,7 @@ TEST_F(IResearchViewTest, test_drop_collection) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -2198,7 +2141,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2281,7 +2224,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2364,7 +2307,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2419,7 +2362,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -2472,7 +2415,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2572,7 +2515,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2627,7 +2570,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -2721,7 +2664,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 1 "
         "}");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(view, vocbase, json->slice(), false)
@@ -2734,7 +2677,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
         "}");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                     .instantiate(view, vocbase, json->slice(), false)
@@ -2747,7 +2690,7 @@ TEST_F(IResearchViewTest, test_instantiate) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": "
         "123456789 }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((!arangodb::iresearch::IResearchView::factory()
                       .instantiate(view, vocbase, json->slice(), false)
@@ -2768,7 +2711,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2851,7 +2794,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -2935,7 +2878,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\", \"collections\": "
         "[ 42 ] }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -3013,7 +2956,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         "{ \"id\": 42, \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -3089,7 +3032,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         "{ \"id\": 42, \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\"  }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -3131,7 +3074,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -3172,7 +3115,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         "{ \"id\": 42, \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -3244,7 +3187,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         "{ \"id\": 42, \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(json->slice(), false);
@@ -3286,7 +3229,7 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -3350,7 +3293,7 @@ TEST_F(IResearchViewTest, test_insert) {
   // in recovery (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3359,10 +3302,10 @@ TEST_F(IResearchViewTest, test_insert) {
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     ASSERT_NE(nullptr, view);
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3422,9 +3365,8 @@ TEST_F(IResearchViewTest, test_insert) {
   // in recovery batch (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
 
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -3435,10 +3377,10 @@ TEST_F(IResearchViewTest, test_insert) {
     EXPECT_TRUE((nullptr != view));
 
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3507,8 +3449,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3564,8 +3506,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3623,8 +3565,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery : single operation transaction
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3674,8 +3616,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3731,8 +3673,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3799,7 +3741,7 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
   auto json = velocypack::Parser::fromJson(
       R"({ "name": "testView", "type":"arangosearch", "cleanupIntervalStep":0, "commitIntervalMsec": 0, "consolidationIntervalMsec" : 0 })");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(nullptr, logicalCollection);
   auto logicalView = vocbase.createView(json->slice(), true);
@@ -3881,7 +3823,7 @@ TEST_F(IResearchViewTest, test_remove) {
   // in recovery (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3890,10 +3832,10 @@ TEST_F(IResearchViewTest, test_remove) {
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     ASSERT_NE(nullptr, view);
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -3961,9 +3903,8 @@ TEST_F(IResearchViewTest, test_remove) {
   // in recovery batch (skip operations before or at recovery tick)
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -3973,10 +3914,10 @@ TEST_F(IResearchViewTest, test_remove) {
     EXPECT_TRUE((nullptr != view));
 
     StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     StorageEngineMock::recoveryTickCallback = []() {
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
     };
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -4045,8 +3986,8 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -4102,8 +4043,8 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -4161,8 +4102,8 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery : single operation transaction
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -4212,8 +4153,8 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery batch (FindOrCreate)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -4269,8 +4210,8 @@ TEST_F(IResearchViewTest, test_remove) {
 
   // not in recovery batch (SyncAndReplace)
   {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(testDBInfo(server.server()));
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto viewImpl = vocbase.createView(viewJson->slice(), false);
@@ -4328,7 +4269,7 @@ TEST_F(IResearchViewTest, test_remove) {
 TEST_F(IResearchViewTest, test_open) {
   // default data path
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     std::string dataPath =
         ((((std::filesystem::path() /= testFilesystemPath) /=
            std::string("databases")) /=
@@ -4364,7 +4305,7 @@ TEST_F(IResearchViewTest, test_query) {
 
   // no filter/order provided, means "RETURN *"
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     auto* view =
@@ -4388,7 +4329,7 @@ TEST_F(IResearchViewTest, test_query) {
         "{ \"name\": \"testCollection\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"testView\", \"includeAllFields\": true }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -4445,7 +4386,7 @@ TEST_F(IResearchViewTest, test_query) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
 
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -4538,7 +4479,7 @@ TEST_F(IResearchViewTest, test_query) {
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } "
         "}");
     ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -4609,10 +4550,8 @@ TEST_F(IResearchViewTest, test_register_link) {
 
   // new link in recovery
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice(), false);
@@ -4654,8 +4593,7 @@ TEST_F(IResearchViewTest, test_register_link) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -4690,10 +4628,8 @@ TEST_F(IResearchViewTest, test_register_link) {
 
   // new link
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice(), false);
@@ -4788,10 +4724,8 @@ TEST_F(IResearchViewTest, test_register_link) {
 
   // known link
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson1->slice(), false);
@@ -4930,10 +4864,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
   // link removed before view (in recovery)
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -5010,8 +4942,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -5053,10 +4984,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
   // link removed before view
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -5168,10 +5097,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
   // view removed before link
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
@@ -5207,10 +5134,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
   // view deallocated before link removed
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
 
     {
@@ -5282,10 +5207,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
 
   // test empty before open (TRI_vocbase_t::createView(...) will call open())
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
-    Vocbase vocbase(testDBInfo(server.server()));
+    _engine.views.clear();
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .create(view, vocbase, viewJson->slice(), true)
@@ -5307,12 +5230,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test add via link before open (TRI_vocbase_t::createView(...) will call
   // open())
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     arangodb::LogicalView::ptr logicalView;
@@ -5321,10 +5242,9 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .instantiate(logicalView, vocbase, viewJson->slice(), false)
              .ok()));
     ASSERT_TRUE((false == !logicalView));
-    engine.createView(vocbase, logicalView->id(),
-                      *logicalView);  // ensure link can find view
-    StorageEngineMock(server.server())
-        .registerView(vocbase, logicalView);  // ensure link can find view
+    _engine.createView(vocbase, logicalView->id(),
+                       *logicalView);            // ensure link can find view
+    _engine.registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));
@@ -5353,14 +5273,12 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test drop via link before open (TRI_vocbase_t::createView(...) will call
   // open())
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto updateJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
     auto updateJson1 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null } }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     arangodb::LogicalView::ptr logicalView;
@@ -5369,10 +5287,9 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .instantiate(logicalView, vocbase, viewJson->slice(), false)
              .ok()));
     ASSERT_TRUE((false == !logicalView));
-    engine.createView(vocbase, logicalView->id(),
-                      *logicalView);  // ensure link can find view
-    StorageEngineMock(server.server())
-        .registerView(vocbase, logicalView);  // ensure link can find view
+    _engine.createView(vocbase, logicalView->id(),
+                       *logicalView);            // ensure link can find view
+    _engine.registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
         dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));
@@ -5416,9 +5333,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // store
   // initial populate persisted view
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto linkJson =
@@ -5427,7 +5342,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 "
         "}");
     ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -5459,13 +5374,11 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   }
   // test persisted CIDs on open
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 "
         "}");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     auto* viewImpl =
@@ -5484,12 +5397,10 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test add via link after open (TRI_vocbase_t::createView(...) will call
   // open())
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -5518,14 +5429,12 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test drop via link after open (TRI_vocbase_t::createView(...) will call
   // open())
   {
-    auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-    engine.views.clear();
+    _engine.views.clear();
     auto updateJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
     auto updateJson1 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null } }");
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -5590,7 +5499,7 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
       "]"
       "}");
 
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalView =
       vocbase.createView(viewJson->slice(), false);  // create view
   ASSERT_TRUE(nullptr != logicalView);
@@ -5701,7 +5610,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
       "{ \"name\": \"testCollection1\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
   ASSERT_TRUE((nullptr != logicalCollection0));
   auto logicalCollection1 = vocbase.createCollection(collectionJson1->slice());
@@ -6063,7 +5972,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"commitIntervalMsec\": 0 }");
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -6288,7 +6197,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // modify meta params
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto view = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !view));
 
@@ -6443,7 +6352,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
   // test rollback on meta modification failure (as an example invalid value for
   // 'cleanupIntervalStep')
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
@@ -6525,7 +6434,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // modify meta params with links to missing collections
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
@@ -6614,7 +6523,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -6707,7 +6616,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -6890,7 +6799,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // overwrite links
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collectionJson1 = arangodb::velocypack::Parser::fromJson(
@@ -7106,7 +7015,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
   // update existing link (full update)
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -7250,7 +7159,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         "{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } "
         "}");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -7277,17 +7186,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7365,7 +7269,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -7378,17 +7282,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -7413,7 +7312,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -7440,17 +7339,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7511,7 +7405,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -7546,17 +7440,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7630,7 +7519,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection0\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -7666,17 +7555,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7749,7 +7633,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -7776,17 +7660,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7847,7 +7726,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -7882,17 +7761,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7967,7 +7841,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection0\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -8003,17 +7877,12 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -8094,7 +7963,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // modify meta params
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto view = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !view));
     ASSERT_TRUE(view->category() ==
@@ -8174,7 +8043,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
   // test rollback on meta modification failure (as an example invalid value for
   // 'cleanupIntervalStep')
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
@@ -8253,7 +8122,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // modify meta params with links to missing collections
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
@@ -8339,7 +8208,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -8429,7 +8298,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -8636,7 +8505,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // add a new link (in recovery)
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -8650,8 +8519,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection\": {} } }");
 
     auto beforeRec = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&beforeRec]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRec;
     };
@@ -8714,7 +8582,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // add a new link
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -8820,7 +8688,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // add a new link to a collection with documents
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -8944,7 +8812,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // add new link to non-existant collection
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto view = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !view));
     ASSERT_TRUE(view->category() ==
@@ -9026,7 +8894,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // remove link (in recovery)
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -9042,7 +8910,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       persisted = false;
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
       };
@@ -9080,7 +8948,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto before = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
+          arangodb::EngineState::kRecovering;
       irs::Finally restoreRecovery = [&before]() noexcept {
         StorageEngineMock::recoveryStateResult = before;
       };
@@ -9115,7 +8983,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // remove link
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -9274,7 +9142,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // remove link from non-existant collection
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto view = vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE((false == !view));
 
@@ -9354,7 +9222,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // remove non-existant link
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -9436,7 +9304,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // remove + add link to same collection (reindex)
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -9578,7 +9446,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
   // update existing link (partial update)
   {
-    Vocbase vocbase(testDBInfo(server.server()));
+    Vocbase vocbase(testDBInfo(server.server()), _engine);
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -10037,7 +9905,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"cleanupIntervalStep\": 62 }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -10064,17 +9932,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10152,7 +10015,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -10165,17 +10028,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -10200,7 +10058,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": null } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
@@ -10227,17 +10085,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10298,7 +10151,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection1\": {} } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -10333,17 +10186,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10418,7 +10266,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection1\": null } }");
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     auto logicalCollection0 =
         vocbase.createCollection(collection0Json->slice());
     ASSERT_TRUE((nullptr != logicalCollection0));
@@ -10454,17 +10302,12 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -10791,7 +10634,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
         "    [\"obj.c\", \"\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", "
         "\"obj.g\"] ] "
         "} ");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .create(view, vocbase, json->slice(), true)
@@ -10856,7 +10699,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
         "    [\"obj.d\"], [\"obj.c.c1\", \"obj.c\", \"obj.c\", \"obj.d\", "
         "\"obj.c.c2\"], [\"obj.b\", \"obj.b\"] ] "
         "} ");
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .create(view, vocbase, json->slice(), true)
@@ -10921,7 +10764,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
       "    {\"fields\":[\"obj.a\"], \"compression\":\"none\"} , "
       "{\"fields\":[\"obj.b.b1\"], \"compression\":\"lz4\"} ] "
       "} ");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   arangodb::LogicalView::ptr view;
   EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
                    .create(view, vocbase, json->slice(), true)

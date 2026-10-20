@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -29,9 +28,6 @@ namespace arangodb::activities {
 
 /**
    Global variable that holds all active activities.
-
-   Includes a list of thread owned lists, one for each initialized
-   thread.
  */
 extern Registry registry;
 extern const ActivityHandle Root;
@@ -40,11 +36,4 @@ template<typename T, typename... Args>
 auto make(Args&&... args) -> T::HandleType {
   return registry.makeActivity<T>(std::forward<Args>(args)...);
 }
-
-template<typename T, typename... Args>
-auto makeWithParent(ActivityHandle parent, Args&&... args) -> T::HandleType {
-  return registry.makeActivityWithParent<T>(std::move(parent),
-                                            std::forward<Args>(args)...);
-}
-
 }  // namespace arangodb::activities

@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 /**
  * Verify if an object is a ECMAScript Module
@@ -10,11 +10,13 @@
  * @param {object} object The object to examine
  * @returns {boolean} true when the object is a module
  */
-module.exports = function (object) {
+function isEsModule(object) {
     return (
         object &&
         typeof Symbol !== "undefined" &&
         object[Symbol.toStringTag] === "Module" &&
         Object.isSealed(object)
     );
-};
+}
+
+module.exports = isEsModule;

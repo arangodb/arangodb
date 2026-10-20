@@ -2,7 +2,7 @@
 
 FROM mcr.microsoft.com/windows/servercore:10.0.17763.4737-amd64
 
-MAINTAINER hackers@arango.ai
+LABEL org.opencontainers.image.authors="hackers@arango.ai"
 
 # Restore the default Windows shell for correct batch processing.
 SHELL ["cmd", "/S", "/C"]

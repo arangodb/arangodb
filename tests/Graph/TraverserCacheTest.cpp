@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph/Cursors/SingleServerEdgeCursor.h"
@@ -71,7 +70,7 @@ class TraverserCacheTest : public ::testing::Test {
   arangodb::aql::Projections _vertexProjections{};
   arangodb::aql::Projections _edgeProjections{};
 
-  TraverserCacheTest() : gdb(s.server, "testVocbase") {
+  TraverserCacheTest() : gdb(s.server, s.engine, "testVocbase") {
     stats = std::make_shared<arangodb::aql::TraversalStats>();
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
     queryContext = query.get()->newTrxContext();

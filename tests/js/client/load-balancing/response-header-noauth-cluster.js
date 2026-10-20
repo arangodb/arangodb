@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,11 +29,9 @@ const jsunity = require("jsunity");
 
 const db = require("internal").db;
 const request = require("@arangodb/request");
-const url = require('url');
 const _ = require("lodash");
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-
-const servers = getCoordinatorEndpoints();
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function ResponseHeadersSuite () {
   'use strict';
@@ -43,7 +39,7 @@ function ResponseHeadersSuite () {
   let coordinators = [];
   const baseJobUrl = `/_api/job`;
 
-  function sendRequest(method, endpoint, headers, body, usePrimary) {
+  function sendRequest(method, path, headers, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -51,14 +47,14 @@ function ResponseHeadersSuite () {
         headers,
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       if (method !== 'GET') {
         envelope.body = body;
       }
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
 
@@ -74,7 +70,7 @@ function ResponseHeadersSuite () {
 
   return {
     setUp: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

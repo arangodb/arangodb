@@ -18,43 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/CacheManagerFeature.h"
 #include "gtest/gtest.h"
 
 #include <cstdint>
 #include <queue>
 #include <string>
-#include <thread>
-#include <vector>
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
-#include "Cache/CacheManagerFeatureThreads.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/Cache.h"
+#include "Cache/CacheManagerFeature.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
-#include "Cache/PlainCache.h"
-#include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/SharedPRNGFeature.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 struct CacheManagerTest : testing::Test {
-  CacheManagerTest() : sharedPRNG(server.getFeature<SharedPRNGFeature>()) {}
-
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG;
+  basics::SharedPRNG prng;
 };
 
 TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
@@ -64,7 +52,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -96,7 +84,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_reusage) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -150,7 +138,7 @@ TEST_F(CacheManagerTest,
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -218,7 +206,7 @@ TEST_F(CacheManagerTest,
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -274,7 +262,7 @@ TEST_F(CacheManagerTest, test_create_and_destroy_caches) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = requestLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -338,7 +326,7 @@ TEST_F(CacheManagerTest, test_manager_shutdown) {
   co.cacheSize = requestLimit;
 
   {
-    Manager manager(sharedPRNG, postFn, co);
+    Manager manager(prng, postFn, co);
 
     auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
     // now only manager owns cache pointer
@@ -358,7 +346,7 @@ TEST_F(CacheManagerTest, test_manager_shutdown_with_data_and_stats) {
   co.cacheSize = requestLimit;
 
   {
-    Manager manager(sharedPRNG, postFn, co);
+    Manager manager(prng, postFn, co);
 
     auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
 
@@ -397,7 +385,7 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = requestLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -407,12 +395,62 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
   CacheOptions co2;
   co2.cacheSize = bigRequestLimit;
-  Manager bigManager(sharedPRNG, nullptr, co2);
+  Manager bigManager(prng, nullptr, co2);
 
   ASSERT_EQ(bigRequestLimit, bigManager.globalLimit());
 
   ASSERT_TRUE(1024ULL * 1024ULL < bigManager.globalAllocation());
   ASSERT_TRUE(bigRequestLimit > bigManager.globalAllocation());
+}
+
+// regression test: to ES-2308. guard against growth beyond watermark
+TEST_F(CacheManagerTest, test_no_growth_beyond_highwater_mark) {
+  std::uint64_t requestLimit = 16 * 1024 * 1024;
+
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 0;
+  Manager manager(prng, postFn, co);
+
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
+  ASSERT_NE(nullptr, cache);
+
+  std::uint64_t const initialSize = cache->size();
+  std::uint64_t const initialUsageLimit = cache->usageLimit();
+
+  // push the global allocation above the highwater mark, but keep it below
+  // the global limit
+  auto highwaterMark = static_cast<std::uint64_t>(
+      co.highwaterMultiplier * static_cast<double>(requestLimit));
+  std::uint64_t const extra =
+      highwaterMark + 1024 * 1024 - manager.globalAllocation();
+  manager.adjustGlobalAllocation(static_cast<std::int64_t>(extra));
+  auto extraGuard = scopeGuard([&]() noexcept {
+    manager.adjustGlobalAllocation(-static_cast<std::int64_t>(extra));
+  });
+  ASSERT_GT(manager.globalAllocation(), highwaterMark);
+  ASSERT_LT(manager.globalAllocation(), requestLimit);
+
+  // insert more data than the global limit allows. every rejected insert
+  // triggers a grow request, which must be denied
+  std::string value(8 * 1024, 'x');
+  for (std::uint64_t i = 0; i < 4096; ++i) {
+    CachedValue* cv =
+        CachedValue::construct(&i, sizeof(i), value.data(), value.size());
+    TRI_ASSERT(cv != nullptr);
+    if (cache->insert(cv) != TRI_ERROR_NO_ERROR) {
+      delete cv;
+    }
+
+    ASSERT_LE(cache->usageLimit(), initialUsageLimit) << "iteration " << i;
+    ASSERT_LE(cache->size(), initialSize) << "iteration " << i;
+  }
+
+  ASSERT_LE(cache->usage(), initialUsageLimit);
+  ASSERT_LE(manager.globalAllocation(), requestLimit);
+
+  manager.destroyCache(std::move(cache));
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -423,7 +461,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_data) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -502,7 +540,7 @@ TEST_F(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -617,7 +655,7 @@ TEST_F(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 

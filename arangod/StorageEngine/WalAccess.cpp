@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalAccess.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Replication/common-defines.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -74,7 +73,8 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   TRI_ASSERT(dbid != 0);
 
   if (auto const it = _vocbases.find(dbid); it == _vocbases.end()) {
-    if (auto vocbase = _databaseFeature.useDatabase(dbid); vocbase != nullptr) {
+    if (auto vocbase = _databaseProvider.useDatabase(dbid);
+        vocbase != nullptr) {
       auto& [_, db] = *_vocbases.try_emplace(dbid, std::move(vocbase)).first;
       return db.get();
     }

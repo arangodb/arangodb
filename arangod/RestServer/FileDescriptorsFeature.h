@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,17 +32,22 @@
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
+
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(
-      application_features::ApplicationServer& server);
+  FileDescriptorsFeature(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metricsRegistry,
+                         FileDescriptorsFeatureOptions options);
+  FileDescriptorsFeature(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   uint64_t current() const noexcept;

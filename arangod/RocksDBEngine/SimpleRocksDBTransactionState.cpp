@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleRocksDBTransactionState.h"
@@ -29,7 +28,6 @@
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -40,8 +38,9 @@ using namespace arangodb;
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin, manager) {
+}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
@@ -107,7 +106,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
       auto indexes =
           trxCollection->collection()->getPhysical()->getAllIndexes();
       for (auto const& idx : indexes) {
-        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (idx->type() == IndexType::Primary) {
           // primary index is unique, but we can ignore it here.
           // we are only looking for secondary indexes
           continue;

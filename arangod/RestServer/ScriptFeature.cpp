@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -30,11 +29,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/ScriptOptionsProvider.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "V8/JavaScriptSecurityContext.h"
@@ -49,18 +49,19 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : ScriptFeature(server, result, ScriptFeatureOptions{}) {}
+
+ScriptFeature::ScriptFeature(ApplicationServer& server, int* result,
+                             ScriptFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }
 
-void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--javascript.script-parameter", "Script parameter.",
-      new VectorParameter<StringParameter>(&_options.scriptParameters));
-}
-
 void ScriptFeature::start() {
+  TRI_ASSERT(server().hasFeature<ServerFeature>());
   auto& serverFeature = server().getFeature<ServerFeature>();
   auto operationMode = serverFeature.operationMode();
 

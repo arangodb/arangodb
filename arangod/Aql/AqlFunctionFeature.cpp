@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
@@ -29,20 +28,18 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 
-using namespace arangodb::application_features;
-
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature::AqlFunctionFeature(ApplicationServer& server)
+AqlFunctionFeature::AqlFunctionFeature(
+    application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
 #ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
+  startsAfter<application_features::V8FeaturePhase>();
 #else
   startsAfter<application_features::ClusterFeaturePhase>();
 #endif
@@ -631,5 +628,4 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::NotImplemented});
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

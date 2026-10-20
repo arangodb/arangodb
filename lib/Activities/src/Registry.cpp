@@ -58,6 +58,17 @@ auto Registry::garbageCollect() -> void {
   });
 }
 
+auto Registry::garbageCollectAll() -> void {
+  _registry.doUnderLock([this](auto&& reg) {
+    size_t deletedCount = 1;
+    while (deletedCount > 0) {
+      deletedCount =
+          std::erase_if(reg, [](auto&& a) { return a.use_count() == 1; });
+      store_registered_nodes(reg.size());
+    }
+  });
+}
+
 auto Registry::snapshot()
     -> errors::ErrorT<inspection::Status, velocypack::SharedSlice> {
   return _registry.doUnderLock([](auto&& reg) {
@@ -65,6 +76,9 @@ auto Registry::snapshot()
     {
       auto array = VPackArrayBuilder(&builder);
       for (auto&& a : reg) {
+        if (a.use_count() == 1) {
+          continue;
+        }
         auto res = a->snapshot(builder);
         if (!res.ok()) {
           return errors::ErrorT<inspection::Status,
@@ -77,18 +91,8 @@ auto Registry::snapshot()
   });
 }
 
-auto Registry::findActivityById(ActivityId id) const
-    -> std::optional<ActivityHandle> {
-  return _registry.doUnderLock(
-      [id](auto&& reg) -> std::optional<ActivityHandle> {
-        auto it = std::find_if(std::begin(reg), std::end(reg),
-                               [id](auto a) { return a->id() == id; });
-        if (it == std::end(reg)) {
-          return std::nullopt;
-        } else {
-          return *it;
-        }
-      });
+auto Registry::size() -> size_t {
+  return _registry.doUnderLock([](auto&& reg) { return reg.size(); });
 }
 
 Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(

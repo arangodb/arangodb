@@ -18,19 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 
 #include <velocypack/Slice.h>
 
@@ -66,7 +66,8 @@ class HeartbeatThread : public ServerThread,
   HeartbeatThread(application_features::ApplicationServer&,
                   AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning,
-                  double noHeartbeatDelayBeforeShutdown);
+                  double noHeartbeatDelayBeforeShutdown,
+                  metrics::IRegistry& metricsRegistry);
   ~HeartbeatThread();
 
   //////////////////////////////////////////////////////////////////////////////

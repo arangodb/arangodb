@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-globals.h"
@@ -36,7 +35,7 @@
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
     arangodb::V8SecurityFeature& v8security,
-    arangodb::HttpEndpointProvider& endpoints,
+    arangodb::HttpEndpointProvider* endpoints,
     arangodb::application_features::CommunicationFeaturePhase& comm,
 #ifdef USE_ENTERPRISE
     arangodb::EncryptionFeature& encryption,
@@ -223,7 +222,9 @@ TRI_v8_global_t::TRI_v8_global_t(
     : TRI_v8_global_t{
           server,
           server.getFeature<arangodb::V8SecurityFeature>(),
-          server.getFeature<arangodb::HttpEndpointProvider>(),
+          server.hasFeature<arangodb::HttpEndpointProvider>()
+              ? &server.getFeature<arangodb::HttpEndpointProvider>()
+              : nullptr,
           server.getFeature<
               arangodb::application_features::CommunicationFeaturePhase>(),
 #ifdef USE_ENTERPRISE
@@ -311,6 +312,18 @@ std::string TRI_ObjectToString(v8::Local<v8::Context> context,
                                v8::Local<v8::String> val) {
   v8::String::Utf8Value x(isolate, val);
   return std::string(*x, x.length());
+}
+
+TRI_v8_global_t* CreateV8Globals(
+    arangodb::application_features::ApplicationServer& server,
+    v8::Isolate* isolate, size_t id) {
+  TRI_GET_GLOBALS();
+
+  TRI_ASSERT(v8g == nullptr);
+  v8g = new TRI_v8_global_t(server, isolate, id);
+  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
+
+  return v8g;
 }
 
 /// @brief returns a global context

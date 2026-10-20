@@ -21,16 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var arango = arangodb.arango;
-var db = arangodb.db;
-var ERRORS = arangodb.errors;
-var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arangodb = require("@arangodb");
+const arango = arangodb.arango;
+const db = arangodb.db;
+const ERRORS = arangodb.errors;
+let IM = global.instanceManager;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +46,7 @@ function EndpointsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      IM.rememberConnection();
       db._useDatabase("_system");
     },
 
@@ -63,7 +63,7 @@ function EndpointsSuite () {
       catch (err) {
       }
 
-      arango.reconnect(originalEndpoint, "_system", "root", "");
+      IM.reconnectMe();
     },
 
 ////////////////////////////////////////////////////////////////////////////////

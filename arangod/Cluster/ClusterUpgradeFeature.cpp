@@ -18,11 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterUpgradeFeature.h"
-
+#include "Cluster/ServerState.h"
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -48,32 +47,17 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 ClusterUpgradeFeature::ClusterUpgradeFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature)
+    : ClusterUpgradeFeature(server, databaseFeature,
+                            ClusterUpgradeFeatureOptions{}) {}
+
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterUpgradeFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
-}
 
-void ClusterUpgradeFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--cluster.upgrade",
-      "Perform a cluster upgrade if necessary (auto = perform an upgrade "
-      "and shut down only if `--database.auto-upgrade true` is set, "
-      "disable = ignore `--database.auto-upgrade` and never perform an "
-      "upgrade, force = ignore `--database.auto-upgrade` and always "
-      "perform an upgrade and shut down, online = always perform an "
-      "upgrade but don't shut down).",
-      new DiscreteValuesParameter<StringParameter>(
-          &_options.upgradeMode,
-          std::unordered_set<std::string>{"auto", "disable", "force",
-                                          "online"}),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator));
-}
-
-void ClusterUpgradeFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }

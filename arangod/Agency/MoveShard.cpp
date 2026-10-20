@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MoveShard.h"
@@ -37,9 +36,9 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 constexpr auto PARENT_JOB_ID = "parentJob";
 constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
@@ -1579,3 +1578,5 @@ void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
     ops.add("moveShard", job.slice());
   }
 }
+
+}  // namespace arangodb::consensus

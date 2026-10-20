@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FrontendFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/FrontendOptionsProvider.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -35,25 +34,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FrontendFeature::FrontendFeature(ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : FrontendFeature(server, FrontendFeatureOptions{}) {}
+
+FrontendFeature::FrontendFeature(ApplicationServer& server,
+                                 FrontendFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
-}
-
-void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("web-interface", "browser-based frontend");
-
-  options->addOldOption("frontend.version-check",
-                        "web-interface.version-check");
-
-  options->addOption("--web-interface.version-check",
-                     "Alert the user if new versions are available.",
-                     new BooleanParameter(&_options.versionCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
 }
 
 void FrontendFeature::prepare() {

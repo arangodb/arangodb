@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexey Bakharev
 // //////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");
@@ -32,8 +31,8 @@ let errors = arangodb.errors;
 let dbName = "InvertedIndexSearchAliasSuiteCommunity";
 let isEnterprise = internal.isEnterprise();
 const isCluster = require("internal").isCluster();
-const { triggerMetrics } = require("@arangodb/test-helper");
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
+let IM = global.instanceManager;
 
 function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     let cleanup = function () {
@@ -762,7 +761,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             // SEARCH-341
             {
                 if (isCluster) {
-                    triggerMetrics();
+                    IM.triggerMetrics();
                 }
                 checkIndexMetrics( function () {
                     let stats = testColl.indexes(true, true);

@@ -18,11 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "RocksDBIncrementalSync.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadLocalLeaser.h"
@@ -38,7 +39,6 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
@@ -150,12 +150,12 @@ Result removeKeysOutsideRange(
   // range
   auto index = coll->lookupIndex(
       IndexId::primary());  // RocksDBCollection->primaryIndex() is private
-  TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(index->type() == IndexType::Primary);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(primaryIndex->objectId(), highRef);
-  iterator.seek(key->string());
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(primaryIndex->objectId(), highRef);
+  iterator.seek(key.string());
 
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
@@ -624,13 +624,15 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
         Result res;
         if (mustInsert) {
-          res = trx->insert(collectionName, it, options).result;
+          res = basics::catchToResult(
+              [&] { return trx->insert(collectionName, it, options).result; });
 
           if (res.ok()) {
             ++stats.numDocsInserted;
           }
         } else {
-          res = trx->replace(collectionName, it, options).result;
+          res = basics::catchToResult(
+              [&] { return trx->replace(collectionName, it, options).result; });
           // do NOT count up stats.numDocsInserted, as this will influence the
           // persisted document count later!!
         }
@@ -653,7 +655,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           res.reset(errorNumber,
                     basics::StringUtils::concatT(TRI_errno_string(errorNumber),
                                                  ": ", res.errorMessage()));
-          return res;
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
 
         // unique constraint violation!
@@ -662,7 +664,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         // errorMessage() is this case contains the conflicting key
         auto inner = removeConflict(res.errorMessage());
         if (inner.fail()) {
-          return res;
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
       }
     }
@@ -691,10 +693,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress,
-                         syncer._state.syncerId);
-  }
+  syncer._batch.extend(syncer._state.connection, syncer._progress,
+                       syncer._state.syncerId);
 
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
@@ -822,10 +822,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto indexesSnapshot = physical->getIndexesSnapshot();
 
     auto resetChunk = [&]() -> void {
-      if (!syncer._state.isChildSyncer) {
-        syncer._batch.extend(syncer._state.connection, syncer._progress,
-                             syncer._state.syncerId);
-      }
+      syncer._batch.extend(syncer._state.connection, syncer._progress,
+                           syncer._state.syncerId);
 
       syncer.setProgress(std::string("processing keys chunk ") +
                          std::to_string(currentChunkId) + " of " +

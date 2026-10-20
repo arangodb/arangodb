@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,7 +39,7 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   RocksDBTtlIndex(IndexId iid, LogicalCollection& coll,
                   arangodb::velocypack::Slice const& info);
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_TTL_INDEX; }
+  IndexType type() const override { return IndexType::TTL; }
 
   char const* typeName() const override { return "rocksdb-ttl"; }
 

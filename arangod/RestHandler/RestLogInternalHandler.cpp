@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestLogInternalHandler.h"
@@ -26,6 +25,8 @@
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "VocBase/vocbase.h"
+
 #include "absl/strings/str_cat.h"
 
 #include <Async/async.h>
@@ -39,9 +40,11 @@ RestLogInternalHandler::RestLogInternalHandler(
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogInternalHandler::~RestLogInternalHandler() = default;
 
+// Mounted at /_api/log-internal (prefix, only when replication2 is enabled and
+// in cluster mode)
 auto RestLogInternalHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
   }

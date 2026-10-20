@@ -28,9 +28,8 @@
 #include <memory>
 
 #include <velocypack/Builder.h>
+#include "Inspection/Transformers.h"
 #include "Inspection/VPackSaveInspector.h"
-
-#include "Basics/Guarded.h"
 
 namespace arangodb::activities {
 
@@ -54,14 +53,20 @@ struct GuardedActivity : Activity {
     ActivityId id;
     std::optional<ActivityId> parent;
     ActivityType type;
+    ActivityCreated created;
+    std::vector<basics::ThreadInfo> threads;
     Data data;
 
     template<typename Inspector>
     friend auto inline inspect(Inspector& f, Snapshot& s) {
-      return f.object(s).fields(f.field("id", s.id),          //
-                                f.field("parent", s.parent),  //
-                                f.field("type", s.type),      //
-                                f.field("data", s.data));
+      return f.object(s).fields(
+          f.field("id", s.id),          //
+          f.field("parent", s.parent),  //
+          f.field("type", s.type),      //
+          f.field("created", s.created)
+              .transformWith(inspection::TimeStampTransformer{}),  //
+          f.field("threads", s.threads),                           //
+          f.field("data", s.data));
     }
   };
 
@@ -69,6 +74,8 @@ struct GuardedActivity : Activity {
     auto snap = Snapshot{.id = id(),            //
                          .parent = parentId(),  //
                          .type = type(),        //
+                         .created = created(),  //
+                         .threads = threads(),  //
                          .data = _data.copy()};
     auto inspector = inspection::VPackSaveInspector<>(builder);
     return inspector.apply(snap);

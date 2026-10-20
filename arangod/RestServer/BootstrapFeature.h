@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,7 +32,6 @@ class V8DealerFeature;
 class ClusterUpgradeFeature;
 class SystemDatabaseFeature;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class ClusterFeature;
 
 class BootstrapFeature final : public application_features::ApplicationFeature {
@@ -42,7 +40,17 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
   explicit BootstrapFeature(application_features::ApplicationServer& server,
                             ClusterFeature& clusterFeature,
-                            EngineSelectorFeature& engineSelectorFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
+                            ,
+                            BootstrapFeatureOptions options);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
                             DatabaseFeature& databaseFeature,
                             SystemDatabaseFeature* systemDatabaseFeature,
                             ClusterUpgradeFeature* clusterUpgradeFeature
@@ -52,7 +60,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 #endif
   );
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;
   void unprepare() override final;
@@ -60,7 +67,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   bool isReady() const;
 
   ClusterFeature& clusterFeature();
-  EngineSelectorFeature& engineSelectorFeature();
   DatabaseFeature& databaseFeature();
   SystemDatabaseFeature* systemDatabaseFeature();
   ClusterUpgradeFeature* clusterUpgradeFeature();
@@ -72,7 +78,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void waitForDatabases() const;
 
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   DatabaseFeature& _databaseFeature;
   SystemDatabaseFeature* _systemDatabaseFeature{};
   ClusterUpgradeFeature* _clusterUpgradeFeature{};

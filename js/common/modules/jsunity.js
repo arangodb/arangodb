@@ -19,8 +19,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
@@ -75,6 +73,7 @@ jsUnity.results.pass = function (index, testName) {
 
   RESULTS[testName].status = true;
   RESULTS[testName].duration = (ENDTEST - STARTTEST);
+  RESULTS[testName].finishedAt = new Date().toISOString();
 
   print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' +
        testName + internal.COLORS.COLOR_RESET +
@@ -110,6 +109,7 @@ jsUnity.results.fail = function (index, testName, message) {
 
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
+  RESULTS[testName].finishedAt = new Date().toISOString();
 
   RESULTS[testName].duration = (ENDTEST - STARTTEST);
   if (RESULTS[testName].duration < 0) {
@@ -168,6 +168,7 @@ jsUnity.results.beginSetUp = function(index, testName) {
          (jsUnity.env.getDate() - STARTTEST) + 'ms)' + internal.COLORS.COLOR_RESET);
   }
   RESULTS[testName] = {};
+  RESULTS[testName].startedAt = new Date().toISOString();
   SETUPS = jsUnity.env.getDate();
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
 };
@@ -264,7 +265,7 @@ function Run (testsuite) {
 
       tests.push(test);
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll' && key !== 'internal') {
-      console.error('unknown function: %s', key);
+      throw new Error(`function name ${key} not allowed here.`);
     }
   }
   if (tests.length === 0) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,7 +41,7 @@ class ReplicationMetricsFeature final
 
   explicit ReplicationMetricsFeature(
       application_features::ApplicationServer& server,
-      metrics::MetricsFeature& metrics);
+      metrics::IRegistry& metricsRegistry);
 
   struct InitialSyncStats {
     explicit InitialSyncStats(ReplicationMetricsFeature& feature,

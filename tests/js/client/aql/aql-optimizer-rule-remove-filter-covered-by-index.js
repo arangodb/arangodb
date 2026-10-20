@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -251,6 +249,12 @@ function optimizerRuleTestSuite() {
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);
+
+      // values differ only in grouping; neither filter covers the other
+      query = "FOR x IN [ { i: 3, j: 1, k: 1 } ] FOR v IN " + colName +
+              " FILTER v.d == (x.i - x.j) - x.k FILTER v.d == x.i - (x.j - x.k) RETURN v";
+      let opts = { optimizer: { rules: [ "-remove-redundant-calculations" ] } };
+      assertEqual([ ], db._query(query, { }, opts).toArray(), query);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,7 +482,48 @@ function optimizerRuleTestSuite() {
       assertEqual(0, result.plan.nodes.filter(function(node) { return node.type === 'CalculationNode'; }).length);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
-    }
+    },
+
+    // only deterministic values are used for index lookups, so only their filters
+    // can be covered; NOOPT(), DOCUMENT(), COLLECTION_COUNT() and RAND() are not
+    testFiltersWithNonDeterministicValues : function() {
+      // keep FilterNodes visible instead of merged into the IndexNode
+      const opts = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
+      const filterNodes = (query) => findExecutionNodes(
+        db._createStatement({query, bindVars: {}, options: opts}).explain(),
+        "FilterNode").length;
+      const loop = "FOR v IN " + colName + " ";
+
+      const cases = [
+        // NOEVAL() is not computed in advance, but is deterministic: covered
+        [0, loop + "FILTER v.d == NOEVAL(1) RETURN v"],
+        [0, loop + "FILTER NOEVAL(1) == v.d RETURN v"],
+        [0, loop + "FILTER v.d == NOEVAL(1) FILTER v.d == NOEVAL(1) RETURN v"],
+        [0, loop + "FILTER v.d > NOEVAL(1) FILTER v.d < NOEVAL(5) RETURN v"],
+        [0, "FOR x IN [{k: 1}] " + loop + "FILTER v.d == NOEVAL(x.k) RETURN v"],
+
+        // NOEVAL with different arguments: only the one in the index condition goes
+        [1, loop + "FILTER v.d == NOEVAL(0) FILTER v.d == NOEVAL(1) RETURN v"],
+
+        // non-deterministic: no index lookup, so filters are kept
+        [1, loop + "FILTER v.d == NOOPT(1) RETURN v"],
+        [2, loop + "FILTER v.d == NOOPT(1) FILTER v.d == NOOPT(1) RETURN v"],
+        [1, loop + "FILTER v.d == NOOPT(NOOPT(1)) RETURN v"],
+        [1, loop + "FILTER v.d == DOCUMENT('" + colName + "/x').d RETURN v"],
+        [1, loop + "FILTER v.d == COLLECTION_COUNT('" + colNameOther + "') RETURN v"],
+        [1, loop + "FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
+        [2, loop + "FILTER v.d == FLOOR(RAND() * 10) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
+        [1, loop + "FILTER v.d == NOOPT(FLOOR(RAND() * 10)) RETURN v"],
+
+        // mixed: the NOEVAL filter is covered, the RAND() one is not
+        [1, loop + "FILTER v.d == NOEVAL(1) FILTER v.d == FLOOR(RAND() * 10) RETURN v"],
+      ];
+
+      const mismatches = cases
+        .map(([expected, query]) => ({ query, expected, actual: filterNodes(query) }))
+        .filter(({ expected, actual }) => expected !== actual);
+      assertEqual([], mismatches);
+    },
 
   };
 }

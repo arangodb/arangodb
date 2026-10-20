@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph.h"
@@ -69,7 +68,7 @@ size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
 
 #ifndef USE_ENTERPRISE
 // Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromPersistence(Database& vocbase,
                                               VPackSlice document) {
   document = document.resolveExternal();
   std::unique_ptr<Graph> result(
@@ -77,7 +76,7 @@ std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase,
   return result;
 }
 
-std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromUserInput(Database& vocbase,
                                             std::string&& name,
                                             VPackSlice document,
                                             VPackSlice options) {
@@ -88,7 +87,7 @@ std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
 }
 #endif
 
-std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromUserInput(Database& vocbase,
                                             std::string const& name,
                                             VPackSlice document,
                                             VPackSlice options) {
@@ -156,8 +155,8 @@ Graph::Graph(velocypack::Slice const& slice,
 }
 
 // From user input
-Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
-             VPackSlice const& info, VPackSlice const& options)
+Graph::Graph(Database& vocbase, std::string&& graphName, VPackSlice const& info,
+             VPackSlice const& options)
     : _graphName(std::move(graphName)),
       _vertexColls(),
       _edgeColls(),
@@ -165,12 +164,13 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
       /* In OneShardDatabases this value is not used internally. It mostly has
        * informative value on how your graph is sharded. The OneShard feature
        * will overwrite this setting */
-      _replicationFactor(vocbase.getDatabaseConfiguration().isOneShardDB
-                             ? (std::max)(vocbase.replicationFactor(),
-                                          vocbase.server()
-                                              .getFeature<ClusterFeature>()
-                                              .systemReplicationFactor())
-                             : vocbase.replicationFactor()),
+      _replicationFactor(
+          vocbase.getDatabaseConfiguration().oneShardDBConfiguration.has_value()
+              ? (std::max)(vocbase.replicationFactor(),
+                           vocbase.server()
+                               .getFeature<ClusterFeature>()
+                               .systemReplicationFactor())
+              : vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -884,7 +884,7 @@ auto Graph::injectShardingToCollectionBody(
     DatabaseConfiguration const& config) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection
-  if (config.isOneShardDB) {
+  if (config.oneShardDBConfiguration.has_value()) {
     // Nothing to do for oneShardDBs we just use defaults
     return {};
   }

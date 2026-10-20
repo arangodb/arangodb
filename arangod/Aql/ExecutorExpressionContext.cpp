@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutorExpressionContext.h"
@@ -31,7 +30,7 @@
 #include <Basics/GlobalResourceMonitor.h>
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ExecutorExpressionContext::ExecutorExpressionContext(
     transaction::Methods& trx, QueryContext& context,
@@ -70,3 +69,5 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
                          "' in ExecutorExpressionContext"));
       });
 }
+
+}  // namespace arangodb::aql

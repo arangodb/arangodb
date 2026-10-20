@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
@@ -47,6 +47,7 @@ ServerFeaturePhase::ServerFeaturePhase(
   startsAfter<HttpEndpointProvider>();
   startsAfter<GeneralServerFeature>();
   startsAfter<NetworkFeature>();
+  startsAfter<RbacFeature>();
   startsAfter<ServerFeature>();
   startsAfter<SslServerFeature>();
   startsAfter<StatisticsFeature>();

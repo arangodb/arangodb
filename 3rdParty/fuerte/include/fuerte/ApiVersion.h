@@ -23,22 +23,70 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
 
-namespace arangodb {
-namespace fuerte {
+namespace arangodb { namespace fuerte { namespace api_version {
 inline namespace v1 {
 
-/// @brief API version constants shared between fuerte and the ArangoDB server.
-/// Defined here (in fuerte) so that fuerte does not need to include server
-/// headers.  lib/Rest/ApiVersion.h re-exports these values.
-struct ApiVersion {
-  /// Version used when no /_arango/vX prefix is present
-  static constexpr uint32_t defaultApiVersion = 0;
+/// ApiVersion is also used by ArangoDB server but is defined here (in fuerte)
+/// so that fuerte does not need to include server headers.
+/// lib/Rest/ApiVersion.h re-exports this enum.
 
-  /// Version accessed via /_arango/experimental
-  static constexpr uint32_t experimentalApiVersion = 2;
-};
+enum class ApiVersion { V0 = 0, V1, Experimental };
 
-}  // namespace v1
-}  // namespace fuerte
-}  // namespace arangodb
+constexpr auto from(std::string_view s) -> std::optional<ApiVersion> {
+  if (s == "v0") {
+    return ApiVersion::V0;
+  } else if (s == "v1") {
+    return ApiVersion::V1;
+  } else if (s == "experimental") {
+    return ApiVersion::Experimental;
+  }
+  return std::nullopt;
+}
+
+constexpr auto to_string(ApiVersion v) -> std::string {
+  switch (v) {
+    case ApiVersion::V0:
+      return "v0";
+    case ApiVersion::V1:
+      return "v1";
+    case ApiVersion::Experimental:
+      return "experimental";
+  }
+}
+
+constexpr auto from(uint32_t v) -> std::optional<ApiVersion> {
+  switch (v) {
+    case 0:
+      return ApiVersion::V0;
+    case 1:
+      return ApiVersion::V1;
+    case 2:
+      return ApiVersion::Experimental;
+    default:
+      return std::nullopt;
+  }
+}
+
+// the inspector only works when we link with the inspector library
+template <typename Inspector>
+auto inspect(Inspector& f, ApiVersion& x) {
+  if constexpr (Inspector::isLoading) {
+    auto str = std::string{};
+    auto res = f.apply(str);
+    if (!res.ok()) {
+      return res;
+    }
+    if (auto opt = from(str); opt.has_value()) {
+      x = *opt;
+    }
+    return decltype(res){"invalid ApiVersion: " + str};
+  } else {
+    return f.apply(to_string(x));
+  }
+}
+
+}}}}  // namespace arangodb::fuerte::api_version::v1

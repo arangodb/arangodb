@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LateMaterializedExpressionContext.h"
@@ -26,7 +25,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Variable.h"
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 LateMaterializedExpressionContext::LateMaterializedExpressionContext(
     arangodb::transaction::Methods& trx, QueryContext& query,
@@ -85,3 +84,5 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
         return AqlValue(AqlValueHintNull());
       });
 }
+
+}  // namespace arangodb::aql

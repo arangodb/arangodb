@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestOpenApiHandler.h"
@@ -58,7 +57,7 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
     case 1:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV1),
                               sizeof(kOpenApiV1));
-    case ApiVersion::experimentalApiVersion:
+    case api_version::experimentalApiVersion:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV2),
                               sizeof(kOpenApiV2));
     default:
@@ -66,6 +65,7 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
   }
 }
 
+// Mounted at /openapi.json (exact)
 futures::Future<futures::Unit> RestOpenApiHandler::executeAsync() {
   // Get requested API version (already parsed by GeneralRequest)
   uint32_t apiVersion = _request->requestedApiVersion();

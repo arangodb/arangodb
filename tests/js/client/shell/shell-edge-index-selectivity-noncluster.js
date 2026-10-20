@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
@@ -30,7 +28,7 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
 var wait = internal.wait;
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+const { waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function EdgeIndexSuite () {
   var vn = 'UnitTestsCollectionVertex';

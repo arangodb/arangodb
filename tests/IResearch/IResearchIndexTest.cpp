@@ -18,10 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -55,7 +54,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -194,7 +192,8 @@ class IResearchIndexTest
   IResearchIndexTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& analyzers =
@@ -206,7 +205,7 @@ class IResearchIndexTest
         testDBInfo(server.server()),
         _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -528,7 +527,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -883,7 +882,7 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -983,7 +982,7 @@ TEST_F(IResearchIndexTest, test_pkCached) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1046,7 +1045,7 @@ TEST_F(IResearchIndexTest, test_pkCached) {
 TEST_F(IResearchIndexTest, test_pkCachedInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1107,7 +1106,7 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1179,7 +1178,7 @@ TEST_F(IResearchIndexTest, test_sortCached) {
         \"primarySort\":[{\"field\":\"X\", \"direction\":\"asc\" }]}");
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -1240,7 +1239,7 @@ TEST_F(IResearchIndexTest, test_sortCached) {
 TEST_F(IResearchIndexTest, test_sortCachedInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1305,7 +1304,7 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
         \"primarySort\":[{\"field\":\"X\", \"direction\":\"asc\" }]}");
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -1370,7 +1369,7 @@ TEST_F(IResearchIndexTest, test_geoCached) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":false }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1434,7 +1433,7 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":false }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1507,7 +1506,7 @@ class IResearchCacheOnlyFollowersTest : public ::testing::Test {
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{\"id\":1, \"name\": \"s1337\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
@@ -1584,7 +1583,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{\"id\":1, \"name\": \"s1337\" }");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
@@ -1668,7 +1667,7 @@ TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInView) {
         ]})";
 
   auto createView = arangodb::velocypack::Parser::fromJson(viewDef);
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   try {
     vocbase.createView(createView->slice(), false);
     FAIL() << "View creation did not fail";
@@ -1688,7 +1687,7 @@ TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInView) {
 TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInInvertedIndex) {
   auto collectionJson =
       arangodb::velocypack::Parser::fromJson(R"({"id":1, "name": "coll" })");
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto collection = vocbase.createCollection(collectionJson->slice());
 
   auto invIndexDef = R"({

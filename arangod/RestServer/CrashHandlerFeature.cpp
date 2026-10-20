@@ -18,15 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/CrashHandlerFeature.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb::options;
@@ -36,8 +34,16 @@ namespace arangodb {
 CrashHandlerFeature::CrashHandlerFeature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DumpManager> dumpManager)
+    : CrashHandlerFeature(server, std::move(dumpManager),
+                          CrashHandlerFeatureOptions{}) {}
+
+CrashHandlerFeature::CrashHandlerFeature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    CrashHandlerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      _dumpManager(std::move(dumpManager)) {
+      _dumpManager(std::move(dumpManager)),
+      _options(std::move(options)) {
   setOptional(false);
   // Feature must start after DatabasePathFeature
   // otherwise it won't be able to set the crashes directory
@@ -49,18 +55,6 @@ void CrashHandlerFeature::start() {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
     _dumpManager->setCrashesDirectory(path);
   }
-}
-
-void CrashHandlerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--crash-handler.enable-dumps",
-      "Enable crash dump logging to write crash information to disk.",
-      new BooleanParameter(&_options.enabled),
-      options::makeDefaultFlags(
-          options::Flags::DefaultNoComponents, options::Flags::OnCoordinator,
-          options::Flags::OnDBServer, options::Flags::OnAgent,
-          options::Flags::OnSingle));
 }
 
 std::shared_ptr<crash_handler::DumpManager>

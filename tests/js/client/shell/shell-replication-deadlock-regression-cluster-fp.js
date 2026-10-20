@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -30,10 +29,7 @@ const {db} = require('@arangodb');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
-const {
-  getDBServers,
-  waitForShardsInSync
-} = require('@arangodb/test-helper');
+const { waitForShardsInSync } = require('@arangodb/test-helper');
 
 function ReplicationDeadLockSuite() {
   const collectionName = "UnitTestCollection";

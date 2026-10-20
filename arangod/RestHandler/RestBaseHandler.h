@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -80,9 +79,6 @@ class RestBaseHandler : public rest::RestHandler {
   void generateForbidden();
 
  protected:
-  bool isAdminUser() const;
-  bool isSelfUser(std::string const& user) const;
-  bool canAccessUser(std::string const& user) const;
   // forward request to another server
   // server is taken from query string parameter "serverId"
   auto tryForwarding() -> async<bool>;

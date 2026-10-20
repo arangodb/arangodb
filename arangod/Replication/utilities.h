@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Basics/Result.h"
@@ -44,7 +43,7 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 class Endpoint;
-class ReplicationApplierConfiguration;
+class ReplicationSyncConfiguration;
 struct SyncerId;
 class Syncer;
 
@@ -54,8 +53,7 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  Connection(Syncer* syncer,
-             ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer, ReplicationSyncConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -138,7 +136,7 @@ struct LeaderInfo {
   int patchVersion{0};
   TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
 
-  explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
+  explicit LeaderInfo(ReplicationSyncConfiguration const& applierConfig);
 
   static LeaderInfo createEmpty() { return LeaderInfo(); }
 
@@ -146,13 +144,15 @@ struct LeaderInfo {
   uint64_t version() const;
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer,
-                  char const* context);
+  Result getState(Connection& connection, char const* context);
 };
 
 struct BatchInfo {
   static constexpr double DefaultTimeout = 3600.0;
   static constexpr double DefaultTimeoutForTailing = 1800.0;
+  static constexpr double kMaxTimeout = 86400.0;  // 24h
+
+  static double sanitizeTtl(double ttl) noexcept;
 
   /// @brief dump batch id
   uint64_t id{0};
@@ -192,6 +192,10 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
 Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
 bool isVelocyPack(httpclient::SimpleHttpResult const& response);
+
+/// @brief add context to an error that occurred while inserting documents
+/// received from the leader into a local collection
+Result documentInsertError(Result res, std::string_view collectionName);
 
 }  // namespace replutils
 }  // namespace arangodb

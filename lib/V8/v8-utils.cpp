@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-utils.h"
@@ -34,6 +33,7 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
 #include <unicode/utypes.h>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -47,6 +47,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 #include "unicode/normalizer2.h"
 
@@ -54,7 +55,6 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/PhysicalMemory.h"
@@ -63,7 +63,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/build.h"
 #include "Basics/debugging.h"
@@ -733,12 +733,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = inputUrl;
   std::vector<std::string> endpoints;
 
-  bool isLocalUrl = false;
-
   if (url.starts_with('/')) {
     // check if we are a server
-    isLocalUrl = true;
-    endpoints = v8g->_endpoints.httpEndpoints();
+    if (v8g->_endpoints != nullptr) {
+      endpoints = v8g->_endpoints->httpEndpoints();
+    }
 
     // a relative url. now make this an absolute URL if possible
     for (auto const& endpoint : endpoints) {
@@ -984,11 +983,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << "downloading file. endpoint: " << endpoint
         << ", relative URL: " << url;
 
-    if (!isLocalUrl &&
-        !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, inputUrl)) {
+    if (!v8security.isAllowedToConnectToUrl(isolate, url)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_FORBIDDEN,
-          "not allowed to connect to this URL: " + inputUrl);
+          "while connecting to " + inputUrl +
+              " not allowed to connect to this URL: " + url);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -1072,10 +1071,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         numRedirects++;
 
-        isLocalUrl = false;
-        if (url.starts_with('/')) {
-          isLocalUrl = true;
-        }
         if (url.starts_with("http:") || url.starts_with("https:")) {
           lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
@@ -1651,25 +1646,27 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  FileResultString cwd = FileUtils::currentDirectory();
-
-  if (!cwd.ok()) {
-    errno = cwd.sysErrorNumber();
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        res, StringUtils::concatT("cannot get current working directory: ",
-                                  cwd.errorMessage()));
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        StringUtils::concatT("cannot get current working directory: ",
+                             cwdEc.message()));
+  }
+
+  if (name.length() == 0) {
+    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwdPath.string()));
   }
 
   std::string abs =
-      TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
-
+      std::filesystem::absolute(std::string(*name, name.length()));
   v8::Handle<v8::String> res;
 
   if (!abs.empty()) {
     res = TRI_V8_STD_STRING(isolate, abs);
   } else {
-    res = TRI_V8_STD_STRING(isolate, cwd.result());
+    res = TRI_V8_STD_STRING(isolate, cwdPath.string());
   }
 
   // return result
@@ -1880,9 +1877,15 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + outPath);
   }
 
+  auto validatePath = [&v8security,
+                       &isolate](std::filesystem::path path) -> bool {
+    return v8security.isAllowedToAccessPath(isolate, path.string(),
+                                            FSAccessType::WRITE);
+  };
+
   std::string errMsg;
   auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths,
-                           overwrite, p, errMsg);
+                           overwrite, p, errMsg, validatePath);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -1933,13 +1936,8 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> file =
         files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
-      if (!v8security.isAllowedToAccessPath(isolate, filename,
-                                            FSAccessType::READ)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN,
-            std::string("not allowed to read files in this path: ") + filename);
-      }
-      filenames.emplace_back(TRI_ObjectToString(isolate, file));
+      auto const fileToAdd = TRI_ObjectToString(isolate, file);
+      filenames.emplace_back(fileToAdd);
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1965,7 +1963,11 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + filename);
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p,
+                    [&v8security, isolate](std::filesystem::path path) {
+                      return v8security.isAllowedToAccessPath(
+                          isolate, path, FSAccessType::READ);
+                    });
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -2572,21 +2574,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string source = TRI_ObjectToString(isolate, args[0]);
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
-  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
-  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
-
-  if (sourceIsDirectory && destinationIsDirectory) {
-    // source is a directory, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source directory into destination directory");
-  }
-
-  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
-    // source is a file, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source file into destination directory");
-  }
-
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
@@ -2602,6 +2589,21 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to modify files in this path: ") +
             destination);
+  }
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source file into destination directory");
   }
 
   std::string systemErrorStr;
@@ -2950,7 +2952,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getPid()");
   }
-  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_pid_t pid = BasicThread::currentProcessId();
   TRI_V8_RETURN_INTEGER(pid);
 
   TRI_V8_TRY_CATCH_END
@@ -3066,9 +3068,18 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "the pipe from.");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // an exception has been scheduled
+  }
   char content[1024];
   size_t length = sizeof(content) - 1;
-  auto readLen = TRI_ReadPipe(proc, content, length);
+  // note: the callback deliberately uses the non-throwing overload, so that we
+  // don't create a v8 error object on every poll iteration.
+  auto readLen =
+      TRI_ReadPipe(proc, content, length, isExecutionDeadlineReachedPlain);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // the read was aborted, an exception has been scheduled
+  }
 
   auto result = TRI_V8_PAIR_STRING(isolate, content, readLen);
 
@@ -4563,7 +4574,7 @@ static void JS_ExecuteExternal(
     }
   }
 
-  auto workingDirectory = FileUtils::currentDirectory().result();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (5 <= args.Length()) {
@@ -4576,11 +4587,21 @@ static void JS_ExecuteExternal(
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
-    FileUtils::changeDirectory(subProcessWorkingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(subProcessWorkingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot change working directory");
+    }
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
                             &external);
-  FileUtils::changeDirectory(workingDirectory);
+  {
+    std::error_code ec;
+    std::filesystem::current_path(workingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot restore working directory");
+    }
+  }
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4753,14 +4774,14 @@ static void JS_ExecuteExternalAndWait(
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
 
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  }
+
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to read files in this path: ") + *name);
-  }
-
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
   std::vector<std::string> arguments;
@@ -4830,7 +4851,7 @@ static void JS_ExecuteExternalAndWait(
     }
   }
 
-  auto workingDirectory = FileUtils::currentDirectory().result();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (6 <= args.Length()) {
@@ -4843,11 +4864,21 @@ static void JS_ExecuteExternalAndWait(
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
-    FileUtils::changeDirectory(subProcessWorkingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(subProcessWorkingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot change working directory");
+    }
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
                             &external);
-  FileUtils::changeDirectory(workingDirectory);
+  {
+    std::error_code ec;
+    std::filesystem::current_path(workingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot restore working directory");
+    }
+  }
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");

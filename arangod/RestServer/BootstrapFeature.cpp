@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/BootstrapFeature.h"
@@ -36,8 +35,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -67,9 +64,7 @@ using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer& server,
-    ClusterFeature& clusterFeature,
-    EngineSelectorFeature& engineSelectorFeature,
-    DatabaseFeature& databaseFeature,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
     SystemDatabaseFeature* systemDatabaseFeature,
     ClusterUpgradeFeature* clusterUpgradeFeature
 #ifdef USE_V8
@@ -77,15 +72,36 @@ BootstrapFeature::BootstrapFeature(
     V8DealerFeature* v8DealerFeature
 #endif
     )
+    : BootstrapFeature(server, clusterFeature, databaseFeature,
+                       systemDatabaseFeature, clusterUpgradeFeature
+#ifdef USE_V8
+                       ,
+                       v8DealerFeature
+#endif
+                       ,
+                       BootstrapFeatureOptions{}) {
+}
+
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+    ,
+    V8DealerFeature* v8DealerFeature
+#endif
+    ,
+    BootstrapFeatureOptions options)
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
       _databaseFeature(databaseFeature),
       _systemDatabaseFeature(systemDatabaseFeature),
       _clusterUpgradeFeature(clusterUpgradeFeature),
 #ifdef USE_V8
       _v8DealerFeature(v8DealerFeature),
 #endif
+      _options(std::move(options)),
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
@@ -115,10 +131,6 @@ bool BootstrapFeature::isReady() const {
 
 ClusterFeature& BootstrapFeature::clusterFeature() { return _clusterFeature; }
 
-EngineSelectorFeature& BootstrapFeature::engineSelectorFeature() {
-  return _engineSelectorFeature;
-}
-
 DatabaseFeature& BootstrapFeature::databaseFeature() {
   return _databaseFeature;
 }
@@ -131,13 +143,6 @@ ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
   return _clusterUpgradeFeature;
 }
 
-void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--hund", "Make ArangoDB bark on startup.",
-      new BooleanParameter(&_options.bark),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
 // Local Helper functions
 namespace {
 
@@ -146,7 +151,7 @@ namespace {
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency(feature.server(), feature.clusterFeature(),
-                    feature.engineSelectorFeature(), feature.databaseFeature());
+                    feature.databaseFeature());
   auto& ci = feature.clusterFeature().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
@@ -427,8 +432,7 @@ void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER)
       << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency(server(), _clusterFeature, _engineSelectorFeature,
-                    _databaseFeature);
+  AgencyComm agency(server(), _clusterFeature, _databaseFeature);
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);

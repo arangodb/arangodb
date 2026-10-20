@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DependencyProxy.h"
@@ -29,8 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
@@ -139,5 +137,7 @@ bool DependencyProxy<blockPassthrough>::advanceDependency() noexcept {
   return true;
 }
 
-template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;
-template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Disable>;
+template class DependencyProxy<BlockPassthrough::Enable>;
+template class DependencyProxy<BlockPassthrough::Disable>;
+
+}  // namespace arangodb::aql

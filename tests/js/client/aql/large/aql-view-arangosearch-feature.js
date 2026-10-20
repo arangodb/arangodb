@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
@@ -2295,6 +2293,26 @@ function iResearchFeatureAqlTestSuite () {
         } finally {
           analyzers.remove(analyzerName, true);
         }
+      }
+    },
+
+    testCustomAqlAnalyzerStringifiesArraysAndObjects : function() {
+      let analyzerName = "calcUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      analyzers.save(analyzerName, "aql",
+        {queryString: "FOR i IN 1..3 RETURN i == 2 ? [@param, i] : {key: CONCAT(@param, i)}",
+         returnType: "string"});
+      try {
+        let result = db._query(
+          "RETURN TOKENS('some long enough value', '" + analyzerName + "')"
+        ).toArray();
+        assertEqual([[
+          '{"key":"some long enough value1"}',
+          '["some long enough value",2]',
+          '{"key":"some long enough value3"}'
+        ]], result);
+      } finally {
+        analyzers.remove(analyzerName, true);
       }
     },
 

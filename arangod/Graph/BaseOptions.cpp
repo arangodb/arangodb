@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseOptions.h"
@@ -27,11 +26,13 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
+#include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"
@@ -213,7 +214,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
     aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
-  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
+  _nonConstContainer = aql::optimizer::extractNonConstPartsOfIndexCondition(
       ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
@@ -423,7 +424,7 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
                            coll->name(), depth.value_or(IndexHint::BaseDepth));
 
   auto& trx = plan->getAst()->query().trxForOptimization();
-  bool res = aql::utils::getBestIndexHandleForFilterCondition(
+  bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
       trx, *coll, info.indexCondition, _tmpVar, itemsInCollection, indexHint,
       info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
@@ -464,10 +465,9 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
     }
   }
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition,
-                                            info.indexCondition, toRemove,
-                                            nullptr, true, false);
+  auto toRemove = aql::collectOverlappingMembersForTraversal(
+      plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
+
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.

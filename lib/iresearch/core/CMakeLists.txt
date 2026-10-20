@@ -425,14 +425,6 @@ target_link_libraries(iresearch-static
   ${LIBURING}
   )
 
-if (CLANG_TIDY_EXE)
-  set_target_properties(
-    iresearch-static
-    PROPERTIES
-    CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-header-filter=.;-checks=clang-analyzer-cplusplus*,google-*,performance-*,readability-*"
-  )
-endif ()
-
 if (NOT ("${IRESEARCH_EXTERNAL_DEPENDENCIES}" STREQUAL ""))
   add_dependencies(iresearch-static ${IRESEARCH_EXTERNAL_DEPENDENCIES})
 endif()

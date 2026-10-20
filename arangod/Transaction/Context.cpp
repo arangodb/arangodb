@@ -18,14 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Context.h"
 
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
@@ -71,7 +71,11 @@ transaction::Context::Context(TRI_vocbase_t& vocbase,
       _resolver(std::make_unique<CollectionNameResolver>(_vocbase)),
       _customTypeHandler(createCustomTypeHandler(_vocbase, *_resolver)),
       _options(velocypack::Options::Defaults),
-      _operationOrigin(operationOrigin) {
+      _operationOrigin(operationOrigin),
+      _activity(activities::make<activities::GenericActivity>(
+          "TransactionContext",
+          activities::GenericActivityData{
+              {"origin", std::string{operationOrigin.description}}})) {
   _options.customTypeHandler = _customTypeHandler.get();
 }
 
@@ -144,4 +148,9 @@ void transaction::Context::setCounterGuard(
     return TransactionId::createLegacy();
   }
   return TransactionId::createSingleServer();
+}
+
+activities::GenericActivity::HandleType transaction::Context::activity()
+    const noexcept {
+  return _activity;
 }

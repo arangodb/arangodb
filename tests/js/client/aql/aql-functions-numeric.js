@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -3850,6 +3848,20 @@ function ahuacatlNumericFunctionsTestSuite () {
       var expected = [ -100, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 100 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)");
       assertEqual(expected, actual);
+    },
+
+    testRoundKeepsLargeIntegersUnchanged : function () {
+      const values = [ 4503599627370496, 4503599627370497, 4503599627370499,
+                       9007199254740991, -4503599627370497 ];
+      assertEqual(values, getQueryResults(
+        "FOR r IN @values RETURN ROUND(r)", { values }));
+      assertEqual([ 4503599627370497 ], getQueryResults(
+        "RETURN ROUND(4503599627370497)"));
+    },
+
+    testRoundJustBelowHalf : function () {
+      assertEqual([ 0, 0 ], getQueryResults(
+        "FOR r IN [ 0.49999999999999994, -0.49999999999999994 ] RETURN ROUND(r)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

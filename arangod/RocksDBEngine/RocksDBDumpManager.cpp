@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBDumpManager.h"
@@ -30,8 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -54,14 +52,14 @@ DECLARE_COUNTER(
     "Number of times a dump thread was blocked because of memory restrictions");
 
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine,
-                                       metrics::MetricsFeature& metricsFeature,
+                                       metrics::IRegistry& metrics,
                                        DumpLimits const& limits)
     : _engine(engine),
       _limits(limits),
-      _dumpsOngoing(metricsFeature.add(arangodb_dump_ongoing{})),
-      _dumpsMemoryUsage(metricsFeature.add(arangodb_dump_memory_usage{})),
-      _dumpsThreadsBlocked(
-          metricsFeature.add(arangodb_dump_threads_blocked_total{})) {}
+      _dumpsOngoing(metrics.add(arangodb_dump_ongoing{})),
+      _dumpsMemoryUsage(metrics.add(arangodb_dump_memory_usage{})),
+      _dumpsThreadsBlocked(metrics.add(arangodb_dump_threads_blocked_total{})) {
+}
 
 RocksDBDumpManager::~RocksDBDumpManager() {
   garbageCollect(true);
@@ -74,6 +72,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  // rejected by RestDumpHandler::validateRequest() before we get here
+  TRI_ASSERT(!opts.shards.empty());
+
   opts.docsPerBatch =
       std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,
                  _limits.docsPerBatchUpperBound);
@@ -81,6 +82,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
                                 _limits.parallelismUpperBound);
+  opts.prefetchCount =
+      std::clamp(opts.prefetchCount, _limits.prefetchCountLowerBound,
+                 _limits.prefetchCountUpperBound);
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs
@@ -93,7 +97,7 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, *this, _engine.getDatabaseFeature(), generateId(),
+      _engine, *this, _engine.getDatabaseProvider(), generateId(),
       std::move(opts), user, database, useVPack);
 
   std::lock_guard mutexLocker{_lock};
@@ -145,7 +149,7 @@ void RocksDBDumpManager::remove(std::string const& id,
     victim = (*it).second;
 
     TRI_ASSERT(victim != nullptr);
-    // give the victim a hind to stop all its threads.
+    // give the victim a hint to stop all its threads.
     victim->stop();
 
     // if we remove the context from the map, then the context will be

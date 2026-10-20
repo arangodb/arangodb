@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Metrics/Fwd.h"
 
 #include <cstdint>
 #include <memory>
@@ -37,6 +37,9 @@ class ProgramOptions;
 }
 
 namespace arangodb {
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
 
 struct LogBuffer {
   uint64_t _id;
@@ -54,9 +57,12 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
 
   static constexpr uint32_t BufferSize = 2048;
 
-  explicit LogBufferFeature(application_features::ApplicationServer& server);
+  LogBufferFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry,
+                   LogBufferFeatureOptions options);
+  LogBufferFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
   /// @brief return all buffered log entries

@@ -51,20 +51,23 @@ auto promise_count_in_registry() -> uint {
 
 template<typename WaitType>
 struct ActivitiesAsyncTest : ::testing::Test {
-  void SetUp() override {
+  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+
+  ActivitiesAsyncTest() {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
   }
 
-  void TearDown() override {
-    arangodb::async_registry::get_thread_registry().garbage_collect();
-    arangodb::activities::registry.garbageCollect();
+  ~ActivitiesAsyncTest() {
+    async_registry::get_thread_registry().garbage_collect();
+    activities::registry.garbageCollectAll();
+    EXPECT_EQ(activities::registry.size(), 0);
     wait.stop();
     wait2.stop();
     EXPECT_EQ(promise_count_in_registry(), 0);
     EXPECT_TRUE(std::holds_alternative<
-                arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
-        *arangodb::async_registry::get_current_coroutine()));
+                containers::SharedPtr<arangodb::basics::ThreadInfo>>(
+        *async_registry::get_current_coroutine()));
   }
 
   GenericActivityData activityData;
@@ -81,7 +84,7 @@ TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
   ASSERT_EQ((activities::Registry::currentlyExecutingActivity()),
             activities::Root);
 
-  auto coro = [&]() -> async<void> {
+  auto fn = [&]() -> async<void> {
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               activities::Root);
 
@@ -99,7 +102,8 @@ TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
               coro_activity);
 
     co_return;
-  }();
+  };
+  auto coro = fn();
 
   auto outer_activity =
       activities::make<GenericActivity>("TestActivity", this->activityData);
@@ -131,7 +135,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
   ASSERT_EQ((activities::Registry::currentlyExecutingActivity()),
             outer_activity);
 
-  auto coro = [&]() -> async<void> {
+  auto fn = [&]() -> async<void> {
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               outer_activity);
 
@@ -152,7 +156,8 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
               coro_activity);
 
     co_return;
-  }();
+  };
+  auto coro = fn();
 
   auto next_outer_activity =
       activities::make<GenericActivity>("TestActivity", this->activityData);
@@ -176,7 +181,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
 }
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
-  auto coro = [&](auto& wait) -> async<void> {
+  auto fn = [&](auto& wait) -> async<void> {
     auto coro_activity =
         activities::make<GenericActivity>("TestActivity", this->activityData);
     auto guard =
@@ -193,8 +198,8 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
     co_return;
   };
 
-  auto coro1 = coro(this->wait);
-  auto coro2 = coro(this->wait2);
+  auto coro1 = fn(this->wait);
+  auto coro2 = fn(this->wait2);
 
   auto outer_activity =
       activities::make<GenericActivity>("TestActivity", this->activityData);
@@ -220,7 +225,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
 
 TYPED_TEST(ActivitiesAsyncTest,
            current_activity_persists_multiple_suspension_points) {
-  auto coro = [&]() -> async<void> {
+  auto fn = [&]() -> async<void> {
     auto coro_activity =
         activities::make<GenericActivity>("TestActivity", this->activityData);
     auto guard =
@@ -238,7 +243,8 @@ TYPED_TEST(ActivitiesAsyncTest,
               coro_activity);
 
     co_return;
-  }();
+  };
+  std::ignore = fn();
 
   auto outer_activity =
       activities::make<GenericActivity>("TestActivity", this->activityData);
@@ -266,7 +272,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
               coro_activity);
   };
 
-  auto coro = [&]() -> async<void> {
+  auto fn = [&]() -> async<void> {
     auto coro_activity =
         activities::make<GenericActivity>("TestActivity", this->activityData);
     auto guard =
@@ -278,7 +284,8 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
               coro_activity);
 
     co_return;
-  }();
+  };
+  std::ignore = fn();
 
   auto outer_activity =
       activities::make<GenericActivity>("TestActivity", this->activityData);
@@ -304,7 +311,8 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
 
     co_await this->wait;
     throw std::runtime_error("TEST!");
-  }();
+  };
+  auto coro_a = a();
 
   auto b = [&]() -> async<void> {
     auto coro_activity =
@@ -313,7 +321,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
         activities::Registry::ScopedCurrentlyExecutingActivity(coro_activity);
 
     try {
-      co_await std::move(a);
+      co_await std::move(coro_a);
       EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
                 coro_activity);
       TRI_ASSERT(false);
@@ -324,13 +332,45 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
                 coro_activity);
       co_return;
     }
-  }();
+  };
+  auto coro_b = b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  EXPECT_FALSE(coro_a.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   awaitable.await_resume();
+}
+
+TYPED_TEST(ActivitiesAsyncTest,
+           activity_threads_are_updated_for_suspended_coroutine) {
+  auto activity = activities::make<GenericActivity>(
+      "GenericActivity", activities::GenericActivityData{});
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  auto coro = [&]() -> async<void> {
+    auto coro_activity =
+        activities::make<GenericActivity>("TestActivity", this->activityData);
+    auto guard =
+        activities::Registry::ScopedCurrentlyExecutingActivity(activity);
+
+    EXPECT_EQ(activity->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+
+    co_await this->wait;
+
+    EXPECT_EQ(activity->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+    co_return;
+  };
+  std::ignore = coro();
+
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  this->wait.resume();
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  this->wait.await();
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
 }

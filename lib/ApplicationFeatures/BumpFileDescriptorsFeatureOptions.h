@@ -23,11 +23,15 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace arangodb {
 
 struct BumpFileDescriptorsFeatureOptions {
-  uint64_t descriptorsMinimum = 0;
+  uint64_t descriptorsMinimum;
+  std::string optionName;
+
+  BumpFileDescriptorsFeatureOptions();
 };
 
 }  // namespace arangodb

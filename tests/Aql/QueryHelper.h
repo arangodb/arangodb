@@ -18,18 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <Basics/ErrorCode.h>
+
 #include <string>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
-// forward declarations
+struct Database;
 namespace velocypack {
 class Slice;
 }
@@ -54,15 +52,14 @@ void AssertQueryResultToSlice(arangodb::aql::QueryResult const& result,
 ///        Expected is required to be an Array (maybe empty). As AQL can only
 ///        return a cursor, that is transformed into an Array.
 ///        Ordering matters. Also asserts that query was successful.
-void AssertQueryHasResult(TRI_vocbase_t& database,
-                          std::string const& queryString,
+void AssertQueryHasResult(Database& database, std::string const& queryString,
                           arangodb::velocypack::Slice expected);
 
 /// @brief Tests if executing the given query on the given database results in
 /// the given error
 ///        Requires the query to error. Testing of no-error (TRI_ERROR_NO_ERROR)
 ///        is not possible.
-void AssertQueryFailsWith(TRI_vocbase_t& database, std::string const& query,
+void AssertQueryFailsWith(Database& database, std::string const& query,
                           ErrorCode errorNumber);
 
 }  // namespace aql

@@ -23,6 +23,7 @@
 
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityId.h"
+#include "Activities/CurrentlyExecuting.h"
 #include "Activities/IRegistryMetrics.h"
 #include "Containers/Concurrent/metrics.h"
 
@@ -50,12 +51,21 @@ struct Registry {
   auto setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void;
   auto garbageCollect() -> void;
 
+  /**
+     Delete all dangling activities, including dangling parents after deleting
+     child.
+
+     Is  currently only used in tests. Goes over registry several times until no
+     more activites can be deleted any more. Will be worked on in COR-582.
+   */
+  auto garbageCollectAll() -> void;
+
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
-    return _currentlyExecutingActivity;
+    return _currentlyExecutingActivity.activity;
   }
   static auto setCurrentlyExecutingActivity(ActivityHandle activity) noexcept
       -> void {
-    _currentlyExecutingActivity = std::move(activity);
+    _currentlyExecutingActivity = CurrentlyExecuting{std::move(activity)};
   }
 
   template<typename T, typename... Args>
@@ -75,21 +85,20 @@ struct Registry {
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> T::HandleType {
-    return makeActivityWithParent<T>(_currentlyExecutingActivity,
+    return makeActivityWithParent<T>(_currentlyExecutingActivity.activity,
                                      std::forward<Args>(args)...);
   }
 
   auto snapshot()
       -> errors::ErrorT<inspection::Status, velocypack::SharedSlice>;
-
-  auto findActivityById(ActivityId id) const -> std::optional<ActivityHandle>;
+  auto size() -> size_t;
 
  private:
   auto increment_total_nodes() -> void;
   auto increment_registered_nodes() -> void;
   auto store_registered_nodes(std::uint64_t count) -> void;
 
-  static thread_local ActivityHandle _currentlyExecutingActivity;
+  static thread_local CurrentlyExecuting _currentlyExecutingActivity;
   Guarded<std::deque<ActivityHandle>> _registry;
   std::atomic<ActivityId> _activityIdCounter{0};
   std::shared_ptr<IRegistryMetrics> _metrics{nullptr};
@@ -110,21 +119,16 @@ struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
 };
 
 template<typename Func>
-auto withSetCurrentlyExecutingActivity(ActivityHandle activity, Func&& func) {
+auto withCurrentlyExecutingActivity(Func&& func) {
   return [
-    func = std::forward<Func>(func), activity
+    func = std::forward<Func>(func),
+    activity = Registry::currentlyExecutingActivity()
   ]<typename... Args,
     typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
       Args && ... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
-}
-
-template<typename Func>
-auto withCurrentlyExecutingActivity(Func&& func) {
-  return withSetCurrentlyExecutingActivity(
-      Registry::currentlyExecutingActivity(), std::forward<Func>(func));
 }
 
 }  // namespace arangodb::activities

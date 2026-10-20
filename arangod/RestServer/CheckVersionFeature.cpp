@@ -18,26 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CheckVersionFeature.h"
 
+#include "RestServer/CheckVersionOptionsProvider.h"
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -53,7 +52,15 @@ namespace arangodb {
 CheckVersionFeature::CheckVersionFeature(
     ApplicationServer& server, int* result,
     std::span<const std::type_index> nonServerFeatures)
+    : CheckVersionFeature(server, result, nonServerFeatures,
+                          CheckVersionFeatureOptions{}) {}
+
+CheckVersionFeature::CheckVersionFeature(
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures,
+    CheckVersionFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -61,24 +68,9 @@ CheckVersionFeature::CheckVersionFeature(
 
   startsAfter<DatabaseFeature>();
   startsAfter<DatabasePathFeature>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<ServerIdFeature>();
   startsAfter<SystemDatabaseFeature>();
-}
 
-void CheckVersionFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("check-version", "database.check-version");
-
-  options->addOption(
-      "--database.check-version", "Check the version of the database and exit.",
-      new BooleanParameter(&_options.checkVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-}
-
-void CheckVersionFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
   if (!_options.checkVersion) {
     return;
   }
@@ -87,21 +79,23 @@ void CheckVersionFeature::validateOptions(
   // noone else will set our role
   ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
-  server().forceDisableFeatures(_nonServerFeatures);
+  server.forceDisableFeatures(_nonServerFeatures);
+  if (server.hasFeature<AgencyFeature>()) {
+    server.forceDisableFeatures<AgencyFeature>();
+  }
+  if (server.hasFeature<ActionFeature>()) {
+    server.forceDisableFeatures<ActionFeature>();
+  }
 
-  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  LoggerFeature& logger = server.getFeature<LoggerFeature>();
   logger.disableThreaded();
 
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
-
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
   databaseFeature.enableCheckVersion();
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures<EnvironmentFeature>();
+  server.disableFeatures<EnvironmentFeature>();
 }
 
 void CheckVersionFeature::start() {

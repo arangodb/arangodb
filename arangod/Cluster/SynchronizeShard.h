@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,13 +31,12 @@
 #include <chrono>
 #include <memory>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace network {
 class ConnectionPool;
 }
 
+struct Database;
 class DatabaseTailingSyncer;
 class LogicalCollection;
 class NetworkFeature;
@@ -91,7 +88,7 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
-      TRI_vocbase_t& vocbase, std::string const& endpoint);
+      Database& database, std::string const& endpoint);
 
   NetworkFeature& _networkFeature;
   ClusterFeature& _clusterFeature;

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertTrue, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,23 +21,23 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-const primaryEndpoint = arango.getEndpoint();
 const db = require('@arangodb').db;
-let { getEndpointById } = require('@arangodb/test-helper');
+const arango = require('@arangodb').arango;
+let IM = global.instanceManager;
 
 function leaderTestSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
   let shardName;
-  
+
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
       const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
@@ -46,8 +46,8 @@ function leaderTestSuite () {
       assertEqual(Object.entries(shards).length, 1);
       for (const [shardId, servers] of Object.entries(shards)) {
         // Pick the leader of the first shard, and connect to it
-        let leader = getEndpointById(servers[0]);
-        reconnectRetry(leader, "_system", "root", "");
+        let leader = IM.getInstanceByID(servers[0]);
+        leader.connect();
 
         // Memorize the shardName for network connection
         shardName = shardId;
@@ -60,7 +60,7 @@ function leaderTestSuite () {
 
     tearDownAll: function () {
       // Reconnect back to original server
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
+      IM.reconnectMe();
       db._drop(cn);
     },
 
@@ -110,6 +110,7 @@ function followerTestSuite () {
   
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
       const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
@@ -119,8 +120,8 @@ function followerTestSuite () {
       assertEqual(Object.entries(shards).length, 1);
       for (const [shardId, servers] of Object.entries(shards)) {
         // Pick the leader of the first shard, and connect to it
-        let follower = getEndpointById(servers[1]);
-        reconnectRetry(follower, "_system", "root", "");
+        let follower = IM.getInstanceByID(servers[1]);
+        follower.connect();
 
         // Memorize the shardName for network connection
         shardName = shardId;
@@ -133,7 +134,7 @@ function followerTestSuite () {
 
     tearDownAll: function () {
       // Reconnect back to original server
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
+      IM.reconnectMe();
       db._drop(cn);
     },
 

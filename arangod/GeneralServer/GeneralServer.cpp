@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServer.h"
@@ -36,7 +34,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -53,11 +50,9 @@ using namespace arangodb::rest;
 GeneralServer::GeneralServer(GeneralServerFeature& feature,
                              uint64_t numIoThreads, bool allowEarlyConnections)
     : _feature(feature), _allowEarlyConnections(allowEarlyConnections) {
-  auto& server = feature.server();
-
   _contexts.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
-    _contexts.emplace_back(server);
+    _contexts.emplace_back();
   }
 }
 
@@ -192,6 +187,8 @@ extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
 SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
+    // only reachable for an SSL-typed acceptor
+    TRI_ASSERT(server().getFeature<SslServerFeature>().isEnabled());
     _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
@@ -214,6 +211,8 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
+      // only reachable via the reload-TLS admin endpoint
+      TRI_ASSERT(server().getFeature<SslServerFeature>().isEnabled());
       _sslContexts =
           server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE

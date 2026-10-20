@@ -1,9 +1,11 @@
 if (USE_V8)
   add_library(arango_v8server STATIC
     FoxxFeature.cpp
+    FoxxOptionsProvider.cpp
     GlobalExecutorMethods.cpp
     V8Executor.cpp
     V8DealerFeature.cpp
+    V8DealerOptionsProvider.cpp
     v8-actions.cpp
     v8-analyzers.cpp
     v8-collection-util.cpp
@@ -27,6 +29,7 @@ if (USE_V8)
     ${PROJECT_SOURCE_DIR}/arangod/Transaction/V8Context.cpp)
   
   target_link_libraries(arango_v8server
+    arango_actions
     arango_agency
     arango_iresearch
     arango_replication

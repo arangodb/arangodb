@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -43,6 +41,7 @@ function optimizerRuleUseIndexRangeTester () {
   var collSkipInd;
   var collHashInd;
   var collBothInd;
+  var edgeCollName = collBaseName + "Edges";
 
   // various choices to control the optimizer: 
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
@@ -78,6 +77,10 @@ function optimizerRuleUseIndexRangeTester () {
       collBothInd = colls[3];
       collBothInd.ensureIndex({ type: "hash", fields: ["a"] });
       collBothInd.ensureIndex({ type: "skiplist", fields: ["a"] });
+
+      internal.db._drop(edgeCollName);
+      let edges = internal.db._createEdgeCollection(edgeCollName);
+      edges.insert([{ _from: "v/0", _to: "v/1" }, { _from: "v/1", _to: "v/0" }]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +92,7 @@ function optimizerRuleUseIndexRangeTester () {
       for (var i = 0; i < n.length; i++) {
         internal.db._drop(n[i]);
       }
+      internal.db._drop(edgeCollName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +121,21 @@ function optimizerRuleUseIndexRangeTester () {
       var queries = [ 
         ["FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i", true],
         ["FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i", true],
-        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i", false]
+        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i", false],
+        // a non-deterministic value can't be an index lookup value
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= FLOOR(RAND() * 10) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER FLOOR(RAND() * 10) == i.a RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(FLOOR(RAND() * 10)) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a IN [FLOOR(RAND() * 10)] RETURN i", true],
+        ["FOR e IN " + edgeCollName + " FILTER e._from == CONCAT('v/', FLOOR(RAND() * 2)) RETURN e", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(2) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOOPT(2) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i", true],
+        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i", true],
+        ["FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e", true],
       ];
 
       queries.forEach(function(query) {
@@ -141,7 +159,11 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i"
+        "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i",
+        // NOEVAL() is not computed in advance, but is deterministic
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOEVAL(2) RETURN i",
+        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOEVAL(2) RETURN i",
+        "FOR e IN " + edgeCollName + " FILTER e._from == NOEVAL('v/0') RETURN e",
       ];
 
       queries.forEach(function(query) {
@@ -171,6 +193,16 @@ function optimizerRuleUseIndexRangeTester () {
         var result = db._createStatement({query: query, bindVars:  { }, options:  paramAll}).explain();
         assertTrue(result.plan.rules.indexOf(ruleName) >= 0, query);
       });
+    },
+
+    testNonDeterministicPartNotInIndexCondition : function () {
+      const query = "FOR i IN UTUseIndexRangeSkipInd " +
+                    "FILTER i.a >= 2 && i.a < FLOOR(RAND() * 10) RETURN i";
+      const plan = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain().plan;
+      const indexNodes = plan.nodes.filter((n) => n.type === "IndexNode");
+      assertEqual(1, indexNodes.length, query);
+      // the RAND() bound must stay in the filter, not in the index lookup
+      assertFalse(JSON.stringify(indexNodes[0].condition).includes("RAND"), query);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

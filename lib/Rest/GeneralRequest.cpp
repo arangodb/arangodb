@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralRequest.h"
@@ -34,7 +32,6 @@
 #include "Basics/error.h"
 #include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
-#include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -69,7 +66,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _requestedApiVersion(ApiVersion::defaultApiVersion),
+      _requestedApiVersion(api_version::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -166,7 +163,7 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
 }
 
 void GeneralRequest::setRequestContext(
-    std::shared_ptr<RequestContext> requestContext) {
+    std::shared_ptr<ExecContext> requestContext) {
   TRI_ASSERT(requestContext != nullptr);
 
   _requestContext = std::move(requestContext);
@@ -441,7 +438,7 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
   if (remainder.starts_with(experimentalSuffix)) {
     size_t suffixEnd = experimentalSuffix.size();
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _requestedApiVersion = ApiVersion::experimentalApiVersion;
+      _requestedApiVersion = api_version::experimentalApiVersion;
       isExperimental = true;
       start = p + suffixEnd;  // advance past "/_arango/experimental"
       return;
@@ -484,11 +481,16 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
               ", got path: ", std::string_view(start, end - start)));
     }
 
+    bool versionSupported = api_version::isApiVersionSupported(version);
+    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
+      versionSupported = versionSupported || version == 1;
+    }
+
     // If the parsed version is not supported or experimental we do NOT set
     // _requestedApiVersion or strip the prefix. This will cause the handler
     // lookup to fail and return a 404 Not Found
     if (version < std::numeric_limits<uint32_t>::max() &&
-        (ApiVersion::isApiVersionSupported(version) || isExperimental)) {
+        (versionSupported || isExperimental)) {
       _requestedApiVersion = static_cast<uint32_t>(version);
       start = p + 1 + numEnd;  // advance past "/_arango/vX"
     }

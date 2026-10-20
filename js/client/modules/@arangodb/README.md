@@ -1,3 +1,4 @@
+
 # Arango DB test infrastructure
 ## Philosophy
 All the code structure and the test infrastructure works in a way
@@ -28,9 +29,11 @@ All the code structure and the test infrastructure works in a way
 | `testutils/instance.js`                                      | manage one arangod process - to be used via the `instance-manager.js`                                       |
 | `testutils/testrunner.js`                                    | base class to manage the lifecycle of one testsuite.                                                        |
 | `testutils/testrunners.js`                                   | various derived classes of the lifecycle managager of `testrunne.js`.                                       |
+| `testutils/persistence-common.js`                            | persistenceToolkit, for testflows that manipulate instances and spawn client tools against it               |
 | `testutils/clusterstats.js`                                  | can be launched separately to monitor the cluster instances and their resource usage                        |
 | `testsuites/`                                                | modules with testframework that control one set of tests each utilizing the `testrunner.js`.                |
-| `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
+| `testsuites/dump.js`                                         | persistence toolkit based testsuites for dump/restore of instances                                          |
+| `testsuites/hotbackup.js`                                    | persistence toolkit based testsuites for hot backup including stress tests                                  |
 | `testsuites/[go\|php\|java\|js\|driver\|rta_makedata].js`    | subsidize the lifecycle method of `testRunner` for other instance and testrunner controls.                  |
 | `testsuites/[server_permissions\|recovery[_cluster]].js`     | run several instances and run individual tests on them; vary parameters etc. of SUT                         |
 | `testsuites/chaos.js`                                        | launches several sub-arangoshs to cause randomness, enables failurepoints and so on.                        |
@@ -76,7 +79,35 @@ Testing.js already filtered it, and split it to buckets (test-utils.js:`filterTe
 
 The testsuite then can use the default lifecycle management to launch these tests, or implement own logic, again best based on existing logic.
 
-## test lifecycle management
+### integration test file filtering
+Rather than adding filter conditions inside a test whether it should run or not (which usually breaks and then may stop the test silently from being ever executed at all)
+flags in filenames should be used so its obvious to everyone under which preconditions the test is executed or not.
+Currently implemented flags:
+
+| Flag                   | Meaning                                                                                                                                                               |
++------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| -cluster               | Test will only be executed if the SUT is a cluster                                                                                                                    |
+| -noncluster            | Test will only be executed if the SUT isn't a cluster                                                                                                                 |
+| -arangosearch          | Test will only be executed if the CLI option `--arangosearch` is `true`                                                                                               |
+| -timecritical          | Test can be filtered by `--skipTimeCritical` `true`                                                                                                                   |
+| -nightly               | Test has a long runtime by design. Its to bloated for regular CI runs, `full` runs in the CI will launch it; `--skipNightly` `false` or `--onlyNightly` can filter it |
+| -geo                   | tests can be skipped by `--skipGeo` `true`                                                                                                                            |
+| -nondeterministic      | testcase may not run reliable, it can be skipped by `--skipNondeterministic true`                                                                                     |
+| -graph                 | Test can be skipped by `--skipGraph` `true`                                                                                                                           |
+| -memoryintense         | test can be skipped by `skipMemoryIntense`. The flag may be set by resource limited hosts.                                                                            |
+| -novalgrind            | test cannot be ran with `--valgrind`                                                                                                                                  |
+| -noarm                 | test will be skipped if the host is of type AArch64                                                                                                                   |
+| -noasan                | skip when the SUT is instrumented for tsan/alubsan                                                                                                                    |
+| -nocov                 | skip when the SUT is instrumented for gcov                                                                                                                            |
+| -noinstr               | test will not be ran if the SUT has binaries with instrumentation of tsan/alubsan/gcov                                                                                |
+| -noinstr_or_noncluster | skip when built with an instrumented build and running in cluster mode                                                                                                |
+| -fp                    | if the SUT supports failurepoints                                                                                                                                     |
+| -r2                    | skip when running without replication 2                                                                                                                               |
+| -sjs                   | skip when running the SUT without javascript enabled                                                                                                                  |
+| _DISABLED              | should be added *after* .js to stop a test from being executed                                                                                                        |
+when `--extremeVerbosity` is set, the filter responsible for skipping a test is printed.
+
+# test lifecycle management
 The test lifecycle management should be utilized to maintain the SUT, iterate over the tests. 
 It is implemented in `testrunner.js`, and its modularity is intended to reuse it partially or completely.
 By default it comes without a way to launch an integration testsuite, this is implemented in the deriving classes. 
@@ -127,8 +158,26 @@ It knows all PIDs and should be utilized to manipulate them.
 It knows how to establish when the SUT is launched, and to maintain whether its healthy or not.
 It knows via its `instance`s which processes to start, stop, halt or maybe restart.
 
+
+## persitenceToolkit
+The persistenceToolkit is here to create compact code to start & stop up to two instances with the `instanceManager`, and run multiple client tools against these instances.
+It can even work with several sets of binaries for these respective instances.
+Instance connection parameters are automatically handled targeting the currently active instance. 
+Spawneable tools contain:
+
+ - `runSetupSuite()` build a specific testcase name, and run it. Its to create data in the instance.
+ - `runCheckDumpFilesSuite()` build a specific testcase name, and run it. Its to check data in the instance.
+ - `dumpFrom()` `arangodump` the currently active SUT
+ - `restoreTo()` `arangorestore` to the currently active SUT
+ - `runTestFn()` use arangosh to spawn a test function
+ - `createHotBackup()` run `arangobackup` to create a backup
+ - `restoreHotBackup()` run `arangobackup` to restore a backup and wait until that process is completed
+ - `runRtaMakedata()` runs RTA makedata
+ - `runRtaCheckData()` runs RTA checkdata
+ - `spawnStressArangosh()`, `stopStressArangosh()` manage sub-shells that stress the SUT during certain actions
+
 ## dump integration tests
-`dump.js` doesn't use the test lifecycle management in `testrunner.js`. It leans on `instanceManager` for SUT handling, and `client-tools.js` to launch client-tools -binaries.
+`dump.js` builds on the persistenceToolkit, and `client-tools.js` to launch client-tools -binaries.
 
 Each phase of the dump suite will result in an aequivilant test status, that can individually fail.
 Once a failure occurs all subsequent test execution will be skipped, since they lean on proper preparation by the previous tests.
@@ -148,18 +197,22 @@ Once a failure occurs all subsequent test execution will be skipped, since they 
 ### structure in `tests/js/client/dump/` files
 To create the individual initial provisioning dataset, `setup .js` files invoke the respective list of setup functions from `dump-setup-common.inc`.
 
-To create the individual set of tests, the `dump-test.inc` files testsuide `deriveTestSuite()` is used by the file to create its respective subset.
+To create the individual set of tests, the `dump-test.inc` files testsuite `deriveTestSuite()` is used by the file to create its respective subset.
 
 Individual `check` files can be registered by tests in `dump.js`.
 
 In general its probably beneficial to rather consider creating a `rta-makedata` testsuite than work on the above structure. 
 
 ### structure in `testsuites/dump.js`
-`dump.js` consists of 4 layers:
-- `DumpRestoreHelper` to abstract the invocation of individual client-tools, commandline argument handling, result handling and test phases. 
-- `dump_backend_two_instances` function orchestrating the phases using the `DumpRestoreHelper` depending on provided input structures
+`dump.js` consists of 3 layers:
+- `dump_backend_two_instances` function orchestrating the phases using the `persistenceToolkit` depending on provided input structures
 - i.e. `dumpMixedClusterSingle` are individual `testing.js`-testsuites to create a list of checks to run, and orchestrate its sequence
 - regular testing.js testsuite interface registering of these testsuite-functions
 
 The individual testsuites (3) generate a set of parameters that create phases of instances to be launched, stuffed, dumped, stopped, launch subsequent fresh instance, restore into it, cleanup the data.
 
+### structure in `testsuites/hotbackup.js`
+`hotbackup.js` consists of 3 layers similar to dump.js:
+- `hotBackup()` testsuite similar flow to the dump & restore flow, just with hotbackup
+- `hotBackup_load_backend()` manages the test phases using the `persistenceToolkit`, expects structure containing function hooks, can spawn stress arangoshs.
+- `hotBackup_*()` testsuites defining individual structures to be created before the hot backup, and stress functions to be ran during restore. 

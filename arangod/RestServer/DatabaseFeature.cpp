@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeature.h"
@@ -30,7 +28,6 @@
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
-#include "Basics/FeatureFlags.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -42,25 +39,20 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "Metrics/IRegistry.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication/ReplicationFeature.h"
-#include "Replication2/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
@@ -121,12 +113,15 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 DatabaseManagerThread::DatabaseManagerThread(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, StorageEngine& engine)
-    : ServerThread(server, "DatabaseManager"),
+    // engine-level cleanup of dropped databases, no ExecContext required
+    : ServerThread(server, "DatabaseManager", nullptr),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8
       ,
-      _dealer(server.getFeature<V8DealerFeature>())
+      _dealer(server.hasFeature<V8DealerFeature>()
+                  ? &server.getFeature<V8DealerFeature>()
+                  : nullptr)
 #endif
 {
 }
@@ -176,7 +171,8 @@ void DatabaseManagerThread::run() {
 
         auto* queryRegistry = QueryRegistryFeature::registry();
 #ifdef USE_V8
-        if (_dealer.isEnabled() || queryRegistry != nullptr) {
+        if ((_dealer != nullptr && _dealer->isEnabled()) ||
+            queryRegistry != nullptr) {
 #else
         if (queryRegistry != nullptr) {
 #endif
@@ -188,8 +184,8 @@ void DatabaseManagerThread::run() {
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
 #ifdef USE_V8
-            if (_dealer.isEnabled()) {
-              _dealer.cleanupDatabase(*database);
+            if (_dealer != nullptr && _dealer->isEnabled()) {
+              _dealer->cleanupDatabase(*database);
             }
 #endif
             if (queryRegistry != nullptr) {
@@ -272,185 +268,35 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
+
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<InitDatabaseFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
 
-void DatabaseFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("database", "database options");
-
-  auto static allowedReplicationVersions = [] {
-    using namespace arangodb::replication;
-    using namespace arangodb::replication2;
-
-    auto result = std::unordered_set<std::string>{};
-    result.emplace(versionToString(Version::ONE));
-    if (EnableReplication2) {
-      result.emplace(versionToString(Version::TWO));
-    }
-    return result;
-  }();
-
-  options
-      ->addOption(
-          "--database.default-replication-version",
-          "The replication version to use unless overwritten "
-          "when creating a new database.",
-          new DiscreteValuesParameter<StringParameter>(
-              &_options.defaultReplicationVersion, allowedReplicationVersions),
-          options::makeDefaultFlags(options::Flags::Uncommon,
-                                    options::Flags::Experimental))
-      .setIntroducedIn(31200);
-
-  options->addOption(
-      "--database.wait-for-sync",
-      "The default waitForSync behavior. Can be overwritten when creating a "
-      "collection.",
-      new options::BooleanParameter(&_options.defaultWaitForSync),
-      options::makeDefaultFlags(options::Flags::Uncommon));
-
-  // the following option was obsoleted in 3.9
-  options->addObsoleteOption(
-      "--database.force-sync-properties",
-      "Force syncing of collection properties to disk after creating a "
-      "collection or updating its properties. Otherwise, let the waitForSync "
-      "property of each collection determine it.",
-      false);
-
-  options->addOption(
-      "--database.ignore-datafile-errors",
-      "Load collections even if datafiles may contain errors.",
-      new options::BooleanParameter(&_options.ignoreDatafileErrors),
-      options::makeDefaultFlags(options::Flags::Uncommon));
-
-  options
-      ->addOption("--database.extended-names",
-                  "Allow most UTF-8 characters in the names of databases, "
-                  "collections, Views, and indexes. Once in use, "
-                  "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_options.extendedNames),
-                  options::makeDefaultFlags(options::Flags::Uncommon,
-                                            options::Flags::Experimental))
-      .setIntroducedIn(30900);
-
-  options->addOldOption("database.extended-names-databases",
-                        "database.extended-names");
-
-  options
-      ->addOption("--database.io-heartbeat",
-                  "Perform I/O heartbeat to test the underlying volume.",
-                  new options::BooleanParameter(&_options.performIOHeartbeat),
-                  options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30807)
-      .setIntroducedIn(30902);
-
-  options
-      ->addOption("--database.max-databases",
-                  "The maximum number of databases that can exist in parallel.",
-                  new options::SizeTParameter(&_options.maxDatabases))
-      .setLongDescription(R"(If the maximum number of databases is reached, no
-additional databases can be created in the deployment. In order to create additional
-databases, other databases need to be removed first.")")
-      .setIntroducedIn(31200);
-
-  // the following option was obsoleted in 3.9
-  options->addObsoleteOption(
-      "--database.old-system-collections",
-      "Create and use deprecated system collection (_modules, _fishbowl).",
-      false);
-
-  // the following option was obsoleted in 3.8
-  options->addObsoleteOption(
-      "--database.throw-collection-not-loaded-error",
-      "throw an error when accessing a collection that is still loading",
-      false);
-
-  // the following option was removed in 3.7
-  options->addObsoleteOption(
-      "--database.maximal-journal-size",
-      "default maximal journal size, can be overwritten when "
-      "creating a collection",
-      true);
-
-  // the following option was removed in 3.2
-  options->addObsoleteOption(
-      "--database.index-threads",
-      "threads to start for parallel background index creation", true);
-
-  // the following hidden option was removed in 3.4
-  options->addObsoleteOption(
-      "--database.check-30-revisions",
-      "check for revision values from ArangoDB 3.0 databases", true);
-
-  // the following options were removed in 3.2
-  options->addObsoleteOption(
-      "--database.revision-cache-chunk-size",
-      "chunk size (in bytes) for the document revisions cache", true);
-  options->addObsoleteOption(
-      "--database.revision-cache-target-size",
-      "total target size (in bytes) for the document revisions cache", true);
-}
-
-void DatabaseFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  // check the misuse of startup options
-  if (_checkVersion && _upgrade) {
-    LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
-        << "cannot specify both '--database.check-version' and "
-           "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
-}
-
-void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
-  auto& df = server.getFeature<DatabaseFeature>();
+void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server), df.versionTracker(),
-      df.extendedNames(), /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()),
+      server().getFeature<StorageEngine>(), *this, /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
 #ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
-    dealer.verifyAppPaths();
+  if (_dealer != nullptr && _dealer->isEnabled()) {
+    _dealer->verifyAppPaths();
   }
 #endif
-
-  // scan all databases
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-
-  TRI_ASSERT(builder.slice().isArray());
-
-  auto res = iterateDatabases(builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
-        << "could not iterate over all databases: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  // Update metadata metrics after databases are loaded
-  updateMetadataMetrics();
-
-  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
-    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
 
   // start database manager thread
   _databaseManager =
@@ -507,7 +353,23 @@ void DatabaseFeature::stop() {
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
 
-  stopAppliers();
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
+  // delete the database manager thread
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
+
+    while (_databaseManager->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
 
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
@@ -593,24 +455,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // delete the IO checker thread
-  if (_ioHeartbeatThread != nullptr) {
-    _ioHeartbeatThread->beginShutdown();
-
-    while (_ioHeartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
-  // delete the database manager thread
-  if (_databaseManager != nullptr) {
-    _databaseManager->beginShutdown();
-
-    while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
   try {
     closeDroppedDatabases();
   } catch (...) {
@@ -631,13 +475,15 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  _engine = &server().getFeature<EngineSelectorFeature>().engine();
-  if (server().hasFeature<ReplicationFeature>()) {
-    _replicationFeature = &server().getFeature<ReplicationFeature>();
-  }
+  _engine = &server().getFeature<StorageEngine>();
+#ifdef USE_V8
+  _dealer = server().hasFeature<V8DealerFeature>()
+                ? &server().getFeature<V8DealerFeature>()
+                : nullptr;
+#endif
 
   // need this to make calculation analyzer available in database links
-  initCalculationVocbase(server());
+  initCalculationVocbase();
 
   // Initialize metadata metrics on single server
   if (ServerState::instance()->isSingleServer()) {
@@ -646,11 +492,32 @@ void DatabaseFeature::prepare() {
   }
 }
 
+void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
+  TRI_ASSERT(databases.isArray());
+
+  auto res = iterateDatabases(databases);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
+        << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
+    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void DatabaseFeature::recoveryDone() {
-  TRI_ASSERT(!_engine->inRecovery());
+  TRI_ASSERT(_engine->isReady());
 
   // '_pendingRecoveryCallbacks' will not change because
-  // !StorageEngine.inRecovery()
+  // StorageEngine.isReady()
   // It's single active thread before recovery done,
   // so we could use general purpose thread pool for this
   std::vector<futures::Future<Result>> futures;
@@ -673,28 +540,12 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-
-    if (vocbase->replicationApplier() && _replicationFeature) {
-      _replicationFeature->startApplier(vocbase);
-    }
-  }
 }
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  if (!_engine->inRecovery()) {
-    return callback();  // if no engine then can't be in recovery
+  if (_engine->isReady()) {
+    return callback();  // engine ready, execute immediately
   }
 
   // do not need a lock since single-thread access during recovery
@@ -762,24 +613,9 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     TRI_ASSERT(vocbase != nullptr);
 
     if (!ServerState::instance()->isCoordinator()) {
-      try {
-        vocbase->addReplicationApplier();
-      } catch (basics::Exception const& ex) {
-        std::string msg = "initializing replication applier for database '" +
-                          vocbase->name() + "' failed: " + ex.what();
-        LOG_TOPIC("e7444", ERR, Logger::FIXME) << msg;
-        return Result(ex.code(), std::move(msg));
-      } catch (std::exception const& ex) {
-        std::string msg = "initializing replication applier for database '" +
-                          vocbase->name() + "' failed: " + ex.what();
-        LOG_TOPIC("56c41", ERR, Logger::FIXME) << msg;
-        return Result(TRI_ERROR_INTERNAL, std::move(msg));
-      }
-
 #ifdef USE_V8
-      auto& dealer = server().getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        auto r = dealer.createDatabase(name, std::to_string(dbId), true);
+      if (_dealer != nullptr && _dealer->isEnabled()) {
+        auto r = _dealer->createDatabase(name, std::to_string(dbId), true);
         if (r != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(r);
         }
@@ -787,11 +623,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 #endif
     }
 
-    if (!_engine->inRecovery()) {
-      if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
-        _replicationFeature->startApplier(vocbase.get());
-      }
-
+    if (_engine->isReady()) {
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);
@@ -810,13 +642,13 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!_engine->inRecovery()) {
+  if (_engine->isReady()) {
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
 
-  versionTracker().track("create database");
+  notifyDdlChange("create database");
 
   // Update metadata metrics on single server only after successful creation
   if (res.ok() && ServerState::instance()->isSingleServer()) {
@@ -913,7 +745,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  versionTracker().track("drop database");
+  notifyDdlChange("drop database");
 
   // Update metadata metrics on single server only after successful drop
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
@@ -999,11 +831,10 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   return names;
 }
 
-std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
-    std::string const& username) {
+std::vector<std::string> DatabaseFeature::getDatabaseNamesForCurrentUser() {
   std::vector<std::string> names;
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auto& exec = ExecContext::current();
   {
     auto databases = _databases.load();
 
@@ -1014,12 +845,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive() && af->userManager() != nullptr) {
-        auto level = af->userManager()->databaseAuthLevel(
-            username, vocbase->name(), false);
-        if (level == auth::Level::NONE) {  // hide dbs without access
-          continue;
-        }
+      if (exec.canSeeDatabase(vocbase->name()).fail()) {
+        continue;
       }
 
       names.emplace_back(vocbase->name());
@@ -1163,24 +990,6 @@ TRI_vocbase_t& DatabaseFeature::getCalculationVocbase() {
   return *calculationVocbase;
 }
 
-void DatabaseFeature::stopAppliers() {
-  // stop the replication appliers so all replication transactions can end
-  if (_replicationFeature == nullptr) {
-    return;
-  }
-
-  std::lock_guard lock{_databasesMutex};
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-    if (!ServerState::instance()->isCoordinator()) {
-      _replicationFeature->stopApplier(vocbase);
-    }
-  }
-}
-
 void DatabaseFeature::closeOpenDatabases() {
   std::unique_lock lock{_databasesMutex};
 
@@ -1203,10 +1012,6 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-#endif
-
   auto r = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
@@ -1222,8 +1027,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     }
   });
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-
   for (velocypack::Slice it : velocypack::ArrayIterator(databases)) {
     TRI_ASSERT(it.isObject());
     LOG_TOPIC("95f68", TRACE, Logger::FIXME)
@@ -1237,9 +1040,9 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto name = it.get("name").stringView();
 #ifdef USE_V8
-    if (dealer.isEnabled()) {
+    if (_dealer != nullptr && _dealer->isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer.createDatabase(name, id, false);
+      r = _dealer->createDatabase(name, id, false);
       if (r != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -1302,16 +1105,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto database = _engine->openDatabase(std::move(info), _upgrade);
 
-    if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
-      try {
-        database->addReplicationApplier();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("ff848", FATAL, Logger::FIXME)
-            << "initializing replication applier for database '"
-            << database->name() << "' failed: " << ex.what();
-        FATAL_ERROR_EXIT();
-      }
-    }
     ADB_PROD_ASSERT(!next->contains(database->name()))
         << "duplicate database name " << database->name();
     next->emplace(database->name(), database.get());
@@ -1348,10 +1141,11 @@ void DatabaseFeature::closeDroppedDatabases() {
 }
 
 DatabaseFeature::MetadataMetrics::MetadataMetrics(
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : numberOfCollections(
-          metrics.add(arangodb_metadata_number_of_collections{})),
-      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+          metricsRegistry.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(
+          metricsRegistry.add(arangodb_metadata_number_of_databases{})) {
   TRI_ASSERT(ServerState::instance()->isSingleServer())
       << "DatabaseFeature::MetadataMetrics should be exposed only on a single "
          "server";

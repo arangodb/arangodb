@@ -21,8 +21,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -51,8 +49,11 @@ function AuthSuite() {
   return {
 
     // set up
+    setUpAll: function() {
+      IM.rememberConnection();
+    },
     setUp: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
 
       try {
         users.remove(user);
@@ -61,6 +62,9 @@ function AuthSuite() {
     },
 
     // tear down
+    tearDownAll: function() {
+      IM.reconnectMe();
+    },
     tearDown: function () {
       // our test temporarily disables access to the user collection,
       // so our request to clear the failure points must be authenticated
@@ -142,7 +146,8 @@ function AuthSuite() {
       }
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(404, result.code);
+      // User deleted, thus unauthenticated
+      assertEqual(401, result.code);
     },
 
     testApiNonExistingUserRW: function () {
@@ -741,6 +746,25 @@ function AuthSuite() {
       }
     },
 
+    // a malformed access token (valid "v1." prefix, but the hex-decoded
+    // payload is not valid JSON) must be rejected as bad credentials
+    // (401), not crash the request handler with an unhandled exception
+    // (which used to surface as an HTTP 500).
+    testAccessTokenMalformedPayload: function () {
+      const version_url = `/_api/version`;
+      const forbidden = 401;
+
+      // hex encoding of the string "not valid json", which is not
+      // parseable as JSON
+      const malformedToken = "v1.6e6f742076616c6964206a736f6e";
+
+      const res = request.get(version_url, {
+        auth: {username: "root", password: malformedToken}
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', forbidden);
+    },
+
     // access token and JWT
     testAccessTokenJWT: function () {
       const other = "other";
@@ -1008,7 +1032,134 @@ function AuthSuite() {
       } finally {
         db._dropDatabase("other");
       }
-    }
+    },
+
+    // access token that expires while it is in use
+    testAccessTokenExpiresWhileValid: function () {
+      const other = "other";
+      const version_url = `/_db/${other}/_api/version`;
+      const pw1 = "foobar";
+      const ok = 200;
+      const forbidden = 401;
+      // Short enough to keep the suite fast, long enough to survive the
+      // request round trip on a loaded CI machine.
+      const lifetimeSecs = 3;
+      try {
+        db._createDatabase(other);
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+        const auth = { username: user, password: pw1 };
+        const now = (new Date()) / 1000;
+        const name = "expires-while-valid";
+        let token;
+        // create a token that is valid right now
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": Math.floor(now + lifetimeSecs)}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.active).to.be.equal(true);
+          expect(obj.token).to.be.a('string');
+          token = obj.token;
+        }
+        // it authenticates while still valid
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+        require('internal').wait(lifetimeSecs + 1, false);
+        // and stops authenticating once valid_until has passed
+        {
+          const res = request.get(version_url, {
+            auth: {username: user, password: token}
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
+
+    // access token valid_until must be capped at the server's configured
+    // maximum TTL (--auth.maximal-access-token-expiry-time, default 1 week),
+    // even if a much longer expiry is requested.
+    testAccessTokenExpiryCapped: function () {
+      const other = "other";
+      const pw1 = "foobar";
+      const ok = 200;
+      // matches the built-in default for
+      // --auth.maximal-access-token-expiry-time
+      const maxTtlSecs = 7 * 24 * 3600;
+      // generous slack to account for the time the requests themselves take
+      const slackSecs = 60;
+
+      try {
+        db._createDatabase(other);
+
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // ask for a token that would be valid for a whole year
+        const now = (new Date()) / 1000;
+        const name = "testme-capped";
+        const oneYearSecs = 365 * 24 * 3600;
+        const requested = Math.floor(now + oneYearSecs);
+        const expectedCap = Math.floor(now + maxTtlSecs);
+        let id;
+
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": requested}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.valid_until).to.be.a('number');
+
+          // the requested year-long expiry must have been capped down
+          expect(obj.valid_until).to.be.below(requested);
+          expect(obj.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+
+          id = obj.id;
+        }
+
+        // retrieve the token list again and make sure the capped
+        // valid_until was actually persisted, not just returned once
+        {
+          const res = request.get(`/_api/token/${user}`, {auth});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.tokens).to.be.a('array');
+
+          const found = obj.tokens.find((t) => t.id === id);
+          expect(found).to.not.be.equal(undefined);
+          expect(found.valid_until).to.be.below(requested);
+          expect(found.valid_until).to.be.within(expectedCap - slackSecs, expectedCap + slackSecs);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
   };
 }
 
@@ -1047,7 +1198,7 @@ function UnauthorizedAccesSuite() {
       assertEqual(res.parsedBody.result.name, "dbTest2");
       res = arango.GET_RAW("/_db/dbTest3/_api/database/current");
       assertEqual(401, res.code);
-      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+      assertEqual(res.parsedBody.errorMessage, "No read access to database.");
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
       assertEqual(401, res.code);
       assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
@@ -1202,10 +1353,277 @@ function AuthMechanismSuite() {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for the JWT "allowed_paths" claim
+///
+/// Background:
+///   When a JWT body contains an "allowed_paths" array, an incoming request is
+///   only permitted if its request path (after the `/_db/<name>/` prefix has
+///   been stripped) appears verbatim in that array. The check happens *before*
+///   the user's regular database/collection-level permission checks (see
+///   CommTask::canAccessPath).
+///
+/// Strategy:
+///   - Create a single test user with rw access to one database (`dbAllowed`)
+///     and *no* access to another (`dbDenied`). This gives us two
+///     (user, api) pairs that share the same logical request path
+///     (`/_api/version`) but differ in whether the user is permitted to
+///     access them via the standard ACL check.
+///   - Mint JWTs for that user with three variants of the `allowed_paths`
+///     claim:
+///       * not present at all
+///       * present and containing the requested path
+///       * present and containing only an unrelated path
+///   - Cross every (api pair) x (jwt variant) combination and assert the
+///     expected status code.
+////////////////////////////////////////////////////////////////////////////////
+
+function JwtAllowedPathsSuite() {
+  'use strict';
+
+  // Hardcoded by the testsuite (see test-utils.js: testsecret).
+  const jwtSecret = 'haxxmann';
+
+  const testUser = 'allowed_paths_user@arango.ai';
+  const testPassword = 'foobar';
+  const dbAllowed = 'jwtAllowedPaths_allowed';
+  const dbDenied = 'jwtAllowedPaths_denied';
+
+  // Both URLs share the same request path (`/_api/version`) after the
+  // `/_db/<name>/` prefix is stripped, so a single `allowed_paths` entry can
+  // match (or not match) both at once. The pairs differ only in whether the
+  // user has database-level access.
+  const testApiPath = '/_api/version';
+  const allowedUrl = `/_db/${dbAllowed}${testApiPath}`;
+  const deniedUrl = `/_db/${dbDenied}${testApiPath}`;
+
+  // An unrelated path used for the "allowed_paths excludes the request path"
+  // case. Must be different from `testApiPath`.
+  const unrelatedPath = '/_api/database/current';
+
+  const baseUrl = function () {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  };
+
+  // Build a JWT for `testUser`. If `allowedPaths` is `undefined`, the claim
+  // is omitted from the body entirely.
+  const makeJwt = function (allowedPaths) {
+    const body = {
+      "preferred_username": testUser,
+      "iss": "arangodb",
+      "exp": Math.floor(Date.now() / 1000) + 3600
+    };
+    if (allowedPaths !== undefined) {
+      body.allowed_paths = allowedPaths;
+    }
+    return crypto.jwtEncode(jwtSecret, body, 'HS256');
+  };
+
+  // Build a server_id JWT (no preferred_username). These are treated as
+  // superuser tokens. `allowedPaths` may be undefined (omit claim),
+  // or any value (written verbatim into the body for malformed-claim tests).
+  const makeServerIdJwt = function (allowedPaths) {
+    const body = {
+      "server_id": "test",
+      "iss": "arangodb",
+      "exp": Math.floor(Date.now() / 1000) + 3600
+    };
+    if (allowedPaths !== undefined) {
+      body.allowed_paths = allowedPaths;
+    }
+    return crypto.jwtEncode(jwtSecret, body, 'HS256');
+  };
+
+  const getWithJwt = function (url, jwt) {
+    return request.get({
+      url: baseUrl() + url,
+      auth: { bearer: jwt }
+    });
+  };
+
+  return {
+
+    setUpAll: function () {
+      try { users.remove(testUser); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbAllowed); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbDenied); } catch (err) { /* ignore */ }
+
+      db._createDatabase(dbAllowed);
+      db._createDatabase(dbDenied);
+
+      users.save(testUser, testPassword);
+      // Grant access only to `dbAllowed`. `dbDenied` is intentionally left
+      // without any grant so the user has no permission there. The user also
+      // has no grant on `_system`, so they cannot reach the global
+      // `/_api/version` either.
+      users.grantDatabase(testUser, dbAllowed, 'rw');
+      users.grantCollection(testUser, dbAllowed, '*', 'rw');
+      users.reload();
+    },
+
+    tearDownAll: function () {
+      try { users.remove(testUser); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbAllowed); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbDenied); } catch (err) { /* ignore */ }
+    },
+
+    // ---- Sanity checks ------------------------------------------------------
+
+    // Make sure our (user, api) pairs really do behave as described before we
+    // start adding `allowed_paths` to the picture.
+    testSanityUserHasAccessToAllowedDb: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testSanityUserHasNoAccessToDeniedDb: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths absent ----------------------------------------------
+
+    // The JWT body has no `allowed_paths` claim at all -> behave like a normal
+    // JWT: allow if the user's ACLs allow, deny otherwise.
+
+    testNoAllowedPathsUserAllowed: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testNoAllowedPathsUserForbidden: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths includes the requested path -------------------------
+
+    // The path passes the `allowed_paths` gate; whether the request as a
+    // whole succeeds is then decided by the user's ACLs.
+
+    testAllowedPathsIncludesPathUserAllowed: function () {
+      const jwt = makeJwt([testApiPath]);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testAllowedPathsIncludesPathUserForbidden: function () {
+      const jwt = makeJwt([testApiPath]);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths excludes the requested path -------------------------
+
+    // The path is rejected by the `allowed_paths` gate before user ACLs are
+    // even consulted, so the result must be 401 regardless of the user's
+    // permissions on the target database.
+
+    testAllowedPathsExcludesPathUserAllowed: function () {
+      const jwt = makeJwt([unrelatedPath]);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    testAllowedPathsExcludesPathUserForbidden: function () {
+      const jwt = makeJwt([unrelatedPath]);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- server_id JWTs (no preferred_username) -----------------------------
+    //
+    // The primary use case: a service that authenticates with a server_id JWT
+    // (superuser, empty username) restricted via allowed_paths.
+
+    // A1: server_id + allowed_paths includes path -> access granted
+    testServerIdAllowedPathsIncludesPath: function () {
+      const jwt = makeServerIdJwt([testApiPath]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    // A2: server_id + allowed_paths excludes path -> access denied
+    testServerIdAllowedPathsExcludesPath: function () {
+      const jwt = makeServerIdJwt([unrelatedPath]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A3: server_id + no allowed_paths -> unrestricted (backward compat)
+    testServerIdNoAllowedPaths: function () {
+      const jwt = makeServerIdJwt(undefined);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    // A4: exact match - truncated path must not match
+    testServerIdAllowedPathsNoSubstringMatch: function () {
+      const jwt = makeServerIdJwt(['/_api/versio']);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A5: exact match - allowed parent must not match child path
+    testServerIdAllowedPathsNoPrefixMatch: function () {
+      const jwt = makeServerIdJwt(['/_admin/metrics']);
+      const res = getWithJwt('/_admin/metrics/v2', jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A6: "always-allowed" paths (/_admin/aardvark/*) are still blocked by
+    //     the allowed_paths gate, which runs first in canAccessPath.
+    // Comment (Tobias): I think it's debatable whether this is actually
+    //   desirable behavior. For now, I've added this test to cover the
+    //   existing behavior, so we don't change it accidentally - that
+    //   doesn't mean we mustn't change it.
+    testServerIdAllowedPathsOverridesAlwaysAllowed: function () {
+      const jwt = makeServerIdJwt([testApiPath]);
+      const res = getWithJwt('/_admin/aardvark/index.html', jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- Malformed allowed_paths claims ------------------------------------
+    //
+    // TokenCache::validateJwtBody rejects these and returns Unauthenticated,
+    // so the entire token is treated as invalid.
+
+    // A7: empty array -> rejected
+    testServerIdAllowedPathsEmptyArray: function () {
+      const jwt = makeServerIdJwt([]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A8: not an array -> rejected
+    testServerIdAllowedPathsNotAnArray: function () {
+      const jwt = makeServerIdJwt(testApiPath);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A9: non-string element -> rejected
+    testServerIdAllowedPathsNonStringElement: function () {
+      const jwt = makeServerIdJwt([123]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+  };
+}
+
+
 // executes the test suite
 jsunity.run(AuthSuite);
 jsunity.run(UnauthorizedAccesSuite);
 jsunity.run(AuthMechanismSuite);
+jsunity.run(JwtAllowedPathsSuite);
 
 return jsunity.done();
 

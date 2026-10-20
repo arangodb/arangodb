@@ -18,18 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorExecutor.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Variable.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+#include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
+#include <algorithm>
 #include <cmath>
 
 // Activate logging
@@ -47,11 +55,76 @@ struct Collection;
 
 using Stats = NoStats;
 
+namespace {
+
+std::uint64_t resultBufferBytes(std::size_t topK) noexcept {
+  return static_cast<std::uint64_t>(topK) *
+         (sizeof(vector::LabelId) + sizeof(vector::Distance));
+}
+
+}  // namespace
+
 EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
-      _collection(_infos.collection) {}
+      _collection(_infos.collection),
+      _vectorIndex(resolveVectorIndex(_infos)),
+      _resultBuffersMemory(_infos.queryContext.resourceMonitor()) {}
+
+RocksDBVectorIndex const& EnumerateNearVectorsExecutor::resolveVectorIndex(
+    Infos const& infos) {
+  auto const* index = infos.index.get();
+  if (auto const* vectorIndex = dynamic_cast<RocksDBVectorIndex const*>(index);
+      vectorIndex != nullptr) {
+    return *vectorIndex;
+  }
+  // While the index is still being built the collection hands out a
+  // RocksDBBuilderIndex wrapping the real vector index; unwrap it.
+  auto const* builderIndex = dynamic_cast<RocksDBBuilderIndex const*>(index);
+  TRI_ASSERT(builderIndex != nullptr)
+      << "EnumerateNearVectors index must be a RocksDBVectorIndex or a "
+         "RocksDBBuilderIndex wrapping one";
+  auto const* wrapped =
+      dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
+  TRI_ASSERT(wrapped != nullptr);
+  return *wrapped;
+}
+
+void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
+    velocypack::Slice docSlice, OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  _infos.projections.produceFromDocument(
+      _projectionsBuilder, docSlice, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
+
+void EnumerateNearVectorsExecutor::writeProjectionsFromStoredValues(
+    velocypack::Slice storedValuesSlice, OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  IndexIterator::SliceCoveringData covering{storedValuesSlice};
+  _infos.projections.produceFromIndex(
+      _projectionsBuilder, covering, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
 
 void EnumerateNearVectorsExecutor::fillInput(
     AqlItemBlockInputRange& inputRange) {
@@ -62,7 +135,6 @@ void EnumerateNearVectorsExecutor::fillInput(
 
   AqlValue value = _inputRow.getValue(docRegId);
 
-  // TODO currently we do not accept anything else then array
   if (!value.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -74,7 +146,7 @@ void EnumerateNearVectorsExecutor::fillInput(
   // size
   _inputRowConverted.clear();
 
-  auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
+  auto const dimension = _vectorIndex.getVectorIndexDefinition().dimension;
   _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
   for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
@@ -89,25 +161,49 @@ void EnumerateNearVectorsExecutor::fillInput(
                     vectorComponentsCount));
   }
   ++_processedInputs;
+  _reportedCurrentRowForFullCount = false;
 
   searchResults();
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
-  auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
-  TRI_ASSERT(vectorIndex != nullptr);
-
-  RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(&_trx, _collection->id());
-
-  std::tie(_labels, _distances) = vectorIndex->readBatch(
-      _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), 1, _infos.getNumberOfResults(),
-      _infos.filterExpression, &_inputRow, _infos.queryContext,
-      _infos.getVarsToRegister(), _infos.documentVariable,
-      _infos.isCoveredByStoredValues);
   _currentProcessedResultCount = 0;
-  TRI_ASSERT(hasResults());
+  // Release the previous batch first so the tracked memory below matches
+  // what is actually allocated during readBatch.
+  _labels = {};
+  _distances = {};
+  _documents.clear();
+  _resultBuffersMemory.revert();
+
+  TRI_ASSERT(_infos.searchConfig.topK > 0) << "LIMIT cannot be 0";
+  // A search can never return more hits than the collection holds, so size
+  // the result buffers by the document count rather than by LIMIT + OFFSET.
+  auto searchConfig = _infos.searchConfig;
+  searchConfig.topK = std::min(searchConfig.topK, _collectionCount);
+  if (searchConfig.topK == 0) {
+    // Only reachable for an empty collection; faiss rejects k == 0.
+    return;
+  }
+  _resultBuffersMemory.increase(resultBufferBytes(searchConfig.topK));
+
+  vector::VectorSearchContext ctx{
+      .inputs = &_inputRowConverted,
+      .inputRow = &_inputRow,
+      .trx = &_trx,
+      .queryContext = &_infos.queryContext,
+  };
+  auto result = _vectorIndex.readBatch(searchConfig, ctx);
+  _labels = std::move(result.labels);
+  _distances = std::move(result.distances);
+  _documents = std::move(result.capturedDocuments);
+
+  auto validCount = std::count_if(_labels.begin(), _labels.end(),
+                                  [](auto const& l) { return l != -1; });
+  LOG_TOPIC("f1a2b", DEBUG, Logger::ENGINES) << std::format(
+      "EnumerateNearVectors::searchResults: requested={}, returned={}, "
+      "validLabels={}, collectionCount={}",
+      searchConfig.topK, _labels.size(), validCount, _collectionCount);
+
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
@@ -122,9 +218,40 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
       _labels.resize(_currentProcessedResultCount);
       break;
     }
-    output.moveValueInto(
-        docOutId, _inputRow,
-        AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+
+    switch (_infos.projectionMode) {
+      case vector::ProjectionMode::kPassThroughId: {
+        TRI_ASSERT(docOutId != RegisterId::maxRegisterId);
+        output.moveValueInto(
+            docOutId, _inputRow,
+            AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+        break;
+      }
+      case vector::ProjectionMode::kDocument: {
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        velocypack::Slice docSlice = it->second.slice();
+        if (docOutId != RegisterId::maxRegisterId) {
+          output.moveValueInto(docOutId, _inputRow, docSlice);
+        }
+        writeProjectionsFromDocument(docSlice, output);
+        break;
+      }
+      case vector::ProjectionMode::kCovered: {
+        // No doc register for kCovered (createBlock leaves docOutId unset);
+        // projections come positionally out of the storedValues array.
+        TRI_ASSERT(docOutId == RegisterId::maxRegisterId);
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        writeProjectionsFromStoredValues(it->second.slice(), output);
+        break;
+      }
+    }
+
     output.moveValueInto(
         distOutId, _inputRow,
         AqlValueHintDouble(_distances[_currentProcessedResultCount]));
@@ -136,7 +263,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
     AqlCall::Limit toSkip) noexcept {
-  auto skipped = 0;
+  std::uint64_t skipped = 0;
 
   while (skipped < toSkip && _currentProcessedResultCount < _labels.size()) {
     // there are no results anymore for this input, so we can skip to next input
@@ -206,18 +333,22 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
     auto skipped = skipOutput(AqlCall::Infinity{});
-    skipped += (_collectionCount - _currentProcessedResultCount);
 
     TRI_ASSERT(!hasResults());
     auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
+    if (_processedInputs > 0 && !_reportedCurrentRowForFullCount) {
+      skipped += _collectionCount - _currentProcessedResultCount;
+      _reportedCurrentRowForFullCount = true;
+    }
     skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    LOG_INTERNAL << std::format(
-        "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
+    LOG_TOPIC("f1a2c", DEBUG, Logger::ENGINES) << std::format(
+        "EnumerateNearVectors::skipRowsRange(fullCount): skipped={}, "
+        "remainingRows={}, currentProcessed={}, nr={}, state={}, "
         "hasResults={}, call={}, colCount={}",
         skipped, remainingRows, _currentProcessedResultCount,
-        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
+        _infos.searchConfig.topK, state(), hasResults(), to_string(call),
         _collectionCount);
 
     auto upstreamCall = AqlCall{};

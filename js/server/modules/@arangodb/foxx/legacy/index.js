@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lucas Dohmen
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.Controller = require('@arangodb/foxx/legacy/controller').Controller;

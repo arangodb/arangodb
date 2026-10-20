@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, arango, assertEqual, assertFalse, assertTrue, assertMatch */
+/* global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,15 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const db = arangodb.db;
-const crypto = require('@arangodb/crypto');
-const request = require("@arangodb/request");
+let IM = global.instanceManager;
 
 const jwtSecret = 'haxxmann';
 
@@ -40,22 +40,14 @@ if (getOptions === true) {
   };
 }
 
-const jwt = crypto.jwtEncode(jwtSecret, {
-  "server_id": "ABCD",
-  "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
-}, 'HS256');
-
 const start = (new Date()).toISOString();
 
 function RegistrySuite() { 
   const cn = "UnitTests";
   
-  const baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       let c = db._create(cn, {numberOfShards: 1, replicationFactor: 1});
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
@@ -65,6 +57,7 @@ function RegistrySuite() {
     },
 
     tearDownAll: function () {
+      IM.reconnectMe(false);
       db._drop(cn);
     },
     
@@ -76,13 +69,10 @@ function RegistrySuite() {
       let query = db._createStatement({ query: qs, options: { stream: true, optimizer: { rules: ["-async-prefetch"] } } }).execute();
 
       try {
-        let result = request.get({
-          url: baseUrl() + "/_api/query/registry",
-          auth: {
-            bearer: jwt,
-          }
-        }).json.queries;
-         
+        let result = arango.GET_RAW("/_api/query/registry");
+        assertEqual(result.code, 403, JSON.stringify(result));
+        IM.reconnectMe(true);
+        result = arango.GET("/_api/query/registry").queries;
         assertTrue(Array.isArray(result));
 
         let q = result.filter((q) => q.queryString === qs);
@@ -116,6 +106,7 @@ function RegistrySuite() {
         assertFalse(q[0].engines[0].isOpen, q);
         assertEqual("execution", q[0].engines[0].type, q);
       } finally {
+        IM.reconnectMe(false);
         query.dispose();
       }
     },

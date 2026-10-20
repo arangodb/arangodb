@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Function.h"
@@ -32,16 +31,16 @@
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief create the function
 Function::Function(std::string const& name, char const* arguments,
                    std::underlying_type<Flags>::type flags,
-                   functions::FunctionImplementation implementation)
+                   functions::FunctionImplementation impl)
     : name(name),
       arguments(arguments),
       flags(flags),
-      implementation(implementation),
+      implementation(impl),
       conversions() {
   initializeArguments();
 
@@ -82,11 +81,8 @@ Function::Function(std::string const& name, char const* arguments,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // constructor to create a function stub. only used from tests
 Function::Function(std::string const& name,
-                   functions::FunctionImplementation implementation)
-    : name(name),
-      arguments("."),
-      flags(makeFlags()),
-      implementation(implementation) {
+                   functions::FunctionImplementation impl)
+    : name(name), arguments("."), flags(makeFlags()), implementation(impl) {
   initializeArguments();
 }
 #endif
@@ -261,3 +257,5 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(implementation == &functions::NotImplemented));
   builder.close();
 }
+
+}  // namespace arangodb::aql

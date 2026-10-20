@@ -18,8 +18,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
-// / @author Copyright 2018, ArangoDB Inc
 // //////////////////////////////////////////////////////////////////////////////
 
 let db = require("internal").db;

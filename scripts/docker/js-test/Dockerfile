@@ -1,9 +1,9 @@
 FROM public.ecr.aws/b0b8h2r4/test-ubuntu:latest
-MAINTAINER hackers@arango.ai
+LABEL org.opencontainers.image.authors="hackers@arango.ai"
  
 ARG arch
 
-ARG NODE_VERSION="20.14.0"
+ARG NODE_VERSION="22.22.3"
 RUN apt-get update --fix-missing && \
     apt-get install -y curl git && \
     apt-get update && \

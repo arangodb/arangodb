@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, assertNotMatch, arango, runSetup */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,12 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotMatch} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -51,14 +52,7 @@ if (runSetup === true) {
   return true;
 }
 
-const jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
 
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
@@ -68,24 +62,24 @@ function testSuite() {
   return {
     testApiGetOptionsRw : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options",
+        url: IM.url + "/_admin/options",
         auth: {
           username: "test_rw",
           password: "testi"
         },
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"]);
-      
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
+      assertEqual("admin", res.json["server.options-api"]);
+
       Object.keys(res.json).forEach((key) => {
         assertNotMatch(/(passwd|password|secret)/, key, key);
       });
     },
-    
+
     testApiGetOptionsRo : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options",
+        url: IM.url + "/_admin/options",
         auth: {
           username: "test_ro",
           password: "testi"
@@ -96,36 +90,35 @@ function testSuite() {
 
     testApiGetOptionsJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options",
+        url: IM.url + "/_admin/options",
         auth: {
           bearer: jwt,
         }
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"]);
-      
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
+      assertEqual("admin", res.json["server.options-api"]);
+
       Object.keys(res.json).forEach((key) => {
         assertNotMatch(/(passwd|password|secret)/, key, key);
       });
     },
-    
+
     testApiGetOptionsDescriptionRw : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options-description",
+        url: IM.url + "/_admin/options-description",
         auth: {
           username: "test_rw",
           password: "testi"
         },
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"].default);
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
     },
-    
+
     testApiGetOptionsDescriptionRo : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options-description",
+        url: IM.url + "/_admin/options-description",
         auth: {
           username: "test_ro",
           password: "testi"
@@ -136,14 +129,13 @@ function testSuite() {
 
     testApiGetOptionsDescriptionJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options-description",
+        url: IM.url + "/_admin/options-description",
         auth: {
           bearer: jwt,
         }
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"].default);
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
     },
   };
 }

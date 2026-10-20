@@ -93,7 +93,7 @@ const usePermissionTableData = () => {
   let serverLevelDefaultPermission;
   try {
     serverLevelDefaultPermission = databasePermissions["*"].permission;
-  } catch (ignore) {
+  } catch {
     // just ignore, not part of the response
   }
   return {

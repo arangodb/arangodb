@@ -18,25 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBackgroundThread.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Replication/ReplicationClients.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Utils/CursorRepository.h"
 
 #include <atomic>
 
@@ -46,12 +41,14 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
               "Released tick for RocksDB WAL deletion (replication-induced)");
 
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
-                                                 double interval)
-    : Thread(engine.server(), "RocksDBThread"),
+                                                 double interval,
+                                                 metrics::IRegistry& metrics)
+    // the settingsManager sync installs its own superuser scope where needed
+    : Thread("RocksDBThread", nullptr),
       _engine(engine),
       _interval(interval),
-      _metricsWalReleasedTickReplication(engine.getMetricsFeature().add(
-          rocksdb_wal_released_tick_replication{})) {}
+      _metricsWalReleasedTickReplication(
+          metrics.add(rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -64,7 +61,10 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  auto& flushFeature = _engine.getFlushFeature();
+  // bg thread must only run after recovery is done
+  TRI_ASSERT(_engine.isReady());
+
+  auto& flushControl = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
@@ -78,15 +78,11 @@ void RocksDBBackgroundThread::run() {
                                  static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
-    if (_engine.inRecovery()) {
-      continue;
-    }
-
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {
       if (!isStopping()) {
-        flushFeature.releaseUnusedTicks();
+        flushControl.releaseUnusedTicks();
 
         // it is important that we wrap the sync operation inside a
         // try..catch of its own, because we still want the following
@@ -166,7 +162,7 @@ void RocksDBBackgroundThread::run() {
       }
 
       uint64_t minTickForReplication = latestSeqNo;
-      _engine.getDatabaseFeature().enumerateDatabases(
+      _engine.getDatabaseProvider().enumerateDatabases(
           [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
             // lowestServedValue will return the lowest of the lastServedTick
             // values stored, or UINT64_MAX if no clients are registered

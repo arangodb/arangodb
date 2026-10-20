@@ -18,17 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabasePathFeature.h"
+
+#include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -37,8 +36,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -48,7 +47,12 @@ namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabasePathFeature(server, DatabasePathFeatureOptions{}) {}
+
+DatabasePathFeature::DatabasePathFeature(
+    application_features::ApplicationServer& server,
+    DatabasePathFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
@@ -59,80 +63,19 @@ DatabasePathFeature::DatabasePathFeature(
   startsAfter<TempFeature>();
 }
 
-void DatabasePathFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--database.directory", "The path to the database directory.",
-                  new StringParameter(&_options.directory))
-      .setLongDescription(R"(This defines the location where all data of a
-server is stored.
-
-Make sure the directory is writable by the arangod process. You should further
-not use a database directory which is provided by a network filesystem such as
-NFS. The reason is that networked filesystems might cause inconsistencies when
-there are multiple parallel readers or writers or they lack features required by
-arangod, e.g. `flock()`.)");
-
-  options->addOption(
-      "--database.required-directory-state",
-      "The required state of the database directory at startup "
-      "(non-existing: the database directory must not exist, existing: the"
-      "database directory must exist, empty: the database directory must exist "
-      "but be empty, populated: the database directory must exist and contain "
-      "specific files already, any: any state is allowed)",
-      new DiscreteValuesParameter<StringParameter>(
-          &_options.requiredDirectoryState,
-          std::unordered_set<std::string>{"any", "non-existing", "existing",
-                                          "empty", "populated"}));
-}
-
-void DatabasePathFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  auto const& positionals = options->processingResult()._positionals;
-
-  if (1 == positionals.size()) {
-    _options.directory = positionals[0];
-  } else if (1 < positionals.size()) {
-    LOG_TOPIC("aeb40", FATAL, arangodb::Logger::FIXME)
-        << "expected at most one database directory, got '"
-        << StringUtils::join(positionals, ",") << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.directory.empty()) {
-    LOG_TOPIC("9aba1", FATAL, arangodb::Logger::FIXME)
-        << "no database path has been supplied, giving up, please use "
-           "the '--database.directory' option";
-    FATAL_ERROR_EXIT();
-  }
-
-  // strip trailing separators
-  _options.directory =
-      basics::StringUtils::rTrim(_options.directory, TRI_DIR_SEPARATOR_STR);
-
-  auto ctx = ArangoGlobalContext::CONTEXT;
-
-  if (ctx == nullptr) {
-    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME)
-        << "failed to get global context.";
-    FATAL_ERROR_EXIT();
-  }
-
-  ctx->normalizePath(_options.directory, "database.directory", false);
-}
-
 void DatabasePathFeature::prepare() {
   // check if temporary directory and database directory are identical
   {
-    std::string directoryCopy = _options.directory;
-    basics::FileUtils::makePathAbsolute(directoryCopy);
+    std::string directoryCopy =
+        basics::FileUtils::absolutePath(_options.directory).string();
 
     if (server().hasFeature<TempFeature>()) {
       auto& tf = server().getFeature<TempFeature>();
       // the feature is not present in unit tests, so make the execution depend
       // on whether the feature is available
-      std::string tempPathCopy = tf.path();
-      basics::FileUtils::makePathAbsolute(tempPathCopy);
+
+      std::string tempPathCopy =
+          basics::FileUtils::absolutePath(tf.path()).string();
       tempPathCopy =
           basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 
@@ -153,7 +96,7 @@ void DatabasePathFeature::prepare() {
   }
 
   if (_options.requiredDirectoryState == "non-existing") {
-    if (basics::FileUtils::isDirectory(_options.directory)) {
+    if (std::filesystem::is_directory(_options.directory)) {
       LOG_TOPIC("25452", FATAL, arangodb::Logger::STARTUP)
           << "database directory '" << _options.directory
           << "' already exists, but option "
@@ -164,7 +107,8 @@ void DatabasePathFeature::prepare() {
   }
 
   // existing, empty, populated when we get here
-  if (!basics::FileUtils::isDirectory(_options.directory)) {
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(_options.directory, dirEc)) {
     LOG_TOPIC("3b1df", FATAL, arangodb::Logger::STARTUP)
         << "database directory '" << _options.directory
         << "' does not exist, but option '--database.required-directory-state' "
@@ -180,7 +124,7 @@ void DatabasePathFeature::prepare() {
 
   std::vector<std::string> files;
   for (auto const& it : basics::FileUtils::listFiles(_options.directory)) {
-    if (it.empty() || basics::FileUtils::isDirectory(it)) {
+    if (it.empty() || std::filesystem::is_directory(it)) {
       continue;
     }
 
@@ -213,7 +157,7 @@ void DatabasePathFeature::prepare() {
 
 void DatabasePathFeature::start() {
   // create base directory if it does not exist
-  if (!basics::FileUtils::isDirectory(_options.directory)) {
+  if (!std::filesystem::is_directory(_options.directory)) {
     std::string systemErrorStr;
     long errorNo;
 

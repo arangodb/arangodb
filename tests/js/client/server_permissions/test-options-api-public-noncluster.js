@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -39,8 +37,8 @@ function testSuite() {
     testApiGetOptions : function() {
       let res = arango.GET("/_admin/options");
       
-      assertTrue(res.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res["server.storage-engine"]);
+      assertTrue(res.hasOwnProperty("server.options-api"));
+      assertEqual("public", res["server.options-api"]);
 
       Object.keys(res).forEach((key) => {
         assertNotMatch(/(passwd|password|secret)/, key, key);
@@ -50,7 +48,7 @@ function testSuite() {
     testApiGetOptionsDescription : function() {
       let res = arango.GET("/_admin/options-description");
       
-      assertTrue(res.hasOwnProperty("server.storage-engine"));
+      assertTrue(res.hasOwnProperty("server.options-api"));
 
       Object.values(res).forEach((value) => {
         assertTrue(value.hasOwnProperty("section"), value);

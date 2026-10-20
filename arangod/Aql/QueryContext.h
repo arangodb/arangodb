@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,6 +27,7 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
+#include "Basics/ICancellationToken.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"
@@ -37,8 +37,6 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -62,13 +60,13 @@ namespace aql {
 class Ast;
 
 /// @brief an AQL query basic interface
-class QueryContext {
+class QueryContext : public arangodb::ICancellationToken {
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase,
+  explicit QueryContext(Database& vocbase,
                         transaction::OperationOrigin operationOrigin,
                         QueryId id = 0);
 
@@ -88,7 +86,7 @@ class QueryContext {
   }
 
   /// @brief get the vocbase
-  TRI_vocbase_t& vocbase() const noexcept;
+  Database& vocbase() const noexcept;
 
   transaction::OperationOrigin operationOrigin() const noexcept;
 
@@ -143,7 +141,7 @@ class QueryContext {
 
   virtual transaction::Methods& trxForOptimization() = 0;
 
-  virtual bool killed() const = 0;
+  bool killed() const override = 0;
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
@@ -192,7 +190,7 @@ class QueryContext {
   Collections _collections;
 
   /// @brief pointer to vocbase the query runs in
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;

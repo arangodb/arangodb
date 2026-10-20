@@ -1,23 +1,26 @@
-"use strict";
+'use strict';
 
-const arrayProto = require("@sinonjs/commons").prototypes.array;
-const Sandbox = require("./sandbox");
+var commons = require('@sinonjs/commons');
+var sandbox = require('./sandbox.js');
 
-const forEach = arrayProto.forEach;
-const push = arrayProto.push;
+function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
+
+var commons__default = /*#__PURE__*/_interopDefault(commons);
+
+const { forEach, push } = commons__default.default.prototypes.array;
 
 function prepareSandboxFromConfig(config) {
-    const sandbox = new Sandbox({ assertOptions: config.assertOptions });
+    const sandbox$1 = new sandbox({ assertOptions: config.assertOptions });
 
     if (config.useFakeTimers) {
         if (typeof config.useFakeTimers === "object") {
-            sandbox.useFakeTimers(config.useFakeTimers);
+            sandbox$1.useFakeTimers(config.useFakeTimers);
         } else {
-            sandbox.useFakeTimers();
+            sandbox$1.useFakeTimers();
         }
     }
 
-    return sandbox;
+    return sandbox$1;
 }
 
 function exposeValue(sandbox, config, key, value) {
@@ -71,7 +74,7 @@ function exposeValue(sandbox, config, key, value) {
  */
 function createSandbox(config) {
     if (!config) {
-        return new Sandbox();
+        return new sandbox();
     }
 
     const configuredSandbox = prepareSandboxFromConfig(config);

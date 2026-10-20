@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -153,6 +152,16 @@ class StaticStrings {
   static std::string_view constexpr IndexLookahead{"lookahead"};
   static std::string const IndexCreationError;  // index failed to create
 
+  // Vector index specific fields
+  static std::string_view constexpr IndexTrainingState{"trainingState"};
+  static std::string_view constexpr IndexTrainingStateUnusable{"unusable"};
+  static std::string_view constexpr IndexTrainingStateTraining{"training"};
+  static std::string_view constexpr IndexTrainingStateIngesting{"ingesting"};
+  static std::string_view constexpr IndexTrainingStateReady{"ready"};
+  static std::string_view constexpr IndexResolvedNLists{"resolvedNLists"};
+  static std::string_view constexpr VectorIndexDefaultTrainingError{
+      "not enough training data for vector index"};
+
   // static index names
   static std::string const IndexNameEdge;
   static std::string const IndexNameEdgeFrom;
@@ -169,6 +178,7 @@ class StaticStrings {
   static std::string const Filter;
   static std::string const MaxProjections;
   static std::string const ProducesResult;
+  static std::string const ProtoCollection;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;
@@ -264,9 +274,9 @@ class StaticStrings {
   static std::string const AllowUserKeys;
   static std::string const CacheEnabled;  // also used for indexes
   static std::string const ComputedValues;
-  static std::string const SupportsRBAC;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
+  static std::string const IsLocalGraphNode;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const KeyOptions;

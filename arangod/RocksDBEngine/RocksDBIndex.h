@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,6 +39,7 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
+class Iterator;
 class WriteBatch;
 }  // namespace rocksdb
 
@@ -107,8 +107,11 @@ class RocksDBIndex : public Index {
   void setupCache();
   void destroyCache() noexcept;
 
-  virtual void prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
-                            rocksdb::Slice upper, RocksDBMethods* methods) {}
+  /// @brief Called before the index is persisted during creation.
+  /// Allows indexes to validate existing documents in the collection.
+  /// Default implementation is a no-op.
+  virtual Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                              rocksdb::Slice upper, RocksDBMethods* methods);
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
@@ -161,7 +164,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+  static RocksDBKeyBounds getBounds(IndexType type, uint64_t objectId,
                                     bool unique);
 
   /// @brief get index estimator, optional

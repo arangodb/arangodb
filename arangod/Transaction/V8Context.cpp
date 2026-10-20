@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -26,20 +25,20 @@
 #endif
 
 #include "V8Context.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8/v8-globals.h"
+#include "VocBase/vocbase.h"
 
 #include <v8.h>
 
 using namespace arangodb;
 
 /// @brief create the context
-transaction::V8Context::V8Context(TRI_vocbase_t& vocbase,
+transaction::V8Context::V8Context(Database& vocbase,
                                   OperationOrigin operationOrigin,
                                   bool embeddable)
     : Context(vocbase, operationOrigin),
@@ -148,13 +147,13 @@ transaction::V8Context::getParentState() {
 
 /// @brief create a context, returned in a shared ptr
 std::shared_ptr<transaction::V8Context> transaction::V8Context::create(
-    TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable) {
+    Database& vocbase, OperationOrigin operationOrigin, bool embeddable) {
   return std::make_shared<transaction::V8Context>(vocbase, operationOrigin,
                                                   embeddable);
 }
 
 std::shared_ptr<transaction::Context>
-transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
+transaction::V8Context::createWhenRequired(Database& vocbase,
                                            OperationOrigin operationOrigin,
                                            bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?

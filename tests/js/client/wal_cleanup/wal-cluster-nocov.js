@@ -1,10 +1,10 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, arango */
+/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 // / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
 // / Licensed under the Business Source License 1.1 (the "License");
@@ -21,65 +21,54 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 const jsunity = require("jsunity");
-
-const db = require("internal").db;
-const url = require('url');
-const _ = require("lodash");
+const {assertTrue, assertFalse} = jsunity.jsUnity.assertions;
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+let IM = global.instanceManager;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const {
-  getCoordinatorEndpoints,
-  getDBServerEndpoints,
-  getAgentEndpoints,
   versionHas
 } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsWalCleanup";
-const originalEndpoint = arango.getEndpoint();
 
 function WalCleanupSuite () {
   'use strict';
-  
-  let run = function(insertData, getRanges) {
-    let seenInitialDeletion = false;
-    let seenNewFileDeletion = false;
-    let seenNewFile = false;
-    let minArchivedLogNumber = null;
-    let maxArchivedLogNumber = null;
-    const timeout = versionHas('tsan')? 1200 : 600;
+
+  // the second drop proves files archived after the first cleanup get deleted
+  let run = function(insertData, getPrunableCount) {
+    const steps = ['growth', 'shrinkage', 'growth', 'shrinkage'];
+    let step = 0;
+    let peak = null;
+    const timeout = versionHas('tsan') ? 1200 : 600;
     let time = require("internal").time;
     const start = time();
 
     while (true) {
       insertData();
-    
-      let ranges = getRanges();
-      if (ranges.length) {
-        if (minArchivedLogNumber === null) {
-          minArchivedLogNumber = ranges[0];
-          maxArchivedLogNumber = ranges[ranges.length - 1];
-          require("console").warn("minimum logfile number found:", minArchivedLogNumber, "maximum logfile number found:", maxArchivedLogNumber);
+
+      let count = getPrunableCount();
+      if (peak === null) {
+        peak = count;
+      } else if (steps[step] === 'growth') {
+        if (count > peak) {
+          peak = count;
+          step++;
         }
-        if (!seenNewFile && ranges[ranges.length - 1] > maxArchivedLogNumber) {
-          // we have seen a new logfile in the archive
-          seenNewFile = true;
-          maxArchivedLogNumber = ranges[ranges.length - 1];
-        } else if (seenNewFile && ranges[0] > maxArchivedLogNumber) {
-          seenNewFileDeletion = true;
-        }
-        if (ranges[0] > minArchivedLogNumber) {
-          // we have seen the deletion of at least one logfile
-          seenInitialDeletion = true;
-        }
+      } else if (count > peak) {
+        peak = count;
+      } else if (count < peak) {
+        peak = count;
+        step++;
       }
 
-      if (seenInitialDeletion && seenNewFileDeletion) {
+      if (step === steps.length) {
         break;
       }
 
@@ -88,12 +77,15 @@ function WalCleanupSuite () {
   };
 
   return {
+    setUpAll: function() {
+      IM.rememberConnection();
+    },
     setUp: function() {
-      arango.reconnect(originalEndpoint, "_system", "root", "");
+      IM.reconnectMe();
     },
 
     tearDown: function() {
-      arango.reconnect(originalEndpoint, "_system", "root", "");
+      IM.reconnectMe();
     },
 
     testAgent: function() {
@@ -102,79 +94,63 @@ function WalCleanupSuite () {
       for (let i = 0; i < 100; ++i) {
         docs.push({ huge });
       }
-    
-      let getRanges = function() {
-        return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
-          return r.status === 'collected';
-        }).map(function(r) {
-          return parseInt(r.datafile.replace(/^.*?(\d+)\.log$/, "$1"));
-        });
-      };
-      
+
       let insertData = function() {
         let c = db._collection(cn);
-        // require("console").warn("inserting more data");
         for (let i = 0; i < 200; ++i) {
           c.insert(docs);
         }
       };
 
-      const agents = getAgentEndpoints();
+      const agents = IM.getInstancesRole(instanceRole.agent);
       assertTrue(agents.length > 0, "no agents found");
       const agent = agents[0];
-      require("console").warn("connecting to agent", agent);
-      arango.reconnect(agent, "_system", "root", "");
-      try {
-        db._drop(cn);
-        db._create(cn);
-        run(insertData, getRanges);
-      } finally {
-        db._drop(cn);
-      }
+      print("connecting to ", agent.name);
+      agent.toThisInstance(() => {
+        try {
+          db._drop(cn);
+          db._create(cn);
+          run(insertData, () => agent.getMetric("rocksdb_archived_wal_files"));
+        } finally {
+          db._drop(cn);
+        }
+      });
     },
-    
+
     testDBServer: function() {
       const huge = Array(128).join("XYZ");
       let docs = [];
       for (let i = 0; i < 100; ++i) {
         docs.push({ huge });
       }
-        
-      const coordinators = getCoordinatorEndpoints();
+
+      const coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0, "no coordinators found");
       const coordinator = coordinators[0];
-      
-      const dbservers = getDBServerEndpoints();
+
+      const dbservers = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(dbservers.length > 0, "no dbservers found");
       const dbserver = dbservers[0];
-        
-      require("console").warn("connecting to dbserver", dbserver);
-      
+
+      require("console").warn("connecting to dbserver", dbserver.name);
+
       let insertData = function() {
-        arango.reconnect(coordinator, "_system", "root", "");
-        let c = db._collection(cn);
-        // require("console").warn("inserting more data");
-        for (let i = 0; i < 250; ++i) {
-          c.insert(docs);
-        }
-      };
-      
-      let getRanges = function() {
-        arango.reconnect(dbserver, "_system", "root", "", "haxman");
-        return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
-          return r.status === 'collected';
-        }).map(function(r) {
-          return parseInt(r.datafile.replace(/^.*?(\d+)\.log$/, "$1"));
+        coordinator.toThisInstance(() => {
+          let c = db._collection(cn);
+          for (let i = 0; i < 250; ++i) {
+            c.insert(docs);
+          }
         });
       };
 
       try {
-        arango.reconnect(coordinator, "_system", "root", "");
-        db._drop(cn);
-        db._create(cn, { numberOfShards: dbservers.length }); // we must make sure that we insert data to each db server
-        run(insertData, getRanges);
+        coordinator.toThisInstance(() => {
+          db._drop(cn);
+          db._create(cn, { numberOfShards: dbservers.length });
+          run(insertData, () => dbserver.getMetric("rocksdb_archived_wal_files"));
+        });
       } finally {
-        arango.reconnect(coordinator, "_system", "root", "");
+        IM.reconnectMe();
         db._drop(cn);
       }
     },

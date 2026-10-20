@@ -18,10 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include <cstdint>
 
 #include "Basics/Result.h"
 

@@ -90,7 +90,7 @@ void StorageBackend::consumeInputRange(AqlItemBlockInputRange& inputRange) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   // make sure that previous group was already fully consumed
-  TRI_ASSERT(!hasMore());
+  TRI_ASSERT(!hasMoreReadyOutputRows());
 
   while (inputRange.hasDataRow()) {
     auto rowId =
@@ -128,7 +128,7 @@ void StorageBackend::consumeInputRange(AqlItemBlockInputRange& inputRange) {
   guard.steal();
 }
 void StorageBackend::produceOutputRow(OutputAqlItemRow& output) {
-  TRI_ASSERT(hasMore());
+  TRI_ASSERT(hasMoreReadyOutputRows());
   InputAqlItemRow inRow(_inputBlocks[_finishedGroup[_returnNext].first],
                         _finishedGroup[_returnNext].second);
   output.copyRow(inRow);
@@ -136,11 +136,14 @@ void StorageBackend::produceOutputRow(OutputAqlItemRow& output) {
   ++_returnNext;
 }
 void StorageBackend::skipOutputRow() noexcept {
-  TRI_ASSERT(hasMore());
+  TRI_ASSERT(hasMoreReadyOutputRows());
   ++_returnNext;
 }
-bool StorageBackend::hasMore() const {
+bool StorageBackend::hasMoreReadyOutputRows() const {
   return _returnNext < _finishedGroup.size();
+}
+bool StorageBackend::hasPendingGroupOrOutput() const {
+  return hasMoreReadyOutputRows() or not _currentGroup.empty();
 }
 
 void StorageBackend::startNewGroup(std::vector<RowIndex>&& newGroup) {

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
@@ -88,23 +87,18 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
 
 ProcessMonitoringFeature::ProcessMonitoringFeature(
     application_features::ApplicationServer& server,
-    V8ShellFeature& v8ShellFeature)
+    V8ShellFeature& v8ShellFeature, V8SecurityFeature const& v8SecurityFeature)
     : ApplicationFeature{server, *this}, _V8ShellFeature{v8ShellFeature} {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
+  _enabled = v8SecurityFeature.isAllowedToControlProcesses();
 }
 
 ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
 
-void ProcessMonitoringFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {
-  _enabled =
-      server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses();
-}
-
 void ProcessMonitoringFeature::start() {
   if (_enabled) {
-    _monitorThread = std::make_unique<ProcessMonitorThread>(server(), *this);
+    _monitorThread = std::make_unique<ProcessMonitorThread>(*this);
     if (!_monitorThread->start()) {
       LOG_TOPIC("33333", FATAL, Logger::SYSCALL)
           << "failed to launch monitoring background thread";

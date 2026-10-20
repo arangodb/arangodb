@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/Exceptions.h>
@@ -94,7 +93,7 @@ auto BlackHoleFactory::constructLeader(std::unique_ptr<BlackHoleCore> core)
   return std::make_shared<BlackHoleLeaderState>(std::move(core));
 }
 
-auto BlackHoleFactory::constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+auto BlackHoleFactory::constructCore(Database&, GlobalLogIdentifier const&)
     -> std::unique_ptr<BlackHoleCore> {
   return std::make_unique<BlackHoleCore>();
 }

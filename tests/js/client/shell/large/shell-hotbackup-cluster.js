@@ -18,11 +18,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const serverHelper = require('@arangodb/test-helper');
 const {errors} = require('internal');
 const IM = global.instanceManager;
 const AM = IM.agencyMgr;

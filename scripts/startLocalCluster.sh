@@ -104,9 +104,9 @@ else
     echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
     exit
   fi
-  echo $JWT_SECRET > cluster/jwt.secret
+  echo "$JWT_SECRET" > cluster/jwt.secret
   AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
-  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s "$JWT_SECRET" -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then

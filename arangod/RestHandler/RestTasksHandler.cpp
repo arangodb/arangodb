@@ -18,10 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTasksHandler.h"
+
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Auth/Rbac/RbacFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
@@ -50,6 +52,7 @@ RestTasksHandler::RestTasksHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/tasks (prefix, requires V8)
 RestStatus RestTasksHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -60,6 +63,8 @@ RestStatus RestTasksHandler::execute() {
 
   auto const type = _request->requestType();
 
+  // Note that contrary to versions up to and including 3.12.9 writes are now
+  // forbidden if the server is in read-only mode. This is intentional.
   switch (type) {
     case rest::RequestType::POST: {
       registerTask(false);
@@ -148,7 +153,8 @@ void RestTasksHandler::registerTask(bool byId) {
   }
 
   bool allowTasks;
-  if (!server().isEnabled<V8DealerFeature>()) {
+  if (!server().hasFeature<V8DealerFeature>() ||
+      !server().isEnabled<V8DealerFeature>()) {
     allowTasks = false;
   } else {
     V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();
@@ -177,9 +183,12 @@ void RestTasksHandler::registerTask(bool byId) {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.databaseAuthLevel() != auth::Level::RW) {
+  if (auto r = exec.canUseDatabase(_request->databaseName(),
+                                   DatabaseAccessLevel::Write);
+      r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "registering a task needs db RW permissions");
+                  absl::StrCat("registering a task needs db RW permissions: ",
+                               r.errorMessage()));
     return;
   }
 
@@ -195,6 +204,11 @@ void RestTasksHandler::registerTask(bool byId) {
 
   bool isSystem = VelocyPackHelper::getBooleanValue(
       body, StaticStrings::DataSourceSystem, false);
+  if (isSystem && !exec.isSuperuserOrDisabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "registering a task on _system needs superuser");
+    return;
+  }
 
   // offset in seconds into period or from now on if no period
   double offset =
@@ -212,16 +226,20 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  std::string runAsUser =
-      VelocyPackHelper::getStringValue(body, "runAsUser", "");
+  {
+    // This option is not documented, and never worked (or at least hasn't for
+    // at least 7 years). If it was set to any non-empty string except the
+    // current username, an error was generated.
+    // I've left this block here for backwards compatibility with that behavior,
+    // but deleted subsequent code.
+    std::string runAsUser =
+        VelocyPackHelper::getStringValue(body, "runAsUser", "");
 
-  // only the superroot is allowed to run tasks as an arbitrary user
-  if (runAsUser.empty()) {  // execute task as the same user
-    runAsUser = exec.user();
-  } else if (exec.user() != runAsUser) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "cannot run task as a different user");
-    return;
+    if (!runAsUser.empty() && exec.user() != runAsUser) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "cannot run task as a different user");
+      return;
+    }
   }
 
   // extract the command
@@ -280,18 +298,18 @@ void RestTasksHandler::registerTask(bool byId) {
   command = absl::StrCat("(function (params) { ", command, " } )(params);");
 
   auto res = TRI_ERROR_NO_ERROR;
-  std::shared_ptr<Task> task =
-      Task::createTask(id, name, &_vocbase, command, isSystem, res);
+  auto execShared = ExecContext::currentAsShared();
+  if (!execShared) {
+    execShared = ExecContext::superuserAsShared();
+  }
+  auto task =
+      Task::createTask(id, name, execShared, &_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;
   }
 
-  // set the user this will run as
-  if (!runAsUser.empty()) {
-    task->setUser(runAsUser);
-  }
   // set execution parameters
   task->setParameter(parameters);
 
@@ -325,9 +343,12 @@ void RestTasksHandler::deleteTask() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.databaseAuthLevel() != auth::Level::RW) {
+  if (auto r = exec.canUseDatabase(_request->databaseName(),
+                                   DatabaseAccessLevel::Write);
+      r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "unregister task needs db RW permissions");
+                  absl::StrCat("unregister task needs db RW permissions: ",
+                               r.errorMessage()));
     return;
   }
 

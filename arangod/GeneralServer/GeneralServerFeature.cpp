@@ -18,10 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServerFeature.h"
+
+#include "GeneralServer/GeneralServerOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
@@ -32,7 +33,6 @@
 #include "Aql/RestAqlHandler.h"
 #include "RestHandler/RestCrashHandler.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/FeatureFlags.h"
@@ -41,19 +41,20 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterRestHandlers.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/NetworkFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
@@ -107,7 +108,6 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
-#include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -121,17 +121,18 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestIResearchHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "SystemMonitor/Activities/RestHandler.h"
@@ -165,19 +166,42 @@ DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
+DECLARE_COUNTER(arangodb_http_response_code_total,
+                "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
+static arangodb_http_response_code_total getBuilder(rest::ResponseCode code) {
+  auto const codeStr = std::to_string(static_cast<int>(code));
+  arangodb_http_response_code_total builder;
+  builder.reserveSpaceForLabels(4 + codeStr.size());
+  builder.addLabel("code", codeStr);
+
+  return builder;
+}
+
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::MetricsFeature& metricsFeature)
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{},
+                           LogApiOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options,
+    LogApiOptions logApiOptions)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
-      _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
+      _currentRequestsSize(
+          metricsFeature.add(arangodb_requests_memory_usage{})),
+      _options(std::move(options)),
+      _logApiOptions(std::move(logApiOptions)),
+      _requestBodySizeHttp1(
+          metricsFeature.add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(
+          metricsFeature.add(arangodb_request_body_size_http2{})),
+      _http1Connections(metricsFeature.add(arangodb_http1_connections_total{})),
+      _http2Connections(metricsFeature.add(arangodb_http2_connections_total{})),
+      _metricsFeature(metricsFeature) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -185,218 +209,8 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
-}
 
-void GeneralServerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("no-server", "server.rest-server");
-
-  options
-      ->addOption("--server.telemetrics-api",
-                  "Whether to enable the telemetrics API.",
-                  new options::BooleanParameter(&_options.enableTelemetrics),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
-
-  options
-      ->addOption("--server.telemetrics-api-max-requests",
-                  "The maximum number of requests from arangosh that the "
-                  "telemetrics API responds to without rate-limiting.",
-                  new options::UInt64Parameter(
-                      &_options.telemetricsMaxRequestsPerInterval),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100)
-      .setLongDescription(R"(This option limits requests from the arangosh to
-the telemetrics API, but not any other requests to the API.
-
-Requests to the telemetrics API are counted for every 2 hour interval, and then
-reset. This means after a period of at most 2 hours, the telemetrics API
-becomes usable again.
-
-The purpose of this option is to keep a deployment from being overwhelmed by
-too many telemetrics requests issued by arangosh instances that are used for
-batch processing.)");
-
-  options->addOption(
-      "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_options.numIoThreads, /*base*/ 1, /*minValue*/ 1),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-
-  options
-      ->addOption("--server.support-info-api",
-                  "The policy for exposing the support info and also the "
-                  "telemetrics API.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.supportInfoApiPolicy,
-                      std::unordered_set<std::string>{"disabled", "jwt",
-                                                      "admin", "public"}))
-      .setIntroducedIn(30900);
-
-  options
-      ->addOption("--server.options-api",
-                  "The policy for exposing the options API.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.optionsApiPolicy,
-                      std::unordered_set<std::string>{"disabled", "jwt",
-                                                      "admin", "public"}))
-      .setIntroducedIn(31200);
-
-  options->addSection("http", "HTTP server features");
-
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.allow-method-override",
-      "Allow HTTP method override using special headers.", true);
-
-  options
-      ->addOption("--http.keep-alive-timeout",
-                  "The keep-alive timeout for HTTP connections (in seconds).",
-                  new DoubleParameter(&_options.keepAliveTimeout))
-      .setLongDescription(R"(Idle keep-alive connections are closed by the
-server automatically when the timeout is reached. A keep-alive-timeout value of
-`0` disables the keep-alive feature entirely.)");
-
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.hide-product-header",
-      "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
-
-  options->addOption(
-      "--http.trusted-origin",
-      "The trusted origin URLs for CORS requests with credentials.",
-      new VectorParameter<StringParameter>(
-          &_options.accessControlAllowOrigins));
-
-  options->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                     new StringParameter(&_options.redirectRootTo));
-
-  options->addOption("--http.permanently-redirect-root",
-                     "Whether to use a permanent or temporary redirect.",
-                     new BooleanParameter(&_options.permanentRootRedirect));
-
-  options
-      ->addOption("--http.return-queue-time-header",
-                  "Whether to return the `x-arango-queue-time-seconds` header "
-                  "in all responses.",
-                  new BooleanParameter(&_options.returnQueueTimeHeader))
-      .setIntroducedIn(30900)
-      .setLongDescription(R"(The value contained in this header indicates the
-current queueing/dequeuing time for requests in the scheduler (in seconds).
-Client applications and drivers can use this value to control the server load
-and also react on overload.)");
-
-  options
-      ->addOption("--http.compress-response-threshold",
-                  "The HTTP response body size from which on responses are "
-                  "transparently compressed in case the client asks for it.",
-                  new UInt64Parameter(&_options.compressResponseThreshold))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP responses with the
-deflate or gzip compression format, in case the client request advertises
-support for this. Compression will only happen for HTTP/1.1 and HTTP/2
-connections, if the size of the uncompressed response body exceeds
-the threshold value controlled by this startup option,
-and if the response body size after compression is less than the original
-response body size.
-Using the value 0 disables the automatic response compression.")");
-
-  options
-      ->addOption("--server.early-connections",
-                  "Allow requests to a limited set of APIs early during the "
-                  "server startup.",
-                  new BooleanParameter(&_options.allowEarlyConnections))
-      .setIntroducedIn(31000);
-
-  options->addOldOption("frontend.proxy-request-check",
-                        "web-interface.proxy-request-check");
-
-  options->addOption("--web-interface.proxy-request-check",
-                     "Enable proxy request checking.",
-                     new BooleanParameter(&_options.proxyCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("frontend.trusted-proxy",
-                        "web-interface.trusted-proxy");
-
-  options->addOption(
-      "--web-interface.trusted-proxy",
-      "The list of proxies to trust (can be IP or network). Make "
-      "sure `--web-interface.proxy-request-check` is enabled.",
-      new VectorParameter<StringParameter>(&_options.trustedProxies),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  options->addOption(
-      "--server.failure-point",
-      "The failure point to set during server startup (requires compilation "
-      "with failure points support).",
-      new VectorParameter<StringParameter>(&_options.failurePoints),
-      arangodb::options::makeFlags(arangodb::options::Flags::Default,
-                                   arangodb::options::Flags::Uncommon));
-#endif
-
-  options
-      ->addOption(
-          "--http.handle-content-encoding-for-unauthenticated-requests",
-          "Handle Content-Encoding headers for unauthenticated requests.",
-          new BooleanParameter(
-              &_options.handleContentEncodingForUnauthenticatedRequests))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If the option is set to `true`, the server will automatically
-uncompress incoming HTTP requests with Content-Encodings gzip and deflate
-even if the request is not authenticated.)");
-}
-
-void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_options.accessControlAllowOrigins.empty()) {
-    // trim trailing slash from all members
-    for (auto& it : _options.accessControlAllowOrigins) {
-      if (it == "*" || it == "all") {
-        // special members "*" or "all" means all origins are allowed
-        _options.accessControlAllowOrigins.clear();
-        _options.accessControlAllowOrigins.push_back("*");
-        break;
-      } else if (it == "none") {
-        // "none" means no origins are allowed
-        _options.accessControlAllowOrigins.clear();
-        break;
-      } else if (it.ends_with('/')) {
-        // strip trailing slash
-        it = it.substr(0, it.size() - 1);
-      }
-    }
-
-    // remove empty members
-    _options.accessControlAllowOrigins.erase(
-        std::remove_if(_options.accessControlAllowOrigins.begin(),
-                       _options.accessControlAllowOrigins.end(),
-                       [](std::string const& value) {
-                         return basics::StringUtils::trim(value).empty();
-                       }),
-        _options.accessControlAllowOrigins.end());
-  }
+  initResponseCodeCounters();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   for (auto const& it : _options.failurePoints) {
@@ -405,13 +219,149 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 #endif
 }
 
+void GeneralServerFeature::initResponseCodeCounters() {
+  using rest::ResponseCode;
+
+  auto addCounter = [&](ResponseCode code) {
+    auto builder = getBuilder(code);
+    _responseCodeCounters.try_emplace(code,
+                                      &_metricsFeature.add(std::move(builder)));
+  };
+
+  for (auto code : {
+           ResponseCode::CONTINUE,
+           ResponseCode::SWITCHING_PROTOCOLS,
+           ResponseCode::PROCESSING,
+           ResponseCode::OK,
+           ResponseCode::CREATED,
+           ResponseCode::ACCEPTED,
+           ResponseCode::PARTIAL,
+           ResponseCode::NO_CONTENT,
+           ResponseCode::RESET_CONTENT,
+           ResponseCode::PARTIAL_CONTENT,
+           ResponseCode::MOVED_PERMANENTLY,
+           ResponseCode::FOUND,
+           ResponseCode::SEE_OTHER,
+           ResponseCode::NOT_MODIFIED,
+           ResponseCode::TEMPORARY_REDIRECT,
+           ResponseCode::PERMANENT_REDIRECT,
+           ResponseCode::BAD,
+           ResponseCode::UNAUTHORIZED,
+           ResponseCode::PAYMENT_REQUIRED,
+           ResponseCode::FORBIDDEN,
+           ResponseCode::NOT_FOUND,
+           ResponseCode::METHOD_NOT_ALLOWED,
+           ResponseCode::NOT_ACCEPTABLE,
+           ResponseCode::REQUEST_TIMEOUT,
+           ResponseCode::CONFLICT,
+           ResponseCode::GONE,
+           ResponseCode::LENGTH_REQUIRED,
+           ResponseCode::PRECONDITION_FAILED,
+           ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+           ResponseCode::REQUEST_URI_TOO_LONG,
+           ResponseCode::UNSUPPORTED_MEDIA_TYPE,
+           ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,
+           ResponseCode::EXPECTATION_FAILED,
+           ResponseCode::I_AM_A_TEAPOT,
+           ResponseCode::ENHANCE_YOUR_CALM,
+           ResponseCode::MISDIRECTED_REQUEST,
+           ResponseCode::UNPROCESSABLE_ENTITY,
+           ResponseCode::LOCKED,
+           ResponseCode::PRECONDITION_REQUIRED,
+           ResponseCode::TOO_MANY_REQUESTS,
+           ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+           ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS,
+           ResponseCode::SERVER_ERROR,
+           ResponseCode::NOT_IMPLEMENTED,
+           ResponseCode::BAD_GATEWAY,
+           ResponseCode::SERVICE_UNAVAILABLE,
+           ResponseCode::GATEWAY_TIMEOUT,
+           ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+           ResponseCode::BANDWIDTH_LIMIT_EXCEEDED,
+           ResponseCode::NOT_EXTENDED,
+       }) {
+    switch (code) {
+      case ResponseCode::CONTINUE:
+      case ResponseCode::SWITCHING_PROTOCOLS:
+      case ResponseCode::PROCESSING:
+      case ResponseCode::OK:
+      case ResponseCode::CREATED:
+      case ResponseCode::ACCEPTED:
+      case ResponseCode::PARTIAL:
+      case ResponseCode::NO_CONTENT:
+      case ResponseCode::RESET_CONTENT:
+      case ResponseCode::PARTIAL_CONTENT:
+      case ResponseCode::MOVED_PERMANENTLY:
+      case ResponseCode::FOUND:
+      case ResponseCode::SEE_OTHER:
+      case ResponseCode::NOT_MODIFIED:
+      case ResponseCode::TEMPORARY_REDIRECT:
+      case ResponseCode::PERMANENT_REDIRECT:
+      case ResponseCode::BAD:
+      case ResponseCode::UNAUTHORIZED:
+      case ResponseCode::PAYMENT_REQUIRED:
+      case ResponseCode::FORBIDDEN:
+      case ResponseCode::NOT_FOUND:
+      case ResponseCode::METHOD_NOT_ALLOWED:
+      case ResponseCode::NOT_ACCEPTABLE:
+      case ResponseCode::REQUEST_TIMEOUT:
+      case ResponseCode::CONFLICT:
+      case ResponseCode::GONE:
+      case ResponseCode::LENGTH_REQUIRED:
+      case ResponseCode::PRECONDITION_FAILED:
+      case ResponseCode::REQUEST_ENTITY_TOO_LARGE:
+      case ResponseCode::REQUEST_URI_TOO_LONG:
+      case ResponseCode::UNSUPPORTED_MEDIA_TYPE:
+      case ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE:
+      case ResponseCode::EXPECTATION_FAILED:
+      case ResponseCode::I_AM_A_TEAPOT:
+      case ResponseCode::ENHANCE_YOUR_CALM:
+      case ResponseCode::MISDIRECTED_REQUEST:
+      case ResponseCode::UNPROCESSABLE_ENTITY:
+      case ResponseCode::LOCKED:
+      case ResponseCode::PRECONDITION_REQUIRED:
+      case ResponseCode::TOO_MANY_REQUESTS:
+      case ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE:
+      case ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS:
+      case ResponseCode::SERVER_ERROR:
+      case ResponseCode::NOT_IMPLEMENTED:
+      case ResponseCode::BAD_GATEWAY:
+      case ResponseCode::SERVICE_UNAVAILABLE:
+      case ResponseCode::GATEWAY_TIMEOUT:
+      case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
+      case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:
+      case ResponseCode::NOT_EXTENDED:
+        addCounter(code);
+        break;
+        // Deliberately no default case defined. The switch has to be
+        // exhaustive. This helps catch missing enum values.
+    }
+  }
+}
+
+void GeneralServerFeature::countHttpResponseCode(
+    rest::ResponseCode code) noexcept {
+  // Fast, lock-free path. Covers every ResponseCode registered up front.
+  if (auto it = _responseCodeCounters.find(code);
+      it != _responseCodeCounters.end()) {
+    it->second->count();
+    return;
+  }
+
+  // Slow path. Reached only for a ResponseCode that was somehow missed
+  // during initialization (e.g. CommonDefines.h gained a new enumerator).
+  TRI_ASSERT(false) << "unhandled response code " << static_cast<int>(code)
+                    << " missing from initResponseCodeCounters()";
+  try {
+    auto builder = getBuilder(code);
+    _metricsFeature.ensureMetric(std::move(builder)).count();
+  } catch (...) {
+    // must not throw from this noexcept function
+  }
+}
+
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
-
-  if (ServerState::instance()->isAgent()) {
-    // telemetrics automatically and always turned off on agents
-    _options.enableTelemetrics = false;
-  }
 
   _jobManager = std::make_unique<AsyncJobManager>();
 
@@ -419,7 +369,7 @@ void GeneralServerFeature::prepare() {
   // this initial factory only knows a few selected RestHandlers.
   // we will later create another RestHandlerFactory that knows
   // all routes.
-  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
   defineInitialHandlers(*hf);
   // make handler-factory read-only
   hf->seal();
@@ -448,7 +398,7 @@ void GeneralServerFeature::start() {
   // create the full RestHandlerFactory that knows all the routes.
   // this will replace the previous, stripped-down RestHandlerFactory
   // instance.
-  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
 
   defineInitialHandlers(*hf);
   defineRemainingHandlers(*hf);
@@ -601,7 +551,7 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   f.addHandler("/_api/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
+               RestHandlerCreator<RestVersionHandler>::createNoData, {0});
   f.addHandler("/openapi.json",
                RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1, 2});
   f.addHandler("/_admin/status",
@@ -618,18 +568,21 @@ void GeneralServerFeature::defineRemainingHandlers(
     rest::RestHandlerFactory& f) {
   TRI_ASSERT(_jobManager != nullptr);
 
-  AgencyFeature& agency = server().getFeature<AgencyFeature>();
+  AgencyFeature* agency = server().hasFeature<AgencyFeature>()
+                              ? &server().getFeature<AgencyFeature>()
+                              : nullptr;
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
 
   // ...........................................................................
   // /_api
   // ...........................................................................
 
-  f.addPrefixHandler(                         // add handler
-      RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
-      RestHandlerCreator<
-          iresearch::RestAnalyzerHandler>::createNoData,  // handler
-      {0, 1});
+  if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    f.addPrefixHandler(
+        RestVocbaseBaseHandler::ANALYZER_PATH,
+        RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData,
+        {0, 1});
+  }
 
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
@@ -655,7 +608,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
                      RestHandlerCreator<RestEndpointHandler>::createNoData,
-                     {0, 1});
+                     {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                      RestHandlerCreator<RestImportHandler>::createNoData,
@@ -691,7 +644,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       {0}, queryRegistry);
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
     f.addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
                        RestHandlerCreator<RestTasksHandler>::createNoData, {0});
@@ -699,8 +653,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData,
-                     {0, 1});
+                     RestHandlerCreator<RestUploadHandler>::createNoData, {0});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData,
@@ -712,6 +665,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::STATS_ARANGOSEARCH_PATH,
+                     RestHandlerCreator<RestIResearchHandler>::createNoData,
+                     {api_version::experimentalApiVersion});
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
@@ -738,7 +695,8 @@ void GeneralServerFeature::defineRemainingHandlers(
                      {0, 1});
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the AQL UDfs feature depends on V8. only enable it if JavaScript is
     // enabled
     f.addPrefixHandler(
@@ -775,16 +733,16 @@ void GeneralServerFeature::defineRemainingHandlers(
                      RestHandlerCreator<RestWalAccessHandler>::createNoData,
                      {0, 1});
 
-  if (agency.isEnabled()) {
+  if (agency != nullptr && agency->isEnabled()) {
     f.addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PATH,
         RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-        {0, 1}, agency.agent());
+        {0, 1}, agency->agent());
 
     f.addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
                        RestHandlerCreator<RestAgencyPrivHandler>::createData<
                            consensus::Agent*>,
-                       {0, 1}, agency.agent());
+                       {0, 1}, agency->agent());
   }
 
   if (cluster.isEnabled()) {
@@ -858,7 +816,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/activities",
       RestHandlerCreator<arangodb::activities::RestHandler>::createNoData,
-      {ApiVersion::experimentalApiVersion});
+      {api_version::experimentalApiVersion});
 
   f.addPrefixHandler(
       "/_admin/cluster",
@@ -879,10 +837,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   if (_options.supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData,
-                 {0, 1});
-
-    f.addHandler("/_admin/telemetrics",
-                 RestHandlerCreator<RestTelemetricsHandler>::createNoData,
                  {0, 1});
   }
 
@@ -909,7 +863,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_admin/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     {0, 1}, _jobManager.get());
+                     {0}, _jobManager.get());
 
   // further admin handlers
   f.addPrefixHandler(
@@ -919,10 +873,13 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {0, 1});
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createData<
+          LogApiOptions const*>,
+      {0, 1}, &_logApiOptions);
 
 #ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().isEnabled<V8DealerFeature>()) {
     // the routing feature depends on V8. only enable it if JavaScript is
     // enabled
     f.addPrefixHandler(
@@ -1001,8 +958,12 @@ void GeneralServerFeature::defineRemainingHandlers(
                      {0});
 
   // engine specific handlers
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.addRestHandlers(f);
+  StorageEngine& engine = server().getFeature<StorageEngine>();
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterRestHandlers::registerResources(&f);
+  } else {
+    RocksDBRestHandlers::registerResources(&f, engine);
+  }
 }
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -56,6 +55,7 @@ ConsoleFeature::ConsoleFeature(ApplicationServer& server)
 }
 
 void ConsoleFeature::start() {
+  TRI_ASSERT(server().hasFeature<ServerFeature>());
   auto& serverFeature = server().getFeature<ServerFeature>();
 
   _operationMode = serverFeature.operationMode();

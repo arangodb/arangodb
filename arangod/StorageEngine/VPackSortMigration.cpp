@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VPackSortMigration.h"
@@ -29,7 +28,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
@@ -44,23 +42,11 @@
 namespace arangodb {
 
 // On dbservers, agents and single servers:
-Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  // Just for the sake of completeness, restrict ourselves to the RocksDB
-  // storage engine:
-  auto& engineSelectorFeature =
-      vocbase.server().getFeature<EngineSelectorFeature>();
-  if (!engineSelectorFeature.isRocksDB()) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                  "VPack sorting migration is unnecessary for storage engines "
-                  "other than RocksDB");
-  }
-
-  auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
+Result analyzeVPackIndexSorting(RocksDBEngine& engine,
+                                DatabaseFeature& databaseFeature,
+                                VPackBuilder& result) {
   auto* db = engine.db();
 
-  using IndexType = arangodb::Index::IndexType;
-  DatabaseFeature& databaseFeature =
-      vocbase.server().getFeature<DatabaseFeature>();
   auto newComparator = RocksDBVPackComparator<
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct>();
 
@@ -89,10 +75,8 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
                 << "Checking VPackSortMigration for index with ID "
                 << index->id().id() << " and name " << index->name();
             if (auto type = index->type();
-                type == IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_HASH_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+                type == IndexType::Persistent || type == IndexType::Hash ||
+                type == IndexType::Skiplist || type == IndexType::MDIPrefixed) {
               RocksDBIndex* rocksDBIndex =
                   dynamic_cast<RocksDBIndex*>(index.get());
               if (rocksDBIndex != nullptr) {
@@ -177,19 +161,9 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   return {};
 }
 
-Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  // Just for the sake of completeness, restrict ourselves to the RocksDB
-  // storage engine:
+Result migrateVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result) {
   result.clear();
-  auto& engineSelectorFeature =
-      vocbase.server().getFeature<EngineSelectorFeature>();
-  if (!engineSelectorFeature.isRocksDB()) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                  "VPack sorting migration is unnecessary for storage engines "
-                  "other than RocksDB");
-  }
 
-  auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
   Result res = engine.writeSortingFile(
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct);
 
@@ -204,18 +178,7 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   return res;
 }
 
-Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  // Just for the sake of completeness, restrict ourselves to the RocksDB
-  // storage engine:
-  auto& engineSelectorFeature =
-      vocbase.server().getFeature<EngineSelectorFeature>();
-  if (!engineSelectorFeature.isRocksDB()) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                  "VPack sorting migration is unnecessary for storage engines "
-                  "other than RocksDB");
-  }
-
-  auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
+Result statusVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result) {
   auto sortingFileMethod = engine.readSortingFile();
   {
     VPackObjectBuilder guard(&result);

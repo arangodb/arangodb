@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
@@ -32,22 +31,21 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
-#include "RestServer/arangod.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 template<class Function>
-class TestThread : public arangodb::Thread {
+class TestThread : public arangodb::BasicThread {
  public:
   TestThread(Function&& f, int i, char* c[])
-      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
+      : arangodb::BasicThread("gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     std::unique_lock guard{_wait.mutex};
     while (true) {
@@ -119,7 +117,7 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::ArangodServer server(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::ServerState state(server);
   state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);

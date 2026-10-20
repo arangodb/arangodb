@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestStatusHandler.h"
@@ -48,7 +47,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/strings/escaping.h>
 
@@ -63,15 +61,16 @@ using namespace arangodb::rest;
 RestStatusHandler::RestStatusHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<StorageEngine>()) {}
 
+// Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoring{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return RestStatus::DONE;
   }
 
@@ -80,8 +79,26 @@ RestStatus RestStatusHandler::execute() {
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
   } else {
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     return executeStandard(security);
   }
+}
+
+async<RestHandler::AuthenticationGrant>
+RestStatusHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
@@ -101,12 +118,15 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 #endif
 
   auto& serverFeature = server().getFeature<ServerFeature>();
-  result.add(
-      "mode",
-      VPackValue(serverFeature
-                     .operationModeString()));  // to be deprecated - 3.3 compat
-  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
-  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
+  if (_request->requestedApiVersion() == 0) {
+    result.add(
+        "mode",
+        VPackValue(serverFeature.operationModeString()));  // to be deprecated
+                                                           // - 3.3 compat
+    result.add("operationMode",
+               VPackValue(serverFeature.operationModeString()));
+    result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
+  }
 
   std::string host = ServerState::instance()->getHost();
 
@@ -131,18 +151,19 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.add("progress", VPackValue(VPackValueType::Object));
     result.add("phase", VPackValue(progressPhase));
     result.add("feature", VPackValue(progressFeature));
-    StorageEngine& engine =
-        server().getFeature<EngineSelectorFeature>().engine();
-    result.add("recoveryTick", VPackValue(engine.recoveryTick()));
+    result.add("recoveryTick", VPackValue(_engine.recoveryTick()));
     result.close();  // progress
 
     result.add("maintenance",
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
+    if (_request->requestedApiVersion() == 0) {
+      result.add(
+          "writeOpsEnabled",
+          VPackValue(
+              !serverState->readOnly()));  // to be deprecated - 3.3 compat
+    }
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
@@ -165,7 +186,9 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.close();
 
     if (!isStartup) {
-      auto* agent = server().getFeature<AgencyFeature>().agent();
+      auto* agent = server().hasFeature<AgencyFeature>()
+                        ? server().getFeature<AgencyFeature>().agent()
+                        : nullptr;
 
       if (agent != nullptr) {
         result.add("agent", VPackValue(VPackValueType::Object));
@@ -179,7 +202,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.close();
       }
 
-      if (serverState->isCoordinator()) {
+      if (serverState->isCoordinator() &&
+          _request->requestedApiVersion() == 0) {
         result.add("coordinator", VPackValue(VPackValueType::Object));
 
         result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
@@ -197,8 +221,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
           result.add("agencyComm", VPackValue(VPackValueType::Object));
           result.add("endpoints", VPackValue(VPackValueType::Array));
 
-          for (auto const& ep : manager->endpoints()) {
-            result.add(VPackValue(ep));
+          for (auto const& a : manager->agents()) {
+            result.add(VPackValue(a.endpoint));
           }
 
           result.close();
@@ -228,8 +252,7 @@ RestStatus RestStatusHandler::executeOverview() {
   result.add("license", VPackValue("community"));
 #endif
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  result.add("engine", VPackValue(engine.typeName()));
+  result.add("engine", VPackValue(_engine.typeName()));
 
   StringBuffer buffer;
 

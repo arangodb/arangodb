@@ -21,13 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const isServer = arangodb.isServer;
 
 function testEnsureInvertedIndex() {
   return {
@@ -46,10 +44,8 @@ function testEnsureInvertedIndex() {
       assertEqual(r["isNewlyCreated"], true);
       delete r["isNewlyCreated"];
 
-      if (!isServer) {
-        assertEqual(r["code"], 201);
-        delete r["code"];
-      }
+      assertEqual(r["code"], 201);
+      delete r["code"];
 
       delete r["inBackground"];  // TODO Why do we need to return inBackground?
 

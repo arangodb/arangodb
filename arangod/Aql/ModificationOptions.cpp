@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationOptions.h"
@@ -28,7 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ModificationOptions::ModificationOptions(velocypack::Slice slice)
     : OperationOptions() {
@@ -113,3 +112,5 @@ void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::UseOldSmartGraphVariable,
               VPackValue(useOldSmartGraphVariable));
 }
+
+}  // namespace arangodb::aql

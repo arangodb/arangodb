@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientFeature.h"
@@ -29,361 +28,92 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
 #include "Utilities/NameValidator.h"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include "Ssl/jwt.h"
+
+#include <chrono>
+#include <exception>
+#include <unordered_map>
 
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
+namespace {
+constexpr size_t DEFAULT_RETRIES = 2;
+constexpr auto kJwtRenewalCheckInterval = std::chrono::seconds{1};
+
+/**
+ * The --server.jwt-renewal-threshold value (seconds) as clock duration
+ */
+auto toRenewalThreshold(double seconds) -> arangodb::JwtClock::duration {
+  return std::chrono::duration_cast<arangodb::JwtClock::duration>(
+      std::chrono::duration<double>{seconds});
+}
+}  // anonymous namespace
+
 namespace arangodb {
+
+ClientFeature::ClientFeature(ApplicationServer& server)
+    : ClientFeature{server, server.getFeature<CommunicationFeaturePhase>(),
+                    typeid(HttpEndpointProvider), ClientFeatureOptions{}} {}
+
+ClientFeature::ClientFeature(ApplicationServer& server,
+                             ClientFeatureOptions options)
+    : ClientFeature{server, server.getFeature<CommunicationFeaturePhase>(),
+                    typeid(HttpEndpointProvider), std::move(options)} {}
 
 ClientFeature::ClientFeature(ApplicationServer& server,
                              CommunicationFeaturePhase& comm,
-                             std::type_index registration, bool allowJwtSecret,
-                             size_t maxNumEndpoints, double connectionTimeout,
-                             double requestTimeout)
+                             std::type_index registration,
+                             ClientFeatureOptions options)
     : HttpEndpointProvider(server, registration, name()),
+      _options(std::move(options)),
       _comm{comm},
       _console{},
-      _endpoints{Endpoint::defaultEndpoint()},
-      _maxNumEndpoints(maxNumEndpoints),
-      _databaseName(StaticStrings::SystemDatabase),
-      _username("root"),
-      _connectionTimeout(connectionTimeout),
-      _requestTimeout(requestTimeout),
-      _jwtRenewalThreshold(300.0),  // default: 5 minutes before expiry
-      _maxPacketSize(1024 * 1024 * 1024),
-      _compressRequestThreshold(0),
-      _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
-      _allowJwtSecret(allowJwtSecret),
-      _authentication(true),
-      _askJwtSecret(false),
       _warn(false),
-      _warnConnect(true),
-      _haveServerPassword(false),
-      _forceJson(false),
-      _compressTransfer(false) {
+      _warnConnect(true) {
   setOptional(true);
-}
 
-void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "server connection");
-
-  options->addOption("--server.database",
-                     "The database name to use when connecting.",
-                     new StringParameter(&_databaseName));
-
-  options->addOption("--server.authentication",
-                     "Require authentication credentials when connecting (does "
-                     "not affect the server-side authentication settings).",
-                     new BooleanParameter(&_authentication));
-
-  options->addOption(
-      "--server.username",
-      "The username to use when connecting.\nIf you want to specify an access "
-      "token as the password, set the user name as encoded in the token.",
-      new StringParameter(&_username));
-
-  std::string basename = TRI_Basename(options->progname());
-  bool isArangosh = basename == "arangosh";
-
-  char const* endpointHelp;
-  if (isArangosh) {
-    endpointHelp =
-        "The endpoint to connect to. Use 'none' to start without a server. "
-        "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://.";
-  } else {
-    endpointHelp =
-        "The endpoint to connect to. Use 'none' to start without a server. "
-        "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://";
+  if (server.hasFeature<ShellConsoleFeature>()) {
+    _console = &server.getFeature<ShellConsoleFeature>();
   }
 
-  auto& opt = options->addOption(
-      "--server.endpoint", endpointHelp,
-      new VectorParameter<StringParameter>(&_endpoints),
-      arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
-  if (isArangosh) {
-    opt.setLongDescription(R"(You can use `--server.endpoint none` to start
-arangosh without connecting to a server.)");
-  }
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 
-  options->addOption(
-      "--server.password",
-      "The password or access token to use when connecting. If not specified "
-      "and authentication is required, you are prompted for a password.\n"
-      "In startup options, you can wrap the names of environment variables "
-      "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
-      "expose the password less, like to the process list. "
-      "Literal @ need to be escaped as @@.",
-      new StringParameter(&_password));
-
-  if (isArangosh) {
-    // this option is only available in arangosh
-    options->addOption("--server.force-json",
-                       "Force to not use VelocyPack for easier debugging.",
-                       new BooleanParameter(&_forceJson),
-                       arangodb::options::makeDefaultFlags(
-                           arangodb::options::Flags::Uncommon));
-  }
-
-  if (_allowJwtSecret) {
-    // currently the option is only present for arangosh, but none
-    // of the other client tools
-    options->addOption(
-        "--server.ask-jwt-secret",
-        "If enabled, you are prompted for a JWT secret. This option is not "
-        "compatible with --server.username and --server.password. "
-        "If specified, it is used for all connections - even if a new "
-        "connection to another server is created.",
-        new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeDefaultFlags(
-            arangodb::options::Flags::Uncommon));
-
-    options->addOption(
-        "--server.jwt-secret-keyfile",
-        "If enabled, the JWT secret is loaded from the given file. This option "
-        "is not compatible with --server.ask-jwt-secret, --server.username and "
-        "--server.password. If specified, it is used for all connections - "
-        "even if a new connection to another server is created.",
-        new StringParameter(&_jwtSecretFile),
-        arangodb::options::makeDefaultFlags(
-            arangodb::options::Flags::Uncommon));
-
-    options->addOption(
-        "--server.jwt-token",
-        "If enabled, the JWT token is used directly for authentication. You "
-        "can either "
-        "specify the token directly or set the value to \"-\" to get prompted "
-        "for the token to not leak the token to the process list. This "
-        "option is not compatible with --server.ask-jwt-secret, "
-        "--server.jwt-secret-keyfile, --server.username and --server.password. "
-        "If specified, it is used for all connections - even if a new "
-        "connection to another server is created.",
-        new StringParameter(&_jwtToken));
-  }
-
-  options->addOption("--server.connection-timeout",
-                     "The connection timeout (in seconds).",
-                     new DoubleParameter(&_connectionTimeout));
-
-  options->addOption("--server.request-timeout",
-                     "The request timeout (in seconds).",
-                     new DoubleParameter(&_requestTimeout));
-
-  options->addOption(
-      "--server.jwt-renewal-threshold",
-      "The time (in seconds) before JWT token expiry to trigger "
-      "automatic renewal. Default is 300 seconds (5 minutes).",
-      new DoubleParameter(&_jwtRenewalThreshold),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  // note: the max-packet-size is used for all client tools that use the
-  // SimpleHttpClient. fuerte does not use this
-  options->addOption(
-      "--server.max-packet-size",
-      "The maximum packet size (in bytes) for client/server communication.",
-      new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
-
-  options->addSection("ssl", "SSL communication");
-  options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                     new DiscreteValuesParameter<UInt64Parameter>(
-                         &_sslProtocol, sslProtocols));
-  options
-      ->addOption(
-          "--compress-transfer",
-          "Compress data for transport between " + basename + " and server.",
-          new BooleanParameter(&_compressTransfer))
-      .setIntroducedIn(31200)
-      .setLongDescription(R"(This option enables transport compression for data
-received by an ArangoDB server.)");
-
-  options
-      ->addOption("--compress-request-threshold",
-                  "The HTTP request body size from which on requests are "
-                  "transparently compressed when sending them to the server.",
-                  new UInt64Parameter(&_compressRequestThreshold))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests
-with the deflate compression format. Compression will only happen for
-HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
-body exceeds the threshold value controlled by this startup option,
-and if the request body size after compression is less than the original
-request body size.
-Using the value 0 disables the automatic request compression.")");
-}
-
-void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
-        << "SSLv2 is not supported any longer because of security "
-           "vulnerabilities in this protocol";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_endpoints.size() > _maxNumEndpoints) {
-    // this is the case if we have more endpoints than allowed.
-    // in versions before 3.9, it was allowed to specify `--server.endpoint`
-    // multiple times, and if this was done, only the last provided endpoint
-    // was used. to keep backward-compatibility, we now emulate this
-    // behavior here.
-    TRI_ASSERT(_maxNumEndpoints == 1);
-    std::string selectedEndpoint = _endpoints.back();
-
-    _endpoints = {std::move(selectedEndpoint)};
-  }
-
-  // if a username is specified explicitly, assume authentication is desired
-  if (options->processingResult().touched("server.username")) {
-    _authentication = true;
-  }
-
-  if (_askJwtSecret) {
-    _authentication = false;
-  }
-
-  bool hasJwtSecretFile = !_jwtSecretFile.empty();
-  bool hasJwtToken = !_jwtToken.empty();
-
-  if (hasJwtToken || hasJwtSecretFile) {
-    _authentication = false;
-  }
-
-  // check timeouts
-  if (_connectionTimeout < 0.0) {
-    LOG_TOPIC("81598", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for --server.connect-timeout, must be >= 0";
-    FATAL_ERROR_EXIT();
-  } else if (_connectionTimeout == 0.0) {
-    _connectionTimeout = LONG_TIMEOUT;
-  }
-
-  if (_requestTimeout < 0.0) {
-    LOG_TOPIC("fb847", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for --server.request-timeout, must be positive";
-    FATAL_ERROR_EXIT();
-  } else if (_requestTimeout == 0.0) {
-    _requestTimeout = LONG_TIMEOUT;
-  }
-
-  if (_maxPacketSize < 1 * 1024 * 1024) {
-    LOG_TOPIC("f7793", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for --server.max-packet-size, must be at least 1 MB";
-    FATAL_ERROR_EXIT();
-  }
-
-  // username must be non-empty
-  if (_username.empty()) {
-    LOG_TOPIC("fa58c", FATAL, arangodb::Logger::FIXME)
-        << "no value specified for --server.username";
-    FATAL_ERROR_EXIT();
-  }
-
-  _haveServerPassword = !options->processingResult().touched("server.password");
-
-  if ((_askJwtSecret || hasJwtSecretFile) &&
-      options->processingResult().touched("server.password")) {
-    LOG_TOPIC("65475", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.password and jwt secret source";
-    FATAL_ERROR_EXIT();
-  }
-
-  if ((_askJwtSecret || hasJwtSecretFile) &&
-      options->processingResult().touched("server.username")) {
-    LOG_TOPIC("9d886", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.username and jwt secret source";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_askJwtSecret && hasJwtSecretFile) {
-    LOG_TOPIC("aeaeb", FATAL, arangodb::Logger::FIXME)
-        << "multiple jwt secret sources specified";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (hasJwtToken && options->processingResult().touched("server.password")) {
-    LOG_TOPIC("65476", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.password and --server.jwt-token";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (hasJwtToken && options->processingResult().touched("server.username")) {
-    LOG_TOPIC("9d887", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.username and --server.jwt-token";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (hasJwtToken && _askJwtSecret) {
-    LOG_TOPIC("aeaed", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.ask-jwt-secret and --server.jwt-token";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (hasJwtToken && hasJwtSecretFile) {
-    LOG_TOPIC("aeaee", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.jwt-secret-keyfile and "
-           "--server.jwt-token";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (!_endpoints.empty()) {
-    std::for_each(
-        _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
-          if (!endpoint.empty() && (endpoint != "none") &&
-              (endpoint != Endpoint::defaultEndpoint())) {
-            std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
-            if (ep != nullptr && ep->isBroadcastBind()) {
-              LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
-                  << "invalid value for --server.endpoint ('" << endpoint
-                  << "') - 0.0.0.0 and :: are only allowed for servers binding "
-                     "- not for clients connecting."
-                  << " Choose an IP address of your machine instead."
-                  << " See https://en.wikipedia.org/wiki/0.0.0.0 for more "
-                     "details.";
-              FATAL_ERROR_EXIT();
-            }
-          }
-        });
-  }
-
-  if (auto res = DatabaseNameValidator::validateName(true, true, _databaseName);
+  if (auto res = DatabaseNameValidator::validateName(true, true,
+                                                     _options.databaseName);
       res.fail()) {
     LOG_TOPIC("122a6", FATAL, arangodb::Logger::FIXME) << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
-  SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
+  SimpleHttpClientParams::setDefaultMaxPacketSize(_options.maxPacketSize);
 }
 
 void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   if (_console && _console->isEnabled()) {
-    _password = _console->readPassword("Please specify a password: ");
+    _options.password = _console->readPassword("Please specify a password: ");
     return;
   }
 
@@ -425,11 +155,11 @@ void ClientFeature::loadJwtSecretFile() {
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
     setJwtSecret(basics::StringUtils::trim(
-        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r"));
+        basics::FileUtils::slurp(_options.jwtSecretFile), " \t\n\r"));
   } catch (std::exception const& ex) {
     LOG_TOPIC("aeaec", FATAL, Logger::STARTUP)
-        << "unable to read content of jwt-secret file '" << _jwtSecretFile
-        << "': " << ex.what()
+        << "unable to read content of jwt-secret file '"
+        << _options.jwtSecretFile << "': " << ex.what()
         << ". please make sure the file/directory is readable for the "
            "arangod process and user";
     FATAL_ERROR_EXIT();
@@ -437,54 +167,99 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
-  setDatabaseName(_databaseName);
+  setDatabaseName(_options.databaseName);
 
   if (!isEnabled()) {
     return;
   }
 
-  if (_askJwtSecret) {
+  if (_options.askJwtSecret) {
     // ask for a jwt secret
     readJwtSecret();
-  } else if (!_jwtSecretFile.empty()) {
+  } else if (!_options.jwtSecretFile.empty()) {
     loadJwtSecretFile();
-  } else if (_authentication && _haveServerPassword) {
+  } else if (_options.authentication && _options.haveServerPassword) {
     // ask for a password
     readPassword();
-  } else if (!_jwtToken.empty() && _jwtToken == "-") {
+  } else if (!_options.jwtToken.empty() && _options.jwtToken == "-") {
     // if the jwt token is set to "-" we will ask for it
     readJwtToken();
   }
+
+  if (!_options.jwtToken.empty()) {
+    _renewingJwtToken = std::make_shared<RenewingJwtToken>(
+        _options.jwtToken,
+        [this](JwtToken const& token) { return renewJwtViaOpenAuth(token); },
+        toRenewalThreshold(_options.jwtRenewalThreshold), &JwtClock::now);
+  }
 }
+
+void ClientFeature::start() {
+  if (shouldLoginViaOpenAuth()) {
+    auto const login = loginViaOpenAuth();
+    if (login.ok() && login.get().has_value()) {
+      _renewingJwtToken = std::make_shared<RenewingJwtToken>(
+          *login.get(), [this](JwtToken const&) { return loginViaOpenAuth(); },
+          renewalThreshold(), &JwtClock::now);
+      LOG_TOPIC("f1a92", INFO, Logger::AUTHENTICATION)
+          << "authenticated as user '" << username() << "' via /_open/auth";
+    } else {
+      LOG_TOPIC("e6b37", DEBUG, Logger::AUTHENTICATION)
+          << "using basic authentication: "
+          << (login.fail() ? login.errorMessage()
+                           : "the server issues no tokens, authentication is "
+                             "probably disabled");
+    }
+  }
+
+  if (_renewingJwtToken != nullptr) {
+    _jwtRenewal = std::make_unique<BackgroundJwtRenewal>(
+        _renewingJwtToken, kJwtRenewalCheckInterval);
+  }
+}
+
+bool ClientFeature::shouldLoginViaOpenAuth() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _options.loginViaOpenAuth && _options.authentication &&
+         _options.jwtToken.empty() && _jwtSecret.empty() &&
+         !_options.username.empty();
+}
+
+JwtClock::duration ClientFeature::renewalThreshold() const {
+  READ_LOCKER(locker, _settingsLock);
+  return std::chrono::duration_cast<JwtClock::duration>(
+      std::chrono::duration<double>{_options.jwtRenewalThreshold});
+}
+
+void ClientFeature::stop() { _jwtRenewal.reset(); }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     size_t threadNumber, bool suppressError) const {
   std::string endpoint;
   {
     READ_LOCKER(locker, _settingsLock);
-    endpoint = _endpoints[threadNumber % _endpoints.size()];
+    endpoint = _options.endpoints[threadNumber % _options.endpoints.size()];
   }
   return createHttpClient(endpoint, suppressError);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition, bool suppressError) const {
-  double requestTimeout;
-  bool warn;
-  {
-    READ_LOCKER(locker, _settingsLock);
-    requestTimeout = _requestTimeout;
-    warn = _warn;
-  }
-  SimpleHttpClientParams params(requestTimeout, warn);
-  params.setCompressRequestThreshold(
-      compressTransfer() ? compressRequestThreshold() : 0);
-  return createHttpClient(definition, std::move(params), suppressError);
+  return createHttpClient(definition, defaultHttpClientParams(), suppressError);
 }
 
-std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition, SimpleHttpClientParams const& params,
-    bool suppressError) const {
+SimpleHttpClientParams ClientFeature::defaultHttpClientParams() const {
+  READ_LOCKER(locker, _settingsLock);
+  SimpleHttpClientParams params(_options.requestTimeout, _warn);
+  params.setCompressRequestThreshold(
+      _options.compressTransfer ? _options.compressRequestThreshold : 0);
+  return params;
+}
+
+std::unique_ptr<httpclient::SimpleHttpClient>
+ClientFeature::createBareHttpClient(std::string const& definition,
+                                    SimpleHttpClientParams const& params,
+                                    bool suppressError) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint == nullptr) {
@@ -498,33 +273,89 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   READ_LOCKER(locker, _settingsLock);
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(_comm, endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries,
-                                       _sslProtocol));
+      GeneralClientConnection::factory(_comm, endpoint, _options.requestTimeout,
+                                       _options.connectionTimeout, _retries,
+                                       _options.sslProtocol));
 
   // takes over ownership for the connection object
-  auto httpClient = std::make_unique<SimpleHttpClient>(connection, params);
-  // set client parameters
+  return std::make_unique<SimpleHttpClient>(connection, params);
+}
+
+std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
+    std::string const& definition, SimpleHttpClientParams const& params,
+    bool suppressError) const {
+  auto httpClient = createBareHttpClient(definition, params, suppressError);
+
+  READ_LOCKER(locker, _settingsLock);
+
   httpClient->params().setLocationRewriter(static_cast<void const*>(this),
                                            &ClientManager::rewriteLocation);
-  httpClient->params().setUserNamePassword("/", _username, _password);
-  if (!_jwtToken.empty()) {
-    httpClient->params().setJwt(_jwtToken);
+  httpClient->params().setUserNamePassword("/", _options.username,
+                                           _options.password);
+  if (_renewingJwtToken != nullptr) {
+    // only installs the callable; it is invoked per request, never while
+    // _settingsLock is held
+    httpClient->params().setJwtProvider(
+        [token = _renewingJwtToken] { return token->current(); });
+  } else if (!_options.jwtToken.empty()) {
+    httpClient->params().setJwt(_options.jwtToken);
   } else if (!_jwtSecret.empty()) {
-    TRI_ASSERT(!_endpoints.empty());
+    TRI_ASSERT(!_options.endpoints.empty());
     httpClient->params().setJwt(
         arangodb::rest::SslInterface::jwt::generateInternalToken(
-            _jwtSecret, _endpoints[0]));
+            _jwtSecret, _options.endpoints[0]));
   }
 
   return httpClient;
+}
+
+TokenOutcome ClientFeature::postForToken(
+    std::string const& path, std::string const& body,
+    std::unordered_map<std::string, std::string> const& headers) const {
+  try {
+    // a malformed endpoint is reported by the tool's own client, not here
+    auto const client = createBareHttpClient(
+        endpoint(), defaultHttpClientParams(), /*suppressError*/ true);
+    std::unique_ptr<SimpleHttpResult> const response(client->request(
+        rest::RequestType::POST, path, body.data(), body.size(), headers));
+    if (response == nullptr || !response->isComplete()) {
+      return TokenOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 client->getErrorMessage());
+    }
+    return parseTokenResponse(*response);
+  } catch (std::exception const& ex) {
+    return TokenOutcome::error(TRI_ERROR_INTERNAL, ex.what());
+  }
+}
+
+TokenOutcome ClientFeature::loginViaOpenAuth() const {
+  // read the raw options: username() would answer with the token's user
+  auto const credentials = [&] {
+    READ_LOCKER(locker, _settingsLock);
+    velocypack::Builder builder;
+    {
+      velocypack::ObjectBuilder object(&builder);
+      builder.add("username", velocypack::Value(_options.username));
+      builder.add("password", velocypack::Value(_options.password));
+    }
+    return builder.toJson();
+  }();
+  return postForToken(
+      "/_open/auth", credentials,
+      {{StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson}});
+}
+
+TokenOutcome ClientFeature::renewJwtViaOpenAuth(JwtToken const& token) const {
+  return postForToken(
+      "/_open/auth/renew", "",
+      {{StaticStrings::Authorization, absl::StrCat("bearer ", token)}});
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
   std::vector<std::string> httpEndpoints;
 
   READ_LOCKER(locker, _settingsLock);
-  std::for_each(_endpoints.begin(), _endpoints.end(),
+  std::for_each(_options.endpoints.begin(), _options.endpoints.end(),
                 [&httpEndpoints](std::string const& endpoint) {
                   if (std::string http = Endpoint::uriForm(endpoint);
                       !http.empty()) {
@@ -536,7 +367,7 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
 
 std::string ClientFeature::databaseName() const {
   READ_LOCKER(locker, _settingsLock);
-  return _databaseName;
+  return _options.databaseName;
 }
 
 void ClientFeature::setDatabaseName(std::string_view databaseName) {
@@ -546,44 +377,51 @@ void ClientFeature::setDatabaseName(std::string_view databaseName) {
   }
 
   WRITE_LOCKER(locker, _settingsLock);
-  _databaseName = databaseName;
+  _options.databaseName = databaseName;
 }
 
 // get single endpoint. used by client tools that can handle only one endpoint
 std::string ClientFeature::endpoint() const {
   READ_LOCKER(locker, _settingsLock);
-  return _endpoints[0];
+  return _options.endpoints[0];
 }
 
 // set single endpoint
 void ClientFeature::setEndpoint(std::string_view value) {
   WRITE_LOCKER(locker, _settingsLock);
-  _endpoints[0] = value;
+  _options.endpoints[0] = value;
 }
 
 std::string ClientFeature::username() const {
+  // a token authenticates as the user it was issued for, whatever
+  // --server.username says
+  if (auto const tokenUser =
+          rest::SslInterface::jwt::extractPreferredUsername(jwtToken());
+      tokenUser.has_value()) {
+    return *tokenUser;
+  }
   READ_LOCKER(locker, _settingsLock);
-  return _username;
+  return _options.username;
 }
 
 void ClientFeature::setUsername(std::string_view value) {
   WRITE_LOCKER(locker, _settingsLock);
-  _username = value;
+  _options.username = value;
 }
 
 std::string ClientFeature::password() const {
   READ_LOCKER(locker, _settingsLock);
-  return _password;
+  return _options.password;
 }
 
 void ClientFeature::setPassword(std::string_view value) {
   WRITE_LOCKER(locker, _settingsLock);
-  _password = value;
+  _options.password = value;
 }
 
 void ClientFeature::setJwtToken(std::string_view jwtToken) {
   WRITE_LOCKER(locker, _settingsLock);
-  _jwtToken = jwtToken;
+  _options.jwtToken = jwtToken;
 }
 
 std::string ClientFeature::jwtSecret() const {
@@ -597,48 +435,51 @@ void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
 }
 
 std::string ClientFeature::jwtToken() const {
+  if (_renewingJwtToken != nullptr) {
+    return _renewingJwtToken->current();
+  }
   READ_LOCKER(locker, _settingsLock);
-  return _jwtToken;
+  return _options.jwtToken;
 }
 
 double ClientFeature::connectionTimeout() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _connectionTimeout;
+  return _options.connectionTimeout;
 }
 
 double ClientFeature::requestTimeout() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _requestTimeout;
+  return _options.requestTimeout;
 }
 
 void ClientFeature::requestTimeout(double value) noexcept {
   WRITE_LOCKER(locker, _settingsLock);
-  _requestTimeout = value;
+  _options.requestTimeout = value;
 }
 
 uint64_t ClientFeature::maxPacketSize() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _maxPacketSize;
+  return _options.maxPacketSize;
 }
 
 uint64_t ClientFeature::sslProtocol() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _sslProtocol;
+  return _options.sslProtocol;
 }
 
 bool ClientFeature::askJwtSecret() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _askJwtSecret;
+  return _options.askJwtSecret;
 }
 
 bool ClientFeature::forceJson() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _forceJson;
+  return _options.forceJson;
 }
 
 void ClientFeature::setForceJson(bool value) noexcept {
   WRITE_LOCKER(locker, _settingsLock);
-  _forceJson = value;
+  _options.forceJson = value;
 }
 
 void ClientFeature::setRetries(size_t retries) noexcept {
@@ -668,27 +509,33 @@ bool ClientFeature::getWarnConnect() const noexcept {
 
 bool ClientFeature::compressTransfer() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _compressTransfer;
+  return _options.compressTransfer;
 }
 
 void ClientFeature::setCompressTransfer(bool value) noexcept {
   WRITE_LOCKER(locker, _settingsLock);
-  _compressTransfer = value;
+  _options.compressTransfer = value;
 }
 
 double ClientFeature::jwtRenewalThreshold() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _jwtRenewalThreshold;
+  return _options.jwtRenewalThreshold;
 }
 
-void ClientFeature::setJwtRenewalThreshold(double value) noexcept {
-  WRITE_LOCKER(locker, _settingsLock);
-  _jwtRenewalThreshold = value;
+void ClientFeature::setJwtRenewalThreshold(double value) {
+  {
+    WRITE_LOCKER(locker, _settingsLock);
+    _options.jwtRenewalThreshold = value;
+  }
+  // outside _settingsLock: the token's mutex must never nest inside it
+  if (_renewingJwtToken != nullptr) {
+    _renewingJwtToken->setRenewalThreshold(toRenewalThreshold(value));
+  }
 }
 
 uint64_t ClientFeature::compressRequestThreshold() const noexcept {
   READ_LOCKER(locker, _settingsLock);
-  return _compressRequestThreshold;
+  return _options.compressRequestThreshold;
 }
 
 ApplicationServer& ClientFeature::server() const noexcept {

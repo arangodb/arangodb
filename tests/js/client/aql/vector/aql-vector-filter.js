@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -34,10 +33,17 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndAssertIndex,
+    waitForAllVectorIndexesState,
+    VectorIndexTrainingState,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper functions for verification
@@ -101,18 +107,19 @@ function VectorIndexL2FilterTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -147,19 +154,20 @@ function VectorIndexL2FilterTestSuite() {
                 });
             }
 
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
                 },
             });
         },
@@ -173,7 +181,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 5
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -192,7 +200,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 5
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 10 
+              SORT dist LIMIT 10
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -212,9 +220,9 @@ function VectorIndexL2FilterTestSuite() {
               FOR docInner IN ${collection}
               FILTER docInner.val > 3
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-              LIMIT 5 RETURN docInner`;
+              LIMIT 5 RETURN {key: docOuter._key, val: docInner.val}`;
 
-            verifyPlan(query, undefined, 0);
+            verifyPlan(query, undefined, 1);
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
@@ -242,7 +250,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 0
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d._key}`;
 
             const bindVars = {
@@ -256,7 +264,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.nonExistentField == 'someValue'
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -272,7 +280,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 1 AND d.val < 30
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 10 
+              SORT dist LIMIT 10
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -291,7 +299,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 2 AND d.val <= 7 AND d.nonVector % 2 == 0
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 10 
+              SORT dist LIMIT 10
               RETURN {key: d._key, val: d.val, nonVector: d.nonVector, dist}`;
 
             const bindVars = {
@@ -310,7 +318,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.category == 'A' AND d.priority > 0
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d._key, category: d.category, priority: d.priority, dist}`;
 
             const bindVars = {
@@ -328,7 +336,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.nullableField != null AND d.optionalField != null
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 10 
+              SORT dist LIMIT 10
               RETURN {key: d._key, nullableField: d.nullableField, optionalField: d.optionalField, dist}`;
 
             const bindVars = {
@@ -346,7 +354,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER 'tag1' IN d.tags AND d.scores[0] > 2
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 8 
+              SORT dist LIMIT 8
               RETURN {key: d._key, tags: d.tags, firstScore: d.scores[0], dist}`;
 
             const bindVars = {
@@ -364,7 +372,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.name =~ '.*special.*' AND d.description =~ '.*high.*'
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 6 
+              SORT dist LIMIT 6
               RETURN {key: d._key, name: d.name, description: d.description, dist}`;
 
             const bindVars = {
@@ -382,7 +390,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER LENGTH(TO_STRING(d.val)) == 1 AND d.val > 0
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 7 
+              SORT dist LIMIT 7
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -400,7 +408,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val == 1 OR d.val == 5 OR d.val == 9
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 15 
+              SORT dist LIMIT 15
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -417,7 +425,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER NOT (d.val < 3 OR d.val > 7)
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 12 
+              SORT dist LIMIT 12
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -435,7 +443,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 4 AND d.val <= 6
               LET dist = APPROX_NEAR_L2(@q, d.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = {
@@ -561,6 +569,29 @@ function VectorIndexL2FilterTestSuite() {
             verifyResultsMatchFilter(results, (r) => r.outerKey !== undefined);
         },
 
+        testApproxL2WithFilterInOperator: function() {
+            const query = `
+            LET CATEGORIES = (FOR d IN ${collection.name()} RETURN DISTINCT d.category)
+            FOR d IN ${collection.name()}
+            FILTER d.category IN CATEGORIES
+            LET dist = APPROX_NEAR_L2(@qp, d.vector)
+            SORT dist LIMIT 5
+            RETURN d`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(5, results.length);
+        },
+
         testApproxL2WithMultipleFilterClauses: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 5
@@ -604,7 +635,7 @@ function VectorIndexL2FilterTestSuite() {
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
               FILTER dist < 0.5
               SORT dist LIMIT 5
-              RETURN d  `;
+              RETURN d`;
 
             const bindVars = {
                 qp: randomPoint
@@ -615,6 +646,7 @@ function VectorIndexL2FilterTestSuite() {
                 bindVars,
             );
         },
+
     };
 }
 
@@ -623,22 +655,23 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
     const col2 = "col2";
 
     return {
         setUpAll: function() {
-            print(`Using seed: ${seed}`);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection1 = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
             collection2 = db._create(col2, {
-                numberOfShards: 3
+                numberOfShards
             });
 
 
@@ -658,10 +691,11 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                     val: i
                 });
             }
-            collection1.insert(docs);
-            collection2.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            collection1.ensureIndex({
+            const ensureIndex = () => collection1.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
                 fields: ["vector"],
@@ -674,6 +708,24 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                const batch = docs.slice(start, end);
+                collection1.insert(batch);
+                collection2.insert(batch);
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
+            assertTrue(
+                waitForAllVectorIndexesState(collection1, VectorIndexTrainingState.kReady, 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -681,23 +733,27 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
             db._dropDatabase(dbName);
         },
 
-        testApproxL2FilterNotApplied: function() {
+        testApproxL2FilterDoubleLoop: function() {
             const query = `FOR d1 IN ${collection2.name()}
               FOR d2 IN ${collection1.name()}
               FILTER d2.val < 5 OR d1.val < 5
               LET dist = APPROX_NEAR_L2(@qp, d2.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d2._key, val: d2.val, dist}`;
 
             const bindVars = {
                 qp: randomPoint
             };
 
-            assertQueryError(
-                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+            const plan = db._createStatement({
                 query,
-                bindVars,
-            );
+                bindVars
+            }).explain().plan;
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(5, results.length, 5);
         },
 
         testApproxL2FilterNotAppliedReversedLoop: function() {
@@ -706,7 +762,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
               FOR d1 IN ${collection2.name()}
               FILTER d2.val < 5 OR d1.val < 5
               LET dist = APPROX_NEAR_L2(@qp, d1.vector)
-              SORT dist LIMIT 5 
+              SORT dist LIMIT 5
               RETURN {key: d1._key, val: d1.val, dist}`;
 
             const bindVars = {
@@ -725,18 +781,19 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -762,74 +819,28 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                     floatField: i + 0.5
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2_stored_values",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2_stored_values",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                    storedValues: ["val", "stringField", "boolField", "floatField"]
                 },
-                storedValues: ["val", "stringField", "boolField", "floatField"]
             });
         },
 
         tearDownAll: function() {
             db._useDatabase("_system");
             db._dropDatabase(dbName);
-        },
-
-        testApproxL2WithFilterStoredValuesSimple: function() {
-            const query = `
-                FOR d IN ${collection.name()}
-                FILTER d.val < 5 AND d.stringField == 'type_A'
-                LET dist = APPROX_NEAR_L2(@qp, d.vector)
-                SORT dist LIMIT 5
-                RETURN {key: d._key, val: d.val, stringField: d.stringField, dist}`;
-
-            const bindVars = {
-                qp: randomPoint
-            };
-            
-            const plan = verifyPlan(query, bindVars);
-            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
-
-            const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5, "Results should be limited to 5");
-            
-            verifyResultsMatchFilter(results, r => r.val < 5, "Val filter not applied correctly");
-            verifyResultsMatchFilter(results, r => r.stringField === "type_A", "String filter not applied correctly");
-            verifyDistancesAscending(results);
-        },
-
-        testApproxL2WithFilterCannotUseStoredValues: function() {
-            const query = `
-                FOR d IN ${collection.name()}
-                FILTER d.nonStoredValue < 50
-                LET dist = APPROX_NEAR_L2(@qp, d.vector)
-                SORT dist LIMIT 5
-                RETURN {key: d._key, nonStoredValue: d.nonStoredValue, dist}`;
-
-            const bindVars = {
-                qp: randomPoint
-            };
-            
-            const plan = verifyPlan(query, bindVars);
-            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues);
-
-            const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5, "Results should be limited to 5");
-            
-            verifyResultsMatchFilter(results, r => r.nonStoredValue < 50, "Val filter not applied correctly");
-            verifyDistancesAscending(results);
         },
 
         testApproxL2WithFilterStoredValuesComplex: function() {
@@ -843,14 +854,14 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            
+
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
-            
+
             verifyResultsMatchFilter(results, r => r.val >= 2 && r.val <= 50, "Val filter not applied");
             verifyResultsMatchFilter(results, r => r.boolField === true, "Bool filter not applied");
             verifyResultsMatchFilter(results, r => r.floatField > 10.0, "Float filter not applied");
@@ -868,18 +879,18 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            
+
             const plan = db._createStatement({query, bindVars}).explain().plan;
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
 
             // Not fully covered by stored values (val field is stored, but array/object fields are not)
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues, "Should not be fully covered by stored values");
+            assertEqual("document", indexNodes[0].filterMode, "Should not be fully covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
-            
+
             verifyResultsMatchFilter(results, r => r.val >= 10 && r.val <= 50, "Val filter not applied");
             verifyResultsMatchFilter(results, r => r.arrayField[0] > 2, "Array filter not applied");
             verifyResultsMatchFilter(results, r => r.objectField.nested === 1, "Object filter not applied");
@@ -903,7 +914,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues, "Cannot be covered by stored values");
+            assertEqual("document", indexNodes[0].filterMode, "Cannot be covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
@@ -928,7 +939,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues, "Should be covered by stored values");
+            assertEqual("storedValues", indexNodes[0].filterMode, "Should be covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 8, "Results should be limited to 8");
@@ -940,12 +951,13 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     };
 }
 
-function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
+function VectorIndexL2FilterStoredValuesIndexSelection() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
-    const seed = 5229487420515249;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     const shuffleArray = function(arr, seed) {
@@ -980,12 +992,11 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -1018,10 +1029,14 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
                 makeVectorIndexDef("vector_winner", ["val", "category"], 5),
             ], seed);
 
-            print("Index creation order: " + JSON.stringify(indexDefs.map(d => d.name)));
             for (let def of indexDefs) {
                 collection.ensureIndex(def);
             }
+
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected all vector indexes to become ready"
+            );
         },
 
         tearDownAll: function() {
@@ -1041,7 +1056,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
             assertEqual("vector_winner", indexNodes[0].index.name);
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
@@ -1060,7 +1075,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
             assertTrue(
                 ["vector_sv_val_only", "vector_winner"].includes(indexNodes[0].index.name),
                 "Expected one of the indexes covering 'val', got: " + indexNodes[0].index.name
@@ -1083,7 +1098,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
-            assertFalse(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("document", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
@@ -1092,9 +1107,18 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
     };
 }
 
-jsunity.run(VectorIndexL2FilterTestSuite);
-jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
-jsunity.run(VectorIndexL2FilterStoredValuesTestSuite);
-jsunity.run(VectorIndexL2FilterStoredValuesIndexSelectionSuite);
+
+jsunity.run(function VectorIndexL2FilterTestSuiteRunner() {
+    return VectorIndexL2FilterTestSuite();
+});
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsTestSuiteRunner() {
+    return VectorIndexL2FilterTestMultipleCollectionsSuite();
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesTestSuiteRunner() {
+    return VectorIndexL2FilterStoredValuesTestSuite();
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionTestSuiteRunner() {
+    return VectorIndexL2FilterStoredValuesIndexSelection();
+});
 
 return jsunity.done();

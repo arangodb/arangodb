@@ -15,6 +15,8 @@
       - permissions
       - paths_server
       - version
+      - shell_client_large
+      - shell_server_only
 
 # Single Server Replication Tests
 - replication_shell:
@@ -26,11 +28,6 @@
     args:
       extraArgs:log.level: replication=trace
     suites:
-      - replication_fuzz
-      - replication_ongoing
-      - replication_ongoing_frompresent
-      - replication_ongoing_global
-      - replication_ongoing_global_spec
       - shell_replication
       - http_replication
 # one run for each test...
@@ -40,32 +37,17 @@
       parallelity: 3
       size: small
       type: single
-      buckets: 2
-    args:
-      extraArgs:log.level: replication=trace
-# TODO - we could actually use 4 buckets instead of 2,
-# but ATM this causes issues with other tests on Jenkins
-# For CircleCI we have a special case in the generate_config
-# script to override this. Once we can change the buckets
-# here, make sure to remove this special case!
-- replication_sync:
-    options:
-      priority: 8000
-      buckets: 9
-      parallelity: 3
-      size: medium
-      type: single
     args:
       extraArgs:log.level: replication=trace
 
-
-- authentication_audit_endpoints_import_export_agency:
+- authentication_audit_endpoints_import_export_agency_fuerte:
     options:
       type: single
     suites:
       - fuerte:
           args:
             protocol: ssl
+            suffix: ssl
           requires:
             coverage: false
       - endpoints:
@@ -96,16 +78,6 @@
       type: cluster
       buckets: 8
       size: small
-    args:
-      extremeVerbosity: true
-
-- recovery_server:
-    options:
-      priority: 2000
-      buckets: 2
-      parallelity: 3
-      size: small
-      type: single
 
 - shell_api_multi_permissions:
     options:
@@ -129,13 +101,6 @@
       parallelity: 2
       buckets: 2
       type: single
-
-- shell_client_large:
-    options:
-      priority: 250
-      parallelity: 2
-      type: single
-      size: medium
 
 - shell_client_transaction:
     options:
@@ -183,40 +148,24 @@
           args:
             http: true
             suffix: http
-      - hot_backup:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_views:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_aql:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_smart_graphs:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_el_cheapo:
-          args:
-            extraArgs:experimental-vector-index: true
+      - hot_backup
+      - hot_backup_views
+      - hot_backup_aql
+      - hot_backup_smart_graphs
+      - hot_backup_el_cheapo
 
 - shell_client_aql:
     options:
-      buckets: 10
       priority: 250
       type: single
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - shell_client_aql_large:
     options:
-      buckets: 5
       priority: 250
       type: single
       suffix: _large
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
+      buckets: 2
+      parallelity: 6
 
 - gtest_iresearch:
     options:
@@ -234,9 +183,21 @@
       type: single
     requires:
       coverage: false
+- gtest_rbac_integration:
+    options:
+      type: single
+      size: small
+    job: run-linux-tests-with-smocker
+    suites:
+      - gtest_rbac_integration
+    requires:
+      coverage: false
+# without coverage this is fast enough:
 - rta_makedata:
     options:
       type: mixed
+    requires:
+      coverage: false
     suites:
       - rta_makedata:
           args:
@@ -245,12 +206,50 @@
           args:
             cluster: true
             suffix: cluster
+            encryptionAtRest: true
+            ssl: true
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+- rta_makedata_rbac:
+    job: run-rbac-tests
+    suites:
+      - rta_makedata
+    options:
+      type: single
+      size: medium
+      timeLimit: 5400
+    requires:
+      coverage: false
+      v8: true
+      arch: x64
+    args:
+      test: 050,100,400,500,580,607,612
+      oneTestTimeout: 5350
+
+# with coverage we need to have several jobs:
+- rta_makedata:
+    options:
+      priority: 3500
+    requires:
+      coverage: true
+    args:
+      encryptionAtRest: true
+      ssl: true
+- rta_makedata:
+    options:
+      priority: 3000
+      type: cluster
+      suffix: _oneshard
+    requires:
+      coverage: true
+    args:
+      forceOneShard: true
+      makedataDB: system_oneshard_makedata
+      suffix: cluster-oneshard
 
 - chaos:
     options:
@@ -279,6 +278,7 @@
       priority: 1000
       type: mixed
       size: large
+      parallelity: 6
     suites:
       - deadlock:
           args:
@@ -312,11 +312,27 @@
       dumpAgencyOnError: true
       forceJson: true
 
+# coverage needs 2 buckets for this
 - load_balancing:
     options:
       priority: 500
       size: medium
       type: cluster
+      buckets: auto
+    requires:
+      coverage: true
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - load_balancing
+      - load_balancing_auth
+- load_balancing:
+    options:
+      priority: 500
+      size: medium
+      type: cluster
+    requires:
+      coverage: false
     args:
       dumpAgencyOnError: true
     suites:
@@ -341,6 +357,7 @@
       priority: 500
       size: large
       type: cluster
+      parallelity: 6
     args:
       dumpAgencyOnError: true
     suites:
@@ -351,7 +368,7 @@
     options:
       priority: 1200
       size: medium
-      buckets: 4
+      buckets: 2
       type: cluster
     args:
       dumpAgencyOnError: true
@@ -390,22 +407,19 @@
       priority: 1000
       size: small
       type: cluster
-      buckets: 6
+      buckets: 4
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client_aql_large:
     options:
       priority: 1000
       size: medium+
       type: cluster
-      buckets: 4
+      buckets: 5
       suffix: _large
+      parallelity: 6
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500
@@ -439,7 +453,7 @@
 #       dumpAgencyOnError: true
 
 # Common Tests
-- import_export_aql_vector:
+- import_export_aql:
     options:
       parallelity: 5
       size: medium+
@@ -449,8 +463,20 @@
     suites:
       - importing
       - export
-      - shell_client_aql_vector
       - shell_api
+
+- shell_client_aql_vector:
+    options:
+      parallelity: 6
+      size: medium+
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: single
 
 - hot_backup:
     options:
@@ -459,7 +485,6 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:vector-index: true
     suites:
       - hot_backup
       - hot_backup_views
@@ -506,6 +531,7 @@
           options:
             suffix: _vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       # takes long, needs to go first. However, doesn't utilize the SUT hard.
       - dump_with_crashes:
@@ -531,6 +557,7 @@
           options:
             suffix: _vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       - dump_authentication:
       - dump_jwt:
@@ -543,6 +570,7 @@
           options:
             suffix: vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       - dump_with_crashes:
           options:
@@ -559,6 +587,7 @@
           options:
             suffix: vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       # BTS-1852 enable after fix:
       # - dump:
@@ -574,7 +603,6 @@
       size: large
       parallelity: 5
     args:
-      extremeVerbosity: true
       dumpAgencyOnError: true
 
 # Full Tests Single Server
@@ -592,7 +620,6 @@
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
 - shell_fuzzer:
     options:
       type: single
@@ -605,7 +632,6 @@
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
 - authentication_parameters:
     options:
       type: single
@@ -634,19 +660,6 @@
     options:
       type: single
       priority: 500
-    requires:
-      full: true
-- replication_aql:
-    options:
-      priority: 1000
-      type: single
-    requires:
-      full: true
-- replication_random:
-    options:
-      priority: 1000
-      type: single
-
     requires:
       full: true
 # Full Cluster Tests

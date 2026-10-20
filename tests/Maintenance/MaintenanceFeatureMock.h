@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -89,8 +86,9 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
  public:
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
-      : arangodb::MaintenanceFeature(as) {
+  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as,
+                         arangodb::ClusterFeature* clusterFeature = nullptr)
+      : arangodb::MaintenanceFeature(as, clusterFeature) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)
     _options.forceActivation = true;
@@ -102,12 +100,9 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     initializeMetrics();
   }
 
-  virtual ~TestMaintenanceFeature() = default;
+  ~TestMaintenanceFeature() override = default;
 
-  void validateOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
-
-  void setSecondsActionsBlock(uint32_t seconds) {
+  void setSecondsActionsBlock(int32_t const seconds) {
     _options.secondsActionsBlock = seconds;
   }
 

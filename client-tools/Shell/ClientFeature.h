@@ -18,16 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
+#include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Utils/BackgroundJwtRenewal.h"
+#include "Utils/RenewingJwtToken.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -52,34 +56,14 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
-  constexpr static size_t const DEFAULT_RETRIES = 2;
-  constexpr static double const LONG_TIMEOUT = 86400.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
-      : ClientFeature{server,
-                      server.getFeature<CommunicationFeaturePhase>(),
-                      typeid(HttpEndpointProvider),
-                      allowJwtSecret,
-                      maxNumEndpoints,
-                      connectionTimeout,
-                      requestTimeout} {
-    if (server.hasFeature<ShellConsoleFeature>()) {
-      _console = &server.getFeature<ShellConsoleFeature>();
-    }
+  ClientFeature(ApplicationServer& server);
+  ClientFeature(ApplicationServer& server, ClientFeatureOptions options);
 
-    startsAfter<CommunicationFeaturePhase>();
-    startsAfter<GreetingsFeaturePhase>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+  void prepare() override;
+  void start() override;
+  void stop() override;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -88,6 +72,8 @@ class ClientFeature final : public HttpEndpointProvider {
   // set single endpoint
   void setEndpoint(std::string_view value);
 
+  /// the user requests are authenticated as: the user of a --server.jwt-token
+  /// if it names one, otherwise --server.username
   std::string username() const;
   void setUsername(std::string_view value);
 
@@ -97,6 +83,8 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
 
+  /// the token passed via --server.jwt-token; once the feature has started
+  /// it is renewed in the background, so callers must re-read it
   std::string jwtToken() const;
   void setJwtToken(std::string_view jwtToken);
 
@@ -117,7 +105,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
   double jwtRenewalThreshold() const noexcept;
-  void setJwtRenewalThreshold(double value) noexcept;
+  /// also applies to the renewal of a token passed via --server.jwt-token
+  void setJwtRenewalThreshold(double value);
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -145,54 +134,70 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+                std::type_index registration, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();
   void readJwtToken();
   void loadJwtSecretFile();
 
+  /**
+   * Parameters shared by all clients: timeouts, warnings, compression
+   */
+  httpclient::SimpleHttpClientParams defaultHttpClientParams() const;
+
+  /**
+   * Client without authentication, location rewriter or token provider
+   */
+  std::unique_ptr<httpclient::SimpleHttpClient> createBareHttpClient(
+      std::string const& definition,
+      httpclient::SimpleHttpClientParams const& params,
+      bool suppressError) const;
+
+  /**
+   * POSTs to the given /_open/auth path and interprets the reply
+   */
+  TokenOutcome postForToken(
+      std::string const& path, std::string const& body,
+      std::unordered_map<std::string, std::string> const& headers) const;
+
+  /**
+   * POSTs /_open/auth with the configured username and password
+   */
+  TokenOutcome loginViaOpenAuth() const;
+
+  /**
+   * POSTs /_open/auth/renew authenticated with the given token
+   */
+  TokenOutcome renewJwtViaOpenAuth(JwtToken const& token) const;
+
+  /**
+   * --server.jwt-renewal-threshold as a duration
+   */
+  JwtClock::duration renewalThreshold() const;
+
+  /**
+   * Whether to exchange the configured credentials for a JWT at startup
+   */
+  bool shouldLoginViaOpenAuth() const;
+
+  ClientFeatureOptions _options;
+
   CommunicationFeaturePhase& _comm;
   ShellConsoleFeature* _console;
 
-  // protects most settings except codepage
   basics::ReadWriteLock mutable _settingsLock;
 
-  std::vector<std::string> _endpoints;
-  size_t const _maxNumEndpoints;
-
-  std::string _databaseName;
-  std::string _username;
-  std::string _password;
   std::string _jwtSecret;
-  std::string _jwtSecretFile;
-  std::string _jwtToken;
-  double _connectionTimeout;
-  double _requestTimeout;
-  double _jwtRenewalThreshold;  // seconds before expiry to renew JWT
-  uint64_t _maxPacketSize;
-  // if > 0, it means that request bodies >= this value will be
-  // sent our compressed.
-  uint64_t _compressRequestThreshold;
-  // only set at startup
-  uint64_t _sslProtocol;
+  /// set when a token was passed via --server.jwt-token; shared by all clients
+  /// created by this feature, so every worker thread sees a renewed token
+  std::shared_ptr<RenewingJwtToken> _renewingJwtToken;
+  /// renews _renewingJwtToken even while no requests are sent
+  std::unique_ptr<BackgroundJwtRenewal> _jwtRenewal;
   size_t _retries;
-
-  bool const _allowJwtSecret;
-  bool _authentication;
-  bool _askJwtSecret;
 
   bool _warn;
   bool _warnConnect;
-  bool _haveServerPassword;
-  bool _forceJson;
-  // if true, all requests sent out will add an extra
-  // HTTP header "Accept-Encoding: deflate" to advertise that
-  // the remote can compress the response body.
-  bool _compressTransfer;
 };
 
 }  // namespace arangodb

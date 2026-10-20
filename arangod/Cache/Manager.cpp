@@ -18,19 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <memory>
-#include <set>
-#include <thread>
 #include <utility>
 
-#include "Cache/Manager.h"
-
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
@@ -42,18 +38,17 @@
 #include "Cache/Cache.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
+#include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
-#include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/FlatHashSet.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
 
@@ -69,7 +64,7 @@ std::uint64_t const Manager::minCacheAllocation =
              TransactionalCache<BinaryKeyHasher>::allocationSize()) +
     kCacheRecordOverhead;
 
-Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+Manager::Manager(basics::SharedPRNG& sharedPRNG, PostFn schedulerPost,
                  CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
       _options(options),
@@ -515,7 +510,9 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
             pastRebalancingGracePeriod()) {
           std::uint64_t increase =
               std::min(metadata.hardUsageLimit / 2,
-                       metadata.maxSize - metadata.allocatedSize);
+                       metadata.maxSize > metadata.allocatedSize
+                           ? metadata.maxSize - metadata.allocatedSize
+                           : 0);
           if (increase > 0 && increaseAllowed(increase)) {
             std::uint64_t newLimit = metadata.allocatedSize + increase;
             metadata.adjustDeserved(newLimit);
@@ -992,7 +989,8 @@ void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
          ((_globalSoftLimit - _globalHighwaterMark) / 2))) {
       _tables[logSize].emplace(std::move(table));
       _spareTableAllocation += memoryUsage;
-      _peakSpareTableAllocation += memoryUsage;
+      _peakSpareTableAllocation =
+          std::max(_spareTableAllocation, _peakSpareTableAllocation);
       ++_spareTables;
       TRI_ASSERT(_spareTables <= kMaxSpareTablesTotal);
     } else {
@@ -1008,15 +1006,21 @@ void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
 bool Manager::increaseAllowed(std::uint64_t increase,
                               bool privileged) const noexcept {
   TRI_ASSERT(_lock.isLocked());
+  // _globalAllocation can legitimately exceed any of the limits (e.g. the
+  // highwater mark), so the available headroom must not underflow
+  auto headroom = [this](std::uint64_t limit) noexcept -> std::uint64_t {
+    return (_globalAllocation < limit) ? (limit - _globalAllocation) : 0;
+  };
+
   if (privileged) {
     if (_resizing && (_globalAllocation <= _globalSoftLimit)) {
-      return (increase <= (_globalSoftLimit - _globalAllocation));
+      return (increase <= headroom(_globalSoftLimit));
     }
 
-    return (increase <= (_globalHardLimit - _globalAllocation));
+    return (increase <= headroom(_globalHardLimit));
   }
 
-  return (increase <= (_globalHighwaterMark - _globalAllocation));
+  return (increase <= headroom(_globalHighwaterMark));
 }
 
 Manager::PriorityList Manager::priorityList() {
@@ -1078,19 +1082,20 @@ Manager::PriorityList Manager::priorityList() {
     globalUsage = std::max(globalUsage, std::uint64_t(1));
     TRI_ASSERT(globalUsage > 0);
 
-    // gather all unaccessed caches at beginning of list
-    for (auto& c : _caches) {
-      auto& cache = c.second;
-      if (!accessed.contains(cache->id())) {
-        double weight = baseWeight + (cache->usage() / globalUsage) * allocFrac;
-        list.emplace_back(cache, weight);
-      }
-    }
-
     double accessNormalizer = ((1.0 - allocFrac) * remainingWeight) /
                               static_cast<double>(totalAccesses);
     double usageNormalizer =
         (allocFrac * remainingWeight) / static_cast<double>(globalUsage);
+
+    // gather all unaccessed caches at beginning of list
+    for (auto& c : _caches) {
+      auto& cache = c.second;
+      if (!accessed.contains(cache->id())) {
+        double usageWeight =
+            static_cast<double>(cache->usage()) * usageNormalizer;
+        list.emplace_back(cache, baseWeight + usageWeight);
+      }
+    }
 
     // gather all accessed caches in order
     for (auto const& s : stats) {

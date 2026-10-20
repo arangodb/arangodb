@@ -748,67 +748,92 @@
       });
     },
 
+    // fetching the result of a finished job is what removes that job on the
+    // server. it has to be issued from the browser: the aardvark Foxx service
+    // may not call back into its own server, because the JavaScript endpoint
+    // allowlist rejects such requests.
+    fetchJobResult: function (id) {
+      return new Promise((resolve) => {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: this.databaseUrl('/_api/job/' + encodeURIComponent(id)),
+          contentType: 'application/json',
+          processData: false,
+          complete: (xhr) => resolve(xhr.responseJSON)
+        });
+      });
+    },
+
+    reportJobError: function (jobResult) {
+      // a job that is not there anymore is intentionally not considered an error
+      // here. this is because in some other places we collect job data, which
+      // automatically leads to server-side deletion of the job. so just swallow
+      // 404 errors here, silently...
+      if (!jobResult || !jobResult.error || jobResult.errorNum === 404) {
+        return;
+      }
+      if (jobResult.errorNum && jobResult.errorMessage) {
+        arangoHelper.arangoError(`Error ${jobResult.errorNum}`, jobResult.errorMessage);
+      } else {
+        arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(jobResult));
+      }
+    },
+
     deleteAardvarkJob: function (id, callback) {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        url: this.databaseUrl('/_admin/aardvark/job/' + encodeURIComponent(id)),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          // deleting a job that is not there anymore is intentionally not considered
-          // an error here. this is because in some other places we collect job data,
-          // which automatically leads to server-side deletion of the job. so just
-          // swallow 404 errors here, silently...
-          if (data && data.error && data.errorNum !== 404) {
-            if (data.errorNum && data.errorMessage) {
-              arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
-            } else {
-              arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(data));
+      this.fetchJobResult(id).then((jobResult) => {
+        this.reportJobError(jobResult);
+        $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: this.databaseUrl('/_admin/aardvark/job/' + encodeURIComponent(id)),
+          contentType: 'application/json',
+          processData: false,
+          success: (data) => {
+            if (callback) {
+              callback(false, data);
             }
-            return;
+          },
+          error: (data) => {
+            if (callback) {
+              callback(true, data);
+            }
           }
-          if (callback) {
-            callback(false, data);
-          }
-        },
-        error: function (data) {
-          if (callback) {
-            callback(true, data);
-          }
-        }
+        });
       });
     },
 
     deleteAllAardvarkJobs: function (callback) {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        url: this.databaseUrl('/_admin/aardvark/job'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          if (data.result && data.result.length > 0) {
-            _.each(data.result, function (resp) {
-              if (resp.error) {
-                if (resp.errorNum && resp.errorMessage) {
-                  arangoHelper.arangoError(`Error ${resp.errorNum}`, resp.errorMessage);
-                } else {
-                  arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(resp));
-                }
-                return;
-              }
-            });
-          }
+      this.getAardvarkJobs((error, jobs) => {
+        if (error) {
           if (callback) {
-            callback(false, data);
+            callback(true, jobs);
           }
-        },
-        error: function (data) {
-          if (callback) {
-            callback(true, data);
-          }
+          return;
         }
+
+        const pending = jobs.map((job) =>
+          this.fetchJobResult(job.id).then((jobResult) => this.reportJobError(jobResult)));
+
+        Promise.all(pending).then(() => {
+          $.ajax({
+            cache: false,
+            type: 'DELETE',
+            url: this.databaseUrl('/_admin/aardvark/job'),
+            contentType: 'application/json',
+            processData: false,
+            success: (data) => {
+              if (callback) {
+                callback(false, data);
+              }
+            },
+            error: (data) => {
+              if (callback) {
+                callback(true, data);
+              }
+            }
+          });
+        });
       });
     },
 
@@ -1160,6 +1185,28 @@
       });
     },
 
+    // arangod's generic forbidden error number.
+    ERROR_FORBIDDEN: 11,
+
+    // The access-level probes ask about the current user, which classic mode
+    // always allows. A forbidden answer therefore only happens in RBAC mode,
+    // where grants are per action and resource name and cannot be known
+    // upfront; callers show everything and let the server answer each write.
+    isOwnAccessLevelForbidden: function (xhr) {
+      if (xhr.status !== 403) {
+        return false;
+      }
+      var body = xhr.responseJSON;
+      if (!body) {
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch (e) {
+          body = {};
+        }
+      }
+      return body.errorNum === arangoHelper.ERROR_FORBIDDEN;
+    },
+
     checkCollectionPermissions: function (collectionID, roCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser || "root") +
@@ -1177,6 +1224,9 @@
           }
         },
         error: function (data) {
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
+            return;
+          }
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
@@ -1215,7 +1265,13 @@
           }
         },
         error: function (data) {
-          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+          if (arangoHelper.isOwnAccessLevelForbidden(data)) {
+            if (rwCallback) {
+              rwCallback(false);
+            }
+            return;
+          }
+          arangoHelper.arangoError('User', 'Could not fetch database permissions.');
           if (errorCallback) {
             errorCallback(data);
           }

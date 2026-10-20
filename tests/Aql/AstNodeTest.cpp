@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Logger/LogMacros.h"
 #include "Mocks/Servers.h"
@@ -866,6 +866,760 @@ TEST_F(AstNodeTest, toVelocyPackNestedObjectVerbose) {
   // compact serialization format for values
   AstNode* root = _ast->createNode(s);
   validate(root);
+}
+
+class CompareAstNodesTest : public ::testing::Test {
+ public:
+  CompareAstNodesTest()
+      : _server{}, _query{_server.createFakeQuery()}, _ast{_query->ast()} {}
+
+ protected:
+  tests::mocks::MockAqlServer _server;
+  std::shared_ptr<Query> _query;
+  Ast* _ast;
+
+  Variable* makeVar(std::string_view name) {
+    return _ast->variables()->createVariable(name, /*isUserDefined*/ true);
+  }
+
+  AstNode* createRefNode(Variable* v) { return _ast->createNodeReference(v); }
+
+  AstNode* attr(AstNode* base, std::string_view name) {
+    return _ast->createNodeAttributeAccess(base, name);
+  }
+
+  AstNode* array(std::initializer_list<AstNode*> elems) {
+    AstNode* node = _ast->createNodeArray(elems.size());
+    for (auto* e : elems) {
+      node->addMember(e);
+    }
+    return node;
+  }
+
+  AstNode* object(
+      std::initializer_list<std::pair<std::string_view, AstNode*>> members) {
+    AstNode* node = _ast->createNodeObject();
+    for (auto const& [name, value] : members) {
+      node->addMember(_ast->createNodeObjectElement(name, value));
+    }
+    return node;
+  }
+
+  AstNode* intVal(int64_t v) { return _ast->createNodeValueInt(v); }
+
+  AstNode* strVal(std::string_view s) {
+    return _ast->createNodeValueString(s.data(), s.size());
+  }
+
+  AstNode* createBinaryOp(AstNodeType t, AstNode* lhs, AstNode* rhs) {
+    return _ast->createNodeBinaryOperator(t, lhs, rhs);
+  }
+
+  AstNode* naryOp(AstNodeType t, std::initializer_list<AstNode*> children) {
+    AstNode* node = _ast->createNodeNaryOperator(t);
+    for (auto* c : children) {
+      node->addMember(c);
+    }
+    return node;
+  }
+
+  // Build `lhs IN [elems...]`
+  AstNode* createInOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+    AstNode* arr = _ast->createNodeArray(elems.size());
+    for (auto* e : elems) {
+      arr->addMember(e);
+    }
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_IN, lhs, arr);
+  }
+
+  AstNode* createNinOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+    AstNode* arr = _ast->createNodeArray(elems.size());
+    for (auto* e : elems) {
+      arr->addMember(e);
+    }
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NIN, lhs, arr);
+  }
+
+  AstNode* fcall(std::string_view funcName,
+                 std::initializer_list<AstNode*> args) {
+    AstNode* argsNode = _ast->createNodeArray(args.size());
+    for (auto* a : args) {
+      argsNode->addMember(a);
+    }
+    return _ast->createNodeFunctionCall(funcName, argsNode,
+                                        /*allowInternalFunctions*/ false);
+  }
+
+  // Creates a NODE_TYPE_FCALL_USER node via VPack deserialization instead of
+  // createNodeFunctionCall, which requires V8, and we just want to test the
+  // comparator of the user functions here.
+  AstNode* fcallUser(std::string_view name) {
+    VPackBuilder b;
+    b.openObject();
+    b.add("typeID", VPackValue(static_cast<int>(NODE_TYPE_FCALL_USER)));
+    b.add("name", VPackValue(name));
+    b.close();
+    return _ast->createNode(b.slice());
+  }
+
+  // <true> only works for compile-time constants, and test nodes use loop
+  // variables.
+  int compare(AstNode const* lhs, AstNode const* rhs, bool utf8 = false) {
+    return compareAstNodes<false>(lhs, rhs, utf8);
+  }
+};
+
+// --- constant value comparisons
+// -----------------------------------------------
+
+TEST_F(CompareAstNodesTest, constantInts) {
+  EXPECT_EQ(0, compare(intVal(0), intVal(0)));
+  EXPECT_LT(compare(intVal(1), intVal(2)), 0);
+  EXPECT_GT(compare(intVal(2), intVal(1)), 0);
+}
+
+TEST_F(CompareAstNodesTest, constantStrings) {
+  EXPECT_EQ(0, compare(strVal("foo"), strVal("foo")));
+  EXPECT_LT(compare(strVal("bar"), strVal("foo")), 0);
+  EXPECT_GT(compare(strVal("foo"), strVal("bar")), 0);
+}
+
+TEST_F(CompareAstNodesTest, nullLessThanBool) {
+  auto* n = _ast->createNodeValueNull();
+  auto* b = _ast->createNodeValueBool(false);
+  EXPECT_LT(compare(n, b), 0);
+  EXPECT_GT(compare(b, n), 0);
+}
+
+// --- structural vs constant type ordering
+// -------------------------------------
+
+// String literals sort before structural expressions in the ordering.
+TEST_F(CompareAstNodesTest, stringLiteralBeforeStructural) {
+  auto* x = makeVar("x");
+  EXPECT_LT(compare(strVal("z"), createRefNode(x)), 0);
+  EXPECT_GT(compare(createRefNode(x), strVal("z")), 0);
+}
+
+// --- REFERENCE nodes
+// ----------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, referencesSameVariable) {
+  auto* x = makeVar("x");
+  EXPECT_EQ(0, compare(createRefNode(x), createRefNode(x)));
+}
+
+TEST_F(CompareAstNodesTest, referencesDifferentVariablesOrderedById) {
+  // Variables get monotonically increasing ids, so creation order == id order.
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  EXPECT_LT(compare(createRefNode(a), createRefNode(b)), 0);
+  EXPECT_GT(compare(createRefNode(b), createRefNode(a)), 0);
+}
+
+// Same variable name in different Variable objects → different ids → not equal.
+TEST_F(CompareAstNodesTest, referencesDistinctVariablesSameName) {
+  auto* a1 = makeVar("a");
+  auto* a2 = makeVar("a");  // different object, different id
+  EXPECT_NE(a1->id, a2->id);
+  EXPECT_NE(0, compare(createRefNode(a1), createRefNode(a2)));
+}
+
+// --- ATTRIBUTE_ACCESS nodes
+// ---------------------------------------------------
+
+TEST_F(CompareAstNodesTest, attributeAccessSameBaseAndName) {
+  auto* x = makeVar("x");
+  EXPECT_EQ(0, compare(attr(createRefNode(x), "name"),
+                       attr(createRefNode(x), "name")));
+}
+
+TEST_F(CompareAstNodesTest, attributeAccessDifferentNameOrderedLexically) {
+  auto* x = makeVar("x");
+  EXPECT_LT(
+      compare(attr(createRefNode(x), "age"), attr(createRefNode(x), "name")),
+      0);
+  EXPECT_GT(
+      compare(attr(createRefNode(x), "name"), attr(createRefNode(x), "age")),
+      0);
+}
+
+TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  ASSERT_LT(x->id, y->id);
+  // Same attr name "k"; bases differ by variable id.
+  int cmp = compare(attr(createRefNode(x), "k"), attr(createRefNode(y), "k"));
+  EXPECT_LT(cmp, 0);
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
+  auto* x = makeVar("x");
+  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
+  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
+  auto* x = makeVar("x");
+  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
+                       attr(attr(createRefNode(x), "a"), "c")));
+}
+
+// --- commutative binary operators (EQ / NE)
+// -----------------------------------
+
+TEST_F(CompareAstNodesTest, equalityCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(b),
+                            createRefNode(a));
+  EXPECT_EQ(0, compare(ab, ba));
+}
+
+TEST_F(CompareAstNodesTest, inequalityCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(b),
+                            createRefNode(a));
+  EXPECT_EQ(0, compare(ab, ba));
+}
+
+TEST_F(CompareAstNodesTest, lessThanNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(b),
+                            createRefNode(a));
+  EXPECT_NE(0, compare(ab, ba));
+}
+
+TEST_F(CompareAstNodesTest, additionCommutative) {
+  auto* plus12 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(1), intVal(2));
+  auto* plus21 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(2), intVal(1));
+  EXPECT_EQ(0, compare(plus12, plus21));
+}
+
+// In AQL `x.a AND x.b` is not equivalent to `x.b AND x.a`
+TEST_F(CompareAstNodesTest, binaryAndIsNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(b),
+                            createRefNode(a));
+  EXPECT_NE(compare(ab, ba), 0);
+}
+
+// In AQL `x.a OR x.b` is not equivalent to `x.b OR x.a`
+TEST_F(CompareAstNodesTest, binaryOrIsNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
+                            createRefNode(a));
+  EXPECT_NE(compare(ab, ba), 0);
+}
+
+TEST_F(CompareAstNodesTest, multiplicationCommutative) {
+  auto* m12 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
+  auto* m21 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
+  EXPECT_EQ(0, compare(m12, m21));
+}
+
+TEST_F(CompareAstNodesTest, equalityDifferentRhsNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  EXPECT_NE(0, compare(createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                      createRefNode(a), createRefNode(b)),
+                       createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                      createRefNode(a), createRefNode(c))));
+}
+
+// --- FCALL nodes
+// --------------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, fcallSameFunction) {
+  auto* x = makeVar("x");
+  EXPECT_EQ(0, compare(fcall("LENGTH", {createRefNode(x)}),
+                       fcall("LENGTH", {createRefNode(x)})));
+}
+
+TEST_F(CompareAstNodesTest, fcallOrderedByName) {
+  auto* x = makeVar("x");
+  EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
+                    fcall("UPPER", {createRefNode(x)})),
+            0);
+  EXPECT_GT(compare(fcall("UPPER", {createRefNode(x)}),
+                    fcall("LENGTH", {createRefNode(x)})),
+            0);
+}
+
+TEST_F(CompareAstNodesTest, fcallDifferentArgs) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  ASSERT_LT(x->id, y->id);
+  EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
+                    fcall("LENGTH", {createRefNode(y)})),
+            0);
+}
+
+TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
+                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserSameNameEqual) {
+  EXPECT_EQ(0, compare(fcallUser("my::func"), fcallUser("my::func")));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
+  EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
+}
+
+TEST_F(CompareAstNodesTest, fcallNonDeterministicNeverEqual) {
+  // Two different RAND() nodes must not compare as equal. Also verify
+  // anti-symmetry: compare(a,b) and compare(b,a) must have opposite signs.
+  auto* r1 = fcall("RAND", {});
+  auto* r2 = fcall("RAND", {});
+  int const cmp = compare(r1, r2);
+  EXPECT_NE(0, cmp);
+  EXPECT_EQ(-cmp, compare(r2, r1));
+}
+
+// --- NARY operators
+// -----------------------------------------------------------
+
+// `x.a AND x.b AND x.c` is not equivalent to `x.c AND x.a AND x.b`
+// In AQL, the order matters
+TEST_F(CompareAstNodesTest, naryAndIsNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  auto* cab = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
+                     {createRefNode(c), createRefNode(a), createRefNode(b)});
+  EXPECT_NE(0, compare(abc, cab));
+}
+
+TEST_F(CompareAstNodesTest, naryAndDifferentMembersNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* ab =
+      naryOp(NODE_TYPE_OPERATOR_NARY_AND, {createRefNode(a), createRefNode(b)});
+  auto* ac =
+      naryOp(NODE_TYPE_OPERATOR_NARY_AND, {createRefNode(a), createRefNode(c)});
+  EXPECT_NE(0, compare(ab, ac));
+}
+
+TEST_F(CompareAstNodesTest, naryAndDifferentCountsNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* ab =
+      naryOp(NODE_TYPE_OPERATOR_NARY_AND, {createRefNode(a), createRefNode(b)});
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  EXPECT_NE(0, compare(ab, abc));
+}
+
+// `x.a OR x.b OR x.c` is not equivalent to `x.c OR x.a OR x.b`
+// In AQL, the order matters
+TEST_F(CompareAstNodesTest, naryOrIsNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  auto* bac = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(b), createRefNode(a), createRefNode(c)});
+  EXPECT_NE(0, compare(abc, bac));
+}
+
+TEST_F(CompareAstNodesTest, naryOrDifferentCountsNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* ab =
+      naryOp(NODE_TYPE_OPERATOR_NARY_OR, {createRefNode(a), createRefNode(b)});
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  EXPECT_NE(0, compare(ab, abc));
+}
+
+// --- IN / NIN array element order independence
+// ---------------------------------
+
+TEST_F(CompareAstNodesTest, inArrayElementOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* in12 = createInOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* in21 = createInOp(createRefNode(x), {intVal(2), intVal(1)});
+  EXPECT_EQ(0, compare(in12, in21));
+}
+
+TEST_F(CompareAstNodesTest, ninArrayElementOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* nin12 = createNinOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* nin21 = createNinOp(createRefNode(x), {intVal(2), intVal(1)});
+  EXPECT_EQ(0, compare(nin12, nin21));
+}
+
+TEST_F(CompareAstNodesTest, inDifferentOperandsNotEqual) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  auto* inX = createInOp(createRefNode(x), {intVal(1)});
+  auto* inY = createInOp(createRefNode(y), {intVal(1)});
+  EXPECT_NE(0, compare(inX, inY));
+}
+
+TEST_F(CompareAstNodesTest, inDifferentArraySizeNotEqual) {
+  auto* x = makeVar("x");
+  auto* in1 = createInOp(createRefNode(x), {intVal(1)});
+  auto* in12 = createInOp(createRefNode(x), {intVal(1), intVal(2)});
+  EXPECT_NE(0, compare(in1, in12));
+}
+
+TEST_F(CompareAstNodesTest, inAndNinNotEqual) {
+  auto* x = makeVar("x");
+  EXPECT_NE(0, compare(createInOp(createRefNode(x), {intVal(1)}),
+                       createNinOp(createRefNode(x), {intVal(1)})));
+}
+
+// --- bind parameters
+// ----------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, bindParameterSameNameEqual) {
+  auto* p1 = _ast->createNodeParameter("x");
+  auto* p2 = _ast->createNodeParameter("x");
+  EXPECT_EQ(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, bindParameterDifferentNamesNotEqual) {
+  auto* p1 = _ast->createNodeParameter("x");
+  auto* p2 = _ast->createNodeParameter("y");
+  EXPECT_NE(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, datasourceParameterSameNameEqual) {
+  auto* p1 = _ast->createNodeParameterDatasource("coll");
+  auto* p2 = _ast->createNodeParameterDatasource("coll");
+  EXPECT_EQ(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, datasourceParameterDifferentNamesNotEqual) {
+  auto* p1 = _ast->createNodeParameterDatasource("coll1");
+  auto* p2 = _ast->createNodeParameterDatasource("coll2");
+  EXPECT_NE(0, compare(p1, p2));
+}
+
+// --- quantifiers
+// -------------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, quantifierSameKindEqual) {
+  auto* all1 = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  auto* all2 = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  EXPECT_EQ(0, compare(all1, all2));
+}
+
+TEST_F(CompareAstNodesTest, quantifierDifferentKindsNotEqual) {
+  auto* all = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  auto* none = _ast->createNodeQuantifier(Quantifier::Type::kNone);
+  EXPECT_NE(0, compare(all, none));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastSameThresholdEqual) {
+  auto* al2a =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* al2b =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  EXPECT_EQ(0, compare(al2a, al2b));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentThresholdNotEqual) {
+  auto* al2 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* al3 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(3));
+  EXPECT_NE(0, compare(al2, al3));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastNotEqualAll) {
+  auto* al2 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* all = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  EXPECT_NE(0, compare(al2, all));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
+  // non-constant thresholds (variable refs) fall through to
+  // compareChildrenInOrder
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  auto* alA =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(a));
+  auto* alB =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(b));
+  EXPECT_LT(compare(alA, alB), 0);
+  EXPECT_GT(compare(alB, alA), 0);
+}
+
+// --- compareUtf8 flag propagation
+// -------------------------------------------------
+
+TEST_F(CompareAstNodesTest, stringCompareUtf8FlagPropagates) {
+  EXPECT_EQ(0, compare(strVal("abc"), strVal("abc"), /*utf8=*/true));
+  EXPECT_LT(compare(strVal("abc"), strVal("abd"), /*utf8=*/true), 0);
+  EXPECT_GT(compare(strVal("abd"), strVal("abc"), /*utf8=*/true), 0);
+}
+
+// NFC U+00E9 (0xC3 0xA9) vs NFD e + combining accent (0x65 0xCC 0x81):
+// byte comparison → not equal; ICU comparison → equal
+TEST_F(CompareAstNodesTest, nfcAndNfdDistinctWithoutUtf8) {
+  auto* nfc = strVal("caf\xc3\xa9");
+  auto* nfd = strVal("cafe\xcc\x81");
+  EXPECT_NE(0, compare(nfc, nfd, /*utf8=*/false));
+  EXPECT_EQ(0, compare(nfc, nfd, /*utf8=*/true));
+}
+
+TEST_F(CompareAstNodesTest, naryAndWithNfcNfdStringsUsesByteCompare) {
+  auto* nfc = strVal("caf\xc3\xa9");
+  auto* nfd = strVal("cafe\xcc\x81");
+  auto* andNfc = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {nfc});
+  auto* andNfd = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {nfd});
+  EXPECT_NE(0, compare(andNfc, andNfd, /*utf8=*/false));
+  EXPECT_EQ(0, compare(andNfc, andNfd, /*utf8=*/true));
+}
+
+// --- IN / NIN with non-constant (structural) elements
+// -------------------------
+
+TEST_F(CompareAstNodesTest, inNonConstantElementsOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  auto* inAB =
+      createInOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* inBA =
+      createInOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  EXPECT_EQ(0, compare(inAB, inBA));
+}
+
+TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ninAB =
+      createNinOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* ninBA =
+      createNinOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  EXPECT_EQ(0, compare(ninAB, ninBA));
+}
+
+// test string and custom types, as both have rank 3 in valueTypeOrder, and we
+// need to make sure they're distinguished to produce the correct comparison
+// result.
+TEST_F(CompareAstNodesTest, inStringElementsSortBeforeStructural) {
+  auto* x = makeVar("x");
+  auto* p = _ast->createNodeParameter("p");
+  auto* in1 = createInOp(createRefNode(x), {strVal("abc"), p});
+  auto* in2 = createInOp(createRefNode(x), {p, strVal("abc")});
+  EXPECT_EQ(0, compare(in1, in2));
+}
+
+TEST_F(CompareAstNodesTest, inLiteralArrayVsBindParameterNotEqual) {
+  // When one side is a literal array and the other is a bind parameter, they
+  // have different RHS node types and must not compare as equal.
+  auto* x = makeVar("x");
+  auto* p = _ast->createNodeParameter("arr");
+  auto* inLiteral = createInOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* inBind =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_IN, createRefNode(x), p);
+  EXPECT_NE(0, compare(inLiteral, inBind));
+}
+
+// --- SUBQUERY nodes
+// -----------------------------------------------------------
+
+// Two distinct subquery nodes are not equal even with the same structure;
+// equality is pointer identity only.
+TEST_F(CompareAstNodesTest, subqueryDistinctNodesNotEqual) {
+  auto* s1 = _ast->createNodeSubquery();
+  auto* s2 = _ast->createNodeSubquery();
+  EXPECT_NE(s1, s2);
+  EXPECT_NE(0, compare(s1, s2));
+}
+
+TEST_F(CompareAstNodesTest, subquerySamePointerEqual) {
+  auto* s = _ast->createNodeSubquery();
+  EXPECT_EQ(0, compare(s, s));
+}
+
+// --- structural nodes of different AstNodeType
+// --------------------------------
+
+TEST_F(CompareAstNodesTest, differentStructuralTypesOrderedByEnum) {
+  static_assert(NODE_TYPE_ATTRIBUTE_ACCESS < NODE_TYPE_REFERENCE,
+                "test relies on ATTRIBUTE_ACCESS sorting before REFERENCE");
+  auto* x = makeVar("x");
+  AstNode* refNode = createRefNode(x);
+  AstNode* attrNode = attr(createRefNode(x), "f");
+  EXPECT_LT(compare(attrNode, refNode), 0);
+  EXPECT_GT(compare(refNode, attrNode), 0);
+}
+
+// --- OBJECT nodes whose members are not constants
+// ------------------------------
+
+// Objects reading different attributes are different expressions, so a caller
+// deduplicating on equality must not collapse them.
+TEST_F(CompareAstNodesTest, objectsSelectingDifferentAttributesNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"x", attr(createRefNode(doc), "a")}});
+  auto* rhs = object({{"x", attr(createRefNode(doc), "b")}});
+  ASSERT_FALSE(lhs->valueHasVelocyPackRepresentation());
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Members bound to variable references are part of the object's identity, as
+// is the attribute each remaining member reads.
+TEST_F(CompareAstNodesTest, objectsWithDifferentReferenceMembersNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* s1 = makeVar("s1");
+  auto* s2 = makeVar("s2");
+  auto* lhs = object({{"a", createRefNode(s1)},
+                      {"b", createRefNode(s2)},
+                      {"email", attr(createRefNode(doc), "email")}});
+  auto* rhs = object({{"a", createRefNode(s2)},
+                      {"b", createRefNode(s1)},
+                      {"email", attr(createRefNode(doc), "other")}});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Comparing objects whose members have no VelocyPack representation must not
+// throw.
+TEST_F(CompareAstNodesTest, objectWithReferenceMemberDoesNotThrow) {
+  auto* doc = makeVar("doc");
+  auto* sub = makeVar("sub");
+  auto makeObject = [&]() {
+    return object(
+        {{"a", createRefNode(sub)},
+         {"email", attr(createRefNode(doc), "email")},
+         {"first", attr(createRefNode(doc), "first")},
+         {"is_deactivated", attr(createRefNode(doc), "is_deactivated")}});
+  };
+  EXPECT_NO_THROW(compare(makeObject(), makeObject()));
+}
+
+// Function call arguments are compared child by child, so a nested object is
+// reached like a top-level one.
+TEST_F(CompareAstNodesTest, objectNestedInFunctionCallNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = fcall("MERGE", {object({{"x", attr(createRefNode(doc), "a")}})});
+  auto* rhs = fcall("MERGE", {object({{"x", attr(createRefNode(doc), "b")}})});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// Array elements that are not constants are told apart.
+TEST_F(CompareAstNodesTest, arraysOfNonConstantElementsCompared) {
+  auto* doc = makeVar("doc");
+  EXPECT_NE(0, compare(array({attr(createRefNode(doc), "a")}),
+                       array({attr(createRefNode(doc), "b")})));
+}
+
+// An array member counts towards the object's identity, both its length and
+// the variables it holds.
+TEST_F(CompareAstNodesTest, objectsWithDifferingArrayMembersNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* lhs = object({{"x", array({createRefNode(a)})}});
+  auto* rhs = object({{"x", array({createRefNode(b), createRefNode(c)})}});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, objectsReorderedNoDuplicateKeysEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"a", attr(createRefNode(doc), "x")},
+                      {"b", attr(createRefNode(doc), "y")}});
+  auto* rhs = object({{"b", attr(createRefNode(doc), "y")},
+                      {"a", attr(createRefNode(doc), "x")}});
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+// a duplicate key means order decides which value survives
+TEST_F(CompareAstNodesTest, objectsWithDuplicateKeysNotReordered) {
+  auto* doc = makeVar("doc");
+  auto* lhs = object({{"x", attr(createRefNode(doc), "a")}, {"x", intVal(4)}});
+  auto* rhs = object({{"x", intVal(4)}, {"x", attr(createRefNode(doc), "a")}});
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// one computed key and the whole object takes the safe path
+TEST_F(CompareAstNodesTest, objectsWithComputedKeyNotReordered) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(
+      _ast->createNodeObjectElement("a", attr(createRefNode(doc), "x")));
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "y")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "y")));
+  rhs->addMember(
+      _ast->createNodeObjectElement("a", attr(createRefNode(doc), "x")));
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+// mustCheckUniqueness() skips it, but one member has nothing to reorder
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberSameKeyAndValueEqual) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v")));
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentKeyNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      attr(createRefNode(doc), "k1"), attr(createRefNode(doc), "v")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      attr(createRefNode(doc), "k2"), attr(createRefNode(doc), "v")));
+  EXPECT_NE(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, singleComputedKeyMemberDifferentValueNotEqual) {
+  auto* doc = makeVar("doc");
+  auto* k = attr(createRefNode(doc), "k");
+  auto* lhs = _ast->createNodeObject();
+  lhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v1")));
+  auto* rhs = _ast->createNodeObject();
+  rhs->addMember(_ast->createNodeCalculatedObjectElement(
+      k, attr(createRefNode(doc), "v2")));
+  EXPECT_NE(0, compare(lhs, rhs));
 }
 
 }  // namespace

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,8 +41,6 @@ struct LogCurrentSupervisionElection;
 struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 }  // namespace arangodb::replication2::agency
-
-struct TRI_vocbase_t;
 
 namespace arangodb::replication2::agency::methods {
 

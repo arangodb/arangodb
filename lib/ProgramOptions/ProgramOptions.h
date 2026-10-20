@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -119,6 +118,7 @@ class ProgramOptions {
   );
 
   std::string progname() const;
+  char const* binaryPath() const noexcept;
 
   // sets a value translator
   void setTranslator(std::function<std::string(std::string const&,
@@ -261,7 +261,7 @@ class ProgramOptions {
   void addOption(Option&& option);
 
   // modernize an option name
-  std::string const& modernize(std::string const& name);
+  std::string modernize(std::string const& name);
 
   // determine maximum width of all options labels
   size_t optionsWidth() const;

@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsFeature.h"
 
+#include "Statistics/StatisticsOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -30,7 +30,6 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
@@ -56,11 +55,11 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#include "Utils/Thread.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -571,10 +570,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread {
+class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread(Server& server)
-      : ServerThread(server, "Statistics") {}
+  // only processes request statistics, no ExecContext required
+  explicit StatisticsThread() : Thread("Statistics", nullptr) {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -625,18 +624,32 @@ class StatisticsThread final : public ServerThread {
 // -----------------------------------------------------------------------------
 
 StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& registry)
+    : StatisticsFeature(server, registry, StatisticsFeatureOptions{}) {}
+
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& registry, StatisticsFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_request_statistics_memory_usage{})},
+          registry.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_connection_statistics_memory_usage{})} {
+          registry.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
+
+  if (_options.statistics) {
+    // initialize counters for all HTTP request types
+    ConnectionStatistics::initialize();
+    RequestStatistics::initialize();
+  } else {
+    // turn ourselves off
+    disable();
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
@@ -687,68 +700,6 @@ StatisticsFeature::StatisticsFeature(
 
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
 
-void StatisticsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.disable-statistics", "server.statistics");
-
-  options
-      ->addOption("--server.statistics",
-                  "Whether to enable statistics gathering and statistics APIs.",
-                  new BooleanParameter(&_options.statistics))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-A side effect of setting this option to `false` is that no statistics are
-shown in the dashboard of ArangoDB's web interface, and that the REST API for
-server statistics at `/_admin/statistics` returns HTTP 404.)");
-
-  options
-      ->addOption("--server.statistics-history",
-                  "Whether to store statistics in the database.",
-                  new BooleanParameter(&_options.statisticsHistory),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Dynamic))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-If set to `false`, no statistics are shown in the dashboard of ArangoDB's
-web interface, but the current statistics are available and can be queried
-using the REST API for server statistics at `/_admin/statistics`.
-This is less intrusive than setting the `--server.statistics` option to
-`false`.)");
-
-  options
-      ->addOption(
-          "--server.statistics-all-databases",
-          "Provide cluster statistics in the web interface for all databases.",
-          new BooleanParameter(&_options.statisticsAllDatabases),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30800);
-}
-
-void StatisticsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_options.statistics) {
-    // initialize counters for all HTTP request types
-    ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
-  } else {
-    // turn ourselves off
-    disable();
-  }
-
-  _statisticsHistoryTouched =
-      options->processingResult().touched("--server.statistics-history");
-}
-
 void StatisticsFeature::start() {
   TRI_ASSERT(isEnabled());
 
@@ -770,7 +721,7 @@ void StatisticsFeature::start() {
   // don't start the thread when we are running an upgrade
   auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (!databaseFeature.upgrade()) {
-    _statisticsThread = std::make_unique<StatisticsThread>(server());
+    _statisticsThread = std::make_unique<StatisticsThread>();
 
     if (!_statisticsThread->start()) {
       LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
@@ -781,7 +732,7 @@ void StatisticsFeature::start() {
 
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() &&
-      !_statisticsHistoryTouched) {
+      !_options.statisticsHistoryTouched) {
     _options.statisticsHistory = false;
   }
 
@@ -941,9 +892,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
            static_cast<double>(PhysicalMemory::getValue());
   }
 
-  ServerStatistics const& serverInfo =
-      server().getFeature<metrics::MetricsFeature>().serverStatistics();
-
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
                globals, ensureWhitespace);
@@ -969,8 +917,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
-               ensureWhitespace);
+  appendMetric(result, std::to_string(metrics::MetricsFeature::serverUptime()),
+               "uptime", globals, ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
 

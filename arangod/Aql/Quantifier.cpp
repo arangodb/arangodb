@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Quantifier.h"
@@ -28,7 +27,7 @@
 
 #include <algorithm>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief converts a quantifier string into an int equivalent
 Quantifier::Type Quantifier::fromString(std::string_view value) {
@@ -119,3 +118,5 @@ bool Quantifier::isType(AstNode const* quantifier, Type type) {
   }
   return false;
 }
+
+}  // namespace arangodb::aql

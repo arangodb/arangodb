@@ -21,19 +21,21 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
 const sleep = require('internal').sleep;
-const { getDBServerEndpoints } = require("@arangodb/test-helper");
 const isCluster = internal.isCluster();
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 const filter = isCluster ? instanceRole.dbServer: instanceRole.single;
+
+function logMessage(msg) {
+  internal.print(`${new Date().toISOString()} ${msg}`);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
@@ -98,6 +100,7 @@ function IndexSuite() {
       count = 0;
       let progress_flow = [];
       while (true) {
+        logMessage(`testIndexProgressIsReported: progress_flow: ${progress_flow}`);
         idxs = arango.GET(`/_api/index?collection=${cn}&withHidden=true`);
         assertTrue(idxs.hasOwnProperty("indexes"), idxs);
         idxs = idxs.indexes;
@@ -120,7 +123,7 @@ function IndexSuite() {
           break;
         }
           
-        sleep(0.1);
+        sleep(0.15);
         if (++count > 4000) {
           // Value intentionally high for ASAN runs, this is 100x slower
           // than observed on an old machine with debug build!

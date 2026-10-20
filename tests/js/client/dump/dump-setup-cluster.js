@@ -20,9 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const base = require("fs").join(
@@ -41,9 +38,6 @@ const setup = require(base);
   setup.createExtendedName();
   setup.createMultiShard();
   setup.createComputedValues();
-  setup.createPaddedKeyGen();
-  setup.createAutoIncKeyGen();
-  setup.createUUIDKeyGen();
   setup.createStrings();
   setup.createPersistent();
   setup.createView();
@@ -51,7 +45,6 @@ const setup = require(base);
   setup.createInvertedIndex();
   setup.createSmartGraph();
   setup.createSmartGraph3_11_compat();
-  setup.createSmartArangoSearch();
   setup.createSatelliteCollections();
   setup.createSatelliteGraphs();
   setup.createReplicationFactors();
@@ -59,15 +52,6 @@ const setup = require(base);
   setup.createFoxx();
   setup.createAnalyzers();
 
-  // all types of enterprise related graphs
-  setup.createEmptySmartGraph();
-  setup.createEmptyEnterpriseGraph();
-  setup.createEmptySatelliteGraph();
-  setup.createEmptyDisjointGraph();
-  setup.createSmartGraphWithoutData();
-  setup.createEnterpriseGraphWithoutData();
-  setup.createSatelliteGraphWithoutData();
-  setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
   setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();

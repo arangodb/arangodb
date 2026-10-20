@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -32,12 +30,11 @@ const jsunity = require("jsunity");
 const base64Encode = require('internal').base64Encode;
 const db = require("internal").db;
 const request = require("@arangodb/request");
-const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinatorEndpoints();
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function TransactionsSuite () {
   'use strict';
@@ -46,9 +43,10 @@ function TransactionsSuite () {
   const users = [
     { username: 'alice', password: 'pass1' },
     { username: 'bob', password: 'pass2' },
+    { username: 'claudine', password: 'pass3' },
   ];
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest(auth, method, path, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -59,14 +57,14 @@ function TransactionsSuite () {
         },
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       if (method !== 'GET') {
         envelope.body = body;
       }
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
 
@@ -87,12 +85,12 @@ function TransactionsSuite () {
   
   let assertNotInList = function (list, trx) {
     assertTrue(list.filter(function(data) { return data.id === trx.id; }).length === 0,
-               "transaction " + trx.id + " not found in list of transactions " + JSON.stringify(trx));
+               "transaction " + trx.id + " unexpectedly found in list of transactions " + JSON.stringify(trx));
   };
 
   return {
     setUp: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
@@ -103,14 +101,19 @@ function TransactionsSuite () {
       try {
         userModule.remove(users[0].username);
         userModule.remove(users[1].username);
+        userModule.remove(users[2].username);
       } catch (err) {}
       userModule.save(users[0].username, users[0].password);
       userModule.save(users[1].username, users[1].password);
+      userModule.save(users[2].username, users[2].password);
 
       userModule.grantDatabase(users[0].username, '_system', 'rw');
       userModule.grantDatabase(users[1].username, '_system', 'rw');
+      // users[2] is no admin user
+      userModule.grantDatabase(users[2].username, '_system', 'ro');
       userModule.grantCollection(users[0].username, '_system', cn, 'rw');
       userModule.grantCollection(users[1].username, '_system', cn, 'rw');
+      userModule.grantCollection(users[2].username, '_system', cn, 'rw');
       
       // note: the wait time here is arbitrary. some wait time is
       // necessary because we are creating the database and collection
@@ -130,6 +133,7 @@ function TransactionsSuite () {
       db._drop(cn);
       userModule.remove(users[0].username);
       userModule.remove(users[1].username);
+      userModule.remove(users[2].username);
     },
 
     testListTransactions: function() {
@@ -279,8 +283,7 @@ function TransactionsSuite () {
 
       try {
         // commit with different user
-        result = sendRequest(users[1], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
-        // should fail with not found
+        result = sendRequest(users[2], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
         assertEqual(result.status, 404);
 
         result = sendRequest(users[0], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
@@ -293,7 +296,7 @@ function TransactionsSuite () {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-    
+
     testCreateAndAbortDifferentUser: function() {
       const obj = { collections: { read: cn } };
 
@@ -306,13 +309,37 @@ function TransactionsSuite () {
       let trx1 = result.body.result;
 
       try {
-        // abort with different user
-        result = sendRequest(users[1], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
-        // should fail with not found
+        // not found with different - non-admin - user
+        result = sendRequest(users[2], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
         assertEqual(result.status, 404);
 
         result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
 
+        assertEqual(result.status, 200);
+        assertEqual(trx1.id, result.body.result.id);
+        assertEqual("aborted", result.body.result.status);
+        
+        result = sendRequest(users[0], 'GET', url, {}, true);
+        assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+
+    testCreateAndAbortAdminUser: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
+
+      assertEqual(result.status, 201);
+      assertFalse(result.body.result.id === undefined);
+
+      let trx1 = result.body.result;
+
+      try {
+        // different admin user can abort
+        result = sendRequest(users[1], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
@@ -336,9 +363,8 @@ function TransactionsSuite () {
       let trx1 = result.body.result;
 
       try {
-        // abort with different user
-        result = sendRequest(users[1], 'GET', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
-        // should fail with not found
+        // not found with different - non-admin - user
+        result = sendRequest(users[2], 'GET', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
         assertEqual(result.status, 404);
 
         result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
@@ -366,9 +392,9 @@ function TransactionsSuite () {
       let trx1 = result.body.result;
 
       try {
-        // get list with different user
-        result = sendRequest(users[1], 'GET', url, {}, true);
-        // should not find it in list
+        // non-admin user cannot see transactions of other users
+        result = sendRequest(users[2], 'GET', url, {}, true);
+        assertEqual(result.status, 200);
         assertNotInList(result.body.transactions, trx1);
 
         result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
@@ -383,7 +409,6 @@ function TransactionsSuite () {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-
   };
 }
 

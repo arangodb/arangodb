@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 

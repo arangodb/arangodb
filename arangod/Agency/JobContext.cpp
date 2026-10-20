@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "JobContext.h"
@@ -35,8 +34,9 @@
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)
@@ -96,3 +96,5 @@ void JobContext::abort(std::string const& reason) {
     _job->abort(reason);
   }
 }
+
+}  // namespace arangodb::consensus

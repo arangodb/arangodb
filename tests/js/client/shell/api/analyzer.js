@@ -8,7 +8,6 @@ const error = internal.errors;
 const isEnterprise = require("internal").isEnterprise();
 
 function testSuite() {
-  const endpoint = arango.getEndpoint();
   const db = require("@arangodb").db;
   const name = "vimoji";
 

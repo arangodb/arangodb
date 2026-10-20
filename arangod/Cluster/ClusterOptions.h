@@ -32,7 +32,7 @@ namespace arangodb {
 
 struct ClusterOptions {
   std::vector<std::string> agencyEndpoints;
-  std::string agencyPrefix;
+  std::string agencyPrefix = "arango";
   std::string myRole;
   ServerState::RoleEnum requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::string myEndpoint;

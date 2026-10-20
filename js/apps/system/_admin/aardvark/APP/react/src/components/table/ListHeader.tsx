@@ -24,7 +24,7 @@ export const ListHeader = ({
     const timeout = window.setTimeout(() => {
       forceUpdate();
     }, 1000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     return () => window.clearTimeout(timeout);
   }, [forceUpdate]);
   return (

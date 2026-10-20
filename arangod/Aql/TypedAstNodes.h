@@ -693,9 +693,9 @@ struct ExpansionNode : TypedAstNode {
 
   AstNode const* getFilter() const { return _node->getMember(2); }
 
-  AstNode const* getProjection() const { return _node->getMember(3); }
+  AstNode const* getLimit() const { return _node->getMember(3); }
 
-  AstNode const* getOptions() const { return _node->getMember(4); }
+  AstNode const* getProjection() const { return _node->getMember(4); }
 };
 
 struct ValueNode : TypedAstNode {

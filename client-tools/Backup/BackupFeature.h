@@ -18,28 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Backup/BackupFeatureOptions.h"
 
 #include "Utils/ClientManager.h"
 
 namespace arangodb {
 
+class ClientFeature;
+
 class BackupFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Backup"; }
 
-  BackupFeature(application_features::ApplicationServer& server, int& exitCode);
+  BackupFeature(application_features::ApplicationServer& server,
+                ClientFeature& client, int& exitCode,
+                BackupFeatureOptions options);
+  BackupFeature(application_features::ApplicationServer& server,
+                ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  virtual void collectOptions(
-      std::shared_ptr<options::ProgramOptions>) override final;
-  virtual void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void prepare() override final;
   virtual void start() override final;
 
@@ -56,22 +58,10 @@ class BackupFeature : public application_features::ApplicationFeature {
   static std::string operationList(std::string const& separator);
 
  public:
-  struct Options {
-    bool allowInconsistent = false;
-    std::string identifier = "";
-    std::string label = "";
-    std::string statusId = "";
-    std::string rcloneConfigFile = "";
-    std::string remoteDirectory = "";
-    double maxWaitForLock = 60.0;
-    double maxWaitForRestart = 0.0;
-    std::string operation = "list";
-    bool abort = false;
-    bool abortTransactionsIfNeeded = false;
-    bool ignoreVersion = false;
-  };
+  using Options = BackupFeatureOptions;
 
  private:
+  ClientFeature& _client;
   ClientManager _clientManager;
   int& _exitCode;
   Options _options;

@@ -18,12 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "Basics/Result.h"
 #include <velocypack/Slice.h>
 
 #include <string_view>
@@ -36,5 +35,12 @@ enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
 auth::Level convertToAuthLevel(velocypack::Slice grants);
 auth::Level convertToAuthLevel(std::string_view grant);
 std::string_view convertFromAuthLevel(auth::Level lvl);
+
+inline Result isNameAndNoId(std::string_view name) {
+  if (!name.empty() && (name[0] >= '0' && name[0] <= '9')) {
+    return {TRI_ERROR_FORBIDDEN, "Name must not be an ID (numerical) here!"};
+  }
+  return {};
+}
 
 }  // namespace arangodb::auth

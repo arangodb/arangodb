@@ -31,6 +31,8 @@ add_library(arango_iresearch STATIC
   IResearchExecutionPool.h
   IResearchFeature.cpp
   IResearchFeature.h
+  IResearchOptionsProvider.cpp
+  IResearchOptionsProvider.h
   IResearchFilterFactory.cpp
   IResearchFilterFactory.h
   IResearchFilterOptimization.cpp
@@ -94,7 +96,9 @@ add_library(arango_iresearch STATIC
   Wildcard/Options.cpp
   Wildcard/Options.h
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.h)
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.h
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestIResearchHandler.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestIResearchHandler.h)
 
 add_dependencies(arango_iresearch
   v8_build # for ICU required by iResearch

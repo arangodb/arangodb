@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Daniel H. Larkin
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVPackIndex.h"
@@ -35,7 +32,6 @@
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/Enumerate.h"
@@ -49,7 +45,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -320,13 +315,13 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _indexIteratorOptions(opts),
-        _key(trx),
+        _key(ThreadLocalStringLeaser::lease()),
         _done(false) {
     TRI_ASSERT(index->unique());
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
-    _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
+    _key.constructUniqueVPackIndexValue(index->objectId(), indexValues);
 
     // if the cache is enabled, it must use the VPackKeyHasher!
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "VPackKeyHasher");
@@ -375,7 +370,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   bool rearmImpl(velocypack::Slice slice,
                  IndexIteratorOptions const& /*opts*/) override {
     TRI_ASSERT(slice.length() > 0);
-    _key->constructUniqueVPackIndexValue(_index->objectId(), slice);
+    _key.constructUniqueVPackIndexValue(_index->objectId(), slice);
     return true;
   }
 
@@ -411,11 +406,11 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         [&cb, this](rocksdb::PinnableSlice& ps) {
           if (_index->hasStoredValues()) {
             auto data = SliceCoveringDataWithStoredValues(
-                RocksDBKey::indexedVPack(_key.ref()),
+                RocksDBKey::indexedVPack(_key),
                 RocksDBValue::uniqueIndexStoredValues(ps));
             cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
           } else {
-            auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+            auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key));
             cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
           }
         },
@@ -467,7 +462,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds =
         RocksDBTransactionState::toMethods(_trx, _collection->id());
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps,
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key.string(), &ps,
                                    canReadOwnWrites());
 
     if (s.ok()) {
@@ -480,7 +475,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         // LocalDocumentId
         builder->add(VPackValue(RocksDBValue::documentId(ps).id()));
         // index values
-        builder->add(RocksDBKey::indexedVPack(_key->string()));
+        builder->add(RocksDBKey::indexedVPack(_key.string()));
         if (_index->hasStoredValues()) {
           // "storedValues"
           builder->add(RocksDBValue::uniqueIndexStoredValues(ps));
@@ -522,7 +517,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   rocksdb::Slice lookupValueForCache() const noexcept {
     // use bounds start value
-    return ::lookupValueFromSlice(_key->string());
+    return ::lookupValueFromSlice(_key.string());
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -531,7 +526,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
   IndexIteratorOptions const _indexIteratorOptions;
-  RocksDBKeyLeaser _key;
+  RocksDBKey _key;
   bool _done;
 };
 
@@ -1228,15 +1223,13 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        info, StaticStrings::CacheEnabled, false),
                    /*cacheManager*/
                    collection.vocbase()
-                       .server()
-                       .getFeature<CacheManagerFeature>()
+                       .engine<RocksDBEngine>()
+                       .getCacheManagerProvider()
                        .manager(),
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()),
-      _forceCacheRefill(collection.vocbase()
-                            .server()
-                            .getFeature<RocksDBIndexCacheRefillFeature>()
-                            .autoRefill()),
+      _forceCacheRefill(
+          collection.vocbase().engine<RocksDBEngine>().autoRefillIndexCaches()),
       _deduplicate(basics::VelocyPackHelper::getBooleanValue(
           info, StaticStrings::IndexDeduplicate, true)),
       _estimates(true),
@@ -2106,7 +2099,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+    if (type() == IndexType::Hash) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");
@@ -2403,7 +2396,7 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
   TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
     // mmfiles failure point compat
     // the hash index is a derived type of the vpack index...
-    if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    if (this->type() == IndexType::Hash) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }

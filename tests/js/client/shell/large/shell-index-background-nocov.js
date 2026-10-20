@@ -21,14 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
-const {waitForEstimatorSync } = require('@arangodb/test-helper');
+const { waitForEstimatorSync } = require('@arangodb/test-helper');
 const {
   launchPlainSnippetInBG,
   joinBGShells,

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DaemonFeature.h"
@@ -28,27 +27,24 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <chrono>
+#include <filesystem>
 #include <stdexcept>
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileResult.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DaemonOptionsProvider.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
@@ -69,56 +65,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DaemonFeature::DaemonFeature(ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DaemonFeature(server, DaemonFeatureOptions{}) {}
+
+DaemonFeature::DaemonFeature(ApplicationServer& server,
+                             DaemonFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--daemon",
-      "Start the server as a daemon (background process). Requires --pid-file "
-      "to be set.",
-      new BooleanParameter(&_options.daemon),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--pid-file",
-      "The name of the process ID file to use if the server runs as a daemon.",
-      new StringParameter(&_options.pidFile),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--working-directory", "The working directory in daemon mode.",
-      new StringParameter(&_options.workingDirectory),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-}
-
-void DaemonFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_options.daemon) {
-    return;
-  }
-
-  if (_options.pidFile.empty()) {
-    LOG_TOPIC("9d6ba", FATAL, arangodb::Logger::FIXME)
-        << "need --pid-file in --daemon mode";
-    FATAL_ERROR_EXIT();
-  }
-
-  // make the pid filename absolute
-  std::string currentDir = FileUtils::currentDirectory().result();
-  std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
-
-  if (!absoluteFile.empty()) {
-    _options.pidFile = absoluteFile;
-    LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
-        << "using absolute pid file '" << _options.pidFile << "'";
-  } else {
-    LOG_TOPIC("24de9", FATAL, arangodb::Logger::FIXME)
-        << "cannot determine absolute path";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void DaemonFeature::daemonize() {
@@ -157,21 +110,31 @@ void DaemonFeature::unprepare() {
   }
 
   // remove pid file
-  if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
+  std::error_code removeEc;
+  std::filesystem::remove(_options.pidFile, removeEc);
+  if (removeEc) {
     LOG_TOPIC("1b46c", ERR, arangodb::Logger::FIXME)
-        << "cannot remove pid file '" << _options.pidFile << "'";
+        << "cannot remove pid file '" << _options.pidFile << "'"
+        << "Error:" << removeEc.message();
   }
 }
 
 void DaemonFeature::checkPidFile() {
   // check if the pid-file exists
   if (!_options.pidFile.empty()) {
-    if (FileUtils::isDirectory(_options.pidFile)) {
+    std::error_code dirEc;
+    if (std::filesystem::is_directory(_options.pidFile, dirEc)) {
       LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME)
           << "pid-file '" << _options.pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
-    } else if (FileUtils::exists(_options.pidFile) &&
-               FileUtils::size(_options.pidFile) > 0) {
+    } else if (dirEc) {
+      LOG_TOPIC("6b3c1", FATAL, arangodb::Logger::FIXME)
+          << "pid-file '" << _options.pidFile
+          << "' Path does not exist or insufficient permissions"
+          << "Error:" << dirEc.message();
+      FATAL_ERROR_EXIT();
+    } else if (std::filesystem::exists(_options.pidFile) &&
+               std::filesystem::file_size(_options.pidFile) > 0) {
       LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
           << "pid-file '" << _options.pidFile
           << "' already exists, verifying pid";
@@ -220,11 +183,14 @@ void DaemonFeature::checkPidFile() {
               << "pid-file '" << _options.pidFile
               << " exists, but no process with pid " << oldPid << " exists";
 
-          if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
+          std::error_code removeEc;
+          std::filesystem::remove(_options.pidFile, removeEc);
+          if (removeEc) {
             LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
                 << "pid-file '" << _options.pidFile
                 << "' exists, no process with pid " << oldPid
-                << " exists, but pid-file cannot be removed";
+                << " exists, but pid-file cannot be removed"
+                << "Error:" << removeEc.message();
             FATAL_ERROR_EXIT();
           }
 
@@ -289,24 +255,23 @@ int DaemonFeature::forkProcess() {
   }
 
   // store current working directory
-  FileResultString cwd = FileUtils::currentDirectory();
-
-  if (!cwd.ok()) {
+  std::error_code cwdEc;
+  _current = std::filesystem::current_path(cwdEc).string();
+  if (cwdEc) {
     LOG_TOPIC("a681c", FATAL, arangodb::Logger::FIXME)
-        << "cannot get current directory: " << cwd.errorMessage();
+        << "cannot get current directory: " << cwdEc.message();
     FATAL_ERROR_EXIT();
   }
 
-  _current = cwd.result();
-
   // change the current working directory
   if (!_options.workingDirectory.empty()) {
-    FileResult res = FileUtils::changeDirectory(_options.workingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(_options.workingDirectory, ec);
 
-    if (!res.ok()) {
+    if (ec) {
       LOG_TOPIC("d9f9d", FATAL, arangodb::Logger::STARTUP)
           << "cannot change into working directory '"
-          << _options.workingDirectory << "': " << res.errorMessage();
+          << _options.workingDirectory << "': " << ec.message();
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("ae8be", INFO, arangodb::Logger::STARTUP)

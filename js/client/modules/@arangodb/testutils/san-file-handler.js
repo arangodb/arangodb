@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -151,7 +150,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
     'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
-    'httpTimeout': 240, // 3 minutes is enough!
+    'httpTimeout': 240, // 4 minutes is enough!
   });
 
   tu.CopyIntoList(optionsDocumentation, [

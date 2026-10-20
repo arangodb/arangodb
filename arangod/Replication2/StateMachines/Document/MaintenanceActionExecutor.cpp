@@ -18,25 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+#include "MaintenanceActionExecutor.h"
 
-#include "Cluster/ActionDescription.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
 
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
     GlobalLogIdentifier gid, ServerID server,
-    MaintenanceFeature& maintenanceFeature, TRI_vocbase_t& vocbase,
+    MaintenanceFeature& maintenanceFeature, Database& vocbase,
     LoggerContext const& loggerContext)
     : _gid(std::move(gid)),
       _maintenanceFeature(maintenanceFeature),
@@ -68,7 +67,7 @@ auto MaintenanceActionExecutor::executeCreateCollection(
   }
   std::shared_ptr<LogicalCollection> col;
   auto res = basics::catchToResult([&]() -> Result {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     return methods::Collections::createShard(
         _vocbase, options, shard, collectionType, properties.slice(), col);
   });
@@ -101,7 +100,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
     velocypack::SharedSlice properties) noexcept -> Result {
   auto res =
       basics::catchToResult([&col, properties = std::move(properties)]() {
-        OperationOptions options(ExecContext::current());
+        OperationOptions options;
         return methods::Collections::updateProperties(*col, properties.slice(),
                                                       options)
             .waitAndGet();

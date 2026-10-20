@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,6 +36,16 @@ class RestOpenApiHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestOpenApiHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   futures::Future<futures::Unit> executeAsync() override;
+
+ protected:
+  // The OpenAPI spec must be reachable without authentication, so that
+  // clients (and the API documentation) can retrieve it before logging in.
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override {
+    co_return AuthenticationGrant::GRANTED;
+  }
+  async<Result> checkApiVersionAccess() const override { co_return Result{}; }
+  async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
   std::string_view getOpenApiSpec(uint32_t apiVersion) const;

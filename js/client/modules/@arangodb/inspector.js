@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Kaveh Vahedipour
-// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 
@@ -60,7 +57,7 @@ function loadAgencyConfig() {
 
 
 /**
- * @brief Sort shard keys according to their numbers omitting startign 's'
+ * @brief Sort shard keys according to their numbers omitting starting 's'
  *
  * @param keys      Keys
  */
@@ -638,7 +635,7 @@ function getServerData(arango) {
       arango.reconnect(current, '_system');
     }
   }
-  INFO('... dignostics collected.');
+  INFO('... diagnostics collected.');
   return report;
 }
 

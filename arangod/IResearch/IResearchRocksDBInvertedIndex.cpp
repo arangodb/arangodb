@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
@@ -27,9 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -171,8 +170,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   }
 
   normalized.add(arangodb::StaticStrings::IndexType,
-                 velocypack::Value(
-                     Index::oldtypeName(Index::TRI_IDX_TYPE_INVERTED_INDEX)));
+                 velocypack::Value(Index::oldtypeName(IndexType::Inverted)));
 
   if (isCreation && !ServerState::instance()->isCoordinator() &&
       definition.get(arangodb::StaticStrings::ObjectId).isNone()) {
@@ -223,10 +221,10 @@ T getMetric(IResearchRocksDBInvertedIndex const& index) {
 
 std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
   return absl::StrCat(  // clang-format off
-      "db=\"", index.getDbName(), "\","
-      "index=\"", index.name(), "\","
-      "collection=\"", index.getCollectionName(), "\","
-      "index_id=\"", index.id().id(), "\","
+      "db=\"", metrics::escapeLabelValue(index.getDbName()), "\","
+      "index=\"", metrics::escapeLabelValue(index.name()), "\","
+      "collection=\"", metrics::escapeLabelValue(index.getCollectionName()),
+      "\",index_id=\"", index.id().id(), "\","
       "shard=\"", index.getShardName(), "\"");  // clang-format on
 }
 

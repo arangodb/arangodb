@@ -57,7 +57,7 @@ def zipp_this(filenames, target_dir):
     # pylint: disable=consider-using-with
     for corefile in filenames:
         try:
-            print(f"zipping {corefile}")
+            print(f"{str(datetime.now())} zipping {corefile}")
             zipfile.ZipFile(
                 str(target_dir / (corefile.name + ".xz")),
                 mode="w",
@@ -72,11 +72,12 @@ def testing_runner(testing_instance, this, arangosh):
     # pylint: disable=too-many-statements
     try:
         this.start = datetime.now(tz=None)
+        ret = {'pid': -1}
         ret = arangosh.run_testing(
             this.suite,
             this.arangosh_args,
             this.args,
-            15 * 60,  # 15 Minutes screen idle before timeout
+            16 * 60,  # 16 Minutes screen idle before timeout - so 15 mins testing.js can work
             this.base_logdir,
             this.log_file,
             this.name_enum,
@@ -534,7 +535,7 @@ class TestingRunner:
             self.mp_zip_tar(coredumps, core_zip_dir, crash_report_file, 'crash report', 'crashreport')
             for one_file in coredumps:
                 one_file.unlink(missing_ok=True)
-            
+
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"binaries-{self.cfg.datetime_format}"

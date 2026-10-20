@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 // We
@@ -147,7 +145,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   };
 
   let suite = {
-    setup: function() {
+    setUp: function() {
       clients = [];
     },
     tearDown: function () {

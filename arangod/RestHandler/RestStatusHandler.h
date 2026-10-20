@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,6 +26,7 @@
 
 namespace arangodb {
 class ServerSecurityFeature;
+class StorageEngine;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
@@ -38,9 +38,15 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
+ protected:
+  async<RestHandler::AuthenticationGrant> checkUserAuthentication()
+      const override;
+
  private:
   RestStatus executeStandard(ServerSecurityFeature&);
   RestStatus executeOverview();
   RestStatus executeMemoryProfile();
+
+  StorageEngine& _engine;
 };
 }  // namespace arangodb

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,28 +21,21 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require('lodash');
-const pu = require('@arangodb/testutils/process-utils');
-const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
+const arango = require("@arangodb").arango;
 const time = require("internal").time;
 const path = require('path');
 const FoxxManager = require('@arangodb/foxx/manager');
+let { instanceRole } = require('@arangodb/testutils/instance');
 const basePath = path.resolve(require("internal").pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 
-const originalEndpoint = arango.getEndpoint();
+let IM = global.instanceManager;
 const originalUser = arango.connectedUser();
-const {
-  getCtrlCoordinators,
-  getCtrlDBServers
-} = require('@arangodb/test-helper');
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
@@ -86,6 +79,7 @@ function testSuite() {
 
   return {
     setUp : function() {
+      IM.rememberConnection();
       // make sure self heal has run, otherwise we may not be able to install
       arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
      
@@ -103,7 +97,7 @@ function testSuite() {
     },
 
     tearDown : function() {
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      IM.reconnectMe();
       // make sure self heal has run, otherwise we may not be able to uninstall
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
@@ -121,11 +115,11 @@ function testSuite() {
      */
 
     testRequestFoxxAppWithoutSelfHeal : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
         
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -159,7 +153,7 @@ function testSuite() {
       }
       
       // make sure self heal has run, otherwise we may not be able to access the app
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      arango.reconnect(IM.endpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
         
@@ -168,12 +162,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithForcedSelfHeal : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       // shut down and restart coordinator.
@@ -193,7 +187,7 @@ function testSuite() {
       waitForAlive(30, coordinator.url, {});
       
       // make sure self heal has run 
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      arango.reconnect(IM.endpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
 
@@ -204,12 +198,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithSelfHealAtStartup : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

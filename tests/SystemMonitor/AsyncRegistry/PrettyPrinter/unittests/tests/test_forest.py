@@ -1,7 +1,7 @@
 import unittest
 
 from asyncregistry.gdb_forest import Forest, Id
-from asyncregistry.gdb_data import PromiseId, Thread
+from asyncregistry.gdb_data import PromiseId, ThreadInfo
 from typing import Iterable
 
 class ForestIsIndexedByChildren(unittest.TestCase):
@@ -11,7 +11,7 @@ class ForestIsIndexedByChildren(unittest.TestCase):
 
     def test_one_root(self):
         forest = Forest.from_promises([
-            (PromiseId("0"), Thread(4, 1), "id_0"),
+            (PromiseId("0"), ThreadInfo(4, 1), "id_0"),
         ])
         self.assertEqual([a for a in forest.children("0")], [])
         self.assertEqual([a for a in forest.children("1")], [])
@@ -19,7 +19,7 @@ class ForestIsIndexedByChildren(unittest.TestCase):
     def test_one_tree(self):
         forest = Forest.from_promises([
             (PromiseId("1"), PromiseId("0"), "id_1"),
-            (PromiseId("0"), Thread(4, 1), "id_0"),
+            (PromiseId("0"), ThreadInfo(4, 1), "id_0"),
             (PromiseId("2"), PromiseId("0"), "id_2")
         ])
         self.assertEqual([a for a in forest.children("0")], ["1", "2"])
@@ -52,7 +52,7 @@ class ForestIteratesDepthFirst(unittest.TestCase):
 
     def test_iterates_over_one_promises(self):
         forest = Forest.from_promises([
-            (PromiseId("1"), Thread(4, 1), "some_data")
+            (PromiseId("1"), ThreadInfo(4, 1), "some_data")
         ])
         self.assertEqual([promise for promise in forest], [
             (0, "1", "some_data")
@@ -60,8 +60,8 @@ class ForestIteratesDepthFirst(unittest.TestCase):
 
     def test_iterates_over_two_roots(self):
         forest = Forest.from_promises([
-            (PromiseId("1"), Thread(4, 1), "id_1"),
-            (PromiseId("2"), Thread(4, 1), "id_2")
+            (PromiseId("1"), ThreadInfo(4, 1), "id_1"),
+            (PromiseId("2"), ThreadInfo(4, 1), "id_2")
         ])
         self.assertEqual([promise for promise in forest], [
             (0, "1", "id_1"),
@@ -71,7 +71,7 @@ class ForestIteratesDepthFirst(unittest.TestCase):
     def test_iterates_over_one_tree(self):
         forest = Forest.from_promises([
             (PromiseId("1"), PromiseId("0"), "id_1"),
-            (PromiseId("0"), Thread(4, 1), "id_0"),
+            (PromiseId("0"), ThreadInfo(4, 1), "id_0"),
             (PromiseId("2"), PromiseId("0"), "id_2")
         ])
         stacktrace = [promise for promise in forest]
@@ -83,7 +83,7 @@ class ForestIteratesDepthFirst(unittest.TestCase):
     def test_gives_direct_children_just_before_node(self):
         forest = Forest.from_promises([
             (PromiseId("1"), PromiseId("0"), "id_1"),
-            (PromiseId("0"), Thread(4, 1), "id_0"),
+            (PromiseId("0"), ThreadInfo(4, 1), "id_0"),
             (PromiseId("2"), PromiseId("0"), "id_2"),
             (PromiseId("3"), PromiseId("1"), "id_3")
         ])
@@ -95,15 +95,15 @@ class ForestIteratesDepthFirst(unittest.TestCase):
 
     def test_iterates_over_several_trees(self):
         forest = Forest.from_promises([
-            (PromiseId("0"), Thread(4, 1), "id_0"),
+            (PromiseId("0"), ThreadInfo(4, 1), "id_0"),
             (PromiseId("1"), PromiseId("0"), "id_1"),
             (PromiseId("2"), PromiseId("0"), "id_2"),
             
-            (PromiseId("3"), Thread(3, 3), "id_3"),
+            (PromiseId("3"), ThreadInfo(3, 3), "id_3"),
             (PromiseId("4"), PromiseId("3"), "id_4"),
             (PromiseId("5"), PromiseId("4"), "id_5"),
 
-            (PromiseId("6"), Thread(3, 3), "id_6"),
+            (PromiseId("6"), ThreadInfo(3, 3), "id_6"),
         ])
         stacktrace = [promise for promise in forest]
         self.assertEqual(len(stacktrace), 7)

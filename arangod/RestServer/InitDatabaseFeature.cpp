@@ -18,19 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitDatabaseFeature.h"
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
-#include "RestServer/InitDatabaseFeatureOptions.h"
-
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -41,10 +40,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "RestServer/InitDatabaseOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -55,44 +54,36 @@ namespace arangodb {
 InitDatabaseFeature::InitDatabaseFeature(
     ApplicationServer& server,
     std::span<const std::type_index> nonServerFeatures)
-    : ApplicationFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
+    : InitDatabaseFeature(server, nonServerFeatures,
+                          InitDatabaseFeatureOptions{}) {}
+
+InitDatabaseFeature::InitDatabaseFeature(
+    ApplicationServer& server,
+    std::span<const std::type_index> nonServerFeatures,
+    InitDatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-}
 
-void InitDatabaseFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--database.init-database", "Initialize an empty database.",
-      new BooleanParameter(&_options.initDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--database.restore-admin",
-      "Reset the admin users and set a new password.",
-      new BooleanParameter(&_options.restoreAdmin),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--database.password", "The initial password of the root user.",
-      new StringParameter(&_options.password),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
-void InitDatabaseFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ProgramOptions::ProcessingResult const& result = options->processingResult();
+  ProgramOptions::ProcessingResult const& result =
+      server.options()->processingResult();
   _seenPassword = result.touched("database.password");
 
   if (_options.initDatabase || _options.restoreAdmin) {
-    server().forceDisableFeatures(_nonServerFeatures);
+    server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
+    if (server.hasFeature<ActionFeature>()) {
+      server.forceDisableFeatures<ActionFeature>();
+    }
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures<EnvironmentFeature>();
+    server.disableFeatures<EnvironmentFeature>();
   }
 }
 
@@ -162,24 +153,54 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   bool empty = false;
   std::string message;
   int code = TRI_EXIT_CODE_RESOLVING_FAILED;
-
-  if (FileUtils::exists(path)) {
-    if (!FileUtils::isDirectory(path)) {
+  std::error_code dirEc;
+  if (std::filesystem::exists(path, dirEc)) {
+    if (!std::filesystem::is_directory(path, dirEc)) {
+      if (dirEc) {
+        message =
+            "error checking database path '" + path + "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       message = "database path '" + path + "' is not a directory";
       code = EXIT_FAILURE;
       goto doexit;
     }
 
-    if (FileUtils::exists(serverFile)) {
-      if (FileUtils::isDirectory(serverFile)) {
+    if (std::filesystem::exists(serverFile, dirEc)) {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
+      if (std::filesystem::is_directory(serverFile, dirEc)) {
         message = "database SERVER '" + serverFile + "' is not a file";
         code = EXIT_FAILURE;
         goto doexit;
       }
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
     } else {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       empty = true;
     }
   } else {
+    if (dirEc) {
+      message =
+          "error checking database path '" + path + "': " + dirEc.message();
+      code = TRI_EXIT_CODE_RESOLVING_FAILED;
+      goto doexit;
+    }
     empty = true;
   }
 

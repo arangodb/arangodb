@@ -18,15 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlValueGroup.h"
 
 #include "Basics/debugging.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlValueGroupHash::AqlValueGroupHash([[maybe_unused]] size_t num)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -95,3 +93,5 @@ bool AqlValueGroupEqual::operator()(HashedAqlValueGroup const& lhs,
 #endif
   return lhs.hash == rhs.hash && operator()(lhs.values, rhs.values);
 }
+
+}  // namespace arangodb::aql

@@ -21,16 +21,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-const {
-  getCoordinators,
-  getDBServers
-} = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+
+let IM = global.instanceManager;
 
 function shardStatisticsSuite() {
   'use strict';
@@ -83,7 +81,7 @@ function shardStatisticsSuite() {
       assertEqual(400, result.code);
         
       // fetch statistics for a coordinator
-      let coordinators = getCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       result = fetchStatsRaw("?DBserver=" + coordinators[0].id);
       assertTrue(result.error);
@@ -145,8 +143,8 @@ function shardStatisticsSuite() {
           assertTrue(stats.servers > 0);
         });
 
-        let dbservers = getDBServers();
-        assertTrue(dbservers.length > 0);
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        assertTrue(dbServers.length > 0);
 
         let partialValues = {
           databases: 0,
@@ -158,7 +156,7 @@ function shardStatisticsSuite() {
           servers: 0,
         };
 
-        dbservers.forEach((server) => {
+        dbServers.forEach((server) => {
           let part = fetchStats("?DBserver=" + encodeURIComponent(server.id));
           Object.keys(partialValues).forEach((k) => {
             partialValues[k] += part[k];
@@ -274,13 +272,13 @@ function shardStatisticsSuite() {
     },
     
     testShardStatisticsByDBServer: function () {
-      const dbservers = getDBServers();
-      assertTrue(dbservers.length > 0);
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbServers.length > 0);
       
       let baseValues = fetchStats("?DBserver=all");
       let aggregatedBaseValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
 
-      dbservers.map((s) => s.id).forEach((s) => {
+      dbServers.map((s) => s.id).forEach((s) => {
         assertTrue(baseValues.hasOwnProperty(s));
         aggregatedBaseValues.shards += baseValues[s].shards;
         aggregatedBaseValues.leaders += baseValues[s].leaders;
@@ -297,7 +295,7 @@ function shardStatisticsSuite() {
 
         let newValues = fetchStats("?DBserver=all");
         let aggregatedNewValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
-        dbservers.map((s) => s.id).forEach((s) => {
+        dbServers.map((s) => s.id).forEach((s) => {
           assertTrue(newValues.hasOwnProperty(s));
           aggregatedNewValues.shards += newValues[s].shards;
           aggregatedNewValues.leaders += newValues[s].leaders;

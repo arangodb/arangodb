@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -43,8 +42,6 @@ template<typename T>
 class Future;
 }
 }  // namespace arangodb
-
-struct TRI_vocbase_t;
 
 namespace arangodb::replication2 {
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -45,9 +44,8 @@ class AgencyCallbackRegistry {
  public:
   AgencyCallbackRegistry(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
-                         EngineSelectorFeature& engineSelectorFeature,
                          DatabaseFeature& databaseFeature,
-                         metrics::MetricsFeature& metrics,
+                         metrics::IRegistry& metricsRegistry,
                          std::string const& callbackBasePath);
   ~AgencyCallbackRegistry();
 

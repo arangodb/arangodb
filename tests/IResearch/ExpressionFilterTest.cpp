@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,19 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
 
-#include "iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/scorers.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -55,23 +51,22 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -80,7 +75,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -229,8 +223,8 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  StorageEngineMock& engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -240,7 +234,8 @@ struct IResearchExpressionFilterTest
       : server(
             std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""),
             nullptr),
-        engine(server) {
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -250,32 +245,28 @@ struct IResearchExpressionFilterTest
                           true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
-
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        &engine);
+    auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(databaseFeature, false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            selector,
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-                nullptr)),
+        server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
+
+    auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
+    features.emplace_back(metrics, false);
+    features.emplace_back(
+        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
         false);
     features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>(
-            server.getFeature<arangodb::metrics::MetricsFeature>()),
+        server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server), engine);
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -288,17 +279,20 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(),
         true);  // required for IResearchAnalyzerFeature
     features.emplace_back(
-        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+            arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::
+                fromServer(server)),
         true);
 
-    auto& feature =
-        features
-            .emplace_back(
-                server.addFeature<arangodb::iresearch::IResearchFeature>(),
-                true)
-            .first;
-    feature.collectOptions(server.options());
-    feature.validateOptions(server.options());
+    arangodb::iresearch::IResearchOptionsProvider optionsProvider;
+    auto irsOptions =
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "", "");
+    optionsProvider.declareOptions(irsOptions);
+    optionsProvider.validateOptions(irsOptions);
+    features.emplace_back(
+        server.addFeature<arangodb::iresearch::IResearchFeature>(
+            metrics, optionsProvider.options()),
+        true);
 
     for (auto& f : features) {
       f.first.prepare();
@@ -333,8 +327,6 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -415,7 +407,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   // create view
   {

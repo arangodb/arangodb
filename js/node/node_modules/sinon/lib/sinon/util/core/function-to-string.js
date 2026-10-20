@@ -1,6 +1,11 @@
-"use strict";
+'use strict';
 
-module.exports = function toString() {
+/**
+ * Returns a string representation of a Sinon object.
+ *
+ * @returns {string} The string representation
+ */
+function functionToString() {
     let i, prop, thisValue;
     if (this.getCall && this.callCount) {
         i = this.callCount;
@@ -22,4 +27,6 @@ module.exports = function toString() {
     }
 
     return this.displayName || "sinon fake";
-};
+}
+
+module.exports = functionToString;

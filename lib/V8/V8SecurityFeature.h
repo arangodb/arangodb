@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/DenyAllow.h"
+#include "Basics/AllowedPaths.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -62,16 +62,12 @@ class V8SecurityFeature final
  public:
   static constexpr std::string_view name() noexcept { return "V8Security"; }
 
-  explicit V8SecurityFeature(application_features::ApplicationServer& server,
-                             AllowListStrictness strictness)
-      : ApplicationFeature{server, *this}, _strictness(strictness) {
-    setOptional(false);
-    startsAfter<TempFeature>();
-    startsAfter<V8PlatformFeature>();
-  }
+  V8SecurityFeature(application_features::ApplicationServer& server,
+                    AllowListStrictness strictness,
+                    V8SecurityFeatureOptions options);
+  V8SecurityFeature(application_features::ApplicationServer& server,
+                    AllowListStrictness strictness);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void dumpAccessLists() const;
 
@@ -100,13 +96,10 @@ class V8SecurityFeature final
   bool shouldExposeEnvironmentVariable(v8::Isolate* isolate,
                                        std::string const& name) const;
 
-  /// @brief tests if the IP address or domain/host name given should be
-  /// accessible via the JS_Download (internal.download) function in JavaScript
-  /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
-  /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate,
-                                    std::string const& endpoint,
-                                    std::string const& url) const;
+  /// @brief tests if the given URL should be accessible via the JS_Download
+  // (internal.download) function in JavaScript actions
+  bool isAllowedToConnectToUrl(v8::Isolate* isolate,
+                               std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
@@ -117,7 +110,8 @@ class V8SecurityFeature final
   bool isInternalContext(v8::Isolate* isolate) const;
   bool isAdminScriptContext(v8::Isolate* isolate) const;
 
-  void addToInternalAllowList(std::string const& item, FSAccessType);
+  void addToInternalReadAllowList(std::filesystem::path item);
+  void addToInternalWriteAllowList(std::filesystem::path item);
 
  private:
   V8SecurityFeatureOptions _options;
@@ -128,23 +122,14 @@ class V8SecurityFeature final
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  /// @brief variables for file access
-  std::string _readAllowList;
-  std::unordered_set<std::string> _readAllowListSet;
-
-  std::string _writeAllowList;
-  std::unordered_set<std::string> _writeAllowListSet;
+  AllowedPaths _internalReadAllow;
+  AllowedPaths _internalWriteAllow;
 
   AllowListStrictness _strictness;
 
   DenyAllow _startupOptions;
   DenyAllow _endpoints;
   DenyAllow _environmentVariables;
-
-  // TODO: COR-348, replace internal allow regexes by a simpler
-  // construct
-  std::optional<std::regex> _readAllowRegex{std::nullopt};
-  std::optional<std::regex> _writeAllowRegex{std::nullopt};
 
   DenyAllow _files;
 };

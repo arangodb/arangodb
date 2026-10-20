@@ -18,30 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DatabasePathFeatureOptions.h"
+#include "RestServer/IDatabasePathProvider.h"
 
 namespace arangodb {
 
 class DatabasePathFeature final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public IDatabasePathProvider {
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 
+  explicit DatabasePathFeature(application_features::ApplicationServer& server,
+                               DatabasePathFeatureOptions options);
   explicit DatabasePathFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 
-  std::string const& directory() const { return _options.directory; }
-  std::string subdirectoryName(std::string const& subDirectory) const;
+  std::string const& directory() const override final {
+    return _options.directory;
+  }
+  std::string subdirectoryName(
+      std::string const& subDirectory) const override final;
   void setDirectory(std::string const& path) {
     // This is only needed in the catch tests, where we initialize the
     // feature but do not have options or run `validateOptions`. Please

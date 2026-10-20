@@ -18,7 +18,7 @@ export const parseQuery = (query: string) => {
   let i;
   let c;
 
-  var bindParams = [];
+  const bindParams = [];
 
   for (i = 0; i < n; ++i) {
     c = query.charAt(i);

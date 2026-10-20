@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "9")
+  set(ARANGODB_VERSION_PATCH "13")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -452,7 +452,6 @@ endif()
 set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
-get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
@@ -469,6 +468,13 @@ endif()
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
 find_program(MAKE make gmake)
+
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+  set(NPROC 1)
+endif()
+set(MAKE_JOBS "-j${NPROC}" CACHE STRING "Parallel job flag for external project make invocations")
 
 find_program(
   CHMOD_EXECUTABLE chmod
@@ -508,7 +514,7 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  16.0 # Clang
+  19.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
@@ -592,17 +598,79 @@ if(USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=3")
   endif()
 
-  find_package(FLEX)
-  find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif()
 
+# flex and bison are required to generate the AQL lexer/parser from
+# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parser/grammar.y.
+# Bison >= 3.0 (Jul 2013) is required at least for the `error=<category>`
+# --warnings syntax we pass was added in 3.0.
+# Flex >= 2.6.0 (Sep 2015) is the oldest we have actually tested; 2.6.4
+# (May 2017) is still the latest release. Older 2.5.x may also work but
+# is not exercised.
+find_package(FLEX 2.6 REQUIRED)
+find_package(BISON 3.0 REQUIRED)
+
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if(USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
+endif()
+
+################################################################################
+## clang-tidy (static analysis during the build)
+################################################################################
+#
+# When USE_CLANG_TIDY is ON, clang-tidy runs on every first-party C++
+# translation unit as it is compiled, via the CXX_CLANG_TIDY target property.
+# This is separate from utils/clang-tidy.sh (which runs clang-tidy standalone
+# over compile_commands.json); both read the same check configuration from the
+# .clang-tidy files, so results are consistent.
+#
+# * The default is OFF.
+#   Rationale: it's expensive (†), plus, at the time of this writing, we get a
+#   bunch of warnings.
+# * The configuration for checks and header filters is part of .clang-tidy, not
+#   cmake.
+# * The 3rdParty subdirectories are excluded: CMAKE_CXX_CLANG_TIDY is set after
+#   add_subdirectory(3rdParty), so it's not inherited by it.
+# * Note that clang-tidy gets passed the very same flags as the compiler. If
+#   a different compiler than clang is used, it might not understand everything.
+#
+# (†) On my machine, compiling (only) arango_aql takes ~150s. Running clang-tidy
+#     on the same files takes ~530s. Which means a build time
+#     increase of about factor 4.5. This was with ccache disabled, -j32,
+#     and arango_aql contained 345 translation units.
+#     Of course, YMMV, and don't extrapolate it for a full build, as 3rdParty
+#     libraries are not checked. It's just here to give a rough idea.
+option(USE_CLANG_TIDY "run clang-tidy on first-party sources during the build" OFF)
+
+if(USE_CLANG_TIDY)
+  find_program(CLANG_TIDY_EXE NAMES clang-tidy DOC "Path to clang-tidy executable")
+  if(NOT CLANG_TIDY_EXE)
+    # Don't skip checks if they've been requested
+    message(FATAL_ERROR
+      "USE_CLANG_TIDY is ON but clang-tidy was not found on PATH. Install it "
+      "(the pinned toolchain ships a matching clang-tidy), or reconfigure with "
+      "-DUSE_CLANG_TIDY=OFF.")
+  endif()
+  message(STATUS "clang-tidy enabled for first-party targets: ${CLANG_TIDY_EXE}")
+  if(NOT CMAKE_COMPILER_IS_CLANG)
+    # clang-tidy still runs (CMake passes --driver-mode=g++), but the clang
+    # front-end may not understand every compiler-specific flag/pragma, so
+    # results can differ from a real clang build.
+    message(WARNING
+      "USE_CLANG_TIDY is ON but the C++ compiler is not clang "
+      "(${CMAKE_CXX_COMPILER_ID}). clang-tidy uses a clang front-end; some "
+      "compiler-specific flags may be misparsed and results may differ. "
+      "Building with clang is recommended when running clang-tidy.")
+  endif()
+  # --quiet suppresses the per-file "N warnings generated" summary lines. Checks
+  # and header filtering come from the .clang-tidy files (one source of truth),
+  # so they are intentionally not passed on the command line here.
+  set(CLANG_TIDY_COMMAND "${CLANG_TIDY_EXE}" "--quiet")
 endif()
 
 include(debugInformation)
@@ -821,8 +889,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0")
-  # broken warnings in clang-19
-    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
+    # We explicitly want to be able to use field initializers for partial initialization.
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-missing-designated-field-initializers")
   endif()
 else()
   # unknown compiler
@@ -1031,67 +1099,42 @@ if(STATIC_EXECUTABLES)
   if(ARCH_AMD64)
     set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
-    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/x86_64-linux-gnu/13/libgomp.a")
   else()
     set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
-    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
   message(STATUS "LAPACK: ${LAPACK_LIBRARIES}")
   message(STATUS "BLAS: ${BLAS_LIBRARIES}")
 
-  # Setting this is necessary because we want to bind to gcc static library
-  # since the LLVM OpenMP implementation fails in our CI
-  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
-  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_C_LIB_NAMES "gomp;pthread")
-  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
+  # faiss must be built with LLVM's libomp: clang generates no OpenMP code for
+  # libgomp
+  # The build image provides a static libomp in /opt/omp
+  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+  if(NOT LIBOMP)
+    message(FATAL_ERROR "libomp.a not found in /opt/omp")
+  endif()
+  message(STATUS "Using static libomp: ${LIBOMP}")
+
+  set(OpenMP_C_FLAGS "-fopenmp=libomp")
+  set(OpenMP_CXX_FLAGS "-fopenmp=libomp")
+  set(OpenMP_C_LIB_NAMES "omp;pthread")
+  set(OpenMP_CXX_LIB_NAMES "omp;pthread")
+  set(OpenMP_omp_LIBRARY "${LIBOMP}")
   set(OpenMP_pthread_LIBRARY "pthread")
 
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -llapack -lgfortran")
-  message(STATUS "OpenMP version: " ${OpenMP_CXX_VERSION})
+  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
 
-  # Setting this is necessary because we want to bind to gcc library
-  # since the LLVM OpenMP implementation fails in our CI
-  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
-  # Dynamically find libgomp.so without hardcoding version
-  # First, try to get GCC's library directory
-  execute_process(
-    COMMAND gcc -print-file-name=libgomp.so
-    OUTPUT_VARIABLE LIBGOMP_PATH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-
-  if(EXISTS "${LIBGOMP_PATH}")
-    message(STATUS "Found libgomp: ${LIBGOMP_PATH}")
-    set(OpenMP_gomp_LIBRARY "${LIBGOMP_PATH}")
-  else()
-    # Fallback to find_library if gcc command didn't work
-    find_library(LIBGOMP_LIBRARY NAMES gomp REQUIRED)
-    message(STATUS "Found libgomp via find_library: ${LIBGOMP_LIBRARY}")
-    set(OpenMP_gomp_LIBRARY "${LIBGOMP_LIBRARY}")
-  endif()
-
-  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
-  set(OpenMP_C_LIB_NAMES "gomp;pthread")
-  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
-  set(OpenMP_pthread_LIBRARY "pthread")
-
+  # clang generates OpenMP code only for libomp, so let FindOpenMP pick the
   find_package(OpenMP REQUIRED)
 
   message(STATUS "OpenMP_CXX_VERSION: ${OpenMP_CXX_VERSION}")
   message(STATUS "OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
   message(STATUS "OpenMP_CXX_LIB_NAMES: ${OpenMP_CXX_LIB_NAMES}")
-  message(STATUS "OpenMP_gomp_LIBRARY: ${OpenMP_gomp_LIBRARY}")
   message(STATUS "OpenMP_omp_LIBRARY: ${OpenMP_omp_LIBRARY}")
-  message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
   message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
-
 
   find_package(LAPACK)
   find_package(BLAS)
@@ -1101,8 +1144,6 @@ else()
     message(STATUS "Using LAPACK library: ${lapack_lib}")
     set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
   endforeach()
-
-  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS}")
 endif()
 
 # It could be so easy if add_subdirectory allowed to pass variables
@@ -1251,6 +1292,15 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${CMAKE_THREAD_LIBS_INIT}
 )
 
+# Enable clang-tidy for first-party code. Set here -- after the 3rdParty and
+# faiss subdirectories above -- so they do not inherit the CXX_CLANG_TIDY
+# property. Everything configured from here on (lib, including lib/iresearch,
+# client-tools, arangod, enterprise) inherits it. See the USE_CLANG_TIDY block
+# earlier.
+if(USE_CLANG_TIDY)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND})
+endif()
+
 add_subdirectory(lib)
 add_subdirectory(client-tools)
 add_subdirectory(arangod)
@@ -1286,3 +1336,11 @@ add_custom_target(arangodb
    DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)
+
+# Generate JS_SHA1SUM.txt over everything installed into the JS directory.
+# Declared last on purpose: install rules run in declaration order (CMP0082),
+# so this executes after every other install rule — including the client-tools
+# and enterprise JS files added by the add_subdirectory calls above — and the
+# checksum always matches the final installed tree.
+install(CODE "set(ARANGODB_INSTALLED_JS_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}\")")
+install(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/GenerateJsSha1Sum.cmake)

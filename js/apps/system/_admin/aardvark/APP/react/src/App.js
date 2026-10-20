@@ -34,7 +34,7 @@ require('backbone');
 const _ = require('underscore');
 const Sigma = require('sigma');
 const Noty = require('noty');
-const Marked = require('marked');
+const Marked = require('marked').marked;
 const CryptoJS = require('crypto-js');
 
 // highlight.js

@@ -18,22 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SmartContext.h"
 
-#include "Basics/Exceptions.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/CollectionNameResolver.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb::transaction {
 
-SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+SmartContext::SmartContext(Database& vocbase, TransactionId globalId,
                            std::shared_ptr<TransactionState> state,
                            OperationOrigin operationOrigin)
     : Context(vocbase, operationOrigin),

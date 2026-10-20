@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -39,7 +38,8 @@ struct StorageBackend {
   void consumeInputRange(AqlItemBlockInputRange& inputRange);
   void produceOutputRow(OutputAqlItemRow& output);
   void skipOutputRow() noexcept;
-  bool hasMore() const;
+  bool hasMoreReadyOutputRows() const;
+  bool hasPendingGroupOrOutput() const;
   using RowIndex = std::pair<uint32_t, uint32_t>;
 
  private:

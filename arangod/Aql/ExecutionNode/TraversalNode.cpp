@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalNode.h"
@@ -27,13 +25,15 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/TraversalExecutor.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
+#include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -54,6 +54,7 @@
 #include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -503,28 +504,73 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
-  for (auto const& condVar : _conditionVariables) {
-    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
-      result.emplace(condVar);
-    }
-  }
-
-  for (auto const& pruneVar : _pruneVariables) {
-    if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
-        pruneVar != pathOutVariable()) {
-      result.emplace(pruneVar);
-    }
-  }
-
-  for (auto const& postVar : _postFilterVariables) {
-    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
-        postVar != pathOutVariable()) {
-      result.emplace(postVar);
-    }
-  }
+  getConditionVariables(result);
 
   if (usesInVariable()) {
     result.emplace(_inVariable);
+  }
+}
+
+/// @brief getConditionVariables
+void TraversalNode::getConditionVariables(VarSet& result) const {
+  auto validateVariable = [this](const aql::Variable* var) {
+    return ((!vertexOutVariable() || var != vertexOutVariable()) &&
+            (!edgeOutVariable() || var != edgeOutVariable()) &&
+            (!pathOutVariable() || var != pathOutVariable()) &&
+            (!getTemporaryVariable() || var != getTemporaryVariable()) &&
+            !_optimizedOutVariables.contains(var->id));
+  };
+
+  auto fetchVarsFromNode = [&](const AstNode* node) {
+    auto varSet = VarSet{};
+    Ast::getReferencedVariables(node, varSet);
+    for (auto const& condVar : varSet) {
+      if (validateVariable(condVar)) {
+        result.emplace(condVar);
+      }
+    }
+  };
+
+  if (_condition && _condition->root()) {
+    fetchVarsFromNode(_condition->root());
+  }
+
+  //  Global condition nodes
+  std::for_each(_globalEdgeConditions.begin(), _globalEdgeConditions.end(),
+                fetchVarsFromNode);
+  std::for_each(_globalVertexConditions.begin(), _globalVertexConditions.end(),
+                fetchVarsFromNode);
+  std::for_each(_postFilterConditions.begin(), _postFilterConditions.end(),
+                fetchVarsFromNode);
+
+  //  Depth dependent conditions
+  std::for_each(_edgeConditions.begin(), _edgeConditions.end(),
+                [&](const auto& ec) {
+                  VarSet tVarSet;
+                  ec.second->getVariablesUsedHere(tVarSet);
+                  for (const auto& v : tVarSet) {
+                    if (validateVariable(v)) result.emplace(v);
+                  }
+                });
+
+  std::for_each(_vertexConditions.begin(), _vertexConditions.end(),
+                [&](const auto& vc) { fetchVarsFromNode(vc.second); });
+
+  if (_fromCondition) {
+    fetchVarsFromNode(_fromCondition);
+  }
+
+  if (_toCondition) {
+    fetchVarsFromNode(_toCondition);
+  }
+
+  //  Expressions
+  if (_pruneExpression && _pruneExpression->node()) {
+    fetchVarsFromNode(_pruneExpression->node());
+  }
+
+  if (_postFilterExpression && _postFilterExpression->node()) {
+    fetchVarsFromNode(_postFilterExpression->node());
   }
 }
 
@@ -709,10 +755,9 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    containers::HashSet<size_t> toRemove;
-    aql::Condition::collectOverlappingMembers(
+    auto toRemove = aql::collectOverlappingMembersForTraversal(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
-        toRemove, nullptr, true, false);
+        /*isPathCondition*/ false);
     size_t n = remainderCondition->numMembers();
 
     if (n != toRemove.size()) {
@@ -750,7 +795,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
                              _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ false);
@@ -768,7 +813,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     std::unique_ptr<aql::Expression> expression =
         generateExpression(remainderCondition, indexCondition);
 
-    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
+    auto container = aql::optimizer::extractNonConstPartsOfIndexCondition(
         ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
@@ -1089,17 +1134,20 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
 
   // Optimized condition
-  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
-  filterConditionVariables.reserve(_conditionVariables.size());
+  VarSet conditionVars;
+  getConditionVariables(conditionVars);
 
-  for (auto const& it : _conditionVariables) {
-    if (it != _tmpObjVariable) {
-      auto idIt = varInfo.find(it->id);
-      TRI_ASSERT(idIt != varInfo.end());
-      filterConditionVariables.emplace_back(
-          std::make_pair(it, idIt->second.registerId));
-      inputRegisters.emplace(idIt->second.registerId);
-    }
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
+  filterConditionVariables.reserve(conditionVars.size());
+
+  for (const auto* variable : conditionVars) {
+    if (variable == _tmpObjVariable) continue;
+
+    auto itVarInfo = varInfo.find(variable->id);
+    TRI_ASSERT(itVarInfo != varInfo.end());
+    filterConditionVariables.emplace_back(
+        std::make_pair(variable, itVarInfo->second.registerId));
+    inputRegisters.emplace(itVarInfo->second.registerId);
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,13 +31,12 @@
 
 #include <unordered_set>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace transaction {
 class Methods;
 }
 
+struct Database;
 class Index;
 class LogicalCollection;
 
@@ -58,10 +56,10 @@ struct Collection {
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType,
+  Collection(std::string const&, Database*, AccessMode::Type accessType,
              Hint hint);
 
-  TRI_vocbase_t* vocbase() const noexcept;
+  Database* vocbase() const noexcept;
 
   /// @brief upgrade the access type to exclusive
   void setExclusiveAccess() noexcept;
@@ -164,7 +162,7 @@ struct Collection {
   // _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   std::string const _name;
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -42,7 +40,6 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -72,7 +69,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   return r;
 }
 
-IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
+IResearchDataStore::Stats IResearchLinkCoordinator::getStats() const {
   auto& cmf = collection()
                   .vocbase()
                   .server()

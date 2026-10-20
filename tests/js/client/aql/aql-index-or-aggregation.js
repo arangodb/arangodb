@@ -23,7 +23,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;

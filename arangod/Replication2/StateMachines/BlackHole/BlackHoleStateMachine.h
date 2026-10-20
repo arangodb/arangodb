@@ -18,14 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state {
 /**
@@ -108,7 +105,7 @@ struct BlackHoleFactory {
       -> std::shared_ptr<BlackHoleFollowerState>;
   auto constructLeader(std::unique_ptr<BlackHoleCore> core)
       -> std::shared_ptr<BlackHoleLeaderState>;
-  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+  auto constructCore(Database&, GlobalLogIdentifier const&)
       -> std::unique_ptr<BlackHoleCore>;
 };
 

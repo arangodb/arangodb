@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, db */
+/* global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,18 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
+const db = require('@arangodb').db;
 const IM = global.instanceManager;
 const AM = IM.agencyMgr;
-
-let { getServersByType } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const wait = require("internal").wait;
-
-const primaryEndpoint = arango.getEndpoint();
 
 function indexCleanupSuite() {
   'use strict';
@@ -46,7 +45,7 @@ function indexCleanupSuite() {
   const maintenanceURL = "/_admin/cluster/maintenance";
 
   let getCoordinatorRebootId = function() {
-    let coords = getServersByType("coordinator");
+    let coords = IM.getInstancesRole(instanceRole.coordinator);
     coordinatorId = coords[0].id;
     let res = AM.call("read", [["/arango/Current/ServersKnown"]]);
     coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId].rebootId;

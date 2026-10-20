@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,12 +33,16 @@
 #include "CrashHandler/DataSource.h"
 #include "Containers/BoundedList.h"
 #include "Inspection/Transformers.h"
+#include "Metrics/Fwd.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/ApiRecordingFeatureOptions.h"
 
 namespace arangodb {
+namespace metrics {
+struct IRegistry;
+}  // namespace metrics
 
 // Define a struct for the LogScale used in the histogram
 struct ApiCallTimeScale {
@@ -113,13 +116,16 @@ class ApiRecordingFeature : public application_features::ApplicationFeature,
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(
+  ApiRecordingFeature(
       application_features::ApplicationServer& server,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      metrics::IRegistry& metricsRegistry, ApiRecordingFeatureOptions options);
+  ApiRecordingFeature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      metrics::IRegistry& metricsRegistry);
   ~ApiRecordingFeature() override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;

@@ -1,7 +1,14 @@
-"use strict";
+'use strict';
 
-const getPropertyDescriptor = require("./get-property-descriptor");
+var getPropertyDescriptor = require('./get-property-descriptor.js');
 
+/**
+ * Checks if a property is configurable.
+ *
+ * @param {object} obj The object
+ * @param {string} propName The property name
+ * @returns {boolean} True if configurable
+ */
 function isPropertyConfigurable(obj, propName) {
     const propertyDescriptor = getPropertyDescriptor(obj, propName);
 

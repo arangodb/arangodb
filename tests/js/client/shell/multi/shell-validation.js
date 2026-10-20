@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, fail */
+/*global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,18 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Christoph Uhde
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-
-const internal = require("internal");
-const { getEndpointById } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
-const db = internal.db;
-const arangodb = require("@arangodb");
+const {assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
+const internal = require("internal");
+const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
+const arango = arangodb.arango;
+const db = arangodb.db;
+let IM = global.instanceManager;
 
 // helper
 const isCluster = internal.isCluster();
@@ -51,15 +50,20 @@ const waitInClusterUntil = func => {
 
 const waitForCollectionPredicate = (collection, predicate) => {
   const shardList = collection.shards(true);
+  var result = true;
+  IM.rememberConnection();
   for (const [shard, servers] of Object.entries(shardList)) {
-    const endpoint = getEndpointById(servers[0]);
-    const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-    assertEqual(resp.statusCode, 200);
-    if (!predicate(resp.json)) {
-      return false;
-    }
+    IM.getInstanceByID(servers[0]).toThisInstance(() => {
+      const resp = arango.GET_RAW(`/_api/collection/${shard}/properties`);
+      assertEqual(resp.code, 200);
+      if (!predicate(resp.parsedBody)) {
+        result = false;
+        return;
+      }
+    });
   }
-  return true;
+  IM.reconnectMe();
+  return result;
 };
 
 const skipOptions = {"skipDocumentValidation": true};
@@ -76,6 +80,7 @@ function ValidationBasicsSuite() {
   return {
 
     setUp: () => {
+      IM.rememberConnection();
       try {
         db._drop(testCollectionName);
       } catch (ex) {
@@ -120,6 +125,7 @@ function ValidationBasicsSuite() {
         db._drop(testCollectionName);
       } catch (ex) {
       }
+      IM.reconnectMe();
     },
 
     // properties ////////////////////////////////////////////////////////////////////////////////////////
@@ -842,6 +848,7 @@ function UpdateSchemaCoverageSuite() {
   return {
 
     setUp: () => {
+      IM.rememberConnection();
       try {
         db._drop(testCollectionName);
       } catch (ex) {
@@ -858,6 +865,7 @@ function UpdateSchemaCoverageSuite() {
         db._drop(testCollectionName);
       } catch (ex) {
       }
+      IM.reconnectMe();
     },
 
     testPropertiesRemoveAttributeAfterDocInsertion: () => {
@@ -914,6 +922,7 @@ function ValidationEdgeSuite() {
   return {
 
     setUp: () => {
+      IM.rememberConnection();
       try {
         db._drop(testCollectionName);
       } catch (ex) {
@@ -942,6 +951,7 @@ function ValidationEdgeSuite() {
         db._drop(testCollectionName);
       } catch (ex) {
       }
+      IM.reconnectMe();
     },
 
     // insert ////////////////////////////////////////////////////////////////////////////////////////

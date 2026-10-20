@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,9 +21,11 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Wilfried Goesgens
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -41,12 +43,8 @@ if (runSetup === true) {
   return true;
 }
 
-var jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
   let db = require("@arangodb").db;
-  const errors = require('@arangodb').errors;
 
   return {
     setUp: function() {
@@ -66,7 +64,7 @@ function testSuite() {
     },
 
     testCanSwitchDatabase : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
 
       let data = {
         collections: { },
@@ -82,7 +80,7 @@ function testSuite() {
     },
 
     testReadArbitraryFiles : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
 
       let data = {
         collections: { },

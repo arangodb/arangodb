@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics;
@@ -32,22 +32,24 @@ struct ReplicatedLogMetrics;
 
 namespace arangodb {
 class ReplicatedLogFeature final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public replication2::IReplicatedLogProvider {
  public:
   static constexpr std::string_view name() noexcept { return "ReplicatedLog"; }
 
   explicit ReplicatedLogFeature(
       application_features::ApplicationServer& server);
+  ReplicatedLogFeature(application_features::ApplicationServer& server,
+                       replication2::ReplicatedLogGlobalSettings options);
   ~ReplicatedLogFeature() override;
 
   void start() override;
 
   auto metrics() const noexcept -> std::shared_ptr<
       replication2::replicated_log::ReplicatedLogMetrics> const&;
-  auto options() const noexcept
-      -> std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>;
+  auto options() const noexcept -> std::shared_ptr<
+      replication2::ReplicatedLogGlobalSettings const> override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
  private:

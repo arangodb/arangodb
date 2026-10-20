@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "icu-helper.h"

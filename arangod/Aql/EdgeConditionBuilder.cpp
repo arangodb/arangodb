@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeConditionBuilder.h"
@@ -27,12 +26,10 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Graph/Graph.h"
+#include "Aql/QueryContext.h"
 
 using namespace arangodb::basics;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
                                            EdgeConditionBuilder const& other)
@@ -59,8 +56,8 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
   }
 }
 
-EdgeConditionBuilder::EdgeConditionBuilder(
-    AstNode* modCondition, arangodb::ResourceMonitor& resourceMonitor)
+EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition,
+                                           ResourceMonitor& resourceMonitor)
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(modCondition),
@@ -119,7 +116,7 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   return _modCondition;
 }
 
-arangodb::ResourceMonitor& EdgeConditionBuilder::resourceMonitor() {
+ResourceMonitor& EdgeConditionBuilder::resourceMonitor() {
   return _resourceMonitor;
 }
 
@@ -150,3 +147,11 @@ void EdgeConditionBuilder::replaceAttributeAccess(
   replace(_toCondition);
   replace(_modCondition);
 }
+
+void EdgeConditionBuilder::getVariablesUsedHere(VarSet& result) const {
+  Ast::getReferencedVariables(_fromCondition, result);
+  Ast::getReferencedVariables(_toCondition, result);
+  Ast::getReferencedVariables(_modCondition, result);
+}
+
+}  // namespace arangodb::aql

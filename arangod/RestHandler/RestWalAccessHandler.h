@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,6 +26,8 @@
 #include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
+
+class DatabaseFeature;
 
 /// Storage engine agnostic handler for using the WalAccess interface
 class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
@@ -48,5 +49,7 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
 
   /// @brief deprecated. remove in future version
   void handleCommandDetermineOpenTransactions(WalAccess const* wal);
+
+  DatabaseFeature& _databaseFeature;
 };
 }  // namespace arangodb

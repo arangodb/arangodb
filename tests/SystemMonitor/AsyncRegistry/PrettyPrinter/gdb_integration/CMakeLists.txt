@@ -1,9 +1,13 @@
-add_executable(async_registry_gdb_pretty_printer
+add_executable(async_registry_gdb_pretty_printer EXCLUDE_FROM_ALL
   async_registry_gdb_pretty_printer_test.cpp)
 target_link_libraries(async_registry_gdb_pretty_printer
   PRIVATE
   arango_async_registry
   arango
+)
+target_compile_options(async_registry_gdb_pretty_printer
+  PRIVATE
+  -O0
 )
 
 add_test(NAME async_registry_gdb_pretty_printer_test

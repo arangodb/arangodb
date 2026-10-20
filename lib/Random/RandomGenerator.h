@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,6 +48,8 @@ class RandomDevice {
   uint32_t interval(uint32_t left, uint32_t right);
 
   static unsigned long seed();
+
+  static std::uint64_t seed64();
 
   int32_t random(int32_t left, int32_t right);
 

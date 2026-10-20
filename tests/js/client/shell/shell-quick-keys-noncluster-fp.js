@@ -21,21 +21,16 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let arangodb = require('@arangodb');
-let db = arangodb.db;
-const primaryEndpoint = arango.getEndpoint();
-
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      reconnectRetry
-    } = require('@arangodb/test-helper');
-let { instanceRole } = require('@arangodb/testutils/instance');
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arangodb = require('@arangodb');
+const arango = arangodb.arango;
+const db = arangodb.db;
 let IM = global.instanceManager;
+
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function quickKeysSuite() {
   'use strict';
@@ -51,12 +46,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    IM.debugSetFailAt("disableRevisionsAsDocumentIds", instanceRole.single, primaryEndpoint);
+    IM.debugSetFailAt("disableRevisionsAsDocumentIds", instanceRole.single, IM.endpoint);
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", instanceRole.single, primaryEndpoint);
+      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", instanceRole.single, IM.endpoint);
       quickLimit = 100;
     }
 

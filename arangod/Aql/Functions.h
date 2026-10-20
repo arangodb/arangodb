@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -81,6 +80,8 @@ std::string extractCollectionName(transaction::Methods* trx,
 template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
+
+void throwIfKilled(ExpressionContext const* context);
 
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>

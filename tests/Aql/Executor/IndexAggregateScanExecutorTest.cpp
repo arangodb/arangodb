@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
@@ -42,7 +41,6 @@
 #include "IResearch/common.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -226,9 +224,7 @@ class MockIndex : public Index {
         options.usedKeyFields, options.projectedFields, std::move(_values));
   }
   char const* typeName() const override { return "mock index"; }
-  IndexType type() const override {
-    return Index::IndexType::TRI_IDX_TYPE_UNKNOWN;
-  }
+  IndexType type() const override { return IndexType::Unknown; }
   bool canBeDropped() const override { return false; }
   bool isSorted() const override { return false; }
   bool isHidden() const override { return false; }
