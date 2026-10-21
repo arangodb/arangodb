@@ -916,10 +916,6 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
 
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(objectId());
-  rocksdb::Comparator const* cmp =
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents)
-          ->GetComparator();
   rocksdb::Slice end = documentBounds.end();
 
   // avoid OOM error for truncate by committing earlier
@@ -989,8 +985,7 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
         ro.readOwnWrites = readOwnWrites;
         TRI_ASSERT(ro.snapshot);
       });
-  for (iter->Seek(documentBounds.start());
-       iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
+  for (iter->Seek(documentBounds.start()); iter->Valid(); iter->Next()) {
     TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
     VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
     TRI_ASSERT(document.isObject());

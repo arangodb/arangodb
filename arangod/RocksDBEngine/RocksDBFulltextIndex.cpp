@@ -479,7 +479,6 @@ Result RocksDBFulltextIndex::applyQueryToken(
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(objectId(), token);
   rocksdb::Slice end = bounds.end();
-  rocksdb::Comparator const* cmp = this->comparator();
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(
       _cf, [&](rocksdb::ReadOptions& ro) { ro.iterate_upper_bound = &end; });
@@ -487,8 +486,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;
   // apply left to right logic, merging all current results with ALL previous
-  for (iter->Seek(bounds.start());
-       iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
 
     rocksdb::Status s = iter->status();
