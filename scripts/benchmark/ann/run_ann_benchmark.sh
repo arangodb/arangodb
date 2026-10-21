@@ -50,7 +50,10 @@ ANN_DATASET_CACHE="${ANN_DATASET_CACHE:-${ANN_WORKDIR}/data}"
 # Results store (schema.js) + dashboard. Both optional: unset => the run is
 # only written to $ANN_OUTPUT_DIR.
 RESULTS_ARANGO_URL="${RESULTS_ARANGO_URL:-}"
+RESULTS_ARANGO_USER="${RESULTS_ARANGO_USER:-root}"
 RESULTS_ARANGO_PASSWORD="${RESULTS_ARANGO_PASSWORD:-}"
+# 1 => skip TLS certificate verification of the results store.
+RESULTS_ARANGO_INSECURE="${RESULTS_ARANGO_INSECURE:-}"
 GRAFANA_URL="${GRAFANA_URL:-}"
 
 ARANGO_URL="http://${ARANGO_HOST}:${ARANGO_PORT}"
@@ -238,8 +241,12 @@ load_results() {
     return
   fi
   log "Loading run into results store at ${RESULTS_ARANGO_URL}"
+  local insecure=()
+  [[ "${RESULTS_ARANGO_INSECURE}" == 1 ]] && insecure=(--insecure)
   python3 "${SCRIPT_DIR}/load_run.py" "${ANN_OUTPUT_DIR}" \
-    --url "${RESULTS_ARANGO_URL}" --password "${RESULTS_ARANGO_PASSWORD}"
+    --url "${RESULTS_ARANGO_URL}" \
+    --user "${RESULTS_ARANGO_USER}" --password "${RESULTS_ARANGO_PASSWORD}" \
+    "${insecure[@]}"
   if [[ -n "${GRAFANA_URL}" ]]; then
     log "Dashboard: ${GRAFANA_URL}/d/ann-bench"
   fi

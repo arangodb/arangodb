@@ -32,7 +32,7 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/bench/_api/cursor",
+            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
@@ -66,7 +66,7 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/bench/_api/cursor",
+            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
@@ -105,7 +105,7 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/bench/_api/cursor",
+            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
@@ -233,7 +233,7 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/bench/_api/cursor",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
@@ -369,7 +369,7 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/bench/_api/cursor",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
@@ -468,7 +468,7 @@
           "source": "url",
           "format": "timeseries",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/bench/_api/cursor",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
@@ -565,7 +565,7 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/bench/_api/cursor",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",

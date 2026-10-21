@@ -5,7 +5,7 @@
 // Measurements reference run / index_setup / dataset by _key. "Which index setups
 // ran in which run" is derivable from the measurements, so there is no join collection.
 
-const DB_NAME = "bench";
+const DB_NAME = "ann-bench";
 
 const COLLECTIONS = {
   run: {

@@ -31,6 +31,7 @@ import csv
 import json
 import os
 import re
+import ssl
 import sys
 import urllib.error
 import urllib.request
@@ -62,8 +63,9 @@ class ArangoError(RuntimeError):
 class Arango:
     """Minimal ArangoDB HTTP client: AQL cursors inside one stream transaction."""
 
-    def __init__(self, url, database, user, password):
+    def __init__(self, url, database, user, password, insecure):
         self.base = f"{url.rstrip('/')}/_db/{database}"
+        self.ssl_context = ssl._create_unverified_context() if insecure else None
         self.headers = {"Content-Type": "application/json"}
         if password:
             token = base64.b64encode(f"{user}:{password}".encode()).decode()
@@ -77,7 +79,7 @@ class Arango:
         if self.trx_id:
             req.add_header("x-arango-trx-id", self.trx_id)
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, context=self.ssl_context) as resp:
                 return json.loads(resp.read() or b"{}")
         except urllib.error.HTTPError as e:
             try:
@@ -146,10 +148,12 @@ def parse_args():
                    help="directory with results.csv and run_meta.json")
     p.add_argument("--url", default=os.environ.get("ARANGO_URL", "http://localhost:8529"),
                    help="ArangoDB endpoint (env ARANGO_URL)")
-    p.add_argument("--db", default="bench", help="database name")
+    p.add_argument("--db", default="ann-bench", help="database name")
     p.add_argument("--user", default="root")
     p.add_argument("--password", default=os.environ.get("ARANGO_PASSWORD", ""),
                    help="empty = no authentication (env ARANGO_PASSWORD)")
+    p.add_argument("--insecure", action="store_true",
+                   help="skip TLS certificate verification")
     p.add_argument("--dry-run", action="store_true",
                    help="parse and print a summary, touch no database")
     return p.parse_args()
@@ -296,7 +300,7 @@ def main():
         print(f"invalid CSV: {e}", file=sys.stderr)
         return 1
 
-    db = Arango(args.url, args.db, args.user, args.password)
+    db = Arango(args.url, args.db, args.user, args.password, args.insecure)
     try:
         db.begin(WRITE_COLLECTIONS)
         load(db, meta, rows)
