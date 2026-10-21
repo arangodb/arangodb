@@ -56,9 +56,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FrontendFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utilities/NameValidator.h"
@@ -72,7 +70,6 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-deadline.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Executor.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
@@ -159,9 +156,9 @@ V8DealerFeature::V8DealerFeature(
 
   if (!_options.enableJS) {
     disable();
-
-    server.disableFeatures<V8PlatformFeature, ActionFeature, ScriptFeature,
-                           FoxxFeature, FrontendFeature>();
+    if (server.hasFeature<ActionFeature>()) {
+      server.disableFeatures<ActionFeature>();
+    }
     return;
   }
 }
@@ -542,7 +539,7 @@ void V8DealerFeature::unprepare() {
                                                          std::string_view id) {
   bool const isOldStyleName =
       DatabaseNameValidator::validateName(
-          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          /*allowSystem=*/true, /*extendNames=*/false, name)
           .ok();
   return (isOldStyleName || id.empty()) ? name : id;
 }
@@ -809,11 +806,9 @@ void V8DealerFeature::collectGarbage() {
                                         _options.maxExecutorInvocations) &&
               _dynamicExecutorCreationBlockers == 0) {
             // remove the extra context as it is not needed anymore
-            _executors.erase(std::remove_if(_executors.begin(),
-                                            _executors.end(),
-                                            [&executor](V8Executor* e) {
-                                              return e->id() == executor->id();
-                                            }));
+            std::erase_if(_executors, [&executor](V8Executor const* e) {
+              return e->id() == executor->id();
+            });
 
             LOG_TOPIC("0a995", DEBUG, Logger::V8)
                 << "removed superfluous V8 executor #" << executor->id()

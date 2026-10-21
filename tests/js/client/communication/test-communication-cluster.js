@@ -45,17 +45,6 @@ const toArgv = require('internal').toArgv;
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
-const endpointToURL = (endpoint) => {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-  let pos = endpoint.indexOf('://');
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-  return 'http' + endpoint.substr(pos);
-};
-
 const debug = function (text) {
   console.warn(text);
 };

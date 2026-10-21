@@ -180,6 +180,11 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   auto& trx = expressionContext->trx();
   auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
+    if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not available on this instance");
+    }
     auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
     pool = analyzers.get(name, trx.vocbase(), trx.state()->analyzersRevision(),
                          trx.state()->operationOrigin());
@@ -1214,8 +1219,7 @@ Result IResearchAnalyzerFeature::createAnalyzerPool(
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  const auto validationRes = features.validate(type);
-  if (validationRes.fail()) {
+  if (auto validationRes = features.validate(type); validationRes.fail()) {
     return validationRes;
   }
 
@@ -2275,7 +2279,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
       return {};
     };
-    auto const res =
+    auto res =
         visitAnalyzers(*vocbase, visitor, operationOrigin, _clusterFeature,
                        _networkFeature ? _networkFeature->pool() : nullptr);
     if (!res.ok()) {

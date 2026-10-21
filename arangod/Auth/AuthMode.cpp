@@ -89,6 +89,7 @@ auto describe(auth::perms::CreateGraph const& perm) -> std::string {
 // Admin permissions carry no resource, so each maps to a fixed phrase naming
 // the administrative action it guards.
 auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
+  // NOLINTNEXTLINE(misc-unused-alias-decls)
   namespace p = auth::perms;
   using T = std::remove_cvref_t<decltype(admin)>;
   if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
@@ -107,6 +108,14 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
     return "access API call statistics (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
     return "manage AQL queries (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitorAqlQueries>) {
+    return "see the AQL queries of other users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
+    return "kill the AQL queries of other users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
+    return "see the transactions of other users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminKillTransactions>) {
+    return "abort the transactions of other users (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
     return "shut down the server (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {
@@ -983,6 +992,14 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       return rbac::Action::AdminApiCalls;
     } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
       return rbac::Action::AdminAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitorAqlQueries>) {
+      return rbac::Action::AdminMonitorAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
+      return rbac::Action::AdminKillAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
+      return rbac::Action::AdminMonitorTransactions;
+    } else if constexpr (std::is_same_v<T, p::AdminKillTransactions>) {
+      return rbac::Action::AdminKillTransactions;
     } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
       return rbac::Action::AdminShutdown;
     } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {

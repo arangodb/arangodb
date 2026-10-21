@@ -613,6 +613,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _edgeAliases(other._edgeAliases),
       _defaultDirection(other._defaultDirection),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
@@ -752,6 +753,7 @@ void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
   clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
+  clone._edgeAliases = _edgeAliases;
 
   // Optimized Out Variables
   clone._optimizedOutVariables = _optimizedOutVariables;

@@ -48,7 +48,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -1189,7 +1189,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     TRI_ASSERT(ServerState::instance()->isDBServer() ||
                ServerState::instance()->isSingleServer())
         << "executePlan only runs on DBServer or single-server";
-    auto& engine = feature.server().getFeature<RocksDBEngine>();
+    auto& engine = feature.server().getFeature<StorageEngine>();
     diffPlanLocal(engine, plan, planIndex, current, currentIndex, dirty, local,
                   serverId, errors, makeDirty, callNotify, actions,
                   shardActionMap, localLogs, localShardIdToLogId);

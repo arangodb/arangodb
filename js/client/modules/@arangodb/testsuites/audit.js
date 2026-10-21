@@ -55,11 +55,24 @@ const testPaths = {
 class runBasicOnArangod extends trs.runOnArangodRunner{
   preRun() {
     // we force to use auth basic, since tests expect it!
-    this.instanceManager.httpAuthOptions =  {
+    this.httpOptions =  {
       'headers': {
         'Authorization': 'Basic ' + base64Encode('root:')
       }
     };
+    this.httpOptions.method = 'POST';
+
+    this.httpOptions.timeout = this.options.oneTestTimeout;
+    if (this.options.isSan) {
+      this.httpOptions.timeout *= 2;
+    }
+    if (this.options.valgrind) {
+      this.httpOptions.timeout *= 2;
+    }
+
+    this.httpOptions.returnBodyOnError = true;
+    // detect the server IDs
+    this.instanceManager.launchFinalize();
     return {state: true};
   }
 }

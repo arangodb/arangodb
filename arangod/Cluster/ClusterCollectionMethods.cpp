@@ -731,8 +731,6 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           results.emplace_back(std::move(c));
         }
       } catch (...) {
-        TRI_ASSERT(false) << "Collection " << name
-                          << " was not created during Database creation.";
         return Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Required Collection " + name + " could not be created."};
       }
@@ -910,8 +908,10 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
         "Trying to create an empty list of collections on coordinator."};
   }
 
+  // A smart edge collection has no shards, so no DBServer ever runs this check
+  // for it. The coordinator is the only place it can be caught.
   for (auto const& col : collections) {
-    if (auto res = vocbase.validateCollectionDescriptor(col); res.fail()) {
+    if (auto res = vocbase.validateEnterpriseLicense(col); res.fail()) {
       return res;
     }
   }
