@@ -229,6 +229,10 @@ class GeneralRequest {
   /// @param end    one-past-the-end pointer of the URL buffer
   void detectAndStripApiVersion(char const*& start, char const* end);
 
+  /// @brief the prefixes that select a version a request may ask for, as a
+  /// comma-separated list for error messages
+  static std::string validApiVersionPrefixes();
+
  protected:
   static RequestType findRequestType(char const*, size_t const);
   void setValue(std::string key, std::string value);

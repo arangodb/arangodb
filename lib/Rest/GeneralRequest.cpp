@@ -28,7 +28,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 
-#include <charconv>
+#include <absl/strings/str_cat.h>
+
+#include <algorithm>
+#include <array>
+#include <ranges>
 
 namespace arangodb {
 
@@ -54,6 +58,41 @@ rest::RequestType translateMethodHelper(std::string_view method) noexcept {
   return RequestType::ILLEGAL;
 }
 
+constexpr std::string_view apiVersionPrefix = "/_arango/";
+
+// Every enumerator, whether or not it is currently supported.
+constexpr std::array allApiVersions{ApiVersion::V0, ApiVersion::V1,
+                                    ApiVersion::Experimental};
+
+static_assert(
+    [] {
+      for (unsigned i = 0; i < allApiVersions.size(); ++i) {
+        if (static_cast<unsigned>(allApiVersions[i]) != i) {
+          return false;
+        }
+      }
+      return allApiVersions.back() == ApiVersion::Experimental;
+    }(),
+    "allApiVersions must list every enumerator, in order and without gaps");
+
+// The versions a request may select via /_arango/<name>.
+auto selectableApiVersions() {
+  return allApiVersions | std::views::filter([](ApiVersion version) {
+           return version == api_version::experimentalApiVersion ||
+                  api_version::isApiVersionRequestable(version);
+         });
+}
+
+std::optional<ApiVersion> parseApiVersionSegment(std::string_view segment) {
+  auto versions = selectableApiVersions();
+  auto const it = std::ranges::find(versions, segment,
+                                    [](ApiVersion v) { return to_string(v); });
+  if (it == versions.end()) {
+    return std::nullopt;
+  }
+  return *it;
+}
+
 }  // namespace
 
 GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
@@ -64,7 +103,6 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _requestedApiVersion(api_version::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -399,95 +437,34 @@ velocypack::Options const* GeneralRequest::validationOptions(
   return &basics::VelocyPackHelper::looseRequestValidationOptions;
 }
 
+ApiVersion GeneralRequest::requestedApiVersion() const noexcept {
+  TRI_ASSERT(_requestedApiVersion.has_value());
+  return *_requestedApiVersion;
+}
+
+std::string GeneralRequest::validApiVersionPrefixes() {
+  std::string result;
+  for (ApiVersion version : selectableApiVersions()) {
+    absl::StrAppend(&result, result.empty() ? "" : ", ", apiVersionPrefix,
+                    to_string(version));
+  }
+  return result;
+}
+
 void GeneralRequest::detectAndStripApiVersion(char const*& start,
                                               char const* end) {
-  constexpr std::string_view arangoPrefix = "/_arango/";
-  constexpr std::string_view experimentalSuffix = "experimental";
-
-  size_t len = static_cast<size_t>(end - start);
-  if (len < arangoPrefix.size() ||
-      std::string_view(start, arangoPrefix.size()) != arangoPrefix) {
-    // No /_arango/ prefix, nothing to do
+  std::string_view const path(start, static_cast<size_t>(end - start));
+  if (!path.starts_with(apiVersionPrefix)) {
     return;
   }
 
-  char const* p = start + arangoPrefix.size();
-  std::string_view remainder(p, static_cast<size_t>(end - p));
-
-  auto throwGenericError = [&]() {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        absl::StrCat("invalid API version prefix: expected '/_arango/vX' or "
-                     "'/_arango/experimental', got instead: ",
-                     std::string_view(start, end - start)));
-  };
-
-  // Check for empty remainder (path is exactly "/_arango/")
-  if (remainder.empty()) {
-    throwGenericError();
-  }
-
-  // Check for /_arango/experimental
-  bool isExperimental = false;
-  if (remainder.starts_with(experimentalSuffix)) {
-    size_t suffixEnd = experimentalSuffix.size();
-    if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _requestedApiVersion = api_version::experimentalApiVersion;
-      isExperimental = true;
-      start = p + suffixEnd;  // advance past "/_arango/experimental"
-      return;
-    }
-    throwGenericError();
-  }
-
-  // Check for /_arango/vX where X is a decimal number
-  if (!remainder.starts_with('v')) {
-    // /_arango/ present but not followed by a valid format
-    throwGenericError();
-  }
-
-  std::string_view afterV = remainder.substr(1);
-
-  size_t numEnd = 0;
-  while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
-    ++numEnd;
-  }
-
-  if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
-    // Check for leading zeros
-    if (afterV[0] == '0' && numEnd > 1) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_BAD_PARAMETER,
-          absl::StrCat("invalid API version: version number must not have "
-                       "leading zeros, got path: ",
-                       std::string_view(start, end - start)));
-    }
-
-    std::string versionStr(afterV.substr(0, numEnd));
-    uint64_t version;
-    try {
-      version = std::stoull(versionStr);
-    } catch (std::exception& e) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_BAD_PARAMETER,
-          absl::StrCat(
-              "invalid API version: failed to parse version number: ", e.what(),
-              ", got path: ", std::string_view(start, end - start)));
-    }
-
-    bool versionSupported = api_version::isApiVersionSupported(version);
-    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
-      versionSupported = versionSupported || version == 1;
-    }
-
-    // If the parsed version is not supported or experimental we do NOT set
-    // _requestedApiVersion or strip the prefix. This will cause the handler
-    // lookup to fail and return a 404 Not Found
-    if (version < std::numeric_limits<uint32_t>::max() &&
-        (versionSupported || isExperimental)) {
-      _requestedApiVersion = static_cast<uint32_t>(version);
-      start = p + 1 + numEnd;  // advance past "/_arango/vX"
-    }
+  std::string_view const segment = path.substr(
+      apiVersionPrefix.size(),
+      path.find('/', apiVersionPrefix.size()) - apiVersionPrefix.size());
+  _requestedApiVersion = parseApiVersionSegment(segment);
+  if (_requestedApiVersion.has_value()) {
+    // strip the API version prefix and segment from the start of the path
+    start += apiVersionPrefix.size() + segment.size();
   }
 }
 

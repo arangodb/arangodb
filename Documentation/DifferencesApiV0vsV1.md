@@ -32,19 +32,17 @@ endpoints exist at all under a given API version.
   API version (`api_version::experimentalApiVersion`, currently value `2`),
   which is used for the OpenAPI spec only (see below) and is otherwise out
   of scope for this document.
-* If the requested version number is not in `supportedApiVersions` (and is
-  not the experimental version), the version prefix is **not** stripped and
-  **not** stored: the request keeps its default API version and the unstripped
-  prefix stays part of the path. No route matches such a path, so the client
-  receives HTTP `404` / `TRI_ERROR_HTTP_NOT_FOUND` with the message
-  `unknown path '<path>'`. (Under V0 the catch-all `/` handler answers instead,
-  normally with the same `404`.) Note that
-  `RestHandlerFactory::createHandler` also contains an
-  `unknown API version <n> for path '<path>'` error, but it cannot be reached:
-  `GeneralRequest::detectAndStripApiVersion` never stores an unsupported
-  version, so the value the factory sees is always valid.
-* Leading zeros in the version number (e.g. `/_arango/v01/`) are rejected
-  with HTTP `400` (`TRI_ERROR_HTTP_BAD_PARAMETER`).
+* Any other segment after `/_arango/` is an invalid API version. This
+  includes unsupported version numbers (e.g. `/_arango/v42/`), leading zeros
+  (e.g. `/_arango/v01/`), non-numeric versions (e.g. `/_arango/vX/`) and
+  unknown names (e.g. `/_arango/foo/`).
+  `GeneralRequest::detectAndStripApiVersion` does not strip such a prefix and
+  marks the request as having no valid API version.
+  `CommTask::prepareExecution` then rejects the request before it resolves the
+  database or checks authentication. The client receives HTTP `404` with
+  `errorNum` `TRI_ERROR_HTTP_NOT_FOUND` (404) and the message
+  `invalid API version in path '<path>', valid prefixes are: <prefixes>`.
+  The path in the message excludes the query string.
 
 ## Endpoints that exist only under V0 (removed/not registered under V1)
 
@@ -52,8 +50,8 @@ The route table in `GeneralServerFeature::defineRemainingHandlers` /
 `defineInitialHandlers` registers most handlers for API versions `{0, 1}`,
 but a number of handlers are registered **only** for version `{0}`. Under
 V1 these paths are simply unknown routes and produce a `404 Not Found`
-(`unknown API version` only applies to unsupported version numbers; for a
-route that is not registered under an otherwise-valid version, the normal
+(an invalid API version is rejected earlier, see above; for a route that is
+not registered under an otherwise-valid version, the normal
 "not found" handling in `RestHandlerFactory::createHandler` applies, i.e.
 HTTP `404`, `errorNum` `TRI_ERROR_HTTP_NOT_FOUND` (404) with message
 `unknown path '<path>'`).
