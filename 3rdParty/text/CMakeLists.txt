@@ -87,21 +87,11 @@ target_include_directories(text
 target_include_directories(text PRIVATE
   $<TARGET_PROPERTY:absl::base,INTERFACE_INCLUDE_DIRECTORIES>
   ${FROZEN_INCLUDE_DIR})
-# Add Boost include directory
-if(Boost_INCLUDE_DIRS)
-  target_include_directories(text PRIVATE ${Boost_INCLUDE_DIRS})
-elseif(BOOST_VERSION)
-  target_include_directories(text PRIVATE "${CMAKE_SOURCE_DIR}/3rdParty/boost/${BOOST_VERSION}")
-elseif(TARGET boost_boost)
-  # Get include directories from boost_boost target
-  get_target_property(BOOST_INCLUDE_DIR boost_boost INTERFACE_INCLUDE_DIRECTORIES)
-  if(BOOST_INCLUDE_DIR)
-    target_include_directories(text PRIVATE ${BOOST_INCLUDE_DIR})
-  endif()
-else()
-  # Default fallback
-  target_include_directories(text PRIVATE "${CMAKE_SOURCE_DIR}/3rdParty/boost/1.78.0")
-endif()
+# After playing whack-a-mole for like 30mins, this is my solution
+# what is this library even doing?
+FetchContent_GetProperties(Boost SOURCE_DIR _boost_source_dir)
+file(GLOB _boost_include_dirs "${_boost_source_dir}/libs/*/include")
+target_include_directories(text PRIVATE ${_boost_include_dirs})
 set_property(TARGET text PROPERTY CXX_STANDARD ${CXX_STD})
 target_compile_options(text PRIVATE -DBOOST_TEXT_SOURCE)
 
@@ -122,23 +112,25 @@ if (NOT MSVC)
     target_compile_options(text PRIVATE -Wall)
 endif ()
 
-install(TARGETS text
-  EXPORT text_export
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
+if(PROJECT_IS_TOP_LEVEL)
+  install(TARGETS text
+    EXPORT text_export
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)
 
-install(EXPORT text_export
-  FILE text-targets.cmake
-  NAMESPACE Boost::
-  DESTINATION lib/cmake/text
-  EXCLUDE_FROM_ALL)
+  install(EXPORT text_export
+    FILE text-targets.cmake
+    NAMESPACE Boost::
+    DESTINATION lib/cmake/text
+    EXCLUDE_FROM_ALL)
 
-install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/text-config.cmake
-  DESTINATION "lib/cmake/text")
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/text-config.cmake
+    DESTINATION "lib/cmake/text")
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
-  DESTINATION "include")
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
+    DESTINATION "include")
+endif()
 
 # If Boost was not found, make text depend on boost_clone, so that we clone
 # Boost from Github repos.  However, we don't want a permanent text ->

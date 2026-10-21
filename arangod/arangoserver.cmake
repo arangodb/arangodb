@@ -33,7 +33,6 @@ target_link_libraries(arangoserver INTERFACE
         arango_utils
         arango_vocbase
         arango_scheduler
-        boost_boost
         ${MSVC_LIBS})
 
 if(USE_ENTERPRISE)

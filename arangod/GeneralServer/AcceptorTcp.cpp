@@ -48,35 +48,30 @@ void AcceptorTcp<T>::open() {
 
   asio_ns::ip::tcp::endpoint asioEndpoint;
   asio_ns::error_code ec;
-  auto address = asio_ns::ip::address::from_string(hostname, ec);
+  auto address = asio_ns::ip::make_address(hostname, ec);
   if (!ec) {
     asioEndpoint = asio_ns::ip::tcp::endpoint(address, portNumber);
   } else {  // we need to resolve the string containing the ip
-    std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
+    asio_ns::ip::tcp protocol{asio_ns::ip::tcp::v4()};
     if (_endpoint->domain() == AF_INET6) {
-      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
-          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber));
-    } else if (_endpoint->domain() == AF_INET) {
-      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
-          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber));
-    } else {
+      protocol = asio_ns::ip::tcp::v6();
+    } else if (_endpoint->domain() != AF_INET) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
-
-    asio_ns::ip::tcp::resolver::iterator iter = resolver.resolve(*query, ec);
+    auto const results =
+        resolver.resolve(protocol, hostname, std::to_string(portNumber), ec);
     if (ec) {
       LOG_TOPIC("383bc", ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint ' " << _endpoint->specification()
           << "': " << ec.message();
       throw std::runtime_error(ec.message());
     }
-
-    if (asio_ns::ip::tcp::resolver::iterator{} == iter) {
+    if (results.empty()) {
       LOG_TOPIC("05077", ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint: endpoint is default constructed";
+    } else {
+      asioEndpoint = results.begin()->endpoint();
     }
-
-    asioEndpoint = iter->endpoint();  // function not documented in boost?!
   }
   _acceptor.open(asioEndpoint.protocol());
 
@@ -191,7 +186,7 @@ template<>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(
     std::shared_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
-  proto->timer.expires_from_now(std::chrono::seconds(60));
+  proto->timer.expires_after(std::chrono::seconds(60));
   proto->timer.async_wait(
       [weak_ptr = std::weak_ptr<AsioSocket<SocketType::Ssl>>(proto)](
           asio_ns::error_code const& ec) {

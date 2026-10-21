@@ -373,7 +373,10 @@ target_link_libraries(arangodbtests
   rocksdb
   snappy
   gtest
-  boost_boost
+  Boost::asio
+  Boost::container
+  Boost::core
+  Boost::lockfree
   velocypack_utils
 )
 

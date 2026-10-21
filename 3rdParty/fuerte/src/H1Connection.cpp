@@ -413,29 +413,24 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   FUERTE_ASSERT(_item != nullptr);
 
   // Inspect the data we've received so far.
-  size_t nparsed = 0;
-  auto buffers = this->_receiveBuffer.data();  // no copy
-  for (auto const& buffer : buffers) {
-    const char* data = reinterpret_cast<const char*>(buffer.data());
-
-    enum llhttp_errno err = llhttp_execute(&_parser, data, buffer.size());
-    if (err != HPE_OK) {
-      /* Handle error. Usually just close the connection. */
-      std::string msg("Invalid HTTP response in parser: '");
-      msg.append(llhttp_errno_name(err))
-          .append("' reason: '")
-          .append(llhttp_get_error_reason(&_parser))
-          .append("'");
-      FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
-      // will cleanup _item
-      this->shutdownConnection(Error::ProtocolError, msg);
-      return;
-    }
-    nparsed += buffer.size();
+  auto const buffer = this->_receiveBuffer.data();  // no copy
+  const char* data = reinterpret_cast<const char*>(buffer.data());
+  llhttp_errno const err = llhttp_execute(&_parser, data, buffer.size());
+  if (err != HPE_OK) {
+    /* Handle error. Usually just close the connection. */
+    std::string msg("Invalid HTTP response in parser: '");
+    msg.append(llhttp_errno_name(err))
+        .append("' reason: '")
+        .append(llhttp_get_error_reason(&_parser))
+        .append("'");
+    FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
+    // will cleanup _item
+    this->shutdownConnection(Error::ProtocolError, msg);
+    return;
   }
 
   // Remove consumed data from receive buffer.
-  this->_receiveBuffer.consume(nparsed);
+  this->_receiveBuffer.consume(buffer.size());
 
   if (ec == asio_ns::error::misc_errors::eof &&
       llhttp_message_needs_eof(&_parser)) {

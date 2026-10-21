@@ -14,8 +14,7 @@ endif()
 
 target_link_libraries(arango_cluster_engine
   arango_health
-  arango_indexes
-  boost_boost)
+  arango_indexes)
 
 if (USE_V8)
   target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)

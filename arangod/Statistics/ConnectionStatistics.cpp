@@ -61,7 +61,7 @@ std::vector<std::unique_ptr<ConnectionStatistics>> statisticsItems;
 
 // a free list of ConnectionStatistics objects, not owning them. the free list
 // is initially populated with kInitialQueueSize objects.
-static boost::lockfree::queue<ConnectionStatistics*> freeList;
+boost::lockfree::queue<ConnectionStatistics*> freeList{0};
 
 bool enqueueItem(ConnectionStatistics* item) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

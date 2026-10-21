@@ -285,7 +285,6 @@ include_directories(
 
 set(IRESEARCH_EXTERNAL_INCLUDES
   ${EXTERNAL_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${Lz4_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})
@@ -368,6 +367,20 @@ target_include_directories(iresearch-static
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+  )
+
+target_link_libraries(iresearch-static PUBLIC 
+  Boost::container
+  Boost::container_hash
+
+  # These are needed to make the 3rdParty/text work here
+  # I am not sure why text does not provide it,
+  # but the wannabe boost library that is text is just that great.
+  # Not worth the headache
+  Boost::algorithm
+  Boost::predef
+  Boost::throw_exception
+  Boost::type_traits
   )
 
 target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)

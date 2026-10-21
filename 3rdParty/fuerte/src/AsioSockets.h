@@ -180,12 +180,17 @@ struct Socket<SocketType::Tcp> {
     // use the ec-variants of the methods here to prevent exceptions.
     asio_ns::error_code ec;
     try {
-      timer.cancel(ec);
+      timer.cancel();
       if (socket.is_open()) {
         socket.cancel(ec);
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
         socket.close(ec);
       }
+    } catch (boost::system::system_error const& ex) {
+      // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
+      // to the old code, we extract the code from the exception that can be
+      // thrown by timer.cancel()
+      ec = ex.code();
     } catch (std::exception const& ex) {
       // an exception is unlikely to occur here, as we are using the error-code
       // variants of cancel/shutdown/close above
@@ -248,7 +253,7 @@ struct Socket<fuerte::SocketType::Ssl> {
             if (verify) {
               socket.set_verify_mode(asio_ns::ssl::verify_peer);
               socket.set_verify_callback(
-                  asio_ns::ssl::rfc2818_verification(config._host));
+                  asio_ns::ssl::host_name_verification(config._host));
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
@@ -313,7 +318,14 @@ struct Socket<fuerte::SocketType::Ssl> {
     asio_ns::error_code ec;
 
     if (!socket.lowest_layer().is_open()) {
-      timer.cancel(ec);
+      try {
+        timer.cancel();
+      } catch (boost::system::system_error const& ex) {
+        // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
+        // to the old code, we extract the code from the exception that can be
+        // thrown by timer.cancel()
+        ec = ex.code();
+      }
       std::forward<F>(cb)(ec);
       return;
     }
@@ -412,12 +424,17 @@ struct Socket<fuerte::SocketType::Unix> {
     // use the ec-variants of the methods here to prevent exceptions.
     asio_ns::error_code ec;
     try {
-      timer.cancel(ec);
+      timer.cancel();
       if (socket.is_open()) {
         socket.cancel(ec);
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
         socket.close(ec);
       }
+    } catch (boost::system::system_error const& ex) {
+      // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
+      // to the old code, we extract the code from the exception that can be
+      // thrown by timer.cancel()
+      ec = ex.code();
     } catch (std::exception const& ex) {
       // an exception is unlikely to occur here, as we are using the error-code
       // variants of cancel/shutdown/close above

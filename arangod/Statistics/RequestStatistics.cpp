@@ -60,11 +60,11 @@ std::vector<std::unique_ptr<RequestStatistics>> statisticsItems;
 
 // a free list of RequestStatistics objects, not owning them. the free list
 // is initially populated with kInitialQueueSize objects.
-boost::lockfree::queue<RequestStatistics*> freeList;
+boost::lockfree::queue<RequestStatistics*> freeList{0};
 
 // a list of finished (to-be-process) RequestStatistics objects, not owning
 // them. this list will be initially empty
-boost::lockfree::queue<RequestStatistics*> finishedList;
+boost::lockfree::queue<RequestStatistics*> finishedList{0};
 
 bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
                  RequestStatistics* item) noexcept {

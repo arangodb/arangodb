@@ -95,7 +95,6 @@ target_link_libraries(arangodbtests-iresearch
   arango_cluster_engine
   arango_rocksdb
   arangoserver
-  boost_boost
 )
 
 if (USE_V8)

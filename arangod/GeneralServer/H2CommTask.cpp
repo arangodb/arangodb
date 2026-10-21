@@ -510,20 +510,19 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   size_t parsedBytes = 0;
-  for (auto const& buffer : this->_protocol->buffer.data()) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
+  auto const buffer = this->_protocol->buffer.data();
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
-      LOG_TOPIC("43942", INFO, Logger::REQUESTS)
-          << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
-          << rv << ")";
-      this->close(ec);
-      return false;  // stop read loop
-    }
-
-    parsedBytes += static_cast<size_t>(rv);
+  auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+  if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
+    LOG_TOPIC("43942", INFO, Logger::REQUESTS)
+        << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
+        << rv << ")";
+    this->close(ec);
+    return false;  // stop read loop
   }
+
+  parsedBytes += static_cast<size_t>(rv);
 
   TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
   // Remove consumed data from receive buffer.
