@@ -1,5 +1,9 @@
 include(FetchContent)
 
+set(BOOST_VERSION "1.92.0")
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+set(BOOST_SHA256 "9bed76128d4e46755dbe818487788c6fceb6f72b378f4daa49b7e1e600d9088d")
+
 set(BOOST_INCLUDE_LIBRARIES
   algorithm
   asio
@@ -20,9 +24,6 @@ set(BOOST_INCLUDE_LIBRARIES
   type_traits
   uuid
 )
-
-set(BOOST_VERSION "1.92.0")
-set(BOOST_SHA256 "9bed76128d4e46755dbe818487788c6fceb6f72b378f4daa49b7e1e600d9088d")
 
 FetchContent_Declare(
   Boost

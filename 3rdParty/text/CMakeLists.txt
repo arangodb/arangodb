@@ -112,25 +112,23 @@ if (NOT MSVC)
     target_compile_options(text PRIVATE -Wall)
 endif ()
 
-if(PROJECT_IS_TOP_LEVEL)
-  install(TARGETS text
-    EXPORT text_export
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
+install(TARGETS text
+  EXPORT text_export
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)
 
-  install(EXPORT text_export
-    FILE text-targets.cmake
-    NAMESPACE Boost::
-    DESTINATION lib/cmake/text
-    EXCLUDE_FROM_ALL)
+install(EXPORT text_export
+  FILE text-targets.cmake
+  NAMESPACE Boost::
+  DESTINATION lib/cmake/text
+  EXCLUDE_FROM_ALL)
 
-  install(FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/text-config.cmake
-    DESTINATION "lib/cmake/text")
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/text-config.cmake
+  DESTINATION "lib/cmake/text")
 
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
-    DESTINATION "include")
-endif()
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
+  DESTINATION "include")
 
 # If Boost was not found, make text depend on boost_clone, so that we clone
 # Boost from Github repos.  However, we don't want a permanent text ->
