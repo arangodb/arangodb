@@ -5,5 +5,5 @@ tests:
 - rta_upgrade:
     job: run-rta-tests
     options:
-      buckets: -1
+      buckets: 1
       browser: none
