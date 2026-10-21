@@ -102,7 +102,7 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(Database& vocbase, CollectionDescriptor descriptor,
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
@@ -514,7 +514,6 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
-
 };
 
 }  // namespace arangodb
