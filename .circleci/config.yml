@@ -125,9 +125,9 @@ parameters:
   ann-bench-build-arango:
     type: boolean
     default: false
-    description: "With run-ann-bench: compile this commit with the nightly
-      release preset (nightly-package-x64) and benchmark that build instead of
-      ann-bench-arango-image."
+    description: "Only together with run-ann-bench: compile this commit with
+      the CMakePresets.json configuration ann-benchmark-x64 and benchmark that
+      build; ann-bench-arango-image is then ignored."
 
 
 # our defined job, and its steps

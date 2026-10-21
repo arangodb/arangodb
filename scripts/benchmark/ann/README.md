@@ -62,9 +62,10 @@ container, then loads the run into the shared results store at `AWS_FIGURES_URL`
 only provides the harness scripts.
 
 With `ann-bench-build-arango` = `true` as well, the branch itself is benchmarked instead:
-`build-x64-for-ann-benchmark` compiles it with the `ann-benchmark-x64` preset (the nightly release
-build `nightly-package-x64`, built in `build/`), and `ann-benchmark-build` installs that build on
-`cimg/python`, starts arangod with `--vector-index true` and runs the same benchmark.
+`build-x64-for-ann-benchmark` compiles it with the `CMakePresets.json` configuration
+`ann-benchmark-x64` (inherits `nightly-package-x64`, builds in `build/`), and `ann-benchmark-build`
+installs that build on `cimg/python`, starts arangod with `--vector-index true` and runs the same
+benchmark; `ann-bench-arango-image` is then ignored.
 
 | Nightly | `ann-bench-arango-image` |
 |---|---|
