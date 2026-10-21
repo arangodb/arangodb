@@ -10,7 +10,7 @@ in a results ArangoDB that Grafana charts.
 | `Dockerfile` | Harness image: pinned fork + Python deps baked in (`run_ann_benchmark.sh setup`) |
 | `run_local.sh` | Local mode: build the image, run it against your arangod, output in `./ann-output` |
 | `docker-compose.yml` | Results ArangoDB + one-shot `schema` job + Grafana; `--profile ci` adds a SUT arangod + the harness |
-| `schema.js` | Creates database `bench`, collections and unique indexes; idempotent |
+| `schema.js` | Creates database `ann-bench`, collections and unique indexes; idempotent |
 | `load_run.py` | Loads one `results.csv` as one run, in one transaction (stdlib only) |
 | `grafana/provisioning/` | Infinity datasource + `ann-bench` dashboard |
 
@@ -54,14 +54,27 @@ ANN_OUTPUT_DIR=./ann-output ANN_DATASET_CACHE=~/.cache/ann-benchmarks ./run_ann_
 
 ## CI mode
 
-The CircleCI job `ann-benchmark` (manual, pipeline parameter `run-ann-benchmark`) runs
-`run_ann_benchmark.sh` on `cimg/python` with arangod as a service container. The results store
-and Grafana are expected to be running already; their location comes from the
-`ann-benchmark-store` context. Until that context exists the load step logs
-`RESULTS_ARANGO_URL unset - skipping results load` and the job still publishes the site.
+The CircleCI job `ann-benchmark` (pipeline parameter `run-ann-benchmark`) runs
+`run_ann_benchmark.sh` on `cimg/python` with arangod from the image `ann-arangod-image` as a service
+container, then loads the run into the shared results store at `AWS_FIGURES_URL` as
+`AWS_ARANGODB_ID` / `AWS_ARANGODB_KEY`, all from the `ann-benchmark-store` context (see
+[Shared results store](#shared-results-store)). The image is the system under test; the branch
+only provides the harness scripts.
 
-To start it, open the branch in CircleCI, choose **Trigger Pipeline** and add the boolean
-parameter `run-ann-benchmark` = `true`. Or through the API, with a personal API token:
+| Nightly | `ann-arangod-image` |
+|---|---|
+| `devel` | `arangodb/enterprise-preview:devel-nightly` (default) |
+| `4.0` | `arangodb/core-preview:4.0-nightly` |
+
+Both nightlies publish around 02:00 UTC. The nightly benchmarks are two CircleCI pipeline schedules
+(Project Settings → Triggers) on the respective branch, started after that, each with
+`run-ann-benchmark` = `true` and its `ann-arangod-image`. They are independent of the nightly
+pipeline: if a nightly fails to publish, the benchmark runs the previous image, and the run records
+that image's version (with its nightly date).
+
+To start it manually, open the branch in CircleCI, choose **Trigger Pipeline** and add the boolean
+parameter `run-ann-benchmark` = `true` (and `ann-arangod-image` for another image). Or through the
+API, with a personal API token:
 
 ```bash
 curl -X POST https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline \
@@ -78,7 +91,8 @@ The normal test pipeline is skipped for that run. Artifacts are under `ann-bench
 | `ARANGO_USER` / `ARANGO_PASSWORD` | `root` / empty | its credentials |
 | `ARANGODB_IMAGE` | empty | image that runs it; recorded in `run_meta.json` only |
 | `RESULTS_ARANGO_URL` | empty | results store; unset skips loading |
-| `RESULTS_ARANGO_PASSWORD` | empty | its `root` password |
+| `RESULTS_ARANGO_USER` / `RESULTS_ARANGO_PASSWORD` | `root` / empty | its credentials |
+| `RESULTS_ARANGO_INSECURE` | empty | `1` skips TLS certificate verification of the store |
 | `GRAFANA_URL` | empty | printed as `<url>/d/ann-bench` in the log and `METADATA.txt` |
 | `ANN_ALGORITHM` | `arangodb-ivf` | algorithm name in the fork's `config.yml` |
 | `ANN_DATASETS` | `glove-100-angular` | space-separated |
@@ -88,11 +102,35 @@ The normal test pipeline is skipped for that run. Artifacts are under `ann-bench
 | `ANN_STAMP` | `unknown` | label for the run, written to `site/METADATA.txt` |
 | `ANN_HARNESS_IMAGE` | `ann-bench-harness` | image tag `run_local.sh` builds and runs |
 
-Apply the schema once to the shared results store:
+## Shared results store
 
-```bash
-arangosh --server.endpoint tcp://<results-host>:8529 --javascript.execute schema.js
-```
+One-time setup of the store at `AWS_FIGURES_URL` (an `https://` URL) for CI:
+
+1. Create database `ann-bench` with its collections and indexes. This needs a user with access
+   to `_system`; `schema.js` is idempotent, so re-run it after schema changes:
+
+   ```bash
+   arangosh --server.endpoint "ssl://${AWS_FIGURES_URL#https://}:443" \
+     --server.username <admin> --javascript.execute schema.js
+   ```
+
+2. If `AWS_ARANGODB_ID` is not that admin, give it read/write on `ann-bench`:
+
+   ```bash
+   arangosh --server.endpoint "ssl://${AWS_FIGURES_URL#https://}:443" --server.username <admin> \
+     --javascript.execute-string \
+     'require("@arangodb/users").grantDatabase("<AWS_ARANGODB_ID>", "ann-bench", "rw")'
+   ```
+
+3. Add `AWS_FIGURES_URL`, `AWS_ARANGODB_ID` and `AWS_ARANGODB_KEY` to the CircleCI context `ann-benchmark-store`
+   (Organization Settings → Contexts).
+
+4. Check by loading a downloaded run by hand:
+
+   ```bash
+   ./load_run.py <run-dir> --url "$AWS_FIGURES_URL" --insecure \
+     --user "$AWS_ARANGODB_ID" --password "$AWS_ARANGODB_KEY"
+   ```
 
 ## Reproduce CI locally
 
@@ -123,7 +161,7 @@ recall-vs-p50-latency charts and shows index build time per run as a bar chart a
 with `dataset`, (multi-select) `major` version and `run` variables.
 
 To add a panel: datasource `bench`, type **JSON**, source **URL**, method **POST**,
-URL `http://arangodb:8529/_db/bench/_api/cursor`, body type raw / JSON, root selector `result`:
+URL `http://arangodb:8529/_db/ann-bench/_api/cursor`, body type raw / JSON, root selector `result`:
 
 ```json
 {"query": "FOR m IN measurement_recall_qps FILTER m.run_id == '$run' AND m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == 'glove-100-angular' LET ix = DOCUMENT('index_setup', m.index_id) SORT m.recall RETURN {recall: m.recall, qps: m.qps, params: ix.index_params.descriptor}"}

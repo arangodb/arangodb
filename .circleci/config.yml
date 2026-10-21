@@ -111,10 +111,15 @@ parameters:
   run-ann-benchmark:
     type: boolean
     default: false
-    description: "Manual-only: run the ANN vector-index benchmark instead of the
-      normal test pipeline. Boots the arangod devel nightly, runs the
-      ann-benchmarks harness against the IVF index and publishes the HTML site
-      + results.csv as artifacts. See scripts/benchmark/ann/."
+    description: "Run the ANN vector-index benchmark instead of the normal test
+      pipeline (manually or from a pipeline schedule). Boots ann-arangod-image,
+      runs the ann-benchmarks harness against the IVF index and publishes the
+      HTML site + results.csv as artifacts. See scripts/benchmark/ann/."
+  ann-arangod-image:
+    type: string
+    default: "arangodb/enterprise-preview:devel-nightly"
+    description: "arangod image the ANN benchmark runs against, e.g.
+      arangodb/core-preview:4.0-nightly for the 4.0 nightly."
 
 
 # our defined job, and its steps
@@ -331,8 +336,8 @@ jobs:
           configuration_path: continuation_config.yml
           parameters: parameters.json
 
-  # Manual-only vector-index benchmark. Runs directly on the self-hosted
-  # runner (no continuation): boots the arangod devel nightly, runs the ann-benchmarks
+  # Vector-index benchmark (run-ann-benchmark). Runs directly on the self-hosted
+  # runner (no continuation): boots ann-arangod-image, runs the ann-benchmarks
   # harness against the IVF index, publishes the site + CSV and loads the run
   # into the shared results store at AWS_FIGURES_URL (with credentials
   # AWS_ARANGODB_ID / AWS_ARANGODB_KEY, all from the ann-benchmark-store context).
@@ -343,7 +348,7 @@ jobs:
       # Service container: arangod, reachable from the primary at 127.0.0.1:8529
       # (container runners have no docker daemon, so the harness cannot start it
       # itself - the executor does, and the script only waits for it).
-      - image: &ann-arangod-image arangodb/enterprise-preview:devel-nightly
+      - image: << pipeline.parameters.ann-arangod-image >>
         name: arangod
         environment:
           ARANGO_NO_AUTH: "1"
@@ -351,7 +356,7 @@ jobs:
     resource_class: arangodb/large-amd64
     environment:
       # Recorded in run_meta.json.
-      ARANGODB_IMAGE: *ann-arangod-image
+      ARANGODB_IMAGE: << pipeline.parameters.ann-arangod-image >>
       ANN_OUTPUT_DIR: /tmp/ann-output
       ANN_DATASETS: glove-100-angular
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
@@ -420,7 +425,7 @@ workflows:
           requires:
             - cancel-redundant-pipelines
 
-  # Manual-only: triggered by setting the run-ann-benchmark pipeline parameter.
+  # Triggered by the run-ann-benchmark pipeline parameter, manually or by schedule.
   ann-benchmark:
     when: << pipeline.parameters.run-ann-benchmark >>
     jobs:
