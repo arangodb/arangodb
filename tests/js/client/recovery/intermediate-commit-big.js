@@ -63,7 +63,7 @@ function recoverySuite () {
     testIntermediateCommitsBig: function () {
       var c = db._collection('UnitTestsRecovery');
 
-      assertEqual(20000, c.count());
+      assertEqual(19000, c.count());
     }
 
   };

@@ -174,9 +174,10 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       }
       for (auto const& idx : joinNode->getIndexInfos()) {
         std::unordered_set<ShardID> restrictedShards;
-        TRI_ASSERT(!useRestrictedShard);
-
         auto* col = idx.collection;
+        if (useRestrictedShard) {
+          addRestrictedShard(col, restrictedShards);
+        }
         updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards,
                       idx.usedAsSatellite);
       }

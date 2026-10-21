@@ -126,6 +126,7 @@ void RestActionHandler::executeAction() {
 bool isPublicAardvarkPath(std::string_view path) {
   using namespace std::string_view_literals;
   constexpr std::array exact = {
+      "/"sv,
       "/_admin/aardvark/index.html"sv,
       "/_admin/aardvark/config.js"sv,
       "/_admin/aardvark/whoAmI"sv,
@@ -133,6 +134,7 @@ bool isPublicAardvarkPath(std::string_view path) {
   constexpr std::array prefixes = {
       "/_admin/aardvark/static/"sv,
       "/_admin/aardvark/img/"sv,
+      "/_admin/aardvark/api/"sv,
   };
   return std::ranges::any_of(exact, [&](auto p) { return path == p; }) ||
          std::ranges::any_of(prefixes,

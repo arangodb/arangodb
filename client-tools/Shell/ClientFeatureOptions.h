@@ -39,7 +39,7 @@ struct ClientFeatureOptions {
   std::string jwtToken;
   double connectionTimeout{5.0};
   double requestTimeout{1200.0};
-  double jwtRenewalThreshold{300.0};
+  double jwtRenewalThreshold{150.0};
   uint64_t maxPacketSize{1024 * 1024 * 1024};
   uint64_t compressRequestThreshold{0};
   uint64_t sslProtocol;
@@ -50,6 +50,10 @@ struct ClientFeatureOptions {
   bool haveServerPassword{false};
 
   bool allowJwtSecret{false};
+  /// exchange --server.username/--server.password for a JWT via /_open/auth
+  /// at startup and renew it; off for arangosh, whose fuerte connection
+  /// performs its own login and follows credential changes at runtime
+  bool loginViaOpenAuth{true};
   size_t maxNumEndpoints{1};
 };
 

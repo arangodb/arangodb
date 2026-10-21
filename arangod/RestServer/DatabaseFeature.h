@@ -99,7 +99,7 @@ class DatabaseManagerThread final : public ServerThread {
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
 #ifdef USE_V8
-  V8DealerFeature& _dealer;
+  V8DealerFeature* _dealer;
 #endif
 };
 
@@ -124,7 +124,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
@@ -183,11 +182,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
       std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
-
-  StorageEngine& engine() const noexcept {
-    TRI_ASSERT(_engine != nullptr);
-    return *_engine;
-  }
 
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;
@@ -253,6 +247,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+#ifdef USE_V8
+  V8DealerFeature* _dealer{nullptr};
+#endif
 
   using DatabasesList = containers::FlatHashMap<std::string, Database*>;
   class DatabasesListGuard {

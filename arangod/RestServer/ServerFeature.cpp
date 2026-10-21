@@ -23,13 +23,8 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
 #include "Basics/VelocyPackHelper.h"
@@ -42,7 +37,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -79,13 +73,15 @@ void ServerFeature::prepare() {
 
   bool supportsV8 = false;
 #ifdef USE_V8
-  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
+  V8DealerFeature* v8dealer = server().hasFeature<V8DealerFeature>()
+                                  ? &server().getFeature<V8DealerFeature>()
+                                  : nullptr;
 
-  if (v8dealer.isEnabled()) {
+  if (v8dealer != nullptr && v8dealer->isEnabled()) {
     if (operationMode() == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumExecutors(2);
+      v8dealer->setMinimumExecutors(2);
     } else {
-      v8dealer.setMinimumExecutors(1);
+      v8dealer->setMinimumExecutors(1);
     }
     supportsV8 = true;
   }
@@ -97,24 +93,11 @@ void ServerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  auto disableDeamonAndSupervisor = [&]() {
-#ifdef ARANGODB_HAVE_FORK
-    server().disableFeatures<DaemonFeature>();
-    server().disableFeatures<SupervisorFeature>();
-#endif
-  };
-
-  if (!_options.restServer) {
-    server()
-        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
-                         SslServerFeature, StatisticsFeature>();
-    disableDeamonAndSupervisor();
-  }
-
 #ifdef USE_V8
   if (operationMode() == OperationMode::MODE_CONSOLE) {
-    disableDeamonAndSupervisor();
-    v8dealer.setMinimumExecutors(2);
+    // --console requires javascriptRequestedViaOptions(), so it's registered
+    TRI_ASSERT(v8dealer != nullptr);
+    v8dealer->setMinimumExecutors(2);
   }
 #endif
 

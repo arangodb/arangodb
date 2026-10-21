@@ -1760,6 +1760,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_immutableParts = _immutableParts;
   node->_sort = _sort;
+  node->_sortBuckets = _sortBuckets;
   node->_optState = _optState;
   if (_outSearchDocId != nullptr) {
     node->setSearchDocIdVar(*_outSearchDocId);

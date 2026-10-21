@@ -203,6 +203,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _oneIndexCondition(oneIndexCondition),
       _readOwnWrites(readOwnWrites),
       _perIndexCovering(std::move(perIndexCovering)) {
+  // IndexIteratorOptions only sees killed() func, not the query itself here
+  _options.token = &query;
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -687,7 +689,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
-#ifdef USE_v8
+#ifdef USE_V8
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {

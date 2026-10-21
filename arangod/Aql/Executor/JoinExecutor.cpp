@@ -29,7 +29,11 @@
 #include "Basics/system-compiler.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+
+#include <algorithm>
 
 namespace arangodb::aql {
 
@@ -147,34 +151,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _constantBuilder.clear();
-      _constantSlices.clear();
-      _constantBuilder.openArray();
-
-      for (auto const& idx : _infos.indexes) {
-        if (!idx.constantExpressions.empty()) {
-          for (auto& expr : idx.constantExpressions) {
-            bool mustDestroy = false;
-            ExecutorExpressionContext ctx{_trx,
-                                          *_infos.query,
-                                          _functionsCache,
-                                          _currentRow,
-                                          idx.expressionVarsToRegs,
-                                          _infos.query->resourceMonitor()};
-
-            aql::AqlValue res = expr->execute(&ctx, mustDestroy);
-            aql::AqlValueGuard guard{res, mustDestroy};
-            LOG_JOIN << "Expression result: " << res.slice().toJson();
-            _constantBuilder.add(res.slice());
-          }
-        }
-      }
-      _constantBuilder.close();  // array
-
-      for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
-        _constantSlices.push_back(it);
-      }
-      _strategy->reset(_constantSlices);
+      resetStrategyForCurrentRow();
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;
@@ -528,6 +505,37 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
+void JoinExecutor::resetStrategyForCurrentRow() {
+  _constantBuilder.clear();
+  _constantSlices.clear();
+  {
+    VPackArrayBuilder arrayGuard(&_constantBuilder);
+    for (auto const& idx : _infos.indexes) {
+      if (!idx.constantExpressions.empty()) {
+        for (auto& expr : idx.constantExpressions) {
+          bool mustDestroy = false;
+          ExecutorExpressionContext ctx{_trx,
+                                        *_infos.query,
+                                        _functionsCache,
+                                        _currentRow,
+                                        idx.expressionVarsToRegs,
+                                        _infos.query->resourceMonitor()};
+
+          aql::AqlValue res = expr->execute(&ctx, mustDestroy);
+          aql::AqlValueGuard guard{res, mustDestroy};
+          LOG_JOIN << "Expression result: " << res.slice().toJson();
+          _constantBuilder.add(res.slice());
+        }
+      }
+    }
+  }
+
+  for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
+    _constantSlices.push_back(it);
+  }
+  _strategy->reset(_constantSlices);
+}
+
 void JoinExecutor::clearProjectionsBuilder() noexcept {
   auto const& buffer = _projectionsBuilder.bufferRef();
   resourceMonitor().decreaseMemoryUsage(buffer.byteSize());
@@ -542,7 +550,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset({});
+      resetStrategyForCurrentRow();
     }
 
     auto [hasMore, amountOfSeeks] =
@@ -729,12 +737,31 @@ void JoinExecutor::constructStrategy() {
     desc.iter = std::move(stream);
   }
 
+  // The primary index orders its keys byte-wise, persistent indexes use the
+  // storage engine's sorting method. The join-index-nodes optimizer rule does
+  // not join the primary index with other indexes.
+  bool const usesPrimaryIndex =
+      _infos.indexes[0].index->type() == IndexType::Primary;
+  TRI_ASSERT(std::all_of(
+      _infos.indexes.begin(), _infos.indexes.end(), [&](auto const& idx) {
+        return (idx.index->type() == IndexType::Primary) == usesPrimaryIndex;
+      }));
+  auto const keyOrder = [&] {
+    if (usesPrimaryIndex) {
+      return IndexJoinKeyOrder::kBinary;
+    }
+    return _trx.vocbase().engine<RocksDBEngine>().currentSortingMethod() ==
+                   basics::VelocyPackHelper::SortingMethod::Legacy
+               ? IndexJoinKeyOrder::kVPackLegacy
+               : IndexJoinKeyOrder::kVPack;
+  }();
+
   // TODO actually we want to have different strategies, like hash join and
   // special implementations for n = 2, 3, ...
   // TODO maybe make this a template parameter
   _strategy = IndexJoinStrategyFactory{}.createStrategy(
       std::move(indexDescription),
-      _infos.query->queryOptions().desiredJoinStrategy);
+      _infos.query->queryOptions().desiredJoinStrategy, keyOrder);
 }
 
 template class ExecutionBlockImpl<JoinExecutor>;

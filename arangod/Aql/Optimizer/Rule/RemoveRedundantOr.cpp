@@ -42,11 +42,11 @@ struct CommonNodeFinder {
   std::vector<AstNode const*> possibleNodes;
 
   bool find(AstNode const* node, AstNodeType condition,
-            AstNode const*& commonNode, std::string& commonName) {
+            AstNode const*& commonNode) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       ast::LogicalOperatorNode orOp(node);
-      return (find(orOp.getLeft(), condition, commonNode, commonName) &&
-              find(orOp.getRight(), condition, commonNode, commonName));
+      return (find(orOp.getLeft(), condition, commonNode) &&
+              find(orOp.getRight(), condition, commonNode));
     }
 
     if (node->type == NODE_TYPE_VALUE) {
@@ -76,14 +76,12 @@ struct CommonNodeFinder {
 
       if (!isIn && lhs->isConstant()) {
         commonNode = rhs;
-        commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
 
       if (rhs->isConstant()) {
         commonNode = lhs;
-        commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
@@ -91,7 +89,6 @@ struct CommonNodeFinder {
       if (rhs->type == NODE_TYPE_FCALL || rhs->type == NODE_TYPE_FCALL_USER ||
           rhs->type == NODE_TYPE_REFERENCE) {
         commonNode = lhs;
-        commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
@@ -100,7 +97,6 @@ struct CommonNodeFinder {
           (lhs->type == NODE_TYPE_FCALL || lhs->type == NODE_TYPE_FCALL_USER ||
            lhs->type == NODE_TYPE_REFERENCE)) {
         commonNode = rhs;
-        commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
@@ -109,9 +105,8 @@ struct CommonNodeFinder {
                     lhs->type == NODE_TYPE_INDEXED_ACCESS)) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
-            if (lhs->toString() == possibleNodes[i]->toString()) {
+            if (compareAstNodes<false>(lhs, possibleNodes[i], false) == 0) {
               commonNode = possibleNodes[i];
-              commonName = commonNode->toString();
               possibleNodes.clear();
               return true;
             }
@@ -124,9 +119,8 @@ struct CommonNodeFinder {
           rhs->type == NODE_TYPE_INDEXED_ACCESS) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
-            if (rhs->toString() == possibleNodes[i]->toString()) {
+            if (compareAstNodes<false>(rhs, possibleNodes[i], false) == 0) {
               commonNode = possibleNodes[i];
-              commonName = commonNode->toString();
               possibleNodes.clear();
               return true;
             }
@@ -150,12 +144,10 @@ struct RemoveRedundantOrHelper {
   bool isComparisonSet = false;
   CommonNodeFinder finder;
   AstNode const* commonNode = nullptr;
-  std::string commonName;
 
   bool hasRedundantCondition(AstNode const* node) {
     try {
-      if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode,
-                      commonName)) {
+      if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode)) {
         return hasRedundantConditionWalker(node);
       }
     } catch (...) {
@@ -261,7 +253,8 @@ struct RemoveRedundantOrHelper {
     } else if (type == NODE_TYPE_REFERENCE ||
                type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                type == NODE_TYPE_INDEXED_ACCESS) {
-      return (node->toString() == commonName);
+      return commonNode != nullptr &&
+             compareAstNodes<false>(node, commonNode, false) == 0;
     }
 
     return false;

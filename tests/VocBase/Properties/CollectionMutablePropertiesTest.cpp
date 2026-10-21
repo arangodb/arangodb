@@ -88,8 +88,9 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
 };
 
 TEST_F(CollectionMutablePropertiesTest, test_empty_input) {
-  // The name is only required by applyDefaultsAndValidate, so an empty body
-  // parses and leaves the name empty. See CollectionDescriptorFactoryTest.
+  // NOTE: Inspect() parses an empty body and leaves `name` empty,
+  // but applyDefaultsAndValidate() rejects it, which is tested in the
+  // CreateCollectionRequestTest.
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   auto testee = parse(body.slice());
@@ -116,8 +117,8 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
-  // NOTE: the empty string parses. It is rejected by
-  // applyDefaultsAndValidate, see CollectionDescriptorFactoryTest.
+  // NOTE: Inspect() parses the empty string, but applyDefaultsAndValidate()
+  // rejects it, which is tested in the CreateCollectionRequestTest.
 
   // Non String types
   __HELPER_assertParsingThrows(name, 0);

@@ -69,7 +69,8 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
       std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
       velocypack::Builder& response);
 
-  std::shared_ptr<LogicalCollection> collection(std::string const& cName);
+  ResultT<std::shared_ptr<LogicalCollection>> collection(
+      std::string const& cName);
 
   ClusterFeature& _clusterFeature;
 };

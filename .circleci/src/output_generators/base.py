@@ -26,8 +26,12 @@ class TestExecutionConfig:
 class CircleCIConfig:
     """CircleCI-specific configuration."""
 
-    # Test Docker image to build and publish: "none", "alpine" or "deb"
+    # Test Docker image (maintainer mode) to build and publish: "none",
+    # "alpine" or "deb"
     create_test_docker_images: str = "none"
+    # Preview Docker image (non-maintainer, release-like) to build and
+    # publish: "none", "alpine" or "deb"
+    create_preview_docker_images: str = "none"
     test_image: str = ""
 
 
