@@ -1552,7 +1552,7 @@ jobs:
                  fi
                done
             done
-            set +x
+            set -x
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
