@@ -334,8 +334,8 @@ jobs:
   # Manual-only vector-index benchmark. Runs directly on the self-hosted
   # runner (no continuation): boots the arangod devel nightly, runs the ann-benchmarks
   # harness against the IVF index, publishes the site + CSV and loads the run
-  # into the shared results store (RESULTS_ARANGO_URL / RESULTS_ARANGO_PASSWORD /
-  # GRAFANA_URL from the ann-benchmark-store context; unset => load skipped).
+  # into the shared results store at AWS_FIGURES_URL (with credentials
+  # AWS_ARANGODB_ID / AWS_ARANGODB_KEY, all from the ann-benchmark-store context).
   ann-benchmark:
     docker:
       # Primary: runs the ann-benchmarks harness.
@@ -357,6 +357,8 @@ jobs:
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
       PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+      # The store's TLS certificate is expired and won't be renewed.
+      RESULTS_ARANGO_INSECURE: "1"
     steps:
       - checkout
       # Datasets are hundreds of MB each; the key changes with the dataset list
@@ -376,7 +378,11 @@ jobs:
       - run:
           name: Run ANN benchmark
           no_output_timeout: 3h
-          command: ./scripts/benchmark/ann/run_ann_benchmark.sh
+          command: |
+            RESULTS_ARANGO_URL="${AWS_FIGURES_URL}" \
+            RESULTS_ARANGO_USER="${AWS_ARANGODB_ID}" \
+            RESULTS_ARANGO_PASSWORD="${AWS_ARANGODB_KEY}" \
+              ./scripts/benchmark/ann/run_ann_benchmark.sh
       - save_cache:
           when: always
           key: ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
