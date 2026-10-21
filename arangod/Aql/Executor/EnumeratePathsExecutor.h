@@ -30,6 +30,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Transaction/Methods.h"
 
+#include <utility>
+#include <vector>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -47,15 +49,21 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class TraversalStats;
 class QueryContext;
+class FixedVarExpressionContext;
+struct Variable;
 
 template<class FinderType>
 class EnumeratePathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
 
  public:
-  EnumeratePathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
-                              std::unique_ptr<FinderType>&& finder,
-                              InputVertex&& source, InputVertex&& target);
+  EnumeratePathsExecutorInfos(
+      RegisterId outputRegister, QueryContext& query,
+      std::unique_ptr<FinderType>&& finder, InputVertex&& source,
+      InputVertex&& target,
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariables,
+      FixedVarExpressionContext& expressionContext);
 
   EnumeratePathsExecutorInfos() = delete;
 
@@ -99,6 +107,11 @@ class EnumeratePathsExecutorInfos {
   [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
+  /// @brief Inject outer variables referenced by pushed-down path filters into
+  /// the shared FixedVarExpressionContext used by PathValidator.
+  void prepareFilterConditionVariables(InputAqlItemRow const& input);
+  void unPrepareFilterConditionVariables() noexcept;
+
  private:
   QueryContext& _query;
 
@@ -112,6 +125,12 @@ class EnumeratePathsExecutorInfos {
   InputVertex _target;
 
   RegisterId _outputRegister;
+
+  /// @brief Outer variables referenced by global edge/vertex filter conditions
+  /// that PathValidator evaluates in FixedVarExpressionContext.
+  std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
+
+  FixedVarExpressionContext& _expressionContext;
 };
 
 /**

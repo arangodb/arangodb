@@ -240,11 +240,16 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 
   auto map = expansion.getProjection()->clone(ast);
 
+  // RHS may be a literal or an outer variable / bind parameter. Variables are
+  // validated against getVarsValid() in processFilter; PathValidator receives
+  // them via EnumeratePathsExecutor's FixedVarExpressionContext injection.
   auto rhsValue = expression->getMemberUnchecked(1);
   if (rhsValue->type != NODE_TYPE_VALUE && rhsValue->type != NODE_TYPE_ARRAY &&
-      rhsValue->type != NODE_TYPE_OBJECT) {
+      rhsValue->type != NODE_TYPE_OBJECT &&
+      rhsValue->type != NODE_TYPE_REFERENCE &&
+      rhsValue->type != NODE_TYPE_PARAMETER) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
-        "iterating andNode, bailing rhs not a constant, but a {}",
+        "iterating andNode, bailing rhs not a constant/reference, but a {}",
         rhsValue->getTypeString());
     return std::nullopt;
   }
@@ -342,6 +347,7 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
      inside the path enumeration */
   auto variablesReferenced = VarSet{};
   Ast::getReferencedVariables(match->map, variablesReferenced);
+  Ast::getReferencedVariables(match->rhs, variablesReferenced);
   if (match->inlineFilter != nullptr) {
     Ast::getReferencedVariables(match->inlineFilter, variablesReferenced);
   }
@@ -349,12 +355,13 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
   // treated as an external dependency of the pushed condition.
   variablesReferenced.erase(match->iteratorVar);
 
+  // VarSet is unordered; std::includes requires sorted ranges and must not be
+  // used here (it spuriously rejected valid outer variables such as FOR x).
   auto const& variablesValid = enumeratePathsNode->getVarsValid();
-
-  if (!std::includes(std::begin(variablesValid), std::end(variablesValid),
-                     std::begin(variablesReferenced),
-                     std::end(variablesReferenced))) {
-    return false;
+  for (auto const* var : variablesReferenced) {
+    if (!variablesValid.contains(var)) {
+      return false;
+    }
   }
 
   auto* tmpVar = enumeratePathsNode->getTemporaryRefNode();

@@ -220,7 +220,7 @@ struct KShortestPathsTestParameters {
         _inputMatrix(std::get<0>(params)),
         _paths(std::get<1>(params)),
         _call(std::get<2>(params)),
-        _blockSize(std::get<3>(params)){};
+        _blockSize(std::get<3>(params)) {};
 
   Vertex _source;
   Vertex _target;
@@ -270,7 +270,8 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
                       std::make_unique<FakeKShortestPathsFinder>(
                           options, parameters._paths),
                       std::move(parameters._source),
-                      std::move(parameters._target)),
+                      std::move(parameters._target), {},
+                      options.getExpressionCtx()),
         finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager,
                                  std::move(parameters._inputMatrix))),
