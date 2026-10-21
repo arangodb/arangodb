@@ -88,7 +88,6 @@ const createGraph = () => {
   edges.push({ _from: `${vName}/17`, _to: `${vName}/18`, weight: 0, colour: "purple"});
   edges.push({ _from: `${vName}/18`, _to: `${vName}/14`, weight: 1, colour: "purple"});
 
-
   /* there is a path of length 5 with green edges and a path of length 4 with purple
      the test below ascertains that the path with purple edges is actually skipped
      and the path with green edges is found if there is a filter on edges only
@@ -239,7 +238,6 @@ function enumeratePathsFilter() {
       assertSameResults(query);
     },
     testInlineFilterGtWithBindParam: function () {
-      // Reproducer shape from COR-918 (ALL > bind parameter).
       const query = `
         FOR path IN OUTBOUND K_PATHS "${vName}/8" TO "${vName}/14" GRAPH "${graphName}"
           FILTER path.edges[* FILTER CURRENT.weight != null].weight ALL > @minWeight
@@ -249,6 +247,51 @@ function enumeratePathsFilter() {
       const withRule = db._query(query, bind).toArray().map(getVerticesAndEdgesFromPath);
       const withoutRule = db._query(query, bind, {optimizer: {rules: [`-${optimizerRuleName}`]}})
                             .toArray().map(getVerticesAndEdgesFromPath);
+      assertEqual(withRule, withoutRule);
+    },
+    
+    testInlineFilterReferencesOuterVariable_K_PATHS: function () {
+      const query = `
+        FOR x IN ["green"]
+          FOR path IN OUTBOUND K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"
+            FILTER path.edges[* FILTER CURRENT.colour == x].weight ALL >= 0
+            RETURN path.edges[*].weight`;
+      assertRuleFires(query);
+      const withRule = db._query(query).toArray();
+      const withoutRule = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
+      assertEqual(withRule, withoutRule);
+    },
+    testInlineFilterReferencesOuterVariable_K_SHORTEST_PATHS: function () {
+      const query = `
+        FOR x IN ["green"]
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+            FILTER path.edges[* FILTER CURRENT.colour == x].weight ALL >= 0
+            RETURN path.edges[*].weight`;
+      assertRuleFires(query);
+      const withRule = db._query(query).toArray();
+      const withoutRule = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
+      assertEqual(withRule, withoutRule);
+    },
+    testInlineFilterReferencesOuterVariable_ALL_SHORTEST_PATHS: function () {
+      const query = `
+        FOR x IN ["green"]
+          FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+            FILTER path.edges[* FILTER CURRENT.colour == x].weight ALL >= 0
+            RETURN path.edges[*].weight`;
+      assertRuleFires(query);
+      const withRule = db._query(query).toArray();
+      const withoutRule = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
+      assertEqual(withRule, withoutRule);
+    },
+    testInlineFilterOuterVariableAllGt: function () {
+      const query = `
+        FOR x IN [-1]
+          FOR path IN OUTBOUND K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"
+            FILTER path.edges[* FILTER CURRENT.colour == "green"].weight ALL > x
+            RETURN path.edges[*].weight`;
+      assertRuleFires(query);
+      const withRule = db._query(query).toArray();
+      const withoutRule = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
       assertEqual(withRule, withoutRule);
     },
     // Make sure the outer CURRENT is rewritten, while the CURRENT used by

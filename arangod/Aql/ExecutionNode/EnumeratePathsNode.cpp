@@ -244,7 +244,9 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
       for (auto cond : VPackArrayIterator(list)) {
-        _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
+        auto* node = plan->getAst()->createNode(cond);
+        _globalEdgeConditions.emplace_back(node);
+        Ast::getReferencedVariables(node, _conditionVariables);
       }
     }
   }
@@ -253,7 +255,9 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
       for (auto cond : VPackArrayIterator(list)) {
-        _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
+        auto* node = plan->getAst()->createNode(cond);
+        _globalVertexConditions.emplace_back(node);
+        Ast::getReferencedVariables(node, _conditionVariables);
       }
     }
   }
@@ -376,7 +380,9 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
     PathValidatorOptions validatorOptions, const RegisterId& outputRegister,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
-    RegisterInfos registerInfos) const {
+    RegisterInfos registerInfos,
+    std::vector<std::pair<Variable const*, RegisterId>>
+        filterConditionVariables) const {
   auto kPathUnique = std::make_unique<KPath>(
       Provider{opts->query(), std::move(forwardProviderOptions),
                opts->query().resourceMonitor()},
@@ -387,7 +393,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
 
   auto executorInfos = EnumeratePathsExecutorInfos(
       outputRegister, engine.getQuery(), std::move(kPathUnique),
-      std::move(sourceInput), std::move(targetInput));
+      std::move(sourceInput), std::move(targetInput),
+      std::move(filterConditionVariables), opts->getExpressionCtx());
 
   return std::make_unique<ExecutionBlockImpl<EnumeratePathsExecutor<KPath>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -404,6 +411,19 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   }
   if (usesTargetInVariable()) {
     inputRegisters.emplace(inputRegister(&targetInVariable()));
+  }
+
+  // Collect outer variables used by pushed-down path filters.
+  // PathValidator evaluates these filters using FixedVarExpressionContext,
+  // so the corresponding values must be available from the input row.
+  VarSet conditionVars;
+  getConditionVariables(conditionVars);
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
+  filterConditionVariables.reserve(conditionVars.size());
+  for (auto const* variable : conditionVars) {
+    auto regId = inputRegister(variable);
+    filterConditionVariables.emplace_back(variable, regId);
+    inputRegisters.emplace(regId);
   }
 
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
@@ -483,7 +503,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, outReg, engine, sourceInput, targetInput,
-            registerInfos);
+            registerInfos, std::move(filterConditionVariables));
       case arangodb::graph::PathType::Type::AllShortestPaths:
         return _makeExecutionBlockImpl<AllShortestPathsEnumerator<Provider>,
                                        Provider,
@@ -491,7 +511,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, outReg, engine, sourceInput, targetInput,
-            registerInfos);
+            registerInfos, std::move(filterConditionVariables));
       case arangodb::graph::PathType::Type::KShortestPaths:
         enumeratorOptions.setMinDepth(0);
         enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
@@ -504,7 +524,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outReg, engine, sourceInput, targetInput,
-              registerInfos);
+              registerInfos, std::move(filterConditionVariables));
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -538,7 +558,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outReg, engine, sourceInput, targetInput,
-              registerInfos);
+              registerInfos, std::move(filterConditionVariables));
         }
 
       default:
@@ -575,7 +595,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, outReg, engine, sourceInput, targetInput,
-            registerInfos);
+            registerInfos, std::move(filterConditionVariables));
       case arangodb::graph::PathType::Type::AllShortestPaths:
         return _makeExecutionBlockImpl<
             AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
@@ -583,7 +603,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                         std::move(backwardProviderOptions),
                                         enumeratorOptions, validatorOptions,
                                         outReg, engine, sourceInput,
-                                        targetInput, registerInfos);
+                                        targetInput, registerInfos,
+                                        std::move(filterConditionVariables));
       case arangodb::graph::PathType::Type::KShortestPaths:
         // TODO: deduplicate with SingleServer && SingleServer non-traced
         //  variant. Too much code duplication right now.
@@ -598,7 +619,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outReg, engine, sourceInput, targetInput,
-              registerInfos);
+              registerInfos, std::move(filterConditionVariables));
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -632,7 +653,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outReg, engine, sourceInput, targetInput,
-              registerInfos);
+              registerInfos, std::move(filterConditionVariables));
         }
       default:
         ADB_PROD_ASSERT(false)
@@ -686,6 +707,7 @@ void EnumeratePathsNode::enumeratePathsCloneHelper(
   c._globalVertexConditions.insert(c._globalVertexConditions.end(),
                                    _globalVertexConditions.begin(),
                                    _globalVertexConditions.end());
+  c._conditionVariables = _conditionVariables;
 }
 
 void EnumeratePathsNode::replaceVariables(
@@ -714,6 +736,16 @@ void EnumeratePathsNode::replaceVariables(
 
   if (_toCondition != nullptr) {
     _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
+
+  // Refresh the referenced variables after AST rewrites to keep their pointers
+  // up to date.
+  _conditionVariables.clear();
+  for (auto const* cond : _globalEdgeConditions) {
+    Ast::getReferencedVariables(cond, _conditionVariables);
+  }
+  for (auto const* cond : _globalVertexConditions) {
+    Ast::getReferencedVariables(cond, _conditionVariables);
   }
 }
 
@@ -757,6 +789,16 @@ void EnumeratePathsNode::replaceAttributeAccess(
         Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
                                     searchVariable, attribute, replaceVariable);
   }
+
+  // Refresh the referenced variables after AST rewrites to keep their pointers
+  // up to date.
+  _conditionVariables.clear();
+  for (auto const* cond : _globalEdgeConditions) {
+    Ast::getReferencedVariables(cond, _conditionVariables);
+  }
+  for (auto const* cond : _globalVertexConditions) {
+    Ast::getReferencedVariables(cond, _conditionVariables);
+  }
 }
 
 /// @brief getVariablesSetHere
@@ -769,6 +811,8 @@ std::vector<Variable const*> EnumeratePathsNode::getVariablesSetHere() const {
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void EnumeratePathsNode::getVariablesUsedHere(VarSet& vars) const {
+  getConditionVariables(vars);
+
   if (_inStartVariable != nullptr) {
     vars.emplace(_inStartVariable);
   }
@@ -782,6 +826,25 @@ void EnumeratePathsNode::getVariablesUsedHere(VarSet& vars) const {
     // if we do not retain it here, the shard based distribution would
     // not be able to distribute request to shard.
     vars.emplace(_distributeVariable);
+  }
+}
+
+void EnumeratePathsNode::getConditionVariables(VarSet& vars) const {
+  auto const* tmpVar = getTemporaryVariable();
+  for (auto const* var : _conditionVariables) {
+    if (var != tmpVar && var != _pathOutVariable) {
+      vars.emplace(var);
+    }
+  }
+}
+
+void EnumeratePathsNode::getConditionVariables(
+    std::vector<Variable const*>& res) const {
+  auto const* tmpVar = getTemporaryVariable();
+  for (auto const* var : _conditionVariables) {
+    if (var != tmpVar && var != _pathOutVariable) {
+      res.emplace_back(var);
+    }
   }
 }
 
@@ -903,11 +966,13 @@ void EnumeratePathsNode::prepareOptions() {
 
 auto EnumeratePathsNode::registerGlobalVertexCondition(AstNode const* condition)
     -> void {
+  Ast::getReferencedVariables(condition, _conditionVariables);
   _globalVertexConditions.emplace_back(condition);
 }
 
 auto EnumeratePathsNode::registerGlobalEdgeCondition(AstNode const* condition)
     -> void {
+  Ast::getReferencedVariables(condition, _conditionVariables);
   _globalEdgeConditions.emplace_back(condition);
 }
 
