@@ -12,7 +12,7 @@ in a results ArangoDB that Grafana charts.
 | `docker-compose.yml` | Results ArangoDB + one-shot `schema` job + Grafana; `--profile ci` adds a SUT arangod + the harness |
 | `schema.js` | Creates database `ann-bench`, collections and unique indexes; idempotent |
 | `load_run.py` | Loads one `results.csv` as one run, in one transaction (stdlib only) |
-| `grafana/provisioning/` | Infinity datasource + `ann-bench` dashboard |
+| `grafana/provisioning/` | Infinity datasource + `ann-bench` (trends) and `ann-bench-compare` dashboards |
 
 arangod is never started by the script. Someone else provides it: you, the CircleCI service
 container, or the `arangod-sut` compose service.
@@ -157,9 +157,14 @@ for r in ~/Downloads/run*; do ./load_run.py "$r"; done
 
 ## Grafana
 
-The provisioned "ann-benchmarks" dashboard overlays all selected runs on recall-vs-QPS and
-recall-vs-p50-latency charts and shows index build time per run as a bar chart and a table,
-with `dataset`, (multi-select) `major` version and `run` variables.
+Two dashboards are provisioned:
+
+- **ann-benchmarks** (`/d/ann-bench`): QPS, recall, p50 and p99 latency over runs, one line per
+  image (`image` variable, i.e. per nightly branch) and nProbe (`nprobe` variable, default
+  16/64/256), plus index build time per run as a line chart and a table.
+- **ann-benchmarks compare runs** (`/d/ann-bench-compare`): recall-vs-QPS and recall-vs-latency
+  (p50, p95, p99, p99.9) curves of a `candidate` run (default: the latest) against a `baseline`
+  run (default: the previous run of the same image).
 
 To add a panel: datasource `bench`, type **JSON**, source **URL**, method **POST**,
 URL `http://arangodb:8529/_db/ann-bench/_api/cursor`, body type raw / JSON, root selector `result`:
@@ -183,10 +188,16 @@ FOR m IN measurement_build_time
 
 - **Build time**: ann-benchmarks repeats it on every query-parameter row; the loader stores it
   once per run and dataset, and the build panels collapse identical pairs.
-- **Index params** are stored opaquely as `{"descriptor": "<ann-benchmarks params string>"}`.
+- **Index params** are stored as `{"descriptor": "<ann-benchmarks params string>", ...}` plus the
+  parsed params, e.g. `metric: "cosine", factory: "IVF,Flat", nLists: 16384, nProbe: 16` (numbers
+  as numbers). The descriptor identifies the index setup; loading a run fills in the parsed params
+  of setups stored before they existed.
 - **Units**: latency ms, build time s, qps 1/s.
+- **Machine**: each `run` stores `machine: {cpu, cores, memory_bytes, os}`. Cores and memory are
+  what arangod reports; the CPU model and `os` (kernel, e.g. `Linux 6.8.0-147-generic`) come from
+  the harness host, which arangod shares. Runs loaded without it have `machine: null`.
 - **CSV columns**: `load_run.py` expects `k-nn / epsilon / largeepsilon / qps / p50 / p95 / p99 /
-  build`; `--dry-run` prints the real header if the fork differs.
+  p999 / build`; `--dry-run` prints the real header if the fork differs.
 - **Schema changes**: `docker compose up schema` re-applies additions; changing an existing index
   needs `docker compose down -v`.
 - **Auth on the results store**: replace `ARANGO_NO_AUTH` with `ARANGO_ROOT_PASSWORD` in the
