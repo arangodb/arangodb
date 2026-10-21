@@ -32,6 +32,10 @@ class CircleCIConfig:
     # Preview Docker image (non-maintainer, release-like) to build and
     # publish: "none", "alpine" or "deb"
     create_preview_docker_images: str = "none"
+    # Only the ANN benchmark workflow, against ann-bench-arango-image or, with
+    # ann_build_arangod, against a release build of this commit
+    ann_benchmark: bool = False
+    ann_build_arangod: bool = False
     test_image: str = ""
 
 

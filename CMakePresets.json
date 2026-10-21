@@ -335,6 +335,19 @@
       "displayName": "Nightly package build (static release, Enterprise, ARM64)"
     },
     {
+      "name": "ann-benchmark-x64",
+      "binaryDir": "${sourceDir}/build",
+      "inherits": [
+        "nightly-package-x64"
+      ],
+      "cacheVariables": {
+        "LAPACK_LIBRARIES": "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a",
+        "BLAS_LIBRARIES": "/usr/lib/x86_64-linux-gnu/libblas.a",
+        "NODE_MODULES_BUNDLE": "/node_modules.tar.xz"
+      },
+      "displayName": "ANN benchmark build (nightly-package-x64 in build/, for compile-linux)"
+    },
+    {
       "hidden": true,
       "name": "developer-base",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
@@ -502,6 +515,10 @@
     {
       "name": "nightly-package-arm64",
       "configurePreset": "nightly-package-arm64"
+    },
+    {
+      "name": "ann-benchmark-x64",
+      "configurePreset": "ann-benchmark-x64"
     },
     {
       "name": "developer-x64",

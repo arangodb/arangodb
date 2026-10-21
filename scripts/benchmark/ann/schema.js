@@ -34,10 +34,13 @@ const COLLECTIONS = {
   },
 };
 
-if (!db._databases().includes(DB_NAME)) {
-  db._createDatabase(DB_NAME);
+// Connected with --server.database ann-bench, only rw on ann-bench is needed.
+if (db._name() !== DB_NAME) {
+  if (!db._databases().includes(DB_NAME)) {
+    db._createDatabase(DB_NAME);
+  }
+  db._useDatabase(DB_NAME);
 }
-db._useDatabase(DB_NAME);
 
 for (const [name, spec] of Object.entries(COLLECTIONS)) {
   const coll = db._collection(name) || db._create(name);

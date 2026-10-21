@@ -108,18 +108,26 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
-  run-ann-benchmark:
+  run-ann-bench:
     type: boolean
     default: false
-    description: "Run the ANN vector-index benchmark instead of the normal test
-      pipeline (manually or from a pipeline schedule). Boots ann-arangod-image,
-      runs the ann-benchmarks harness against the IVF index and publishes the
-      HTML site + results.csv as artifacts. See scripts/benchmark/ann/."
-  ann-arangod-image:
+    description: "Run the ann-benchmark instead of the normal test
+      pipeline (manually or from a pipeline schedule). Boots the existing
+      Docker image ann-bench-arango-image or, with ann-bench-build-arango, a
+      release build of this commit, runs the ann-benchmarks harness against
+      the IVF index and publishes the HTML site + results.csv as artifacts.
+      See scripts/benchmark/ann/."
+  ann-bench-arango-image:
     type: string
     default: "arangodb/enterprise-preview:devel-nightly"
     description: "arangod image the ANN benchmark runs against, e.g.
       arangodb/core-preview:4.0-nightly for the 4.0 nightly."
+  ann-bench-build-arango:
+    type: boolean
+    default: false
+    description: "With run-ann-bench: compile this commit with the nightly
+      release preset (nightly-package-x64) and benchmark that build instead of
+      ann-bench-arango-image."
 
 
 # our defined job, and its steps
@@ -262,6 +270,9 @@ jobs:
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
             echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
             echo "filter-testsuite: << pipeline.parameters.filter-testsuite >>"
+            echo "run-ann-bench: << pipeline.parameters.run-ann-bench >>"
+            echo "ann-bench-arango-image: << pipeline.parameters.ann-bench-arango-image >>"
+            echo "ann-bench-build-arango: << pipeline.parameters.ann-bench-build-arango >>"
       - run:
           name: Checkout
           command: |
@@ -326,6 +337,8 @@ jobs:
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               --create-preview-docker-images << pipeline.parameters.create-preview-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
+              <<# pipeline.parameters.run-ann-bench >> --ann-benchmark <</ pipeline.parameters.run-ann-bench >> \
+              <<# pipeline.parameters.ann-bench-build-arango >> --ann-build-arangod <</ pipeline.parameters.ann-bench-build-arango >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
               --test-suite "<<pipeline.parameters.filter-testsuite>>" \
               -o continuation_config.yml \
@@ -336,79 +349,9 @@ jobs:
           configuration_path: continuation_config.yml
           parameters: parameters.json
 
-  # Vector-index benchmark (run-ann-benchmark). Runs directly on the self-hosted
-  # runner (no continuation): boots ann-arangod-image, runs the ann-benchmarks
-  # harness against the IVF index, publishes the site + CSV and loads the run
-  # into the shared results store at AWS_FIGURES_URL (with credentials
-  # AWS_ARANGODB_ID / AWS_ARANGODB_KEY, all from the ann-benchmark-store context).
-  ann-benchmark:
-    docker:
-      # Primary: runs the ann-benchmarks harness.
-      - image: cimg/python:3.11.1
-      # Service container: arangod, reachable from the primary at 127.0.0.1:8529
-      # (container runners have no docker daemon, so the harness cannot start it
-      # itself - the executor does, and the script only waits for it).
-      - image: << pipeline.parameters.ann-arangod-image >>
-        name: arangod
-        environment:
-          ARANGO_NO_AUTH: "1"
-        command: ["--vector-index=true"]
-    resource_class: arangodb/large-amd64
-    environment:
-      # Recorded in run_meta.json.
-      ARANGODB_IMAGE: << pipeline.parameters.ann-arangod-image >>
-      ANN_OUTPUT_DIR: /tmp/ann-output
-      ANN_DATASETS: glove-100-angular
-      ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
-      PIP_CACHE_DIR: /tmp/ann-pip-cache
-      ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
-      # The store's TLS certificate is expired and won't be renewed.
-      RESULTS_ARANGO_INSECURE: "1"
-    steps:
-      - checkout
-      # Datasets are hundreds of MB each; the key changes with the dataset list
-      # and falls back to the newest cache so already downloaded ones are reused.
-      - run:
-          name: Compute dataset cache key
-          command: echo "${ANN_DATASETS}" > /tmp/ann-datasets
-      - restore_cache:
-          keys:
-            - ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-            - ann-datasets-v1-
-      # The script pins the fork (and so its requirements.txt).
-      - restore_cache:
-          keys:
-            - ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-            - ann-pip-v1-
-      - run:
-          name: Run ANN benchmark
-          no_output_timeout: 3h
-          command: |
-            RESULTS_ARANGO_URL="${AWS_FIGURES_URL}" \
-            RESULTS_ARANGO_USER="${AWS_ARANGODB_ID}" \
-            RESULTS_ARANGO_PASSWORD="${AWS_ARANGODB_KEY}" \
-              ./scripts/benchmark/ann/run_ann_benchmark.sh
-      - save_cache:
-          when: always
-          key: ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-          paths:
-            - /tmp/ann-benchmarks-data
-      - save_cache:
-          key: ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-          paths:
-            - /tmp/ann-pip-cache
-      - store_artifacts:
-          # Upload even when the benchmark step fails (e.g. incomplete results),
-          # so a failed run is still debuggable via site/, run.log, arangod.log.
-          when: always
-          path: /tmp/ann-output
-          destination: ann-benchmark
-
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
-    # Skip the normal test pipeline when a manual ANN benchmark was requested.
-    unless: << pipeline.parameters.run-ann-benchmark >>
     jobs:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
       # or runs on the devel branch (see condition in check-build-trigger)
@@ -424,11 +367,3 @@ workflows:
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
           requires:
             - cancel-redundant-pipelines
-
-  # Triggered by the run-ann-benchmark pipeline parameter, manually or by schedule.
-  ann-benchmark:
-    when: << pipeline.parameters.run-ann-benchmark >>
-    jobs:
-      - ann-benchmark:
-          context: [ ann-benchmark-store ]
-

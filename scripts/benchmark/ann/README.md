@@ -54,36 +54,42 @@ ANN_OUTPUT_DIR=./ann-output ANN_DATASET_CACHE=~/.cache/ann-benchmarks ./run_ann_
 
 ## CI mode
 
-The CircleCI job `ann-benchmark` (pipeline parameter `run-ann-benchmark`) runs
-`run_ann_benchmark.sh` on `cimg/python` with arangod from the image `ann-arangod-image` as a service
+The CircleCI job `ann-benchmark` (pipeline parameter `run-ann-bench`) runs
+`run_ann_benchmark.sh` on `cimg/python` with arangod from the image `ann-bench-arango-image` as a service
 container, then loads the run into the shared results store at `AWS_FIGURES_URL` as
 `AWS_ARANGODB_ID` / `AWS_ARANGODB_KEY`, all from the `ann-benchmark-store` context (see
 [Shared results store](#shared-results-store)). The image is the system under test; the branch
 only provides the harness scripts.
 
-| Nightly | `ann-arangod-image` |
+With `ann-bench-build-arango` = `true` as well, the branch itself is benchmarked instead:
+`build-x64-for-ann-benchmark` compiles it with the `ann-benchmark-x64` preset (the nightly release
+build `nightly-package-x64`, built in `build/`), and `ann-benchmark-build` installs that build on
+`cimg/python`, starts arangod with `--vector-index true` and runs the same benchmark.
+
+| Nightly | `ann-bench-arango-image` |
 |---|---|
 | `devel` | `arangodb/enterprise-preview:devel-nightly` (default) |
 | `4.0` | `arangodb/core-preview:4.0-nightly` |
 
 Both nightlies publish around 02:00 UTC. The nightly benchmarks are two CircleCI pipeline schedules
 (Project Settings → Triggers) on the respective branch, started after that, each with
-`run-ann-benchmark` = `true` and its `ann-arangod-image`. They are independent of the nightly
+`run-ann-bench` = `true` and its `ann-bench-arango-image`. They are independent of the nightly
 pipeline: if a nightly fails to publish, the benchmark runs the previous image, and the run records
 that image's version (with its nightly date).
 
 To start it manually, open the branch in CircleCI, choose **Trigger Pipeline** and add the boolean
-parameter `run-ann-benchmark` = `true` (and `ann-arangod-image` for another image). Or through the
-API, with a personal API token:
+parameter `run-ann-bench` = `true` (and `ann-bench-arango-image` for another image, or
+`ann-bench-build-arango` = `true` to benchmark the branch). Or through the API, with a personal API token:
 
 ```bash
 curl -X POST https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline \
   -H "Circle-Token: ${CIRCLECI_TOKEN}" -H "Content-Type: application/json" \
-  -d '{"branch": "<branch>", "parameters": {"run-ann-benchmark": true}}'
+  -d '{"branch": "<branch>", "parameters": {"run-ann-bench": true}}'
 ```
 
-The normal test pipeline is skipped for that run. Artifacts are under `ann-benchmark/`:
-`ann-benchmark-site.tar.gz` (site + CSV + logs) and the unpacked `site/`.
+The normal test workflows are replaced by the benchmark for that run. Artifacts are under
+`ann-benchmark/`: `ann-benchmark-site.tar.gz` (site + CSV + logs) and the unpacked `site/`; builds of
+the branch also have `arangod-server.log`.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -104,28 +110,23 @@ The normal test pipeline is skipped for that run. Artifacts are under `ann-bench
 
 ## Shared results store
 
-One-time setup of the store at `AWS_FIGURES_URL` (an `https://` URL) for CI:
+One-time setup of the store at `AWS_FIGURES_URL` (an `https://` URL) for CI. The database
+`ann-bench` already exists there and `AWS_ARANGODB_ID` has read/write on it, which is all that is
+needed:
 
-1. Create database `ann-bench` with its collections and indexes. This needs a user with access
-   to `_system`; `schema.js` is idempotent, so re-run it after schema changes:
-
-   ```bash
-   arangosh --server.endpoint "ssl://${AWS_FIGURES_URL#https://}:443" \
-     --server.username <admin> --javascript.execute schema.js
-   ```
-
-2. If `AWS_ARANGODB_ID` is not that admin, give it read/write on `ann-bench`:
+1. Create the collections and indexes. `schema.js` is idempotent, so re-run it after schema
+   changes:
 
    ```bash
-   arangosh --server.endpoint "ssl://${AWS_FIGURES_URL#https://}:443" --server.username <admin> \
-     --javascript.execute-string \
-     'require("@arangodb/users").grantDatabase("<AWS_ARANGODB_ID>", "ann-bench", "rw")'
+   arangosh --server.endpoint "ssl://${AWS_FIGURES_URL#https://}:443" --server.database ann-bench \
+     --server.username "$AWS_ARANGODB_ID" --server.password "$AWS_ARANGODB_KEY" \
+     --javascript.execute schema.js
    ```
 
-3. Add `AWS_FIGURES_URL`, `AWS_ARANGODB_ID` and `AWS_ARANGODB_KEY` to the CircleCI context `ann-benchmark-store`
+2. Add `AWS_FIGURES_URL`, `AWS_ARANGODB_ID` and `AWS_ARANGODB_KEY` to the CircleCI context `ann-benchmark-store`
    (Organization Settings → Contexts).
 
-4. Check by loading a downloaded run by hand:
+3. Check by loading a downloaded run by hand:
 
    ```bash
    ./load_run.py <run-dir> --url "$AWS_FIGURES_URL" --insecure \
