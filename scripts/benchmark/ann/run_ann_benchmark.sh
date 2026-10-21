@@ -91,16 +91,28 @@ collect_meta() {
   lic="$(jq -r '.license // ""' <<<"${ver_json}")"
   ver_full="${ver}"
   [[ -n "${bid}" ]] && ver_full="${ver}, build-id: ${bid}"
+  # Cores and memory as arangod sees them; CPU model and kernel are shared with
+  # this host (the OS distribution follows from the image).
+  local metrics cores mem cpu os
+  metrics="$(arango_curl "${ARANGO_URL}/_admin/metrics/v2" 2>/dev/null || true)"
+  cores="$(awk '/^arangodb_server_statistics_cpu_cores[{ ]/ {print $2; exit}' <<<"${metrics}")"
+  mem="$(awk '/^arangodb_server_statistics_physical_memory[{ ]/ {print $2; exit}' <<<"${metrics}")"
+  cpu="$(awk -F': ' '/^model name/ {print $2; exit}' /proc/cpuinfo 2>/dev/null || true)"
+  os="$(uname -sr)"
   jq -n \
     --arg version "${ver}" --arg version_full "${ver_full}" \
     --arg build_id "${bid}" --arg license "${lic}" \
     --arg image "${ARANGODB_IMAGE}" \
     --arg started_at "${ANN_STARTED_AT:-}" \
+    --arg cpu "${cpu}" --arg cores "${cores}" --arg mem "${mem}" --arg os "${os}" \
     '{arangodb_version: $version, arangodb_version_full: $version_full,
       build_id: $build_id, license: $license, image: $image,
+      machine: {cpu: $cpu, cores: ($cores | tonumber? // null),
+                memory_bytes: ($mem | tonumber? // null), os: $os},
       started_at: $started_at, ended_at: ""}' \
     > "${ANN_OUTPUT_DIR}/run_meta.json"
   printf '  build-id: %s\n  version:  %s\n' "${bid:-(none)}" "${ver_full}"
+  printf '  machine:  %s, %s cores, %s bytes, %s\n' "${cpu:-?}" "${cores:-?}" "${mem:-?}" "${os}"
 }
 
 collect_arango_log() {

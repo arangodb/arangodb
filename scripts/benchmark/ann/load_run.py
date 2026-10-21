@@ -5,7 +5,7 @@ The argument is a run directory holding `results.csv` and `run_meta.json`, as
 written by run_ann_benchmark.sh (or unpacked from the CI artifact's `site/`).
 
 Input is the CSV produced by ann-benchmarks `data_export.py`, which already
-computes the metrics we want (k-nn recall, epsilon recall, p50/p95/p99 latency,
+computes the metrics we want (k-nn recall, epsilon recall, p50/p95/p99/p99.9 latency,
 qps, build time) using ann-benchmarks' own metric functions. Each CSV row is one
 (dataset, algorithm, parameters) configuration; we fan it out into the three
 measurement collections.
@@ -45,7 +45,7 @@ COL_PARAMETERS = "parameters"
 # metric column -> (epsilon value we store it under). k-nn is exact (epsilon 0).
 RECALL_QPS_EPSILONS = {"k-nn": 0.0, "epsilon": 0.01, "largeepsilon": 0.10}
 # metric column -> (percentile we store it under). Recall is the exact k-nn recall.
-RECALL_LAT_PERCENTILES = {"p50": 50.0, "p95": 95.0, "p99": 99.0}
+RECALL_LAT_PERCENTILES = {"p50": 50.0, "p95": 95.0, "p99": 99.0, "p999": 99.9}
 COL_KNN = "k-nn"
 COL_QPS = "qps"
 COL_BUILD = "build"
@@ -132,6 +132,30 @@ def parse_dataset_name(name):
     return dimension, metric
 
 
+def parse_index_params(descriptor):
+    """Index params from an ann-benchmarks parameters string, e.g.
+    'ArangoDB(metric=cosine, factory=IVF,Flat, nLists=16384, nProbe=16)' ->
+    {'metric': 'cosine', 'factory': 'IVF,Flat', 'nLists': 16384, 'nProbe': 16}.
+    Numbers become numbers; a string in another format yields {}."""
+    m = re.fullmatch(r"\w+\((.*)\)", descriptor)
+    if not m:
+        return {}
+    params = {}
+    # ", " separates params; values like "IVF,Flat" contain only a bare comma.
+    for part in m.group(1).split(", "):
+        key, sep, value = part.partition("=")
+        if not sep:
+            return {}
+        for convert in (int, float):
+            try:
+                value = convert(value)
+                break
+            except ValueError:
+                pass
+        params[key] = value
+    return params
+
+
 def to_float(row, col):
     val = row.get(col, "")
     if val is None or val == "" or val == "nan":
@@ -189,9 +213,10 @@ def load(db, meta, rows):
         return
     run_id = db.one(
         "INSERT MERGE(@run, {major_version: @major, docker_image_version: @image, "
-        "ended_at: @ended}) INTO run RETURN NEW._key",
+        "ended_at: @ended, machine: @machine}) INTO run RETURN NEW._key",
         {"run": run, "major": meta["arangodb_version"].split(".")[0],
-         "image": meta["image"], "ended": meta["ended_at"]},
+         "image": meta["image"], "ended": meta["ended_at"],
+         "machine": meta.get("machine")},
     )
 
     dataset_ids = {}
@@ -208,15 +233,22 @@ def load(db, meta, rows):
             )
         return dataset_ids[name]
 
-    def index_id(index_type, params):
-        key = (index_type, params)
+    def index_id(index_type, descriptor):
+        key = (index_type, descriptor)
         if key not in index_ids:
-            index_ids[key] = db.one(
-                "UPSERT {index_type: @type, index_params: {descriptor: @params}} "
-                "INSERT {index_type: @type, index_params: {descriptor: @params}} UPDATE {} "
+            # Matched on the descriptor alone; updating also fills in the parsed
+            # fields of setups stored before they existed.
+            bind = {"type": index_type, "descriptor": descriptor,
+                    "params": {**parse_index_params(descriptor), "descriptor": descriptor}}
+            found = db.aql(
+                "FOR ix IN index_setup FILTER ix.index_type == @type "
+                "AND ix.index_params.descriptor == @descriptor "
+                "UPDATE ix WITH {index_params: @params} IN index_setup "
+                "OPTIONS {mergeObjects: false} RETURN NEW._key", bind)
+            index_ids[key] = found[0] if found else db.one(
+                "INSERT {index_type: @type, index_params: @params} "
                 "IN index_setup RETURN NEW._key",
-                {"type": index_type, "params": params},
-            )
+                {"type": index_type, "params": bind["params"]})
         return index_ids[key]
 
     def upsert_measurement(collection, key, values):
@@ -281,6 +313,7 @@ def dry_run(fieldnames, rows):
     if rows:
         print("sample row:", {k: rows[0].get(k) for k in
                               (COL_DATASET, COL_ALGORITHM, COL_KNN, COL_QPS, COL_BUILD)})
+        print("index params:", parse_index_params(rows[0][COL_PARAMETERS]))
 
 
 def main():

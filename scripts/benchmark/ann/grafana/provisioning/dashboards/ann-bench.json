@@ -7,7 +7,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "time": {
     "from": "now-1y",
@@ -50,8 +50,8 @@
         "sort": 0
       },
       {
-        "name": "major",
-        "label": "Major version",
+        "name": "image",
+        "label": "Image",
         "type": "query",
         "datasource": {
           "type": "yesoreyeram-infinity-datasource",
@@ -61,7 +61,7 @@
         "query": {
           "queryType": "infinity",
           "infinityQuery": {
-            "refId": "major",
+            "refId": "image",
             "type": "json",
             "source": "url",
             "format": "table",
@@ -71,14 +71,14 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run COLLECT major = r.major_version SORT major RETURN {__text: major, __value: major}\"}"
+              "data": "{\"query\": \"FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}\"}"
             },
             "root_selector": "result",
             "columns": []
           },
           "query": ""
         },
-        "definition": "FOR r IN run COLLECT major = r.major_version SORT major RETURN {__text: major, __value: major}",
+        "definition": "FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}",
         "current": {
           "text": "All",
           "value": "$__all"
@@ -89,8 +89,8 @@
         "includeAll": true
       },
       {
-        "name": "run",
-        "label": "Run",
+        "name": "nprobe",
+        "label": "nProbe",
         "type": "query",
         "datasource": {
           "type": "yesoreyeram-infinity-datasource",
@@ -100,7 +100,7 @@
         "query": {
           "queryType": "infinity",
           "infinityQuery": {
-            "refId": "run",
+            "refId": "nprobe",
             "type": "json",
             "source": "url",
             "format": "table",
@@ -110,17 +110,25 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run FILTER r.major_version IN [${major:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"FOR ix IN index_setup FILTER ix.index_params.nProbe != null COLLECT n = ix.index_params.nProbe SORT n RETURN {__text: TO_STRING(n), __value: n}\"}"
             },
             "root_selector": "result",
             "columns": []
           },
           "query": ""
         },
-        "definition": "FOR r IN run FILTER r.major_version IN [${major:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(r.started_at, ' ', r.arangodb_version, ' (', r._key, ')'), __value: r._key}",
+        "definition": "FOR ix IN index_setup FILTER ix.index_params.nProbe != null COLLECT n = ix.index_params.nProbe SORT n RETURN {__text: TO_STRING(n), __value: n}",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "text": [
+            "16",
+            "64",
+            "256"
+          ],
+          "value": [
+            "16",
+            "64",
+            "256"
+          ]
         },
         "options": [],
         "sort": 0,
@@ -131,285 +139,12 @@
   },
   "panels": [
     {
-      "id": 1,
-      "type": "xychart",
-      "pluginVersion": "12.4.10",
-      "title": "Recall vs QPS  ($dataset, exact k-nn, all selected runs)",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 12,
-        "h": 12
-      },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "bench"
-      },
-      "options": {
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "show": "points+lines",
-            "pointSize": {
-              "fixed": 7
-            },
-            "lineWidth": 1,
-            "axisLabel": ""
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "qps"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "${__field.labels.run}"
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "QPS"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "recall"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "recall"
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "indexByName": {
-              "recall": 0,
-              "qps": 1,
-              "run": 2,
-              "params": 3
-            }
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "run"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": true
-            }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "refId": "A",
-          "type": "json",
-          "source": "url",
-          "format": "table",
-          "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
-          "url_options": {
-            "method": "POST",
-            "body_type": "raw",
-            "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.run_id IN [${run:singlequote}] FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, qps: m.qps, run: CONCAT(r.started_at, ' ', r.arangodb_version), params: ix.index_params.descriptor}\"}"
-          },
-          "root_selector": "result",
-          "columns": [
-            {
-              "selector": "recall",
-              "text": "recall",
-              "type": "number"
-            },
-            {
-              "selector": "qps",
-              "text": "qps",
-              "type": "number"
-            },
-            {
-              "selector": "run",
-              "text": "run",
-              "type": "string"
-            },
-            {
-              "selector": "params",
-              "text": "params",
-              "type": "string"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "type": "xychart",
-      "pluginVersion": "12.4.10",
-      "title": "Recall vs p50 latency  ($dataset, all selected runs)",
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 12,
-        "h": 12
-      },
-      "datasource": {
-        "type": "yesoreyeram-infinity-datasource",
-        "uid": "bench"
-      },
-      "options": {
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "show": "points+lines",
-            "pointSize": {
-              "fixed": 7
-            },
-            "lineWidth": 1,
-            "axisLabel": ""
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "latency_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "${__field.labels.run}"
-              },
-              {
-                "id": "custom.axisLabel",
-                "value": "p50 latency (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "recall"
-            },
-            "properties": [
-              {
-                "id": "custom.axisLabel",
-                "value": "recall"
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "indexByName": {
-              "recall": 0,
-              "latency_ms": 1,
-              "run": 2,
-              "params": 3
-            }
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "run"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": true
-            }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "refId": "A",
-          "type": "json",
-          "source": "url",
-          "format": "table",
-          "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
-          "url_options": {
-            "method": "POST",
-            "body_type": "raw",
-            "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN [${run:singlequote}] FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(r.started_at, ' ', r.arangodb_version), params: ix.index_params.descriptor}\"}"
-          },
-          "root_selector": "result",
-          "columns": [
-            {
-              "selector": "recall",
-              "text": "recall",
-              "type": "number"
-            },
-            {
-              "selector": "latency_ms",
-              "text": "latency_ms",
-              "type": "number"
-            },
-            {
-              "selector": "run",
-              "text": "run",
-              "type": "string"
-            },
-            {
-              "selector": "params",
-              "text": "params",
-              "type": "string"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": 3,
+      "id": 10,
       "type": "timeseries",
-      "pluginVersion": "12.4.10",
-      "title": "Index build time over runs  ($dataset)",
+      "title": "QPS over runs  ($dataset, exact k-nn)",
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 0,
         "w": 12,
         "h": 10
       },
@@ -419,77 +154,492 @@
       },
       "options": {
         "legend": {
-          "showLegend": false,
+          "showLegend": true,
           "displayMode": "list",
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "multi"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "suffix: s",
-          "decimals": 0,
-          "min": 0,
+          "unit": "none",
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
             "showPoints": "always",
-            "pointSize": 8,
+            "pointSize": 6,
             "spanNulls": true,
-            "axisLabel": "build time"
-          }
+            "axisLabel": "queries / s"
+          },
+          "decimals": 1
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "version"
+              "options": "value"
             },
             "properties": [
               {
-                "id": "custom.hideFrom",
-                "value": {
-                  "viz": true,
-                  "legend": true,
-                  "tooltip": false
-                }
+                "id": "displayName",
+                "value": "${__field.labels.series}"
               }
             ]
           }
         ]
       },
-      "transformations": [],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
       "targets": [
         {
           "refId": "A",
           "type": "json",
           "source": "url",
-          "format": "timeseries",
+          "format": "table",
           "parser": "backend",
           "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_build_time FILTER m.run_id IN [${run:singlequote}] LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) COLLECT run_key = r._key, started_at = r.started_at, version = r.arangodb_version, image = r.docker_image_version, build_time_s = m.build_time SORT started_at RETURN {run: CONCAT(started_at, ' ', version), run_key, started_at, arangodb_version: version, image, build_time_s}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.qps, series: CONCAT(LAST(SPLIT(r.docker_image_version, '/')), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
           },
           "root_selector": "result",
           "columns": [
             {
-              "selector": "started_at",
+              "selector": "time",
               "text": "time",
               "type": "timestamp"
             },
             {
-              "selector": "build_time_s",
-              "text": "build time",
+              "selector": "value",
+              "text": "value",
               "type": "number"
             },
             {
-              "selector": "arangodb_version",
-              "text": "version",
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Recall over runs  ($dataset, k-nn)",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "recall"
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.recall, series: CONCAT(LAST(SPLIT(r.docker_image_version, '/')), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "p50 latency over runs  ($dataset)",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "p50 latency"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT(LAST(SPLIT(r.docker_image_version, '/')), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "p99 latency over runs  ($dataset)",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "p99 latency"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT(LAST(SPLIT(r.docker_image_version, '/')), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Index build time over runs  ($dataset)",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "build time"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at RETURN {time: r.started_at, value: m.build_time, series: LAST(SPLIT(r.docker_image_version, '/'))}\"}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
               "type": "string"
             }
           ]
@@ -503,9 +653,9 @@
       "title": "Index builds  ($dataset)",
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 20,
         "w": 12,
-        "h": 10
+        "h": 9
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
@@ -570,7 +720,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_build_time FILTER m.run_id IN [${run:singlequote}] LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) COLLECT run_key = r._key, started_at = r.started_at, version = r.arangodb_version, image = r.docker_image_version, build_time_s = m.build_time SORT started_at RETURN {run: CONCAT(started_at, ' ', version), run_key, started_at, arangodb_version: version, image, build_time_s}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] COLLECT run_key = r._key, started_at = r.started_at, version = r.arangodb_version, image = r.docker_image_version, build_time_s = m.build_time SORT started_at RETURN {run: CONCAT(started_at, ' ', version), run_key, started_at, arangodb_version: version, image, build_time_s}\"}"
           },
           "root_selector": "result",
           "columns": [
