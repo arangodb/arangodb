@@ -35,6 +35,9 @@ class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
+ protected:
+  async<Result> checkDatabaseAccess() const override;
+
  private:
   RestStatus getDatabases();
   RestStatus createDatabase();

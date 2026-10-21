@@ -194,13 +194,13 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV1) {
   // With a versioned API the database's existence must not be revealed.
   beUserWith(NONE);
   useApiVersion(ApiVersion::V1);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
                                    .level = DatabaseAccessLevel::Read}),
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadOnlyAccessStaysForbidden) {
@@ -334,13 +334,13 @@ TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsnderV1) {
   beUserWith(NONE);
   useApiVersion(ApiVersion::V1);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
                                      .level = CollectionAccessLevel::Read}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest,
@@ -511,11 +511,11 @@ TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
               TRI_ERROR_FORBIDDEN);
 }
 
-TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsNotFoundUnderV1) {
+TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV1) {
   beUserWith(NONE);
   useApiVersion(ApiVersion::V1);
   expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, SeeViewIsAlwaysGranted) {
@@ -611,7 +611,7 @@ TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
   expectError(check(p::ModifyView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"secret"}}),
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+              TRI_ERROR_FORBIDDEN);
 }
 
 TEST_F(ClassicAuthModeTest, RenameViewToSameNameIsBadParameter) {
@@ -938,6 +938,8 @@ using AllAdminPermissions =
     std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
+               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -945,7 +947,7 @@ using AllAdminPermissions =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
 
-static_assert(std::tuple_size_v<AllAdminPermissions> == 26);
+static_assert(std::tuple_size_v<AllAdminPermissions> == 30);
 
 // Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
 // that pin "forbidden without RW", which no longer holds for AdminQueryCache.
@@ -953,6 +955,8 @@ using AllAdminPermissionsExceptQueryCache =
     std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
+               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -960,7 +964,7 @@ using AllAdminPermissionsExceptQueryCache =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency>;
 
-static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 25);
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 29);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();

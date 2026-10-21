@@ -181,6 +181,36 @@ TEST_F(StorageEngineDocumentTest, IgnoreRevsDefaultBypassesPrecondition) {
 }
 
 // ===========================================================================
+// Physical storage identity (LocalDocumentId)
+// ===========================================================================
+
+TEST_F(StorageEngineDocumentTest, UpdateReplacesLocalDocumentId) {
+  ASSERT_TRUE(IsOk(insertR(keyed("k", 1))));
+  auto before = lookupKey("k");
+
+  ASSERT_TRUE(IsOk(updateR(keyed("k", 2))));
+  auto after = lookupKey("k");
+
+  // update() deletes the old storage key and inserts a new one.
+  EXPECT_NE(before.first, after.first);
+  EXPECT_NE(before.second, after.second);
+  EXPECT_TRUE(
+      IsError(existsById(before.first), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+}
+
+TEST_F(StorageEngineDocumentTest, RemoveDeletesLocalDocumentId) {
+  ASSERT_TRUE(IsOk(insertR(keyed("k", 1))));
+  auto before = lookupKey("k");
+
+  ASSERT_TRUE(IsOk(remove(keyOnly("k"))));
+
+  EXPECT_TRUE(
+      IsError(lookupKeyResult("k"), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  EXPECT_TRUE(
+      IsError(existsById(before.first), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+}
+
+// ===========================================================================
 // Overwrite / UPSERT modes
 // ===========================================================================
 

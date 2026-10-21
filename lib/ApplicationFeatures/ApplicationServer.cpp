@@ -154,7 +154,6 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
     auto it = _features.find(type);
     TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
-      // TODO (COR-861): remove this function by conditional registration logic
       TRI_ASSERT(it->second != nullptr);
       if (force) {
         it->second->forceDisable();
@@ -461,14 +460,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // apply all "startsBefore" values
   for (auto& [_id, feature] : _features) {
     for (auto const& other : feature->startsBefore()) {
+      // the target may simply not be registered in this configuration
       if (!hasFeature(other)) {
-        if (failOnMissing) {
-          _fail(std::string{"feature '"}
-                    .append(feature->name())
-                    .append("' depends on unknown feature '")
-                    .append(other.name())
-                    .append("'"));
-        }
         continue;
       }
       getFeature(other).startsAfter(feature->registration());

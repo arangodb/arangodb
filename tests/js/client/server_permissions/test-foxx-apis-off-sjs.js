@@ -56,9 +56,9 @@ function testSuite() {
         arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
-          "setup", "teardown", "install", "uninstall",
-          "replace", "upgrade", "configure", "configuration",
-          "set-dependencies", "dependencies", "development",
+          "install", "uninstall",
+          "replace", "upgrade", "configure",
+          "set-dependencies", "development",
           "tests", "script"
         ];
 

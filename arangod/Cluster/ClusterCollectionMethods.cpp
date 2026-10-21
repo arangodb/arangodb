@@ -729,8 +729,6 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           results.emplace_back(std::move(c));
         }
       } catch (...) {
-        TRI_ASSERT(false) << "Collection " << name
-                          << " was not created during Database creation.";
         return Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Required Collection " + name + " could not be created."};
       }

@@ -308,6 +308,8 @@ function CollectionTruncateFailuresSuite() {
 
     testTruncateFailsAfterAllCommits: function () {
       IM.debugSetFailAt("FailAfterAllCommits");
+      const docsWithEqHash = 20000 / 250;
+      const docsWithEqSkip = 20000 / 100;
       try {
         c.truncate({ compact: false });
         fail();
@@ -316,26 +318,29 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
 
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 0);
+      // The first 10k removals are committed before the next removal starts.
+      // The last 10k removals are never committed, because the fail happens before
+      // the final commit.
+      assertEqual(c.count(), 10000);
 
       // Test Primary
       {
         let q = `FOR x IN @@c RETURN x._key`;
         let res = db._query(q, {"@c": cn}).toArray();
-        assertEqual(res.length, 0);
+        assertEqual(res.length, 10000);
       }
 
       // Test Hash
       {
+        let sum = 0;
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
           let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, 0);
+          assertTrue(res.length < docsWithEqHash);
+          sum += res.length;
         }
+        assertEqual(sum, 10000);
 
         // just validate that no other values are inserted.
         let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
@@ -345,11 +350,14 @@ function CollectionTruncateFailuresSuite() {
       // Test Skiplist
       {
         let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
+        let sum = 0;
         for (let i = 0; i < 100; ++i) {
           // This validates that all documents can be found again
           let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, 0);
+          assertTrue(res.length < docsWithEqSkip);
+          sum += res.length;
         }
+        assertEqual(sum, 10000);
 
         // just validate that no other values are inserted.
         let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
@@ -366,10 +374,10 @@ function CollectionTruncateFailuresSuite() {
               assertEqual(i.selectivityEstimate, 1);
               break;
             case 'hash':
-              assertEqual(i.selectivityEstimate, 1);
+              assertEqual(i.selectivityEstimate, 0.025);
               break;
             case 'skiplist':
-              assertEqual(i.selectivityEstimate, 1);
+              assertEqual(i.selectivityEstimate, 0.01);
               break;
             default:
               fail();
@@ -563,7 +571,7 @@ function IntermediateCommitFailureSuite() {
     testFailOnRemoveAql: function () {
       IM.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 5000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -577,7 +585,7 @@ function IntermediateCommitFailureSuite() {
     testFailOnUpdateAql: function () {
       IM.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 5000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -593,7 +601,7 @@ function IntermediateCommitFailureSuite() {
     testFailOnReplaceAql: function () {
       IM.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 5000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -609,7 +617,7 @@ function IntermediateCommitFailureSuite() {
     testFailOnInsertAql: function () {
       IM.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 5000 });
         fail();
       } catch (e) {
         // Validate that we died with debug

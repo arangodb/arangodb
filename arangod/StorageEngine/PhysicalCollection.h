@@ -67,8 +67,7 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  // creation happens atm in engine->createCollection
-  virtual Result updateProperties(velocypack::Slice slice) = 0;
+  virtual Result setCacheEnabled(bool cacheEnabled) = 0;
 
   virtual RevisionId revision(transaction::Methods* trx) const = 0;
 
@@ -267,6 +266,8 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   virtual bool cacheEnabled() const noexcept = 0;
+
+  virtual uint64_t objectId() const noexcept { return 0; }
 
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);

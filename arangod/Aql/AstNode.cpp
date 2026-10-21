@@ -204,7 +204,7 @@ int valueTypeOrder(VPackValueType type) noexcept {
 }
 
 /// @brief get the node type for inter-node comparisons
-VPackValueType getNodeCompareType(AstNode const* node) noexcept {
+VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   // quick translation array from an AST node value type to a VPack type
@@ -219,11 +219,14 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
   if (node->type == NODE_TYPE_VALUE) {
     return kValueTypes[node->value.type];
   }
-  if (node->type == NODE_TYPE_ARRAY) {
-    return VPackValueType::Array;
-  }
-  if (node->type == NODE_TYPE_OBJECT) {
-    return VPackValueType::Object;
+  if (node->type == NODE_TYPE_ARRAY || node->type == NODE_TYPE_OBJECT) {
+    // Only materializable literals are compared as values. isConstant() runs
+    // first, so dynamic keys are rejected before they are read as values.
+    if (node->isConstant() && node->valueHasVelocyPackRepresentation()) {
+      return (node->type == NODE_TYPE_ARRAY) ? VPackValueType::Array
+                                             : VPackValueType::Object;
+    }
+    return VPackValueType::Custom;
   }
 
   // All other node types are non-constant expressions compared structurally.
@@ -254,12 +257,43 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
+/// @brief compare array members positionally, longer array last on a tie
+/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
+template<bool resolveAttributeAccess>
+int compareArrayMembers(AstNode const* lhs, AstNode const* rhs,
+                        bool compareUtf8) {
+  size_t const numLhs = lhs->numMembers();
+  size_t const numRhs = rhs->numMembers();
+  size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
+
+  for (size_t i = 0; i < n; ++i) {
+    int res = compareAstNodes<resolveAttributeAccess>(
+        lhs->getMember(i), rhs->getMember(i), compareUtf8);
+    if (res != 0) {
+      return res;
+    }
+  }
+  if (numLhs < numRhs) {
+    return -1;
+  } else if (numLhs > numRhs) {
+    return 1;
+  }
+  return 0;
+}
+
 /// @brief compare two AST nodes whose top-level type maps to a non-Custom VPack
 /// type (scalar values, arrays, objects)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
                                bool compareUtf8, VPackValueType lType) {
+  // Null is also reported for an unresolved attribute access, where lhs and
+  // rhs may be nullptr.
+  TRI_ASSERT(lType == VPackValueType::Null ||
+             (lhs->isConstant() && lhs->valueHasVelocyPackRepresentation()));
+  TRI_ASSERT(lType == VPackValueType::Null ||
+             (rhs->isConstant() && rhs->valueHasVelocyPackRepresentation()));
+
   switch (lType) {
     case VPackValueType::Null: {
       return 0;
@@ -316,25 +350,8 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::Array: {
-      size_t const numLhs = lhs->numMembers();
-      size_t const numRhs = rhs->numMembers();
-      size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
-
-      for (size_t i = 0; i < n; ++i) {
-        int res = compareAstNodes<resolveAttributeAccess>(
-            lhs->getMember(i), rhs->getMember(i), compareUtf8);
-        if (res != 0) {
-          return res;
-        }
-      }
-      if (numLhs < numRhs) {
-        return -1;
-      } else if (numLhs > numRhs) {
-        return 1;
-      }
-      return 0;
-    }
+    case VPackValueType::Array:
+      return compareArrayMembers<resolveAttributeAccess>(lhs, rhs, compareUtf8);
 
     case VPackValueType::Object: {
       VPackBuilder builder;
@@ -363,7 +380,8 @@ int compareReference(AstNode const* lhs, AstNode const* rhs) noexcept {
   return (lhsVar->id == rhsVar->id) ? 0 : (lhsVar->id < rhsVar->id ? -1 : 1);
 }
 
-/// @brief compare two nodes' children positionally
+/// @brief compare two nodes' children positionally; they have to be identical
+/// as written i.e. the order matters
 int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
                            bool compareUtf8) {
   size_t lhsN = lhs->numMembers();
@@ -446,8 +464,9 @@ int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
   return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
 }
 
-/// @brief compare n-ary AND/OR nodes independent of child order
-int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+/// @brief compare OBJECT nodes when both sides have unique, non-computed keys
+int compareObject(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(!lhs->mustCheckUniqueness() && !rhs->mustCheckUniqueness());
   size_t lhsN = lhs->numMembers();
   size_t rhsN = rhs->numMembers();
   if (lhsN != rhsN) {
@@ -536,10 +555,20 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_REFERENCE:
       return compareReference(lhs, rhs);
     case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
       return compareNamedNode(lhs, rhs, compareUtf8);
+    case NODE_TYPE_ARRAY:
+      // Same ordering as for constant arrays.
+      return compareArrayMembers<false>(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OBJECT:
+      if (lhs->mustCheckUniqueness() || rhs->mustCheckUniqueness()) {
+        // a computed or duplicate key means order decides which value wins
+        return compareChildrenInOrder(lhs, rhs, compareUtf8);
+      }
+      return compareObject(lhs, rhs, compareUtf8);
     case NODE_TYPE_QUANTIFIER:
       return compareQuantifier(lhs, rhs, compareUtf8);
     case NODE_TYPE_FCALL:
@@ -548,16 +577,13 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_BINARY_OR:
       return compareCommutativeBinary(lhs, rhs, compareUtf8);
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-      return compareNary(lhs, rhs, compareUtf8);
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return compareInNin(lhs, rhs, compareUtf8);
     default:
+      // BINARY_AND/OR, NARY_AND/OR go here because the order matters for them
+      // i.e. `x.a AND x.b` is not equivalent to `x.b AND x.a` in AQL
       return compareChildrenInOrder(lhs, rhs, compareUtf8);
   }
 }

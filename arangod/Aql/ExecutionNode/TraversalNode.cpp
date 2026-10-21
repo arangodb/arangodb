@@ -32,7 +32,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/TraversalExecutor.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
+#include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -794,7 +795,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
                              _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ false);
@@ -812,7 +813,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     std::unique_ptr<aql::Expression> expression =
         generateExpression(remainderCondition, indexCondition);
 
-    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
+    auto container = aql::optimizer::extractNonConstPartsOfIndexCondition(
         ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,

@@ -244,6 +244,26 @@ class ExecContext {
   /// @brief returns true if the user can be read
   Result canReadUser(std::string_view userName) const;
 
+  /// @brief returns true if the AQL query of the given user may be seen in
+  /// the running or slow query list, or removed from the latter.
+  [[nodiscard]] Result canMonitorQuery(std::string_view queryUser) const;
+
+  /// @brief returns true if the AQL query of the given user may be killed.
+  [[nodiscard]] Result canKillQuery(std::string_view queryUser) const;
+
+  /// @brief returns true if the query properties of the given
+  /// database may be changed
+  [[nodiscard]] Result canChangeQueryProperties(std::string_view db) const;
+
+  /// @brief returns true if the transaction of the given user may be seen
+  /// (listed, or its state requested). Own transactions always may be; other
+  /// users' need AdminMonitorTransactions.
+  [[nodiscard]] Result canMonitorTransaction(std::string_view trxUser) const;
+
+  /// @brief returns true if the transaction of the given user may be aborted.
+  /// Own transactions always may be; other users' need AdminKillTransactions.
+  [[nodiscard]] Result canKillTransaction(std::string_view trxUser) const;
+
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
   // MAX: I do not think so, it is used only once to filter the visible

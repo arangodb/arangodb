@@ -9,7 +9,6 @@ tests:
       priority: 500
       type: single
     args:
-      extremeVerbosity: true
       pythonsource: ../python-arango
 - python_driver:
     job: run-driver-tests
@@ -18,5 +17,4 @@ tests:
       type: cluster
       size: large
     args:
-      extremeVerbosity: true
       pythonsource: ../python-arango

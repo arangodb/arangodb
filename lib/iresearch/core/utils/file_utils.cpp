@@ -1065,44 +1065,17 @@ bool read_cwd(
 
     result.resize(size);  // truncate buffer to size of cwd
 #else
-    result.resize(result.capacity());  // use up the entire buffer (noexcept)
-
-    if (result.empty()) {
-      // workaround for implementations of std::basic_string without a buffer
-      char buf[PATH_MAX];
-
-      if (nullptr != getcwd(buf, PATH_MAX)) {
-        result.assign(buf);
-
-        return true;
-      }
-    } else if (nullptr != getcwd(result.data(), result.size())) {
-      // truncate buffer to size of cwd
-      result.resize(std::strlen(result.data()));
-
-      return true;
-    }
-
-    if (ERANGE != errno) {
+    std::error_code ec;
+    const auto cwd = std::filesystem::current_path(ec);
+    if (ec) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Failed to get the current working directory, error ", errno));
+        "Failed to get the current working directory, error ", ec.value()));
 
       return false;
     }
 
-    struct deleter_t {
-      void operator()(char* ptr) const { free(ptr); }
-    };
-    std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
-
-    if (!pcwd) {
-      IRS_LOG_ERROR(absl::StrCat(
-        "Failed to allocate the current working directory, error ", errno));
-
-      return false;
-    }
-
-    result.assign(pcwd.get());
+    const auto& native = cwd.native();
+    result.assign(native.data(), native.size());
 #endif
 
     return true;

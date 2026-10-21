@@ -457,6 +457,32 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function with characters outside the BMP and U+FFFF
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseKeepsAllCodePoints : function () {
+      // TO_CHAR builds the input, so the client never encodes surrogate pairs
+      let actual = getQueryResults(`
+        LET single = TO_CHAR(65536)
+        LET mixed = CONCAT("a", TO_CHAR(128512), "b", TO_CHAR(65536))
+        LET nonCharacter = CONCAT("a", TO_CHAR(65535), "b")
+        RETURN {
+          single: TO_HEX(REVERSE(single)),
+          singleLength: CHAR_LENGTH(REVERSE(single)),
+          mixed: TO_HEX(REVERSE(mixed)),
+          mixedLength: CHAR_LENGTH(REVERSE(mixed)),
+          nonCharacter: TO_HEX(REVERSE(nonCharacter))
+        }`);
+      assertEqual([{
+        single: "f0908080",
+        singleLength: 1,
+        mixed: "f090808062f09f988061",
+        mixedLength: 4,
+        nonCharacter: "62efbfbf61"
+      }], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test reverse function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1678,6 +1704,115 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ [ 3.4, 4.6, 5.8, 7.0, 8.2 ] ];
       var actual = getQueryResults("RETURN RANGE(3.4, 8.9, 1.2)");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steps such as 0.1 are not representable in binary, so the computed
+/// bound can miss `stop`. RANGE uses a tolerance not to drop the final element.
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatStepReachesStop : function () {
+      assertEqual([ [ 0, 0.1, 0.2, 0.30000000000000004 ] ],
+                  getQueryResults("RETURN RANGE(0, 0.3, 0.1)"));
+      assertEqual([ [ 0, 0.1, 0.2, 0.30000000000000004, 0.4, 0.5,
+                      0.6000000000000001, 0.7000000000000001 ] ],
+                  getQueryResults("RETURN RANGE(0, 0.7, 0.1)"));
+      assertEqual([ [ 0, 1e-09, 2e-09, 3.0000000000000004e-09, 4e-09, 5e-09,
+                      6.000000000000001e-09, 7.000000000000001e-09, 8e-09,
+                      9.000000000000001e-09, 1e-08 ] ],
+                  getQueryResults("RETURN RANGE(0, 0.00000001, 0.000000001)"));
+      assertEqual(11, getQueryResults("RETURN RANGE(1, 2, 0.1)")[0].length);
+      assertEqual(11, getQueryResults("RETURN RANGE(-2, -1, 0.1)")[0].length);
+      assertEqual(7, getQueryResults("RETURN RANGE(-0.3, 0.3, 0.1)")[0].length);
+      assertEqual(6, getQueryResults("RETURN RANGE(1000000000, 1000000000.5, 0.1)")[0].length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief each element is computed as start + i * step rather than by
+/// accumulating, so the error does not grow along the range.
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatNoDrift : function () {
+      assertEqual([ [ 0, 0.1, 0.2, 0.30000000000000004, 0.4, 0.5,
+                      0.6000000000000001, 0.7000000000000001, 0.8, 0.9, 1 ] ],
+                  getQueryResults("RETURN RANGE(0, 1, 0.1)"));
+      var longRange = getQueryResults("RETURN RANGE(0, 10, 0.1)")[0];
+      assertEqual(101, longRange.length);
+      assertEqual(10, longRange[100]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the tolerance must not be large enough to admit a further element.
+/// Both ranges genuinely stop before `stop`.
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatDoesNotOvershoot : function () {
+      assertEqual([ [ 0, 0.1, 0.2, 0.30000000000000004 ] ],
+                  getQueryResults("RETURN RANGE(0, 0.35, 0.1)"));
+      assertEqual([ [ 0, 0.34, 0.68 ] ],
+                  getQueryResults("RETURN RANGE(0, 1, 0.34)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief descending ranges with a float step
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatDescending : function () {
+      assertEqual([ [ 1, 0.75, 0.5, 0.25, 0 ] ],
+                  getQueryResults("RETURN RANGE(1, 0, -0.25)"));
+      assertEqual([ [ -1, -1.5, -2 ] ],
+                  getQueryResults("RETURN RANGE(-1, -2, -0.5)"));
+      assertEqual(4, getQueryResults("RETURN RANGE(0.3, 0, -0.1)")[0].length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge cases with a float step
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatEdgeCases : function () {
+      assertEqual([ [ 0.5 ] ], getQueryResults("RETURN RANGE(0.5, 0.5, 0.1)"));
+      assertEqual([ [ 0 ] ], getQueryResults("RETURN RANGE(0, 0.1, 1)"));
+      assertEqual([ [ 0, 0.1 ] ], getQueryResults("RETURN RANGE(0, 0.1, 0.1)"));
+      assertEqual([ [ -0.5, -0.25, 0, 0.25, 0.5 ] ],
+                  getQueryResults("RETURN RANGE(-0.5, 0.5, 0.25)"));
+      assertEqual([ [ 0, 0.05, 0.1, 0.15000000000000002, 0.2 ] ],
+                  getQueryResults("RETURN RANGE(0, 0.2, 0.05)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief documented examples
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeFloatDocumented : function () {
+      assertEqual([ [ 1, 2 ] ], getQueryResults("RETURN RANGE(1.5, 2.5)"));
+      assertEqual([ [ 1.5, 2.5 ] ], getQueryResults("RETURN RANGE(1.5, 2.5, 1)"));
+      assertEqual([ [ 1.5, 2, 2.5 ] ],
+                  getQueryResults("RETURN RANGE(1.5, 2.5, 0.5)"));
+      assertEqual([ [ -0.75, -0.25, 0.25, 0.75 ] ],
+                  getQueryResults("RETURN RANGE(-0.75, 1.1, 0.5)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief non-finite arguments are rejected. "nan" and "inf" parse to doubles,
+/// so these are reachable from a query.
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeNonFinite : function () {
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+                                "RETURN RANGE(0, 1, 'nan')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+                                "RETURN RANGE(0, 'inf', 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+                                "RETURN RANGE('nan', 1, 1)");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a range too large to materialize is rejected rather than built
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeTooBig : function () {
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code,
+                       "RETURN RANGE(0, 1, 0.00000001)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

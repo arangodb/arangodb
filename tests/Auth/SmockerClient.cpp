@@ -101,11 +101,10 @@ auto runDocker(std::vector<std::string> const& args) -> ExternalProcessStatus {
 
 namespace arangodb::test {
 
-SmockerClient::SmockerClient(std::string containerName, std::string mockUrl,
-                             std::string adminUrl, bool manageDocker)
+SmockerClient::SmockerClient(std::string containerName,
+                             std::vector<std::string> hosts, bool manageDocker)
     : _containerName(std::move(containerName)),
-      _mockUrl(std::move(mockUrl)),
-      _adminUrl(std::move(adminUrl)),
+      _hosts(std::move(hosts)),
       _manageDocker(manageDocker) {}
 
 void SmockerClient::start() {
@@ -134,16 +133,26 @@ void SmockerClient::start() {
   for (auto t0 = std::chrono::steady_clock::now();
        std::chrono::steady_clock::now() - t0 < std::chrono::seconds(120);
        std::this_thread::sleep_for(std::chrono::milliseconds(10))) {
-    try {
-      auto res = sendToAdmin(fuerte::RestVerb::Get, "/version");
-      if (res && res->statusCode() == fuerte::StatusOK) {
-        _startError.reset();
-        return;
+    for (auto const& host : _hosts) {
+      _adminUrl = "http://" + host + ":8081";
+      try {
+        auto res = sendToAdmin(fuerte::RestVerb::Get, "/version");
+        if (res && res->statusCode() == fuerte::StatusOK) {
+          _mockUrl = "http://" + host + ":8080";
+          _startError.reset();
+          return;
+        }
+      } catch (...) {
       }
-    } catch (...) {
     }
   }
-  _startError = "Smocker did not become ready within 120 seconds";
+  auto tried = std::string{};
+  for (auto const& host : _hosts) {
+    if (!tried.empty()) tried += ", ";
+    tried += "http://" + host + ":8081/version";
+  }
+  _startError = "Smocker did not become ready within 120 seconds (polled GET " +
+                tried + ")";
 }
 
 void SmockerClient::stop() {

@@ -85,8 +85,8 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 RestHandler::~RestHandler() {
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
-               RequestPriority::LOW);
+    TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+    TRI_ASSERT(PriorityRequestLane(_lane) == RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
@@ -215,13 +215,17 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
+  auto headers = request()->headers();
+  headers.insert_or_assign(StaticStrings::Authorization,
+                           "SENSITIVE_DETAILS_HIDDEN");
+
   _activity = activities::make<arangodb::rest::RestHandlerActivity>(
       RestHandlerActivityData{
           .handler = name(),           //
           .url = _request->fullUrl(),  //
           .method = std::string{GeneralRequest::translateMethod(
               _request->requestType())},  //
-          .headers = request()->headers(),
+          .headers = std::move(headers),
           .connectionInfo = request()->connectionInfo()});
 }
 
