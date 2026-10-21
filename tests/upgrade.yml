@@ -1,0 +1,6 @@
+jobProperties:
+    second_repo: git@github.com:arangodb/release-test-automation.git
+    branch: main
+tests:
+- rta_upgrade:
+    job: run-rta-tests
