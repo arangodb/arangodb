@@ -6,6 +6,8 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-20.
 
+* COR-1095: Remove custom AESNI code
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
