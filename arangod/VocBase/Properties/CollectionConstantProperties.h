@@ -27,7 +27,6 @@
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
 #include <optional>
@@ -70,14 +69,8 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      userInvariant(
-          f,
-          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
-          UtilityInvariants::isNonEmptyIfPresent),
-      userInvariant(
-          f,
-          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
-          UtilityInvariants::isValidCollectionType),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+      f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
