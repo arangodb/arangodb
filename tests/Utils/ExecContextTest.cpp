@@ -369,8 +369,8 @@ TEST_P(OwnerScopedCheckTest, unauthenticated_is_denied_even_for_own_name) {
 TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "alice").ok());
   EXPECT_TRUE(service.actions.empty());
@@ -379,8 +379,8 @@ TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
 TEST_P(OwnerScopedCheckTest, rbac_asks_the_admin_action_for_foreign_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "bob").ok());
   EXPECT_EQ(service.actions, std::vector<rbac::Action>{GetParam().action});
@@ -390,8 +390,8 @@ TEST_P(OwnerScopedCheckTest, rbac_denial_is_forwarded) {
   RecordingRbacService service;
   service.answer = {TRI_ERROR_FORBIDDEN, "denied by test service"};
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_FALSE(check(*ctx, "bob").ok());
 }

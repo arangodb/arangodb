@@ -48,6 +48,15 @@ constexpr std::string_view to_string(ApiVersion version) noexcept {
 
 std::ostream& operator<<(std::ostream& os, ApiVersion version);
 
+// Serialized by name, like to_string.
+template<class Inspector>
+auto inspect(Inspector& f, ApiVersion& version) {
+  return f.enumeration(version).values(
+      ApiVersion::V0, to_string(ApiVersion::V0),  //
+      ApiVersion::V1, to_string(ApiVersion::V1),  //
+      ApiVersion::Experimental, to_string(ApiVersion::Experimental));
+}
+
 namespace api_version {
 /// @brief Central configuration for API versioning
 

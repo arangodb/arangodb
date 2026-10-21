@@ -27,6 +27,10 @@
 
 #include "Basics/ApiVersion.h"
 #include "Basics/ApiVersionFuerte.h"
+#include "Inspection/VPack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 
 using namespace arangodb;
 
@@ -57,4 +61,36 @@ TEST(ApiVersionTest, ToFuerteMapsEveryEnumerator) {
   EXPECT_EQ(fuerte::api_version::ApiVersion::V1, toFuerte(ApiVersion::V1));
   EXPECT_EQ(fuerte::api_version::ApiVersion::Experimental,
             toFuerte(ApiVersion::Experimental));
+}
+
+TEST(ApiVersionTest, InspectSerializesTheName) {
+  for (auto version :
+       {ApiVersion::V0, ApiVersion::V1, ApiVersion::Experimental}) {
+    velocypack::Builder builder;
+    velocypack::serialize(builder, version);
+    ASSERT_TRUE(builder.slice().isString());
+    EXPECT_EQ(to_string(version), builder.slice().stringView());
+  }
+}
+
+TEST(ApiVersionTest, InspectDeserializesTheName) {
+  for (auto version :
+       {ApiVersion::V0, ApiVersion::V1, ApiVersion::Experimental}) {
+    auto const json = velocypack::Parser::fromJson(
+        "\"" + std::string{to_string(version)} + "\"");
+    ApiVersion result{};
+    auto const status = velocypack::deserializeWithStatus(json->slice(), result);
+    ASSERT_TRUE(status.ok()) << status.error();
+    EXPECT_EQ(version, result);
+  }
+}
+
+TEST(ApiVersionTest, InspectRejectsUnknownNamesAndNumbers) {
+  for (auto const* json : {R"("v2")", R"("V0")", R"("")", "0", "2"}) {
+    ApiVersion result{};
+    EXPECT_FALSE(velocypack::deserializeWithStatus(
+                     velocypack::Parser::fromJson(json)->slice(), result)
+                     .ok())
+        << json;
+  }
 }

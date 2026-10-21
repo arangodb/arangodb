@@ -271,7 +271,7 @@ auto describe(resources::User const& resource) -> std::string {
   return std::format("user '{}'", resource.name);
 }
 auto describe(resources::ApiVersion const& resource) -> std::string {
-  return std::format("API version '{}'", resource.version);
+  return std::format("API version '{}'", to_string(resource.version));
 }
 
 auto describe(Resource const& resource) -> std::string {
