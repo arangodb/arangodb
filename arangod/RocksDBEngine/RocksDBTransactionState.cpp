@@ -231,16 +231,6 @@ Result RocksDBTransactionState::abortTransaction(
   return result;
 }
 
-/// @brief whether or not a RocksDB iterator in this transaction must check its
-/// bounds during iteration in addition to setting iterator_lower_bound or
-/// iterate_upper_bound. this is currently true for all iterators that are based
-/// on in-flight writes of the current transaction. it is never necessary to
-/// check bounds for read-only transactions
-bool RocksDBTransactionState::iteratorMustCheckBounds(
-    DataSourceId cid, ReadOwnWrites readOwnWrites) const {
-  return rocksdbMethods(cid)->iteratorMustCheckBounds(readOwnWrites);
-}
-
 void RocksDBTransactionState::prepareOperation(
     DataSourceId cid, RevisionId rid,
     TRI_voc_document_operation_e operationType) {

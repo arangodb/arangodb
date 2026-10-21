@@ -275,15 +275,6 @@ bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
   return _state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 }
 
-/// @brief whether a RocksDB iterator in this transaction must compare each key
-/// against its bounds itself, in addition to setting iterate_lower_bound or
-/// iterate_upper_bound. This is never necessary: NewIterator passes the
-/// ReadOptions to every iterator it creates, and RocksDB then applies the
-/// bounds to the DB snapshot and to the writes of this transaction.
-bool RocksDBTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {
-  return false;
-}
-
 void RocksDBTrxMethods::beginQuery(
     std::shared_ptr<ResourceMonitor> resourceMonitor,
     bool isModificationQuery) {
