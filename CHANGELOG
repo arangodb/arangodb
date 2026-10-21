@@ -105,6 +105,8 @@
   on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
   returns each group once.
 
+* COR-1095: Remove custom AESNI code
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
