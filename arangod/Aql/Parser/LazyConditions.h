@@ -66,8 +66,9 @@ class LazyConditions {
   void flushFilters() const;
 
  private:
-  // conditions pushed before the first entry may still be hoisted
-  size_t numHoistable() const noexcept;
+  // conditions pushed before the outmost pushForceInline() can be
+  // extracted into a LET and used as a guard
+  size_t numExtractableConditions() const noexcept;
 
   /// @brief the underlying AST
   Ast& _ast;
@@ -76,7 +77,7 @@ class LazyConditions {
   Conditions _stack;
 
   /// @brief stack sizes at each pushForceInline()
-  std::vector<size_t> _inlineBarriers;  // replaces size_t _forceInlineRequests
+  std::vector<size_t> _inlineBarriers;
 };
 
 }  // namespace arangodb::aql

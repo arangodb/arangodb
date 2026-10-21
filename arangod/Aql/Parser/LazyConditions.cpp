@@ -67,12 +67,12 @@ void LazyConditions::popForceInline() noexcept {
   _inlineBarriers.pop_back();
 }
 
-size_t LazyConditions::numHoistable() const noexcept {
+size_t LazyConditions::numExtractableConditions() const noexcept {
   return _inlineBarriers.empty() ? _stack.size() : _inlineBarriers.front();
 }
 
 void LazyConditions::flushAssignments() {
-  for (size_t i = 0; i < numHoistable(); ++i) {
+  for (size_t i = 0; i < numExtractableConditions(); ++i) {
     auto& it = _stack[i];
     if (it.variableNode == nullptr) {
       std::string variableName = _ast.variables()->nextName();
@@ -167,7 +167,8 @@ void LazyConditions::flushFilters() const {
   // build an AND-combined FILTER condition with all conditions that we have
   // accumulated
   AstNode* filterCondition = nullptr;
-  for (size_t i = 0; i < numHoistable(); ++i) {  // only entries before [*
+  for (size_t i = 0; i < numExtractableConditions();
+       ++i) {  // only entries before `[*` of an array expansion 
     auto const& it = _stack[i];
     TRI_ASSERT(it.variableNode != nullptr);
     TRI_ASSERT(it.variableNode->type == NODE_TYPE_REFERENCE);
