@@ -1027,9 +1027,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  // the IN member is pinned by an implicit EQ, so only the
-                  // paired operator's own type decides collation vs byte
-                  // comparison, matching Expression.cpp's per-operator rule
+                  // IN has no operator; other's type decides collation
                   CompareResult res =
                       ResultsTable[compareAstNodes(
                                        value, other.valueNode,
@@ -1064,10 +1062,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            // use Unicode comparison whenever either operator is an ordering
-            // op (> 1), since that operator alone decides it at runtime
-            // (Expression.cpp compares == / != by byte, everything else via
-            // collation, regardless of what it's paired with)
+            // either operator being an ordering op forces collation
             bool const useUtf8Comparison =
                 current.whichCompareOperation() > 1 ||
                 other.whichCompareOperation() > 1;

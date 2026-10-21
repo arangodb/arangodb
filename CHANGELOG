@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
+  ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
+  attribute wrongly returning no results when byte order disagrees with ICU
+  collation order. The same fix applies to SEARCH conditions combining ==
+  or OR of == with a range operator.
+
 * COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
   for more fine-grained permission setting for aql queries.
 

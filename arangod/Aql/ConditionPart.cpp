@@ -312,8 +312,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  // use Unicode comparison whenever either side is an ordering op;
-  // == / != falls back to byte so NFC/NFD aren't collapsed
+  // an ordering op on either side forces collation; == / != stays byte-based
   bool const useUtf8Comparison =
       other.whichCompareOperation() > 1 || whichCompareOperation() > 1;
   CompareResult res =
