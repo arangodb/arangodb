@@ -940,6 +940,7 @@ using AllAdminPermissions =
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
                p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -947,7 +948,7 @@ using AllAdminPermissions =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
 
-static_assert(std::tuple_size_v<AllAdminPermissions> == 28);
+static_assert(std::tuple_size_v<AllAdminPermissions> == 30);
 
 // Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
 // that pin "forbidden without RW", which no longer holds for AdminQueryCache.
@@ -956,6 +957,7 @@ using AllAdminPermissionsExceptQueryCache =
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
                p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -963,7 +965,7 @@ using AllAdminPermissionsExceptQueryCache =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency>;
 
-static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 27);
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 29);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();
