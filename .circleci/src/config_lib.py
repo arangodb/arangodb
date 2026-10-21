@@ -802,7 +802,7 @@ class TestJob:
         assert isinstance(self.options.buckets, int)
         return self.options.buckets
 
-    def get_browser(self) -> Optional[string]:
+    def get_browser(self) -> Optional[str]:
         """
         Calculate the number of buckets for this job.
 
