@@ -804,7 +804,7 @@ class CircleCIGenerator(OutputGenerator):
                 "suiteName": f"{deployment}-UI",
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
-                "browser": "Remote_CHROME",
+                "browser": job.get_browser(),
                 "enterprise": "EP",
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
