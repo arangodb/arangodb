@@ -29,9 +29,10 @@ namespace arangodb {
 struct IVectorIndexProvider;
 
 struct VectorIndexDefinition : public IndexDefinition {
-  VectorIndexDefinition(IndexType type,
-                        IVectorIndexProvider const& vectorIndexProvider)
-      : IndexDefinition(type), _vectorIndexProvider(vectorIndexProvider) {}
+  explicit VectorIndexDefinition(
+      IVectorIndexProvider const& vectorIndexProvider)
+      : IndexDefinition(IndexType::Vector),
+        _vectorIndexProvider(vectorIndexProvider) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,

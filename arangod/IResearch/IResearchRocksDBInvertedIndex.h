@@ -172,8 +172,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
  private:
   // required for calling initFields()
   friend std::shared_ptr<Index> createRocksDBInvertedIndex(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor);
+      IndexCreationContext const& ctx);
 
   void initFields() {
     TRI_ASSERT(_fields.empty());

@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Indexes/IIndexFactory.h"
 #include "Indexes/IndexType.h"
 
 #include <velocypack/Slice.h>
@@ -31,7 +30,6 @@
 namespace arangodb {
 
 struct Database;
-class Index;
 
 namespace velocypack {
 
@@ -43,7 +41,6 @@ class Builder;
 bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
                            velocypack::Slice rhs, bool attributeOrderMatters);
 
-// name/normalize/equal are engine-agnostic; create() routes to the engine.
 struct IndexDefinition {
   explicit IndexDefinition(IndexType type) : _type(type) {}
   virtual ~IndexDefinition() = default;
@@ -54,25 +51,14 @@ struct IndexDefinition {
   ///        index once instantiated
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                      std::string const&) const {
-    return indexDefinitionsEqual(_type, lhs, rhs, attributeOrderMatters());
+    return indexDefinitionsEqual(_type, lhs, rhs,
+                                 /*attributeOrderMatters*/ true);
   }
 
   /// @brief normalize an Index definition prior to instantiation/persistence
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            Database const& vocbase) const = 0;
-
-  /// @brief the order of attributes matters by default
-  virtual bool attributeOrderMatters() const {
-    // can be overridden by specific indexes
-    return true;
-  }
-
-  /// @brief create the index via the engine's IIndexFactory
-  virtual std::shared_ptr<Index> create(IIndexFactory const& factory,
-                                        IndexCreationContext const& ctx) const {
-    return factory.createIndex(_type, ctx);
-  }
 
  protected:
   IndexType const _type;

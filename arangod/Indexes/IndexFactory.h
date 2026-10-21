@@ -23,12 +23,13 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Indexes/IIndexFactory.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexDefinition.h"
+#include "Indexes/IndexType.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <functional>
+#include <memory>
 #include <utility>
 
 namespace arangodb {
@@ -57,20 +58,34 @@ std::string_view extractName(velocypack::Slice slice) noexcept;
 
 }  // namespace helpers
 
-class IndexFactory : public IIndexFactory {
+// the inputs every create*() call needs, bundled so they don't repeat
+// across every method/call site
+struct IndexCreationContext {
+  LogicalCollection& collection;
+  velocypack::Slice definition;
+  IndexId id;
+  bool isClusterConstructor;
+};
+
+class IndexFactory {
  public:
   IndexFactory(application_features::ApplicationServer&,
                IndexTypeCatalog const& catalog);
-  ~IndexFactory() override = default;
+  virtual ~IndexFactory() = default;
+
+  // one switch-on-type entry point per engine, replacing a virtual per type
+  virtual std::shared_ptr<Index> createIndex(
+      IndexType type, IndexCreationContext const& ctx) const = 0;
 
   // the arangosearch link is created by a function IResearchFeature injects
-  // at startup, not by the engines directly - see the comment on
-  // IIndexFactory::createIResearchLink
+  // at startup, not by the engines directly, keeping
+  // RocksDBIndexFactory/ClusterIndexFactory free of a compile-time
+  // dependency on iresearch
   using LinkCreator =
       std::function<std::shared_ptr<Index>(IndexCreationContext const&)>;
   void setLinkCreator(LinkCreator creator);
   std::shared_ptr<Index> createIResearchLink(
-      IndexCreationContext const& ctx) const override;
+      IndexCreationContext const& ctx) const;
 
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,

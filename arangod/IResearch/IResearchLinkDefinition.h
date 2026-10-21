@@ -48,12 +48,6 @@ struct IResearchLinkDefinition final : public IndexDefinition {
                                           vocbase, defaultVersion);
   }
 
-  std::shared_ptr<Index> create(
-      IIndexFactory const& factory,
-      IndexCreationContext const& ctx) const override {
-    return factory.createIResearchLink(ctx);
-  }
-
  private:
   application_features::ApplicationServer& _server;
 };

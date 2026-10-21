@@ -190,7 +190,9 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   }
 
   IndexCreationContext ctx{collection, definition, id, isClusterConstructor};
-  std::shared_ptr<Index> index = def->create(*this, ctx);
+  std::shared_ptr<Index> index = def->type() == IndexType::IResearchLink
+                                     ? createIResearchLink(ctx)
+                                     : createIndex(def->type(), ctx);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

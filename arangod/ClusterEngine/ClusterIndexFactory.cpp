@@ -116,7 +116,9 @@ std::shared_ptr<Index> ClusterIndexFactory::createIndex(
       index->initFields();
       return index;
     }
-    default:
+    case IndexType::Unknown:
+    case IndexType::NoAccess:
+    case IndexType::IResearchLink:
       TRI_ASSERT(false) << "ClusterIndexFactory::createIndex called for "
                         << int(type);
       return nullptr;

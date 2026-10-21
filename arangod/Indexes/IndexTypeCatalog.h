@@ -35,8 +35,8 @@
 #include "Indexes/SecondaryIndexDefinition.h"
 #include "Indexes/TtlIndexDefinition.h"
 #include "Indexes/VectorIndexDefinition.h"
-#include "IResearch/IResearchInvertedIndexDefinition.h"
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -56,6 +56,14 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+
+// lets _byName be looked up by string_view without allocating a std::string
+struct TransparentStringHash {
+  using is_transparent = void;
+  size_t operator()(std::string_view sv) const noexcept {
+    return std::hash<std::string_view>{}(sv);
+  }
+};
 
 // Index type names and equal/normalize rules, shared by both engines.
 class IndexTypeCatalog final {
@@ -102,9 +110,10 @@ class IndexTypeCatalog final {
   MdiIndexDefinition _mdi;
   MdiPrefixedIndexDefinition _mdiPrefixed;
   VectorIndexDefinition _vector;
-  iresearch::IResearchInvertedIndexDefinition _inverted;
 
-  std::unordered_map<std::string, IndexDefinition const*> _byName;
+  std::unordered_map<std::string, IndexDefinition const*, TransparentStringHash,
+                     std::equal_to<>>
+      _byName;
 };
 
 }  // namespace arangodb

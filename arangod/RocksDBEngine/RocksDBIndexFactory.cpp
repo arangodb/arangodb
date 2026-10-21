@@ -68,6 +68,11 @@ std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
       }
       return std::make_shared<RocksDBPrimaryIndex>(collection, definition);
     case IndexType::Edge: {
+      if (!isClusterConstructor) {
+        // this index type cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "cannot create edge index");
+      }
       auto fields = definition.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() == 1);
       auto direction = fields.at(0).copyString();
@@ -109,7 +114,9 @@ std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
       return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
     case IndexType::Inverted:
       return iresearch::createRocksDBInvertedIndex(ctx);
-    default:
+    case IndexType::Unknown:
+    case IndexType::NoAccess:
+    case IndexType::IResearchLink:
       TRI_ASSERT(false) << "RocksDBIndexFactory::createIndex called for "
                         << int(type);
       return nullptr;

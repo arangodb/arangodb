@@ -55,6 +55,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
@@ -1048,12 +1049,30 @@ void IResearchFeature::registerIndexFactory() {
     _linkDefinition = std::move(newDefinition);
   };
 
+  auto addInvertedDefinition = [&]() {
+    // register before replacing, so a failed add() can't leave a dangling ptr
+    auto newDefinition =
+        std::make_unique<IResearchInvertedIndexDefinition>(server());
+    auto r = engine.indexTypeCatalog().add(
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE, *newDefinition);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch inverted index "
+                       "definition with index type catalog from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+    _invertedDefinition = std::move(newDefinition);
+  };
+
   if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
     engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
     addDefinition();
+    addInvertedDefinition();
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
     engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
     addDefinition();
+    addInvertedDefinition();
   }
 }
 

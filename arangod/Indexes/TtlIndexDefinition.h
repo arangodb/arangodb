@@ -27,7 +27,7 @@
 namespace arangodb {
 
 struct TtlIndexDefinition : public IndexDefinition {
-  explicit TtlIndexDefinition(IndexType type) : IndexDefinition(type) {}
+  TtlIndexDefinition() : IndexDefinition(IndexType::TTL) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,

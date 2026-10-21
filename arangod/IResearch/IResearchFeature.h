@@ -57,6 +57,7 @@ class IResearchRocksDBRecoveryHelper;
 
 struct IResearchExecutionPool;
 struct IResearchLinkDefinition;
+class IResearchInvertedIndexDefinition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -183,6 +184,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   // owned here because the catalog keeps a pointer to it
   std::unique_ptr<IResearchLinkDefinition> _linkDefinition;
+
+  // owned here because the catalog keeps a pointer to it
+  std::unique_ptr<IResearchInvertedIndexDefinition> _invertedDefinition;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

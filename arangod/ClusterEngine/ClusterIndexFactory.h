@@ -48,7 +48,7 @@ class ClusterIndexFactory final : public IndexFactory {
 
  private:
   // generic path shared by every type that just becomes a ClusterIndex of
-  // the given IndexType; Edge/Primary/Inverted override this behavior
+  // the given IndexType
   std::shared_ptr<Index> createGeneric(IndexType type,
                                        LogicalCollection& collection,
                                        velocypack::Slice definition,

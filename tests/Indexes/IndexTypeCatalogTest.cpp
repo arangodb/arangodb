@@ -26,11 +26,9 @@
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "Mocks/Servers.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
 #include <string_view>
@@ -95,67 +93,6 @@ TEST_F(IndexTypeCatalogTest, aliasesForApiVersion0) {
 TEST_F(IndexTypeCatalogTest, aliasesForApiVersion1) {
   using Alias = std::pair<std::string_view, std::string_view>;
   EXPECT_EQ(catalog.aliases(1), (std::vector<Alias>{{"zkd", "mdi"}}));
-}
-
-namespace {
-
-size_t countObjectId(velocypack::Slice normalized) {
-  size_t count = 0;
-  for (auto it : velocypack::ObjectIterator(normalized)) {
-    if (it.key.stringView() == StaticStrings::ObjectId) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-}  // namespace
-
-class RocksDBIndexFactoryTest : public IndexTypeCatalogTest {
- protected:
-  RocksDBIndexFactory factory{mockServer.server(), catalog};
-};
-
-TEST_F(RocksDBIndexFactoryTest, invertedIndexGetsExactlyOneObjectId) {
-  auto definition =
-      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["x"]})");
-  velocypack::Builder normalized;
-  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                            /*isCreation*/ true,
-                                            mockServer.getSystemDatabase());
-  ASSERT_TRUE(res.ok()) << res.errorMessage();
-  EXPECT_EQ(countObjectId(normalized.slice()), 1);
-}
-
-TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNotCreating) {
-  auto definition =
-      velocypack::Parser::fromJson(R"({"type": "inverted", "fields": ["x"]})");
-  velocypack::Builder normalized;
-  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                            /*isCreation*/ false,
-                                            mockServer.getSystemDatabase());
-  ASSERT_TRUE(res.ok()) << res.errorMessage();
-  EXPECT_EQ(countObjectId(normalized.slice()), 0);
-}
-
-TEST_F(RocksDBIndexFactoryTest, noExtraObjectIdWhenAlreadyPresent) {
-  auto definition = velocypack::Parser::fromJson(
-      R"({"type": "inverted", "fields": ["x"], "objectId": "123"})");
-  velocypack::Builder normalized;
-  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                            /*isCreation*/ true,
-                                            mockServer.getSystemDatabase());
-  ASSERT_TRUE(res.ok()) << res.errorMessage();
-  EXPECT_EQ(countObjectId(normalized.slice()), 1);
-}
-
-TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNormalizeFails) {
-  auto definition = velocypack::Parser::fromJson(R"({"type": "nosuchtype"})");
-  velocypack::Builder normalized;
-  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                            /*isCreation*/ true,
-                                            mockServer.getSystemDatabase());
-  EXPECT_TRUE(res.fail());
 }
 
 TEST_F(IndexTypeCatalogTest, geo2EqualChecksGeoJson) {

@@ -66,9 +66,8 @@ using namespace arangodb;
 // Geo/Geo1/Geo2 index types: `RocksDBIndexFactory` in
 // `arangod/RocksDBEngine/RocksDBIndexFactory.cpp` for RocksDB and
 // `ClusterIndexFactory` in `arangod/ClusterEngine/ClusterIndexFactory.cpp`
-// for the cluster engine. The matching
-// `GeoIndexDefinition`/`Geo1IndexDefinition`/`Geo2IndexDefinition` is what
-// routes to the right one of those. This index factory produces then an
+// for the cluster engine. Each factory's own switch on `IndexType` picks
+// the right case for Geo/Geo1/Geo2. This index factory produces then an
 // object of type `RocksDBGeoIndex` and this is responsible for storing stuff
 // in RocksDB for the indexed data.
 // The corresponding methods can be found in this file here. This is how we

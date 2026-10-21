@@ -39,11 +39,9 @@ IndexTypeCatalog::IndexTypeCatalog(
     : _hash(IndexType::Hash),
       _persistent(IndexType::Persistent),
       _skiplist(IndexType::Skiplist),
-      _ttl(IndexType::TTL),
       _zkd(IndexType::Zkd),
       _mdi(IndexType::MDI),
-      _vector(IndexType::Vector, vectorIndexProvider),
-      _inverted(server) {
+      _vector(vectorIndexProvider) {
   // a definition is registered under its persisted name, see Index::oldtypeName
   auto reg = [&](IndexDefinition const& definition) {
     _byName.try_emplace(std::string{Index::oldtypeName(definition.type())},
@@ -64,19 +62,18 @@ IndexTypeCatalog::IndexTypeCatalog(
   reg(_mdi);
   reg(_mdiPrefixed);
   reg(_vector);
-  reg(_inverted);
   // legacy alias of persistent
   _byName.try_emplace("rocksdb", &_persistent);
 }
 
 IndexType IndexTypeCatalog::resolve(std::string_view name) const noexcept {
-  auto it = _byName.find(std::string{name});
+  auto it = _byName.find(name);
   return it == _byName.end() ? IndexType::Unknown : it->second->type();
 }
 
 IndexDefinition const* IndexTypeCatalog::definitionFor(
     std::string_view name) const noexcept {
-  auto it = _byName.find(std::string{name});
+  auto it = _byName.find(name);
   return it == _byName.end() ? nullptr : it->second;
 }
 
@@ -85,7 +82,7 @@ Result IndexTypeCatalog::normalizeType(std::string_view name,
                                        velocypack::Slice definition,
                                        bool isCreation,
                                        Database const& vocbase) const {
-  auto it = _byName.find(std::string{name});
+  auto it = _byName.find(name);
   if (it == _byName.end()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   absl::StrCat("invalid index type '", name, "'"));
@@ -115,7 +112,7 @@ bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
     return false;
   }
 
-  auto it = _byName.find(std::string{lhsType});
+  auto it = _byName.find(lhsType);
   return it != _byName.end() && it->second->equal(lhs, rhs, dbname);
 }
 
