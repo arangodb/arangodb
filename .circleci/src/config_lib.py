@@ -333,6 +333,7 @@ class TestOptions:
             "priority": "priority",
             "parallelity": "parallelity",
             "buckets": "buckets",
+            "browser": "browser",
             "replication_version": "replication_version",
             "suffix": "suffix",
             "timeLimit": "time_limit",
@@ -362,6 +363,7 @@ class TestOptions:
                 priority=self.priority,
                 parallelity=self.parallelity,
                 buckets=self.buckets,
+                browser=self.browser,
                 replication_version=self.replication_version,
                 suffix=self.suffix,
                 time_limit=self.time_limit,
@@ -377,6 +379,7 @@ class TestOptions:
             priority=merge_field(override.priority, self.priority),
             parallelity=merge_field(override.parallelity, self.parallelity),
             buckets=merge_field(override.buckets, self.buckets),
+            browser=merge_field(override.browser, self.browser),
             replication_version=merge_field(
                 override.replication_version, self.replication_version
             ),
