@@ -6,4 +6,4 @@ tests:
     job: run-rta-tests
     options:
       buckets: 1
-      browser: none
+      browser: no-browser

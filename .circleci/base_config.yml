@@ -1573,7 +1573,7 @@ jobs:
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             fi
             RTA_ARGS=()
-            if [ "<< parameters.browser >>" != "none" ]; then
+            if [ "<< parameters.browser >>" != "no-browser" ]; then
               RTA_ARGS+=(--selenium << parameters.browser >>  --no-checkdata --no-run-upgrade)
             fi
             if [ << parameters.buckets >> != 1 ]; then
