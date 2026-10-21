@@ -1574,10 +1574,10 @@ jobs:
             fi
             RTA_ARGS=()
             if [ "<< parameters.browser >>" != "none" ]; then
-              RTA_ARGS+=(--selenium << parameters.browser >>)
+              RTA_ARGS+=(--selenium << parameters.browser >>  --no-checkdata --no-run-upgrade)
             fi
-            if [ << parameters.buckets >> != -1 ]; then
-              RTA_ARGS+=(--buckets $BUCKETS --no-checkdata --no-run-upgrade)
+            if [ << parameters.buckets >> != 1 ]; then
+              RTA_ARGS+=(--buckets $BUCKETS)
             fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
