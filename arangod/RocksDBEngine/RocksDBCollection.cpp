@@ -982,10 +982,7 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
   constexpr bool readOwnWrites = false;
   auto iter =
       mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
-        if (!mthds->iteratorMustCheckBounds(
-                readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no)) {
-          ro.iterate_upper_bound = &end;
-        }
+        ro.iterate_upper_bound = &end;
         // we are going to blow away all data anyway. no need to blow up the
         // cache
         ro.fill_cache = false;

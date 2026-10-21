@@ -326,7 +326,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool const _withCache;
 };
 
-template<bool reverse, bool mustCheckBounds>
+template<bool reverse>
 class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexRangeIterator(ResourceMonitor& monitor,
@@ -338,7 +338,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       : IndexIterator(collection, trx, readOwnWrites),
         _resourceMonitor(monitor),
         _index(index),
-        _cmp(index->comparator()),
         _mustSeek(true),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
@@ -364,7 +363,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
+    if (!_iterator->Valid() || ADB_UNLIKELY(limit == 0)) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -390,8 +389,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         // validate that Iterator is in a good shape and hasn't failed
         rocksutils::checkIteratorStatus(*_iterator);
         return false;
-      } else if (outOfRange()) {
-        return false;
       }
 
       --limit;
@@ -406,7 +403,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
+    if (!_iterator->Valid() || ADB_UNLIKELY(limit == 0)) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -439,8 +436,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         // validate that Iterator is in a good shape and hasn't failed
         rocksutils::checkIteratorStatus(*_iterator);
         return false;
-      } else if (outOfRange()) {
-        return false;
       }
 
       --limit;
@@ -455,7 +450,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
 
-    if (_iterator->Valid() && !outOfRange() && count > 0) {
+    if (_iterator->Valid() && count > 0) {
       do {
         TRI_ASSERT(_index->objectId() ==
                    RocksDBKey::objectId(_iterator->key()));
@@ -468,7 +463,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
           _iterator->Next();
         }
 
-        if (!_iterator->Valid() || outOfRange()) {
+        if (!_iterator->Valid()) {
           break;
         }
 
@@ -503,30 +498,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       _iterator = mthds->NewIterator(
           _index->columnFamily(), [&](rocksdb::ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // note: iterate_lower_bound/iterate_upper_bound should only be
-            // set if the iterator is not supposed to check the bounds
-            // for every operation.
-            // when the iterator is a db snapshot-based iterator, it is ok
-            // to set iterate_lower_bound/iterate_upper_bound, because this
-            // is well supported by RocksDB.
-            // if the iterator is a multi-level iterator that merges data from
-            // the db snapshot with data from an ongoing in-memory transaction
-            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
-            // not properly support the bounds checking using
-            // iterate_lower_bound/ iterate_upper_bound. in this case we must
-            // avoid setting the bounds here and rely on our own bounds checking
-            // using the comparator. at least one underlying issue was fixed in
-            // RocksDB in version 8.8.0 via
-            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
-            // the issue once we have upgraded to RocksDB >= 8.8.0.
-            if constexpr (!mustCheckBounds) {
-              // we need to have a pointer to a slice for the upper bound
-              // so we need to assign the slice to an instance variable here
-              if constexpr (reverse) {
-                options.iterate_lower_bound = &_rangeBound;
-              } else {
-                options.iterate_upper_bound = &_rangeBound;
-              }
+            if constexpr (reverse) {
+              options.iterate_lower_bound = &_rangeBound;
+            } else {
+              options.iterate_upper_bound = &_rangeBound;
             }
           });
       TRI_ASSERT(_mustSeek);
@@ -547,36 +522,12 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(!_mustSeek);
   }
 
-  inline bool outOfRange() const {
-    if constexpr (mustCheckBounds) {
-      // we can effectively disable the out-of-range checks for read-only
-      // transactions, as our Iterator is a snapshot-based iterator with a
-      // configured iterate_upper_bound/iterate_lower_bound value.
-      // this makes RocksDB filter out non-matching keys automatically.
-      // however, for a write transaction our Iterator is a rocksdb
-      // BaseDeltaIterator, which will merge the values from a snapshot iterator
-      // and the changes in the current transaction. here rocksdb will only
-      // apply the bounds checks for the base iterator (from the snapshot), but
-      // not for the delta iterator (from the current transaction), so we still
-      // have to carry out the checks ourselves.
-      int res = _cmp->Compare(_iterator->key(), _rangeBound);
-      if constexpr (reverse) {
-        return res < 0;
-      } else {
-        return res > 0;
-      }
-    } else {
-      return false;
-    }
-  }
-
   // expected number of bytes that a RocksDB iterator will use.
   // this is a guess and does not need to be fully accurate.
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   ResourceMonitor& _resourceMonitor;
   RocksDBPrimaryIndex const* _index;
-  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool _mustSeek;
   RocksDBKeyBounds const _bounds;
@@ -938,23 +889,11 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
-  bool mustCheckBounds =
-      RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-          _collection.id(), readOwnWrites);
-
   if (node == nullptr) {
     // full range scan
     if (opts.ascending) {
       // forward version
-      if (mustCheckBounds) {
-        return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            monitor, &_collection /*logical collection*/, trx, this,
-            RocksDBKeyBounds::PrimaryIndex(objectId(),
-                                           KeyGeneratorHelper::lowestKey,
-                                           KeyGeneratorHelper::highestKey),
-            readOwnWrites);
-      }
-      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
+      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(),
                                          KeyGeneratorHelper::lowestKey,
@@ -962,15 +901,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           readOwnWrites);
     }
     // reverse version
-    if (mustCheckBounds) {
-      return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          monitor, &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(),
-                                         KeyGeneratorHelper::lowestKey,
-                                         KeyGeneratorHelper::highestKey),
-          readOwnWrites);
-    }
-    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
+    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(),
                                        KeyGeneratorHelper::lowestKey,
@@ -1162,25 +1093,13 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
   if (lowerFound && upperFound) {
     if (opts.ascending) {
       // forward version
-      if (mustCheckBounds) {
-        return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            monitor, &_collection /*logical collection*/, trx, this,
-            RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
-            readOwnWrites);
-      }
-      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
+      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
           readOwnWrites);
     }
     // reverse version
-    if (mustCheckBounds) {
-      return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          monitor, &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
-          readOwnWrites);
-    }
-    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
+    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
         readOwnWrites);
