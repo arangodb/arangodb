@@ -166,12 +166,10 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
 #endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
-    if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
-      TRI_ASSERT(_readWriteBatch != nullptr);
-      TRI_ASSERT(opts.iterate_lower_bound == nullptr);
-      TRI_ASSERT(opts.iterate_upper_bound == nullptr);
-      iterator.reset(
-          _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
+    if (_readWriteBatch != nullptr &&
+        _readWriteBatch->GetWriteBatch()->GetDataSize() > 0) {
+      iterator.reset(_readWriteBatch->NewIteratorWithBase(
+          cf, _db->NewIterator(opts, cf), &opts));
     } else {
       // we either have an empty _readWriteBatch or no _readWriteBatch at all
       // in this case, we can get away with the DB snapshot iterator
@@ -277,20 +275,13 @@ bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
   return _state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 }
 
-/// @brief whether or not a RocksDB iterator in this transaction must check its
-/// bounds during iteration in addition to setting iterator_lower_bound or
-/// iterate_upper_bound. this is currently true for all iterators that are based
-/// on in-flight writes of the current transaction. for read-only transactions
-/// it is only necessary to check bounds if we have local changes in the
-/// WriteBatch.
-bool RocksDBTrxMethods::iteratorMustCheckBounds(
-    ReadOwnWrites readOwnWrites) const {
-  // If we have a non-empty _readWriteBatch we always need to check the bounds,
-  // because we need to consider the WriteBatch for read operations, even if
-  // we don't need to read own writes.
-  return readOwnWrites == ReadOwnWrites::yes ||
-         (_readWriteBatch != nullptr &&
-          _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
+/// @brief whether a RocksDB iterator in this transaction must compare each key
+/// against its bounds itself, in addition to setting iterate_lower_bound or
+/// iterate_upper_bound. This is never necessary: NewIterator passes the
+/// ReadOptions to every iterator it creates, and RocksDB then applies the
+/// bounds to the DB snapshot and to the writes of this transaction.
+bool RocksDBTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {
+  return false;
 }
 
 void RocksDBTrxMethods::beginQuery(
