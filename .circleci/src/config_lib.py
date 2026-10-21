@@ -256,6 +256,7 @@ class TestOptions:
     priority: Optional[int] = None
     parallelity: Optional[int] = None
     buckets: Optional[Union[int, str]] = None  # int or "auto"
+    browser: Optional[Union[int, str]] = None  # int or "auto"
     replication_version: Optional[str] = None
     suffix: Optional[str] = None  # Job name suffix for disambiguation
     time_limit: Optional[int] = None  # Time limit in seconds
@@ -800,6 +801,17 @@ class TestJob:
         # At this point we know buckets is an int (not None, not "auto")
         assert isinstance(self.options.buckets, int)
         return self.options.buckets
+
+    def get_browser(self) -> Optional[string]:
+        """
+        Calculate the number of buckets for this job.
+
+        Returns:
+            Number of buckets, or None if not using buckets
+        """
+        if self.options.browser is None:
+            return 'Remote_CHROME'
+        return self.options.browser
 
 
 @dataclass
