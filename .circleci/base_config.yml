@@ -1584,7 +1584,7 @@ jobs:
             export DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
               --starter-mode << parameters.deployment >> \
-              "${@RTA_ARGS[@]}" \
+              "${RTA_ARGS[@]}" \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
