@@ -6,6 +6,7 @@ tests:
     job: run-rta-tests
     options:
       buckets: auto
+      browser: Remote_CHROME
     requires:
       arch: x64
       v8: true
