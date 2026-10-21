@@ -22,6 +22,14 @@
   MATCH now rejects filters and attribute constraints applied to variables
   that reference documents defined outside the MATCH pattern.
 
+* COR-744: AQL MATCH now warns when a later expression accesses an attribute
+  excluded by an inline projection. For example,
+  `MATCH (v:users RETURN _key) RETURN v.age` still returns `null` at runtime
+  and now also emits `ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE`. Accesses to kept
+  attributes and mandatory system attributes such as _id do not trigger a
+  warning. The MATCH statement remains experimental
+  (`matchStatement: "experimental"`).
+
 * Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
 
 * Updated node modules:

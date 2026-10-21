@@ -299,6 +299,141 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testExcludedProjectionAttributeAccessWarns: function () {
+            const cursor = db._query("MATCH (v :vc RETURN _key) RETURN v.j", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("j"));
+            assertTrue(warnings[0].message.includes("v"));
+        },
+
+        testKeptProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query("MATCH (v :vc RETURN i) RETURN v.i", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "number");
+            }
+        },
+
+        testExcludedNestedProjectionAttributeAccessWarns: function () {
+            // Deep access under an excluded top-level key warns once on the
+            // shortest excluded prefix ("profile"), not on every nested segment.
+            const cursor = db._query(
+                "MATCH (v :vc RETURN i) RETURN v.profile.a.b.c", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("profile"));
+            assertFalse(warnings[0].message.includes("profile.a"));
+            assertTrue(warnings[0].message.includes("v"));
+        },
+
+        testKeptNestedProjectionAttributeAccessDoesNotWarn: function () {
+            // Keeping the parent object covers nested reads such as v.profile.a.b.c.
+            const cursor = db._query(
+                "MATCH (v :vc RETURN profile) RETURN v.profile.a.b.c", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+        },
+
+        testKeptNestedPathPrefixAccessDoesNotWarn: function () {
+            // Keeping profile.a.b.c also allows reading parent prefixes (v.profile).
+            const cursor = db._query(
+                "MATCH (v :vc RETURN profile.a.b.c) RETURN v.profile", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(value !== null && typeof value === "object");
+                assertTrue(value.hasOwnProperty("a"));
+            }
+        },
+
+        testExcludedEdgeProjectionAttributeAccessWarns: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.j", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("j"));
+            assertTrue(warnings[0].message.includes("e"));
+        },
+
+        testKeptEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.i", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "number");
+            }
+        },
+
+        testMandatoryEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            // Edge projections always keep _id/_from/_to.
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e._from", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "string");
+                assertTrue(value.startsWith("vc/"));
+            }
+        },
+
+        testExcludedNestedEdgeProjectionAttributeAccessWarns: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.meta.a.b.c",
+                {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("meta"));
+            assertFalse(warnings[0].message.includes("meta.a"));
+            assertTrue(warnings[0].message.includes("e"));
+        },
+
+        testKeptNestedEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN meta]->(v :vc) RETURN e.meta.a.b.c",
+                {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+        },
+
         testSelectVerticesWithSystemAttributeProjection: function () {
             const result = db._query("MATCH (v :vc RETURN _key, i) RETURN v", {}, options).toArray();
             assertEqual(result.length, 100);
