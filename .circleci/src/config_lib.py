@@ -256,7 +256,7 @@ class TestOptions:
     priority: Optional[int] = None
     parallelity: Optional[int] = None
     buckets: Optional[Union[int, str]] = None  # int or "auto"
-    browser: Optional[Union[int, str]] = None  # int or "auto"
+    browser: Optional[Union[str]] = None  # int or "auto"
     replication_version: Optional[str] = None
     suffix: Optional[str] = None  # Job name suffix for disambiguation
     time_limit: Optional[int] = None  # Time limit in seconds
