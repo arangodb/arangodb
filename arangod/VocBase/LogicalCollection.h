@@ -480,8 +480,9 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _waitForSync;
 
   // Bitmap of InternalValidatorType. Changed by the maintenance during
-  // cluster upgrades only.
-  std::atomic<uint64_t> _internalValidatorTypes;
+  // cluster upgrades only, together with _internalValidators below.
+  uint64_t _internalValidatorTypes;
+  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 
 #ifdef USE_ENTERPRISE
   // Set once, either during construction or by the DBServer maintenance
@@ -514,7 +515,6 @@ class LogicalCollection : public LogicalDataSource {
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
 
-  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
 };
 
 }  // namespace arangodb

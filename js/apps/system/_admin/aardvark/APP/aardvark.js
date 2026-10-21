@@ -36,7 +36,6 @@ const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
 const generalGraph = require('@arangodb/general-graph');
-const request = require('@arangodb/request');
 const isEnterprise = require('internal').isEnterprise();
 const explainer = require('@arangodb/aql/explainer');
 const fs = require('fs');
@@ -364,57 +363,31 @@ authRouter.post('/job', function (req, res) {
   Create a new job id entry in a specific system database with a given id.
 `);
 
+// the results of the referenced jobs are collected by the browser before it
+// calls this route. the service must not fetch them itself, because a
+// server-side request back into this very server is rejected by the JavaScript
+// endpoint allowlist.
 authRouter.delete('/job', function (req, res) {
-  let arr = [];
   let frontend = db._collection('_frontend');
 
   if (frontend) {
-    // get all job results and return before deletion
-    _.each(frontend.all().toArray(), function (job) {
-      let resp = request.put({
-        url: '/_api/job/' + encodeURIComponent(job.id),
-        json: true,
-        headers: {
-          'Authorization': req.headers.authorization
-        }
-      }).body;
-      try {
-        arr.push(JSON.parse(resp));
-      } catch (ignore) {
-      }
-    });
-
-    // actual deletion
     frontend.removeByExample({model: 'job'}, false);
   }
-  res.json({result: arr});
+  res.json(true);
 })
 .summary('Delete all jobs')
 .description(dd`
   Delete all jobs in a specific system database with a given id.
 `);
 
+// see the note on 'delete /job' above: fetching the job result is the browser's
+// responsibility.
 authRouter.delete('/job/:id', function (req, res) {
   let frontend = db._collection('_frontend');
-  let toReturn = {};
   if (frontend) {
-    // get the job result and return before deletion
-    let resp = request.put({
-      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
-      json: true,
-      headers: {
-        'Authorization': req.headers.authorization
-      }
-    }).body;
-    try {
-      toReturn = JSON.parse(resp);
-    } catch (ignore) {
-    }
-
-    // actual deletion
     frontend.removeByExample({id: req.pathParams.id}, false);
   }
-  res.json(toReturn);
+  res.json(true);
 })
 .summary('Delete a job id')
 .description(dd`

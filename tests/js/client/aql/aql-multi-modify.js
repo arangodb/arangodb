@@ -573,6 +573,109 @@ function ahuacatlMultiModifySuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for the distribute input of several modification nodes
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlMultiModifyDistributeInputSuite () {
+  var cn1 = "UnitTestsAhuacatlModifyShardedSource";
+  var cn2 = "UnitTestsAhuacatlModifyShardedInsert";
+  var cn3 = "UnitTestsAhuacatlModifyShardedRemove";
+  var cn4 = "UnitTestsAhuacatlModifyShardedRemoveKeys";
+  var all = [cn1, cn2, cn3, cn4];
+  var numDocs = 100;
+  var numRemoved = 3;
+
+  return {
+
+    setUp : function () {
+      all.forEach(function (cn) {
+        db._drop(cn);
+      });
+      all.forEach(function (cn) {
+        db._create(cn, { numberOfShards: 3 });
+      });
+
+      var docs = [];
+      for (var i = 0; i < numDocs; ++i) {
+        docs.push({ _key: "test" + i, value: i });
+      }
+      db[cn1].save(docs);
+      // the documents to remove, and a separate collection driving the REMOVE,
+      // so that the REMOVE is not restricted to a single shard
+      db[cn3].save(docs.slice(0, numRemoved));
+      db[cn4].save(docs.slice(0, numRemoved));
+    },
+
+    tearDown : function () {
+      all.forEach(function (cn) {
+        db._drop(cn);
+      });
+    },
+
+    // An INSERT whose input is a calculation needs that input prepared on the
+    // coordinator, so the new document carries the key it is routed by. The
+    // REMOVE takes its input straight from a collection enumeration and needs
+    // no such preparation - skipping it must not stop the INSERT from getting
+    // its own.
+    testInsertBeforeRemoveOfEnumeratedDocument : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+      var query = `FOR d IN ${cn1}
+                     INSERT { value: d.value } INTO ${cn2}
+                     FOR e IN ${cn4}
+                       REMOVE e IN ${cn3} OPTIONS { ignoreErrors: true }`;
+
+      var nodes = db._createStatement({ query }).explain().plan.nodes;
+      var prepared = nodes.filter(function (n) {
+        return n.type === "CalculationNode" &&
+               JSON.stringify(n.expression).indexOf("MAKE_DISTRIBUTE_INPUT") !== -1;
+      });
+      assertEqual(1, prepared.length, JSON.stringify(nodes.map(function (n) {
+        return n.type;
+      })));
+
+      db._query(query);
+      assertEqual(numDocs, db[cn2].count());
+      assertEqual(0, db[cn3].count());
+
+      // Documents that were routed to the wrong shard are still found by a
+      // full collection scan, but no longer by their key.
+      var keys = db._query(`FOR d IN ${cn2} RETURN d._key`).toArray();
+      assertEqual(numDocs, keys.length);
+      var found = db._query(`FOR k IN @keys
+                               FOR d IN ${cn2}
+                                 FILTER d._key == k
+                                 RETURN 1`, { keys }).toArray();
+      assertEqual(numDocs, found.length);
+    },
+
+    // Same query with the two operations swapped. Here the REMOVE is seen last
+    // and the INSERT keeps its prepared input either way.
+    testRemoveOfEnumeratedDocumentBeforeInsert : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+      var query = `FOR e IN ${cn4}
+                     REMOVE e IN ${cn3} OPTIONS { ignoreErrors: true }
+                     FOR d IN ${cn1}
+                       INSERT { value: d.value } INTO ${cn2}`;
+
+      db._query(query);
+      assertEqual(0, db[cn3].count());
+
+      var keys = db._query(`FOR d IN ${cn2} RETURN d._key`).toArray();
+      var found = db._query(`FOR k IN @keys
+                               FOR d IN ${cn2}
+                                 FILTER d._key == k
+                                 RETURN 1`, { keys }).toArray();
+      assertEqual(keys.length, found.length);
+    }
+  };
+}
+
 jsunity.run(ahuacatlMultiModifySuite);
+jsunity.run(ahuacatlMultiModifyDistributeInputSuite);
 
 return jsunity.done();

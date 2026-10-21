@@ -32,6 +32,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
@@ -1004,10 +1005,10 @@ PhysicalCollectionMock::createIndex(
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
-        auto& factory =
-            server.getFeature<arangodb::iresearch::IResearchFeature>()
-                .factory<arangodb::ClusterEngine>();
-        index = factory.instantiate(_logicalCollection, info, id, false);
+        auto factory =
+            arangodb::iresearch::IResearchLinkCoordinator::createFactory(
+                server);
+        index = factory->instantiate(_logicalCollection, info, id, false);
       } else {
         index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }

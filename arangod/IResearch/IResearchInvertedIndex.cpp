@@ -33,6 +33,7 @@
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
@@ -348,13 +349,15 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       ResourceMonitor& monitor, LogicalCollection* collection,
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+      aql::Variable const* variable, int mutableConditionIdx,
+      ICancellationToken const* token)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _memory(monitor),
         _snapshot(state),
         _indexMeta(meta),
         _variable(variable),
-        _mutableConditionIdx(mutableConditionIdx) {
+        _mutableConditionIdx(mutableConditionIdx),
+        _filterCtx(nullptr, token) {
     resetFilter(condition);
   }
 
@@ -449,6 +452,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
   int _mutableConditionIdx;
+  FilterCtx _filterCtx;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
 };
 
@@ -462,10 +466,11 @@ class IResearchInvertedIndexIterator final
                                  aql::AstNode const* condition,
                                  IResearchInvertedIndexMeta const* meta,
                                  aql::Variable const* variable,
-                                 int mutableConditionIdx)
+                                 int mutableConditionIdx,
+                                 ICancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx),
+                                           mutableConditionIdx, token),
         _projections(*meta) {}
 
   std::string_view typeName() const noexcept override {
@@ -540,7 +545,7 @@ class IResearchInvertedIndexIterator final
         _itr = segmentReader.mask(_filter->execute({
             .segment = segmentReader,
             .scorers = irs::Scorers::kUnordered,
-            .ctx = &kEmptyAttributeProvider,
+            .ctx = &_filterCtx,
             .wand = {},
         }));
         _doc = irs::get<irs::document>(*_itr);
@@ -617,10 +622,11 @@ class IResearchInvertedIndexMergeIterator final
       ResourceMonitor& monitor, LogicalCollection* collection,
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
-      aql::Variable const* variable, int mutableConditionIdx)
+      aql::Variable const* variable, int mutableConditionIdx,
+      ICancellationToken const* token)
       : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
                                            condition, meta, variable,
-                                           mutableConditionIdx),
+                                           mutableConditionIdx, token),
         _heap_it{meta->_sort, meta->_sort.size()},
         _projectionsPrototype(*meta) {}
 
@@ -635,8 +641,9 @@ class IResearchInvertedIndexMergeIterator final
     _segments.reserve(size);
     for (size_t i = 0; i < size; ++i) {
       auto& segment = _snapshot[i];
-      auto it = segment.mask(
-          _filter->execute({.segment = segment, .wand = irs::WandContext{}}));
+      auto it = segment.mask(_filter->execute({.segment = segment,
+                                               .ctx = &_filterCtx,
+                                               .wand = irs::WandContext{}}));
       // at least sort column should be here
       TRI_ASSERT(!_projectionsPrototype.empty());
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
@@ -1040,14 +1047,14 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
         return std::make_unique<
             IResearchInvertedIndexIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
+            mutableConditionIdx, opts.token);
       });
     } else {
       return resolveLateMaterialization([&]<bool LateMaterialization>() {
         return std::make_unique<
             IResearchInvertedIndexMergeIterator<LateMaterialization>>(
             monitor, collection, state, trx, node, &_meta, reference,
-            mutableConditionIdx);
+            mutableConditionIdx, opts.token);
       });
     }
   } else {
@@ -1058,7 +1065,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       return std::make_unique<
           IResearchInvertedIndexMergeIterator<LateMaterialization>>(
           monitor, collection, state, trx, node, &_meta, reference,
-          transaction::Methods::kNoMutableConditionIdx);
+          transaction::Methods::kNoMutableConditionIdx, opts.token);
     });
   }
 }

@@ -11,8 +11,6 @@ tests:
       type: single
       size: large
       suffix: v2
-    args:
-      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
@@ -22,5 +20,4 @@ tests:
       size: large
       timeLimit: 7200 
     args:
-      extremeVerbosity: true
       oneTestTimeout: 7150

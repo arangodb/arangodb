@@ -926,10 +926,10 @@ function TransactionsInvocationsParametersSuite () {
     testIntermediateCommitCountVerySmall : function () {
       let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
         { intermediateCommitCount: 1 });
-      assertEqual(1, res.getExtra().stats.intermediateCommits);
+      assertEqual(0, res.getExtra().stats.intermediateCommits);
       // AQL operates in batches of 1000 documents. Each batch is processed in a single babies operation.
-      // Intermediate commits are only performed after a babies operation.
-      // This should produce 1 intermediate commit, because we have only 1 batch.
+      // Intermediate commits are only performed before a babies operation.
+      // This should produce no intermediate commit, because we have only 1 batch.
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
     },
@@ -937,8 +937,8 @@ function TransactionsInvocationsParametersSuite () {
     testIntermediateCommitCountBigger : function () {
       let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
         { intermediateCommitCount: 1000 });
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
-      // this should produce 10 intermediate commits
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
+      // this should produce 9 intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
@@ -950,15 +950,15 @@ function TransactionsInvocationsParametersSuite () {
         db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
           { intermediateCommitCount: 1000 });
         fail();
-        // this should produce 10 intermediate commits
+        // this should produce 9 intermediate commits
       } catch (err) {
         assertEqual(ERRORS.ERROR_QUERY_FAIL_CALLED.code, err.errorNum);
         failed = true;
       }
 
       assertTrue(failed);
-      assertEqual(10000, db._collection(cn).count());
-      assertEqual(10000, db._collection(cn).toArray().length);
+      assertEqual(9000, db._collection(cn).count());
+      assertEqual(9000, db._collection(cn).toArray().length);
     },
 
     testIntermediateCommitCountWithFailInTheMiddle : function () {
@@ -967,7 +967,7 @@ function TransactionsInvocationsParametersSuite () {
       try {
         db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
           { intermediateCommitCount: 1000 });
-        // this should produce 6 intermediate commits
+        // this should produce 5 intermediate commits
         fail();
       } catch (err) {
         failed = true;
@@ -975,15 +975,15 @@ function TransactionsInvocationsParametersSuite () {
       }
 
       assertTrue(failed);
-      assertEqual(6000, db._collection(cn).count());
-      assertEqual(6000, db._collection(cn).toArray().length);
+      assertEqual(5000, db._collection(cn).count());
+      assertEqual(5000, db._collection(cn).toArray().length);
     },
 
 
     testIntermediateCommitSizeVerySmall : function () {
       let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
         { intermediateCommitSize: 10 });
-      assertEqual(1, res.getExtra().stats.intermediateCommits);
+      assertEqual(0, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
@@ -992,7 +992,7 @@ function TransactionsInvocationsParametersSuite () {
     testIntermediateCommitSizeBigger : function () {
       let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
         { intermediateCommitSize: 1000 });
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
@@ -1012,8 +1012,8 @@ function TransactionsInvocationsParametersSuite () {
       }
 
       assertTrue(failed);
-      assertEqual(10000, db._collection(cn).count());
-      assertEqual(10000, db._collection(cn).toArray().length);
+      assertEqual(9000, db._collection(cn).count());
+      assertEqual(9000, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitDuplicateKeys1 : function () {
@@ -1055,8 +1055,8 @@ function TransactionsInvocationsParametersSuite () {
       }
 
       assertTrue(failed);
-      assertEqual(2, db._collection(cn).count());
-      assertEqual(2, db._collection(cn).toArray().length);
+      assertEqual(0, db._collection(cn).count());
+      assertEqual(0, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitDuplicateKeys3 : function () {
@@ -1099,16 +1099,16 @@ function TransactionsInvocationsParametersSuite () {
     
     testAqlIntermediateCommitCountVerySmall : function () {
       let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1 } });
-      // 10 intermediate commits only because inserts are executed in batches of 1000 ops
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      // 9 intermediate commits only because inserts are executed in batches of 1000 ops
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
 
     testAqlIntermediateCommitCountBigger : function () {
       let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
-      // 10 intermediate commits only because inserts are executed in batches of 1000 ops
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      // 9 intermediate commits only because inserts are executed in batches of 1000 ops
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
@@ -1145,20 +1145,20 @@ function TransactionsInvocationsParametersSuite () {
       }
 
       assertTrue(failed);
-      assertEqual(8000, db._collection(cn).count());
-      assertEqual(8000, db._collection(cn).toArray().length);
+      assertEqual(7000, db._collection(cn).count());
+      assertEqual(7000, db._collection(cn).toArray().length);
     },
 
     testAqlIntermediateCommitSizeVerySmall : function () {
       let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 1000 } });
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testAqlIntermediateCommitSizeBigger : function () {
       let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 10000 } });
-      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      assertEqual(9, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
@@ -1179,9 +1179,10 @@ function TransactionsInvocationsParametersSuite () {
       // execute 1000 expressions at a time, and when done, the
       // INSERTs will be applied as a whole. However, the CalcBlock
       // will now fail somewhere in a batch of 1000, and no inserts
-      // will be done for this batch
-      assertEqual(8000, db._collection(cn).count());
-      assertEqual(8000, db._collection(cn).toArray().length);
+      // will be done for this batch. The batch before it is not committed
+      // either, as the intermediate commit only runs before the next batch.
+      assertEqual(7000, db._collection(cn).count());
+      assertEqual(7000, db._collection(cn).toArray().length);
     }
 
   };

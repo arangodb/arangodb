@@ -52,8 +52,10 @@
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -68,6 +70,63 @@ void registerICUWarning(ExpressionContext* expressionContext,
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                     u_errorName_64_64(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
+}
+
+icu_64_64::UnicodeString toUnicodeString(velocypack::Options const& vopts,
+                                         AqlValue const& value) {
+  auto buffer = ThreadLocalStringLeaser::lease();
+  velocypack::StringSink adapter(buffer.get());
+  functions::appendAsString(vopts, adapter, value);
+  return icu_64_64::UnicodeString(buffer->data(),
+                                  static_cast<int32_t>(buffer->length()));
+}
+
+enum class SearchMatch { kFirst, kLast };
+
+// Returns -1 if there is no match, or nullopt after registering an ICU warning.
+std::optional<int64_t> searchInRange(ExpressionContext* ctx,
+                                     std::string_view functionName,
+                                     icu_64_64::UnicodeString const& text,
+                                     icu_64_64::UnicodeString const& pattern,
+                                     int64_t startOffset, int64_t maxEnd,
+                                     SearchMatch which) {
+  if (pattern.isEmpty()) {
+    return startOffset;
+  }
+  if (text.isEmpty() || startOffset >= text.length()) {
+    return -1;
+  }
+
+  auto locale =
+      ctx->trx().vocbase().server().getFeature<LanguageFeature>().getLocale();
+  UErrorCode status = U_ZERO_ERROR;
+  icu_64_64::StringSearch search(pattern, text, locale, nullptr, status);
+  search.setAttribute(USEARCH_OVERLAP, USEARCH_ON, status);
+
+  // ICU 64 previous functions have a bug documented in:
+  // https://github.com/arangodb/arangodb/pull/23455
+  // and the official report is here:
+  // https://unicode-org.atlassian.net/browse/ICU-22393
+  int64_t found = -1;
+  auto from = static_cast<int32_t>(startOffset);
+  while (from < text.length()) {
+    int32_t const pos = search.following(from, status);
+    if (U_FAILURE(status) || pos == USEARCH_DONE || pos > maxEnd) {
+      break;
+    }
+    if (pos >= startOffset && pos + search.getMatchedLength() - 1 <= maxEnd) {
+      found = pos;
+      if (which == SearchMatch::kFirst) {
+        break;
+      }
+    }
+    from = text.moveIndex32(std::max(pos, from), 1);
+  }
+  if (U_FAILURE(status)) {
+    registerICUWarning(ctx, functionName, status);
+    return std::nullopt;
+  }
+  return found;
 }
 
 void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
@@ -209,42 +268,24 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_FIRST";
 
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-
-  auto buf1 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter(buf1.get());
-  appendAsString(vopts, adapter, value);
-  icu_64_64::UnicodeString uBuf(buf1->data(),
-                                static_cast<int32_t>(buf1->length()));
-
-  auto buf2 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter2(buf2.get());
-  appendAsString(vopts, adapter2, searchValue);
-  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
-                                      static_cast<int32_t>(buf2->length()));
-  auto searchLen = uSearchBuf.length();
+  auto const& vopts = expressionContext->trx().vpackOptions();
+  auto const text =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
+  auto const pattern =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
 
   int64_t startOffset = 0;
-  int64_t maxEnd = -1;
-
   if (parameters.size() >= 3) {
-    AqlValue const& optionalStartOffset =
-        aql::functions::extractFunctionParameterValue(parameters, 2);
-    startOffset = optionalStartOffset.toInt64();
+    startOffset = extractFunctionParameterValue(parameters, 2).toInt64();
     if (startOffset < 0) {
       return AqlValue(AqlValueHintInt(-1));
     }
   }
 
-  maxEnd = uBuf.length();
+  int64_t maxEnd = text.length();
   if (parameters.size() == 4) {
     AqlValue const& optionalEndMax =
-        aql::functions::extractFunctionParameterValue(parameters, 3);
+        extractFunctionParameterValue(parameters, 3);
     if (!optionalEndMax.isNull(true)) {
       maxEnd = optionalEndMax.toInt64();
       if ((maxEnd < startOffset) || (maxEnd < 0)) {
@@ -253,57 +294,26 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
     }
   }
 
-  if (searchLen == 0) {
-    return AqlValue(AqlValueHintInt(startOffset));
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kFirst);
+  if (!pos.has_value()) {
+    return AqlValue(AqlValueHintNull());
   }
-  if (uBuf.length() == 0) {
-    return AqlValue(AqlValueHintInt(-1));
-  }
-
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
-  UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
-
-  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
-       pos = search.next(status)) {
-    if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
-    }
-    if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
-      return AqlValue(AqlValueHintInt(pos));
-    }
-  }
-  return AqlValue(AqlValueHintInt(-1));
+  return AqlValue(AqlValueHintInt(*pos));
 }
 
 /// @brief function FIND_LAST
-/// FIND_FIRST(text, search, start, end) → position
+/// FIND_LAST(text, search, start, end) → position
 AqlValue functions::FindLast(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_LAST";
 
-  auto* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-
-  auto buf1 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter(buf1.get());
-  appendAsString(vopts, adapter, value);
-  icu_64_64::UnicodeString uBuf(buf1->data(),
-                                static_cast<int32_t>(buf1->length()));
-
-  auto buf2 = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter2(buf2.get());
-  appendAsString(vopts, adapter2, searchValue);
-  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
-                                      static_cast<int32_t>(buf2->length()));
-  auto searchLen = uSearchBuf.length();
+  auto const& vopts = expressionContext->trx().vpackOptions();
+  auto const text =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
+  auto const pattern =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
 
   int64_t startOffset = 0;
   int64_t maxEnd = -1;
@@ -317,7 +327,7 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  maxEnd = uBuf.length();
+  maxEnd = text.length();
   int emptySearchCludge = 0;
   if (parameters.size() == 4) {
     AqlValue const& optionalEndMax =
@@ -331,30 +341,16 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
     }
   }
 
-  if (searchLen == 0) {
+  if (pattern.isEmpty()) {
     return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
   }
-  if (uBuf.length() == 0) {
-    return AqlValue(AqlValueHintInt(-1));
-  }
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
-  UErrorCode status = U_ZERO_ERROR;
-  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
-
-  int foundPos = -1;
-  for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
-       pos = search.next(status)) {
-    if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
-    }
-    if ((pos >= startOffset) && ((pos + searchLen - 1) <= maxEnd)) {
-      foundPos = pos;
-    }
+  auto const pos = searchInRange(expressionContext, AFN, text, pattern,
+                                 startOffset, maxEnd, SearchMatch::kLast);
+  if (!pos.has_value()) {
+    return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(AqlValueHintInt(foundPos));
+  return AqlValue(AqlValueHintInt(*pos));
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -487,7 +483,8 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toLower(nullptr);
+  unicodeStr.toLower(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -509,7 +506,8 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
 
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
-  unicodeStr.toUpper(nullptr);
+  unicodeStr.toUpper(
+      trx->vocbase().server().getFeature<LanguageFeature>().getLocale());
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -762,27 +760,31 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  if ((limit == 0) || (matchPatterns.size() == 0)) {
-    // if the limit is 0, or we don't have any match pattern, return the source
-    // string.
-    return AqlValue(value);
-  }
 
   auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
+  if ((limit == 0) || (matchPatterns.size() == 0)) {
+    // if the limit is 0, or we don't have any match pattern, return the source
+    // string.
+    return AqlValue(std::string_view{buffer->data(), buffer->length()});
+  }
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
 
   auto& server = trx->vocbase().server();
   auto locale = server.getFeature<LanguageFeature>().getLocale();
-  // we can't copy the search instances, thus use pointers:
+  // we can't copy the search instances, thus use pointers.
+  // ICU's StringSearch rejects empty patterns and texts
   std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
   for (auto const& searchStr : matchPatterns) {
-    // create a vector of string searches
+    if (searchStr.isEmpty() || unicodeStr.isEmpty()) {
+      searchVec.push_back(nullptr);
+      continue;
+    }
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
         searchStr, unicodeStr, locale, nullptr, status));
     if (U_FAILURE(status)) {
@@ -791,117 +793,82 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     }
   }
 
-  std::vector<std::pair<int32_t, int32_t>> srchResultPtrs;
+  // pair of the position and length of the found match
+  using Match = std::pair<int32_t, int32_t>;
+  auto const fromSearch = [&](size_t which, int32_t pos) -> Match {
+    if (pos == USEARCH_DONE) {
+      return {pos, 0};
+    }
+    return {pos, searchVec[which]->getMatchedLength()};
+  };
+  auto const firstMatch = [&](size_t which) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {matchPatterns[which].isEmpty() ? 0 : USEARCH_DONE, 0};
+    }
+    return fromSearch(which, searchVec[which]->first(status));
+  };
+  auto const nextMatch = [&](size_t which, int32_t pos) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {pos < unicodeStr.length() ? unicodeStr.moveIndex32(pos, 1)
+                                        : USEARCH_DONE,
+              0};
+    }
+    return fromSearch(which, searchVec[which]->next(status));
+  };
+  auto const matchFrom = [&](size_t which, int32_t pos) -> Match {
+    if (searchVec[which] == nullptr) {
+      return {pos, 0};
+    }
+    if (pos >= unicodeStr.length()) {
+      return {USEARCH_DONE, 0};
+    }
+    return fromSearch(which, searchVec[which]->following(pos, status));
+  };
+
+  std::vector<Match> srchResultPtrs;
   std::string utf8;
   srchResultPtrs.reserve(matchPatterns.size());
-  for (auto& search : searchVec) {
+  for (size_t i = 0; i < matchPatterns.size(); ++i) {
     // We now find the first hit for each search string.
-    auto pos = search->first(status);
+    srchResultPtrs.push_back(firstMatch(i));
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
     }
-
-    int32_t len = 0;
-    if (pos != USEARCH_DONE) {
-      len = search->getMatchedLength();
-    }
-    srchResultPtrs.push_back(std::make_pair(pos, len));
   }
 
   icu_64_64::UnicodeString result;
   int32_t lastStart = 0;
-  int64_t count = 0;
-  while (true) {
-    int which = -1;
-    int32_t pos = USEARCH_DONE;
-    int32_t mLen = 0;
-    int i = 0;
-    for (auto resultPair : srchResultPtrs) {
-      // We locate the nearest matching search result.
-      int32_t thisPos;
-      thisPos = resultPair.first;
-      if ((pos == USEARCH_DONE) || (pos > thisPos)) {
-        if (thisPos != USEARCH_DONE) {
-          pos = thisPos;
-          which = i;
-          mLen = resultPair.second;
-        }
-      }
-      i++;
-    }
-    if (which == -1) {
+  for (int64_t count = 0; limit == -1 || count < limit; ++count) {
+    auto best = std::ranges::min_element(
+        srchResultPtrs, [](Match const& a, Match const& b) {
+          return a.first != USEARCH_DONE &&
+                 (b.first == USEARCH_DONE || a.first < b.first);
+        });
+    if (best->first == USEARCH_DONE) {
       break;
     }
-    // from last match to this match, copy the original string.
+    size_t const which = best - srchResultPtrs.begin();
+    auto const [pos, len] = *best;
+
     result.append(unicodeStr, lastStart, pos - lastStart);
-    if (replacePatterns.size() != 0) {
-      if (replacePatterns.size() > (size_t)which) {
-        result.append(replacePatterns[which]);
-      } else if (replaceWasPlainString) {
-        result.append(replacePatterns[0]);
+    if (which < replacePatterns.size()) {
+      result.append(replacePatterns[which]);
+    } else if (replaceWasPlainString) {
+      result.append(replacePatterns[0]);
+    }
+    lastStart = pos + len;
+
+    srchResultPtrs[which] = nextMatch(which, pos);
+    for (size_t i = 0; i < srchResultPtrs.size() && U_SUCCESS(status); ++i) {
+      if (srchResultPtrs[i].first != USEARCH_DONE &&
+          srchResultPtrs[i].first < lastStart) {
+        srchResultPtrs[i] = matchFrom(i, lastStart);
       }
     }
-
-    // lastStart is the place up to we searched the source string
-    lastStart = pos + mLen;
-
-    // we try to search the next occurance of this string
-    auto& search = searchVec[which];
-    pos = search->next(status);
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
-    }
-    if (pos != USEARCH_DONE) {
-      mLen = search->getMatchedLength();
-    } else {
-      mLen = -1;
-    }
-    srchResultPtrs[which] = std::make_pair(pos, mLen);
-
-    which = 0;
-    for (auto searchPair : srchResultPtrs) {
-      // now we invalidate all search results that overlap with
-      // our last search result and see whether we can find the
-      // overlapped pattern again.
-      // However, that mustn't overlap with the current lastStart
-      // position either.
-      int32_t thisPos;
-      thisPos = searchPair.first;
-      if ((thisPos != USEARCH_DONE) && (thisPos < lastStart)) {
-        auto& search = searchVec[which];
-        pos = thisPos;
-        while ((pos < lastStart) && (pos != USEARCH_DONE)) {
-          pos = search->next(status);
-          if (U_FAILURE(status)) {
-            registerICUWarning(expressionContext, AFN, status);
-            return AqlValue(AqlValueHintNull());
-          }
-          if (pos != USEARCH_DONE) {
-            mLen = search->getMatchedLength();
-          }
-          srchResultPtrs[which] = std::make_pair(pos, mLen);
-        }
-      }
-      which++;
-    }
-
-    count++;
-    if ((limit != -1) && (count >= limit)) {
-      // Do we have a limit count?
-      break;
-    }
-    // check whether none of our search objects has any more results
-    bool allFound = true;
-    for (auto resultPair : srchResultPtrs) {
-      if (resultPair.first != USEARCH_DONE) {
-        allFound = false;
-        break;
-      }
-    }
-    if (allFound) {
-      break;
     }
   }
   // Append from the last found:
@@ -1125,69 +1092,25 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function CONTAINS
 AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
                              VPackFunctionParametersView parameters) {
-  auto* trx = &ctx->trx();
-  auto const& vopts = trx->vpackOptions();
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue const& search =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-  AqlValue const& returnIndex =
-      aql::functions::extractFunctionParameterValue(parameters, 2);
+  static char const* AFN = "CONTAINS";
 
-  bool const willReturnIndex = returnIndex.toBoolean();
+  auto const& vopts = ctx->trx().vpackOptions();
+  auto const text =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 0));
+  auto const pattern =
+      toUnicodeString(vopts, extractFunctionParameterValue(parameters, 1));
+  bool const willReturnIndex =
+      extractFunctionParameterValue(parameters, 2).toBoolean();
 
-  int result = -1;  // default is "not found"
-  {
-    auto buffer = ThreadLocalStringLeaser::lease();
-    velocypack::StringSink adapter(buffer.get());
-
-    appendAsString(vopts, adapter, value);
-    size_t const valueLength = buffer->length();
-
-    size_t const searchOffset = buffer->length();
-    appendAsString(vopts, adapter, search);
-    size_t const searchLength = buffer->length() - valueLength;
-
-    if (searchLength > 0) {
-      char const* found = static_cast<char const*>(
-          memmem(buffer->data(), valueLength, buffer->data() + searchOffset,
-                 searchLength));
-
-      if (found != nullptr) {
-        if (willReturnIndex) {
-          // find offset into string
-          int bytePosition = static_cast<int>(found - buffer->data());
-          char const* p = buffer->data();
-          int pos = 0;
-          while (pos < bytePosition) {
-            unsigned char c = static_cast<unsigned char>(*p);
-            if (c < 128) {
-              ++pos;
-            } else if (c < 224) {
-              pos += 2;
-            } else if (c < 240) {
-              pos += 3;
-            } else if (c < 248) {
-              pos += 4;
-            }
-          }
-          result = pos;
-        } else {
-          // fake result position, but it does not matter as it will
-          // only be compared to -1 later
-          result = 0;
-        }
-      }
-    }
+  auto const pos = searchInRange(ctx, AFN, text, pattern, 0, text.length(),
+                                 SearchMatch::kFirst);
+  if (!pos.has_value()) {
+    return AqlValue(AqlValueHintNull());
   }
-
   if (willReturnIndex) {
-    // return numeric value
-    return AqlValue(AqlValueHintInt(result));
+    return AqlValue(AqlValueHintInt(*pos));
   }
-
-  // return boolean
-  return AqlValue(AqlValueHintBool(result != -1));
+  return AqlValue(AqlValueHintBool(*pos != -1));
 }
 
 /// @brief function CONCAT
@@ -1258,6 +1181,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   // extract value
   buffer->clear();
@@ -1270,6 +1194,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
       matcher, buffer->data(), buffer->length(), false, error);
 
   if (error) {
+    functions::throwIfKilled(expressionContext);
     // compiling regular expression failed
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
@@ -1346,6 +1271,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
+  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
@@ -1364,6 +1290,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
     auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    functions::throwIfKilled(expressionContext);
     uint16_t copyThisTime = uCount;
 
     if (U_FAILURE(errorCode)) {
@@ -1371,7 +1298,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
       return AqlValue(AqlValueHintNull());
     }
 
-    if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+    if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent
       // invocation
       copyThisTime--;
@@ -1379,7 +1306,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
     if ((copyThisTime > 0) &&
         ((copyThisTime == nrResults) || isEmptyExpression)) {
-      // ICU will give us a traling empty string we don't care for if we split
+      // ICU will give us a trailing empty string we don't care for if we split
       // with empty strings.
       copyThisTime--;
     }
