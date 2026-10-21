@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1095: Remove custom AESNI code
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
