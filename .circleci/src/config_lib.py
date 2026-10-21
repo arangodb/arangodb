@@ -279,7 +279,7 @@ class TestOptions:
                         f"buckets string must be 'auto', got: {self.buckets}"
                     )
             elif isinstance(self.buckets, int):
-                if self.buckets < 1:
+                if self.buckets < -1:
                     raise ValueError(f"buckets must be at least 1, got: {self.buckets}")
             else:
                 raise ValueError(
