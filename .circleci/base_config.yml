@@ -1517,7 +1517,7 @@ jobs:
         default: "<< pipeline.parameters.test-docker-image >>"
       buckets:
         type: integer
-        default: 1
+        default: -1
       sanitizer:
         type: string
         default: ""
@@ -1572,15 +1572,19 @@ jobs:
               cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             fi
+            RTA_ARGS=()
+            if [ "<< parameters.browser >>" != "none"]; then
+              RTA_ARGS+=(--selenium << parameters.browser >>)
+            fi
+            if [<< parameters.buckets >> != -1]; then
+              RTA_ARGS+=(--buckets $BUCKETS --no-checkdata --no-run-upgrade)
+            fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
             export DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
-              --no-checkdata \
-              --no-run-upgrade  \
-              --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $BUCKETS \
+              "${@RTA_ARGS[@]" \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
