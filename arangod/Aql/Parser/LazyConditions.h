@@ -66,8 +66,8 @@ class LazyConditions {
   void flushFilters() const;
 
  private:
-  // conditions pushed before the outmost pushForceInline() can be
-  // extracted into a LET and used as a guard
+  // conditions outside of any pushForceInline() are extractable
+  // into a LET and used as a guard.
   size_t numExtractableConditions() const noexcept;
 
   /// @brief the underlying AST

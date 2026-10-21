@@ -168,7 +168,7 @@ void LazyConditions::flushFilters() const {
   // accumulated
   AstNode* filterCondition = nullptr;
   for (size_t i = 0; i < numExtractableConditions();
-       ++i) {  // only entries before `[*` of an array expansion 
+       ++i) {  // only entries before `[*` of an array expansion
     auto const& it = _stack[i];
     TRI_ASSERT(it.variableNode != nullptr);
     TRI_ASSERT(it.variableNode->type == NODE_TYPE_REFERENCE);
