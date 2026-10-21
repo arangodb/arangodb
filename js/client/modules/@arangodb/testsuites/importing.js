@@ -102,7 +102,8 @@ const impTodos = [{
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportCsvNonoCreate',
   type: 'csv',
-  create: 'false'
+  create: 'false',
+  expectFailure: true,
 }, {
   id: 'csv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
@@ -269,6 +270,7 @@ const impTodos = [{
   coll: 'UnitTestsImportCsvBrokenHeaders',
   type: 'csv',
   create: 'true',
+  expectFailure: true,
 }, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
