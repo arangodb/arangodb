@@ -32,6 +32,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 using namespace arangodb;
@@ -277,17 +278,22 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
 // canMonitorTransaction, canKillTransaction ---
 
 /**
- * RBAC service that records the actions it is asked about and answers with a
- * programmable result
+ * RBAC service that records the actions it is asked about, the databases
+ * those questions name, and answers with a programmable result
  */
 struct RecordingRbacService final : rbac::Service {
   std::vector<rbac::Action> actions;
+  std::vector<std::string> databases;
   Result answer{};
 
   auto check(rbac::JwtToken const& /*token*/,
              std::span<rbac::ActionResource const> queries) -> Result override {
     for (auto const& query : queries) {
       actions.push_back(query.action);
+      if (auto const* database =
+              std::get_if<rbac::resources::Database>(&query.resource)) {
+        databases.emplace_back(database->name);
+      }
     }
     return answer;
   }
@@ -414,13 +420,11 @@ INSTANTIATE_TEST_SUITE_P(
 
 // --- canChangeQueryProperties ---
 
-TEST(ExecContextTest,
-     canChangeQueryProperties_database_write_access_is_not_enough) {
+TEST(ExecContextTest, canChangeQueryProperties_database_write_access_suffices) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
 
-  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
-            TRI_ERROR_HTTP_FORBIDDEN);
+  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
 }
 
 TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
@@ -428,16 +432,16 @@ TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
       makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
 
   EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
-            TRI_ERROR_HTTP_FORBIDDEN);
+            TRI_ERROR_FORBIDDEN);
 }
 
 TEST(ExecContextTest,
-     canChangeQueryProperties_admin_may_without_database_write_access) {
-  // classic admin = read-write access to the _system database
+     canChangeQueryProperties_admin_without_database_write_access_may_not) {
   auto const cec =
       makeClassicExecContext("carol", "db", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+            TRI_ERROR_FORBIDDEN);
 }
 
 TEST(ExecContextTest, canChangeQueryProperties_superuser_may) {

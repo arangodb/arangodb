@@ -568,7 +568,7 @@ Result ExecContext::canKillQuery(std::string_view queryUser) const {
 /// may be changed
 Result ExecContext::canChangeQueryProperties(std::string_view db) const {
   using namespace auth::perms;
-  if (auto r = can(AdminAqlQueries{}); r.fail()) {
+  if (auto r = can(UpdateQueryProperties{.db{db}}); r.fail()) {
     return r;
   }
   if (auto r = checkNotReadOnly(); r.fail()) {

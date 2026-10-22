@@ -89,6 +89,18 @@ TEST(RbacServiceImplCheckTest, translatesDatabaseRead) {
   EXPECT_EQ(f.mock->lastJwtToken, testToken);
 }
 
+TEST(RbacServiceImplCheckTest, translatesUpdateQueryProperties) {
+  auto f = CheckFixture::make();
+  std::array queries{
+      rbac::ActionResource{rbac::Action::UpdateQueryProperties,
+                           rbac::resources::Database{.name = "mydb"}}};
+  auto r = f.svc.check({testToken}, queries);
+  EXPECT_TRUE(r.ok());
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UpdateQueryProperties");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:database:mydb");
+}
+
 TEST(RbacServiceImplCheckTest, translatesCollectionCreate) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{

@@ -157,6 +157,11 @@ struct UseDatabase {
   DatabaseAccessLevel level;
 };
 
+// Change the AQL query tracking properties of database `db`
+struct UpdateQueryProperties {
+  std::string db;
+};
+
 // ---------------------------------------------------------------------------
 // Collections
 // ---------------------------------------------------------------------------
@@ -365,6 +370,7 @@ namespace detail {
 using NonAdminList = meta::TypeList<
     // database permissions
     SeeDatabase, CreateDatabase, DropDatabase, UseDatabase,
+    UpdateQueryProperties,
     // collection permissions
     SeeCollection, CreateCollection, DropCollection, UseCollection,
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,

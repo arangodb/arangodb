@@ -1,6 +1,12 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1031: Adapt permissions for `PUT /_api/query/properties`: the endpoint now
+  asks the new permission `UpdateQueryProperties`, which is scoped to the database
+  of the request, instead of the admin permission `AdminAqlQueries`. With classic
+  authentication it requires read-write access to that database and not read-write
+  access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
+
 * Add `--http.max-decompressed-request-body-size` startup option, which limits
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.

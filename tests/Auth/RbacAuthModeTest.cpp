@@ -152,6 +152,11 @@ TEST_F(RbacAuthModeTest, UseDatabaseWrite) {
   expectSingle(rbac::Action::WriteMeta, "database:mydb");
 }
 
+TEST_F(RbacAuthModeTest, UpdateQueryProperties) {
+  check(p::UpdateQueryProperties{.db = "mydb"});
+  expectSingle(rbac::Action::UpdateQueryProperties, "database:mydb");
+}
+
 // ---------------------------------------------------------------------------
 // Collections
 // ---------------------------------------------------------------------------
