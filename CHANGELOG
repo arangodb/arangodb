@@ -1,5 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
+  ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
+  attribute wrongly returning no results when byte order disagrees with ICU
+  collation order. The same fix applies to SEARCH conditions combining ==
+  or OR of == with a range operator.
 
 * The `--server.jwt-secret-folder` startup option now skips everything in the
   folder that is not a regular file (e.g. subfolders, sockets, devices, named
@@ -9,7 +14,7 @@
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.
 
-* COR-1086: Replaced deprecated OpenSSL functions with the proper newer, 
+* COR-1086: Replaced deprecated OpenSSL functions with the proper newer,
   higher level envelope calls. Removed unused functions and refactored some
   minor parts of the SslInterface.
 
