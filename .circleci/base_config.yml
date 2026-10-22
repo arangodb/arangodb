@@ -1523,6 +1523,8 @@ jobs:
         default: ""
       resource-class:
         type: string
+      arch:
+        type: string
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
@@ -1531,7 +1533,7 @@ jobs:
       - attach_workspace:
           at: work/ArangoDB
       - fetch-aux-binaries:
-          arch: x64 # rta tests should only run on x64
+          arch: << parameters.arch >>
           repo-path: work/ArangoDB
       - run:
           name: Clone RTA
