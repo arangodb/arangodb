@@ -667,9 +667,9 @@ namespace {
  */
 void beginTransactionAsAlice(TRI_vocbase_t& vocbase, transaction::Manager& mgr,
                              TransactionId tid) {
-  auto json =
-      VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-  ASSERT_NE(vocbase.createCollection(json->slice()), nullptr);
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  ASSERT_NE(vocbase.createCollection(colDescriptor), nullptr);
 
   auto const alice = arangodb::tests::mocks::makeClassicExecContext(
       "alice", vocbase.name(), arangodb::auth::Level::NONE,
