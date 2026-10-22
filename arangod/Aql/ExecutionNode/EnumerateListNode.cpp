@@ -158,6 +158,10 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
   auto c =
       std::make_unique<EnumerateListNode>(plan, _id, _inVariable, _outVariable);
 
+  if (_mode == kEnumerateObject) {
+    c->setEnumerateObject(_keyValuePairOutVars[0], _keyValuePairOutVars[1]);
+  }
+
   if (hasFilter()) {
     c->setFilter(_filter->clone(plan->getAst(), true));
   }

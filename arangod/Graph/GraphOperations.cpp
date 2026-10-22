@@ -412,11 +412,8 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
       if (distLike.empty()) {
         return col.name();
       }
-      if (ServerState::instance()->isRunningInCluster()) {
-        return resolver.getCollectionNameCluster(
-            DataSourceId{basics::StringUtils::uint64(distLike)});
-      }
-      return col.distributeShardsLike();
+      return resolver.getCollectionNameCluster(
+          DataSourceId{basics::StringUtils::uint64(distLike)});
     };
 
     auto [leading, unused] =
