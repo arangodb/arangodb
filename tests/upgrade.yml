@@ -2,11 +2,22 @@ jobProperties:
     second_repo: git@github.com:arangodb/release-test-automation.git
     branch: main
 tests:
-- rta_upgrade:
+- rta_upgrade_x86:
     job: run-rta-tests
     options:
       buckets: 1
+    requires:
+      arch: x64
     args:
       checkdata: true
       run-upgrade: true
       selenium: Remote_CHROME
+- rta_upgrade_aarch64:
+    job: run-rta-tests
+    options:
+      buckets: 1
+    requires:
+      arch: aarch64
+    args:
+      checkdata: true
+      run-upgrade: true
