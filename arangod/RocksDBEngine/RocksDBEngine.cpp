@@ -728,6 +728,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::BitmapIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -3157,6 +3158,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
+  addCf(RocksDBColumnFamilyManager::Family::BitmapIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -3488,13 +3490,16 @@ bool RocksDBEngine::checkExistingDB(
         RocksDBColumnFamilyManager::Family::MdiVPackIndex);
     auto const vectorVPackIndexName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::VectorIndex);
+    auto const bitmapIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::BitmapIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
         if (it.name == replicatedLogsName || it.name == mdiIndexName ||
-            it.name == mdiVPackIndexName || it.name == vectorVPackIndexName) {
+            it.name == mdiVPackIndexName || it.name == vectorVPackIndexName ||
+            it.name == bitmapIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

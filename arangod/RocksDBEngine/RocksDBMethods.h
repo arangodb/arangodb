@@ -91,6 +91,12 @@ class RocksDBMethods {
                                        RocksDBKey const&,
                                        rocksdb::Slice const&) = 0;
 
+  /// Merge operand for column families with a merge operator. Does not
+  /// perform any write-write conflict checks.
+  virtual rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
+                                         RocksDBKey const&,
+                                         rocksdb::Slice const&) = 0;
+
   virtual rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                                  RocksDBKey const&) = 0;
   /// contrary to Delete, a SingleDelete may only be used

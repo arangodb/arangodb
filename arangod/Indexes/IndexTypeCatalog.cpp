@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Indexes/BitmapIndexDefinition.h"
 #include "Indexes/DeprecatedSecondaryIndexDefinition.h"
 #include "Indexes/EdgeIndexDefinition.h"
 #include "Indexes/FulltextIndexDefinition.h"
@@ -71,6 +72,7 @@ IndexTypeCatalog::IndexTypeCatalog(
   reg(std::make_unique<MdiIndexDefinition>(IndexType::MDI));
   reg(std::make_unique<MdiPrefixedIndexDefinition>());
   reg(std::make_unique<VectorIndexDefinition>());
+  reg(std::make_unique<BitmapIndexDefinition>());
 
   // legacy alias of persistent
   _byName.try_emplace("rocksdb", _byName.at("persistent"));

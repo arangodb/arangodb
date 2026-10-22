@@ -170,6 +170,17 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructBitmapIndexValue(uint64_t indexId,
+                                           std::string_view body) {
+  _type = RocksDBEntryType::BitmapIndexValue;
+  size_t keyLength = sizeof(uint64_t) + body.size();
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  _buffer->append(body.data(), body.size());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
                                            std::uint64_t listNumber) {
   _type = RocksDBEntryType::VectorVPackIndexValue;

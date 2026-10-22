@@ -671,6 +671,18 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
     return rocksdb::Status();  // make WAL iterator happy
   }
 
+  rocksdb::Status MergeCF(uint32_t /*column_family_id*/,
+                          const rocksdb::Slice& /*key*/,
+                          const rocksdb::Slice& /*value*/) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
+    incTick();
+    // merge operands are only written by bitmap indexes, which are not
+    // part of the WAL API output
+    return rocksdb::Status();
+  }
+
   rocksdb::Status MarkBeginPrepare(bool = false) override {
     TRI_ASSERT(false);
     return rocksdb::Status::InvalidArgument(

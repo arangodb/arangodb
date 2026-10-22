@@ -49,6 +49,9 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBBatchedBaseMethods {
   rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const& key,
                                rocksdb::Slice const& val) override;
+  rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
+                                 RocksDBKey const& key,
+                                 rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                          RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,

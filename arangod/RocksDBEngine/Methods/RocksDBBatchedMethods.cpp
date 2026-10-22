@@ -69,6 +69,19 @@ rocksdb::Status RocksDBBatchedMethods::PutUntracked(
   return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/ false);
 }
 
+rocksdb::Status RocksDBBatchedMethods::MergeUntracked(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
+    rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->Merge(cf, key.string(), val);
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+  }
+  return s;
+}
+
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);

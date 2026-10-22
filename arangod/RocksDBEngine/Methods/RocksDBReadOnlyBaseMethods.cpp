@@ -99,6 +99,11 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::PutUntracked(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
+rocksdb::Status RocksDBReadOnlyBaseMethods::MergeUntracked(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const&, rocksdb::Slice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 rocksdb::Status RocksDBReadOnlyBaseMethods::Delete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);

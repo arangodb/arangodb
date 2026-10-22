@@ -1,5 +1,8 @@
 add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
+  RocksDBBitmapIndex.cpp
+  RocksDBBitmapIndexFormat.cpp
+  RocksDBBitmapIndexMergeOperator.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
   RocksDBCFStats.cpp
@@ -78,6 +81,7 @@ target_link_libraries(arango_rocksdb
     rocksdb
     rocksdb_interface
     faiss
+    croaring
   PRIVATE
     arango_health
     snappy)

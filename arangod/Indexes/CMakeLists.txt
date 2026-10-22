@@ -1,4 +1,6 @@
 add_library(arango_indexes STATIC
+  BitmapIndexDefinition.cpp
+  BitmapIndexMatcher.cpp
   EdgeIndexDefinition.cpp
   DeprecatedSecondaryIndexDefinition.cpp
   FulltextIndexDefinition.cpp

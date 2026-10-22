@@ -220,7 +220,8 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
-      "vector"};
+      "vector",
+      "bitmap"};
 
   return enabledFeatures;
 }
@@ -540,6 +541,31 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 #endif
     // "cacheEnabled"
     processIndexCacheEnabled(definition, builder);
+  }
+
+  return res;
+}
+
+/// @brief enhances the json of a bitmap index
+Result IndexFactory::enhanceJsonIndexBitmap(VPackSlice definition,
+                                            VPackBuilder& builder,
+                                            bool create) {
+  if (definition.get(StaticStrings::IndexUnique).isTrue()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "bitmap indexes cannot be unique");
+  }
+  if (definition.get(StaticStrings::IndexSparse).isTrue()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "bitmap indexes cannot be sparse");
+  }
+
+  Result res =
+      processIndexFields(definition, builder, 1, 8, create,
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
+
+  if (res.ok()) {
+    builder.add(StaticStrings::IndexUnique, VPackValue(false));
+    builder.add(StaticStrings::IndexSparse, VPackValue(false));
+    processIndexInBackground(definition, builder);
   }
 
   return res;

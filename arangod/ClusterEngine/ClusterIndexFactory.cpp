@@ -89,6 +89,7 @@ std::shared_ptr<Index> ClusterIndexFactory::createIndex(
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
     case IndexType::Vector:
+    case IndexType::Bitmap:
       return createGeneric(type, collection, definition, id);
     case IndexType::Inverted:
       return createInverted(collection, definition, id);

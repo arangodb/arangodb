@@ -394,9 +394,7 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
     rocksdb::Status MergeCF(uint32_t column_family_id,
                             const rocksdb::Slice& key,
                             const rocksdb::Slice& value) override {
-      // should never be used by our code
-      TRI_ASSERT(false);
-      memoryUsage += key.size() + fixedIndexingEntryOverhead;
+      memoryUsage += key.size() + value.size() + fixedIndexingEntryOverhead;
       return wbwi.Merge(familyId(column_family_id), key, value);
     }
 
