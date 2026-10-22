@@ -3174,6 +3174,7 @@ bool Ast::getReferencedAttributesRecursive(
 
     if (node->type == NODE_TYPE_EXPANSION) {
       ast::ExpansionNode expansionNode(node);
+      Variable const* iteratorRoot = nullptr;
       // special stunt needed here for the [*] operator...
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
@@ -3226,6 +3227,7 @@ bool Ast::getReferencedAttributesRecursive(
 
           if (iterRhs->type == NODE_TYPE_REFERENCE) {
             state.seen.push_back(iterRhs);
+            iteratorRoot = static_cast<Variable const*>(iterRhs->getData());
             // finally the stack is complete... now eval it to find the
             // projection
             if (!::translateNodeStackToAttributePath(state, resourceMonitor)) {
@@ -3233,6 +3235,14 @@ bool Ast::getReferencedAttributesRecursive(
             }
           }
         }
+      }
+      if (!expectedAttribute.empty() &&
+          countReferences(node, variable) !=
+              (iteratorRoot == variable ? 1 : 0)) {
+        // the variable is used in the expansion in a way not handled above,
+        // e.g. APPEND(p.edges, [])[*], p.edges[*].a[p.edges[0].x] or
+        // p.edges[* LIMIT p.edges[0].n]
+        state.couldExtractAttributePath = false;
       }
       state.seen.clear();
       // if we are looking at a traversal output variable, we don't

@@ -37,7 +37,7 @@ function projectionsTestSuite () {
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        docs.push({ _from: "v/test" + i, _to: "v/test" + i, _key: "test" + i, value1: i, value2: "test" + i, value3: i, foo: { bar: i, baz: i, bat: i } });
+        docs.push({ _from: "v/test" + i, _to: "v/test" + i, _key: "test" + i, value1: i, value2: "test" + i, value3: i, foo: { bar: i, baz: i, bat: i }, arr: [i, i + 1] });
       }
       c.insert(docs);
     },
@@ -127,6 +127,16 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[*]`, [], [], false, false, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[*].a`, [], ["_from", "_to", "a"], false, false, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.edges[*].a, p.edges[*].b]`, [], ["_from", "_to", "a", "b"], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN APPEND(p.edges, [])[*]._key`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [...p.edges][*]._key`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.edges[0].a][*]`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN APPEND(p.vertices, [])[*]._key`, [], ["_from", "_to"], true, true, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[*].a[p.edges[0].x]`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[* LIMIT p.edges[0].n]._key`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[p.edges[0].x].a[*].b`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[*].a[*].b`, [], [], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.edges[0].a[p.edges[0].x]`, [], ["_from", "_to", "a", "x"], false, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN p.vertices[*].a[p.vertices[0].x]`, [], ["_from", "_to"], true, true, false],
         
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.a, e.b]`, ["a"], ["_from", "_to", "b"], true, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.a, e.a, v.b, e.b]`, ["a", "b"], ["_from", "_to", "a", "b"], true, false, false],
@@ -207,6 +217,28 @@ function projectionsTestSuite () {
       });
     },
 
+    testPathAttributesReadThroughFunctionOrSplice : function () {
+      const queries = [
+        `FOR v, e, p IN 1..1 OUTBOUND 'v/test0' ${cn} RETURN APPEND(p.edges, [])[*]._key`,
+        `FOR v, e, p IN 1..1 OUTBOUND 'v/test0' ${cn} RETURN [...p.edges][*]._key`,
+        `FOR v, e, p IN 1..1 OUTBOUND 'v/test0' ${cn} RETURN [...p.edges][*].value2`,
+        `FOR v, e, p IN 1..1 OUTBOUND 'v/test0' ${cn} RETURN p.edges[* LIMIT p.edges[0].arr[1]]._key`,
+      ];
+      queries.forEach((query) => {
+        const res = db._query(query).toArray();
+        assertEqual([["test0"]], res, query);
+      });
+
+      const prefix = `FOR v, e, p IN 1..1 OUTBOUND 'v/test0' ${cn} RETURN `;
+      [
+        [`p.edges[*].arr[p.edges[0].value1]`, [[0]]],
+        [`p.edges[p.edges[0].value1].arr[*]`, [[0, 1]]],
+        [`p.edges[*].arr[*]`, [[[0, 1]]]],
+      ].forEach(([expression, expected]) => {
+        const query = prefix + expression;
+        assertEqual(expected, db._query(query).toArray(), query);
+      });
+    },
   };
 }
 
