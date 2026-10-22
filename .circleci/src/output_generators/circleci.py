@@ -575,6 +575,25 @@ class CircleCIGenerator(OutputGenerator):
         return " ".join(parts)
 
     @staticmethod
+    def _dict_to_python_args_string(args_dict: Dict[str, Any]) -> str:
+        """Convert args dict directly to space-separated command-line string."""
+        parts = []
+        for key, value in args_dict.items():
+            if key == "moreArgv":
+                # Special case: moreArgv value is appended directly
+                parts.append(str(value))
+            # Always append value (boolean values become "true"/"false" strings)
+            if isinstance(value, bool):
+                if value:
+                    parts.append(f"--{key}")
+                else:
+                    parts.append(f"--no-{key}")
+            else:
+                parts.append(f"--{key}")
+                parts.append(str(value))
+        return " ".join(parts)
+
+    @staticmethod
     def _dict_to_options_json(args_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Convert args dict to optionsJson format.
@@ -806,7 +825,7 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
-                "arangosh_args": self._dict_to_args_string(job.arguments.extra_args),
+                "arangosh_args": self._dict_to_python_args_string(job.arguments.extra_args),
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": job.get_browser(),
                 "enterprise": "EP",
@@ -816,7 +835,6 @@ class CircleCIGenerator(OutputGenerator):
                 "buckets": bucket_count,
                 "sanitizer": self._get_sanitizer_param(build_config),
             }
-            print(job_dict)
             result_jobs.append({"run-rta-tests": job_dict})
 
         return result_jobs
