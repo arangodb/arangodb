@@ -44,6 +44,7 @@ constexpr std::string_view to_string(ApiVersion version) noexcept {
     case ApiVersion::Experimental:
       return "experimental";
   }
+  std::abort();  // necessary for cppcheck
 }
 
 std::ostream& operator<<(std::ostream& os, ApiVersion version);
