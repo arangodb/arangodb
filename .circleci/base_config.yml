@@ -1521,6 +1521,8 @@ jobs:
       sanitizer:
         type: string
         default: ""
+      resource-class:
+        type: string
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
