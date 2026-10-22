@@ -23,6 +23,10 @@
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -210,7 +214,7 @@ the `Content-Encoding` header even if the request is not authenticated.)");
 }
 
 void GeneralServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
+    std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members
     for (auto& it : options.accessControlAllowOrigins) {
@@ -237,6 +241,28 @@ void GeneralServerOptionsProvider::validateOptionsImpl(
                          return basics::StringUtils::trim(value).empty();
                        }),
         options.accessControlAllowOrigins.end());
+  }
+  uint64_t& globalBudget = options.decompressedRequestBodyGlobalMemoryLimit;
+  uint64_t& perRequestLimit = options.maxDecompressedRequestBodySize;
+    if (globalBudget != 0 && globalBudget < perRequestLimit) {
+    bool globalBudgetSet = opts->processingResult().touched(
+        "http.decompressed-request-body-global-memory-limit");
+    bool perRequestLimitSet = opts->processingResult().touched(
+        "http.max-decompressed-request-body-size");
+    if (globalBudgetSet && perRequestLimitSet) {
+      LOG_TOPIC("xxxxx", FATAL, Logger::FIXME)
+          << "invalid value for "
+             "`--http.decompressed-request-body-global-memory-limit`. "
+             "expecting 0 or a value >= "
+             "`--http.max-decompressed-request-body-size`";
+      FATAL_ERROR_EXIT();
+    } else if (globalBudgetSet) {
+      // a global budget below the default per-request max also caps it
+      perRequestLimit = globalBudget;
+    } else {
+      // the global budget must fit at least one allowed request
+      globalBudget = perRequestLimit;
+    }
   }
 }
 
