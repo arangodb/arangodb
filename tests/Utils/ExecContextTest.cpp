@@ -418,37 +418,37 @@ INSTANTIATE_TEST_SUITE_P(
       return std::string{info.param.name};
     });
 
-// --- canChangeQueryProperties ---
+// --- canUpdateQueryProperties ---
 
-TEST(ExecContextTest, canChangeQueryProperties_database_write_access_suffices) {
+TEST(ExecContextTest, canUpdateQueryProperties_database_write_access_suffices) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
 
-  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+  EXPECT_TRUE(cec.execContext->canUpdateQueryProperties("db").ok());
 }
 
-TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
+TEST(ExecContextTest, canUpdateQueryProperties_read_access_is_not_enough) {
   auto const cec =
       makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
 
-  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+  EXPECT_EQ(cec.execContext->canUpdateQueryProperties("db").errorNumber(),
             TRI_ERROR_FORBIDDEN);
 }
 
 TEST(ExecContextTest,
-     canChangeQueryProperties_admin_without_database_write_access_may_not) {
+     canUpdateQueryProperties_admin_without_database_write_access_may_not) {
   auto const cec =
       makeClassicExecContext("carol", "db", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+  EXPECT_EQ(cec.execContext->canUpdateQueryProperties("db").errorNumber(),
             TRI_ERROR_FORBIDDEN);
 }
 
-TEST(ExecContextTest, canChangeQueryProperties_superuser_may) {
+TEST(ExecContextTest, canUpdateQueryProperties_superuser_may) {
   auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
                                            false, VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canChangeQueryProperties("db").ok());
+  EXPECT_TRUE(ctx->canUpdateQueryProperties("db").ok());
 }
 
 }  // namespace arangodb::tests

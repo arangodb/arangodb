@@ -565,8 +565,8 @@ Result ExecContext::canKillQuery(std::string_view queryUser) const {
 }
 
 /// @brief returns true if the query properties of the given database
-/// may be changed
-Result ExecContext::canChangeQueryProperties(std::string_view db) const {
+/// may be updated
+Result ExecContext::canUpdateQueryProperties(std::string_view db) const {
   using namespace auth::perms;
   if (auto r = can(UpdateQueryProperties{.db{db}}); r.fail()) {
     return r;

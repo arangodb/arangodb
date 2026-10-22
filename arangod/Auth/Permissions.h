@@ -157,7 +157,7 @@ struct UseDatabase {
   DatabaseAccessLevel level;
 };
 
-// Change the AQL query tracking properties of database `db`
+// Update the AQL query tracking properties of database `db`
 struct UpdateQueryProperties {
   std::string db;
 };
