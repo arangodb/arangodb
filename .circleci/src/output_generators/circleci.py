@@ -806,10 +806,7 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
-                "arangosh_args": "A "
-                + json.dumps(
-                    job.arguments.arangosh_args + self.config.test_execution.arangosh_args
-                ),
+                "arangosh_args": self._dict_to_args_string(job.arguments.extra_args),
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": job.get_browser(),
                 "enterprise": "EP",
@@ -819,6 +816,7 @@ class CircleCIGenerator(OutputGenerator):
                 "buckets": bucket_count,
                 "sanitizer": self._get_sanitizer_param(build_config),
             }
+            print(job_dict)
             result_jobs.append({"run-rta-tests": job_dict})
 
         return result_jobs
