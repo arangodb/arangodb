@@ -802,6 +802,9 @@ class CircleCIGenerator(OutputGenerator):
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
+                "resource-class": self.sizer.get_resource_class(
+                    ResourceSize.CIRCLECI_LARGE, build_config.architecture
+                ),
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": job.get_browser(),
