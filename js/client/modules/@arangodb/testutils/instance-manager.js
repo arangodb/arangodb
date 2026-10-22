@@ -1069,7 +1069,7 @@ class instanceManager {
   }
   launchFinalize(startTime) {
     {//if (!this.options.cluster && !this.options.agency) {
-      let deadline = time() + seconds(this.startupMaxCount);
+      let deadline = time() + seconds(this.startupMaxCount / 4);
       this.arangods.forEach(arangod => {
         try {
           arangod.pingUntilReady(deadline);
@@ -1588,12 +1588,12 @@ class instanceManager {
     } catch (e) {
       print(RED + Date() + " error connecting '" + this.endpoint + "' Error: " + JSON.stringify(e) + RESET);
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
-        sleep(5);
-        arango.reconnect(this.endpoint, '_system', 'root', '');
+        arango.reconnect(this.endpoint, '_system', 'root',
+                         this.hasSetPassvoid ? this.options.password: '');
         this.connectionHandle = arango.getConnectionHandle();
       } else if (e instanceof ArangoError && e.message.search('service unavailable due to startup or maintenance mode') >= 0) {
-        sleep(5);
-        arango.reconnect(this.endpoint, '_system', 'root', '');
+        arango.reconnect(this.endpoint, '_system', 'root',
+                         this.hasSetPassvoid ? this.options.password: '');
         this.connectionHandle = arango.getConnectionHandle();
       } else {
         throw e;

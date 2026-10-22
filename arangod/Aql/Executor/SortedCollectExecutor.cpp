@@ -245,15 +245,11 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
+    this->groupValues[i].erase();
     AqlValueGuard guard{val, true};
-
-    auto memUsage = val.memoryUsage();
+    infos.resourceUsageScope().decrease(val.memoryUsage());
 
     output.moveValueInto(it.first, _lastInputRow, &guard);
-    // ownership of value is transferred into res
-    this->groupValues[i].erase();
-
-    infos.resourceUsageScope().decrease(memUsage);
     ++i;
   }
 

@@ -481,7 +481,6 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print(Date() + ' Shutting down...');
     }
-    rbac.bootstrapUser(this.options, this.instanceManager, true);
     this.customInstanceInfos.preStop = this.preStop();
     if (this.customInstanceInfos.preStop.state === false) {
       if (!this.results.hasOwnProperty('setup')) {
@@ -498,7 +497,11 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    try {
+      this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
+    } finally {
+      rbac.bootstrapUser(this.options, this.instanceManager, true);
+    }
     if (!this.results.shutdown) {
       this.results.status = false;
     }
