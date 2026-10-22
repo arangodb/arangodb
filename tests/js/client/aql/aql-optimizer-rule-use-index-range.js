@@ -75,6 +75,8 @@ function optimizerRuleUseIndexRangeTester () {
       // byte order and ICU collation disagree on this value vs "c"
       collNoInd.insert({"a":100, "s":"{"});
       collNoInd.insert({"a":101, "s":"a"});
+      // uppercase sorts before lowercase bytewise, but not in the collation
+      collNoInd.insert({"a":102, "s":"Z"});
       collSkipInd = colls[1];
       collSkipInd.ensureIndex({ type: "skiplist", fields: ["a"] });
       collHashInd = colls[2];
@@ -279,6 +281,25 @@ function optimizerRuleUseIndexRangeTester () {
           }
         }
         assertFalse(foundNoResults, query);
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same, but merging IN/== with two range bounds (>= and <) instead of one
+////////////////////////////////////////////////////////////////////////////////
+
+    testTwoSidedRangeMergeForUtf8Strings : function () {
+      var queries = [
+        // byte order wrongly satisfies the lower bound; collation says no
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s >= 'a' && i.s < '~' RETURN i.s", [ ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['{', 'zzz'] && i.s >= 'a' && i.s < '~' RETURN i.s", [ ] ],
+        // byte order wrongly fails the lower bound; collation says yes
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'Z' && i.s >= 'a' && i.s < 'z' RETURN i.s", [ "Z" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['Z', 'zzz'] && i.s >= 'a' && i.s < 'z' RETURN i.s", [ "Z" ] ]
+      ];
+
+      queries.forEach(function(query) {
         assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
       });
     },
