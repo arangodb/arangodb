@@ -1494,7 +1494,7 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
-    resource_class: << parameters.size >>
+    resource_class: << parameters.resource-class >>
     parameters:
       suiteName:
         type: string
