@@ -41,9 +41,9 @@ class ExecutionPlan;
 ///
 /// FOR p IN ENUMERATE_PATHS FROM v TO w GRAPH g
 ///   (?)
-///   FILTER path.vertices[* ...] ALL == true
+///   FILTER path.vertices[* ...] ALL|NONE op literal
 ///   (?)
-///   FILTER path.edges[* ...] ALL == true
+///   FILTER path.edges[* FILTER B(CURRENT)].attr ALL|NONE op literal
 ///   (?)
 ///
 struct EnumeratePathsFilterMatcher final

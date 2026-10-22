@@ -28,6 +28,9 @@
 #include "Graph/PathType.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 
+#include <utility>
+#include <vector>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -161,6 +164,12 @@ class EnumeratePathsNode : public virtual GraphNode {
   auto registerGlobalVertexCondition(AstNode const*) -> void;
   auto registerGlobalEdgeCondition(AstNode const*) -> void;
 
+  /// @brief Collect variables referenced by pushed-down path filters that must
+  /// be read from the input row (excludes the temporary edge/vertex object).
+  void getConditionVariables(VarSet& vars) const;
+
+  void getConditionVariables(std::vector<Variable const*>&) const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -204,6 +213,11 @@ class EnumeratePathsNode : public virtual GraphNode {
   // satisfied the path search is stopped from here
   std::vector<AstNode const*> _globalEdgeConditions;
 
+  /// @brief Variables used in global edge and vertex conditions that need to
+  /// be available in the input row, consistent with
+  /// TraversalNode::_conditionVariables.
+  VarSet _conditionVariables;
+
   /// @brief Variable that contains the value on which the distribution is
   /// determined. This is required for hybrid disjoint smart graphs
   /// Note: The variable is not really used here, but we need to make sure
@@ -220,7 +234,9 @@ class EnumeratePathsNode : public virtual GraphNode {
       arangodb::graph::PathValidatorOptions validatorOptions,
       const RegisterId& outputRegister, ExecutionEngine& engine,
       InputVertex sourceInput, InputVertex targetInput,
-      RegisterInfos registerInfos) const;
+      RegisterInfos registerInfos,
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariables) const;
 };
 
 }  // namespace aql
