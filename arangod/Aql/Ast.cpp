@@ -238,6 +238,37 @@ bool translateNodeStackToAttributePath(
   return true;
 };
 
+// whether node is a chain of attribute and index accesses with constant
+// indexes that ends in a variable reference, e.g. p.edges[0].x
+bool isPlainAccessPath(AstNode const* node) {
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+         node->type == NODE_TYPE_INDEXED_ACCESS) {
+    if (node->type == NODE_TYPE_INDEXED_ACCESS &&
+        !node->getMember(1)->isConstant()) {
+      return false;
+    }
+    node = node->getMember(0);
+  }
+  return node->type == NODE_TYPE_REFERENCE;
+}
+
+// whether node is a [*] expansion of a plain access path, without filter,
+// projection or non-constant limit, e.g. p.edges[* LIMIT 1].x[0]
+bool isPlainExpansion(AstNode const* node) {
+  if (node->numMembers() < 5 || node->getIntValue(true) != 1) {
+    return false;
+  }
+  ast::ExpansionNode expansionNode(node);
+  AstNode const* limit = expansionNode.getLimit();
+  return expansionNode.getFilter()->type == NODE_TYPE_NOP &&
+         expansionNode.getProjection()->type == NODE_TYPE_NOP &&
+         (limit->type == NODE_TYPE_NOP ||
+          (limit->getMember(0)->isConstant() &&
+           limit->getMember(1)->isConstant())) &&
+         isPlainAccessPath(expansionNode.getExpression()) &&
+         isPlainAccessPath(expansionNode.getIterator().getExpression());
+}
+
 /**
  * @brief Register the given datasource with the given accesstype in the query.
  *        Will be noop if the datasource is already used and has the same or
@@ -3173,35 +3204,20 @@ bool Ast::getReferencedAttributesRecursive(
     }
 
     if (node->type == NODE_TYPE_EXPANSION) {
+      if (!expectedAttribute.empty() && !::isPlainExpansion(node)) {
+        // we are looking at a traversal output variable, e.g.
+        // p.vertices[*].a, and the expansion below is not handled as a
+        // whole, e.g. APPEND(p.edges, [])[*], p.edges[*].a[p.edges[0].x] or
+        // p.edges[* FILTER CURRENT.x == 1]. descend into it like into any
+        // other node, so every use of the variable inside is checked.
+        state.seen.clear();
+        return true;
+      }
       ast::ExpansionNode expansionNode(node);
-      Variable const* iteratorRoot = nullptr;
       // special stunt needed here for the [*] operator...
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
       if (node->numMembers() >= 5) {
-        if (!expectedAttribute.empty()) {
-          // we are looking at a traversal output variable, e.g.
-          // p.vertices[*].a
-          // here we need to take special precautions that we normally
-          // don't need
-          if (expansionNode.getFilter()->type != NODE_TYPE_NOP ||
-              expansionNode.getProjection()->type != NODE_TYPE_NOP) {
-            // expansion has a filter or a projection set, e.g.
-            // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
-            // we currently cannot handle this.
-            state.couldExtractAttributePath = false;
-            state.seen.clear();
-            return false;
-          }
-
-          if (node->getIntValue(true) != 1) {
-            // incompatible flattening level: p.vertices[**]...
-            state.couldExtractAttributePath = false;
-            state.seen.clear();
-            return false;
-          }
-        }
-
         ast::IteratorNode lhs = expansionNode.getIterator();
         AstNode const* rhs = expansionNode.getExpression();
 
@@ -3227,7 +3243,6 @@ bool Ast::getReferencedAttributesRecursive(
 
           if (iterRhs->type == NODE_TYPE_REFERENCE) {
             state.seen.push_back(iterRhs);
-            iteratorRoot = static_cast<Variable const*>(iterRhs->getData());
             // finally the stack is complete... now eval it to find the
             // projection
             if (!::translateNodeStackToAttributePath(state, resourceMonitor)) {
@@ -3235,14 +3250,6 @@ bool Ast::getReferencedAttributesRecursive(
             }
           }
         }
-      }
-      if (!expectedAttribute.empty() &&
-          countReferences(node, variable) !=
-              (iteratorRoot == variable ? 1 : 0)) {
-        // the variable is used in the expansion in a way not handled above,
-        // e.g. APPEND(p.edges, [])[*], p.edges[*].a[p.edges[0].x] or
-        // p.edges[* LIMIT p.edges[0].n]
-        state.couldExtractAttributePath = false;
       }
       state.seen.clear();
       // if we are looking at a traversal output variable, we don't

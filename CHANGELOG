@@ -15,8 +15,7 @@
 
 * COR-1190: AQL traversals only load a subset of the attributes of path edges
   and vertices if the optimizer can determine every attribute the query reads
-  from them. If a path variable is used inside an `[*]` expansion in any other
-  way than as a plain attribute path, for example in
+  from them, including reads inside `[*]` expansions. If it cannot, as for
   `APPEND(p.edges, [])[*]._key`, `[...p.edges][*]._key`,
   `p.edges[*].a[p.edges[0].x]` or `p.edges[* LIMIT p.edges[0].n]._key`, the
   traversal loads the full documents.
