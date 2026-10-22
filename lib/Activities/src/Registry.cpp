@@ -45,8 +45,8 @@ auto Registry::snapshot()
   inspection::Status errorStatus;
   VPackBuilder builder;
   builder.openArray();
+  auto inspector = inspection::VPackSaveInspector<>(builder);
   for_node([&](Activity::Snapshot activity) {
-    auto inspector = inspection::VPackSaveInspector<>(builder);
     auto res = inspector.apply(activity);
     if (not res.ok()) {
       errorStatus = std::move(res);

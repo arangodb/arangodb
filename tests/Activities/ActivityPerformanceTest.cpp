@@ -18,6 +18,13 @@ using namespace std::chrono_literals;
 struct ActivityPerformanceTest : ::testing::Test {};
 
 /**
+   Measures the time of activity creations and their garbage collection for
+   numberOfCreationThreads threads that repeatedly create and destroy activities
+   and one thread that executes the garbage collection.
+
+   Every second, each thread prints timings to stderr until the
+   program stops.
+
    Before running this test you should
    - be sure to execute non-maintainer mode
    - fix CPU frequency
@@ -35,12 +42,13 @@ TEST_F(ActivityPerformanceTest,
   std::stop_source stop;
   std::list<std::jthread> threads;
 
+  // threads that create activities
   for (int i = 0; i < numberOfCreationThreads; i++) {
     threads.emplace_back(
         [&latch](std::stop_token token) {
           latch.arrive_and_wait();
           uint64_t creation_counter = 0;
-          std::chrono::steady_clock::duration creation_duration;
+          std::chrono::steady_clock::duration creation_duration{};
           auto last = std::chrono::steady_clock::now();
           while (not token.stop_requested()) {
             auto before_creation = std::chrono::steady_clock::now();
@@ -64,7 +72,10 @@ TEST_F(ActivityPerformanceTest,
                          creation_counter,
                          std::chrono::duration_cast<std::chrono::microseconds>(
                              creation_duration),
-                         creation_duration.count() / creation_counter)
+                         std::chrono::duration<double, std::micro>{
+                             creation_duration}
+                                 .count() /
+                             creation_counter)
                   << std::endl;
               creation_counter = 0;
               creation_duration = std::chrono::steady_clock::duration{};
@@ -75,6 +86,7 @@ TEST_F(ActivityPerformanceTest,
         stop.get_token());
   }
 
+  // one thread executes garbage collection
   threads.emplace_back(
       [&latch](std::stop_token token) {
         latch.arrive_and_wait();

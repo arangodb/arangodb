@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstddef>
-#include "Activities/Registry.h"
+#include "Activities/RegistryGlobalVariable.h"
 
 namespace arangodb::activities::tests {
-auto garbageCollectAllOnCurrentThread() -> void {
+inline auto garbageCollectAllOnCurrentThread() -> void {
   size_t deletedCount = 0;
   do {
     deletedCount = get_thread_registry().garbage_collect();

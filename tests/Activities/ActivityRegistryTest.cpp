@@ -249,6 +249,7 @@ TEST_F(ActivityRegistryTest,
 
   std::jthread(withCurrentlyExecutingActivity(
       [current = Registry::currentlyExecutingActivity(), activity]() {
+        EXPECT_EQ(Registry::currentlyExecutingActivity(), current);
         EXPECT_EQ(current, activity);
       }));
 }

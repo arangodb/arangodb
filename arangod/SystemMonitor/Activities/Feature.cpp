@@ -84,23 +84,24 @@ auto Feature::create_metrics(metrics::IRegistry& registry)
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
-          while (not stoken.stop_requested()) {
+          auto const stopRequested = [&] {
             std::unique_lock guard(_mutex);
-            auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
-            if (status == std::cv_status::timeout) {
-              activities::registry.run_external_cleanup();
-            }
+            return _cv.wait_for(guard, stoken, std::chrono::seconds{gc_timeout},
+                                [&stoken] { return stoken.stop_requested(); });
+          };
+          while (not stopRequested()) {
+            activities::registry.run_external_cleanup();
           }
         }) {}
 
   ~CleanupThread() {
     _thread.request_stop();
-    _thread.join();
     _cv.notify_one();
+    _thread.join();
   }
 
   std::mutex _mutex;
-  std::condition_variable _cv;
+  std::condition_variable_any _cv;
   std::jthread _thread;
 };
 
@@ -126,4 +127,15 @@ velocypack::SharedSlice Feature::getData() const {
   return snap.get();
 }
 
-velocypack::SharedSlice Feature::getCrashData() const { return getData(); }
+velocypack::SharedSlice Feature::getCrashData() const {
+  auto snap = registry.snapshot();
+  if (not snap.ok()) {
+    auto builder = VPackBuilder{};
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("error", VPackValue(snap.error().error()));
+    }
+    return builder.sharedSlice();
+  }
+  return snap.get();
+}

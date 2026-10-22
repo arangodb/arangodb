@@ -29,6 +29,7 @@
 
 #include <velocypack/Builder.h>
 #include "Inspection/VPack.h"
+#include "Inspection/VPackWithErrorT.h"
 
 namespace arangodb::activities {
 
@@ -49,10 +50,17 @@ struct GuardedActivity : Activity {
         _data(std::move(data)) {}
 
   auto data() const noexcept -> VPackBuilder override {
-    auto builder = VPackBuilder{};
     auto data = _data.copy();
-    velocypack::serialize(builder, data);
-    return builder;
+    auto sharedSlice = inspection::serializeWithErrorT(data);
+    if (not sharedSlice.ok()) {
+      auto builder = VPackBuilder{};
+      {
+        VPackObjectBuilder ob(&builder);
+        builder.add("error", VPackValue(sharedSlice.error().error()));
+      }
+      return builder;
+    }
+    return VPackBuilder{sharedSlice->slice()};
   }
 
   // Copying is not noexcept because it takes a lock, and that can throw
