@@ -13,6 +13,13 @@
 
 * Upgraded OpenSSL to 3.5.9.
 
+* COR-1190: AQL traversals only load a subset of the attributes of path edges
+  and vertices if the optimizer can determine every attribute the query reads
+  from them, including reads inside `[*]` expansions. If it cannot, as for
+  `APPEND(p.edges, [])[*]._key`, `[...p.edges][*]._key`,
+  `p.edges[*].a[p.edges[0].x]` or `p.edges[* LIMIT p.edges[0].n]._key`, the
+  traversal loads the full documents.
+
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
    and CVE-2026-102278

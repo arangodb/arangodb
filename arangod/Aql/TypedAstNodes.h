@@ -689,7 +689,7 @@ struct ExpansionNode : TypedAstNode {
         << node->numMembers();
   }
 
-  int64_t getLevels() const { return _node->getIntValue(); }
+  int64_t getLevels() const { return _node->getIntValue(true); }
 
   IteratorNode getIterator() const { return IteratorNode(_node->getMember(0)); }
 
