@@ -244,13 +244,13 @@ void GeneralServerOptionsProvider::validateOptionsImpl(
   }
   uint64_t& globalBudget = options.decompressedRequestBodyGlobalMemoryLimit;
   uint64_t& perRequestLimit = options.maxDecompressedRequestBodySize;
-    if (globalBudget != 0 && globalBudget < perRequestLimit) {
+  if (globalBudget != 0 && globalBudget < perRequestLimit) {
     bool globalBudgetSet = opts->processingResult().touched(
         "http.decompressed-request-body-global-memory-limit");
     bool perRequestLimitSet = opts->processingResult().touched(
         "http.max-decompressed-request-body-size");
     if (globalBudgetSet && perRequestLimitSet) {
-      LOG_TOPIC("xxxxx", FATAL, Logger::FIXME)
+      LOG_TOPIC("6d094", FATAL, Logger::FIXME)
           << "invalid value for "
              "`--http.decompressed-request-body-global-memory-limit`. "
              "expecting 0 or a value >= "

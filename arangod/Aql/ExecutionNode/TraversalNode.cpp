@@ -183,9 +183,7 @@ TraversalNode::TraversalNode(
       _inVariable(inVariable),
       _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
-  validateCollections();
-}
+      _toCondition(nullptr) {}
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice base)
@@ -1207,6 +1205,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan,
       _defaultDirection, _directions, std::move(tmp), _graphObj);
 
   traversalCloneHelper(*plan, *c);
+  c->validateCollections();
 
   if (_optionsBuilt) {
     c->prepareOptions();

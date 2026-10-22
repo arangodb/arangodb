@@ -1,5 +1,14 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+* COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
+  ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
+  attribute wrongly returning no results when byte order disagrees with ICU
+  collation order. The same fix applies to SEARCH conditions combining ==
+  or OR of == with a range operator.
+
+* The `--server.jwt-secret-folder` startup option now skips everything in the
+  folder that is not a regular file (e.g. subfolders, sockets, devices, named
+  pipes) instead of trying to load it as a JWT secret.
 
 * Add `--http.decompressed-request-body-global-memory-limit` startup option,
   which limits the combined size of all decompressed request bodies. Requests that 
@@ -8,6 +17,15 @@
 * Add `--http.max-decompressed-request-body-size` startup option, which limits
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.
+
+* COR-1086: Replaced deprecated OpenSSL functions with the proper newer,
+  higher level envelope calls. Removed unused functions and refactored some
+  minor parts of the SslInterface.
+
+* BTS-2308: Fixes miscalculation of soft, hard limits and allocated
+  values in cache manager.
+
+* COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
 
 * COR-1031 Admins (classic authentication: read-write access to `_system`) can now list,
   inspect and abort other users' stream transactions via `/_api/transaction`.
@@ -180,10 +198,10 @@
   comparisons, such as `IS_STRING(doc.attr)` or `NOT doc.attr`. Such queries
   failed with `member out of range` before. This fixes issue #23356.
 
-* COR-917: AQL UPDATE with keepNull: false leaves the attribute in place in the 
+* COR-917: AQL UPDATE with keepNull: false leaves the attribute in place in the
   _to_ shadow collection of a non-disjoint SmartGraph.
-  Fixed an issue where updating an edge attribute with keepNull: false in a 
-  non-disjoint SmartGraph could leave the removed attribute in the edge’s _to_ shadow 
+  Fixed an issue where updating an edge attribute with keepNull: false in a
+  non-disjoint SmartGraph could leave the removed attribute in the edge’s _to_ shadow
   copy. The attribute is now consistently removed from both copies of the edge.
 
 * BTS-2454: Update FAISS to a new patched version which fixes a TSAN race inside
@@ -284,7 +302,7 @@
   a calculated expression based on a document from an earlier collection.
   Such queries are now handled safely without triggering an assertion failure or
   server crash.
-  
+
 * Upgraded OpenSSL to 3.5.8.
 
 
