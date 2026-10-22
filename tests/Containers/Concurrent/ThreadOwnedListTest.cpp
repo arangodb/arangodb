@@ -53,6 +53,8 @@ struct NodeData : InstanceCounterValue {
   int number;
 
   NodeData(int number) : number{number} {}
+  // required by seal(), which stores value-initialized data in its sentinel
+  NodeData() : NodeData{0} {}
 
   struct Snapshot {
     int number;
@@ -213,4 +215,57 @@ TEST_F(ThreadOwnedListDeathTest,
   std::jthread([&] {
     EXPECT_DEATH_CORE_FREE(registry->garbage_collect(), "Assertion failed");
   });
+}
+
+TEST_F(ThreadOwnedListTest, external_garbage_collection_cannot_delete_head) {
+  auto registry = MyList::make();
+  {
+    auto node = registry->add([]() { return NodeData{1}; });
+  }
+  // node is marked for deletion but, being the head, is skipped
+
+  EXPECT_EQ(registry->garbage_collect_external(), 0);
+  EXPECT_EQ(registry->size(), 1);
+}
+
+TEST_F(ThreadOwnedListTest,
+       external_garbage_collection_deletes_marked_head_of_sealed_list) {
+  auto registry = MyList::make();
+  {
+    auto node = registry->add([]() { return NodeData{1}; });
+  }
+
+  registry->seal();
+
+  EXPECT_EQ(registry->garbage_collect_external(), 1);
+  EXPECT_EQ(nodes_in_registry(registry), (std::vector<NodeData::Snapshot>{}));
+  // only the sentinel is left; it is freed together with the list, which
+  // TearDown verifies via the instance counter
+  EXPECT_EQ(registry->size(), 1);
+}
+
+TEST_F(ThreadOwnedListTest,
+       external_garbage_collection_deletes_node_marked_after_sealing) {
+  auto registry = MyList::make();
+  auto node = registry->add([]() { return NodeData{3}; });
+
+  registry->seal();
+
+  // the sentinel is never iterated
+  EXPECT_EQ(nodes_in_registry(registry),
+            (std::vector<NodeData::Snapshot>{node->data.snapshot()}));
+
+  node.reset();
+
+  EXPECT_EQ(registry->garbage_collect_external(), 1);
+  EXPECT_EQ(nodes_in_registry(registry), (std::vector<NodeData::Snapshot>{}));
+  EXPECT_EQ(registry->size(), 1);
+}
+
+TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_seal) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
+  auto registry = MyList::make();
+
+  std::jthread(
+      [&]() { EXPECT_DEATH_CORE_FREE(registry->seal(), "Assertion failed"); });
 }

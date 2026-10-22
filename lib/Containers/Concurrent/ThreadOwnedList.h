@@ -84,8 +84,8 @@ struct ThreadOwnedList
     requires requires(F f) {
       { f() } -> std::same_as<T>;
     }
-    Node(F&& create_data, Node* next, ThreadOwnedList<T>& list)
-        : data{create_data()}, next{next}, list{list} {}
+    Node(F&& create_data, ThreadOwnedList<T>& list)
+        : data{create_data()}, list{list} {}
 
     template<typename U = T>
     requires std::movable<U> Node(U data, ThreadOwnedList<U>& list)
@@ -158,14 +158,8 @@ struct ThreadOwnedList
         << inspection::json(current_thread)
         << " but needs to be called from ThreadOwnedList's owning thread "
         << inspection::json(thread) << ". " << (void*)this;
-    auto current_head = _head.load(std::memory_order_relaxed);
-    auto node = new Node{create_data, current_head, *this};
-    if (current_head != nullptr) {
-      // (6) - this store synchronizes with the load in (7) and (9)
-      current_head->previous.store(node, std::memory_order_release);
-    }
-    // (1) - this store synchronizes with load in (2)
-    _head.store(node, std::memory_order_release);
+    auto node = new Node{create_data, *this};
+    push_to_list(*node);
     if (_metrics) {
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
@@ -191,21 +185,49 @@ struct ThreadOwnedList
     TRI_ASSERT(&node->list == this)
         << "ThreadOwnedList::add was called for a node with an incorrect "
            "list.";
-    auto current_head = _head.load(std::memory_order_relaxed);
     auto* const raw_node = node.release();
-    raw_node->next = current_head;
-    if (current_head != nullptr) {
-      // (6) - this store synchronizes with the load in (7) and (9)
-      current_head->previous.store(raw_node, std::memory_order_release);
-    }
-    // (1) - this store synchronizes with load in (2)
-    _head.store(raw_node, std::memory_order_release);
+    push_to_list(*raw_node);
     if (_metrics) {
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
     }
     return Handle<DerivedNode>{raw_node,
                                MarkForDeletion{this->shared_from_this()}};
+  }
+
+  /**
+     Seals the list: the owning thread declares that it will never add again.
+
+     Installs a sentinel node as the permanent head. The head is the one node
+     that garbage_collect_external() cannot delete, so after sealing every real
+     node can be reclaimed from any thread once it is marked for deletion. That
+     includes nodes whose last reference is released after the owning thread
+     has exited. The sentinel is already marked and is freed by the destructor.
+
+     Can only be called on the owning thread, crashes otherwise. Call it at
+     most once, typically right before the owning thread exits.
+   */
+  auto seal() -> void requires std::default_initializable<T> {
+    auto current_thread = basics::ThreadId::current();
+    ADB_PROD_ASSERT(current_thread == thread)
+        << "ThreadOwnedList::seal was called from thread "
+        << inspection::json(current_thread)
+        << " but needs to be called from ThreadOwnedList's owning thread "
+        << inspection::json(thread) << ". " << (void*)this;
+    auto* const sentinel = new Node{[]() { return T{}; }, *this};
+    // marked before it is published, so for_node never snapshots its empty
+    // data
+    sentinel->is_marked_for_deletion.store(true, std::memory_order_relaxed);
+    push_to_list(*sentinel);
+    // only now onto the free list: garbage_collect_external() asserts that at
+    // most one node in the free list is in head position, so the old head's
+    // previous pointer has to be visible before the sentinel can be found
+    // there
+    push_to_free_list(*sentinel);
+    if (_metrics) {
+      // balances the decrement in cleanup() when the sentinel is deleted
+      _metrics->increment_ready_for_deletion_nodes();
+    }
   }
 
   /**
@@ -264,7 +286,8 @@ struct ThreadOwnedList
 
      This can be called from any thread. Cannot delete the head of the
      list, calling this will therefore result in at least one
-     marked-for-deletion node.
+     marked-for-deletion node. On a sealed list (see seal()) the head is a
+     sentinel, so every real node is deleted.
    */
   auto garbage_collect_external() noexcept -> size_t {
     // acquire the lock. This prevents the owning thread and the observer
@@ -303,13 +326,7 @@ struct ThreadOwnedList
     // After the clean up we have to add the potential head back into the free
     // list.
     if (maybe_head_ptr) {
-      auto current_head = _free_head.load(std::memory_order_relaxed);
-      do {
-        maybe_head_ptr->next_to_free = current_head;
-        // (4) - this compare_exchange_weak synchronizes with exchange in (5)
-      } while (not _free_head.compare_exchange_weak(
-          current_head, maybe_head_ptr, std::memory_order_release,
-          std::memory_order_acquire));
+      push_to_free_list(*maybe_head_ptr);
     }
     return count;
   }
@@ -341,13 +358,7 @@ struct ThreadOwnedList
         << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
            "deletion more than once";
 
-    auto current_head = _free_head.load(std::memory_order_relaxed);
-    do {
-      node.next_to_free = current_head;
-      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
-    } while (not _free_head.compare_exchange_weak(current_head, &node,
-                                                  std::memory_order_release,
-                                                  std::memory_order_acquire));
+    push_to_free_list(node);
     // DO NOT access node after this line. The owner thread might already
     // be running a cleanup and node might be deleted.
 
@@ -355,6 +366,32 @@ struct ThreadOwnedList
       _metrics->decrement_registered_nodes();
       _metrics->increment_ready_for_deletion_nodes();
     }
+  }
+
+  /**
+     Pushes a node onto the atomic free list.
+
+     Can be called from any thread.
+   */
+  auto push_to_free_list(Node& node) noexcept -> void {
+    auto current_head = _free_head.load(std::memory_order_relaxed);
+    do {
+      node.next_to_free = current_head;
+      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
+    } while (not _free_head.compare_exchange_weak(current_head, &node,
+                                                  std::memory_order_release,
+                                                  std::memory_order_acquire));
+  }
+
+  auto push_to_list(Node& node) noexcept -> void {
+    auto current_head = _head.load(std::memory_order_relaxed);
+    node.next = current_head;
+    if (current_head != nullptr) {
+      // (6) - this store synchronizes with the load in (7) and (9)
+      current_head->previous.store(&node, std::memory_order_release);
+    }
+    // (1) - this store synchronizes with load in (2)
+    _head.store(&node, std::memory_order_release);
   }
 
   auto cleanup() noexcept -> size_t {

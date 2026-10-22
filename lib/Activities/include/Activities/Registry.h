@@ -47,12 +47,14 @@ struct Registry : containers::Registry<ActivityPtr> {
   auto get_thread_registry() noexcept -> ThreadRegistry& {
     struct Guard {
       explicit Guard(Registry& registry)
-          : _self{registry},
-            _registry{ThreadRegistry::make(registry.get_metrics())} {
+          : _registry{ThreadRegistry::make(registry.get_metrics())} {
         registry.add(_registry);
       }
+      // Runs on thread exit. Sealing lets external gc reclaim every node of
+      // this thread that is still allocated, including a finished child at
+      // head position that would otherwise keep its parent and the list alive.
+      ~Guard() { _registry->seal(); }
 
-      Registry& _self;
       std::shared_ptr<ThreadRegistry> _registry;
     };
     static thread_local auto guard = Guard{*this};

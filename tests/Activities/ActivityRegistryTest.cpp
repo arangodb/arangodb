@@ -306,6 +306,33 @@ TEST_F(ActivityRegistryTest, gc_requires_several_cycles_to_cleanup_parents) {
   ASSERT_EQ(registry.size(), 0);
 }
 
+TEST_F(
+    ActivityRegistryTest,
+    external_gc_reclaims_finished_parent_and_child_after_owning_thread_exited) {
+  // The child is created last, so it is the head of the owning thread's list.
+  // Once the thread has exited, only external gc can run on that list.
+  ActivityId parentId{};
+  std::jthread([&]() {
+    auto parent =
+        activities::make<GenericActivity>("parent", GenericActivityData{});
+    parentId = parent->id();
+    auto scope = Registry::ScopedCurrentlyExecutingActivity(parent);
+    auto child =
+        activities::make<GenericActivity>("child", GenericActivityData{});
+    ASSERT_EQ(child->parentId().value(), parentId);
+  });
+
+  // thread exit alone frees nothing: the finished child still references
+  // the finished parent, which therefore stays visible
+  EXPECT_TRUE(isInRegistry(registry.snapshot().get(), parentId));
+
+  registry.run_external_cleanup();
+
+  // child, parent and the exited thread's list are gone
+  EXPECT_FALSE(isInRegistry(registry.snapshot().get(), parentId));
+  EXPECT_EQ(registry.size(), 0);
+}
+
 TEST_F(ActivityRegistryTest, sets_thread) {
   auto a = activities::make<GenericActivity>("GenericActivity",
                                              activities::GenericActivityData{});
