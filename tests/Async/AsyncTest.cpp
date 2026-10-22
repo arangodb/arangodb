@@ -1,13 +1,12 @@
 #include "Async/async.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Async/WaitTypes.h"
 #include "Containers/Concurrent/shared.h"
 #include "Inspection/Format.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
-
-#include "WaitTypes.h"
 
 #include <gtest/gtest.h>
 #include <coroutine>
@@ -512,26 +511,12 @@ TYPED_TEST(
       EXPECT_EQ(awaited_promise->requester,
                 async_registry::Requester{waiter_promise->id});
       auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
-      if (not std::is_same<TypeParam, arangodb::async_tests::NoWait>::value) {
-        EXPECT_TRUE(awaited_2_promise.has_value());
-        EXPECT_EQ(awaited_2_promise->requester,
-                  async_registry::Requester{waiter_promise->id});
-      }
-
-      auto awaited_promise_coawaited = co_await std::move(fn);
-      EXPECT_EQ(awaited_promise_coawaited.requester,
+      EXPECT_TRUE(awaited_2_promise.has_value());
+      EXPECT_EQ(awaited_2_promise->requester,
                 async_registry::Requester{waiter_promise->id});
 
-      auto awaited_2_promise_coawaited = co_await std::move(fn_2);
-      EXPECT_EQ(awaited_2_promise_coawaited.requester,
-                async_registry::Requester{waiter_promise->id});
-
-      // waiter did not change
-      waiter_promise = find_promise_by_name("waiter_fn");
-      EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
-          waiter_promise->requester));
-
+      co_await std::move(fn);
+      co_await std::move(fn_2);
       co_return;
     };
   };
@@ -573,12 +558,22 @@ TYPED_TEST(AsyncTest,
           waiter_promise->requester));
 
       auto awaited_promise_coawaited = co_await std::move(fn);
-      // NoWait: awaited_fn promise is already marked for deletion, therefore
-      // irrelevant
-      if (not std::is_same<typename TypeParam::first_type,
-                           arangodb::async_tests::NoWait>::value) {
+      if constexpr (std::is_same<typename TypeParam::first_type,
+                                 arangodb::async_tests::WaitSlot>::value) {
+        // the co_await executed before the promise-lookup inside fn: the
+        // requester was updated
         EXPECT_EQ(awaited_promise_coawaited.requester,
                   async_registry::Requester{waiter_promise->id});
+      } else if constexpr (std::is_same<typename TypeParam::first_type,
+                                        arangodb::async_tests::NoWait>::value) {
+        // promise-lookup in the registry (done inside fn) was already executed
+        // before co_await was called, therefore the requester did not change
+        EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+            awaited_promise_coawaited.requester));
+      } else {
+        // for ConcurrentNoWait we are not sure what executes first: the
+        // promise-lookup or the co_await, therefore we don't know how the
+        // requester looks like there
       }
 
       // waiter did not change
@@ -630,12 +625,22 @@ TYPED_TEST(
       EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
           waiter_promise->requester));
 
-      // NoWait: awaited_fn promise is already marked for deletion, therefore
-      // irrelevant
-      if (not std::is_same<typename TypeParam::first_type,
-                           arangodb::async_tests::NoWait>::value) {
+      if constexpr (std::is_same<typename TypeParam::first_type,
+                                 arangodb::async_tests::WaitSlot>::value) {
+        // the co_await executed before the promise-lookup inside fn: the
+        // requester was updated
         EXPECT_EQ(awaited_promise_coawaited.requester,
                   async_registry::Requester{waiter_promise->id});
+      } else if constexpr (std::is_same<typename TypeParam::first_type,
+                                        arangodb::async_tests::NoWait>::value) {
+        // promise-lookup in the registry (done inside fn) was already executed
+        // before co_await was called, therefore the requester did not change
+        EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+            awaited_promise_coawaited.requester));
+      } else {
+        // for ConcurrentNoWait we are not sure what executes first: the
+        // promise-lookup or the co_await, therefore we don't know how the
+        // requester looks like there
       }
 
       auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
@@ -674,9 +679,17 @@ TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_state) {
     };
     auto coro = fn();
 
-    if (std::is_same<decltype(this->wait), async_tests::WaitSlot>()) {
+    if constexpr (std::is_same<decltype(this->wait), async_tests::WaitSlot>()) {
+      // for WaitSlot fn is currently suspended
       expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
                                    1);
+    } else if constexpr (std::is_same<decltype(this->wait),
+                                      async_tests::NoWait>()) {
+      // for NoWait fn already finished
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    } else {
+      // for ConcurrentNoWait both can happen, we don't know for sure here
     }
 
     this->wait.resume();

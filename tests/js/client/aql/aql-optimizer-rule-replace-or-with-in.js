@@ -496,6 +496,14 @@ function NewAqlReplaceORWithINTestSuite () {
       isRuleUsed(query, {});
     },
 
+    testDudDifferentAttributes6: function () {
+      var query =
+        "FOR x IN [ { i: 2, j: 1, k: 1, arr: [ 10, 20, 30, 40 ] } ] " +
+        "FILTER x.arr[(x.i - x.j) - x.k] == 30 || x.arr[x.i - (x.j - x.k)] == 10 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
     testDudDifferentAttributesWithBool1: function () {
       var query = 
         "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x == true RETURN x";

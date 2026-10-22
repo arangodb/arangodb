@@ -61,6 +61,7 @@
 namespace arangodb {
 class Index;
 class LogicalCollection;
+struct ICancellationToken;
 
 namespace aql {
 struct AstNode;
@@ -464,6 +465,8 @@ struct IndexIteratorOptions {
   /// @brief forces the materialize node past this index, even if its not a
   /// unique one
   bool pushDownMaterialization{false};
+  /// @brief used to abort long regex matches when it is killed
+  arangodb::ICancellationToken const* token{nullptr};
 };
 
 /// index estimate map, defined here because it was convenient

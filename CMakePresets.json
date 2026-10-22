@@ -192,7 +192,7 @@
       ],
       "cacheVariables": {
         "USE_IPO": "Off",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libgomp -llapack -lgfortran",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libomp -L/opt/omp -llapack -lgfortran",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
         "LAPACK_LIBRARIES": "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a",
         "BLAS_LIBRARIES": "/usr/lib/x86_64-linux-gnu/libblas.a"
@@ -206,7 +206,7 @@
       ],
       "cacheVariables": {
         "USE_IPO": "Off",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libgomp -llapack -lgfortran",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld -fopenmp=libomp -L/opt/omp -llapack -lgfortran",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
         "LAPACK_LIBRARIES": "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a",
         "BLAS_LIBRARIES": "/usr/lib/aarch64-linux-gnu/libblas.a"
