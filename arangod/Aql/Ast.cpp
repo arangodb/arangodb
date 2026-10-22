@@ -3200,6 +3200,13 @@ bool Ast::getReferencedAttributesRecursive(
       };
       bool handled = false;
 
+      // quick reminder about how expansions work. given
+      //  p.edges[*].a
+      // we get two subtrees in the expansion node.
+      // 1. iterator `p.edges`
+      // 2. expression `CURRENT.a`
+      // we first place all the attributes from the expression
+      // on the stack. excluding the
       if (!isPathVariable || ::isSimpleExpansion(expansionNode)) {
         ast::IteratorNode lhs = expansionNode.getIterator();
         AstNode const* rhs = expansionNode.getExpression();
