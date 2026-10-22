@@ -182,8 +182,7 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
                return false;
              }
              // Includes symlinks to regular files but skips directories etc.
-             std::error_code ec;
-             return std::filesystem::is_regular_file(path / file, ec);
+             return std::filesystem::is_regular_file(path / file);
            });
 
   if (f.empty()) {
