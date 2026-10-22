@@ -1597,7 +1597,7 @@ jobs:
              -v $(pwd)/allure-report:/allure-report \
              -v $(pwd)/allure-results:/allure-results \
              -v $(pwd)/allure-config:/allure-config \
-             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
+             tobix/allure-cli generate /allure-results -o /allure-report --clean
              exit $(($exit_code + $(cat ./test_dir/status.json) ))
       - store_artifacts:
           destination: << parameters.suiteName >>
