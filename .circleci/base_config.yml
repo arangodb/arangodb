@@ -1578,7 +1578,7 @@ jobs:
             fi
             RTA_ARGS=(<< parameters.arangosh_args >>)
             if [ "<< parameters.browser >>" != "no-browser" ]; then
-              RTA_ARGS+=(--selenium << parameters.browser >>  --no-checkdata --no-run-upgrade)
+              RTA_ARGS+=(--selenium << parameters.browser >> )
             fi
             if [ << parameters.buckets >> != 1 ]; then
               RTA_ARGS+=(--buckets $BUCKETS)
