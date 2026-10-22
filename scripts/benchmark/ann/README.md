@@ -17,20 +17,42 @@ and optionally loads each run into a results ArangoDB that Grafana charts.
 
 ## Local
 
-Start an arangod with `--vector-index=true`, then:
+The scripts here also set up the results store and Grafana locally, so the whole flow
+(benchmark → store → dashboards) can be seen on one machine. To do that:
 
-```bash
-./run_local.sh                    # output in ./ann-output (site/index.html, results.csv, logs)
-```
+1. Run the arangod under test somewhere, with `--vector-index=true`. The local store takes
+   port 8529, so use another one, e.g.:
 
-Results store + Grafana (http://localhost:3000, `admin` / `admin`):
+   ```bash
+   docker run -d -p 8530:8529 -e ARANGO_NO_AUTH=1 arangodb/enterprise-preview:devel-nightly --vector-index=true
+   ```
 
-```bash
-docker compose up -d
-./load_run.py <run-dir>           # dir with results.csv + run_meta.json; --dry-run to check
-```
+2. Start the results store + Grafana (http://localhost:3000, `admin` / `admin`). With
+   `AWS_ARANGODB_*` unset, Grafana reads the local store:
 
-Full CI flow locally: `docker compose --profile ci up --build harness`.
+   ```bash
+   env -u AWS_ARANGODB_URL -u AWS_ARANGODB_ID -u AWS_ARANGODB_KEY docker compose up -d
+   ```
+
+3. Set these env flags and run the benchmark:
+
+   | Variable | Example | Meaning |
+   |---|---|---|
+   | `ARANGO_HOST` / `ARANGO_PORT` | `127.0.0.1` / `8530` | arangod under test |
+   | `ARANGO_USER` / `ARANGO_PASSWORD` | `root` / empty | its credentials |
+   | `RESULTS_ARANGO_URL` | `http://127.0.0.1:8529` | results store; unset skips loading |
+   | `GRAFANA_URL` | `http://localhost:3000` | printed as the dashboard link |
+   | `ANN_DATASETS` / `ANN_RUNS` | `glove-100-angular` / `1` | datasets (space-separated), runs per config |
+
+   ```bash
+   ARANGO_PORT=8530 RESULTS_ARANGO_URL=http://127.0.0.1:8529 GRAFANA_URL=http://localhost:3000 \
+     ./run_local.sh                # output in ./ann-output (site/index.html, results.csv, logs)
+   ```
+
+   The run then shows up at http://localhost:3000/d/ann-bench. A run downloaded from CI is
+   loaded with `./load_run.py <run-dir>` (`--dry-run` to check it first).
+
+`docker compose --profile ci up --build harness` does all three steps in one go, like CI.
 
 ## CI
 
