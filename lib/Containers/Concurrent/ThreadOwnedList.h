@@ -101,6 +101,8 @@ struct ThreadOwnedList
   std::atomic<Node*> _head = nullptr;
   std::atomic<Node*> _free_head = nullptr;
   std::shared_mutex _mutex;  // gc and reading cannot happen at same time
+  // set by the owning thread in seal(), read by external gc; both under _mutex
+  bool _sealed = false;
   std::shared_ptr<Metrics> _metrics;
 
  public:
@@ -152,12 +154,6 @@ struct ThreadOwnedList
     { f() } -> std::same_as<T>;
   }
   auto add(F&& create_data) noexcept -> Handle<> {
-    auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread)
-        << "ThreadOwnedList::add was called from thread "
-        << inspection::json(current_thread)
-        << " but needs to be called from ThreadOwnedList's owning thread "
-        << inspection::json(thread) << ". " << (void*)this;
     auto node = new Node{create_data, *this};
     push_to_list(*node);
     if (_metrics) {
@@ -176,12 +172,6 @@ struct ThreadOwnedList
  */
   template<std::derived_from<Node> DerivedNode>
   auto add(std::unique_ptr<DerivedNode> node) noexcept -> Handle<DerivedNode> {
-    auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread)
-        << "ThreadOwnedList::add was called from thread "
-        << inspection::json(current_thread)
-        << " but needs to be called from ThreadOwnedList's owning thread "
-        << inspection::json(thread) << ". " << (void*)this;
     TRI_ASSERT(&node->list == this)
         << "ThreadOwnedList::add was called for a node with an incorrect "
            "list.";
@@ -198,36 +188,24 @@ struct ThreadOwnedList
   /**
      Seals the list: the owning thread declares that it will never add again.
 
-     Installs a sentinel node as the permanent head. The head is the one node
-     that garbage_collect_external() cannot delete, so after sealing every real
-     node can be reclaimed from any thread once it is marked for deletion. That
-     includes nodes whose last reference is released after the owning thread
-     has exited. The sentinel is already marked and is freed by the destructor.
+     The head is the one node garbage_collect_external() has to skip, because
+     the owning thread may be linking a new node behind it without holding the
+     mutex. After sealing no add can be in flight or start, so external gc
+     deletes the head like every other node. This reclaims nodes whose last
+     reference is released after the owning thread has exited.
 
-     Can only be called on the owning thread, crashes otherwise. Call it at
-     most once, typically right before the owning thread exits.
+     Can only be called on the owning thread, crashes otherwise. Typically
+     called right before the owning thread exits.
    */
-  auto seal() -> void requires std::default_initializable<T> {
+  auto seal() -> void {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::seal was called from thread "
         << inspection::json(current_thread)
         << " but needs to be called from ThreadOwnedList's owning thread "
         << inspection::json(thread) << ". " << (void*)this;
-    auto* const sentinel = new Node{[]() { return T{}; }, *this};
-    // marked before it is published, so for_node never snapshots its empty
-    // data
-    sentinel->is_marked_for_deletion.store(true, std::memory_order_relaxed);
-    push_to_list(*sentinel);
-    // only now onto the free list: garbage_collect_external() asserts that at
-    // most one node in the free list is in head position, so the old head's
-    // previous pointer has to be visible before the sentinel can be found
-    // there
-    push_to_free_list(*sentinel);
-    if (_metrics) {
-      // balances the decrement in cleanup() when the sentinel is deleted
-      _metrics->increment_ready_for_deletion_nodes();
-    }
+    auto guard = std::lock_guard(_mutex);
+    _sealed = true;
   }
 
   /**
@@ -286,8 +264,8 @@ struct ThreadOwnedList
 
      This can be called from any thread. Cannot delete the head of the
      list, calling this will therefore result in at least one
-     marked-for-deletion node. On a sealed list (see seal()) the head is a
-     sentinel, so every real node is deleted.
+     marked-for-deletion node. On a sealed list (see seal()) the head is
+     deleted as well.
    */
   auto garbage_collect_external() noexcept -> size_t {
     // acquire the lock. This prevents the owning thread and the observer
@@ -307,7 +285,9 @@ struct ThreadOwnedList
       current = next;
       next = next->next_to_free;
       // (9) - this load synchronizes with the store in (6) and (8)
-      if (current->previous.load(std::memory_order_acquire) != nullptr) {
+      // a sealed list gets no more nodes, so its head can be deleted as well
+      if (_sealed ||
+          current->previous.load(std::memory_order_acquire) != nullptr) {
         if (_metrics) {
           _metrics->decrement_ready_for_deletion_nodes();
         }
@@ -383,7 +363,23 @@ struct ThreadOwnedList
                                                   std::memory_order_acquire));
   }
 
+  /**
+     Pushes a node onto the atomic list.
+
+     Can only be called on the owning thread, crashes otherwise.
+
+     Only the owning thread will update head, therefore we don't need a CAS loop
+     here.
+   */
   auto push_to_list(Node& node) noexcept -> void {
+    auto current_thread = basics::ThreadId::current();
+    ADB_PROD_ASSERT(current_thread == thread)
+        << "ThreadOwnedList::push_to_list was called from thread "
+        << inspection::json(current_thread)
+        << " but needs to be called from ThreadOwnedList's owning thread "
+        << inspection::json(thread) << ". " << (void*)this;
+    TRI_ASSERT(not _sealed)
+        << "ThreadOwnedList::push_to_list was called on a sealed list.";
     auto current_head = _head.load(std::memory_order_relaxed);
     node.next = current_head;
     if (current_head != nullptr) {

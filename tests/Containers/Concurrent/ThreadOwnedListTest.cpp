@@ -53,8 +53,6 @@ struct NodeData : InstanceCounterValue {
   int number;
 
   NodeData(int number) : number{number} {}
-  // required by seal(), which stores value-initialized data in its sentinel
-  NodeData() : NodeData{0} {}
 
   struct Snapshot {
     int number;
@@ -239,9 +237,7 @@ TEST_F(ThreadOwnedListTest,
 
   EXPECT_EQ(registry->garbage_collect_external(), 1);
   EXPECT_EQ(nodes_in_registry(registry), (std::vector<NodeData::Snapshot>{}));
-  // only the sentinel is left; it is freed together with the list, which
-  // TearDown verifies via the instance counter
-  EXPECT_EQ(registry->size(), 1);
+  EXPECT_EQ(registry->size(), 0);
 }
 
 TEST_F(ThreadOwnedListTest,
@@ -251,7 +247,7 @@ TEST_F(ThreadOwnedListTest,
 
   registry->seal();
 
-  // the sentinel is never iterated
+  // sealing does not hide nodes that are still referenced
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{node->data.snapshot()}));
 
@@ -259,7 +255,7 @@ TEST_F(ThreadOwnedListTest,
 
   EXPECT_EQ(registry->garbage_collect_external(), 1);
   EXPECT_EQ(nodes_in_registry(registry), (std::vector<NodeData::Snapshot>{}));
-  EXPECT_EQ(registry->size(), 1);
+  EXPECT_EQ(registry->size(), 0);
 }
 
 TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_seal) {
