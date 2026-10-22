@@ -756,10 +756,8 @@ class instance {
     }
     print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
     this.processSanitizerReports();
-    if (this.exitStatus.hasOwnProperty('signal') &&
-        ((this.exitStatus === 11) ||
-         (this.exitStatus === 6))) {
-      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+    if (this.exitStatus.hasOwnProperty('signal')) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus.signal + ') ';
       this.analyzeServerCrash(msg);
       this.serverCrashedLocal = true;
       this.message += msg;
