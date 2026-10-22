@@ -24,4 +24,5 @@ tests:
       - SupportTestSuite
       - ServiceTestSuite
     args:
-      --no-checkdata --no-run-upgrade
+      checkdata: false
+      run-upgrade: false
