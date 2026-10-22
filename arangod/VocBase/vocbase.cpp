@@ -83,6 +83,7 @@
 #include <velocypack/ValueType.h>
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -668,37 +669,76 @@ void Database::inventory(
   result.close();  // </views>
 }
 
-std::shared_ptr<LogicalCollection> Database::lookupCollection(
-    DataSourceId id) const noexcept {
-  auto ptr = lookupDataSource(id);
-  if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
+namespace {
+/// @brief applies the visibility matrix to a looked-up data source.
+///
+///   exists, granted      -> the collection
+///   exists, not granted  -> FORBIDDEN
+///   absent, granted      -> NOT_FOUND
+///   absent, not granted  -> FORBIDDEN
+///
+/// "granted" is canSeeCollection on the collection's real name if it exists,
+/// otherwise on the name it was requested by. A collection requested by id or
+/// uuid (empty `requestedName`) that does not exist has no name to check and
+/// counts as not granted, so existence cannot be probed by identifier.
+///
+/// Only enforced from API version 2 onwards; API versions 0 and 1, and
+/// contexts without a request (internal, superuser), keep the legacy,
+/// unchecked behaviour.
+///
+/// The FORBIDDEN result deliberately carries no details: it must be identical
+/// in both rows.
+auto applyVisibilityMatrix(std::shared_ptr<LogicalDataSource> dataSource,
+                           std::string_view db, std::string_view requestedName)
+    -> ResultT<std::shared_ptr<LogicalCollection>> {
+  bool const exists =
+      dataSource != nullptr &&
+      dataSource->category() == LogicalDataSource::Category::kCollection;
+
+  auto const& exec = ExecContext::current();
+  if (auto const apiVersion = exec.requestedApiVersion();
+      apiVersion.has_value() && *apiVersion > 1) {
+    auto const nameToCheck =
+        exists ? std::string_view{dataSource->name()} : requestedName;
+    if (nameToCheck.empty() || exec.canSeeCollection(db, nameToCheck).fail()) {
+      return Result{TRI_ERROR_FORBIDDEN};
+    }
   }
-  return basics::downCast<LogicalCollection>(std::move(ptr));
+  if (!exists) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+  return basics::downCast<LogicalCollection>(std::move(dataSource));
+}
+}  // namespace
+
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollection(
+    DataSourceId id) const {
+  return applyVisibilityMatrix(lookupDataSource(id), name(),
+                               /*requestedName*/ {});
 }
 
-std::shared_ptr<LogicalCollection> Database::lookupCollection(
-    std::string_view nameOrId) const noexcept {
-  auto ptr = lookupDataSource(nameOrId);
-  if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
-  }
-  return basics::downCast<LogicalCollection>(std::move(ptr));
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollection(
+    std::string_view nameOrId) const {
+  // a collection name never starts with a digit: that is a stringified id
+  bool const isName =
+      !nameOrId.empty() &&
+      !std::isdigit(static_cast<unsigned char>(nameOrId.front()));
+  return applyVisibilityMatrix(lookupDataSource(nameOrId), name(),
+                               isName ? nameOrId : std::string_view{});
 }
 
-std::shared_ptr<LogicalCollection> Database::lookupCollectionByUuid(
-    std::string_view uuid) const noexcept {
-  // otherwise we'll look up the collection by name
-  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-  auto it = _dataSourceByUuid.find(uuid);
-  if (it == _dataSourceByUuid.end()) {
-    return nullptr;
+ResultT<std::shared_ptr<LogicalCollection>> Database::lookupCollectionByUuid(
+    std::string_view uuid) const {
+  std::shared_ptr<LogicalDataSource> dataSource;
+  {
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+    if (auto const it = _dataSourceByUuid.find(uuid);
+        it != _dataSourceByUuid.end()) {
+      dataSource = it->second;
+    }
   }
-  TRI_ASSERT(it->second);
-  if (it->second->category() != LogicalDataSource::Category::kCollection) {
-    return nullptr;
-  }
-  return basics::downCast<LogicalCollection>(it->second);
+  return applyVisibilityMatrix(std::move(dataSource), name(),
+                               /*requestedName*/ {});
 }
 
 std::shared_ptr<LogicalDataSource> Database::lookupDataSource(
@@ -1006,13 +1046,14 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
 }
 
 Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
-  auto collection = lookupCollection(cid);
   auto const& dbName = _info.getName();
 
-  if (!collection) {
-    events::DropCollection(dbName, "", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    events::DropCollection(dbName, "", collectionResult.errorNumber());
+    return collectionResult.result();
   }
+  auto& collection = collectionResult.get();
 
   if (!allowDropSystem && collection->system() && _engine.isReady()) {
     // prevent dropping of system collections
@@ -1194,11 +1235,11 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
 }
 
 Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
-  auto collection = lookupCollection(cid);
-
-  if (!collection) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    return collectionResult.result();
   }
+  auto& collection = collectionResult.get();
 
   if (collection->system()) {
     return TRI_ERROR_FORBIDDEN;
@@ -1305,7 +1346,11 @@ Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
 
 std::shared_ptr<LogicalCollection> Database::useCollection(
     DataSourceId cid, bool checkPermissions) {
-  return useCollectionInternal(lookupCollection(cid), checkPermissions);
+  auto collectionResult = lookupCollection(cid);
+  if (collectionResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionResult.result());
+  }
+  return useCollectionInternal(collectionResult.get(), checkPermissions);
 }
 
 std::shared_ptr<LogicalCollection> Database::useCollection(

@@ -623,8 +623,9 @@ class QueryWildcardSearch : public QueryWildcard {
                "version": $0,
                "includeAllFields": true })",
           version()));
-      auto collection = _vocbase.lookupCollection("testCollection1");
-      ASSERT_TRUE(collection);
+      auto collectionResult = _vocbase.lookupCollection("testCollection1");
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     }

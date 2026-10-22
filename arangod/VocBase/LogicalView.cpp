@@ -190,8 +190,9 @@ Result LogicalView::drop() {
 std::vector<std::string> LogicalView::linkedCollectionNames() const {
   std::vector<std::string> names;
   visitCollections([&](DataSourceId cid, Indexes*) {
-    if (auto collection = vocbase().lookupCollection(cid); collection) {
-      names.push_back(collection->name());
+    if (auto collectionResult = vocbase().lookupCollection(cid);
+        collectionResult.ok()) {
+      names.push_back(collectionResult.get()->name());
     }
     return true;
   });

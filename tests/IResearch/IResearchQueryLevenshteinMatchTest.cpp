@@ -52,8 +52,9 @@ class QueryLevenhsteinMatch : public QueryTest {
   }
 
   void populateData() {
-    auto collection = _vocbase.lookupCollection("testCollection1");
-    ASSERT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("testCollection1");
+    ASSERT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     // insert some data
     {
       std::filesystem::path resource;
@@ -987,9 +988,10 @@ class QueryLevenhsteinMatchSearch : public QueryLevenhsteinMatch {
                "version": $1,
                "includeAllFields": true })",
           name, version()));
-      auto collection =
+      auto collectionResult =
           _vocbase.lookupCollection(absl::Substitute("testCollection$0", name));
-      ASSERT_TRUE(collection);
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };

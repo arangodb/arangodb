@@ -94,16 +94,17 @@ bool ResignShardLeadership::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto col = vocbase->lookupCollection(collection);
-    if (col == nullptr) {
+    auto colResult = vocbase->lookupCollection(collection);
+    if (colResult.fail()) {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
-            << " in database " << database;
+            << " in database " << database << ": " << colResult.errorMessage();
       LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
           << "ResignLeadership: " << error.str();
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(colResult.errorNumber(), error.str());
       return false;
     }
+    auto col = colResult.get();
 
     // Get exclusive lock on collection
     auto origin = transaction::OperationOriginInternal{"resigning leadership"};
