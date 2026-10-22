@@ -26,3 +26,4 @@ tests:
     args:
       checkdata: false
       run-upgrade: false
+      selenium: Remote_CHROME

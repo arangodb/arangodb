@@ -6,4 +6,7 @@ tests:
     job: run-rta-tests
     options:
       buckets: 1
-      browser: no-browser
+    args:
+      checkdata: true
+      run-upgrade: true
+      selenium: Remote_CHROME

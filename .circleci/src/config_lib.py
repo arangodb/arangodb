@@ -256,7 +256,6 @@ class TestOptions:
     priority: Optional[int] = None
     parallelity: Optional[int] = None
     buckets: Optional[Union[int, str]] = None  # int or "auto"
-    browser: Optional[str] = None  # int or "auto"
     replication_version: Optional[str] = None
     suffix: Optional[str] = None  # Job name suffix for disambiguation
     time_limit: Optional[int] = None  # Time limit in seconds
@@ -333,7 +332,6 @@ class TestOptions:
             "priority": "priority",
             "parallelity": "parallelity",
             "buckets": "buckets",
-            "browser": "browser",
             "replication_version": "replication_version",
             "suffix": "suffix",
             "timeLimit": "time_limit",
@@ -363,7 +361,6 @@ class TestOptions:
                 priority=self.priority,
                 parallelity=self.parallelity,
                 buckets=self.buckets,
-                browser=self.browser,
                 replication_version=self.replication_version,
                 suffix=self.suffix,
                 time_limit=self.time_limit,
@@ -379,7 +376,6 @@ class TestOptions:
             priority=merge_field(override.priority, self.priority),
             parallelity=merge_field(override.parallelity, self.parallelity),
             buckets=merge_field(override.buckets, self.buckets),
-            browser=merge_field(override.browser, self.browser),
             replication_version=merge_field(
                 override.replication_version, self.replication_version
             ),
@@ -804,18 +800,6 @@ class TestJob:
         # At this point we know buckets is an int (not None, not "auto")
         assert isinstance(self.options.buckets, int)
         return self.options.buckets
-
-    def get_browser(self) -> Optional[str]:
-        """
-        Calculate the number of buckets for this job.
-
-        Returns:
-            Number of buckets, or None if not using buckets
-        """
-        if self.options.browser is None:
-            return 'Remote_CHROME'
-        return self.options.browser
-
 
 @dataclass
 class TestDefinitionFile:
