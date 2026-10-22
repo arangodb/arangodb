@@ -1507,7 +1507,7 @@ jobs:
       rta-branch:
         type: string
         default: "main"
-      arangosh_args:
+      arangosh_args: # converted to rta_args later on...
         type: string
         default: ""
       docker_image:
