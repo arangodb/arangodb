@@ -23,3 +23,5 @@ tests:
       - DashboardTestSuite
       - SupportTestSuite
       - ServiceTestSuite
+    args:
+      --no-checkdata --no-run-upgrade
