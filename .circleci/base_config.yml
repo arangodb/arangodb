@@ -1515,7 +1515,7 @@ jobs:
         default: "<< pipeline.parameters.test-docker-image >>"
       buckets:
         type: integer
-        default: -1
+        default: 1
       sanitizer:
         type: string
         default: ""
