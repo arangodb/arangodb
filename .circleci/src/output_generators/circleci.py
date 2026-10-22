@@ -827,7 +827,6 @@ class CircleCIGenerator(OutputGenerator):
                 ),
                 "arangosh_args": self._dict_to_python_args_string(job.arguments.extra_args),
                 "deployment": "SG" if deployment == "single" else "CL",
-                "browser": job.get_browser(),
                 "enterprise": "EP",
                 "filterStatement": ui_filter,
                 "requires": build_jobs,

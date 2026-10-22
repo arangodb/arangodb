@@ -1504,8 +1504,6 @@ jobs:
         type: string
       filterStatement:
         type: string
-      browser:
-        type: string
       rta-branch:
         type: string
         default: "main"
@@ -1577,9 +1575,6 @@ jobs:
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             fi
             RTA_ARGS=(<< parameters.arangosh_args >>)
-            if [ "<< parameters.browser >>" != "no-browser" ]; then
-              RTA_ARGS+=(--selenium << parameters.browser >> )
-            fi
             if [ << parameters.buckets >> != 1 ]; then
               RTA_ARGS+=(--buckets $BUCKETS)
             fi
