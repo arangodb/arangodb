@@ -51,6 +51,7 @@ struct RocksDBColumnFamilyManager {
     MdiVPackIndex = 9,
     VectorIndex = 10,
     PrimaryIndex_TT = 11,  // time-travel primary idx (User-Defined Timestamps)
+    BitmapIndex = 12,
 
     Invalid = 1024  // special placeholder
   };
@@ -61,7 +62,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 12;
+  static constexpr size_t numberOfColumnFamilies = 13;
 
   static void initialize();
 

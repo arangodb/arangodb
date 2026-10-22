@@ -1,4 +1,5 @@
 add_library(arango_indexes STATIC
+  BitmapIndexMatcher.cpp
   Index.cpp
   IndexFactory.cpp
   IndexIterator.cpp

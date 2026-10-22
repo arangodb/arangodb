@@ -119,6 +119,10 @@ RocksDBKeyBounds RocksDBKeyBounds::VectorVPackIndex(uint64_t indexId) {
   return {RocksDBEntryType::VectorVPackIndexValue, indexId, false};
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::BitmapIndex(uint64_t indexId) {
+  return {RocksDBEntryType::BitmapIndexValue, indexId, false};
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice left,
@@ -264,6 +268,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::VectorVPackIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::VectorIndex);
+    case RocksDBEntryType::BitmapIndexValue:
+      return RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::BitmapIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
@@ -465,6 +472,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     case RocksDBEntryType::MdiIndexValue:
     case RocksDBEntryType::UniqueMdiIndexValue:
     case RocksDBEntryType::VectorVPackIndexValue:
+    case RocksDBEntryType::BitmapIndexValue:
       TRI_ASSERT(second == false) << "reverse not supported";
       _internals.reserve(2 * sizeof(uint64_t));
       uint64ToPersistent(_internals.buffer(), first);

@@ -29,6 +29,7 @@
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
+#include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -332,6 +333,9 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case IndexType::MDIPrefixed:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
+    case IndexType::Bitmap:
+      return bitmap_index::supportsFilterCondition(*this, node, reference,
+                                                   itemsInIndex);
     case IndexType::Unknown:
       break;
   }
@@ -378,6 +382,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
     case IndexType::Vector:
+    case IndexType::Bitmap:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -435,6 +440,8 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
       return mdi::specializeCondition(this, node, reference);
+    case IndexType::Bitmap:
+      return bitmap_index::specializeCondition(*this, node, reference);
     case IndexType::Vector:
     case IndexType::Unknown:
       break;
@@ -465,6 +472,7 @@ ClusterIndex::coveredFields() const {
     case IndexType::Zkd:
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
+    case IndexType::Bitmap:
     case IndexType::NoAccess: {
       return Index::emptyCoveredFields;
     }

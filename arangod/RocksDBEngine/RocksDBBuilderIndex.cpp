@@ -619,6 +619,14 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
+  rocksdb::Status MergeCF(uint32_t /*column_family_id*/,
+                          const rocksdb::Slice& /*key*/,
+                          const rocksdb::Slice& /*value*/) override {
+    // merge operands belong to bitmap indexes, never to documents
+    incTick();
+    return rocksdb::Status();
+  }
+
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {

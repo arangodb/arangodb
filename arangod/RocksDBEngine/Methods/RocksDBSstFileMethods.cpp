@@ -209,6 +209,14 @@ rocksdb::Status RocksDBSstFileMethods::PutUntracked(
   return this->Put(cf, key, val, false);
 }
 
+rocksdb::Status RocksDBSstFileMethods::MergeUntracked(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
+    rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(false);
+  return rocksdb::Status::NotSupported();
+}
+
 rocksdb::Status RocksDBSstFileMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);

@@ -112,6 +112,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const& key,
                                rocksdb::Slice const& val) final override;
+  rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
+                                 RocksDBKey const& key,
+                                 rocksdb::Slice const& val) final override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                          RocksDBKey const& key) final override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,

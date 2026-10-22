@@ -23,6 +23,7 @@
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "RocksDBEngine/RocksDBBitmapIndexMergeOperator.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
@@ -75,6 +76,14 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      break;
+    }
+    case RocksDBColumnFamilyManager::Family::BitmapIndex: {
+      // fixed 8 byte object id prefix, plus merge operator, compaction filter
+      // and merge operand collector for the bitmaps
+      result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      bitmap_index::configureColumnFamily(result);
       break;
     }
     case RocksDBColumnFamilyManager::Family::PrimaryIndex_TT: {

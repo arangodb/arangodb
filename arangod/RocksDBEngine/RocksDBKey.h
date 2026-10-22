@@ -192,6 +192,10 @@ class RocksDBKey {
   void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
 
+  /// @brief Create a key for a bitmap index. `body` holds the encoded prefix
+  /// values and term, optionally followed by the encoded shard number.
+  void constructBitmapIndexValue(uint64_t indexId, std::string_view body);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for vector index
   //////////////////////////////////////////////////////////////////////////////

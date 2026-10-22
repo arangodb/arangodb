@@ -54,6 +54,15 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### CRoaring
+
+* Name: CRoaring
+* Version: 5.2.3
+* Project Home: https://github.com/RoaringBitmap/CRoaring
+* License: https://raw.githubusercontent.com/RoaringBitmap/CRoaring/v5.2.3/LICENSE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
 ### date
 
 * Name: date

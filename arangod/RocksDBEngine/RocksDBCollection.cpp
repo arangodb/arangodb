@@ -1475,6 +1475,11 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
                 snapshot, true);
             break;
+          case IndexType::Bitmap:
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::BitmapIndex(rix->objectId()), snapshot,
+                true);
+            break;
           default:
             // we should not get here
             TRI_ASSERT(false);

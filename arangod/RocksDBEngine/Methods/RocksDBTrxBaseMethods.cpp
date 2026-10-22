@@ -293,6 +293,23 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
   return s;
 }
 
+rocksdb::Status RocksDBTrxBaseMethods::MergeUntracked(
+    rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
+    rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_rocksTransaction);
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _rocksTransaction->MergeUntracked(cf, key.string(), val);
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    // plus potential overhead of indexing. untracked merges take no locks.
+    _memoryTracker.increaseMemoryUsage(
+        (currentWriteBatchSize() - beforeSize) +
+        indexingOverhead(!_indexingDisabled, key.string().size()));
+  }
+  return s;
+}
+
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);

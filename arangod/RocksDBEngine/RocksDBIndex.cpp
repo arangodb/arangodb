@@ -413,6 +413,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(IndexType type, uint64_t objectId,
       return RocksDBKeyBounds::MdiVPackIndex(objectId);
     case IndexType::Vector:
       return RocksDBKeyBounds::VectorVPackIndex(objectId);
+    case IndexType::Bitmap:
+      return RocksDBKeyBounds::BitmapIndex(objectId);
     case IndexType::Unknown:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

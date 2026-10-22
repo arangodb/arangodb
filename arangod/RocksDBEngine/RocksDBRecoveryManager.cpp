@@ -574,7 +574,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         "MarkCommit() handler not defined.");
   }
 
-  // MergeCF is not used
+  rocksdb::Status MergeCF(uint32_t /*column_family_id*/,
+                          const rocksdb::Slice& /*key*/,
+                          const rocksdb::Slice& /*value*/) override {
+    // merge operands are only written by bitmap indexes, which have no
+    // recovery state of their own
+    ++_entriesScanned;
+    incTick();
+    return rocksdb::Status();
+  }
 };
 
 /// parse the WAL with the above handler parser class

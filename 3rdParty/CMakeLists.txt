@@ -201,6 +201,17 @@ add_library(llhttp STATIC
 target_include_directories(llhttp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/llhttp/include")
 
 ################################################################################
+## CRoaring
+################################################################################
+
+add_library(croaring STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/croaring/roaring.c
+)
+set_target_properties(croaring PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_options(croaring PRIVATE -w)
+target_include_directories(croaring SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/croaring")
+
+################################################################################
 ## NGHTTP2
 ################################################################################
 

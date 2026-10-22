@@ -29,6 +29,8 @@
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBBitmapIndex.h"
+#include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
@@ -215,6 +217,39 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
     return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
                                              1, 2);
+  }
+};
+
+struct BitmapIndexFactory : public DefaultIndexFactory {
+  explicit BitmapIndexFactory(application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, IndexType::Bitmap) {}
+
+  std::shared_ptr<Index> instantiate(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<RocksDBBitmapIndex>(id, collection, definition);
+  }
+
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(IndexType::Bitmap)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    if (isCreation) {
+      normalized.add("shardBits", velocypack::Value(bitmap_index::kShardBits));
+    } else if (auto bits = definition.get("shardBits"); bits.isNumber()) {
+      normalized.add("shardBits", bits);
+    }
+
+    return IndexFactory::enhanceJsonIndexBitmap(definition, normalized,
+                                                isCreation);
   }
 };
 
@@ -518,6 +553,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
+  static const BitmapIndexFactory bitmapIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -534,6 +570,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace("vector", vectorIndexFactory);
+  emplace("bitmap", bitmapIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }

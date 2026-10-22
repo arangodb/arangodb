@@ -132,6 +132,24 @@ AstNode* replaceIteratorReference(AstNode* node, Variable const* iteratorVar,
   return Ast::traverseAndModify(node, func);
 }
 
+/// @brief whether an expression always evaluates to a boolean
+bool isBooleanExpression(AstNode const* node) {
+  return node->isComparisonOperator() || node->isArrayComparisonOperator() ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_OR ||
+         node->type == NODE_TYPE_OPERATOR_UNARY_NOT;
+}
+
+/// @brief whether the condition is `p.xxx[* RETURN expr] ALL == true`
+bool isAllTrueComparison(AstNode const* condition) {
+  if (condition->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      !Quantifier::isAll(condition->getMemberUnchecked(2))) {
+    return false;
+  }
+  AstNode const* rhs = condition->getMemberUnchecked(1);
+  return rhs->isBoolValue() && rhs->getBoolValue();
+}
+
 AstNode* buildExpansionReplacement(Ast* ast, AstNode const* condition,
                                    AstNode* tmpVar) {
   AstNodeType type = buildSingleComparatorType(condition);
@@ -142,11 +160,23 @@ AstNode* buildExpansionReplacement(Ast* ast, AstNode const* condition,
 
   Variable const* iteratorVar = expansion.getIterator().getVariable();
 
-  // This is the part appended to each element in the expansion. We work on a
-  // copy, the expansion itself is left alone.
-  AstNode* lhs = replaceIteratorReference(expansion.getExpression()->clone(ast),
-                                          iteratorVar, tmpVar);
-  AstNode* result = ast->createNodeBinaryOperator(type, lhs, rhs);
+  AstNode* result = nullptr;
+  if (expansion.getProjection()->type != NODE_TYPE_NOP) {
+    // p.edges[* RETURN B(CURRENT)] ALL == true
+    // means "B(edge) == true for every edge"
+    TRI_ASSERT(isAllTrueComparison(condition));
+    AstNode* projection = replaceIteratorReference(
+        expansion.getProjection()->clone(ast), iteratorVar, tmpVar);
+    result = isBooleanExpression(projection)
+                 ? projection
+                 : ast->createNodeBinaryOperator(type, projection, rhs);
+  } else {
+    // This is the part appended to each element in the expansion. We work on
+    // a copy, the expansion itself is left alone.
+    AstNode* lhs = replaceIteratorReference(
+        expansion.getExpression()->clone(ast), iteratorVar, tmpVar);
+    result = ast->createNodeBinaryOperator(type, lhs, rhs);
+  }
 
   AstNode const* filter = expansion.getFilter();
   if (filter->type != NODE_TYPE_NOP) {
@@ -298,6 +328,9 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
 
 /// @brief check whether the inline FILTER of an expansion (an ARRAY_FILTER
 /// node) can be pulled into the traversal
+bool isSupportedPerElementExpression(Ast const* ast, Variable const* pathVar,
+                                     AstNode const* expression);
+
 bool isSupportedInlineFilter(Ast const* ast, Variable const* pathVar,
                              AstNode const* filter) {
   ast::ArrayFilterNode arrayFilter{filter};
@@ -306,9 +339,18 @@ bool isSupportedInlineFilter(Ast const* ast, Variable const* pathVar,
   if (arrayFilter.getQuantifier()->type != NODE_TYPE_NOP) {
     return false;
   }
+  return isSupportedPerElementExpression(ast, pathVar,
+                                         arrayFilter.getFilter());
+}
+
+/// @brief check whether an expression evaluated per edge/vertex (an inline
+/// FILTER or the RETURN projection of an expansion) can be pulled into the
+/// traversal
+bool isSupportedPerElementExpression(Ast const* ast, Variable const* pathVar,
+                                     AstNode const* expression) {
   bool supported = true;
   Ast::traverseReadOnly(
-      arrayFilter.getFilter(),
+      expression,
       [&](AstNode const* n) -> bool {
         if (!supported) {
           return false;
@@ -360,11 +402,28 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&ast, &notSupported,
+  // the RETURN projection of the path expansion, validated as a whole and
+  // skipped, like an inline FILTER
+  AstNode const* projectionToSkip = nullptr;
+  bool hasProjection = false;
+
+  auto supportedGuard = [&ast, &notSupported, &projectionToSkip,
                          pathVar](AstNode const* n) -> bool {
     // cppcheck-suppress knownConditionTrueFalse
     if (notSupported) {
       return false;
+    }
+    if (n == projectionToSkip) {
+      if (!isSupportedPerElementExpression(ast, pathVar, n)) {
+        notSupported = true;
+      }
+      return false;
+    }
+    if (n->type == NODE_TYPE_EXPANSION) {
+      ast::ExpansionNode expansion{n};
+      if (expansion.getProjection()->type != NODE_TYPE_NOP) {
+        projectionToSkip = expansion.getProjection();
+      }
     }
     if (!isSupportedNode(ast, pathVar, n)) {
       notSupported = true;
@@ -383,8 +442,8 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
   };
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
-                        &parentOfReplace, &replaceIdx,
-                        &indexedAccessDepth](AstNode* node) -> AstNode* {
+                        &parentOfReplace, &replaceIdx, &indexedAccessDepth,
+                        &hasProjection](AstNode* node) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -463,18 +522,20 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
-          // Check that the expansion [*] contains no inline LIMIT or RETURN;
-          // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
-          // respectively. An inline FILTER (member 2) is supported and turned
-          // into an implication per edge/vertex, see
-          // buildExpansionReplacement(). It has already been validated (and
+          // Check that the expansion [*] contains no inline LIMIT; members
+          // 2, 3 and 4 correspond to FILTER, LIMIT and RETURN, respectively.
+          // An inline FILTER (member 2) is supported and turned into an
+          // implication per edge/vertex, see buildExpansionReplacement(). A
+          // RETURN projection (member 4) is supported in the form
+          // `p.edges[* RETURN B(CURRENT)] ALL == true`, checked once the whole
+          // condition has been matched. Both have already been validated (and
           // skipped) by the supportedGuard.
           ast::ExpansionNode expansion{node};
-          if (expansion.getLimit()->type != NODE_TYPE_NOP ||
-              expansion.getProjection()->type != NODE_TYPE_NOP) {
+          if (expansion.getLimit()->type != NODE_TYPE_NOP) {
             notSupported = true;
             return node;
           }
+          hasProjection = expansion.getProjection()->type != NODE_TYPE_NOP;
 
           // We continue in this pattern, all good
           patternStep++;
@@ -587,6 +648,13 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
   if (patternStep < 8) {
     // We found sth. that is not matching the pattern complete.
     // => Do not optimize
+    return false;
+  }
+
+  if (hasProjection &&
+      (depth != UINT64_MAX ||
+       !isAllTrueComparison(parentOfReplace->getMemberUnchecked(replaceIdx)))) {
+    // a RETURN projection is only understood as "true for every element"
     return false;
   }
 

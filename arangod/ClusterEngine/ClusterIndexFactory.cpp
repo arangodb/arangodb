@@ -201,6 +201,8 @@ void ClusterIndexFactory::linkIndexFactories(
       server, engine, factory);
   static const DefaultIndexFactory vectorIndexFactory(server, "vector", engine,
                                                       factory);
+  static const DefaultIndexFactory bitmapIndexFactory(server, "bitmap", engine,
+                                                      factory);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -217,6 +219,7 @@ void ClusterIndexFactory::linkIndexFactories(
   factory.emplace(mdiPrefixedIndexFactory._type, mdiPrefixedIndexFactory);
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
   factory.emplace(vectorIndexFactory._type, vectorIndexFactory);
+  factory.emplace(bitmapIndexFactory._type, bitmapIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(
