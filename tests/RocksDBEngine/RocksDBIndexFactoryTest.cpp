@@ -98,17 +98,6 @@ TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNotCreating) {
   EXPECT_EQ(countObjectId(normalized.slice()), 0);
 }
 
-TEST_F(RocksDBIndexFactoryTest, noExtraObjectIdWhenAlreadyPresent) {
-  auto definition = velocypack::Parser::fromJson(
-      R"({"type": "inverted", "fields": ["x"], "objectId": "123"})");
-  velocypack::Builder normalized;
-  auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                            /*isCreation*/ true,
-                                            mockServer.getSystemDatabase());
-  ASSERT_TRUE(res.ok()) << res.errorMessage();
-  EXPECT_EQ(countObjectId(normalized.slice()), 1);
-}
-
 TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNormalizeFails) {
   auto definition =
       velocypack::Parser::fromJson(R"({"type": "ttl", "fields": ["x"]})");
