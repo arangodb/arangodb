@@ -452,7 +452,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
                        _infos.getQuery().resourceMonitor()),
       _ctx(_trx, infos.getQuery(), _aqlFunctionsInternalCache,
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
-      _filterCtx(_ctx),
+      _filterCtx(&_ctx, &infos.getQuery()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()) {
   if constexpr (ExecutionTraits::EmitSearchDoc) {

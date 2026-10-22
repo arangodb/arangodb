@@ -40,6 +40,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -97,7 +98,6 @@ struct DatabaseJavaScriptCache;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -422,9 +422,12 @@ struct Database {
       arangodb::velocypack::Slice infoSlice,
       bool allowEnterpriseCollectionsOnSingleServer);
 
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
+      std::vector<CollectionDescriptor> descriptors);
+
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
@@ -436,6 +439,9 @@ struct Database {
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      CollectionDescriptor descriptor);
+
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem);
@@ -443,6 +449,17 @@ struct Database {
   /// @brief validate parameters for collection creation.
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
+
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
+  arangodb::Result validateCollectionDescriptor(
+      CollectionDescriptor const& descriptor);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
@@ -470,6 +487,9 @@ struct Database {
   /// ClusterInfo.
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       arangodb::velocypack::Slice data, bool isAStub);
+
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
+      CollectionDescriptor descriptor, bool isAStub);
 
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes) for storage. The object is augmented

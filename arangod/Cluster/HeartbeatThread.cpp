@@ -777,7 +777,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     } catch (...) {
     }
 
-    if (version > 0) {
+    if (version > 0 && server().hasFeature<FoxxFeature>()) {
       // track the global foxx queues version from the agency. any
       // coordinator can update this any time. the setQueueVersion
       // method makes sure we are not going below a value that
@@ -1021,7 +1021,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // database on one coordinator and then access the newly created
   // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
-    if (!options.value.isObject()) {
+    if (!options.value.isObject() ||
+        options.value.hasKey(StaticStrings::AttrIsBuilding)) {
       continue;
     }
 

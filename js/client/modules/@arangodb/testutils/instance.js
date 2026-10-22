@@ -169,10 +169,15 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
+  // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
+  // point --server.external-rbac-service at the locally launched dummy. The
+  // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
+  // gone on purpose - the instance now derives JWT from moreArgs itself (see
+  // the jwt-secret handling further down), so passing them in was redundant.
   constructor(options, myInstanceRole, protocol,
               agencyMgr, addArgs,
-              rootDir, tmpDir, restKeyFile,
-              jwt_secret, mem) {
+              rootDir, tmpDir,
+              jwt_secret, mem, rbacPort) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -180,6 +185,7 @@ class instance {
     this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
+    this.rbacPort = rbacPort;
 
     this.moreArgs = {};
     this.args = {};
@@ -198,7 +204,6 @@ class instance {
         this.args[key] = value;
       }
     }
-    this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
@@ -226,6 +231,7 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
+    this.hasSetPassvoid = false;
     this.jwt_secret = jwt_secret;
     this.jwtFiles = null;
     this.jwtSecrets = [];
@@ -264,10 +270,10 @@ class instance {
       message: this.message,
       rootDir: this.rootDir,
       protocol: this.protocol,
-      restKeyFile: this.restKeyFile,
       agencyConfig: (this.agencyMgr !== undefined) ? this.agencyMgr.getStructure():{},
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
+      rbacPort: this.rbacPort,
       port: this.port,
       url: this.url,
       endpoint: this.endpoint,
@@ -293,10 +299,10 @@ class instance {
     this.message = struct['message'];
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
-    this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
     this.port = struct['port'];
+    this.rbacPort = struct['rbacPort'];
     this.url = struct['url'];
     this.endpoint = struct['endpoint'];
     this.dataDir = struct['dataDir'];
@@ -384,6 +390,18 @@ class instance {
     }
   }
 
+  // config file and js tree; both belong to the current binary set
+  _makeConfigArgs () {
+    let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
+    return {
+      'configuration': fs.join(pu.CONFIG_DIR, config),
+      'define': 'TOP_DIR=' + pu.TOP_DIR
+    };
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -413,13 +431,8 @@ class instance {
       this.appDir = fs.getTempPath();
     }
 
-    let config = 'arangod-' + this.instanceRole + '.conf';
-    if (this.options.arangodConfig !== undefined) {
-      config = this.options.arangodConfig;
-    }
     let default_args = {
-      'configuration': fs.join(pu.CONFIG_DIR, config),
-      'define': 'TOP_DIR=' + pu.TOP_DIR,
+      ...this._makeConfigArgs(),
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -457,6 +470,14 @@ class instance {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
 
+    if (this.options.rbac) {
+      if (typeof this.options.rbac !== "string") {
+        this.args["server.external-rbac-service"] = `http://127.0.0.1:${this.rbacPort}`;
+      } else {
+        this.args["server.external-rbac-service"] = this.options.rbac;
+      }
+      this.args["server.harden"] = true;
+    }
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
@@ -542,11 +563,6 @@ class instance {
         this.args['cluster.default-replication-factor'] = '2';
       }
     }
-    if (this.options.encryptionAtRest &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
-        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
-      this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
-    }
     if (this.options.isInstrumented && this.instanceRole in [
       instanceRole.dbServer,
       instanceRole.coordinator,
@@ -593,6 +609,8 @@ class instance {
 
   _executeArangod (moreArgs, instanceJson) {
     let cmd = pu.ARANGOD_BIN;
+    // the binary set may have changed since the constructor ran
+    Object.assign(this.args, this._makeConfigArgs());
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
     if (this.options.valgrind) {
@@ -642,6 +660,8 @@ class instance {
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
     subEnv.push(`INSTANCEINFO=${instanceJson}`);
+    // make arangod use the ICU data of the build it comes from
+    subEnv.push(`ICU_DATA=${pu.BIN_DIR}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
@@ -734,7 +754,23 @@ class instance {
       print(".");
       sleep(1);
     }
-    print(`${Date()} upgrade of ${this.name} finished.`);
+    print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
+    this.processSanitizerReports();
+    if (this.exitStatus.hasOwnProperty('signal') &&
+        ((this.exitStatus === 11) ||
+         (this.exitStatus === 6))) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+      this.analyzeServerCrash(msg);
+      this.serverCrashedLocal = true;
+      this.message += msg;
+      msg = " runUpgrade: Marking crashy";
+      pu.serverCrashed = true;
+      this.message += msg;
+      print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+      this.pid = null;
+      return false;
+    }
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -812,8 +848,10 @@ class instance {
     let httpOptions = makeAuthorizationHeaders(this.options, this.jwt_secret);
     httpOptions.method = '';
     httpOptions.returnBodyOnError = true;
+    let count = 0;
 
     while (true) {
+      count += 1;
       this.exitStatus = this.status(false);
       if (this.exitStatus.status === 'RUNNING') {
         this.exitStatus = null;
@@ -823,8 +861,8 @@ class instance {
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
-          if (this.jwt_secret) {
-            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url}`);
+          if (this.jwt_secret !== '') {
+            print(`${Date()} reconnecting ${this.name} with JWT '${this.jwt_secret}' to ${this.url} - deadline ${deadline}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  undefined,
@@ -839,7 +877,7 @@ class instance {
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  `${this.options.username}`,
-                                 this.options.password,
+                                 this.hasSetPassvoid ? this.options.password: '',
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
               this.dumpConnectionTable();
@@ -855,6 +893,9 @@ class instance {
         }
       } catch (ex) {
         if (time() < deadline) {
+          if ((count % 10) === 0) {
+            print(`${Date()} ping failed by: ${ex}`);
+          }
           print('.');
           sleep(1);
         } else {
@@ -898,7 +939,7 @@ class instance {
         }
       }
     }
-    if (this.jwt_secret) {
+    if (this.jwt_secret !== '') {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}, ${this.jwt_secret}`);
       const ret = arango.reconnect(this.endpoint, '_system',
                                    this.isFrontend() ? `${this.options.username}` : undefined,
@@ -909,7 +950,10 @@ class instance {
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      const ret = arango.reconnect(this.endpoint,
+                                   '_system', 'root',
+                                   this.hasSetPassvoid ? this.options.password: '',
+                                   true);
       this.connectionHandle = arango.getConnectionHandle();
       this.dumpConnectionTable();
       return ret;
@@ -1090,8 +1134,8 @@ class instance {
         if (!this.options.noStartStopLogs) {
           print(Date() + ' ' + this.url + '/_admin/shutdown');
         }
-        try {
-          if (!this.toThisInstance(() => {
+        if (!this.toThisInstance(() => {
+          try {
             arango.timeout(5);
             let reply = arango.DELETE_RAW('/_admin/shutdown', '');
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
@@ -1109,18 +1153,18 @@ class instance {
               print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
             }
             return true;
-          }, false, false)) { // the primary connection may not be restored - we don't care.
-            if (!this.options.noStartStopLogs) {
-              print(sockStat);
-            }
+          } catch (ex) {
+            print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
+            this.exitStatus = killExternal(this.pid);
+            this._disconnect();
+            this.pid = null;
+          } finally {
+            arango.timeout(oldTimeout);
           }
-        } catch (ex) {
-          print(`${RED}${Date()} During shutdown: ${ex.message} - will try to continue anyways ${ex.stack}`);
-          this.exitStatus = killExternal(this.pid);
-          this._disconnect();
-          this.pid = null;
-        } finally {
-          arango.timeout(oldTimeout);
+        }, false, false)) { // the primary connection may not be restored - we don't care.
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
       }  
     } else {
@@ -1287,7 +1331,7 @@ class instance {
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
-  /////////////                Utility functionality                             ////////////////////
+  /////////////                Utility functionality                   ////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1575,6 +1619,8 @@ class instance {
         throw caughtEx;
       }
       throw new Error(`failed to restore connection to ${handle}`);
+    } else if (!reconnected && this.options.extremeVerbosity) {
+      print(`${CYAN}${Date()} ignoring reconnect error as you requested: ${caughtEx}${RESET}`);
     }
     return ret;
   }
@@ -1814,7 +1860,9 @@ class instance {
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
-            (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
+          (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code) ||
+          (ex.errorNum === internal.errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code)
+        )) {
           print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
           return this.checkDebugTerminated(true, signal_to_expect);
         }

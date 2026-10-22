@@ -1,0 +1,3 @@
+# arangosh startup races with V8's own worker threads. The project file already
+# declares that all V8 races are to be ignored.
+race_top:operator delete

@@ -44,38 +44,22 @@ struct OrSimplifier {
 
   OrSimplifier(Ast* ast, ExecutionPlan* plan) : ast(ast), plan(plan) {}
 
-  std::string stringifyNode(AstNode const* node) const {
-    try {
-      return node->toString();
-    } catch (...) {
-    }
-    return std::string();
-  }
-
-  bool qualifies(AstNode const* node, std::string& attributeName) const {
+  bool qualifies(AstNode const* node) const {
     if (node->isConstant()) {
       return false;
     }
-
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-        node->type == NODE_TYPE_INDEXED_ACCESS ||
-        node->type == NODE_TYPE_REFERENCE) {
-      attributeName = stringifyNode(node);
-      return true;
-    }
-
-    return false;
+    return node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+           node->type == NODE_TYPE_INDEXED_ACCESS ||
+           node->type == NODE_TYPE_REFERENCE;
   }
 
-  bool detect(AstNode const* node, bool preferRight, std::string& attributeName,
-              AstNode const*& attr, AstNode const*& value) const {
-    attributeName.clear();
-
+  bool detect(AstNode const* node, bool preferRight, AstNode const*& attr,
+              AstNode const*& value) const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       ast::RelationalOperatorNode eqOp(node);
       auto lhs = eqOp.getLeft();
       auto rhs = eqOp.getRight();
-      if (!preferRight && qualifies(lhs, attributeName)) {
+      if (!preferRight && qualifies(lhs)) {
         if (rhs->isDeterministic()) {
           attr = lhs;
           value = rhs;
@@ -83,7 +67,7 @@ struct OrSimplifier {
         }
       }
 
-      if (qualifies(rhs, attributeName)) {
+      if (qualifies(rhs)) {
         if (lhs->isDeterministic()) {
           attr = rhs;
           value = lhs;
@@ -94,7 +78,7 @@ struct OrSimplifier {
       ast::RelationalOperatorNode inOp(node);
       auto lhs = inOp.getLeft();
       auto rhs = inOp.getRight();
-      if (rhs->isArray() && qualifies(lhs, attributeName)) {
+      if (rhs->isArray() && qualifies(lhs)) {
         if (rhs->isDeterministic()) {
           attr = lhs;
           value = rhs;
@@ -153,17 +137,15 @@ struct OrSimplifier {
            lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) &&
           (rhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
            rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN)) {
-        std::string leftName;
-        std::string rightName;
         AstNode const* leftAttr = nullptr;
         AstNode const* rightAttr = nullptr;
         AstNode const* leftValue = nullptr;
         AstNode const* rightValue = nullptr;
 
         for (size_t i = 0; i < 4; ++i) {
-          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) &&
-              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) &&
-              leftName == rightName) {
+          if (detect(lhsNew, i >= 2, leftAttr, leftValue) &&
+              detect(rhsNew, i % 2 == 0, rightAttr, rightValue) &&
+              compareAstNodes<false>(leftAttr, rightAttr, false) == 0) {
             std::pair<Variable const*,
                       std::vector<arangodb::basics::AttributeName>>
                 tmp1;

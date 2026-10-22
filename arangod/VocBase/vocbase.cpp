@@ -73,9 +73,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
@@ -349,6 +348,20 @@ std::shared_ptr<LogicalCollection> Database::createCollectionObject(
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
 
   return std::make_shared<LogicalCollection>(*this, data, isAStub);
+}
+
+std::shared_ptr<LogicalCollection> Database::createCollectionObject(
+    CollectionDescriptor descriptor, bool isAStub) {
+  // every collection object on coordinators must be a stub
+  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  // collection objects on single servers must not be stubs
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
+  if (!isAStub) {
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
+  }
+
+  return std::make_shared<LogicalCollection>(*this, descriptor, isAStub);
 }
 #endif
 
@@ -807,47 +820,48 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
   }
 }
 
-ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-Database::createCollections(
-    std::vector<arangodb::CreateCollectionBody> const& collections,
-    bool allowEnterpriseCollectionsOnSingleServer) {
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
-  VPackBuilder builder =
-      CreateCollectionBody::toCreateCollectionProperties(collections);
-  VPackSlice infoSlice = builder.slice();
+std::shared_ptr<LogicalCollection> Database::createCollection(
+    CollectionDescriptor descriptor) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
+  auto const& dbName = _info.getName();
+  std::string name = descriptor.mutableProps.name;
+
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
+  }
   try {
-    // Here we do have a single server setup, or we're either on a DBServer
-    // / Agency. In that case, we're not batching collection creating.
-    // Therefore, we need to iterate over the infoSlice and create each
-    // collection one by one.
-    auto result =
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
+    auto collection =
+        createCollectionObject(std::move(descriptor), /*isAStub*/ false);
 
-    // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer() &&
-        _server.hasFeature<DatabaseFeature>()) {
-      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
-          result.size());
+    {
+      READ_LOCKER(readLocker, _inventoryLock);
+      persistCollection(collection);
     }
 
-    return {result};
+    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
+    _databaseProvider.notifyDdlChange("create collection");
 
+    // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
+    }
+
+    return collection;
   } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+    events::CreateCollection(dbName, name, ex.code());
+    throw;
+  } catch (std::exception const&) {
+    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
-std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
-    velocypack::Slice infoSlice,
+ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
+Database::createCollections(
+    std::vector<arangodb::CollectionDescriptor> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -860,6 +874,31 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 #endif
 
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // typed path: hand the properties down as a descriptor instead of
+  // serializing them and parsing them again
+  try {
+    auto result = createCollections(std::move(collections));
+
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+          result.size());
+    }
+    return {result};
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    velocypack::Slice infoSlice,
+    bool allowEnterpriseCollectionsOnSingleServer) {
   auto const& dbName = _info.getName();
 
   // first validate all collections
@@ -916,6 +955,43 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 
   // audit-log all collections
+  for (auto& col : collections) {
+    events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
+  }
+
+  _databaseProvider.notifyDdlChange("create collection");
+  return collections;
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    std::vector<CollectionDescriptor> descriptors) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto const& dbName = _info.getName();
+
+  for (auto const& descriptor : descriptors) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+      events::CreateCollection(dbName, descriptor.mutableProps.name,
+                               res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(descriptors.size());
+  for (auto& descriptor : descriptors) {
+    auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
+    TRI_ASSERT(col != nullptr);
+    collections.emplace_back(std::move(col));
+  }
+
+  {
+    READ_LOCKER(readLocker, _inventoryLock);
+    for (auto& col : collections) {
+      persistCollection(col);
+    }
+  }
+
   for (auto& col : collections) {
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
@@ -997,6 +1073,28 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
   return validateExtendedCollectionParameters(parameters);
 }
 
+Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
+  if (auto res = CollectionNameValidator::validateName(
+          d.constant.isSystem, extendedNames(), d.mutableProps.name);
+      res.fail()) {
+    return res;
+  }
+
+  auto type = d.constant.getType();
+  if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" +
+                std::string{d.mutableProps.name} + "'"};
+  }
+
+  if (auto status = CollectionDescriptor::Invariants::isSmartConfiguration(d);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  return validateEnterpriseLicense(d);
+}
+
 #ifndef USE_ENTERPRISE
 void Database::addSmartGraphCollections(
     std::shared_ptr<LogicalCollection> const& /*collection*/,
@@ -1005,6 +1103,11 @@ void Database::addSmartGraphCollections(
 }
 
 Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
+  // nothing to be done here. more in EE version
+  return {};
+}
+
+Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};
 }
@@ -1689,8 +1792,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   DatabaseConfiguration config{
       std::move(idGenerator),
-      [this](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      [this](std::string const& name) -> ResultT<CollectionDescriptor> {
         CollectionNameResolver resolver{*this};
         auto c = resolver.getCollection(name);
         if (c == nullptr) {
@@ -1698,7 +1800,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                         absl::StrCat("Collection not found: ", name,
                                      " in database ", this->name())};
         }
-        return c->getCollectionProperties();
+        return c->properties();
       }};
 
   config.isSystemDB = isSystem();

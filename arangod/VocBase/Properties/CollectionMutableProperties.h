@@ -54,12 +54,8 @@ struct CollectionMutableProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionMutableProperties& props) {
   return f.object(props).fields(
-      f.field(StaticStrings::DataSourceName, props.name)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmpty),
-      f.field(StaticStrings::Schema, props.schema)
-          .fallback(f.keep())
-          .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
+      f.field(StaticStrings::DataSourceName, props.name).fallback(f.keep()),
+      f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
       f.field(StaticStrings::ComputedValues, props.computedValues)
           .fallback(f.keep()),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled)

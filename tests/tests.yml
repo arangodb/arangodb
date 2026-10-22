@@ -158,9 +158,6 @@
     options:
       priority: 250
       type: single
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - shell_client_aql_large:
     options:
@@ -169,9 +166,6 @@
       suffix: _large
       buckets: 2
       parallelity: 6
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - gtest_iresearch:
     options:
@@ -220,6 +214,22 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+- rta_makedata_rbac:
+    job: run-rbac-tests
+    suites:
+      - rta_makedata
+    options:
+      type: single
+      size: medium
+      timeLimit: 5400
+    requires:
+      coverage: false
+      v8: true
+      arch: x64
+    args:
+      test: 050,100,400,500,580,607,612
+      oneTestTimeout: 5350
+
 # with coverage we need to have several jobs:
 - rta_makedata:
     options:
@@ -400,8 +410,6 @@
       buckets: 4
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client_aql_large:
     options:
       priority: 1000
@@ -412,8 +420,6 @@
       parallelity: 6
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500
@@ -701,6 +707,14 @@
     options:
       type: cluster
       priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- wal_cleanup:
+    options:
+      type: cluster
+      priority: 2500
     requires:
       full: true
     args:

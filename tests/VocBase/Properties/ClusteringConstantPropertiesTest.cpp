@@ -119,42 +119,78 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
         createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
   }
 
+  // NOTE: Inspect() parses an unknown strategy name parses here,
+  // but applyDefaultsAndValidate() rejects it, which is tested
+  // in the CreateCollectionRequestTest.
   GenerateFailsOnBool(shardingStrategy);
-  GenerateFailsOnNonEmptyString(shardingStrategy);
   GenerateFailsOnInteger(shardingStrategy);
   GenerateFailsOnDouble(shardingStrategy);
   GenerateFailsOnArray(shardingStrategy);
   GenerateFailsOnObject(shardingStrategy);
 }
 
-GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
-                                     numberOfShards);
+// Note: Inspect() parse a zero, but applyDefaultsAndValidate() rejects it,
+// which is tested in the CreateCollectionRequestTest.
+GenerateIntegerAttributeTest(ClusteringConstantPropertiesTest, numberOfShards);
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
 
-TEST_F(ClusteringConstantPropertiesTest, test_distributeShardsLikeUserContext) {
+TEST_F(ClusteringConstantPropertiesTest,
+       test_distributeShardsLikeIsContextFree) {
   ClusteringConstantProperties props;
-  props.distributeShardsLike = "test";
-  props.distributeShardsLikeCid = "42";
-  VPackBuilder serial;
-  velocypack::serializeWithContext(serial, props, InspectUserContext{});
-  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
-  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
-  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
-            props.distributeShardsLike);
+  props.distributeShardsLike = "42";
+
+  auto emits = [&](auto context) {
+    VPackBuilder serial;
+    velocypack::serializeWithContext(serial, props, context);
+    ASSERT_TRUE(serial.slice().hasKey(StaticStrings::DistributeShardsLike));
+    EXPECT_EQ(
+        serial.slice().get(StaticStrings::DistributeShardsLike).copyString(),
+        "42");
+  };
+
+  emits(InspectUserContext{});
+  emits(InspectAgencyContext{});
+  emits(InspectInternalContext{});
+}
+
+// shardsR2 and groupId are written by the server. The create API has to answer
+// with an unexpected-attribute error, while the internal and agency paths read
+// them back. Both values below are well-formed, so a type error cannot be what
+// makes these fail.
+static VPackBuilder serverOwnedFieldsBody() {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add(StaticStrings::GroupId, VPackValue(1234));
+    {
+      VPackArrayBuilder shards(&body, "shardsR2");
+      body.add(VPackValue("s100001"));
+    }
+  }
+  return body;
 }
 
 TEST_F(ClusteringConstantPropertiesTest,
-       test_distributeShardsLikeAgencyContext) {
-  ClusteringConstantProperties props;
-  props.distributeShardsLike = "test";
-  props.distributeShardsLikeCid = "42";
-  VPackBuilder serial;
-  velocypack::serializeWithContext(serial, props, InspectAgencyContext{});
-  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
-  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
-  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
-            props.distributeShardsLikeCid);
+       test_serverOwnedFieldsRejectUserInput) {
+  auto body = serverOwnedFieldsBody();
+  EXPECT_TRUE(parse(body.slice()).fail())
+      << "server-owned attributes have to be rejected on user input: "
+      << body.toJson();
+}
+
+TEST_F(ClusteringConstantPropertiesTest,
+       test_serverOwnedFieldsAreReadInternal) {
+  auto body = serverOwnedFieldsBody();
+
+  ClusteringConstantProperties testee;
+  auto status = velocypack::deserializeWithStatus(body.slice(), testee, {},
+                                                  InspectInternalContext{});
+  ASSERT_TRUE(status.ok()) << status.error();
+  ASSERT_TRUE(testee.groupId.has_value());
+  EXPECT_EQ(testee.groupId->id(), 1234U);
+  ASSERT_TRUE(testee.shardsR2.has_value());
+  EXPECT_EQ(testee.shardsR2->size(), 1U);
 }
 }  // namespace arangodb::tests

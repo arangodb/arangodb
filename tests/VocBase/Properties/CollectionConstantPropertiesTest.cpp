@@ -96,7 +96,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
       testee->keyOptions));
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
-  EXPECT_FALSE(testee->smartGraphAttribute.has_value());
 }
 
 TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
@@ -115,11 +114,9 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
 
   /// The following defaulted to edge before (not mentioned in doc since 3.3)
   __HELPER_assertParsingThrows(type, "edge");
-  /// The following defaulted to document before (not mentioned in doc
-  /// since 3.3):
-  __HELPER_assertParsingThrows(type, 0);
-  __HELPER_assertParsingThrows(type, 1);
-  __HELPER_assertParsingThrows(type, 4);
+  /// NOTE: Inspect() parses out-of-range numbers (0, 1, 4) but
+  /// applyDefaultsAndValidate() rejects them, which is tested in the
+  /// CreateCollectionRequestTest.
 
   __HELPER_assertParsingThrows(type, "document");
   __HELPER_assertParsingThrows(type, "dogfather");
@@ -171,9 +168,6 @@ class CollectionConstantSmartPropertiesTest
 
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isDisjoint);
-
-GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
-                                    smartGraphAttribute);
 
 GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
                                     smartJoinAttribute);
