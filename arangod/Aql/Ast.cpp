@@ -238,35 +238,15 @@ bool translateNodeStackToAttributePath(
   return true;
 };
 
-// whether node is a chain of attribute and index accesses with constant
-// indexes that ends in a variable reference, e.g. p.edges[0].x
-bool isPlainAccessPath(AstNode const* node) {
-  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-         node->type == NODE_TYPE_INDEXED_ACCESS) {
-    if (node->type == NODE_TYPE_INDEXED_ACCESS &&
-        !node->getMember(1)->isConstant()) {
-      return false;
-    }
-    node = node->getMember(0);
-  }
-  return node->type == NODE_TYPE_REFERENCE;
-}
-
-// whether node is a [*] expansion of a plain access path, without filter,
-// projection or non-constant limit, e.g. p.edges[* LIMIT 1].x[0]
-bool isPlainExpansion(AstNode const* node) {
-  if (node->numMembers() < 5 || node->getIntValue(true) != 1) {
-    return false;
-  }
-  ast::ExpansionNode expansionNode(node);
+// whether the expansion is a single [*] without filter, projection or
+// non-constant limit, e.g. p.edges[* LIMIT 1]
+bool isSimpleExpansion(ast::ExpansionNode const& expansionNode) {
   AstNode const* limit = expansionNode.getLimit();
-  return expansionNode.getFilter()->type == NODE_TYPE_NOP &&
+  return expansionNode.getLevels() == 1 &&
+         expansionNode.getFilter()->type == NODE_TYPE_NOP &&
          expansionNode.getProjection()->type == NODE_TYPE_NOP &&
-         (limit->type == NODE_TYPE_NOP ||
-          (limit->getMember(0)->isConstant() &&
-           limit->getMember(1)->isConstant())) &&
-         isPlainAccessPath(expansionNode.getExpression()) &&
-         isPlainAccessPath(expansionNode.getIterator().getExpression());
+         (limit->type == NODE_TYPE_NOP || (limit->getMember(0)->isConstant() &&
+                                           limit->getMember(1)->isConstant()));
 }
 
 /**
@@ -3204,25 +3184,27 @@ bool Ast::getReferencedAttributesRecursive(
     }
 
     if (node->type == NODE_TYPE_EXPANSION) {
-      if (!expectedAttribute.empty() && !::isPlainExpansion(node)) {
-        // we are looking at a traversal output variable, e.g.
-        // p.vertices[*].a, and the expansion below is not handled as a
-        // whole, e.g. APPEND(p.edges, [])[*], p.edges[*].a[p.edges[0].x] or
-        // p.edges[* FILTER CURRENT.x == 1]. descend into it like into any
-        // other node, so every use of the variable inside is checked.
-        state.seen.clear();
-        return true;
-      }
-      ast::ExpansionNode expansionNode(node);
       // special stunt needed here for the [*] operator...
-      // NOTE: Every [*] operator is represented as an EXPANSION
-      // with 5 (or more) members.
-      if (node->numMembers() >= 5) {
+      ast::ExpansionNode expansionNode(node);
+      // for a traversal output variable, e.g. p.vertices[*].a, we only
+      // handle a simple [*] whose iterator and expression are attribute and
+      // index accesses with constant indexes. we descend into any other
+      // expansion like into any other node, so every use of the variable
+      // inside is checked, e.g. APPEND(p.edges, [])[*],
+      // p.edges[*].a[p.edges[0].x] or p.edges[* FILTER CURRENT.x == 1].
+      bool const isPathVariable = !expectedAttribute.empty();
+      auto isAccess = [isPathVariable](AstNode const* n) {
+        return n->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+               (n->type == NODE_TYPE_INDEXED_ACCESS &&
+                (!isPathVariable || n->getMember(1)->isConstant()));
+      };
+      bool handled = false;
+
+      if (!isPathVariable || ::isSimpleExpansion(expansionNode)) {
         ast::IteratorNode lhs = expansionNode.getIterator();
         AstNode const* rhs = expansionNode.getExpression();
 
-        while (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-               rhs->type == NODE_TYPE_INDEXED_ACCESS) {
+        while (isAccess(rhs)) {
           state.seen.push_back(rhs);
           rhs = rhs->getMember(0);
         }
@@ -3235,14 +3217,14 @@ bool Ast::getReferencedAttributesRecursive(
           // push the expansion on the stack
           state.seen.push_back(node);
 
-          while (iterRhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-                 iterRhs->type == NODE_TYPE_INDEXED_ACCESS) {
+          while (isAccess(iterRhs)) {
             state.seen.push_back(iterRhs);
             iterRhs = iterRhs->getMember(0);
           }
 
           if (iterRhs->type == NODE_TYPE_REFERENCE) {
             state.seen.push_back(iterRhs);
+            handled = true;
             // finally the stack is complete... now eval it to find the
             // projection
             if (!::translateNodeStackToAttributePath(state, resourceMonitor)) {
@@ -3252,11 +3234,10 @@ bool Ast::getReferencedAttributesRecursive(
         }
       }
       state.seen.clear();
-      // if we are looking at a traversal output variable, we don't
-      // descend into the expansion itself (already handled it).
-      // however, we want and must descend into subnodes in case we were
-      // not called for a traversal output variable.
-      return expectedAttribute.empty();
+      // for a traversal output variable, we don't descend into an expansion
+      // handled above. we descend into all other expansions, and always if
+      // we were not called for a traversal output variable.
+      return !isPathVariable || !handled;
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
