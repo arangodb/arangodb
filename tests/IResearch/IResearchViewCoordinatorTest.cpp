@@ -194,14 +194,17 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 
   std::shared_ptr<arangodb::Index> link;
   EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
-                         *logicalCollection0, linkJson->slice(),
-                         arangodb::IndexId{1}, false));
+                         arangodb::IndexCreationContext{
+                             *logicalCollection0, linkJson->slice(),
+                             arangodb::IndexId{1}, false}));
   EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
-                         *logicalCollection1, linkJson->slice(),
-                         arangodb::IndexId{2}, false));
+                         arangodb::IndexCreationContext{
+                             *logicalCollection1, linkJson->slice(),
+                             arangodb::IndexId{2}, false}));
   EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
-                         *logicalCollection2, linkJson->slice(),
-                         arangodb::IndexId{3}, false));
+                         arangodb::IndexCreationContext{
+                             *logicalCollection2, linkJson->slice(),
+                             arangodb::IndexId{3}, false}));
 
   // visit view
   arangodb::DataSourceId expectedCollections[] = {arangodb::DataSourceId{1},
