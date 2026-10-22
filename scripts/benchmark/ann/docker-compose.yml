@@ -44,6 +44,12 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource 4.0.0
+      # Store the dashboards read (datasources/arangodb.yaml); unset = the local `arangodb`,
+      # which runs without authentication and ignores the placeholder credentials
+      # (Infinity rejects an empty password).
+      AWS_ARANGODB_URL: ${AWS_ARANGODB_URL:-http://arangodb:8529}
+      AWS_ARANGODB_ID: ${AWS_ARANGODB_ID:-root}
+      AWS_ARANGODB_KEY: ${AWS_ARANGODB_KEY:-unused}
     ports:
       - "3000:3000"
     volumes:

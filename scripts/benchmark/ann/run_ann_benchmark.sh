@@ -232,7 +232,6 @@ export_results() {
     echo "algorithm: ${ANN_ALGORITHM}"
     echo "datasets:  ${ANN_DATASETS}"
     echo "runs:      ${ANN_RUNS}"
-    [[ -n "${RESULTS_ARANGO_URL}" ]] && echo "results:   ${RESULTS_ARANGO_URL}"
     [[ -n "${GRAFANA_URL}" ]] && echo "dashboard: ${GRAFANA_URL}/d/ann-bench"
     echo "server:"
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
