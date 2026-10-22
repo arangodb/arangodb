@@ -1580,6 +1580,7 @@ jobs:
               RTA_ARGS+=(--buckets $BUCKETS)
             fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
+            file /work/ArangoDB/build/bin/arangod
             cd work/release-test-automation
             export DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
