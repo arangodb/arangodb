@@ -819,7 +819,7 @@ class CircleCIGenerator(OutputGenerator):
         result_jobs = []
         for deployment in deployments:
             job_dict = {
-                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
+                "name": f"test-{deployment}-{job}-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
                 "arch": build_config.architecture.value,
                 "resource-class": self.sizer.get_resource_class(
