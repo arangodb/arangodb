@@ -49,7 +49,7 @@ struct DisabledVectorIndexProvider final : IVectorIndexProvider {
 class IndexTypeCatalogTest : public ::testing::Test {
  protected:
   // mirrors what IResearchFeature::registerIndexFactory does at startup
-  IndexTypeCatalogTest() {
+  void SetUp() override {
     auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
                            invertedDefinition);
     ASSERT_TRUE(res.ok()) << res.errorMessage();
@@ -58,9 +58,10 @@ class IndexTypeCatalogTest : public ::testing::Test {
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
   DisabledVectorIndexProvider vectorIndexProvider;
-  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  // must outlive catalog
   iresearch::IResearchInvertedIndexDefinition invertedDefinition{
       mockServer.server()};
+  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
 };
 
 TEST_F(IndexTypeCatalogTest, resolvesBuiltInNamesToIndexTypes) {

@@ -1006,7 +1006,7 @@ PhysicalCollectionMock::createIndex(
       if (arangodb::ServerState::instance()->isCoordinator()) {
         index = arangodb::iresearch::createLinkCoordinator(
             arangodb::IndexCreationContext{_logicalCollection, info, id,
-                                           /*isClusterConstructor*/ false});
+                                           false});
       } else {
         index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }

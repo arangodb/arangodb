@@ -60,7 +60,7 @@ size_t countObjectId(velocypack::Slice normalized) {
 class RocksDBIndexFactoryTest : public ::testing::Test {
  protected:
   // mirrors what IResearchFeature::registerIndexFactory does at startup
-  RocksDBIndexFactoryTest() {
+  void SetUp() override {
     auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
                            invertedDefinition);
     ASSERT_TRUE(res.ok()) << res.errorMessage();
@@ -69,9 +69,10 @@ class RocksDBIndexFactoryTest : public ::testing::Test {
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
   DisabledVectorIndexProvider vectorIndexProvider;
-  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  // must outlive catalog
   iresearch::IResearchInvertedIndexDefinition invertedDefinition{
       mockServer.server()};
+  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
   RocksDBIndexFactory factory{mockServer.server(), catalog};
 };
 

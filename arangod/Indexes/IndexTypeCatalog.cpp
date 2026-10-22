@@ -137,3 +137,7 @@ Result IndexTypeCatalog::add(std::string_view name,
   }
   return Result();
 }
+
+void IndexTypeCatalog::remove(std::string_view name) noexcept {
+  _byName.erase(std::string{name});
+}

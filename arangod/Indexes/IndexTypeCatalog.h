@@ -95,6 +95,9 @@ class IndexTypeCatalog final {
   [[nodiscard]] Result add(std::string_view name,
                            IndexDefinition const& definition);
 
+  // undoes add()
+  void remove(std::string_view name) noexcept;
+
  private:
   EdgeIndexDefinition _edge;
   FulltextIndexDefinition _fulltext;

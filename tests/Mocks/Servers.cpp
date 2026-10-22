@@ -592,6 +592,11 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 }
 
 MockClusterServer::~MockClusterServer() {
+  // must unregister before _iresearchLinkDefinition is destroyed
+  if (_iresearchLinkDefinition != nullptr) {
+    _engine->indexTypeCatalog().remove(
+        iresearch::StaticStrings::ViewArangoSearchType);
+  }
   _server.getFeature<ClusterFeature>().shutdown();
 }
 
