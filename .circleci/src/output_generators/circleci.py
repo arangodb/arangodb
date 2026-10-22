@@ -24,6 +24,8 @@ from ..filters import filter_suites
 from .base import OutputGenerator, GeneratorConfig
 from .sizing import ResourceSizer
 
+# Benchmarked in parallel against the branch build, one job each.
+ANN_BUILD_DATASETS = ["glove-100-angular", "sift-128-euclidean"]
 
 class CircleCIGenerator(OutputGenerator):
     """Generate CircleCI workflow configuration from test definitions."""
@@ -411,12 +413,17 @@ class CircleCIGenerator(OutputGenerator):
                         "create-install-package": True,
                     }
                 },
-                {
-                    "ann-benchmark-build": {
-                        "context": context,
-                        "requires": [compile_job_name],
+                *(
+                    {
+                        "ann-benchmark-build": {
+                            "context": context,
+                            "requires": [compile_job_name],
+                            "name": f"ann-benchmark-build-{dataset}",
+                            "dataset": dataset,
+                        }
                     }
-                },
+                    for dataset in ANN_BUILD_DATASETS
+                ),
             ]
         }
 

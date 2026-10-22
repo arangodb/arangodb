@@ -35,5 +35,6 @@ Full CI flow locally: `docker compose --profile ci up --build harness`.
 ## CI
 
 Trigger a pipeline with `run-ann-bench` = `true`; `ann-bench-arango-image` picks the image under
-test, `ann-bench-build-arango` = `true` benchmarks the branch instead. Store credentials come from
+test, `ann-bench-build-arango` = `true` benchmarks the branch instead, running `glove-100-angular`
+and `sift-128-euclidean` as parallel jobs. Store credentials come from
 the `ann-benchmark-store` context. Artifacts are under `ann-benchmark/`.

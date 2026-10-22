@@ -1827,13 +1827,18 @@ jobs:
 
   # Vector-index benchmark against this branch's release build from
   # build-x64-for-ann-benchmark (run-ann-bench + ann-bench-build-arango).
+  # One job per dataset, each on its own machine so runs don't compete.
   ann-benchmark-build:
+    parameters:
+      dataset:
+        type: string
     docker:
       - image: cimg/python:3.11.1
     resource_class: arangodb/large-amd64
     environment:
       <<: *ann-benchmark-environment
       ARANGODB_IMAGE: "ann-benchmark-x64 << pipeline.git.branch >>@<< pipeline.git.revision >>"
+      ANN_DATASETS: << parameters.dataset >>
     steps:
       - checkout
       - attach_workspace:

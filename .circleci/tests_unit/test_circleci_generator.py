@@ -593,16 +593,21 @@ class TestAnnBenchmarkWorkflow:
         result = self.generate(ann_build_arangod=True)
 
         assert list(result["workflows"]) == ["ann-benchmark"]
-        compile_job, benchmark_job = result["workflows"]["ann-benchmark"]["jobs"]
+        compile_job, *benchmark_jobs = result["workflows"]["ann-benchmark"]["jobs"]
         compile_params = compile_job["compile-linux"]
         assert compile_params["preset"] == "ann-benchmark-x64"
         assert compile_params["arch"] == "x64"
         assert compile_params["create-install-package"] is True
         assert compile_params["build-tests"] is False
-        assert benchmark_job["ann-benchmark-build"] == {
-            "context": ["ann-benchmark-store"],
-            "requires": [compile_params["name"]],
-        }
+        assert [job["ann-benchmark-build"] for job in benchmark_jobs] == [
+            {
+                "context": ["ann-benchmark-store"],
+                "requires": [compile_params["name"]],
+                "name": f"ann-benchmark-build-{dataset}",
+                "dataset": dataset,
+            }
+            for dataset in ["glove-100-angular", "sift-128-euclidean"]
+        ]
 
 
 class TestGenerateMethod:
