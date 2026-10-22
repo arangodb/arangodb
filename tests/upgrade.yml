@@ -2,7 +2,7 @@ jobProperties:
     second_repo: git@github.com:arangodb/release-test-automation.git
     branch: main
 tests:
-- rta_upgrade:
+- rta_upgrade: # Upgrade on x86 including UI tests:
     job: run-rta-tests
     options:
       buckets: 1
@@ -12,7 +12,7 @@ tests:
       checkdata: true
       run-upgrade: true
       selenium: Remote_CHROME
-- rta_upgrade:
+- rta_upgrade: # UI is not supported on ARM:
     job: run-rta-tests
     options:
       buckets: 1
