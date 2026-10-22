@@ -239,8 +239,10 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
 the configured folder.
 
 Files are sorted lexicographically by name.
-Two kinds are ignored: hidden files (names starting with `.`) and files ending
-in `.tmp`.
+The following entries are ignored: hidden files (names starting with `.`),
+files ending in `.tmp`, and anything that is not a regular file, such as
+subfolders, sockets, devices, or named pipes. Symbolic links are followed and
+are only used if they point to a regular file.
 
 - **First remaining file = active secret.** Signs new tokens and verifies
   incoming ones.
