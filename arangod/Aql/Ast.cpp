@@ -3209,10 +3209,10 @@ bool Ast::getReferencedAttributesRecursive(
           rhs = rhs->getMember(0);
         }
 
-        if (rhs->type == NODE_TYPE_REFERENCE) {
-          Variable const* iterLhs = lhs.getVariable();
-          TRI_ASSERT(rhs->getData() == iterLhs);
-
+        // the expression must be an access path on the iterator variable
+        // (CURRENT)
+        if (rhs->type == NODE_TYPE_REFERENCE &&
+            rhs->getData() == lhs.getVariable()) {
           AstNode const* iterRhs = lhs.getExpression();
           // push the expansion on the stack
           state.seen.push_back(node);
