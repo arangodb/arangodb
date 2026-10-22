@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "Mocks/Servers.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 
@@ -47,10 +48,19 @@ struct DisabledVectorIndexProvider final : IVectorIndexProvider {
 
 class IndexTypeCatalogTest : public ::testing::Test {
  protected:
+  // mirrors what IResearchFeature::registerIndexFactory does at startup
+  IndexTypeCatalogTest() {
+    auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+                           invertedDefinition);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+  }
+
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
   DisabledVectorIndexProvider vectorIndexProvider;
   IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  iresearch::IResearchInvertedIndexDefinition invertedDefinition{
+      mockServer.server()};
 };
 
 TEST_F(IndexTypeCatalogTest, resolvesBuiltInNamesToIndexTypes) {

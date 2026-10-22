@@ -25,6 +25,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexTypeCatalog.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "Mocks/Servers.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -57,10 +59,19 @@ size_t countObjectId(velocypack::Slice normalized) {
 
 class RocksDBIndexFactoryTest : public ::testing::Test {
  protected:
+  // mirrors what IResearchFeature::registerIndexFactory does at startup
+  RocksDBIndexFactoryTest() {
+    auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+                           invertedDefinition);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+  }
+
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
   DisabledVectorIndexProvider vectorIndexProvider;
   IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  iresearch::IResearchInvertedIndexDefinition invertedDefinition{
+      mockServer.server()};
   RocksDBIndexFactory factory{mockServer.server(), catalog};
 };
 
