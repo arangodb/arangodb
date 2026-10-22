@@ -37,7 +37,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR d IN dataset SORT d.name RETURN {__text: d.name, __value: d.name}\"}"
+              "data": "{\"query\": \"FOR d IN dataset SORT d.name RETURN {__text: d.name, __value: d.name}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -71,7 +71,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}\"}"
+              "data": "{\"query\": \"FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -110,7 +110,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR ix IN index_setup FILTER ix.index_params.nProbe != null COLLECT n = ix.index_params.nProbe SORT n RETURN {__text: TO_STRING(n), __value: n}\"}"
+              "data": "{\"query\": \"FOR ix IN index_setup FILTER ix.index_params.nProbe != null COLLECT n = ix.index_params.nProbe SORT n RETURN {__text: TO_STRING(n), __value: n}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -217,7 +217,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.qps, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.qps, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -319,7 +319,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.recall, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.recall, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -420,7 +420,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -521,7 +521,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -623,7 +623,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at RETURN {time: r.started_at, value: m.build_time, series: (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/')))}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at RETURN {time: r.started_at, value: m.build_time, series: (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/')))}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -720,7 +720,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] COLLECT run_key = r._key, started_at = r.started_at, version = r.arangodb_version, image = r.docker_image_version, build_time_s = m.build_time SORT started_at RETURN {run: CONCAT(started_at, ' ', version), run_key, started_at, arangodb_version: version, image, build_time_s}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_build_time LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] COLLECT run_key = r._key, started_at = r.started_at, version = r.arangodb_version, image = r.docker_image_version, build_time_s = m.build_time SORT started_at RETURN {run: CONCAT(started_at, ' ', version), run_key, started_at, arangodb_version: version, image, build_time_s}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [

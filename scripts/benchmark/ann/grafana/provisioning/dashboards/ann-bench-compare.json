@@ -37,7 +37,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR d IN dataset SORT d.name RETURN {__text: d.name, __value: d.name}\"}"
+              "data": "{\"query\": \"FOR d IN dataset SORT d.name RETURN {__text: d.name, __value: d.name}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -71,7 +71,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}\"}"
+              "data": "{\"query\": \"FOR r IN run COLLECT image = r.docker_image_version SORT image RETURN {__text: image, __value: image}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -110,7 +110,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -144,7 +144,7 @@
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\", \"batchSize\": 100000}"
             },
             "root_selector": "result",
             "columns": []
@@ -267,7 +267,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, qps: m.qps, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, qps: m.qps, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -403,7 +403,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -539,7 +539,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 95 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 95 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -675,7 +675,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [
@@ -811,7 +811,7 @@
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99.9 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99.9 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\", \"batchSize\": 100000}"
           },
           "root_selector": "result",
           "columns": [

@@ -93,6 +93,8 @@ services:
         condition: service_healthy
       schema:
         condition: service_completed_successfully
+      grafana:
+        condition: service_started
 
 volumes:
   arangodata:

@@ -56,6 +56,12 @@ RESULTS_ARANGO_PASSWORD="${RESULTS_ARANGO_PASSWORD:-}"
 RESULTS_ARANGO_INSECURE="${RESULTS_ARANGO_INSECURE:-}"
 GRAFANA_URL="${GRAFANA_URL:-}"
 
+# Absolute, because run_sweep changes into the ann-benchmarks checkout.
+abspath() { mkdir -p "$1" && cd "$1" && pwd; }
+ANN_WORKDIR="$(abspath "${ANN_WORKDIR}")"
+ANN_OUTPUT_DIR="$(abspath "${ANN_OUTPUT_DIR}")"
+ANN_DATASET_CACHE="$(abspath "${ANN_DATASET_CACHE}")"
+
 ARANGO_URL="http://${ARANGO_HOST}:${ARANGO_PORT}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS_DIR="${ANN_WORKDIR}/ann-benchmarks"
@@ -135,6 +141,12 @@ collect_arango_log() {
 setup_harness() {
   if [[ -d "${HARNESS_DIR}" ]]; then
     log "Reusing ann-benchmarks checkout at ${HARNESS_DIR}"
+    local url head want
+    url="$(git -C "${HARNESS_DIR}" remote get-url origin)"
+    head="$(git -C "${HARNESS_DIR}" rev-parse HEAD)"
+    want="$(git -C "${HARNESS_DIR}" rev-parse --verify --quiet "${ANN_FORK_REF}^{commit}" || true)"
+    [[ "${url}" == "${ANN_FORK_URL}" && "${head}" == "${want}" ]] \
+      || die "checkout is ${url} @ ${head}, requested ${ANN_FORK_URL} @ ${ANN_FORK_REF}; rebuild the image or remove ${HARNESS_DIR}"
   else
     log "Cloning ann-benchmarks (${ANN_FORK_REF})"
     git clone --quiet "${ANN_FORK_URL}" "${HARNESS_DIR}"
@@ -189,7 +201,7 @@ validate_results() {
   local runlog="${ANN_OUTPUT_DIR}/run.log" csv="${ANN_OUTPUT_DIR}/results.csv"
   local expected
   expected="$(grep -oE 'query argument group [0-9]+ of [0-9]+' "${runlog}" 2>/dev/null \
-                | grep -oE '[0-9]+$' | sort -rn | head -n1)"
+                | grep -oE '[0-9]+$' | sort -rn | head -n1 || true)"
   if [[ -z "${expected}" ]]; then
     log "WARNING: could not determine expected config count; skipping validation"
     return 0
