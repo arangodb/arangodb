@@ -208,11 +208,11 @@ CommTask::Flow CommTask::prepareExecution(
   // Everything below, including the ExecContext, reads the requested API
   // version, so a request for an invalid one must not get any further.
   if (!req.hasValidApiVersion()) {
-    sendErrorResponse(
-        ResponseCode::NOT_FOUND, req.contentTypeResponse(), req.messageId(),
-        TRI_ERROR_HTTP_NOT_FOUND,
-        absl::StrCat("invalid API version in path '", req.requestPath(),
-                     "', valid prefixes are: ", GeneralRequest::validApiVersionPrefixes()));
+    sendErrorResponse(ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_HTTP_NOT_FOUND,
+                      absl::StrCat("invalid API version in path '",
+                                   req.requestPath(), "', valid prefixes are: ",
+                                   GeneralRequest::validApiVersionPrefixes()));
     return Flow::Abort;
   }
 

@@ -79,7 +79,8 @@ TEST(ApiVersionTest, InspectDeserializesTheName) {
     auto const json = velocypack::Parser::fromJson(
         "\"" + std::string{to_string(version)} + "\"");
     ApiVersion result{};
-    auto const status = velocypack::deserializeWithStatus(json->slice(), result);
+    auto const status =
+        velocypack::deserializeWithStatus(json->slice(), result);
     ASSERT_TRUE(status.ok()) << status.error();
     EXPECT_EQ(version, result);
   }
