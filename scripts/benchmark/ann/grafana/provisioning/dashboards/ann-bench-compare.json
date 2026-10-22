@@ -32,7 +32,7 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+            "url": "/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
@@ -66,7 +66,7 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+            "url": "/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
@@ -105,19 +105,19 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+            "url": "/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
             },
             "root_selector": "result",
             "columns": []
           },
           "query": ""
         },
-        "definition": "FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}",
+        "definition": "FOR r IN run FILTER r.docker_image_version IN [${image:singlequote}] SORT r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}",
         "current": {},
         "options": [],
         "sort": 0
@@ -139,19 +139,19 @@
             "source": "url",
             "format": "table",
             "parser": "backend",
-            "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+            "url": "/_db/ann-bench/_api/cursor",
             "url_options": {
               "method": "POST",
               "body_type": "raw",
               "body_content_type": "application/json",
-              "data": "{\"query\": \"LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
+              "data": "{\"query\": \"LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}\"}"
             },
             "root_selector": "result",
             "columns": []
           },
           "query": ""
         },
-        "definition": "LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}",
+        "definition": "LET c = DOCUMENT('run', '$candidate') FOR r IN run FILTER r._key != c._key LET previous = r.docker_image_version == c.docker_image_version AND r.started_at < c.started_at SORT previous DESC, r.started_at DESC RETURN {__text: CONCAT(CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), ' (', r._key, ')'), __value: r._key}",
         "current": {},
         "options": [],
         "sort": 0
@@ -262,12 +262,12 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url": "/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, qps: m.qps, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_qps FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.epsilon == 0 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, qps: m.qps, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
           },
           "root_selector": "result",
           "columns": [
@@ -398,12 +398,12 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url": "/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 50 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
           },
           "root_selector": "result",
           "columns": [
@@ -534,12 +534,12 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url": "/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 95 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 95 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
           },
           "root_selector": "result",
           "columns": [
@@ -670,12 +670,12 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url": "/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
           },
           "root_selector": "result",
           "columns": [
@@ -806,12 +806,12 @@
           "source": "url",
           "format": "table",
           "parser": "backend",
-          "url": "http://arangodb:8529/_db/ann-bench/_api/cursor",
+          "url": "/_db/ann-bench/_api/cursor",
           "url_options": {
             "method": "POST",
             "body_type": "raw",
             "body_content_type": "application/json",
-            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99.9 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', LAST(SPLIT(r.docker_image_version, '/')), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.run_id IN ['$baseline', '$candidate'] FILTER m.percentile == 99.9 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) LET ix = DOCUMENT('index_setup', m.index_id) SORT r.started_at, m.recall RETURN {recall: m.recall, latency_ms: m.latency, run: CONCAT(SUBSTRING(r.started_at, 0, 16), ' ', (CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', FIRST(SPLIT(r.arangodb_version, ','))), params: ix.index_params.descriptor}\"}"
           },
           "root_selector": "result",
           "columns": [

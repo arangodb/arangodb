@@ -1,7 +1,9 @@
 apiVersion: 1
 
 # Infinity datasource: every panel POSTs an AQL query to ArangoDB's cursor API
-# (http://arangodb:8529/_db/ann-bench/_api/cursor) and reads the `result` array.
+# (<url>/_db/ann-bench/_api/cursor) and reads the `result` array. Server and
+# credentials come from the AWS_ARANGODB_* variables docker compose passes in
+# (default: the compose `arangodb` service without authentication).
 datasources:
   - name: bench
     uid: bench
@@ -9,7 +11,14 @@ datasources:
     access: proxy
     isDefault: true
     editable: true
+    url: $AWS_ARANGODB_URL
+    basicAuth: true
+    basicAuthUser: $AWS_ARANGODB_ID
     jsonData:
-      auth_method: none
+      auth_method: basicAuth
+      # The shared store's TLS certificate is expired and won't be renewed.
+      tlsSkipVerify: true
       allowedHosts:
-        - http://arangodb:8529
+        - $AWS_ARANGODB_URL
+    secureJsonData:
+      basicAuthPassword: $AWS_ARANGODB_KEY
