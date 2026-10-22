@@ -22,12 +22,13 @@
 
 #include "IResearchQueryCommon.h"
 
-#include "Mocks/CollectionDescriptors.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/DownCast.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchView.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -40,6 +41,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
 
   auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
   server.addFeature<arangodb::FlushFeature>(false, metrics);
+  server.addFeatureUntracked<arangodb::LanguageFeature>();
   server.startFeatures();
 
   auto& analyzers =

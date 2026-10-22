@@ -152,8 +152,10 @@ def create_generator_config(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ) -> GeneratorConfig:
@@ -185,6 +187,7 @@ def create_generator_config(
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
+        clang_tidy=clang_tidy,
         v8=not arangod_without_v8,
         test_suite=test_suite,
     )
@@ -205,6 +208,7 @@ def create_generator_config(
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
         create_test_docker_images=create_test_docker_images,
+        create_preview_docker_images=create_preview_docker_images,
         test_image=test_image,
     )
 
@@ -282,6 +286,11 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
+    "--clang-tidy",
+    is_flag=True,
+    help="Schedule the clang-tidy job",
+)
+@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
@@ -292,7 +301,16 @@ def create_generator_config(
     type=click.Choice(["none", "alpine", "deb"]),
     default="none",
     help="Build and publish a multi-arch arangodb/enterprise-test Docker "
-    "image (Alpine- or Debian-based) to public ECR from the build results",
+    "image (maintainer mode, Alpine- or Debian-based) to public ECR from "
+    "the build results",
+)
+@click.option(
+    "--create-preview-docker-images",
+    type=click.Choice(["none", "alpine", "deb"]),
+    default="none",
+    help="Build and publish a multi-arch arangodb/enterprise-preview Docker "
+    "image (non-maintainer, release-like; Alpine- or Debian-based) to "
+    "public ECR from the build results",
 )
 @click.option(
     "--validate-only",
@@ -318,8 +336,10 @@ def main(
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ):
@@ -352,8 +372,10 @@ def main(
             arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
+            clang_tidy=clang_tidy,
             replication_two=replication_two,
             create_test_docker_images=create_test_docker_images,
+            create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
         )

@@ -92,6 +92,7 @@ add_library(arango_aql STATIC
   QueryString.cpp
   QueryWarnings.cpp
   Range.cpp
+  RangeSpec.cpp
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp

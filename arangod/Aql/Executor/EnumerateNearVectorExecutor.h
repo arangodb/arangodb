@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorReadBatch.h"
@@ -127,6 +128,7 @@ class EnumerateNearVectorsExecutor {
   transaction::Methods _trx;
   aql::Collection const* _collection;
   RocksDBVectorIndex const& _vectorIndex;
+  ResourceUsageScope _resultBuffersMemory;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;

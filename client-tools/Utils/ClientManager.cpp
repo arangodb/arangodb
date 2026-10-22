@@ -58,6 +58,7 @@ Result ClientManager::getConnectedClient(
   ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string const versionString = httpClient->getServerVersion(&errorCode);
   if (TRI_ERROR_NO_ERROR != errorCode) {
+    std::string const& reason = httpClient->getErrorMessage();
     if (!quiet && (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode ||
                    logDatabaseNotFound)) {
       // arangorestore does not log "database not found" errors in case
@@ -65,9 +66,13 @@ Result ClientManager::getConnectedClient(
       LOG_TOPIC("775bd", ERR, _topic)
           << "Could not connect to endpoint '" << _client.endpoint()
           << "', database: '" << _client.databaseName() << "', username: '"
-          << _client.username() << "'";
+          << _client.username() << "'"
+          << (reason.empty() ? std::string{} : ": " + reason);
     }
-    return {errorCode};
+    if (reason.empty()) {
+      return {errorCode};
+    }
+    return {errorCode, reason};
   }
 
   if (versionString.empty() || versionString == "arango") {

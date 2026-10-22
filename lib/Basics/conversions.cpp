@@ -150,7 +150,8 @@ size_t TRI_StringUInt8InPlace(uint8_t attr, char* buffer) {
 
 size_t TRI_StringInt16InPlace(int16_t attr, char* buffer) {
   if (attr == INT16_MIN) {
-    memcpy(buffer, "-32768\0", 7);
+    static_assert(sizeof("-32768") == 7, "The Null-Termination is implicit.");
+    memcpy(buffer, "-32768", 7);
     return 6;
   }
 
@@ -222,7 +223,9 @@ size_t TRI_StringUInt16InPlace(uint16_t attr, char* buffer) {
 
 size_t TRI_StringInt32InPlace(int32_t attr, char* buffer) {
   if (attr == INT32_MIN) {
-    memcpy(buffer, "-2147483648\0", 12);
+    static_assert(sizeof("-2147483648") == 12,
+                  "The Null-Termination is implicit.");
+    memcpy(buffer, "-2147483648", 12);
     return 11;
   }
 
@@ -324,7 +327,9 @@ size_t TRI_StringUInt32InPlace(uint32_t attr, char* buffer) {
 
 size_t TRI_StringInt64InPlace(int64_t attr, char* buffer) {
   if (attr == INT64_MIN) {
-    memcpy(buffer, "-9223372036854775808\0", 21);
+    static_assert(sizeof("-9223372036854775808") == 21,
+                  "The Null-Termination is implicit.");
+    memcpy(buffer, "-9223372036854775808", 21);
     return 20;
   }
 

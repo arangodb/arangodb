@@ -23,9 +23,9 @@ speeds triage considerably. English and German are both fine.
 
 | Stage | Target |
 |---|---|
-| Acknowledgement that a human has your report | 72 hours |
+| Acknowledgement that a human has your report | 3 business days |
 | Initial assessment, including whether we can reproduce it | 10 business days |
-| Status update while the report is open | at least every 14 days |
+| Status update while the report is open | when the report is accepted, when the advisory publishes, and if the disclosure date changes |
 | Coordinated disclosure | within 90 days of receipt, or when the fix ships, whichever comes first |
 
 If a report is Critical we will move faster than the table and will tell you so.

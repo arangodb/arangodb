@@ -101,6 +101,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   void setStatistics(uint64_t id, RequestStatistics::Item&& stat);
 
+  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
@@ -110,7 +112,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                             RequestStatistics::Item) = 0;
 
   enum class Flow : bool { Continue = true, Abort = false };
-  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted

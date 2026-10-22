@@ -157,7 +157,6 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SoftShutdownFeature>(false);
@@ -177,7 +176,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<application_features::DatabaseFeaturePhase>(
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
-  server.addFeature<transaction::ManagerFeature>(false, metrics);
+  server.addFeature<transaction::ManagerFeature>(false, metrics,
+                                                 server.engine());
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
@@ -259,10 +259,10 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(
-          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
+  _engine = &addFeatureUntracked<StorageEngine, StorageEngineMock>(
+      injectClusterIndexes);
   _oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(myRole);
   _originalMockingState = ClusterEngine::Mocking;
@@ -307,10 +307,6 @@ void MockServer::startFeatures() {
 
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
-
-  if (_server.hasFeature<DatabaseFeature>()) {
-    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
-  }
 
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
@@ -632,10 +628,11 @@ void MockClusterServer::startFeatures() {
 
   // register factories & normalizers
   auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  auto& factory =
-      getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
+  _iresearchLinkFactory =
+      iresearch::IResearchLinkCoordinator::createFactory(server());
   indexFactory.emplace(
-      std::string{iresearch::StaticStrings::ViewArangoSearchType}, factory);
+      std::string{iresearch::StaticStrings::ViewArangoSearchType},
+      *_iresearchLinkFactory);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
 

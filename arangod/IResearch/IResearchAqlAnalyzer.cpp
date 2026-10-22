@@ -24,13 +24,13 @@
 
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/Functions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser/Parser.h"
@@ -38,24 +38,14 @@
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/StandaloneCalculation.h"
-#include "Basics/FunctionUtils.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Transaction/Hints.h"
-#include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
 
 #include <absl/strings/str_cat.h>
 
@@ -342,7 +332,10 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
           .ok());
 }
 
+AqlAnalyzer::~AqlAnalyzer() { _valueBuffer.destroy(); }
+
 bool AqlAnalyzer::next() {
+  _valueBuffer.destroy();
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
@@ -445,6 +438,7 @@ bool AqlAnalyzer::next() {
 }
 
 bool AqlAnalyzer::reset(std::string_view field) noexcept {
+  _valueBuffer.destroy();
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
