@@ -155,8 +155,7 @@ class Message {
 
   std::string_view payloadAsStringView() const {
     auto p = payload();
-    return std::string_view(asio_ns::buffer_cast<char const*>(p),
-                            asio_ns::buffer_size(p));
+    return std::string_view(static_cast<const char*>(p.data()), p.size());
   }
   std::string payloadAsString() const {
     return std::string{payloadAsStringView()};

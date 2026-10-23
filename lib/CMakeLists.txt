@@ -225,6 +225,8 @@ target_link_libraries(arango_basic_features
          absl::flat_hash_set
          fuerte
          s2
+  PRIVATE Boost::container
+         Boost::range
 )
 target_include_directories(arango_basic_features PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -254,7 +256,7 @@ target_link_libraries(arango_basic_logger
   PUBLIC velocypack
          arango_inspection
          arango_basic_errors
-         boost_boost
+  PRIVATE Boost::lockfree
 )
 target_include_directories(arango_basic_logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -297,10 +299,10 @@ target_link_libraries(arango_basic_http_client
          arango_inspection
          arango_basic_errors
          arango_build_id
-         boost_boost
          rocksdb
          fuerte
          faiss_interface
+  PRIVATE Boost::container
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -366,8 +368,9 @@ target_link_libraries(arango_lightweight
           arango_utils
           arango_basic_utils
           arango_basic_logger
-          boost_boost
-          boost_system
+          Boost::range
+          Boost::system
+          Boost::container
 )
 
 if (USE_ENTERPRISE)
@@ -387,8 +390,6 @@ add_library(arango STATIC
 target_link_libraries(arango
   PUBLIC s2
          arango_build_id
-         boost_system
-         boost_boost
          arango_futures
          arango_basic_features
          arango_static_strings
