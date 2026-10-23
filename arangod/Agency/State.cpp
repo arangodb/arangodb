@@ -865,21 +865,16 @@ bool State::ensureCollection(std::string const& name, bool drop) {
     return true;
   }
 
-  Builder body;
-  {
-    VPackObjectBuilder b(&body);
-    body.add(StaticStrings::DataSourceType,
-             VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    body.add(StaticStrings::DataSourceName, VPackValue(name));
-    body.add(StaticStrings::DataSourceSystem,
-             VPackValue(NameValidator::isSystemName(name)));
-  }
+  CollectionDescriptor descriptor;
+  descriptor.constant.type = TRI_COL_TYPE_DOCUMENT;
+  descriptor.mutableProps.name = name;
+  descriptor.constant.isSystem = NameValidator::isSystemName(name);
 
   if (drop && _vocbase->lookupCollection(name) != nullptr) {
     dropCollection(name);
   }
 
-  auto collection = _vocbase->createCollection(body.slice());
+  auto collection = _vocbase->createCollection(std::move(descriptor));
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

@@ -101,7 +101,7 @@ class PlanCollectionEntryTest : public ::testing::Test {
       uint64_t nrShards, uint64_t replicationFactor) {
     CollectionDescriptor col{};
     col.mutableProps.name = "test";
-    col.internal.id = DataSourceId(123);
+    col.identity.id = DataSourceId(123);
     col.clusteringConstant.numberOfShards = nrShards;
     col.clusteringMutable.replicationFactor = replicationFactor;
     return col;
