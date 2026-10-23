@@ -40,7 +40,7 @@ class SingleServerPathResult : public IPathResult {
  public:
   SingleServerPathResult() {}
   SingleServerPathResult(std::vector<VertexId> vertices,
-                         std::vector<Edge> edges)
+                         std::vector<EdgeId> edges)
       : _vertices{std::move(vertices)}, _edges{std::move(edges)} {}
   ~SingleServerPathResult() = default;
   bool operator==(SingleServerPathResult const& other) const {
@@ -57,7 +57,7 @@ class SingleServerPathResult : public IPathResult {
   auto lastEdgeToVelocyPack(velocypack::Builder& builder) -> void override{};
 
   std::vector<VertexId> _vertices;
-  std::vector<Edge> _edges;
+  std::vector<EdgeId> _edges;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SingleServerPathResult& x) {

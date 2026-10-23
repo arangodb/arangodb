@@ -34,12 +34,24 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     if (not _startVertex.has_value()) {
       return nullptr;
     }
-    // _graph.outEdges(_startVertex.value());
 
-    // for an empty graph:
+    auto edgeIds = _graph.outEdges(_startVertex.value());
+    if (edgeIds.empty()) {
+      _isDone = true;
+    }
+
+    if (_state == 0) {
+      _state = 1;
+      return std::make_unique<SingleServerPathResult>(
+          std::vector<VertexId>{_startVertex.value()}, std::vector<EdgeId>{});
+    }
+
+    // TODO works only for one edge for now
+    auto firstEdgeTo = _graph.ensureEdgeToVertex(edgeIds[0]);
     _isDone = true;
     return std::make_unique<SingleServerPathResult>(
-        std::vector<VertexId>{_startVertex.value()}, std::vector<Edge>{});
+        std::vector<VertexId>{_startVertex.value(), firstEdgeTo},
+        std::vector<EdgeId>{edgeIds[0]});
   }
 
   // batched [later]:
@@ -93,5 +105,6 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   bool _isDone = true;
   std::optional<VertexId> _startVertex;
   std::deque<VertexId> _queue;  // BFS
+  size_t _state = 0;
 };
 }  // namespace arangodb::graph::experimental
