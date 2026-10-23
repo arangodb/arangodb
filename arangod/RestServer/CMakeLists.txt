@@ -60,7 +60,6 @@ add_library(arango_rest_server STATIC
   SystemDatabaseFeature.cpp
   TemporaryStorageFeature.cpp
   TemporaryStorageOptionsProvider.cpp
-  TimeZoneFeature.cpp
   TtlFeature.cpp
   TtlOptionsProvider.cpp
   TtlProperties.cpp
