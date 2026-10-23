@@ -42,7 +42,7 @@ function makeRandom(seed) {
   };
 }
 
-function TraversalBitmapIndexSuite() {
+function TraversalBitmapIndexSuite(values) {
   const everyEdge = 'p.edges[* RETURN @labels ALL IN CURRENT.labels] ALL == true';
 
   let traversal = (direction, filter, options) => {
@@ -99,8 +99,8 @@ function TraversalBitmapIndexSuite() {
         edges.push({_key: 'e' + i, _from: vn + '/v' + from, _to: vn + '/v' + to, labels});
       }
       ec.insert(edges);
-      ec.ensureIndex({type: 'bitmap', fields: ['_from', 'labels']});
-      ec.ensureIndex({type: 'bitmap', fields: ['_to', 'labels']});
+      ec.ensureIndex({type: 'bitmap', fields: ['_from', 'labels'], values});
+      ec.ensureIndex({type: 'bitmap', fields: ['_to', 'labels'], values});
     },
 
     tearDownAll: function () {
@@ -241,5 +241,20 @@ function TraversalBitmapIndexSuite() {
   };
 }
 
-jsunity.run(TraversalBitmapIndexSuite);
+// both variants run in this file, so their test names need to differ
+function withSuffix(suite, suffix) {
+  return Object.fromEntries(Object.entries(suite).map(
+    ([name, fn]) => [name.startsWith('test') ? name + suffix : name, fn]));
+}
+
+function TraversalBitmapIndexAnyValuesSuite() {
+  return withSuffix(TraversalBitmapIndexSuite('any'), 'AnyValues');
+}
+
+function TraversalBitmapIndexScalarValuesSuite() {
+  return withSuffix(TraversalBitmapIndexSuite('scalar'), 'ScalarValues');
+}
+
+jsunity.run(TraversalBitmapIndexAnyValuesSuite);
+jsunity.run(TraversalBitmapIndexScalarValuesSuite);
 return jsunity.done();

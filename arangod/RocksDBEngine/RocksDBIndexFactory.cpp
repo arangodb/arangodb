@@ -114,7 +114,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
     case IndexType::Vector:
       return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
     case IndexType::Bitmap:
-      return std::make_shared<RocksDBBitmapIndex>(id, collection, definition);
+      return RocksDBBitmapIndex::create(id, collection, definition);
     case IndexType::Inverted:
       return iresearch::createRocksDBInvertedIndex(ctx);
     case IndexType::Unknown:

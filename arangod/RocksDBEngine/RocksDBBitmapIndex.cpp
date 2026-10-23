@@ -42,6 +42,7 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <rocksdb/iterator.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -119,15 +120,23 @@ struct Expr {
   }
 };
 
+/// evaluate the searched values into their stored form. a value that can
+/// never be stored is in no document
+template<typename Values>
 Expr evaluateValues(bitmap_index::TermExpr const& expr) {
   using Type = bitmap_index::TermExpr::Type;
   Expr result;
   switch (expr.type) {
     case Type::Term: {
-      velocypack::Builder builder;
-      expr.value->toVelocyPackValue(builder);
-      result.term.assign(reinterpret_cast<char const*>(builder.data()),
-                         builder.size());
+      velocypack::Builder value;
+      expr.value->toVelocyPackValue(value);
+      velocypack::Builder stored;
+      if (!Values::add(stored, value.slice())) {
+        result.type = Expr::Type::False;
+        break;
+      }
+      result.term.assign(reinterpret_cast<char const*>(stored.data()),
+                         stored.size());
       break;
     }
     case Type::True:
@@ -140,10 +149,10 @@ Expr evaluateValues(bitmap_index::TermExpr const& expr) {
     case Type::Or:
       result.type = expr.type == Type::And ? Expr::Type::And : Expr::Type::Or;
       for (auto const& child : expr.children) {
-        result.children.push_back(evaluateValues(child));
+        result.children.push_back(evaluateValues<Values>(child));
       }
       for (auto const& child : expr.excluded) {
-        result.excluded.push_back(evaluateValues(child));
+        result.excluded.push_back(evaluateValues<Values>(child));
       }
       break;
   }
@@ -457,6 +466,7 @@ class OrNode final : public ShardNode {
   std::uint64_t _shard = 0;
 };
 
+template<typename Values>
 class RocksDBBitmapIndexIterator final : public IndexIterator {
  public:
   RocksDBBitmapIndexIterator(LogicalCollection* collection,
@@ -518,13 +528,17 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
                                      "unsupported bitmap index condition");
     }
 
+    _usable = true;
     _prefixValues.clear();
     _prefixValues.openArray();
-    for (auto const* value : parts->prefixValues) {
-      value->toVelocyPackValue(_prefixValues);
+    for (auto const* node : parts->prefixValues) {
+      velocypack::Builder value;
+      node->toVelocyPackValue(value);
+      // a value that can never be stored is in no document
+      _usable = _usable && Values::add(_prefixValues, value.slice());
     }
     _prefixValues.close();
-    _expr = evaluateValues(parts->expr);
+    _expr = evaluateValues<Values>(parts->expr);
     _folded = fold(_expr);
     restart();
   }
@@ -583,7 +597,7 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     _root.reset();
     _iteratorsUsed = 0;
     _scanning = false;
-    _exhausted = _folded.isConstant(false);
+    _exhausted = !_usable || _folded.isConstant(false);
     if (_exhausted) {
       return;
     }
@@ -683,17 +697,54 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
   std::size_t _pos = 0;
   std::uint64_t _bufferShard = 0;
   std::uint64_t _nextShard = 0;
+  bool _usable = false;
   bool _exhausted = true;
 };
 
 }  // namespace
 
+bool bitmap_index::ScalarValues::add(velocypack::Builder& out,
+                                     velocypack::Slice value) {
+  if (value.isNumber()) {
+    double d = value.getNumber<double>();
+    // -0.0 and 0.0 compare equal
+    out.add(velocypack::Value(d == 0.0 ? 0.0 : d));
+  } else if (value.isString()) {
+    out.add(velocypack::Value(value.stringView()));
+  } else if (value.isBoolean() || value.isNull()) {
+    out.add(value);
+  } else {
+    return false;
+  }
+  return true;
+}
+
+std::shared_ptr<RocksDBBitmapIndex> RocksDBBitmapIndex::create(
+    IndexId iid, LogicalCollection& collection, velocypack::Slice info) {
+  if (info.get(kValuesAttribute).isEqualString(
+          bitmap_index::ScalarValues::kName)) {
+    return std::make_shared<
+        RocksDBBitmapIndexImpl<bitmap_index::ScalarValues>>(iid, collection,
+                                                           info);
+  }
+  return std::make_shared<RocksDBBitmapIndexImpl<bitmap_index::AnyValues>>(
+      iid, collection, info);
+}
+
+RocksDBKeyBounds RocksDBBitmapIndex::boundsFor(velocypack::Slice definition,
+                                               std::uint64_t objectId) {
+  return RocksDBKeyBounds::BitmapIndex(
+      objectId, definition.get(kValuesAttribute)
+                        .isEqualString(bitmap_index::ScalarValues::kName)
+                    ? bitmap_index::ScalarValues::kEntryType
+                    : bitmap_index::AnyValues::kEntryType);
+}
+
 RocksDBBitmapIndex::RocksDBBitmapIndex(IndexId iid,
                                        LogicalCollection& collection,
-                                       velocypack::Slice info)
-    : RocksDBIndex(iid, collection, info,
-                   RocksDBColumnFamilyManager::get(
-                       RocksDBColumnFamilyManager::Family::BitmapIndex),
+                                       velocypack::Slice info,
+                                       rocksdb::ColumnFamilyHandle* cf)
+    : RocksDBIndex(iid, collection, info, cf,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
@@ -723,7 +774,18 @@ void RocksDBBitmapIndex::toVelocyPack(
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(kShardBitsAttribute, velocypack::Value(bitmap_index::kShardBits));
+  builder.add(kValuesAttribute, velocypack::Value(valuesName()));
   builder.close();
+}
+
+bool RocksDBBitmapIndex::matchesDefinition(velocypack::Slice const& info) const {
+  if (!RocksDBIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // how values are stored is part of the identity; "any" if not given
+  velocypack::Slice values = info.get(kValuesAttribute);
+  return (values.isString() ? values.stringView()
+                            : bitmap_index::AnyValues::kName) == valuesName();
 }
 
 Index::FilterCosts RocksDBBitmapIndex::supportsFilterCondition(
@@ -739,15 +801,6 @@ aql::AstNode* RocksDBBitmapIndex::specializeCondition(
     transaction::Methods& /*trx*/, aql::AstNode* node,
     aql::Variable const* reference) const {
   return bitmap_index::specializeCondition(*this, node, reference);
-}
-
-std::unique_ptr<IndexIterator> RocksDBBitmapIndex::iteratorForCondition(
-    ResourceMonitor& /*monitor*/, transaction::Methods* trx,
-    aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& /*opts*/, ReadOwnWrites readOwnWrites,
-    int /*mutableConditionIdx*/) {
-  return std::make_unique<RocksDBBitmapIndexIterator>(
-      &_collection, trx, this, node, reference, readOwnWrites);
 }
 
 velocypack::Slice RocksDBBitmapIndex::prefixValue(velocypack::Slice doc,
@@ -773,26 +826,51 @@ std::vector<velocypack::Slice> RocksDBBitmapIndex::distinctElements(
   return result;
 }
 
-Result RocksDBBitmapIndex::insert(transaction::Methods& /*trx*/,
-                                  RocksDBMethods* methods,
-                                  LocalDocumentId documentId,
-                                  velocypack::Slice doc,
-                                  OperationOptions const& /*options*/,
-                                  bool /*performChecks*/) {
+template<typename Values>
+RocksDBBitmapIndexImpl<Values>::RocksDBBitmapIndexImpl(
+    IndexId iid, LogicalCollection& collection, velocypack::Slice info)
+    : RocksDBBitmapIndex(iid, collection, info,
+                         RocksDBColumnFamilyManager::get(Values::kFamily)) {}
+
+template<typename Values>
+std::unique_ptr<IndexIterator>
+RocksDBBitmapIndexImpl<Values>::iteratorForCondition(
+    ResourceMonitor& /*monitor*/, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& /*opts*/, ReadOwnWrites readOwnWrites,
+    int /*mutableConditionIdx*/) {
+  return std::make_unique<RocksDBBitmapIndexIterator<Values>>(
+      &_collection, trx, this, node, reference, readOwnWrites);
+}
+
+template<typename Values>
+Result RocksDBBitmapIndexImpl<Values>::insert(
+    transaction::Methods& /*trx*/, RocksDBMethods* methods,
+    LocalDocumentId documentId, velocypack::Slice doc,
+    OperationOptions const& /*options*/, bool /*performChecks*/) {
   return write(methods, documentId, doc, /*isInsert*/ true);
 }
 
-Result RocksDBBitmapIndex::remove(transaction::Methods& /*trx*/,
-                                  RocksDBMethods* methods,
-                                  LocalDocumentId documentId,
-                                  velocypack::Slice doc,
-                                  OperationOptions const& /*options*/) {
+template<typename Values>
+Result RocksDBBitmapIndexImpl<Values>::remove(
+    transaction::Methods& /*trx*/, RocksDBMethods* methods,
+    LocalDocumentId documentId, velocypack::Slice doc,
+    OperationOptions const& /*options*/) {
   return write(methods, documentId, doc, /*isInsert*/ false);
 }
 
-Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
-                                 LocalDocumentId documentId,
-                                 velocypack::Slice doc, bool isInsert) {
+template<typename Values>
+Result RocksDBBitmapIndexImpl<Values>::write(RocksDBMethods* methods,
+                                             LocalDocumentId documentId,
+                                             velocypack::Slice doc,
+                                             bool isInsert) {
+  auto rejected = [&](velocypack::Slice value) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat("bitmap index '", name(), "' with values '",
+                               Values::kName, "' cannot index ",
+                               value.typeName(), " values"));
+  };
+
   std::vector<velocypack::Slice> elements = distinctElements(doc);
   if (elements.empty()) {
     return {};
@@ -800,7 +878,10 @@ Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
   velocypack::Builder prefixValues;
   prefixValues.openArray();
   for (std::size_t i = 0; i + 1 < _fields.size(); ++i) {
-    prefixValues.add(prefixValue(doc, i));
+    if (velocypack::Slice value = prefixValue(doc, i);
+        !Values::add(prefixValues, value)) {
+      return rejected(value);
+    }
   }
   prefixValues.close();
 
@@ -815,8 +896,14 @@ Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
 
   Result res;
   RocksDBKey key;
+  velocypack::Builder stored;
   for (velocypack::Slice element : elements) {
-    std::string countKey = makeKey(objectId(), prefixValues.slice(), element);
+    stored.clear();
+    if (!Values::add(stored, element)) {
+      return rejected(element);
+    }
+    std::string countKey =
+        makeKey(objectId(), prefixValues.slice(), stored.slice());
     key.constructFromBuffer(countKey);
     rocksdb::Status s = methods->MergeUntracked(_cf, key, countDelta);
     if (s.ok()) {
@@ -832,3 +919,8 @@ Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
   }
   return res;
 }
+
+namespace arangodb {
+template class RocksDBBitmapIndexImpl<bitmap_index::AnyValues>;
+template class RocksDBBitmapIndexImpl<bitmap_index::ScalarValues>;
+}  // namespace arangodb

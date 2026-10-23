@@ -25,7 +25,10 @@
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -44,6 +47,21 @@ Result BitmapIndexDefinition::normalize(velocypack::Builder& normalized,
     normalized.add("shardBits", velocypack::Value(bitmap_index::kShardBits));
   } else if (auto bits = definition.get("shardBits"); bits.isNumber()) {
     normalized.add("shardBits", bits);
+  }
+
+  auto values = definition.get(RocksDBBitmapIndex::kValuesAttribute);
+  if (values.isNone()) {
+    normalized.add(RocksDBBitmapIndex::kValuesAttribute,
+                   velocypack::Value(bitmap_index::AnyValues::kName));
+  } else if (values.isEqualString(bitmap_index::AnyValues::kName) ||
+             values.isEqualString(bitmap_index::ScalarValues::kName)) {
+    normalized.add(RocksDBBitmapIndex::kValuesAttribute, values);
+  } else {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("<", RocksDBBitmapIndex::kValuesAttribute, "> must be \"",
+                     bitmap_index::AnyValues::kName, "\" or \"",
+                     bitmap_index::ScalarValues::kName, "\""));
   }
 
   return IndexFactory::enhanceJsonIndexBitmap(definition, normalized,

@@ -92,6 +92,14 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       bitmap_index::configureColumnFamily(result);
       break;
     }
+    case RocksDBColumnFamilyManager::Family::BitmapIndexScalar: {
+      // keys are object id | velocypack array | shard with normalized scalar
+      // values, so equal values have equal bytes and keys compare bytewise
+      result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      bitmap_index::configureColumnFamily(result);
+      break;
+    }
     case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(

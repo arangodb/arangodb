@@ -119,8 +119,11 @@ RocksDBKeyBounds RocksDBKeyBounds::VectorVPackIndex(uint64_t indexId) {
   return {RocksDBEntryType::VectorVPackIndexValue, indexId, false};
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::BitmapIndex(uint64_t indexId) {
-  return {RocksDBEntryType::BitmapIndexValue, indexId, false};
+RocksDBKeyBounds RocksDBKeyBounds::BitmapIndex(uint64_t indexId,
+                                               RocksDBEntryType type) {
+  TRI_ASSERT(type == RocksDBEntryType::BitmapIndexValue ||
+             type == RocksDBEntryType::BitmapIndexScalarValue);
+  return {type, indexId, false};
 }
 
 /// used for seeking lookups
@@ -271,6 +274,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::BitmapIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::BitmapIndex);
+    case RocksDBEntryType::BitmapIndexScalarValue:
+      return RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::BitmapIndexScalar);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
@@ -473,6 +479,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     case RocksDBEntryType::UniqueMdiIndexValue:
     case RocksDBEntryType::VectorVPackIndexValue:
     case RocksDBEntryType::BitmapIndexValue:
+    case RocksDBEntryType::BitmapIndexScalarValue:
       TRI_ASSERT(second == false) << "reverse not supported";
       _internals.reserve(2 * sizeof(uint64_t));
       uint64ToPersistent(_internals.buffer(), first);

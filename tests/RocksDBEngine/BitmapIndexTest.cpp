@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
 #include "RocksDBEngine/RocksDBBitmapIndexMergeOperator.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -361,4 +362,30 @@ TEST(BitmapIndexComparatorDBTest, merges_of_equal_values_meet_in_one_key) {
   it.reset();
   db.reset();
   std::filesystem::remove_all(path);
+}
+
+namespace {
+std::string stored(std::string_view json) {
+  auto value = velocypack::Parser::fromJson(json.data(), json.size());
+  velocypack::Builder out;
+  EXPECT_TRUE(ScalarValues::add(out, value->slice())) << json;
+  return {reinterpret_cast<char const*>(out.data()), out.size()};
+}
+}  // namespace
+
+TEST(BitmapIndexScalarValuesTest, equal_numbers_have_equal_bytes) {
+  EXPECT_EQ(stored("1"), stored("1.0"));
+  EXPECT_EQ(stored("0"), stored("-0.0"));
+  EXPECT_NE(stored("1"), stored("\"1\""));
+  EXPECT_NE(stored("\"a\""), stored("\"ab\""));
+  EXPECT_NE(stored("true"), stored("null"));
+}
+
+TEST(BitmapIndexScalarValuesTest, arrays_and_objects_are_refused) {
+  for (std::string_view json : {"[1]", "{\"a\":1}", "[]"}) {
+    auto value = velocypack::Parser::fromJson(json.data(), json.size());
+    velocypack::Builder out;
+    EXPECT_FALSE(ScalarValues::add(out, value->slice())) << json;
+    EXPECT_TRUE(out.isEmpty()) << json;
+  }
 }

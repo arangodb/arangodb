@@ -1237,7 +1237,8 @@ collections/shards/indexes can be mixed and written into the same .sst files.
                RocksDBColumnFamilyManager::Family::MdiIndex,
                RocksDBColumnFamilyManager::Family::MdiVPackIndex,
                RocksDBColumnFamilyManager::Family::VectorIndex,
-               RocksDBColumnFamilyManager::Family::BitmapIndex};
+               RocksDBColumnFamilyManager::Family::BitmapIndex,
+               RocksDBColumnFamilyManager::Family::BitmapIndexScalar};
 
   auto addMaxWriteBufferNumberCf =
       [&options, opts](RocksDBColumnFamilyManager::Family family) {
@@ -1254,7 +1255,8 @@ collections/shards/indexes can be mixed and written into the same .sst files.
         if (family == RocksDBColumnFamilyManager::Family::VectorIndex) {
           introducedIn = 31204;
         }
-        if (family == RocksDBColumnFamilyManager::Family::BitmapIndex) {
+        if (family == RocksDBColumnFamilyManager::Family::BitmapIndex ||
+            family == RocksDBColumnFamilyManager::Family::BitmapIndexScalar) {
           introducedIn = 40000;
         }
 

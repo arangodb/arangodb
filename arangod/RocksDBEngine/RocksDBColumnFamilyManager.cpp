@@ -44,7 +44,8 @@ std::array<char const*,
                            // compatibility.
         "MdiPrefixed",     //
         "VectorIndex",     //
-        "BitmapIndex"};
+        "BitmapIndex",     //
+        "BitmapIndexScalar"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
@@ -60,13 +61,14 @@ std::array<char const*,
         "mdi",                                      //
         "mdi-prefixed",                             //
         "vector",                                   //
-        "bitmap"};
+        "bitmap",                                   //
+        "bitmap-scalar"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
-    RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr, nullptr};
+    RocksDBColumnFamilyManager::_handles = {
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
 std::vector<rocksdb::ColumnFamilyHandle*>
     RocksDBColumnFamilyManager::_validHandles;

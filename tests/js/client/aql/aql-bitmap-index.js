@@ -26,7 +26,8 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, fail} = jsunity.jsUnity.assertions;
+const errors = require('internal').errors;
 const db = require('internal').db;
 const _ = require('lodash');
 
@@ -65,7 +66,7 @@ function makeLabels(random) {
   return labels;
 }
 
-function BitmapIndexSuite() {
+function BitmapIndexSuite(values) {
   let docs = {};
 
   let expected = (search) => {
@@ -116,8 +117,9 @@ function BitmapIndexSuite() {
         batch.push(doc);
       }
       c.insert(batch);
-      let idx = c.ensureIndex({type: 'bitmap', fields: ['labels']});
+      let idx = c.ensureIndex({type: 'bitmap', fields: ['labels'], values});
       assertEqual('bitmap', idx.type);
+      assertEqual(values, idx.values);
       assertEqual(['labels'], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
@@ -348,6 +350,27 @@ function BitmapIndexSuite() {
         {_key: 'nested2', labels: [['n', 1.0], {b: 2, a: 1.0}]},
         {_key: 'nested3', labels: [['n', 2], {a: 1}]},
       ];
+      if (values === 'scalar') {
+        // documents with values that cannot be stored are rejected
+        for (let doc of extra) {
+          try {
+            c.insert(doc);
+            fail();
+          } catch (err) {
+            assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum, doc);
+          }
+          assertFalse(c.exists(doc._key));
+        }
+        // ... so no document can contain such a value
+        const q = `FOR d IN ${cn} FILTER [['n', 1]] ALL IN d.labels RETURN d._key`;
+        assertEqual(1, bitmapIndexNodes(q, {}).length);
+        assertEqual([], query(q, {}));
+        const numbers = `FOR d IN ${cn} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
+        const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
+        assertTrue(query(numbers, {}).length > 0);
+        assertEqual(query(fullScan, {}), query(numbers, {}));
+        return;
+      }
       c.insert(extra);
       const cases = [
         `[['n', 1]] ALL IN d.labels`,
@@ -367,6 +390,32 @@ function BitmapIndexSuite() {
       }
     },
 
+    testValuesOption: function () {
+      // the variant is part of the index identity
+      let other = values === 'any' ? 'scalar' : 'any';
+      let idx = db[cn].ensureIndex({type: 'bitmap', fields: ['labels'], values: other});
+      assertEqual(other, idx.values);
+      assertEqual(2, db[cn].indexes().filter((i) => i.type === 'bitmap').length);
+      assertTrue(db[cn].dropIndex(idx));
+      try {
+        db[cn].ensureIndex({type: 'bitmap', fields: ['labels'], values: 'nope'});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      if (values === 'scalar') {
+        // building the index over a document it cannot store fails
+        db[cn].insert({_key: 'nested', other: [[1]]});
+        try {
+          db[cn].ensureIndex({type: 'bitmap', fields: ['other'], values});
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+        assertEqual(1, db[cn].indexes().filter((i) => i.type === 'bitmap').length);
+      }
+    },
+
     testDropIndex: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
       let idx = db[cn].indexes().filter((i) => i.type === 'bitmap')[0];
@@ -378,5 +427,20 @@ function BitmapIndexSuite() {
   };
 }
 
-jsunity.run(BitmapIndexSuite);
+// both variants run in this file, so their test names need to differ
+function withSuffix(suite, suffix) {
+  return Object.fromEntries(Object.entries(suite).map(
+    ([name, fn]) => [name.startsWith('test') ? name + suffix : name, fn]));
+}
+
+function BitmapIndexAnyValuesSuite() {
+  return withSuffix(BitmapIndexSuite('any'), 'AnyValues');
+}
+
+function BitmapIndexScalarValuesSuite() {
+  return withSuffix(BitmapIndexSuite('scalar'), 'ScalarValues');
+}
+
+jsunity.run(BitmapIndexAnyValuesSuite);
+jsunity.run(BitmapIndexScalarValuesSuite);
 return jsunity.done();
