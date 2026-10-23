@@ -5,7 +5,8 @@ version: 2.1
 # Parameters (set when triggering the pipeline):
 #   benchmark      which benchmark to run (ann: ann-benchmarks on the IVF index)
 #   arango-image   image the benchmark runs against (default: 3.12 nightly)
-#   build-arango   true: benchmark a release build of this commit instead
+#   build-arango   true (default): benchmark a release build of this commit;
+#                  false: benchmark arango-image
 
 parameters:
   enterprise-branch:
@@ -23,7 +24,7 @@ parameters:
     description: "arangod image the benchmark runs against, e.g. arangodb/core-preview:4.0-nightly for the 4.0 nightly. Ignored with build-arango set to true."
   build-arango:
     type: boolean
-    default: false
+    default: true
     description: "Use compiled local arangod instead of arango-image. The 'nightly-package-x64' CMake preset is used."
   build-docker-image:
     type: string
@@ -81,17 +82,32 @@ commands:
           name: Forget GitHub token
           command: git config --global --unset-all http.https://github.com/.extraheader || true
 
+  # The cimg/python image has no aws CLI.
+  install-aws-cli:
+    steps:
+      - run:
+          name: Install AWS CLI
+          command: |
+            pip install --quiet awscli
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+
   ann-benchmark-harness:
     steps:
-      # Datasets are hundreds of MB each; the key changes with the dataset list
-      # and falls back to the newest cache so already downloaded ones are reused.
+      # Datasets are hundreds of MB each and never change, so they are kept by
+      # name in the runners' S3 bucket (no CircleCI cache egress). Best effort:
+      # on a miss ann-benchmarks downloads the dataset itself.
       - run:
-          name: Compute dataset cache key
-          command: echo "${ANN_DATASETS}" > /tmp/ann-datasets
-      - restore_cache:
-          keys:
-            - ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-            - ann-datasets-v1-
+          name: Restore datasets from S3
+          command: |
+            mkdir -p "${ANN_DATASET_CACHE}" /tmp/ann-datasets-in-s3
+            for ds in ${ANN_DATASETS}; do
+              aws s3 cp --no-sign-request --profile anon \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/ann-datasets/${ds}.hdf5" \
+                "/tmp/${ds}.hdf5.part" \
+                && mv "/tmp/${ds}.hdf5.part" "${ANN_DATASET_CACHE}/${ds}.hdf5" \
+                && touch "/tmp/ann-datasets-in-s3/${ds}" \
+                || echo "${ds} not in S3, ann-benchmarks will download it"
+            done
       # The script pins the fork (and so its requirements.txt).
       - restore_cache:
           keys:
@@ -105,10 +121,17 @@ commands:
             RESULTS_ARANGO_USER="${AWS_ARANGODB_ID}" \
             RESULTS_ARANGO_PASSWORD="${AWS_ARANGODB_KEY}" \
               ./scripts/benchmark/ann/run_ann_benchmark.sh
-      - save_cache:
-          key: ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-          paths:
-            - /tmp/ann-benchmarks-data
+      # Only after a successful run, so a broken download is never stored.
+      - run:
+          name: Save new datasets to S3
+          command: |
+            for ds in ${ANN_DATASETS}; do
+              [ -e "/tmp/ann-datasets-in-s3/${ds}" ] && continue
+              aws s3 cp --no-sign-request --profile anon \
+                "${ANN_DATASET_CACHE}/${ds}.hdf5" \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/ann-datasets/${ds}.hdf5" \
+                || echo "WARNING: could not store ${ds} in S3"
+            done
       - save_cache:
           key: ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
           paths:
@@ -116,7 +139,8 @@ commands:
 
 jobs:
   # Static release build of this commit (as for the nightly packages),
-  # installed into install-x64.tar.gz for ann-benchmark-build.
+  # installed into install-x64.tar.gz in the S3 workspace for
+  # ann-benchmark-build.
   compile-arangod:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
@@ -183,10 +207,12 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: /tmp/sccache.log
-      - persist_to_workspace:
-          root: .
-          paths:
-            - install-x64.tar.gz
+      - run:
+          name: Save install package to S3
+          command: |
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon install-x64.tar.gz \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/install-x64.tar.gz"
 
   # Benchmark against arango-image, one job per dataset, each on its own
   # machine so runs don't compete.
@@ -218,6 +244,7 @@ jobs:
       RESULTS_ARANGO_INSECURE: "1"
     steps:
       - checkout
+      - install-aws-cli
       - ann-benchmark-harness
       - store_artifacts:
           # Upload even when the benchmark step fails (e.g. incomplete results),
@@ -239,13 +266,14 @@ jobs:
       ARANGODB_IMAGE: "nightly-package-x64 << pipeline.git.branch >>@<< pipeline.git.revision >>"
     steps:
       - checkout
-      - attach_workspace:
-          at: /tmp/ann-workspace
+      - install-aws-cli
       # Same layout and arangod.conf as the packages and Docker images.
       - run:
           name: Install arangod
           command: |
-            sudo tar -xzf /tmp/ann-workspace/install-x64.tar.gz -C /
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/install-x64.tar.gz" \
+              - | sudo tar -xzf - -C /
             sudo useradd --system --no-create-home arangodb
             sudo mkdir -p /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
             sudo chown arangodb /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
@@ -269,7 +297,7 @@ jobs:
           destination: ann-benchmark
 
 workflows:
-  ann-benchmark:
+  ann-benchmark-docker:
     when:
       and:
         - equal: [ ann, << pipeline.parameters.benchmark >> ]
@@ -281,7 +309,7 @@ workflows:
             parameters:
               dataset: &ann-datasets [ glove-100-angular, sift-128-euclidean ]
 
-  ann-benchmark-build:
+  ann-benchmark-local:
     when:
       and:
         - equal: [ ann, << pipeline.parameters.benchmark >> ]
