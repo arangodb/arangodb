@@ -12,7 +12,6 @@ struct VertexIdLabel {
   std::string label;
   bool operator==(VertexIdLabel const&) const = default;
 };
-
 /**
    Internal handler of an vertex
  */
@@ -25,26 +24,47 @@ auto inspect(Inspector& f, VertexId& x) {
   return f.object(x).fields(f.field("id", x.id));
 }
 
-// Q: what to use here?
+// struct Edge {
+//   VertexId from;
+//   VertexId to;
+//   bool operator==(Edge const& other) const {
+//     return (from == other.from && to == other.to);
+//   }
+// };
+// template<typename Inspector>
+// auto inspect(Inspector& f, Edge& x) {
+//   return f.object(x).fields(f.field("from", x.from), f.field("to", x.to));
+// }
+
+/**
+   Uniquely identifies an edge
+ */
+struct EdgeIdLabel {
+  std::string label;
+  bool operator==(EdgeIdLabel const&) const = default;
+};
+
+/**
+   Internal handler of an edge
+ */
 struct EdgeId {
   size_t id;
   bool operator==(EdgeId const&) const = default;
 };
-
-struct Edge {
-  VertexId from;
-  VertexId to;
-  bool operator==(Edge const& other) const {
-    return (from == other.from && to == other.to);
-  }
-};
 template<typename Inspector>
-auto inspect(Inspector& f, Edge& x) {
-  return f.object(x).fields(f.field("from", x.from), f.field("to", x.to));
+auto inspect(Inspector& f, EdgeId& x) {
+  return f.object(x).fields(f.field("id", x.id));
 }
 
 }  // namespace arangodb::graph::experimental
 
+template<>
+struct std::hash<arangodb::graph::experimental::EdgeIdLabel> {
+  std::size_t operator()(
+      arangodb::graph::experimental::EdgeIdLabel const& value) const noexcept {
+    return std::hash<std::string>()(value.label);
+  }
+};
 template<>
 struct std::hash<arangodb::graph::experimental::EdgeId> {
   std::size_t operator()(
@@ -74,12 +94,13 @@ struct IGraphView {
   // Q: use VertexRef or using VertexId = std::string (as defined in
   //    SingleServerPathResult.h)
   // Q: return Edge or Step?
-  virtual auto outEdges(VertexId vertex) -> std::vector<Edge> = 0;
+  virtual auto outEdges(VertexId vertex) -> std::vector<EdgeId> = 0;
 
   // TODO needs to return at some point Vertex data
   virtual auto ensureVertex(VertexIdLabel const& vertex) -> VertexId = 0;
   virtual auto queryVertex(VertexIdLabel const& vertex)
       -> std::optional<VertexId> = 0;
+  virtual auto ensureEdgeToVertex(EdgeId const& edge) -> VertexId = 0;
   virtual auto retrieveDocument(VertexId const& id)
       -> std::optional<VertexIdLabel> = 0;
 
