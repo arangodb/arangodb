@@ -13,30 +13,21 @@ namespace arangodb::graph::experimental {
 
 struct InMemoryGraph {
   InMemoryGraph() = default;
-  InMemoryGraph(std::vector<VertexIdLabel> vertexIdLabels,
-                std::vector<std::tuple<std::string, std::string>> edges)
-      : _vertexIdLabels{std::move(vertexIdLabels)} {
-    for (auto const& edge : edges) {
-      auto it = std::find_if(_vertexIdLabels.begin(), _vertexIdLabels.end(),
-                             [&](VertexIdLabel const& label) {
-                               return label.label == std::get<0>(edge);
-                             });
-      if (it == _vertexIdLabels.end()) {
-        // error
-      }
-      size_t fromId = std::distance(_vertexIdLabels.begin(), it);
-      it = std::find_if(_vertexIdLabels.begin(), _vertexIdLabels.end(),
-                        [&](VertexIdLabel const& label) {
-                          return label.label == std::get<1>(edge);
-                        });
-      if (it == _vertexIdLabels.end()) {
-        // error
-      }
-      size_t toId = std::distance(_vertexIdLabels.begin(), it);
+  InMemoryGraph(
+      std::vector<VertexIdLabel> vertexIdLabels,
+      std::unordered_map<EdgeIdLabel, std::tuple<VertexIdLabel, VertexIdLabel>>
+          edges)
+      : _vertexIdLabels{std::move(vertexIdLabels)},
+        _edgeIdLabels{std::move(edges)} {}
 
-      _edges.insert(
-          {EdgeId{_next_edge_id++}, Edge{VertexId{fromId}, VertexId{toId}}});
+  auto retrieveEdgeIdLabel(VertexIdLabel const& from, VertexIdLabel const& to)
+      -> std::optional<EdgeIdLabel> {
+    for (auto const& [id, tuple] : _edgeIdLabels) {
+      if (std::get<0>(tuple) == from && std::get<1>(tuple) == to) {
+        return id;
+      }
     }
+    return std::nullopt;
   }
 
   auto includesVertex(VertexIdLabel const& vertex) -> bool {
@@ -46,11 +37,27 @@ struct InMemoryGraph {
     }
     return true;
   }
-  std::vector<VertexIdLabel> _vertexIdLabels;
-  std::unordered_map<EdgeId, Edge> _edges;
 
- private:
-  size_t _next_edge_id = 0;
+  auto getVertexTo(EdgeIdLabel const& edge) -> std::optional<VertexIdLabel> {
+    if (auto find = _edgeIdLabels.find(edge); find != _edgeIdLabels.end()) {
+      return std::get<1>(find->second);
+    }
+    return std::nullopt;
+  }
+
+  auto outEdges(VertexIdLabel const& vertex) -> std::vector<EdgeIdLabel> {
+    auto out = std::vector<EdgeIdLabel>{};
+    for (auto const& [edge, tuple] : _edgeIdLabels) {
+      if (std::get<0>(tuple) == vertex) {
+        out.emplace_back(edge);
+      }
+    }
+    return out;
+  }
+
+  std::vector<VertexIdLabel> _vertexIdLabels;
+  std::unordered_map<EdgeIdLabel, std::tuple<VertexIdLabel, VertexIdLabel>>
+      _edgeIdLabels;
 };
 
 /**
@@ -62,20 +69,21 @@ struct InMemoryGraphView : IGraphView {
   InMemoryGraphView() = default;
   InMemoryGraphView(InMemoryGraph const& graph) : _graph{graph} {}
 
-  auto outEdges(VertexId vertex) -> std::vector<Edge> override {
-    std::vector<Edge> result;
-    // for (auto const& [id, edge] : _edges) {
-    //   if (edge.from == vertex) {
-    //     result.emplace_back(edge);
-    //   }
-    // }
+  auto outEdges(VertexId vertex) -> std::vector<EdgeId> override {
+    std::vector<EdgeId> result;
+    auto edgeLabels = _graph.outEdges(_vertexIdLabels[vertex.id]);
+    for (auto const& edge : edgeLabels) {
+      if (auto e = ensureEdge(edge); e != std::nullopt) {
+        result.emplace_back(e.value());
+      }
+    }
     return result;
   }
 
   /**
      Assumes that a vertex exists in the graph
 
-     If the vertex does not exist in the graph, it adds it to the saved vertices
+     It adds it to the saved vertices
      and returns that, although it is not part of the graph.
    */
   auto ensureVertex(VertexIdLabel const& vertex) -> VertexId override {
@@ -89,8 +97,36 @@ struct InMemoryGraphView : IGraphView {
     return VertexId{distance};
   }
 
+  auto ensureEdgeToVertex(EdgeId const& edge) -> VertexId override {
+    auto toLabel = _graph.getVertexTo(_edgeIdLabels[edge.id]);
+    ADB_PROD_ASSERT(toLabel.has_value());
+    return ensureVertex(toLabel.value());
+  }
+
+  auto ensureEdge(EdgeIdLabel const& edge) -> std::optional<EdgeId> {
+    auto it = std::find(_edgeIdLabels.begin(), _edgeIdLabels.end(), edge);
+
+    if (it == _edgeIdLabels.end()) {
+      _edgeIdLabels.emplace_back(edge);
+      it = std::find(_edgeIdLabels.begin(), _edgeIdLabels.end(), edge);
+    }
+    size_t distance = std::distance(_edgeIdLabels.begin(), it);
+    return EdgeId{distance};
+  }
+
+  /**
+     Gives a vertex handle
+
+     Either we find it in the graph, then it is returned.
+     Or the vertex was already requested from this view, then this handle is
+     returned.
+   */
   auto queryVertex(VertexIdLabel const& vertex)
       -> std::optional<VertexId> override {
+    if (_graph.includesVertex(vertex)) {
+      _vertexIdLabels.emplace_back(vertex);
+      return VertexId{_vertexIdLabels.size() - 1};
+    }
     auto it = std::find(_vertexIdLabels.begin(), _vertexIdLabels.end(), vertex);
 
     if (it == _vertexIdLabels.end()) {
@@ -98,6 +134,18 @@ struct InMemoryGraphView : IGraphView {
     }
     size_t distance = std::distance(_vertexIdLabels.begin(), it);
     return VertexId{distance};
+  }
+
+  auto queryEdge(VertexId const& from, VertexId const& to)
+      -> std::optional<EdgeId> {
+    auto fromLabel = _vertexIdLabels[from.id];
+    auto toLabel = _vertexIdLabels[to.id];
+    if (auto edgeLabel = _graph.retrieveEdgeIdLabel(fromLabel, toLabel);
+        edgeLabel != std::nullopt) {
+      _edgeIdLabels.emplace_back(edgeLabel.value());
+      return EdgeId{_edgeIdLabels.size() - 1};
+    }
+    return std::nullopt;
   }
 
   auto retrieveDocument(VertexId const& id)
@@ -117,8 +165,9 @@ struct InMemoryGraphView : IGraphView {
   }
 
   // noted down labels (not necessarily part of the graph)
+  // VertexId is the position in this vector
   std::vector<VertexIdLabel> _vertexIdLabels;
-  // std::vector<EdgeIdLabel> _edgeIdLabels;
+  std::vector<EdgeIdLabel> _edgeIdLabels;
   InMemoryGraph _graph;
 
   // indexes
