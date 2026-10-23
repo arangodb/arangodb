@@ -139,6 +139,32 @@ function TraversalBitmapIndexSuite() {
       }
     },
 
+    testBooleanEdgeConditions: function () {
+      const has = (l, x) => Array.isArray(l) && l.includes(x);
+      // [projection evaluated per edge, the same on the client]
+      const cases = [
+        [`['x', 'w'] ANY IN CURRENT.labels`, (l) => has(l, 'x') || has(l, 'w')],
+        [`'x' IN CURRENT.labels AND 'y' NOT IN CURRENT.labels`,
+         (l) => has(l, 'x') && !has(l, 'y')],
+        [`('x' IN CURRENT.labels OR 'w' IN CURRENT.labels) AND ['z'] NONE IN CURRENT.labels`,
+         (l) => (has(l, 'x') || has(l, 'w')) && !has(l, 'z')],
+        [`['x', 'y'] NONE NOT IN CURRENT.labels`, (l) => has(l, 'x') && has(l, 'y')],
+      ];
+      for (let [projection, edgeMatches] of cases) {
+        for (let direction of ['OUTBOUND', 'ANY']) {
+          let filter = `p.edges[* RETURN ${projection}] ALL == true`;
+          let bindVars = {start: vn + '/v7'};
+          let indexes = traversalIndexes(traversal(direction, filter), bindVars);
+          assertTrue(indexes.base.some((idx) => isBitmap(idx, '_from')),
+                     JSON.stringify({projection, indexes}));
+          let expected = reference(direction, bindVars.start, [],
+                                   (labelsPerEdge) => labelsPerEdge.every(edgeMatches));
+          assertEqual(expected, run(traversal(direction, filter), bindVars),
+                      JSON.stringify({projection, direction}));
+        }
+      }
+    },
+
     testDepthSpecificCondition: function () {
       let filter = '@labels ALL IN p.edges[0].labels';
       let firstEdgeMatches = (labelsPerEdge, hasAll) => hasAll(labelsPerEdge[0]);

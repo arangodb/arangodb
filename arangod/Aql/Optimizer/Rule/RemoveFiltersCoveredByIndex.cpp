@@ -35,6 +35,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
+#include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/Index.h"
 
 namespace arangodb::aql {
@@ -206,6 +207,14 @@ containers::HashSet<size_t> collectOverlappingMembersForIndex(
     }
 
     if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
+      toRemove.emplace(i);
+    }
+  }
+
+  if (index->type() == IndexType::Bitmap) {
+    // conditions on the array attribute are answered exactly by the bitmaps
+    for (std::size_t i : bitmap_index::coveredMembers(*index, andNode,
+                                                      otherAndNode, variable)) {
       toRemove.emplace(i);
     }
   }

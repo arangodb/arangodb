@@ -297,6 +297,22 @@ void extractNonConstPartsOfLeafNode(
                                      std::move(path), result);
       return;
     }
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR: {
+      // nested junctions, e.g. in the edge conditions of a traversal
+      for (size_t i = 0; i < leaf->numMembers(); ++i) {
+        auto operand = leaf->getMemberUnchecked(i);
+        if (operand->isConstant()) {
+          continue;
+        }
+        auto path = selectedMembersFromRoot;
+        path.emplace_back(i);
+        extractNonConstPartsOfLeafNode(ast, registers, evaluateFCalls, index,
+                                       operand, indexVariable, std::move(path),
+                                       result);
+      }
+      return;
+    }
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
