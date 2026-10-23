@@ -68,20 +68,26 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
+    let jwt_secret_folder = fs.join(fs.getTempPath(), "python_jwt_dir");
+    fs.makeDirectoryRecursive(jwt_secret_folder);
+    fs.write(fs.join(jwt_secret_folder, "first_jwt"), "watch my eyes Mogli watch my eye");
+    fs.write(fs.join(jwt_secret_folder, "second_jwt"), "watch my eye watch my eyes Mogli");
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
-    opts.extraArgs = {
+    let serverOptions = {
       // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
       'server.authentication': 'true',
+      'server.jwt-secret-folder': jwt_secret_folder,
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
-    super(opts, testname, ...optionalArgs);
+    super(opts, testname, serverOptions, ...optionalArgs);
     this.info = "runInPythonTest";
+    this.jwt_secret_folder = jwt_secret_folder;
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
