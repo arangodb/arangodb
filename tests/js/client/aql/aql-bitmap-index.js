@@ -284,6 +284,48 @@ function BitmapIndexSuite() {
       }
     },
 
+    testRuntimeValues: function () {
+      const rn = cn + 'Rules';
+      db._drop(rn);
+      let rules = db._create(rn);
+      try {
+        rules.insert([
+          {_key: 'one', labels: ['a'], label: 'b'},
+          {_key: 'two', labels: ['a', 'b'], label: 1},
+          {_key: 'empty', labels: [], label: null},
+          {_key: 'scalar', labels: 'a', label: ['a']},
+          {_key: 'null', labels: null, label: {}},
+          {_key: 'nested', labels: [['a'], 'b'], label: 'nope'},
+          {_key: 'numbers', labels: [1, 2], label: 'h'},
+          {_key: 'unknown', labels: ['nope'], label: 'c'},
+        ]);
+        const filters = [
+          `r.labels ALL IN d.labels`,
+          `r.labels ANY IN d.labels`,
+          `'a' IN d.labels AND r.labels NONE IN d.labels`,
+          `r.labels ALL IN d.labels AND 'c' NOT IN d.labels`,
+          `r.label IN d.labels`,
+          `'a' IN d.labels AND r.label NOT IN d.labels`,
+          `(r.label IN d.labels OR 'e' IN d.labels) AND r.labels ALL IN d.labels`,
+        ];
+        for (let filter of filters) {
+          const q = `FOR r IN ${rn} FOR d IN ${cn} FILTER ${filter} RETURN CONCAT(r._key, '/', d._key)`;
+          const fullScan = `FOR r IN ${rn} FOR d IN ${cn} OPTIONS {disableIndex: true}
+                              FILTER ${filter} RETURN CONCAT(r._key, '/', d._key)`;
+          let plan = db._createStatement({query: q}).explain().plan;
+          let indexNodes = plan.nodes.filter((n) => n.type === 'IndexNode' &&
+                                                  n.indexes.some((i) => i.type === 'bitmap'));
+          assertEqual(1, indexNodes.length, filter);
+          // conditions on runtime values are evaluated on the documents again
+          assertTrue(indexNodes[0].filter !== undefined ||
+                     plan.nodes.some((n) => n.type === 'FilterNode'), filter);
+          assertEqual(query(fullScan, {}), query(q, {}), filter);
+        }
+      } finally {
+        db._drop(rn);
+      }
+    },
+
     testDropIndex: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
       let idx = db[cn].indexes().filter((i) => i.type === 'bitmap')[0];

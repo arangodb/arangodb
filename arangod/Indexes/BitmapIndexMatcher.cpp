@@ -98,10 +98,17 @@ TermExpr makeTerm(aql::AstNode const* value) {
   return TermExpr{.type = TermExpr::Type::Term, .value = value};
 }
 
-/// combine children, collapsing a single child without exclusions
+TermExpr makeConstant(bool value) {
+  return TermExpr{.type = value ? TermExpr::Type::True : TermExpr::Type::False};
+}
+
+/// combine children, collapsing a single child without exclusions. Without
+/// children an And is true and an Or is false.
 TermExpr combine(TermExpr::Type type, std::vector<TermExpr> children,
                  std::vector<TermExpr> excluded = {}) {
-  TRI_ASSERT(!children.empty());
+  if (children.empty() && excluded.empty()) {
+    return makeConstant(type == TermExpr::Type::And);
+  }
   if (children.size() == 1 && excluded.empty()) {
     return std::move(children.front());
   }
@@ -119,8 +126,11 @@ struct Predicate {
 
 class PredicateMatcher {
  public:
-  PredicateMatcher(Index const& index, aql::Variable const* reference)
-      : _field(index.fields().back()), _reference(reference) {}
+  PredicateMatcher(Index const& index, aql::Variable const* reference,
+                   bool runtime)
+      : _field(index.fields().back()),
+        _reference(reference),
+        _runtime(runtime) {}
 
   std::optional<Predicate> match(aql::AstNode const* node) const {
     switch (node->type) {
@@ -128,11 +138,18 @@ class PredicateMatcher {
       case aql::NODE_TYPE_OPERATOR_BINARY_NIN: {
         // `x IN doc.attr`, `x NOT IN doc.attr`
         aql::AstNode const* lhs = node->getMemberUnchecked(0);
-        if (!isConstantScalar(lhs) || !onField(node)) {
+        if (!onField(node) || referencesVariable(lhs, _reference)) {
           return std::nullopt;
         }
-        return Predicate{makeTerm(lhs),
-                         node->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN};
+        bool const negated = node->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN;
+        if (!lhs->isConstant() || isConstantScalar(lhs)) {
+          // a value only known at runtime is matched again then
+          return Predicate{makeTerm(lhs), negated};
+        }
+        if (!_runtime) {
+          return std::nullopt;
+        }
+        return Predicate{TermExpr{.type = TermExpr::Type::Unknown}, negated};
       }
       case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
       case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
@@ -164,20 +181,41 @@ class PredicateMatcher {
     TRI_ASSERT(op->numMembers() == 3);
     aql::AstNode const* lhs = op->getMemberUnchecked(0);
     aql::AstNode const* quantifier = op->getMemberUnchecked(2);
-    // empty arrays make quantifiers true or false regardless of the
-    // document, which the bitmaps cannot express
-    if (!lhs->isConstant() || !lhs->isArray() || lhs->numMembers() == 0 ||
-        !onField(op) || aql::Quantifier::isAtLeast(quantifier)) {
+    if (!onField(op) || aql::Quantifier::isAtLeast(quantifier) ||
+        referencesVariable(lhs, _reference)) {
       return std::nullopt;
     }
     std::vector<TermExpr> terms;
-    for (std::size_t i = 0; i < lhs->numMembers(); ++i) {
-      auto const* element = lhs->getMemberUnchecked(i);
-      if (element->isArray() || element->isObject()) {
-        // only scalar array elements are indexed
+    if (!lhs->isConstant()) {
+      // the searched array is only known at runtime and matched again then
+      if (_runtime) {
         return std::nullopt;
       }
-      terms.push_back(makeTerm(element));
+      terms.push_back(makeTerm(lhs));
+    } else if (!lhs->isArray()) {
+      // a left side that is no array makes the comparison false
+      if (!_runtime) {
+        return std::nullopt;
+      }
+      return Predicate{makeConstant(false), false};
+    } else {
+      if (lhs->numMembers() == 0 && !_runtime) {
+        // a constant empty array makes the quantifier true or false
+        // regardless of the document, the index is of no use then
+        return std::nullopt;
+      }
+      for (std::size_t i = 0; i < lhs->numMembers(); ++i) {
+        auto const* element = lhs->getMemberUnchecked(i);
+        if (element->isArray() || element->isObject()) {
+          // only scalar array elements are indexed
+          if (!_runtime) {
+            return std::nullopt;
+          }
+          terms.push_back(TermExpr{.type = TermExpr::Type::Unknown});
+        } else {
+          terms.push_back(makeTerm(element));
+        }
+      }
     }
 
     bool const notIn = op->type == aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN;
@@ -249,12 +287,38 @@ class PredicateMatcher {
 
   std::vector<basics::AttributeName> const& _field;
   aql::Variable const* _reference;
+  bool const _runtime;
 };
+
+/// whether a condition on the array attribute searches values only known at
+/// runtime
+bool hasRuntimeValues(aql::AstNode const* node) {
+  switch (node->type) {
+    case aql::NODE_TYPE_OPERATOR_BINARY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_NIN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      return !node->getMemberUnchecked(0)->isConstant();
+    default:
+      break;
+  }
+  for (std::size_t i = 0; i < node->numMembers(); ++i) {
+    if (hasRuntimeValues(node->getMemberUnchecked(i))) {
+      return true;
+    }
+  }
+  return false;
+}
 
 double estimateItems(TermExpr const& expr, double items) {
   switch (expr.type) {
     case TermExpr::Type::Term:
+    case TermExpr::Type::Unknown:
       return items / 10.0;
+    case TermExpr::Type::True:
+      return items;
+    case TermExpr::Type::False:
+      return 0.0;
     case TermExpr::Type::And: {
       double result = items;
       for (auto const& child : expr.children) {
@@ -279,14 +343,15 @@ double estimateItems(TermExpr const& expr, double items) {
 
 std::optional<ConditionParts> matchCondition(Index const& index,
                                              aql::AstNode const* andNode,
-                                             aql::Variable const* reference) {
+                                             aql::Variable const* reference,
+                                             bool runtime) {
   auto const& fields = index.fields();
   if (fields.empty() || andNode == nullptr ||
       andNode->type != aql::NODE_TYPE_OPERATOR_NARY_AND) {
     return std::nullopt;
   }
   std::size_t const numPrefix = fields.size() - 1;
-  PredicateMatcher matcher(index, reference);
+  PredicateMatcher matcher(index, reference, runtime);
 
   ConditionParts parts;
   parts.prefixValues.resize(numPrefix, nullptr);
@@ -386,19 +451,40 @@ containers::HashSet<std::size_t> coveredMembers(
     return result;
   }
 
-  // conditions on the array attribute are answered exactly by the bitmaps
-  PredicateMatcher matcher(index, reference);
+  // conditions on the array attribute with constant searched values are
+  // answered exactly by the bitmaps
+  PredicateMatcher matcher(index, reference, /*runtime*/ false);
+  auto isAnswered = [&](aql::AstNode const* member) {
+    return !hasRuntimeValues(member) && matcher.match(member).has_value();
+  };
   containers::HashSet<std::string> answered;
   for (std::size_t m : parts->members) {
     auto const* member = indexCondition->getMemberUnchecked(m);
-    if (matcher.match(member).has_value()) {
+    if (isAnswered(member)) {
       answered.emplace(member->toString());
     }
   }
   for (std::size_t i = 0; i < andNode->numMembers(); ++i) {
     auto const* member = andNode->getMemberUnchecked(i);
-    if (matcher.match(member).has_value() &&
-        answered.contains(member->toString())) {
+    if (isAnswered(member) && answered.contains(member->toString())) {
+      result.emplace(i);
+    }
+  }
+  return result;
+}
+
+containers::HashSet<std::size_t> runtimeMembers(
+    Index const& index, aql::AstNode const* andNode,
+    aql::Variable const* reference) {
+  containers::HashSet<std::size_t> result;
+  if (andNode == nullptr ||
+      andNode->type != aql::NODE_TYPE_OPERATOR_NARY_AND) {
+    return result;
+  }
+  PredicateMatcher matcher(index, reference, /*runtime*/ false);
+  for (std::size_t i = 0; i < andNode->numMembers(); ++i) {
+    auto const* member = andNode->getMemberUnchecked(i);
+    if (hasRuntimeValues(member) && matcher.match(member).has_value()) {
       result.emplace(i);
     }
   }
