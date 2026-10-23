@@ -207,6 +207,37 @@ function projectionsTestSuite () {
       });
     },
 
+    testProjectionsOfOuterDocumentUsedInTraversalConditions : function () {
+      const vn = cn + "Vertices";
+      const en = cn + "Edges";
+      db._drop(vn);
+      db._drop(en);
+      try {
+        db._create(vn, { numberOfShards: 4 });
+        db._createEdgeCollection(en, { numberOfShards: 4 });
+        db[vn].insert([{ _key: "start", value: 5 }, { _key: "target", value: 5 }]);
+        db[en].insert({ _from: vn + "/start", _to: vn + "/target", value: 5 });
+
+        const queries = [
+          `FOR d IN ${vn} FOR v, e, p IN 1..1 OUTBOUND d._id ${en} FILTER p.edges[*].value ALL IN [d.value] RETURN v._key`,
+          `FOR d IN ${vn} FOR v, e, p IN 1..1 OUTBOUND d._id ${en} FILTER p.vertices[*].value ALL IN [d.value] RETURN v._key`,
+        ];
+
+        queries.forEach((query) => {
+          let result = db._query(query).toArray();
+          assertEqual(["target"], result, query);
+
+          let plan = db._createStatement(query).explain().plan;
+          let nodes = plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode' || node.type === 'IndexNode');
+          assertEqual(1, nodes.length, query);
+          assertEqual(normalize(["_id", "value"]), normalize(nodes[0].projections), query);
+        });
+      } finally {
+        db._drop(vn);
+        db._drop(en);
+      }
+    },
+
   };
 }
 
