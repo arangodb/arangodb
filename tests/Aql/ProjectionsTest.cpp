@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
@@ -565,8 +566,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
-  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -616,8 +617,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
-  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -662,8 +663,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
-  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(

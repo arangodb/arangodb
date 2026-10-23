@@ -34,6 +34,7 @@
 #include "velocypack/Builder.h"
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
@@ -316,8 +317,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
 
   // test auth collection (grant)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -332,7 +333,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -362,8 +363,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
 
   // test auth collection (revoke)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -380,7 +381,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     userPtr->grantCollection(vocbase->name(), "testDataSource",
                              arangodb::auth::Level::RO);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -515,8 +516,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
 
   // test auth wildcard (grant)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -531,7 +532,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -562,8 +563,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
 
   // test auth wildcard (revoke)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -580,7 +581,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     userPtr->grantCollection(vocbase->name(), "testDataSource",
                              arangodb::auth::Level::RO);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
