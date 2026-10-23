@@ -75,7 +75,7 @@ function observabilityApiAuthzSuite () {
       arango.GET_RAW(`/_arango/experimental/_admin/activities`);
       assertPermissions([
         // the experimental prefix addresses api version 2
-        "UseApiVersion version=2",
+        "UseApiVersion version=experimental",
         "UseDatabase name=_system level=read",
         "AdminMonitoringInternal"
       ], endObserve());
