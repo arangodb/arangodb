@@ -4,10 +4,14 @@ version: 2.1
 #
 # Parameters (set when triggering the pipeline):
 #   benchmark      which benchmark to run (ann: ann-benchmarks on the IVF index)
-#   arango-image   image the benchmark runs against (default: devel nightly)
+#   arango-image   image the benchmark runs against (default: 3.12 nightly)
 #   build-arango   true: benchmark a release build of this commit instead
 
 parameters:
+  enterprise-branch:
+    type: string
+    default: ""
+    description: "Only with build-arango: enterprise repo branch to build. Defaults to the same branch as arangodb, falling back to devel."
   benchmark:
     type: enum
     enum: ["ann"]
@@ -15,16 +19,12 @@ parameters:
     description: "Benchmark to run; each has its scripts in scripts/benchmark/<benchmark>/."
   arango-image:
     type: string
-    default: "arangodb/enterprise-preview:devel-nightly"
-    description: "arangod image the benchmark runs against, e.g. arangodb/core-preview:4.0-nightly for the 4.0 nightly. Ignored with build-arango."
+    default: "arangodb/enterprise-preview:3.12-nightly"
+    description: "arangod image the benchmark runs against, e.g. arangodb/core-preview:4.0-nightly for the 4.0 nightly. Ignored with build-arango set to true."
   build-arango:
     type: boolean
     default: false
-    description: "Compile this commit with the nightly-package-x64 CMake preset and benchmark that build instead of arango-image."
-  enterprise-branch:
-    type: string
-    default: ""
-    description: "Only with build-arango: enterprise repo branch to build. Defaults to the same branch as arangodb, falling back to devel."
+    description: "Use compiled local arangod instead of arango-image. The 'nightly-package-x64' CMake preset is used."
   build-docker-image:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-b6c8a8886"
