@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Basics/EncodingUtils.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -35,6 +37,8 @@ struct GeneralServerOptions {
   bool handleContentEncodingForUnauthenticatedRequests = false;
   bool returnQueueTimeHeader = true;
   uint64_t compressResponseThreshold = 0;
+  uint64_t maxDecompressedRequestBodySize =
+      arangodb::encoding::defaultMaxUncompressedSize;
   std::vector<std::string> accessControlAllowOrigins;
   std::string supportInfoApiPolicy = "admin";
   std::string optionsApiPolicy = "jwt";

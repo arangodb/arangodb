@@ -213,7 +213,6 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
-
 - rta_makedata_rbac:
     job: run-rbac-tests
     suites:
