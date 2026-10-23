@@ -1,6 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1108: Fixed a server crash in AQL modification queries using `LIMIT` 
+  when `fullCount` or fast-forward processing skipped beyond a full batch of 
+  input rows. The modification executor now preserves the remaining input rows 
+  during batch processing.
+
 * The `--server.jwt-secret-folder` startup option now skips everything in the
   folder that is not a regular file (e.g. subfolders, sockets, devices, named
   pipes) instead of trying to load it as a JWT secret.
