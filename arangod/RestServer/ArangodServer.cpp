@@ -301,7 +301,6 @@ void ArangodServer::addFeatures() {
   }
   addFeature<LanguageCheckFeature>();
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
-  addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   if (!skipNonServerFeatures) {
     addFeature<LogBufferFeature>(metrics,
