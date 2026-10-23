@@ -10,6 +10,10 @@
   folder that is not a regular file (e.g. subfolders, sockets, devices, named
   pipes) instead of trying to load it as a JWT secret.
 
+* Add `--http.decompressed-request-body-global-memory-limit` startup option,
+  which limits the combined size of all decompressed request bodies. Requests that 
+  would exceed it are rejected with 503. The default is 10% of the physical memory.
+
 * Add `--http.max-decompressed-request-body-size` startup option, which limits
   how large a compressed HTTP request body may be after decompression. The default
   is 512 MiB.
