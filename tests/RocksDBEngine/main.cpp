@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   arangodb::basics::VelocyPackHelper::initialize();
 
   arangodb::async_registry::registry.set_metrics(nullptr);
-  arangodb::activities::registry.setMetrics(nullptr);
+  arangodb::activities::registry.set_metrics(nullptr);
 
   return RUN_ALL_TESTS();
 }

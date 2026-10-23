@@ -28,4 +28,8 @@ Registry registry;
 thread_local CurrentlyExecuting Registry::_currentlyExecutingActivity{nullptr};
 
 const ActivityHandle Root{nullptr};
+
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  return registry.get_thread_registry();
+}
 }  // namespace arangodb::activities

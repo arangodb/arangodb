@@ -46,6 +46,9 @@ function viewFiltersMerging(isSearchAlias) {
         docs.push({value: "footest" + i, count: i});
         docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
+      // isolated from value/count -- byte order and ICU collation disagree on "{" vs "c"
+      docs.push({s: "{"});
+      docs.push({s: "a"});
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
@@ -54,13 +57,13 @@ function viewFiltersMerging(isSearchAlias) {
           indexMeta = {
             type: "inverted",
             name: "inverted",
-            fields: ["value", "count", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+            fields: ["value", "count", "s", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
           };
         } else {
           indexMeta = {
             type: "inverted",
             name: "inverted",
-            fields: ["value", "count"]
+            fields: ["value", "count", "s"]
           };
         }
         let i = c.ensureIndex(indexMeta);
@@ -77,6 +80,9 @@ function viewFiltersMerging(isSearchAlias) {
                     analyzers: ["identity"]
                   },
                   count: {
+                    analyzers: ["identity"]
+                  },
+                  s: {
                     analyzers: ["identity"]
                   },
                   value_nested: {
@@ -96,6 +102,9 @@ function viewFiltersMerging(isSearchAlias) {
                     analyzers: ["identity"]
                   },
                   count: {
+                    analyzers: ["identity"]
+                  },
+                  s: {
                     analyzers: ["identity"]
                   },
                   value_nested: {}
@@ -136,12 +145,26 @@ function viewFiltersMerging(isSearchAlias) {
       assertEqual(50, res.length);
 
       if (isSearchAlias) {
-        let res = db._query(`FOR d IN UnitTestsCollection 
+        let res = db._query(`FOR d IN UnitTestsCollection
           OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, filterOptimization: 0} FILTER
           LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) AND
           STARTS_WITH(d.value, 'footest') RETURN d`).toArray();
         assertEqual(50, res.length);
       }
+    },
+
+    testMergeEqualityWithRangeCollationMismatch() {
+      let res = db._query(
+        "FOR d IN UnitTestView SEARCH d.s == '{' AND d.s < 'c' RETURN d.s"
+      ).toArray();
+      assertEqual(["{"], res);
+    },
+
+    testMergeOrEqualityWithRangeCollationMismatch() {
+      let res = db._query(
+        "FOR d IN UnitTestView SEARCH (d.s == '{' OR d.s == 'zzz') AND d.s < 'c' RETURN d.s"
+      ).toArray();
+      assertEqual(["{"], res);
     },
   };
 }

@@ -45,6 +45,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/RequestOptions.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Helper.h"
 
 using namespace arangodb;
 
@@ -167,9 +168,11 @@ auto requestActivitiesInRegistry()
 }  // namespace
 
 struct InternalRequestActivityTest : ::testing::Test {
-  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+  static void SetUpTestSuite() {
+    activities::tests::garbageCollectAllOnCurrentThread();
+  }
   static void TearDownTestSuite() {
-    activities::registry.garbageCollectAll();
+    activities::tests::garbageCollectAllOnCurrentThread();
     EXPECT_EQ(activities::registry.size(), 0);
   }
 
