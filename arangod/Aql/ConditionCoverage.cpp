@@ -146,6 +146,30 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
 }  // namespace
 
+namespace {
+/// whether the left side of an array comparison is an expansion with a
+/// RETURN projection
+bool hasExpansionProjection(AstNode const* condition) {
+  if (!condition->isArrayComparisonOperator()) {
+    return false;
+  }
+  AstNode const* lhs = condition->getMemberUnchecked(0);
+  return lhs->type == NODE_TYPE_EXPANSION && lhs->numMembers() > 4 &&
+         lhs->getMemberUnchecked(4)->type != NODE_TYPE_NOP;
+}
+
+bool containsIdenticalMember(AstNode const* condition,
+                             AstNode const* andNode) {
+  std::string const wanted = condition->toString();
+  for (size_t i = 0; i < andNode->numMembers(); ++i) {
+    if (andNode->getMemberUnchecked(i)->toString() == wanted) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
+
 containers::HashSet<size_t> collectOverlappingMembersForTraversal(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, bool isPathCondition) {
@@ -164,6 +188,11 @@ containers::HashSet<size_t> collectOverlappingMembersForTraversal(
     }
 
     if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
+      toRemove.emplace(i);
+    } else if (isPathCondition && hasExpansionProjection(operand) &&
+               containsIdenticalMember(operand, otherAndNode)) {
+      // `p.edges[* RETURN ...] ALL == true` has no attribute path to compare,
+      // but the traversal enforces exactly the conditions it recorded
       toRemove.emplace(i);
     }
   }

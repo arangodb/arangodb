@@ -25,9 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Value.h>
-
 #include <cstring>
 
 namespace arangodb::bitmap_index {
@@ -44,28 +41,6 @@ std::uint64_t readShard(char const* p) noexcept {
     shard = (shard << 8) | static_cast<std::uint8_t>(p[i]);
   }
   return shard;
-}
-
-bool appendNormalized(std::string& out, velocypack::Slice value) {
-  velocypack::Builder builder;
-  if (value.isNumber()) {
-    double d = value.getNumber<double>();
-    if (d == 0.0) {
-      // -0.0 and 0.0 compare equal
-      d = 0.0;
-    }
-    builder.add(velocypack::Value(d));
-  } else if (value.isString()) {
-    builder.add(velocypack::Value(value.stringView()));
-  } else if (value.isBoolean()) {
-    builder.add(velocypack::Value(value.getBoolean()));
-  } else if (value.isNull()) {
-    builder.add(velocypack::Value(velocypack::ValueType::Null));
-  } else {
-    return false;
-  }
-  out.append(reinterpret_cast<char const*>(builder.data()), builder.size());
-  return true;
 }
 
 std::optional<ValueTag> tagOf(std::string_view value) noexcept {

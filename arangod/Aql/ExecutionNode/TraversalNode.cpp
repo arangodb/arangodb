@@ -766,11 +766,6 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
                options()->tmpVar())) {
         toRemove.emplace(i);
       }
-      // values only known at runtime may need a superset from the index
-      for (std::size_t i : bitmap_index::runtimeMembers(
-               index, remainderCondition, options()->tmpVar())) {
-        toRemove.erase(i);
-      }
     }
     size_t n = remainderCondition->numMembers();
 

@@ -79,8 +79,15 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       break;
     }
     case RocksDBColumnFamilyManager::Family::BitmapIndex: {
-      // fixed 8 byte object id prefix, plus merge operator, compaction filter
-      // and merge operand collector for the bitmaps
+      // keys are object id | velocypack array | shard, compared like the
+      // velocypack indexes so that values AQL considers equal share a key.
+      // equal keys may differ in their bytes, so there is no bloom filter.
+      rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
+      tableOptions.filter_policy.reset();
+      result.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
+      result.comparator = _vpackCmp.get();
+      // the object id comes first and is compared bytewise
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
       bitmap_index::configureColumnFamily(result);

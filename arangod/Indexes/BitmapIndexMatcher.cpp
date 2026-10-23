@@ -68,10 +68,6 @@ bool referencesVariable(aql::AstNode const* node,
   return vars.contains(reference);
 }
 
-bool isConstantScalar(aql::AstNode const* node) {
-  return node->isConstant() && !node->isArray() && !node->isObject();
-}
-
 /// prefix field position matched by an equality, or -1
 int matchPrefixEquality(Index const& index, aql::AstNode const* op,
                         aql::Variable const* reference,
@@ -80,8 +76,7 @@ int matchPrefixEquality(Index const& index, aql::AstNode const* op,
   for (std::size_t side = 0; side < 2; ++side) {
     aql::AstNode const* access = op->getMemberUnchecked(side);
     aql::AstNode const* other = op->getMemberUnchecked(1 - side);
-    if (referencesVariable(other, reference) ||
-        (other->isConstant() && (other->isArray() || other->isObject()))) {
+    if (referencesVariable(other, reference)) {
       continue;
     }
     for (std::size_t i = 0; i + 1 < fields.size(); ++i) {
@@ -141,15 +136,9 @@ class PredicateMatcher {
         if (!onField(node) || referencesVariable(lhs, _reference)) {
           return std::nullopt;
         }
-        bool const negated = node->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN;
-        if (!lhs->isConstant() || isConstantScalar(lhs)) {
-          // a value only known at runtime is matched again then
-          return Predicate{makeTerm(lhs), negated};
-        }
-        if (!_runtime) {
-          return std::nullopt;
-        }
-        return Predicate{TermExpr{.type = TermExpr::Type::Unknown}, negated};
+        // any value is indexed, including arrays and objects
+        return Predicate{makeTerm(lhs),
+                         node->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN};
       }
       case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
       case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
@@ -187,34 +176,22 @@ class PredicateMatcher {
     }
     std::vector<TermExpr> terms;
     if (!lhs->isConstant()) {
-      // the searched array is only known at runtime and matched again then
+      // the searched array is only known at runtime and matched then
       if (_runtime) {
         return std::nullopt;
       }
       terms.push_back(makeTerm(lhs));
-    } else if (!lhs->isArray()) {
-      // a left side that is no array makes the comparison false
-      if (!_runtime) {
-        return std::nullopt;
-      }
-      return Predicate{makeConstant(false), false};
     } else {
-      if (lhs->numMembers() == 0 && !_runtime) {
-        // a constant empty array makes the quantifier true or false
-        // regardless of the document, the index is of no use then
-        return std::nullopt;
-      }
-      for (std::size_t i = 0; i < lhs->numMembers(); ++i) {
-        auto const* element = lhs->getMemberUnchecked(i);
-        if (element->isArray() || element->isObject()) {
-          // only scalar array elements are indexed
-          if (!_runtime) {
-            return std::nullopt;
-          }
-          terms.push_back(TermExpr{.type = TermExpr::Type::Unknown});
-        } else {
-          terms.push_back(makeTerm(element));
+      // a left side that is no array counts as an empty array
+      if (lhs->isArray()) {
+        for (std::size_t i = 0; i < lhs->numMembers(); ++i) {
+          terms.push_back(makeTerm(lhs->getMemberUnchecked(i)));
         }
+      }
+      if (terms.empty() && !_runtime) {
+        // without elements the quantifier is true or false regardless of
+        // the document, the index is of no use then
+        return std::nullopt;
       }
     }
 
@@ -290,30 +267,9 @@ class PredicateMatcher {
   bool const _runtime;
 };
 
-/// whether a condition on the array attribute searches values only known at
-/// runtime
-bool hasRuntimeValues(aql::AstNode const* node) {
-  switch (node->type) {
-    case aql::NODE_TYPE_OPERATOR_BINARY_IN:
-    case aql::NODE_TYPE_OPERATOR_BINARY_NIN:
-    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
-    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
-      return !node->getMemberUnchecked(0)->isConstant();
-    default:
-      break;
-  }
-  for (std::size_t i = 0; i < node->numMembers(); ++i) {
-    if (hasRuntimeValues(node->getMemberUnchecked(i))) {
-      return true;
-    }
-  }
-  return false;
-}
-
 double estimateItems(TermExpr const& expr, double items) {
   switch (expr.type) {
     case TermExpr::Type::Term:
-    case TermExpr::Type::Unknown:
       return items / 10.0;
     case TermExpr::Type::True:
       return items;
@@ -451,11 +407,10 @@ containers::HashSet<std::size_t> coveredMembers(
     return result;
   }
 
-  // conditions on the array attribute with constant searched values are
-  // answered exactly by the bitmaps
+  // conditions on the array attribute are answered exactly by the bitmaps
   PredicateMatcher matcher(index, reference, /*runtime*/ false);
   auto isAnswered = [&](aql::AstNode const* member) {
-    return !hasRuntimeValues(member) && matcher.match(member).has_value();
+    return matcher.match(member).has_value();
   };
   containers::HashSet<std::string> answered;
   for (std::size_t m : parts->members) {
@@ -467,24 +422,6 @@ containers::HashSet<std::size_t> coveredMembers(
   for (std::size_t i = 0; i < andNode->numMembers(); ++i) {
     auto const* member = andNode->getMemberUnchecked(i);
     if (isAnswered(member) && answered.contains(member->toString())) {
-      result.emplace(i);
-    }
-  }
-  return result;
-}
-
-containers::HashSet<std::size_t> runtimeMembers(
-    Index const& index, aql::AstNode const* andNode,
-    aql::Variable const* reference) {
-  containers::HashSet<std::size_t> result;
-  if (andNode == nullptr ||
-      andNode->type != aql::NODE_TYPE_OPERATOR_NARY_AND) {
-    return result;
-  }
-  PredicateMatcher matcher(index, reference, /*runtime*/ false);
-  for (std::size_t i = 0; i < andNode->numMembers(); ++i) {
-    auto const* member = andNode->getMemberUnchecked(i);
-    if (hasRuntimeValues(member) && matcher.match(member).has_value()) {
       result.emplace(i);
     }
   }

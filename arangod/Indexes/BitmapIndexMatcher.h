@@ -37,17 +37,17 @@ struct Variable;
 
 namespace bitmap_index {
 
-/// Boolean expression over the elements of the indexed array attribute.
+/// Boolean expression over the elements of the indexed array attribute. A
+/// document whose attribute is missing or not an array has no elements.
 /// Negations only appear as exclusions of an And. Expressions made of Term,
 /// And (with at least one required child) and Or only match documents that
 /// contain a searched element, so they can be answered from the bitmaps
 /// alone.
 ///
-/// The remaining types only appear when matching evaluated runtime values:
-/// True and False are constants (e.g. an empty array with ALL IN), Unknown is
-/// a searched value that is never indexed (an array or object element).
+/// True and False only appear when matching evaluated runtime values, e.g.
+/// for an empty array with ALL IN.
 struct TermExpr {
-  enum class Type { Term, And, Or, True, False, Unknown };
+  enum class Type { Term, And, Or, True, False };
 
   Type type = Type::Term;
   /// Term: node evaluating to the searched scalar
@@ -74,19 +74,20 @@ struct ConditionParts {
 
 /// Match an n-ary AND node. Every prefix field needs an equality and at
 /// least one member must require some searched element to be present.
-/// Constant searched elements must be scalars; prefix values may come from
-/// outside variables.
+/// Searched values and prefix values may be any values, also computed from
+/// outside variables. Values are compared like AQL does, so 1 and 1.0 or
+/// objects with a different attribute order are equal.
 ///
 /// Supported conditions on the array attribute, also nested with AND, OR and
 /// NOT (an OR may not mix required and excluded elements):
 ///   x IN doc.attr, x NOT IN doc.attr,
 ///   [..] ALL IN / ANY IN / NONE IN doc.attr,
 ///   [..] ALL NOT IN / ANY NOT IN / NONE NOT IN doc.attr
+/// A left side that is not an array counts as an empty array.
 ///
-/// At planning time (`runtime == false`) searched values may also be
-/// expressions not depending on `reference`; their conditions must still be
-/// evaluated on the returned documents. At runtime these have been replaced
-/// by their values, which may be arrays of any content.
+/// At planning time (`runtime == false`) searched values may be expressions
+/// not depending on `reference`. At runtime these have been replaced by
+/// their values.
 std::optional<ConditionParts> matchCondition(Index const& index,
                                              aql::AstNode const* andNode,
                                              aql::Variable const* reference,
@@ -102,18 +103,10 @@ aql::AstNode* specializeCondition(Index const& index, aql::AstNode* node,
 
 /// Positions of the members of `andNode` that `indexCondition` (the
 /// specialized condition the index is used with) answers exactly, so they
-/// need not be evaluated again on the returned documents. Conditions with
-/// searched values only known at runtime are never answered exactly.
+/// need not be evaluated again on the returned documents.
 containers::HashSet<std::size_t> coveredMembers(
     Index const& index, aql::AstNode const* andNode,
     aql::AstNode const* indexCondition, aql::Variable const* reference);
-
-/// Positions of the members of `andNode` on the indexed array attribute
-/// whose searched values are only known at runtime. These must stay in the
-/// filter even if generic optimizer rules consider them covered.
-containers::HashSet<std::size_t> runtimeMembers(
-    Index const& index, aql::AstNode const* andNode,
-    aql::Variable const* reference);
 
 }  // namespace bitmap_index
 }  // namespace arangodb

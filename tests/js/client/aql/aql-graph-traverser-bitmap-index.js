@@ -27,6 +27,7 @@
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
 const db = require('internal').db;
+const _ = require('lodash');
 
 const vn = 'UnitTestsBitmapVertices';
 const en = 'UnitTestsBitmapEdges';
@@ -192,10 +193,10 @@ function TraversalBitmapIndexSuite() {
                                          labels: p.edges[*].labels}`, {start}).toArray();
         let expected = [];
         for (let r of rules.toArray()) {
-          // AQL: a non-array left side is false, an empty one true, nested
-          // arrays never match the scalar edge labels
-          let edgeMatches = (l) => Array.isArray(r.labels) &&
-              r.labels.every((s) => typeof s !== 'object' && l.includes(s));
+          // a value that is no array counts as an empty array, so the
+          // scalar and the empty rule match every edge
+          let searched = Array.isArray(r.labels) ? r.labels : [];
+          let edgeMatches = (l) => searched.every((s) => l.some((e) => _.isEqual(e, s)));
           for (let path of paths) {
             if (path.labels.every(edgeMatches)) {
               expected.push(r._key + ':' + path.key);
