@@ -46,6 +46,16 @@ DECLARE_COUNTER(
 DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
               "Number of currently registered activities");
 
+DECLARE_GAUGE(arangodb_activities_ready_for_deletion, std::uint64_t,
+              "Number of activities waiting for garbage collection");
+
+DECLARE_COUNTER(arangodb_activities_thread_registries_total,
+                "Total number of threads that created activities since "
+                "database process start");
+
+DECLARE_GAUGE(arangodb_activities_existing_thread_registries, std::uint64_t,
+              "Number of currently existing activity thread registries");
+
 Feature::Feature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
@@ -65,25 +75,39 @@ auto Feature::create_metrics(metrics::IRegistry& registry)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       registry.addShared(arangodb_activities_total{}),
-      registry.addShared(arangodb_activities_existing{}));
+      registry.addShared(arangodb_activities_existing{}),
+      registry.addShared(arangodb_activities_ready_for_deletion{}),
+      registry.addShared(arangodb_activities_thread_registries_total{}),
+      registry.addShared(arangodb_activities_existing_thread_registries{}));
 }
+
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
-      : _thread([gc_timeout](std::stop_token stoken) {
-          while (not stoken.stop_requested()) {
-            std::this_thread::sleep_for(std::chrono::seconds{gc_timeout});
-            activities::registry.garbageCollect();
+      : _thread([gc_timeout, this](std::stop_token stoken) {
+          auto const stopRequested = [&] {
+            std::unique_lock guard(_mutex);
+            return _cv.wait_for(guard, stoken, std::chrono::seconds{gc_timeout},
+                                [&stoken] { return stoken.stop_requested(); });
+          };
+          while (not stopRequested()) {
+            activities::registry.run_external_cleanup();
           }
         }) {}
 
-  ~CleanupThread() { _thread.request_stop(); }
+  ~CleanupThread() {
+    _thread.request_stop();
+    _cv.notify_one();
+    _thread.join();
+  }
 
+  std::mutex _mutex;
+  std::condition_variable_any _cv;
   std::jthread _thread;
 };
 
 void Feature::prepare() {
   _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
-  registry.setMetrics(_metrics);
+  registry.set_metrics(_metrics);
 }
 
 void Feature::start() {
@@ -93,25 +117,25 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 velocypack::SharedSlice Feature::getData() const {
-  auto res = registry.snapshot();
-  if (res.ok()) {
-    return res.get();
-  } else {
+  auto snap = registry.snapshot();
+  if (not snap.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::format("Failed to serialize snapshot with error: {}",
-                    res.error().error()));
+        std::string{"Error while serializing to VelocyPack: "} +
+            snap.error().error() + "\nPath: " + snap.error().path());
   }
+  return snap.get();
 }
 
 velocypack::SharedSlice Feature::getCrashData() const {
-  auto res = registry.snapshot();
-  if (res.ok()) {
-    return getData();
-  } else {
-    // YOLO.  If an exception is thrown here it happens inside crash
-    // data collection and the synthetic text extrusion machine
-    // complains.
-    return velocypack::SharedSlice();
+  auto snap = registry.snapshot();
+  if (not snap.ok()) {
+    auto builder = VPackBuilder{};
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("error", VPackValue(snap.error().error()));
+    }
+    return builder.sharedSlice();
   }
+  return snap.get();
 }

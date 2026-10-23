@@ -36,10 +36,10 @@ auto RegistryMetrics::decrement_registered_nodes() -> void {
   existing_promises->fetch_sub(1);
 }
 auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_add(1);
+  ready_for_deletion_promises->fetch_add(1);
 }
 auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_sub(1);
+  ready_for_deletion_promises->fetch_sub(1);
 }
 auto RegistryMetrics::increment_total_lists() -> void {
   thread_registries_total->count();
