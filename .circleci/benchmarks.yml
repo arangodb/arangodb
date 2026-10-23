@@ -5,8 +5,7 @@ version: 2.1
 # Parameters (set when triggering the pipeline):
 #   benchmark      which benchmark to run (ann: ann-benchmarks on the IVF index)
 #   arango-image   image the benchmark runs against (default: devel nightly)
-#   build-arango   true: benchmark a release build of this commit instead,
-#                  one job per dataset in ann-benchmark-build's matrix
+#   build-arango   true: benchmark a release build of this commit instead
 
 parameters:
   benchmark:
@@ -189,8 +188,12 @@ jobs:
           paths:
             - install-x64.tar.gz
 
-  # Benchmark against arango-image.
+  # Benchmark against arango-image, one job per dataset, each on its own
+  # machine so runs don't compete.
   ann-benchmark:
+    parameters:
+      dataset:
+        type: string
     docker:
       # Primary: runs the ann-benchmarks harness.
       - image: cimg/python:3.11.1
@@ -207,7 +210,7 @@ jobs:
       # Recorded in run_meta.json.
       ARANGODB_IMAGE: << pipeline.parameters.arango-image >>
       ANN_OUTPUT_DIR: /tmp/ann-output
-      ANN_DATASETS: glove-100-angular
+      ANN_DATASETS: << parameters.dataset >>
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
       PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
@@ -223,8 +226,7 @@ jobs:
           path: /tmp/ann-output
           destination: ann-benchmark
 
-  # Benchmark against compile-arangod's build, one job per dataset, each on
-  # its own machine so runs don't compete.
+  # Benchmark against compile-arangod's build, one job per dataset.
   ann-benchmark-build:
     parameters:
       dataset:
@@ -235,7 +237,6 @@ jobs:
     environment:
       <<: *ann-benchmark-environment
       ARANGODB_IMAGE: "nightly-package-x64 << pipeline.git.branch >>@<< pipeline.git.revision >>"
-      ANN_DATASETS: << parameters.dataset >>
     steps:
       - checkout
       - attach_workspace:
@@ -276,6 +277,9 @@ workflows:
     jobs:
       - ann-benchmark:
           context: [ ann-benchmark-store ]
+          matrix:
+            parameters:
+              dataset: &ann-datasets [ glove-100-angular, sift-128-euclidean ]
 
   ann-benchmark-build:
     when:
@@ -290,4 +294,4 @@ workflows:
           requires: [ compile-arangod ]
           matrix:
             parameters:
-              dataset: [ glove-100-angular, sift-128-euclidean ]
+              dataset: *ann-datasets

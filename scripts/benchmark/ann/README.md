@@ -58,6 +58,6 @@ The scripts here also set up the results store and Grafana locally, so the whole
 
 `.circleci/benchmarks.yml` is its own pipeline, triggered manually or by schedule with
 `benchmark` = `ann`. `arango-image` picks the image under test; `build-arango` = `true` benchmarks
-a release build of the branch instead, running `glove-100-angular` and `sift-128-euclidean` as
-parallel jobs. Store credentials come from the `ann-benchmark-store` context. Artifacts are under
-`ann-benchmark/`.
+a release build of the branch instead. Either way `glove-100-angular` and `sift-128-euclidean` run
+as parallel jobs. Store credentials come from the `ann-benchmark-store` context. Artifacts are
+under `ann-benchmark/`.
