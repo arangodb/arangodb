@@ -1494,7 +1494,7 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
-    resource_class: large
+    resource_class: << parameters.resource-class >>
     parameters:
       suiteName:
         type: string
@@ -1504,12 +1504,10 @@ jobs:
         type: string
       filterStatement:
         type: string
-      browser:
-        type: string
       rta-branch:
         type: string
         default: "main"
-      arangosh_args:
+      arangosh_args: # converted to rta_args later on...
         type: string
         default: ""
       docker_image:
@@ -1521,6 +1519,10 @@ jobs:
       sanitizer:
         type: string
         default: ""
+      resource-class:
+        type: string
+      arch:
+        type: string
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
@@ -1529,7 +1531,7 @@ jobs:
       - attach_workspace:
           at: work/ArangoDB
       - fetch-aux-binaries:
-          arch: x64 # rta tests should only run on x64
+          arch: << parameters.arch >>
           repo-path: work/ArangoDB
       - run:
           name: Clone RTA
@@ -1552,7 +1554,7 @@ jobs:
                  fi
                done
             done
-            set +x
+            set -x
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
@@ -1572,22 +1574,24 @@ jobs:
               cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             fi
+            RTA_ARGS=(<< parameters.arangosh_args >>)
+            if [ << parameters.buckets >> != 1 ]; then
+              RTA_ARGS+=(--buckets $BUCKETS)
+            fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
             export DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
-              --no-checkdata \
-              --no-run-upgrade  \
-              --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --buckets $BUCKETS \
+              --enterprise-magic ${ENTERPRISE_DOWNLOAD_PATH} \
+              "${RTA_ARGS[@]}" \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
              -v $(pwd)/allure-report:/allure-report \
              -v $(pwd)/allure-results:/allure-results \
              -v $(pwd)/allure-config:/allure-config \
-             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
+             tobix/allure-cli generate /allure-results -o /allure-report --clean
              exit $(($exit_code + $(cat ./test_dir/status.json) ))
       - store_artifacts:
           destination: << parameters.suiteName >>

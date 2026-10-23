@@ -801,7 +801,6 @@ class TestJob:
         assert isinstance(self.options.buckets, int)
         return self.options.buckets
 
-
 @dataclass
 class TestDefinitionFile:
     """Complete representation of a test definition YAML file."""
