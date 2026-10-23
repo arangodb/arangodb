@@ -222,6 +222,27 @@ TEST_F(ClassicAuthModeTest, SeeDatabaseNeedsReadAccess) {
               TRI_ERROR_FORBIDDEN);
 }
 
+TEST_F(ClassicAuthModeTest, UpdateQueryPropertiesNeedsWriteAccess) {
+  beUserWith(RW);
+  EXPECT_TRUE(check(p::UpdateQueryProperties{.db = std::string{kDb}}).ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       UpdateQueryPropertiesWithReadOnlyAccessIsForbidden) {
+  beUserWith(RO);
+  expectError(check(p::UpdateQueryProperties{.db = std::string{kDb}}),
+              TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       UpdateQueryPropertiesAsAdminWithoutDatabaseWriteAccessIsForbidden) {
+  // The permission is scoped to the database whose properties are updated;
+  // read-write access to _system alone does not grant it.
+  beAdminWithoutDb();
+  expectError(check(p::UpdateQueryProperties{.db = std::string{kDb}}),
+              TRI_ERROR_FORBIDDEN);
+}
+
 TEST_F(ClassicAuthModeTest, CreateDatabaseNeedsSystemReadWrite) {
   // The name of the database to be created is irrelevant; only RW on _system
   // counts.
@@ -1342,6 +1363,9 @@ std::vector<PermCase> permissionCases() {
        {{{Scope::Db, RO}}}},
       {"UseDatabaseWrite",
        p::UseDatabase{.name = db, .level = DatabaseAccessLevel::Write},
+       {{{Scope::Db, RW}}}},
+      {"UpdateQueryProperties",
+       p::UpdateQueryProperties{.db = db},
        {{{Scope::Db, RW}}}},
       {"CreateDatabase", p::CreateDatabase{.name = "brandnew"}, adminOnly},
       {"DropDatabase", p::DropDatabase{.name = db}, adminOnly},

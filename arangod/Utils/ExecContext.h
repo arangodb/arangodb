@@ -251,8 +251,8 @@ class ExecContext {
   [[nodiscard]] Result canKillQuery(std::string_view queryUser) const;
 
   /// @brief returns true if the query properties of the given
-  /// database may be changed
-  [[nodiscard]] Result canChangeQueryProperties(std::string_view db) const;
+  /// database may be updated
+  [[nodiscard]] Result canUpdateQueryProperties(std::string_view db) const;
 
   /// @brief returns true if the transaction of the given user may be seen
   /// (listed, or its state requested). Own transactions always may be; other
