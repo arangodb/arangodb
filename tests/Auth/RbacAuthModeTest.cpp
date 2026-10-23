@@ -75,7 +75,7 @@ std::string resourceStr(rbac::Resource const& resource) {
                         },
                         [](rbac::resources::ApiVersion const& r) {
                           return std::string{"apiversion:"} +
-                                 std::to_string(r.version);
+                                 std::string{to_string(r.version)};
                         },
                     },
                     resource);
@@ -108,7 +108,7 @@ struct MockService : rbac::Service {
 // Fixture bundling a mock service and the Rbac auth mode under test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  AuthMode::Rbac rbac{svc, "myuser", "mytoken", 0};
+  AuthMode::Rbac rbac{svc, "myuser", "mytoken", ApiVersion::V0};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
   // tests that only inspect the recorded queries would otherwise not compile
@@ -498,18 +498,18 @@ TEST_F(RbacAuthModeTest, AdminKillTransactions) {
 // ---------------------------------------------------------------------------
 
 TEST_F(RbacAuthModeTest, UseApiVersionAsksForTheVersionAsResource) {
-  EXPECT_TRUE(check(p::UseApiVersion{.version = 1}).ok());
-  expectSingle(rbac::Action::UseApiVersion, "apiversion:1");
+  EXPECT_TRUE(check(p::UseApiVersion{.version = ApiVersion::V1}).ok());
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:v1");
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDistinguishesVersions) {
-  check(p::UseApiVersion{.version = 0});
-  expectSingle(rbac::Action::UseApiVersion, "apiversion:0");
+  check(p::UseApiVersion{.version = ApiVersion::V0});
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:v0");
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {
   svc.answer = {TRI_ERROR_FORBIDDEN, "nope"};
-  EXPECT_EQ(check(p::UseApiVersion{.version = 1}).errorNumber(),
+  EXPECT_EQ(check(p::UseApiVersion{.version = ApiVersion::V1}).errorNumber(),
             TRI_ERROR_FORBIDDEN);
 }
 
