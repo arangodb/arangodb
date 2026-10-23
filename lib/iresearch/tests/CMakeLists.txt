@@ -196,6 +196,8 @@ target_link_libraries(iresearch-tests-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
   gtest
+  Boost::crc
+  Boost::iterator
   )
 
 # setup CRT
@@ -215,7 +217,6 @@ include_directories(iresearch-tests-static SYSTEM
   ${ICU_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:iresearch-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:iresearch-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>

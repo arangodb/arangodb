@@ -175,7 +175,7 @@ class SupervisedScheduler final : public Scheduler {
     /// @brief the number of items that have been enqueued via tryBoundedQueue
     /// Items that are added via an unbounded queue operation are not counted!
     std::atomic<uint64_t> numCountedItems{0};
-    boost::lockfree::queue<WorkItemBase*> queue;
+    boost::lockfree::queue<WorkItemBase*> queue{0};
   } _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64

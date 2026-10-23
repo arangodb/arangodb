@@ -206,7 +206,6 @@ endif ()
 # find Boost
 set(IRESEARCH_EXTERNAL_INCLUDES
   ${EXTERNAL_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${Lz4_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})

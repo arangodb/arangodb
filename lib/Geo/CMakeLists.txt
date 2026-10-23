@@ -10,8 +10,6 @@ endif ()
 
 target_link_libraries(arango_geo
   arango_basic_utils
-  boost_system
-  boost_boost
   s2)
 
 add_subdirectory(karney)
