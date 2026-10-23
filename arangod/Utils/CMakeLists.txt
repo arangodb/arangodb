@@ -13,7 +13,6 @@ if(NOT USE_ENTERPRISE)
 endif()
 
 target_link_libraries(arango_utils
-  boost_boost
   arango::validation
   arango_basic_errors
   arango_basic_utils
