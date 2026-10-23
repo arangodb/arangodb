@@ -24,8 +24,6 @@ from ..filters import filter_suites
 from .base import OutputGenerator, GeneratorConfig
 from .sizing import ResourceSizer
 
-# Benchmarked in parallel against the branch build, one job each.
-ANN_BUILD_DATASETS = ["glove-100-angular", "sift-128-euclidean"]
 
 class CircleCIGenerator(OutputGenerator):
     """Generate CircleCI workflow configuration from test definitions."""
@@ -99,12 +97,6 @@ class CircleCIGenerator(OutputGenerator):
         all_jobs: List[TestJob] = []
         for test_def in test_defs:
             all_jobs.extend(test_def.jobs.values())
-
-        if self.config.circleci.ann_benchmark:
-            circleci_config["workflows"] = {
-                "ann-benchmark": self._create_ann_benchmark_workflow()
-            }
-            return circleci_config
 
         # Generate workflows for different build configurations
         if "workflows" not in circleci_config:
@@ -382,50 +374,6 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(
             self._create_docker_manifest_job(flavor, tag, image_job_names)
         )
-
-    def _create_ann_benchmark_workflow(self) -> Dict[str, Any]:
-        """
-        Create the ANN benchmark workflow: the ann-benchmark job against
-        ann-bench-arango-image(image generated from 3.12 or 4.0 nightly jobs)
-        or, with ann_build_arangod, an x64 release compile
-        (ann-benchmark-x64 = nightly-package-x64 in build/) whose install
-        package ann-benchmark-build runs against.
-        """
-        context = ["ann-benchmark-store"]
-        if not self.config.circleci.ann_build_arangod:
-            return {"jobs": [{"ann-benchmark": {"context": context}}]}
-
-        compile_job_name = "build-x64-for-ann-benchmark"
-        return {
-            "jobs": [
-                {
-                    "compile-linux": {
-                        "context": ["sccache-aws-bucket"],
-                        "resource-class": self.sizer.get_resource_class(
-                            ResourceSize.XXLARGE, Architecture.X64
-                        ),
-                        "name": compile_job_name,
-                        "preset": "ann-benchmark-x64",
-                        "enterprise": True,
-                        "arch": Architecture.X64.value,
-                        "publish-artifacts": False,
-                        "build-tests": False,
-                        "create-install-package": True,
-                    }
-                },
-                *(
-                    {
-                        "ann-benchmark-build": {
-                            "context": context,
-                            "requires": [compile_job_name],
-                            "name": f"ann-benchmark-build-{dataset}",
-                            "dataset": dataset,
-                        }
-                    }
-                    for dataset in ANN_BUILD_DATASETS
-                ),
-            ]
-        }
 
     def _create_docker_compile_job(
         self, build_config: BuildConfig, flavor: str

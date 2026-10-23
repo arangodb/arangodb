@@ -20,15 +20,6 @@ parameters:
   arangod-without-v8:
     type: boolean
     default: false
-  run-ann-bench:
-    type: boolean
-    default: false
-  ann-bench-arango-image:
-    type: string
-    default: "arangodb/enterprise-preview:devel-nightly"
-  ann-bench-build-arango:
-    type: boolean
-    default: false
   extra_args:
     type: string
     default: ""
@@ -632,45 +623,6 @@ commands:
           path: ./work/
       - store_test_results:
           path: ./test-results/
-
-  # Shared by ann-benchmark and ann-benchmark-build once arangod is up: runs
-  # the ann-benchmarks harness against the IVF index, publishes the site + CSV
-  # and loads the run into the shared results store at AWS_FIGURES_URL (with
-  # credentials AWS_ARANGODB_ID / AWS_ARANGODB_KEY, all from the
-  # ann-benchmark-store context).
-  ann-benchmark-harness:
-    steps:
-      # Datasets are hundreds of MB each; the key changes with the dataset list
-      # and falls back to the newest cache so already downloaded ones are reused.
-      - run:
-          name: Compute dataset cache key
-          command: echo "${ANN_DATASETS}" > /tmp/ann-datasets
-      - restore_cache:
-          keys:
-            - ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-            - ann-datasets-v1-
-      # The script pins the fork (and so its requirements.txt).
-      - restore_cache:
-          keys:
-            - ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-            - ann-pip-v1-
-      - run:
-          name: Run ANN benchmark
-          no_output_timeout: 3h
-          command: |
-            RESULTS_ARANGO_URL="${AWS_FIGURES_URL}" \
-            RESULTS_ARANGO_USER="${AWS_ARANGODB_ID}" \
-            RESULTS_ARANGO_PASSWORD="${AWS_ARANGODB_KEY}" \
-              ./scripts/benchmark/ann/run_ann_benchmark.sh
-      - save_cache:
-          when: always
-          key: ann-datasets-v1-{{ checksum "/tmp/ann-datasets" }}
-          paths:
-            - /tmp/ann-benchmarks-data
-      - save_cache:
-          key: ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-          paths:
-            - /tmp/ann-pip-cache
 
 jobs:
   minimal-checkout:
@@ -1790,85 +1742,6 @@ jobs:
           path: /root/project/clang-tidy-results.txt
       - store_test_results:
           path: /root/project/clang-tidy-junit.xml
-
-  # Vector-index benchmark against ann-bench-arango-image (run-ann-bench).
-  ann-benchmark:
-    docker:
-      # Primary: runs the ann-benchmarks harness.
-      - image: cimg/python:3.11.1
-      # Service container: arangod, reachable from the primary at 127.0.0.1:8529
-      # (container runners have no docker daemon, so the harness cannot start it
-      # itself - the executor does, and the script only waits for it).
-      - image: << pipeline.parameters.ann-bench-arango-image >>
-        name: arangod
-        environment:
-          ARANGO_NO_AUTH: "1"
-        command: ["--vector-index=true"]
-    resource_class: arangodb/large-amd64
-    environment: &ann-benchmark-environment
-      # Recorded in run_meta.json.
-      ARANGODB_IMAGE: << pipeline.parameters.ann-bench-arango-image >>
-      ANN_OUTPUT_DIR: /tmp/ann-output
-      ANN_DATASETS: glove-100-angular
-      ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
-      PIP_CACHE_DIR: /tmp/ann-pip-cache
-      ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
-      # The store's TLS certificate is expired and won't be renewed.
-      RESULTS_ARANGO_INSECURE: "1"
-    steps:
-      - checkout
-      - ann-benchmark-harness
-      - store_artifacts:
-          # Upload even when the benchmark step fails (e.g. incomplete results),
-          # so a failed run is still debuggable via site/, run.log, arangod.log.
-          when: always
-          path: /tmp/ann-output
-          destination: ann-benchmark
-
-  # Vector-index benchmark against this branch's release build from
-  # build-x64-for-ann-benchmark (run-ann-bench + ann-bench-build-arango).
-  # One job per dataset, each on its own machine so runs don't compete.
-  ann-benchmark-build:
-    parameters:
-      dataset:
-        type: string
-    docker:
-      - image: cimg/python:3.11.1
-    resource_class: arangodb/large-amd64
-    environment:
-      <<: *ann-benchmark-environment
-      ARANGODB_IMAGE: "ann-benchmark-x64 << pipeline.git.branch >>@<< pipeline.git.revision >>"
-      ANN_DATASETS: << parameters.dataset >>
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/ann-workspace
-      # Same layout and arangod.conf as the packages and Docker images.
-      - run:
-          name: Install arangod
-          command: |
-            sudo tar -xzf /tmp/ann-workspace/install-x64.tar.gz -C /
-            sudo useradd --system --no-create-home arangodb
-            sudo mkdir -p /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
-            sudo chown arangodb /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
-      - run:
-          name: Start arangod
-          background: true
-          command: |
-            sudo /usr/sbin/arangod --config /etc/arangodb3/arangod.conf \
-              --server.authentication false --vector-index true
-      - ann-benchmark-harness
-      - run:
-          name: Collect arangod log file
-          when: always
-          command: |
-            mkdir -p /tmp/ann-output
-            sudo cp /var/log/arangodb3/arangod.log /tmp/ann-output/arangod-server.log || true
-            sudo chmod a+r /tmp/ann-output/arangod-server.log || true
-      - store_artifacts:
-          when: always
-          path: /tmp/ann-output
-          destination: ann-benchmark
 
 workflows:
   lint:

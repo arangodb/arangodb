@@ -17,7 +17,8 @@ ENV ANN_WORKDIR=/work \
 
 WORKDIR /app
 COPY run_ann_benchmark.sh load_run.py ./
-RUN ./run_ann_benchmark.sh setup
+# run_local.sh runs as the calling user, who writes results into the checkout.
+RUN ./run_ann_benchmark.sh setup && chmod -R a+rwX /work
 
 VOLUME ["/out", "/data"]
 ENTRYPOINT ["/app/run_ann_benchmark.sh"]

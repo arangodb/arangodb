@@ -156,8 +156,6 @@ def create_generator_config(
     replication_two: bool,
     create_test_docker_images: str,
     create_preview_docker_images: str,
-    ann_benchmark: bool,
-    ann_build_arangod: bool,
     validate_only: bool,
     test_suite: str,
 ) -> GeneratorConfig:
@@ -211,8 +209,6 @@ def create_generator_config(
     circleci_config = CircleCIConfig(
         create_test_docker_images=create_test_docker_images,
         create_preview_docker_images=create_preview_docker_images,
-        ann_benchmark=ann_benchmark,
-        ann_build_arangod=ann_build_arangod,
         test_image=test_image,
     )
 
@@ -317,17 +313,6 @@ def create_generator_config(
     "public ECR from the build results",
 )
 @click.option(
-    "--ann-benchmark",
-    is_flag=True,
-    help="Generate only the ANN benchmark workflow instead of the test workflows",
-)
-@click.option(
-    "--ann-build-arangod",
-    is_flag=True,
-    help="With --ann-benchmark: benchmark an x64 release build of this commit "
-    "instead of ann-bench-arango-image",
-)
-@click.option(
     "--validate-only",
     is_flag=True,
     help="Validate test definitions without generating config",
@@ -355,8 +340,6 @@ def main(
     replication_two: bool,
     create_test_docker_images: str,
     create_preview_docker_images: str,
-    ann_benchmark: bool,
-    ann_build_arangod: bool,
     validate_only: bool,
     test_suite: str,
 ):
@@ -393,8 +376,6 @@ def main(
             replication_two=replication_two,
             create_test_docker_images=create_test_docker_images,
             create_preview_docker_images=create_preview_docker_images,
-            ann_benchmark=ann_benchmark,
-            ann_build_arangod=ann_build_arangod,
             validate_only=validate_only,
             test_suite=test_suite,
         )

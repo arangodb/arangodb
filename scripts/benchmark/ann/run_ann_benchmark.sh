@@ -66,6 +66,7 @@ ARANGO_URL="http://${ARANGO_HOST}:${ARANGO_PORT}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS_DIR="${ANN_WORKDIR}/ann-benchmarks"
 VENV_DIR="${ANN_WORKDIR}/venv"
+FAILED_DATASETS=()
 
 log() { printf '\n=== %s ===\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
@@ -190,7 +191,8 @@ run_sweep() {
     log "Benchmarking ${ANN_ALGORITHM} on ${ds}"
     python run.py --local --algorithm "${ANN_ALGORITHM}" \
       --dataset "${ds}" --runs "${ANN_RUNS}" --force \
-      2>&1 | tee -a "${ANN_OUTPUT_DIR}/run.log"
+      2>&1 | tee -a "${ANN_OUTPUT_DIR}/run.log" \
+      || FAILED_DATASETS+=("${ds}")
   done
 }
 
@@ -235,7 +237,8 @@ export_results() {
   local endtmp; endtmp="$(mktemp)"
   jq --arg ended "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.ended_at = $ended' \
      "${ANN_OUTPUT_DIR}/run_meta.json" > "${endtmp}" \
-     && mv "${endtmp}" "${ANN_OUTPUT_DIR}/run_meta.json"
+     && mv "${endtmp}" "${ANN_OUTPUT_DIR}/run_meta.json" \
+     && chmod 644 "${ANN_OUTPUT_DIR}/run_meta.json"
 
   # Self-describing artifact: what produced these numbers.
   {
@@ -286,6 +289,8 @@ main() {
   run_sweep
   collect_arango_log   # while arangod is still up
   export_results       # writes artifacts (incl. logs) BEFORE validation can fail
+  (( ${#FAILED_DATASETS[@]} == 0 )) \
+    || die "ann-benchmarks run.py failed for: ${FAILED_DATASETS[*]} (see run.log)"
   validate_results     # fails the job if any config produced no results
   load_results         # only complete runs reach the results store
   log "Done. Artifacts in ${ANN_OUTPUT_DIR} (site/, results.csv, arangod.log)"

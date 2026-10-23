@@ -108,26 +108,6 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
-  run-ann-bench:
-    type: boolean
-    default: false
-    description: "Run the ann-benchmark instead of the normal test
-      pipeline (manually or from a pipeline schedule). Boots the existing
-      Docker image ann-bench-arango-image or, with ann-bench-build-arango, a
-      release build of this commit, runs the ann-benchmarks harness against
-      the IVF index and publishes the HTML site + results.csv as artifacts.
-      See scripts/benchmark/ann/."
-  ann-bench-arango-image:
-    type: string
-    default: "arangodb/enterprise-preview:devel-nightly"
-    description: "arangod image the ANN benchmark runs against, e.g.
-      arangodb/core-preview:4.0-nightly for the 4.0 nightly."
-  ann-bench-build-arango:
-    type: boolean
-    default: false
-    description: "Only together with run-ann-bench: compile this commit with
-      the CMakePresets.json configuration ann-benchmark-x64 and benchmark that
-      build; ann-bench-arango-image is then ignored."
 
 
 # our defined job, and its steps
@@ -270,9 +250,6 @@ jobs:
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
             echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
             echo "filter-testsuite: << pipeline.parameters.filter-testsuite >>"
-            echo "run-ann-bench: << pipeline.parameters.run-ann-bench >>"
-            echo "ann-bench-arango-image: << pipeline.parameters.ann-bench-arango-image >>"
-            echo "ann-bench-build-arango: << pipeline.parameters.ann-bench-build-arango >>"
       - run:
           name: Checkout
           command: |
@@ -337,8 +314,6 @@ jobs:
               --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               --create-preview-docker-images << pipeline.parameters.create-preview-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-              <<# pipeline.parameters.run-ann-bench >> --ann-benchmark <</ pipeline.parameters.run-ann-bench >> \
-              <<# pipeline.parameters.ann-bench-build-arango >> --ann-build-arangod <</ pipeline.parameters.ann-bench-build-arango >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
               --test-suite "<<pipeline.parameters.filter-testsuite>>" \
               -o continuation_config.yml \

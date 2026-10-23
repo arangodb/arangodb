@@ -560,56 +560,6 @@ class TestDockerImagesWorkflow:
             assert f"build-non-maintainer-{arch}" in job_names
 
 
-class TestAnnBenchmarkWorkflow:
-    """Test the ANN benchmark workflow (run-ann-bench)."""
-
-    def generate(self, ann_build_arangod):
-        config = GeneratorConfig(
-            filter_criteria=FilterCriteria(),
-            circleci=CircleCIConfig(
-                ann_benchmark=True,
-                ann_build_arangod=ann_build_arangod,
-                test_image="default",
-            ),
-            build_variants=[BuildVariant.NORMAL],
-        )
-        gen = CircleCIGenerator(
-            config,
-            base_config={"workflows": {"lint": {"jobs": []}}},
-            env_getter=lambda k, default: default,
-        )
-        return gen.generate([])
-
-    def test_image_mode_runs_only_the_image_benchmark(self):
-        result = self.generate(ann_build_arangod=False)
-
-        assert result["workflows"] == {
-            "ann-benchmark": {
-                "jobs": [{"ann-benchmark": {"context": ["ann-benchmark-store"]}}]
-            }
-        }
-
-    def test_build_mode_benchmarks_a_release_compile(self):
-        result = self.generate(ann_build_arangod=True)
-
-        assert list(result["workflows"]) == ["ann-benchmark"]
-        compile_job, *benchmark_jobs = result["workflows"]["ann-benchmark"]["jobs"]
-        compile_params = compile_job["compile-linux"]
-        assert compile_params["preset"] == "ann-benchmark-x64"
-        assert compile_params["arch"] == "x64"
-        assert compile_params["create-install-package"] is True
-        assert compile_params["build-tests"] is False
-        assert [job["ann-benchmark-build"] for job in benchmark_jobs] == [
-            {
-                "context": ["ann-benchmark-store"],
-                "requires": [compile_params["name"]],
-                "name": f"ann-benchmark-build-{dataset}",
-                "dataset": dataset,
-            }
-            for dataset in ["glove-100-angular", "sift-128-euclidean"]
-        ]
-
-
 class TestGenerateMethod:
     """Test the main generate() method."""
 

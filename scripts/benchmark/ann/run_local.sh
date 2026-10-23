@@ -30,7 +30,7 @@ done < <(env | grep -oE '^(ARANGO|ANN|RESULTS_ARANGO)_[A-Z_]+|^GRAFANA_URL' || t
 
 # --network host so 127.0.0.1 inside the container is the host's arangod. On
 # Docker Desktop without host networking use ARANGO_HOST=host.docker.internal.
-docker run --rm --network host \
+docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "${OUT_DIR}:/out" \
   -v "${DATASET_CACHE}:/data" \
   -e ANN_STAMP="${ANN_STAMP:-local $(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
