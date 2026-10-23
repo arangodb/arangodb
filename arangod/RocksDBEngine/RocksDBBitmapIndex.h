@@ -32,10 +32,11 @@
 namespace arangodb {
 
 /// Inverted index over the elements of an array attribute. The last field is
-/// the array attribute; all preceding fields are scalar equality prefixes
-/// (e.g. `_from` for traversals). Per (prefix values, element) it stores
-/// Roaring bitmaps of LocalDocumentIds, sharded by the high id bits, plus a
-/// document count. Writes are blind RocksDB merge operands.
+/// the array attribute; all preceding fields are equality prefixes (e.g.
+/// `_from` for traversals). Per (prefix values, element) it stores Roaring
+/// bitmaps of LocalDocumentIds, sharded by the high id bits, plus a document
+/// count. Keys are compared like velocypack index keys, so values AQL
+/// considers equal share a key. Writes are blind RocksDB merge operands.
 class RocksDBBitmapIndex final : public RocksDBIndex {
  public:
   RocksDBBitmapIndex(IndexId iid, LogicalCollection& collection,
@@ -76,12 +77,12 @@ class RocksDBBitmapIndex final : public RocksDBIndex {
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int mutableConditionIdx) override;
 
-  /// encoded prefix values of a document; false if the document has a
-  /// non-scalar prefix value and is therefore not indexed
-  bool encodePrefix(velocypack::Slice doc, std::string& out) const;
+  /// value of the i-th prefix field of a document; null if missing
+  velocypack::Slice prefixValue(velocypack::Slice doc, std::size_t i) const;
 
-  /// distinct encoded elements of the document's array attribute
-  std::vector<std::string> encodeTerms(velocypack::Slice doc) const;
+  /// distinct elements of the document's array attribute, compared like AQL
+  /// does; none if the attribute is missing or not an array
+  std::vector<velocypack::Slice> distinctElements(velocypack::Slice doc) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

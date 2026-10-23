@@ -27,8 +27,6 @@
 #include <string>
 #include <string_view>
 
-#include <velocypack/Slice.h>
-
 #include "roaring.hh"
 
 namespace arangodb::bitmap_index {
@@ -69,12 +67,6 @@ enum class ValueTag : char {
 void appendShard(std::string& out, std::uint64_t shard);
 /// read a shard number written by appendShard
 std::uint64_t readShard(char const* p) noexcept;
-
-/// Append the normalized VelocyPack encoding of a scalar value. Numbers are
-/// stored as doubles so that values AQL considers equal share an encoding.
-/// Returns false and appends nothing for arrays, objects and other
-/// non-scalar values.
-bool appendNormalized(std::string& out, velocypack::Slice value);
 
 std::optional<ValueTag> tagOf(std::string_view value) noexcept;
 

@@ -217,11 +217,6 @@ containers::HashSet<size_t> collectOverlappingMembersForIndex(
                                                       otherAndNode, variable)) {
       toRemove.emplace(i);
     }
-    // values only known at runtime may need a superset from the index
-    for (std::size_t i :
-         bitmap_index::runtimeMembers(*index, andNode, variable)) {
-      toRemove.erase(i);
-    }
   }
 
   return toRemove;

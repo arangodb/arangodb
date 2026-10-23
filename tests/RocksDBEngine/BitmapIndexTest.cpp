@@ -22,8 +22,11 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
 #include "RocksDBEngine/RocksDBBitmapIndexMergeOperator.h"
+#include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -45,11 +48,25 @@ using namespace arangodb::bitmap_index;
 
 namespace {
 
-std::string normalized(std::string_view json) {
-  auto builder = velocypack::Parser::fromJson(json.data(), json.size());
+/// objectId | [values...] (| shard), as the bitmap index builds its keys
+std::string key(std::string_view valuesJson,
+                std::optional<std::uint64_t> shard = std::nullopt) {
+  auto values = velocypack::Parser::fromJson(valuesJson.data(),
+                                             valuesJson.size());
   std::string out;
-  EXPECT_TRUE(appendNormalized(out, builder->slice()));
+  rocksutils::uint64ToPersistent(out, 42);
+  out.append(reinterpret_cast<char const*>(values->slice().begin()),
+             values->slice().byteSize());
+  if (shard.has_value()) {
+    appendShard(out, *shard);
+  }
   return out;
+}
+
+int compare(std::string const& lhs, std::string const& rhs) {
+  static RocksDBVPackComparator<
+      basics::VelocyPackHelper::SortingMethod::Correct> const cmp;
+  return cmp.Compare(lhs, rhs);
 }
 
 std::string addDelta(std::vector<std::uint32_t> const& offsets) {
@@ -153,21 +170,36 @@ TEST(BitmapIndexFormatTest, ids_split_into_shard_and_offset) {
   EXPECT_EQ(id, makeId(shardOf(id), offsetOf(id)));
 }
 
-TEST(BitmapIndexFormatTest, equal_numbers_share_one_term) {
-  EXPECT_EQ(normalized("1"), normalized("1.0"));
-  EXPECT_EQ(normalized("0"), normalized("-0.0"));
-  EXPECT_NE(normalized("1"), normalized("\"1\""));
-  EXPECT_NE(normalized("\"a\""), normalized("\"ab\""));
-  EXPECT_NE(normalized("true"), normalized("null"));
+TEST(BitmapIndexFormatTest, values_aql_considers_equal_share_a_key) {
+  EXPECT_EQ(0, compare(key(R"(["v/1", 1])"), key(R"(["v/1", 1.0])")));
+  EXPECT_EQ(0, compare(key(R"(["v/1", 0])"), key(R"(["v/1", -0.0])")));
+  EXPECT_EQ(0, compare(key(R"(["v/1", {"a": 1, "b": [2]}])"),
+                       key(R"(["v/1", {"b": [2.0], "a": 1}])")));
+  EXPECT_EQ(0, compare(key(R"(["v/1", [1, "x"]])", 7),
+                       key(R"(["v/1", [1.0, "x"]])", 7)));
 }
 
-TEST(BitmapIndexFormatTest, non_scalars_are_not_terms) {
-  for (std::string_view json : {"[1]", "{\"a\":1}"}) {
-    auto builder = velocypack::Parser::fromJson(json.data(), json.size());
-    std::string out;
-    EXPECT_FALSE(appendNormalized(out, builder->slice()));
-    EXPECT_TRUE(out.empty());
-  }
+TEST(BitmapIndexFormatTest, distinct_values_have_distinct_keys) {
+  EXPECT_NE(0, compare(key(R"(["v/1", 1])"), key(R"(["v/1", "1"])")));
+  EXPECT_NE(0, compare(key(R"(["v/1", "a"])"), key(R"(["v/1", "ab"])")));
+  EXPECT_NE(0, compare(key(R"(["v/1", [1]])"), key(R"(["v/1", 1])")));
+  EXPECT_NE(0, compare(key(R"(["v/1", null])"), key(R"(["v/1", false])")));
+  EXPECT_NE(0, compare(key(R"(["v/1", "a"])"), key(R"(["v/2", "a"])")));
+}
+
+TEST(BitmapIndexFormatTest, count_key_sorts_before_shard_keys) {
+  std::string countKey = key(R"(["v/1", "a"])");
+  std::string first = key(R"(["v/1", "a"])", 0);
+  std::string second = key(R"(["v/1", "a"])", 1);
+  std::string large = key(R"(["v/1", "a"])", 1ULL << 40);
+  std::string nextElement = key(R"(["v/1", "b"])");
+  EXPECT_LT(compare(countKey, first), 0);
+  EXPECT_LT(compare(first, second), 0);
+  EXPECT_LT(compare(second, large), 0);
+  EXPECT_LT(compare(large, nextElement), 0);
+  // a seek with an equal value of different bytes lands on the same keys
+  EXPECT_EQ(0, compare(key(R"(["v/1", "a"])", 1), second));
+  EXPECT_LT(compare(key(R"(["v/1", "a"])"), key(R"(["v/1", "a"])", 0)), 0);
 }
 
 TEST(BitmapIndexFormatTest, counts_round_trip) {
@@ -283,4 +315,50 @@ TEST_F(BitmapIndexDBTest, many_memtable_operands_collapse_into_a_full_value) {
   auto value = get("b");
   ASSERT_TRUE(value.has_value());
   EXPECT_EQ(3 * kMaxSuccessiveMerges, contents(*value).size());
+}
+
+TEST(BitmapIndexComparatorDBTest, merges_of_equal_values_meet_in_one_key) {
+  static RocksDBVPackComparator<
+      basics::VelocyPackHelper::SortingMethod::Correct> const cmp;
+  auto path = std::filesystem::temp_directory_path() /
+              ("arangodb-bitmap-index-cmp-test-" + std::to_string(::getpid()));
+  std::filesystem::remove_all(path);
+  rocksdb::Options options;
+  options.create_if_missing = true;
+  options.comparator = &cmp;
+  configureColumnFamily(options);
+  rocksdb::DB* raw = nullptr;
+  ASSERT_TRUE(rocksdb::DB::Open(options, path.string(), &raw).ok());
+  std::unique_ptr<rocksdb::DB> db(raw);
+
+  auto merge = [&](std::string const& k, std::string const& v) {
+    ASSERT_TRUE(db->Merge(rocksdb::WriteOptions(), k, v).ok());
+  };
+  merge(key(R"(["v/1", 1])", 3), addDelta({1}));
+  merge(key(R"(["v/1", 1.0])", 3), addDelta({2}));
+  ASSERT_TRUE(db->Flush(rocksdb::FlushOptions()).ok());
+  merge(key(R"(["v/1", {"a": 1, "b": 2}])", 3), addDelta({5}));
+  merge(key(R"(["v/1", {"b": 2, "a": 1.0}])", 3), addDelta({6}));
+  merge(key(R"(["v/1", 1])", 3), removeDelta({1}));
+
+  std::string value;
+  ASSERT_TRUE(
+      db->Get(rocksdb::ReadOptions(), key(R"(["v/1", 1.0])", 3), &value).ok());
+  EXPECT_EQ((std::vector<std::uint32_t>{2}), contents(value));
+  ASSERT_TRUE(db->Get(rocksdb::ReadOptions(),
+                      key(R"(["v/1", {"a": 1, "b": 2}])", 3), &value)
+                  .ok());
+  EXPECT_EQ((std::vector<std::uint32_t>{5, 6}), contents(value));
+
+  // one key per distinct value
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(rocksdb::ReadOptions()));
+  std::size_t keys = 0;
+  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    ++keys;
+  }
+  EXPECT_EQ(2U, keys);
+
+  it.reset();
+  db.reset();
+  std::filesystem::remove_all(path);
 }

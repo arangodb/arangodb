@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
 #include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/IndexIterator.h"
@@ -48,7 +49,7 @@
 #include <algorithm>
 #include <limits>
 #include <optional>
-#include <set>
+#include <unordered_set>
 
 using namespace arangodb;
 
@@ -76,34 +77,41 @@ velocypack::Slice extractField(
   return current;
 }
 
-/// append the normalized encoding of each distinct scalar in `value` (an
-/// array, or a single scalar) to `out`
-void collectTerms(velocypack::Slice value, std::set<std::string>& out) {
-  auto add = [&out](velocypack::Slice element) {
-    std::string term;
-    if (bitmap_index::appendNormalized(term, element)) {
-      out.emplace(std::move(term));
-    }
-  };
-  if (value.isArray()) {
-    for (velocypack::Slice element : velocypack::ArrayIterator(value)) {
-      add(element);
-    }
-  } else {
-    add(value);
+using SliceSet = std::unordered_set<velocypack::Slice,
+                                    basics::VelocyPackHelper::VPackHash,
+                                    basics::VelocyPackHelper::VPackEqual>;
+
+/// key of a count (without shard) or of a bitmap (with shard):
+/// objectId | [prefix values..., element] | shard
+std::string makeKey(std::uint64_t objectId, velocypack::Slice prefixValues,
+                    velocypack::Slice element) {
+  velocypack::Builder body;
+  body.openArray();
+  for (velocypack::Slice value : velocypack::ArrayIterator(prefixValues)) {
+    body.add(value);
   }
+  body.add(element);
+  body.close();
+  RocksDBKey key;
+  key.constructBitmapIndexValue(
+      objectId, {reinterpret_cast<char const*>(body.data()), body.size()});
+  return key.string().ToString();
 }
 
-/// A TermExpr with the searched values encoded as normalized terms
+/// A TermExpr with the searched values evaluated
 struct Expr {
-  using Type = bitmap_index::TermExpr::Type;
+  enum class Type { Term, And, Or, True, False, NeedsScan };
   Type type = Type::Term;
+  /// Term: velocypack of the searched value
   std::string term;
   std::vector<Expr> children;
   std::vector<Expr> excluded;
 
-  bool isConstant(bool value) const {
-    return type == (value ? Type::True : Type::False);
+  velocypack::Slice value() const {
+    return velocypack::Slice(reinterpret_cast<uint8_t const*>(term.data()));
+  }
+  bool isConstant(bool v) const {
+    return type == (v ? Type::True : Type::False);
   }
   /// all documents except the excluded ones
   bool isComplement() const {
@@ -111,34 +119,31 @@ struct Expr {
   }
 };
 
-/// encode the searched values. elements that are never indexed become true
-/// where they are required and false where they are excluded, so the result
-/// is a superset; their conditions are evaluated on the documents again.
-Expr encode(bitmap_index::TermExpr const& expr, bool required) {
+Expr evaluateValues(bitmap_index::TermExpr const& expr) {
   using Type = bitmap_index::TermExpr::Type;
-  Expr result{.type = expr.type};
+  Expr result;
   switch (expr.type) {
     case Type::Term: {
       velocypack::Builder builder;
       expr.value->toVelocyPackValue(builder);
-      if (!bitmap_index::appendNormalized(result.term, builder.slice())) {
-        result.type = required ? Type::True : Type::False;
-      }
+      result.term.assign(reinterpret_cast<char const*>(builder.data()),
+                         builder.size());
       break;
     }
-    case Type::Unknown:
-      result.type = required ? Type::True : Type::False;
-      break;
     case Type::True:
+      result.type = Expr::Type::True;
+      break;
     case Type::False:
+      result.type = Expr::Type::False;
       break;
     case Type::And:
     case Type::Or:
+      result.type = expr.type == Type::And ? Expr::Type::And : Expr::Type::Or;
       for (auto const& child : expr.children) {
-        result.children.push_back(encode(child, required));
+        result.children.push_back(evaluateValues(child));
       }
       for (auto const& child : expr.excluded) {
-        result.excluded.push_back(encode(child, !required));
+        result.excluded.push_back(evaluateValues(child));
       }
       break;
   }
@@ -146,8 +151,8 @@ Expr encode(bitmap_index::TermExpr const& expr, bool required) {
 }
 
 /// Fold constants. The result is true, false, a complement (an And without
-/// required children), Unknown if it cannot be answered from the bitmaps, or
-/// an expression the bitmaps answer.
+/// required children), NeedsScan if it cannot be answered from the bitmaps,
+/// or an expression the bitmaps answer.
 Expr fold(Expr const& expr) {
   using Type = Expr::Type;
   auto constant = [](bool value) {
@@ -157,13 +162,13 @@ Expr fold(Expr const& expr) {
     case Type::Term:
     case Type::True:
     case Type::False:
-    case Type::Unknown:
+    case Type::NeedsScan:
       return expr;
     case Type::And: {
       Expr result{.type = Type::And};
       for (auto const& child : expr.children) {
         Expr f = fold(child);
-        if (f.isConstant(false) || f.type == Type::Unknown) {
+        if (f.isConstant(false) || f.type == Type::NeedsScan) {
           return f;
         }
         if (f.isComplement()) {
@@ -179,8 +184,8 @@ Expr fold(Expr const& expr) {
         if (f.isConstant(true)) {
           return constant(false);
         }
-        if (f.isComplement() || f.type == Type::Unknown) {
-          return Expr{.type = Type::Unknown};
+        if (f.isComplement() || f.type == Type::NeedsScan) {
+          return Expr{.type = Type::NeedsScan};
         }
         if (!f.isConstant(false)) {
           result.excluded.push_back(std::move(f));
@@ -201,8 +206,8 @@ Expr fold(Expr const& expr) {
         if (f.isConstant(true)) {
           return f;
         }
-        if (f.isComplement() || f.type == Type::Unknown) {
-          return Expr{.type = Type::Unknown};
+        if (f.isComplement() || f.type == Type::NeedsScan) {
+          return Expr{.type = Type::NeedsScan};
         }
         if (!f.isConstant(false)) {
           result.children.push_back(std::move(f));
@@ -221,27 +226,28 @@ Expr fold(Expr const& expr) {
   return expr;
 }
 
-/// evaluate against the sorted, distinct terms of one document
-bool evaluate(Expr const& expr, std::vector<std::string> const& terms) {
+/// evaluate against the distinct elements of one document
+bool evaluate(Expr const& expr, SliceSet const& elements) {
   using Type = Expr::Type;
   switch (expr.type) {
     case Type::Term:
-      return std::binary_search(terms.begin(), terms.end(), expr.term);
+      return elements.contains(expr.value());
     case Type::True:
       return true;
     case Type::False:
-    case Type::Unknown:
+    case Type::NeedsScan:
       return false;
     case Type::And:
       return std::all_of(
                  expr.children.begin(), expr.children.end(),
-                 [&](Expr const& c) { return evaluate(c, terms); }) &&
-             std::none_of(expr.excluded.begin(), expr.excluded.end(),
-                          [&](Expr const& c) { return evaluate(c, terms); });
+                 [&](Expr const& c) { return evaluate(c, elements); }) &&
+             std::none_of(
+                 expr.excluded.begin(), expr.excluded.end(),
+                 [&](Expr const& c) { return evaluate(c, elements); });
     case Type::Or:
       return std::any_of(
           expr.children.begin(), expr.children.end(),
-          [&](Expr const& c) { return evaluate(c, terms); });
+          [&](Expr const& c) { return evaluate(c, elements); });
   }
   return false;
 }
@@ -263,11 +269,12 @@ class ShardNode {
 
 class TermNode final : public ShardNode {
  public:
-  TermNode(std::string keyPrefix, rocksdb::Iterator& it)
-      : _keyPrefix(std::move(keyPrefix)), _it(it) {
-    // the count key sorts directly before the term's shard keys
-    _it.Seek(_keyPrefix);
-    if (_it.Valid() && _it.key() == rocksdb::Slice(_keyPrefix)) {
+  TermNode(std::string countKey, rocksdb::Iterator& it,
+           rocksdb::Comparator const& cmp)
+      : _countKey(std::move(countKey)), _it(it), _cmp(cmp) {
+    // the count key sorts directly before the element's shard keys
+    _it.Seek(_countKey);
+    if (_it.Valid() && suffixLength(_it.key()) == 0) {
       rocksdb::Slice value = _it.value();
       _count = bitmap_index::decodeCount({value.data(), value.size()});
       _it.Next();
@@ -287,7 +294,7 @@ class TermNode final : public ShardNode {
     if (_valid && _shard >= target) {
       return true;
     }
-    std::string key = _keyPrefix;
+    std::string key = _countKey;
     bitmap_index::appendShard(key, target);
     _it.Seek(key);
     position();
@@ -306,6 +313,24 @@ class TermNode final : public ShardNode {
   std::int64_t cost() const override { return _count; }
 
  private:
+  /// length of what follows the velocypack part of `key` if it belongs to
+  /// this element, -1 otherwise. keys of equal values may differ in their
+  /// bytes, so the comparator decides.
+  std::int64_t suffixLength(rocksdb::Slice key) const {
+    constexpr std::size_t objectIdSize = RocksDBKey::objectIdSize();
+    if (key.size() <= objectIdSize) {
+      return -1;
+    }
+    velocypack::Slice values(
+        reinterpret_cast<uint8_t const*>(key.data()) + objectIdSize);
+    std::size_t const end = objectIdSize + values.byteSize();
+    if (end > key.size() ||
+        _cmp.Compare(rocksdb::Slice(key.data(), end), _countKey) != 0) {
+      return -1;
+    }
+    return static_cast<std::int64_t>(key.size() - end);
+  }
+
   /// position on the shard key the iterator points to, if any
   void position() {
     _valid = false;
@@ -314,17 +339,18 @@ class TermNode final : public ShardNode {
       return;
     }
     rocksdb::Slice key = _it.key();
-    if (key.size() != _keyPrefix.size() + bitmap_index::kShardBytes ||
-        !key.starts_with(rocksdb::Slice(_keyPrefix))) {
+    if (suffixLength(key) != static_cast<std::int64_t>(bitmap_index::kShardBytes)) {
       return;
     }
-    _shard = bitmap_index::readShard(key.data() + _keyPrefix.size());
+    _shard = bitmap_index::readShard(key.data() + key.size() -
+                                     bitmap_index::kShardBytes);
     _valid = true;
   }
 
-  /// objectId | prefix values | term
-  std::string const _keyPrefix;
+  /// objectId | [prefix values..., element]
+  std::string const _countKey;
   rocksdb::Iterator& _it;
+  rocksdb::Comparator const& _cmp;
   std::int64_t _count = 0;
   std::uint64_t _shard = 0;
   bool _valid = false;
@@ -492,17 +518,13 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
                                      "unsupported bitmap index condition");
     }
 
-    _usable = true;
-    _prefix.clear();
+    _prefixValues.clear();
+    _prefixValues.openArray();
     for (auto const* value : parts->prefixValues) {
-      velocypack::Builder builder;
-      value->toVelocyPackValue(builder);
-      if (!bitmap_index::appendNormalized(_prefix, builder.slice())) {
-        // non-scalar prefix values are never indexed
-        _usable = false;
-      }
+      value->toVelocyPackValue(_prefixValues);
     }
-    _expr = encode(parts->expr, /*required*/ true);
+    _prefixValues.close();
+    _expr = evaluateValues(parts->expr);
     _folded = fold(_expr);
     restart();
   }
@@ -522,12 +544,10 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
   std::unique_ptr<ShardNode> build(Expr const& expr) {
     switch (expr.type) {
-      case Expr::Type::Term: {
-        RocksDBKey key;
-        key.constructBitmapIndexValue(_index->objectId(), _prefix + expr.term);
-        return std::make_unique<TermNode>(key.string().ToString(),
-                                          nextIterator());
-      }
+      case Expr::Type::Term:
+        return std::make_unique<TermNode>(
+            makeKey(_index->objectId(), _prefixValues.slice(), expr.value()),
+            nextIterator(), *_index->columnFamily()->GetComparator());
       case Expr::Type::And: {
         std::vector<std::unique_ptr<ShardNode>> required;
         std::vector<std::unique_ptr<ShardNode>> excluded;
@@ -549,7 +569,7 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
       }
       case Expr::Type::True:
       case Expr::Type::False:
-      case Expr::Type::Unknown:
+      case Expr::Type::NeedsScan:
         break;
     }
     TRI_ASSERT(false);
@@ -563,12 +583,12 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     _root.reset();
     _iteratorsUsed = 0;
     _scanning = false;
-    _exhausted = !_usable || _folded.isConstant(false);
+    _exhausted = _folded.isConstant(false);
     if (_exhausted) {
       return;
     }
     if (_folded.isConstant(true) || _folded.isComplement() ||
-        _folded.type == Expr::Type::Unknown) {
+        _folded.type == Expr::Type::NeedsScan) {
       // the condition matches documents that are not in any bitmap, e.g.
       // for an empty array with ALL IN: check every document instead
       startScan();
@@ -596,17 +616,26 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     _scanIterator->Seek(_scanBounds->start());
   }
 
+  bool matches(velocypack::Slice doc) const {
+    std::size_t i = 0;
+    for (velocypack::Slice value :
+         velocypack::ArrayIterator(_prefixValues.slice())) {
+      if (!basics::VelocyPackHelper::equal(_index->prefixValue(doc, i++),
+                                           value, true)) {
+        return false;
+      }
+    }
+    auto elements = _index->distinctElements(doc);
+    return evaluate(_expr, SliceSet(elements.begin(), elements.end()));
+  }
+
   bool scan(LocalDocumentIdCallback const& callback, uint64_t limit) {
-    std::string prefix;
     while (limit > 0 && _scanIterator->Valid()) {
       velocypack::Slice doc(
           reinterpret_cast<uint8_t const*>(_scanIterator->value().data()));
       LocalDocumentId id = RocksDBKey::documentId(_scanIterator->key());
       _scanIterator->Next();
-
-      prefix.clear();
-      if (!_index->encodePrefix(doc, prefix) || prefix != _prefix ||
-          !evaluate(_expr, _index->encodeTerms(doc))) {
+      if (!matches(doc)) {
         continue;
       }
       callback(id);
@@ -637,8 +666,9 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
   RocksDBBitmapIndex const* _index;
   aql::Variable const* _reference;
-  std::string _prefix;
-  /// the condition with searched values encoded, and with constants folded
+  /// velocypack array of the searched prefix values
+  velocypack::Builder _prefixValues;
+  /// the condition with searched values evaluated, and with constants folded
   Expr _expr;
   Expr _folded;
   std::unique_ptr<ShardNode> _root;
@@ -653,7 +683,6 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
   std::size_t _pos = 0;
   std::uint64_t _bufferShard = 0;
   std::uint64_t _nextShard = 0;
-  bool _usable = false;
   bool _exhausted = true;
 };
 
@@ -721,28 +750,27 @@ std::unique_ptr<IndexIterator> RocksDBBitmapIndex::iteratorForCondition(
       &_collection, trx, this, node, reference, readOwnWrites);
 }
 
-bool RocksDBBitmapIndex::encodePrefix(velocypack::Slice doc,
-                                      std::string& out) const {
-  for (std::size_t i = 0; i + 1 < _fields.size(); ++i) {
-    velocypack::Slice value = extractField(doc, _fields[i]);
-    if (value.isNone()) {
-      value = velocypack::Slice::nullSlice();
-    }
-    if (!bitmap_index::appendNormalized(out, value)) {
-      return false;
-    }
-  }
-  return true;
+velocypack::Slice RocksDBBitmapIndex::prefixValue(velocypack::Slice doc,
+                                                  std::size_t i) const {
+  TRI_ASSERT(i + 1 < _fields.size());
+  velocypack::Slice value = extractField(doc, _fields[i]);
+  return value.isNone() ? velocypack::Slice::nullSlice() : value;
 }
 
-std::vector<std::string> RocksDBBitmapIndex::encodeTerms(
+std::vector<velocypack::Slice> RocksDBBitmapIndex::distinctElements(
     velocypack::Slice doc) const {
-  std::set<std::string> terms;
+  std::vector<velocypack::Slice> result;
   velocypack::Slice value = extractField(doc, _fields.back());
-  if (value.isArray()) {
-    collectTerms(value, terms);
+  if (!value.isArray()) {
+    return result;
   }
-  return {terms.begin(), terms.end()};
+  SliceSet seen;
+  for (velocypack::Slice element : velocypack::ArrayIterator(value)) {
+    if (seen.insert(element).second) {
+      result.push_back(element);
+    }
+  }
+  return result;
 }
 
 Result RocksDBBitmapIndex::insert(transaction::Methods& /*trx*/,
@@ -765,14 +793,16 @@ Result RocksDBBitmapIndex::remove(transaction::Methods& /*trx*/,
 Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
                                  LocalDocumentId documentId,
                                  velocypack::Slice doc, bool isInsert) {
-  std::string prefix;
-  if (!encodePrefix(doc, prefix)) {
+  std::vector<velocypack::Slice> elements = distinctElements(doc);
+  if (elements.empty()) {
     return {};
   }
-  std::vector<std::string> terms = encodeTerms(doc);
-  if (terms.empty()) {
-    return {};
+  velocypack::Builder prefixValues;
+  prefixValues.openArray();
+  for (std::size_t i = 0; i + 1 < _fields.size(); ++i) {
+    prefixValues.add(prefixValue(doc, i));
   }
+  prefixValues.close();
 
   std::uint64_t const id = documentId.id();
   roaring::Roaring single;
@@ -785,15 +815,13 @@ Result RocksDBBitmapIndex::write(RocksDBMethods* methods,
 
   Result res;
   RocksDBKey key;
-  std::string body;
-  for (auto const& term : terms) {
-    body = prefix;
-    body.append(term);
-    key.constructBitmapIndexValue(objectId(), body);
+  for (velocypack::Slice element : elements) {
+    std::string countKey = makeKey(objectId(), prefixValues.slice(), element);
+    key.constructFromBuffer(countKey);
     rocksdb::Status s = methods->MergeUntracked(_cf, key, countDelta);
     if (s.ok()) {
-      bitmap_index::appendShard(body, bitmap_index::shardOf(id));
-      key.constructBitmapIndexValue(objectId(), body);
+      bitmap_index::appendShard(countKey, bitmap_index::shardOf(id));
+      key.constructFromBuffer(countKey);
       s = methods->MergeUntracked(_cf, key, delta);
     }
     if (!s.ok()) {

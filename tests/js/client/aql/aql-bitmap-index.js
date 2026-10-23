@@ -28,6 +28,7 @@
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const db = require('internal').db;
+const _ = require('lodash');
 
 const cn = 'UnitTestsBitmapIndex';
 const allLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -299,30 +300,70 @@ function BitmapIndexSuite() {
           {_key: 'numbers', labels: [1, 2], label: 'h'},
           {_key: 'unknown', labels: ['nope'], label: 'c'},
         ]);
-        const filters = [
-          `r.labels ALL IN d.labels`,
-          `r.labels ANY IN d.labels`,
-          `'a' IN d.labels AND r.labels NONE IN d.labels`,
-          `r.labels ALL IN d.labels AND 'c' NOT IN d.labels`,
-          `r.label IN d.labels`,
-          `'a' IN d.labels AND r.label NOT IN d.labels`,
-          `(r.label IN d.labels OR 'e' IN d.labels) AND r.labels ALL IN d.labels`,
+        // a value that is no array counts as an empty array, on both sides
+        const elements = (v) => Array.isArray(v) ? v : [];
+        const has = (labels, v) => elements(labels).some((e) => _.isEqual(e, v));
+        const allIn = (r, d) => elements(r.labels).every((v) => has(d.labels, v));
+        const anyIn = (r, d) => elements(r.labels).some((v) => has(d.labels, v));
+        const cases = [
+          [`r.labels ALL IN d.labels`, allIn],
+          [`r.labels ANY IN d.labels`, anyIn],
+          [`'a' IN d.labels AND r.labels NONE IN d.labels`,
+           (r, d) => has(d.labels, 'a') && !anyIn(r, d)],
+          [`r.labels ALL IN d.labels AND 'c' NOT IN d.labels`,
+           (r, d) => allIn(r, d) && !has(d.labels, 'c')],
+          [`r.label IN d.labels`, (r, d) => has(d.labels, r.label)],
+          [`'a' IN d.labels AND r.label NOT IN d.labels`,
+           (r, d) => has(d.labels, 'a') && !has(d.labels, r.label)],
         ];
-        for (let filter of filters) {
+        for (let [filter, matches] of cases) {
           const q = `FOR r IN ${rn} FOR d IN ${cn} FILTER ${filter} RETURN CONCAT(r._key, '/', d._key)`;
-          const fullScan = `FOR r IN ${rn} FOR d IN ${cn} OPTIONS {disableIndex: true}
-                              FILTER ${filter} RETURN CONCAT(r._key, '/', d._key)`;
           let plan = db._createStatement({query: q}).explain().plan;
           let indexNodes = plan.nodes.filter((n) => n.type === 'IndexNode' &&
                                                   n.indexes.some((i) => i.type === 'bitmap'));
           assertEqual(1, indexNodes.length, filter);
-          // conditions on runtime values are evaluated on the documents again
-          assertTrue(indexNodes[0].filter !== undefined ||
-                     plan.nodes.some((n) => n.type === 'FilterNode'), filter);
-          assertEqual(query(fullScan, {}), query(q, {}), filter);
+          // the index answers the condition exactly
+          assertEqual(undefined, indexNodes[0].filter, filter);
+          assertFalse(plan.nodes.some((n) => n.type === 'FilterNode'), filter);
+
+          let expected = [];
+          for (let r of rules.toArray()) {
+            for (let d of Object.values(docs)) {
+              if (matches(r, d)) {
+                expected.push(r._key + '/' + d._key);
+              }
+            }
+          }
+          assertEqual(expected.sort(), query(q, {}), filter);
         }
       } finally {
         db._drop(rn);
+      }
+    },
+
+    testNestedValuesAndNumbers: function () {
+      let c = db[cn];
+      let extra = [
+        {_key: 'nested1', labels: [['n', 1], {a: 1, b: 2}, 1]},
+        {_key: 'nested2', labels: [['n', 1.0], {b: 2, a: 1.0}]},
+        {_key: 'nested3', labels: [['n', 2], {a: 1}]},
+      ];
+      c.insert(extra);
+      const cases = [
+        `[['n', 1]] ALL IN d.labels`,
+        `[['n', 1.0], {a: 1, b: 2}] ALL IN d.labels`,
+        `{b: 2.0, a: 1} IN d.labels`,
+        `[['n', 2], {a: 1}] ANY IN d.labels`,
+        `[1.0] ALL IN d.labels`,
+        `['n', 2] IN d.labels AND {a: 1, b: 2} NOT IN d.labels`,
+      ];
+      for (let filter of cases) {
+        const q = `FOR d IN ${cn} FILTER ${filter} RETURN d._key`;
+        const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER ${filter} RETURN d._key`;
+        assertEqual(1, bitmapIndexNodes(q, {}).length, filter);
+        let expected = query(fullScan, {});
+        assertTrue(expected.length > 0, filter);
+        assertEqual(expected, query(q, {}), filter);
       }
     },
 
