@@ -81,7 +81,7 @@ const request = require('@arangodb/request');
 const users = require('@arangodb/users');
 
 const baseQuestions = [
-  'UseApiVersion version=0',
+  'UseApiVersion version=1',
   `UseDatabase name=${DB} level=read`
 ];
 const monitorQuestions = baseQuestions.concat(['AdminMonitorTransactions']);

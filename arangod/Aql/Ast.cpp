@@ -3893,8 +3893,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(
     return node;
   }
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS && !lhs->isNumericValue() &&
-      !rhs->isNumericValue()) {
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS &&
+      (!lhs->isNumericValue() || !rhs->isNumericValue())) {
     // Use the same evaluation path as runtime (Expression::execute) so
     // constant folding matches executeSimpleExpressionArithmetic (+).
     Expression exp(this, node);
