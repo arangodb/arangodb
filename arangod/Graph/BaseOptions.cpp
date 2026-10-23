@@ -475,6 +475,11 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
              *idx, condition, info.indexCondition, _tmpVar)) {
       toRemove.emplace(i);
     }
+    // values only known at runtime may need a superset from the index
+    for (std::size_t i :
+         bitmap_index::runtimeMembers(*idx, condition, _tmpVar)) {
+      toRemove.erase(i);
+    }
   }
 
   size_t n = condition->numMembers();

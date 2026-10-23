@@ -165,6 +165,49 @@ function TraversalBitmapIndexSuite() {
       }
     },
 
+    testRuntimeLabels: function () {
+      const rn = 'UnitTestsBitmapRules';
+      db._drop(rn);
+      let rules = db._create(rn);
+      try {
+        rules.insert([
+          {_key: 'x', labels: ['x']},
+          {_key: 'xy', labels: ['x', 'y']},
+          {_key: 'empty', labels: []},
+          {_key: 'scalar', labels: 'x'},
+          {_key: 'nested', labels: [['x'], 'y']},
+        ]);
+        const start = vn + '/v11';
+        const q = `WITH ${vn} FOR r IN ${rn}
+                     FOR v, e, p IN 1..2 OUTBOUND @start ${en}
+                       FILTER p.edges[* RETURN r.labels ALL IN CURRENT.labels] ALL == true
+                       RETURN CONCAT(r._key, ':', CONCAT_SEPARATOR(',', p.edges[*]._key))`;
+        let plan = db._createStatement({query: q, bindVars: {start}}).explain().plan;
+        let tn = plan.nodes.filter((n) => n.type === 'TraversalNode')[0];
+        assertTrue(tn.indexes.base.some((idx) => isBitmap(idx, '_from')),
+                   JSON.stringify(tn.indexes));
+
+        let paths = db._query(`WITH ${vn} FOR v, e, p IN 1..2 OUTBOUND @start ${en}
+                                 RETURN {key: CONCAT_SEPARATOR(',', p.edges[*]._key),
+                                         labels: p.edges[*].labels}`, {start}).toArray();
+        let expected = [];
+        for (let r of rules.toArray()) {
+          // AQL: a non-array left side is false, an empty one true, nested
+          // arrays never match the scalar edge labels
+          let edgeMatches = (l) => Array.isArray(r.labels) &&
+              r.labels.every((s) => typeof s !== 'object' && l.includes(s));
+          for (let path of paths) {
+            if (path.labels.every(edgeMatches)) {
+              expected.push(r._key + ':' + path.key);
+            }
+          }
+        }
+        assertEqual(expected.sort(), run(q, {start}));
+      } finally {
+        db._drop(rn);
+      }
+    },
+
     testDepthSpecificCondition: function () {
       let filter = '@labels ALL IN p.edges[0].labels';
       let firstEdgeMatches = (labelsPerEdge, hasAll) => hasAll(labelsPerEdge[0]);

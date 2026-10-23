@@ -33,6 +33,8 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -45,6 +47,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <set>
 
 using namespace arangodb;
@@ -89,6 +92,158 @@ void collectTerms(velocypack::Slice value, std::set<std::string>& out) {
   } else {
     add(value);
   }
+}
+
+/// A TermExpr with the searched values encoded as normalized terms
+struct Expr {
+  using Type = bitmap_index::TermExpr::Type;
+  Type type = Type::Term;
+  std::string term;
+  std::vector<Expr> children;
+  std::vector<Expr> excluded;
+
+  bool isConstant(bool value) const {
+    return type == (value ? Type::True : Type::False);
+  }
+  /// all documents except the excluded ones
+  bool isComplement() const {
+    return type == Type::And && children.empty() && !excluded.empty();
+  }
+};
+
+/// encode the searched values. elements that are never indexed become true
+/// where they are required and false where they are excluded, so the result
+/// is a superset; their conditions are evaluated on the documents again.
+Expr encode(bitmap_index::TermExpr const& expr, bool required) {
+  using Type = bitmap_index::TermExpr::Type;
+  Expr result{.type = expr.type};
+  switch (expr.type) {
+    case Type::Term: {
+      velocypack::Builder builder;
+      expr.value->toVelocyPackValue(builder);
+      if (!bitmap_index::appendNormalized(result.term, builder.slice())) {
+        result.type = required ? Type::True : Type::False;
+      }
+      break;
+    }
+    case Type::Unknown:
+      result.type = required ? Type::True : Type::False;
+      break;
+    case Type::True:
+    case Type::False:
+      break;
+    case Type::And:
+    case Type::Or:
+      for (auto const& child : expr.children) {
+        result.children.push_back(encode(child, required));
+      }
+      for (auto const& child : expr.excluded) {
+        result.excluded.push_back(encode(child, !required));
+      }
+      break;
+  }
+  return result;
+}
+
+/// Fold constants. The result is true, false, a complement (an And without
+/// required children), Unknown if it cannot be answered from the bitmaps, or
+/// an expression the bitmaps answer.
+Expr fold(Expr const& expr) {
+  using Type = Expr::Type;
+  auto constant = [](bool value) {
+    return Expr{.type = value ? Type::True : Type::False};
+  };
+  switch (expr.type) {
+    case Type::Term:
+    case Type::True:
+    case Type::False:
+    case Type::Unknown:
+      return expr;
+    case Type::And: {
+      Expr result{.type = Type::And};
+      for (auto const& child : expr.children) {
+        Expr f = fold(child);
+        if (f.isConstant(false) || f.type == Type::Unknown) {
+          return f;
+        }
+        if (f.isComplement()) {
+          for (auto& e : f.excluded) {
+            result.excluded.push_back(std::move(e));
+          }
+        } else if (!f.isConstant(true)) {
+          result.children.push_back(std::move(f));
+        }
+      }
+      for (auto const& child : expr.excluded) {
+        Expr f = fold(child);
+        if (f.isConstant(true)) {
+          return constant(false);
+        }
+        if (f.isComplement() || f.type == Type::Unknown) {
+          return Expr{.type = Type::Unknown};
+        }
+        if (!f.isConstant(false)) {
+          result.excluded.push_back(std::move(f));
+        }
+      }
+      if (result.children.empty() && result.excluded.empty()) {
+        return constant(true);
+      }
+      if (result.children.size() == 1 && result.excluded.empty()) {
+        return std::move(result.children.front());
+      }
+      return result;
+    }
+    case Type::Or: {
+      Expr result{.type = Type::Or};
+      for (auto const& child : expr.children) {
+        Expr f = fold(child);
+        if (f.isConstant(true)) {
+          return f;
+        }
+        if (f.isComplement() || f.type == Type::Unknown) {
+          return Expr{.type = Type::Unknown};
+        }
+        if (!f.isConstant(false)) {
+          result.children.push_back(std::move(f));
+        }
+      }
+      if (result.children.empty()) {
+        return constant(false);
+      }
+      if (result.children.size() == 1) {
+        return std::move(result.children.front());
+      }
+      return result;
+    }
+  }
+  TRI_ASSERT(false);
+  return expr;
+}
+
+/// evaluate against the sorted, distinct terms of one document
+bool evaluate(Expr const& expr, std::vector<std::string> const& terms) {
+  using Type = Expr::Type;
+  switch (expr.type) {
+    case Type::Term:
+      return std::binary_search(terms.begin(), terms.end(), expr.term);
+    case Type::True:
+      return true;
+    case Type::False:
+    case Type::Unknown:
+      return false;
+    case Type::And:
+      return std::all_of(
+                 expr.children.begin(), expr.children.end(),
+                 [&](Expr const& c) { return evaluate(c, terms); }) &&
+             std::none_of(expr.excluded.begin(), expr.excluded.end(),
+                          [&](Expr const& c) { return evaluate(c, terms); });
+    case Type::Or:
+      return std::any_of(
+          expr.children.begin(), expr.children.end(),
+          [&](Expr const& c) { return evaluate(c, terms); });
+  }
+  return false;
 }
 
 /// Iterates the shards that may hold results of one part of a condition, in
@@ -309,6 +464,9 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 uint64_t limit) override {
+    if (_scanning) {
+      return scan(callback, limit);
+    }
     while (limit > 0) {
       if (_pos < _buffer.size()) {
         callback(LocalDocumentId::create(
@@ -327,7 +485,8 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
  private:
   void setup(aql::AstNode const* node) {
-    auto parts = bitmap_index::matchCondition(*_index, node, _reference);
+    auto parts = bitmap_index::matchCondition(*_index, node, _reference,
+                                              /*runtime*/ true);
     if (!parts.has_value()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unsupported bitmap index condition");
@@ -343,7 +502,8 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
         _usable = false;
       }
     }
-    _expr = std::move(parts->expr);
+    _expr = encode(parts->expr, /*required*/ true);
+    _folded = fold(_expr);
     restart();
   }
 
@@ -360,20 +520,15 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     return *_iterators[_iteratorsUsed++];
   }
 
-  std::unique_ptr<ShardNode> build(bitmap_index::TermExpr const& expr) {
+  std::unique_ptr<ShardNode> build(Expr const& expr) {
     switch (expr.type) {
-      case bitmap_index::TermExpr::Type::Term: {
-        velocypack::Builder builder;
-        expr.value->toVelocyPackValue(builder);
-        std::string body = _prefix;
-        bool ok = bitmap_index::appendNormalized(body, builder.slice());
-        TRI_ASSERT(ok);
+      case Expr::Type::Term: {
         RocksDBKey key;
-        key.constructBitmapIndexValue(_index->objectId(), body);
+        key.constructBitmapIndexValue(_index->objectId(), _prefix + expr.term);
         return std::make_unique<TermNode>(key.string().ToString(),
                                           nextIterator());
       }
-      case bitmap_index::TermExpr::Type::And: {
+      case Expr::Type::And: {
         std::vector<std::unique_ptr<ShardNode>> required;
         std::vector<std::unique_ptr<ShardNode>> excluded;
         for (auto const& child : expr.children) {
@@ -385,13 +540,17 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
         return std::make_unique<AndNode>(std::move(required),
                                          std::move(excluded));
       }
-      case bitmap_index::TermExpr::Type::Or: {
+      case Expr::Type::Or: {
         std::vector<std::unique_ptr<ShardNode>> children;
         for (auto const& child : expr.children) {
           children.push_back(build(child));
         }
         return std::make_unique<OrNode>(std::move(children));
       }
+      case Expr::Type::True:
+      case Expr::Type::False:
+      case Expr::Type::Unknown:
+        break;
     }
     TRI_ASSERT(false);
     return nullptr;
@@ -403,10 +562,61 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     _nextShard = 0;
     _root.reset();
     _iteratorsUsed = 0;
-    _exhausted = !_usable;
-    if (!_exhausted) {
-      _root = build(_expr);
+    _scanning = false;
+    _exhausted = !_usable || _folded.isConstant(false);
+    if (_exhausted) {
+      return;
     }
+    if (_folded.isConstant(true) || _folded.isComplement() ||
+        _folded.type == Expr::Type::Unknown) {
+      // the condition matches documents that are not in any bitmap, e.g.
+      // for an empty array with ALL IN: check every document instead
+      startScan();
+      return;
+    }
+    _root = build(_folded);
+  }
+
+  void startScan() {
+    _scanning = true;
+    if (_scanIterator == nullptr) {
+      auto* physical =
+          static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+      _scanBounds.emplace(
+          RocksDBKeyBounds::CollectionDocuments(physical->objectId()));
+      _scanUpper = _scanBounds->end();
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(_trx, _collection->id());
+      _scanIterator = mthds->NewIterator(
+          _scanBounds->columnFamily(), [this](ReadOptions& options) {
+            options.iterate_upper_bound = &_scanUpper;
+            options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+          });
+    }
+    _scanIterator->Seek(_scanBounds->start());
+  }
+
+  bool scan(LocalDocumentIdCallback const& callback, uint64_t limit) {
+    std::string prefix;
+    while (limit > 0 && _scanIterator->Valid()) {
+      velocypack::Slice doc(
+          reinterpret_cast<uint8_t const*>(_scanIterator->value().data()));
+      LocalDocumentId id = RocksDBKey::documentId(_scanIterator->key());
+      _scanIterator->Next();
+
+      prefix.clear();
+      if (!_index->encodePrefix(doc, prefix) || prefix != _prefix ||
+          !evaluate(_expr, _index->encodeTerms(doc))) {
+        continue;
+      }
+      callback(id);
+      --limit;
+    }
+    if (!_scanIterator->Valid()) {
+      rocksutils::checkIteratorStatus(*_scanIterator);
+      return false;
+    }
+    return true;
   }
 
   bool fillBuffer() {
@@ -428,8 +638,15 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
   RocksDBBitmapIndex const* _index;
   aql::Variable const* _reference;
   std::string _prefix;
-  bitmap_index::TermExpr _expr;
+  /// the condition with searched values encoded, and with constants folded
+  Expr _expr;
+  Expr _folded;
   std::unique_ptr<ShardNode> _root;
+  /// scan over all documents, for conditions the bitmaps cannot answer
+  std::optional<RocksDBKeyBounds> _scanBounds;
+  rocksdb::Slice _scanUpper;
+  std::unique_ptr<rocksdb::Iterator> _scanIterator;
+  bool _scanning = false;
   std::vector<std::unique_ptr<rocksdb::Iterator>> _iterators;
   std::size_t _iteratorsUsed = 0;
   std::vector<std::uint32_t> _buffer;
