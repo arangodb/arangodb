@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 
 #include <cstddef>
@@ -36,23 +37,46 @@ struct Variable;
 
 namespace bitmap_index {
 
+/// Boolean expression over the elements of the indexed array attribute.
+/// Every expression only matches documents whose attribute is an array that
+/// contains at least one searched element, so it can be answered from the
+/// bitmaps alone; negations only appear as exclusions of an And.
+struct TermExpr {
+  enum class Type { Term, And, Or };
+
+  Type type = Type::Term;
+  /// Term: node evaluating to the searched scalar
+  aql::AstNode const* value = nullptr;
+  /// And: all must match; Or: one must match
+  std::vector<TermExpr> children;
+  /// And only: documents matching any of these are removed
+  std::vector<TermExpr> excluded;
+
+  /// number of searched elements, for cost estimation
+  std::size_t numTerms() const;
+};
+
 /// Parts of an AND condition a bitmap index can answer. The last index field
 /// is the array attribute, all others are equality prefixes.
 struct ConditionParts {
   /// per prefix field, the node holding the compared value
   std::vector<aql::AstNode const*> prefixValues;
-  /// nodes holding the searched elements: an array for `x ALL IN doc.attr`,
-  /// a scalar for `x IN doc.attr`
-  std::vector<aql::AstNode const*> termValues;
+  /// conjunction of all supported conditions on the array attribute
+  TermExpr expr{.type = TermExpr::Type::And};
   /// positions of the used members in the AND node, ascending
   std::vector<std::size_t> members;
-  /// number of searched elements known at planning time
-  std::size_t numTerms = 0;
 };
 
 /// Match an n-ary AND node. Every prefix field needs an equality and at
-/// least one condition on the array attribute must be present. Searched
-/// elements must be constant; prefix values may come from outside variables.
+/// least one member must require some searched element to be present.
+/// Searched elements must be constant scalars; prefix values may come from
+/// outside variables.
+///
+/// Supported conditions on the array attribute, also nested with AND, OR and
+/// NOT (an OR may not mix required and excluded elements):
+///   x IN doc.attr, x NOT IN doc.attr,
+///   [..] ALL IN / ANY IN / NONE IN doc.attr,
+///   [..] ALL NOT IN / ANY NOT IN / NONE NOT IN doc.attr
 std::optional<ConditionParts> matchCondition(Index const& index,
                                              aql::AstNode const* andNode,
                                              aql::Variable const* reference);
@@ -64,6 +88,13 @@ Index::FilterCosts supportsFilterCondition(Index const& index,
 
 aql::AstNode* specializeCondition(Index const& index, aql::AstNode* node,
                                   aql::Variable const* reference);
+
+/// Positions of the members of `andNode` that `indexCondition` (the
+/// specialized condition the index is used with) answers exactly, so they
+/// need not be evaluated again on the returned documents.
+containers::HashSet<std::size_t> coveredMembers(
+    Index const& index, aql::AstNode const* andNode,
+    aql::AstNode const* indexCondition, aql::Variable const* reference);
 
 }  // namespace bitmap_index
 }  // namespace arangodb

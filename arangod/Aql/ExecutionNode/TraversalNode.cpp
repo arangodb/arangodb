@@ -49,6 +49,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/algorithm-aliases.h"
+#include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
@@ -753,11 +754,19 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   };
 
   auto generateExpression =
-      [&](aql::AstNode* remainderCondition,
-          aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
+      [&](aql::AstNode* remainderCondition, aql::AstNode* indexCondition,
+          Index const& index) -> std::unique_ptr<aql::Expression> {
     auto toRemove = aql::collectOverlappingMembersForTraversal(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
         /*isPathCondition*/ false);
+    if (index.type() == IndexType::Bitmap) {
+      // conditions on the array attribute are answered exactly by the bitmaps
+      for (std::size_t i : bitmap_index::coveredMembers(
+               index, remainderCondition, indexCondition,
+               options()->tmpVar())) {
+        toRemove.emplace(i);
+      }
+    }
     size_t n = remainderCondition->numMembers();
 
     if (n != toRemove.size()) {
@@ -811,7 +820,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
 
     aql::AstNode* remainderCondition = condition->clone(ast);
     std::unique_ptr<aql::Expression> expression =
-        generateExpression(remainderCondition, indexCondition);
+        generateExpression(remainderCondition, indexCondition, *indexToUse);
 
     auto container = aql::optimizer::extractNonConstPartsOfIndexCondition(
         ast, inputRegisterResolver(), false, nullptr, indexCondition,

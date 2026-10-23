@@ -231,6 +231,59 @@ function BitmapIndexSuite() {
       check(['a', 'x']);
     },
 
+    testCoveredFilterIsRemoved: function () {
+      for (let filter of [`@labels ALL IN d.labels`,
+                          `'a' IN d.labels AND 'b' NOT IN d.labels`,
+                          `@labels ANY IN d.labels`]) {
+        const q = `FOR d IN ${cn} FILTER ${filter} RETURN d._key`;
+        let bindVars = filter.includes('@labels') ? {labels: ['a', 'c']} : {};
+        let plan = db._createStatement({query: q, bindVars}).explain().plan;
+        let types = plan.nodes.map((n) => n.type);
+        assertEqual(-1, types.indexOf('FilterNode'), filter);
+        let indexNodes = plan.nodes.filter((n) => n.type === 'IndexNode');
+        assertEqual(1, indexNodes.length, filter);
+        assertEqual(undefined, indexNodes[0].filter, filter);
+      }
+    },
+
+    testCountOnly: function () {
+      const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels
+                   COLLECT WITH COUNT INTO n RETURN n`;
+      assertEqual(1, bitmapIndexNodes(q, {labels: ['a', 'b']}).length);
+      assertEqual([expected(['a', 'b']).length], query(q, {labels: ['a', 'b']}));
+    },
+
+    testBooleanPredicates: function () {
+      // [filter, whether the bitmap index answers it]
+      const cases = [
+        [`['a', 'h'] ANY IN d.labels`, true],
+        [`[1, 'g'] ANY IN d.labels`, true],
+        [`'a' IN d.labels AND 'b' NOT IN d.labels`, true],
+        [`'a' IN d.labels AND ['b', 'c'] NONE IN d.labels`, true],
+        [`'a' IN d.labels AND ['b', 'c'] ALL NOT IN d.labels`, true],
+        [`'c' IN d.labels AND ['a', 'b'] ANY NOT IN d.labels`, true],
+        [`['a', 'b'] NONE NOT IN d.labels`, true],
+        [`'a' IN d.labels AND NOT ('b' IN d.labels)`, true],
+        [`('a' IN d.labels AND 'b' IN d.labels) OR 'h' IN d.labels`, true],
+        [`'a' IN d.labels OR 'b' IN d.labels`, true],
+        [`['a', 'b'] ANY IN d.labels AND 'c' NOT IN d.labels AND 'd' IN d.labels`, true],
+        [`'a' NOT IN d.labels`, false],
+        [`['a', 'b'] NONE IN d.labels`, false],
+        // the OR branches use different indexes
+        [`'a' IN d.labels OR d._key == 'k1'`, true],
+        [`'a' IN d.labels OR d.other == 1`, false],
+        [`[] ANY IN d.labels`, false],
+        [`['a', 'b'] AT LEAST (2) IN d.labels`, false],
+      ];
+      for (let [filter, usesIndex] of cases) {
+        const q = `FOR d IN ${cn} FILTER ${filter} RETURN d._key`;
+        const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER ${filter} RETURN d._key`;
+        assertEqual(usesIndex, bitmapIndexNodes(q, {}).length > 0, filter);
+        let actual = query(q, {});
+        assertEqual(query(fullScan, {}), actual, filter);
+      }
+    },
+
     testDropIndex: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
       let idx = db[cn].indexes().filter((i) => i.type === 'bitmap')[0];

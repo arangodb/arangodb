@@ -43,6 +43,7 @@
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Builder.h>
@@ -467,6 +468,14 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
 
   auto toRemove = aql::collectOverlappingMembersForTraversal(
       plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
+  if (auto const& idx = info.idxHandles[0];
+      idx != nullptr && idx->type() == IndexType::Bitmap) {
+    // conditions on the array attribute are answered exactly by the bitmaps
+    for (std::size_t i : bitmap_index::coveredMembers(
+             *idx, condition, info.indexCondition, _tmpVar)) {
+      toRemove.emplace(i);
+    }
+  }
 
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
