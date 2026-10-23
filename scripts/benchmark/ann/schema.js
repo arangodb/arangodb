@@ -5,6 +5,9 @@
 // Measurements reference run / index_setup / dataset by _key. "Which index setups
 // ran in which run" is derivable from the measurements, so there is no join collection.
 
+const db = require("@arangodb").db;
+const print = require("internal").print;
+
 const DB_NAME = "ann-bench";
 
 const COLLECTIONS = {
