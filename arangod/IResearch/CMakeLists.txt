@@ -43,6 +43,8 @@ add_library(arango_iresearch STATIC
   IResearchInvertedClusterIndex.h
   IResearchInvertedIndex.cpp
   IResearchInvertedIndex.h
+  IResearchInvertedIndexDefinition.cpp
+  IResearchInvertedIndexDefinition.h
   IResearchInvertedIndexMeta.cpp
   IResearchInvertedIndexMeta.h
   IResearchKludge.cpp

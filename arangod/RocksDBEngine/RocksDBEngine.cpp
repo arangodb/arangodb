@@ -294,10 +294,8 @@ RocksDBEngine::RocksDBEngine(
     IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
-    : StorageEngine(
-          server, kEngineName, name(),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
-          databaseProvider, databaseBootstrap),
+    : StorageEngine(server, kEngineName, name(), vectorIndexProvider,
+                    databaseProvider, databaseBootstrap),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -354,6 +352,9 @@ RocksDBEngine::RocksDBEngine(
           metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
+  setIndexFactory(
+      std::make_unique<RocksDBIndexFactory>(server, indexTypeCatalog()));
+
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine

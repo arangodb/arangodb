@@ -234,6 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Indexes/IndexTypeCatalogTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   Maintenance/MaintenanceFeatureTest.cpp
@@ -266,6 +267,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
+  RocksDBEngine/RocksDBIndexFactoryTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Scheduler/SchedulerExecContextTest.cpp
   Sharding/ShardDistributionReporterTest.cpp

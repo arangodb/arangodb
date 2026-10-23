@@ -38,7 +38,10 @@ namespace arangodb {
 
 class LogicalCollection;
 class Scheduler;
-struct IndexTypeFactory;
+
+namespace iresearch {
+struct IResearchLinkDefinition;
+}  // namespace iresearch
 
 namespace network {
 class ConnectionPool;
@@ -306,7 +309,8 @@ class MockClusterServer
   bool _useAgencyMockPool;
   int _dummy;
   ServerID _serverId;
-  std::shared_ptr<IndexTypeFactory> _iresearchLinkFactory;
+  // the engine's index type catalog keeps a reference to this
+  std::unique_ptr<iresearch::IResearchLinkDefinition> _iresearchLinkDefinition;
 };
 
 class MockDBServer : public MockClusterServer {
