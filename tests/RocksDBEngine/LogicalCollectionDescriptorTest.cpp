@@ -46,12 +46,14 @@
 #include <set>
 
 // Tests for `CollectionDescriptor` and LogicalCollection ctor taking one:
-// Section 1: descriptor ctor creates a collection correctly
-// Section 2: create path and load path both work correctly
-// Section 3: serializing a collection back to velocypack works correctly
-// Section 4: validation differs correctly between contexts
-//
-// Single-server fixture: cluster branches are covered by the JS suites.
+// Section 1: the descriptor ctor builds a collection
+// Section 2: the load path parses what the server wrote
+// Section 3: a restart loses nothing
+// Section 4: properties() reports the live collection
+// Section 5: serializing a collection back to velocypack
+// Section 6: the same field parses differently per context
+// Section 7: invalid descriptors are rejected
+// Section 8: the shard path parses a maintenance docket
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -155,6 +157,53 @@ VPackBuilder representativeLoadSlice() {
   return builder;
 }
 
+// The properties a DBServer receives for a shard: the Plan entry for the
+// collection with its identity removed, plus planId pointing back at that
+// collection. Shaped after CreateCollection::first, including the
+// replication-2 additions from fillGroupProperties.
+VPackBuilder representativeShardDocket() {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder obj(&builder);
+    // the docket carries the collection's properties but none of its identity,
+    // so the name is dropped here too and reaches createShard as an argument
+    for (auto it : VPackObjectIterator(representativeCreateSlice().slice())) {
+      if (it.key.stringView() != StaticStrings::DataSourceName) {
+        builder.add(it.key.stringView(), it.value);
+      }
+    }
+    builder.add(StaticStrings::DataSourcePlanId, VPackValue("9988489"));
+
+    // ClusteringConstantProperties as the coordinator wrote them into the Plan
+    builder.add(StaticStrings::NumberOfShards, VPackValue(3));
+    builder.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
+    {
+      VPackArrayBuilder shardKeys(&builder, StaticStrings::ShardKeys);
+      builder.add(VPackValue("_key"));
+    }
+    {
+      VPackObjectBuilder shards(&builder, "shards");
+      builder.add(VPackValue("s100001"));
+      {
+        VPackArrayBuilder servers(&builder);
+        builder.add(VPackValue("PRMR-a"));
+      }
+    }
+
+    // replication 2: CreateCollection adds the log id, and the group's
+    // properties, which live on the group rather than on the collection
+    builder.add("replicatedStateId", VPackValue(5678));
+    builder.add(StaticStrings::GroupId, VPackValue(1234));
+    {
+      VPackArrayBuilder shardsR2(&builder, "shardsR2");
+      builder.add(VPackValue("s100001"));
+    }
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(2));
+    builder.add(StaticStrings::WriteConcern, VPackValue(1));
+  }
+  return builder;
+}
+
 // Identity and index keys are assigned per collection, so they can neither be
 // compared between two collections nor pinned.
 std::unordered_set<std::string> const& volatileKeys() {
@@ -198,12 +247,9 @@ void expectDescriptorRoundTripIsStable(VPackSlice input) {
 // under one suite.
 class LogicalCollectionDescriptorTest : public StorageEngineDataTest {
  protected:
-  // A restart in miniature. Shutdown stores a collection as the VPack that
-  // Serialization::Persistence emits; startup loads those bytes back. The two
-  // collections have to agree.
-  //
-  // This covers only markers written by the current code. Markers written by
-  // an older release are the upgrade tests' job.
+  // Save a collection the way shutdown does, load it back the way startup
+  // does, expect the same collection. Only markers written by the current
+  // code; older ones are the upgrade tests' job.
   void expectSurvivesRestart(CollectionDescriptor descriptor) {
     using Serialization = LogicalDataSource::Serialization;
 
@@ -252,9 +298,9 @@ class LogicalCollectionDescriptorTest : public StorageEngineDataTest {
   }
 };
 
-//////////////////////////////////////////////////////////////////////////////////
-// Section 1: descriptor ctor creates a collection correctly
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Section 1: the descriptor ctor builds a collection
+////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_appliesDescriptor) {
   auto database = makeDatabase("testDatabase", 42);
@@ -302,6 +348,18 @@ TEST_F(LogicalCollectionDescriptorTest, DescriptorCtor_appliesSharding) {
   EXPECT_EQ(collection->shardKeys(), std::vector<std::string>({"_key"}));
 }
 
+// Collections created before 3.4 have no sharding strategy in their meta data.
+TEST_F(LogicalCollectionDescriptorTest,
+       DescriptorCtor_defaultsMissingShardingStrategy) {
+  auto descriptor = representativeCreateDescriptor();
+  descriptor.clusteringConstant.shardingStrategy = std::nullopt;
+
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection = database->createCollection(std::move(descriptor));
+
+  EXPECT_FALSE(collection->shardingInfo()->shardingStrategyName().empty());
+}
+
 TEST_F(LogicalCollectionDescriptorTest,
        DescriptorCtor_keepsRequestedCacheEnabled) {
   auto database = makeDatabase("testDatabase", 42);
@@ -332,33 +390,15 @@ TEST_F(LogicalCollectionDescriptorTest,
                 ->objectId());
 }
 
-TEST_F(LogicalCollectionDescriptorTest, Properties_isALiveSnapshot) {
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection =
-      database->createCollection(representativeCreateDescriptor());
-
-  auto d = collection->properties();
-  // the stored descriptor has no id on the load path; properties() fills it in
-  EXPECT_EQ(d.identity.id, collection->id());
-  EXPECT_EQ(d.mutableProps.name, collection->name());
-  EXPECT_EQ(d.clusteringConstant.numberOfShards, collection->numberOfShards());
-  EXPECT_EQ(d.clusteringConstant.shardKeys, collection->shardKeys());
-  EXPECT_EQ(d.clusteringMutable.replicationFactor,
-            collection->replicationFactor());
-  EXPECT_EQ(d.clusteringMutable.writeConcern, collection->writeConcern());
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-// Section 2: create path and load path both work correctly
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Section 2: the load path parses what the server wrote
+////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(LogicalCollectionDescriptorTest, LoadPath_acceptsInternalOnlyValues) {
   auto database = makeDatabase("testDatabase", 42);
 
-  // A SmartGraph edge collection in a cluster is stored with numberOfShards: 0,
-  // and a database upgrade stores the "upgrade" key generator. The create API
-  // rejects both, so the invariants must not run when loading a marker or a
-  // plan entry.
+  // numberOfShards 0 (smart edge in a cluster) and the "upgrade" key
+  // generator are stored values the create API rejects.
   VPackBuilder builder;
   {
     VPackObjectBuilder obj(&builder);
@@ -418,11 +458,9 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_parsesEveryLoadOnlyField) {
             "persistent");
 }
 
-// Pre-3.1 collections store the id only under "cid", so both keys feed
-// identity.id. "id" is declared last in CollectionIdentity's inspect and
-// therefore wins when both are present. Declaration order decides this, not
-// the order of the keys in the input, so swapping those two f.field() calls
-// must fail this test.
+// Pre-3.1 collections store the id under "cid", so both keys feed identity.id
+// and the later declaration wins. Swapping those two f.field() calls in
+// CollectionIdentity must fail this test.
 TEST_F(LogicalCollectionDescriptorTest, LoadPath_idWinsOverCid) {
   auto sliceWith = [](std::string_view id, std::string_view cid) {
     VPackBuilder builder;
@@ -452,10 +490,8 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_idWinsOverCid) {
   EXPECT_EQ(parsedId(sliceWith("11", "22").slice()), DataSourceId{11});
 }
 
-// Collections older than v33 have no globallyUniqueId on disk, so their name
-// becomes the guid to keep the value stable across restarts. A non-system name
-// is required: ensureGuid also uses the name for system collections, which
-// would make both cases look identical.
+// Collections older than v33 have no stored guid, so the name becomes one.
+// The name must be non-system, or ensureGuid would produce the same result.
 TEST_F(LogicalCollectionDescriptorTest, LoadPath_legacyVersionUsesNameAsGuid) {
   auto database = makeDatabase("testDatabase", 42);
 
@@ -475,9 +511,8 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_legacyVersionUsesNameAsGuid) {
   EXPECT_TRUE(current->guid().starts_with("h")) << current->guid();
 }
 
-// The slice ctor parsed the "shards" object itself, building each key through
-// ShardID{string_view}. The descriptor ctor takes the map the inspector built,
-// so this pins that the two produce the same shard map.
+// The inspector builds the shard map now, so pin that its keys still come out
+// as valid ShardIDs.
 TEST_F(LogicalCollectionDescriptorTest, LoadPath_restoresTheShardMap) {
   auto database = makeDatabase("shardMapDatabase", 44);
   auto collection = database->createCollection(
@@ -489,6 +524,10 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_restoresTheShardMap) {
   EXPECT_EQ(shardIds->at(ShardID{100001}),
             (std::vector<std::string>{"PRMR-a", "PRMR-b"}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Section 3: a restart loses nothing
+////////////////////////////////////////////////////////////////////////////////
 
 // Save a collection, read its own marker back, expect the same collection.
 TEST_F(LogicalCollectionDescriptorTest,
@@ -544,9 +583,90 @@ TEST_F(LogicalCollectionDescriptorTest, Restart_keepsDistributeShardsLikeACid) {
       << marker.slice().get(StaticStrings::DistributeShardsLike).toJson();
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-// Section 3: serializing a collection back to velocypack works correctly
-//////////////////////////////////////////////////////////////////////////////////
+TEST_F(LogicalCollectionDescriptorTest,
+       Restart_resolvesDistributeShardsLikeOnLoad) {
+  // A single server persists the leader's name, so loading such a marker has
+  // to turn it back into a cid.
+  auto database = makeDatabase("testDatabase", 42);
+  auto leader = database->createCollection(representativeCreateDescriptor());
+  engine().createCollection(*database, *leader);
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::DataSourceName, VPackValue("comments"));
+    builder.add(StaticStrings::DataSourceType,
+                VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+    builder.add(StaticStrings::DistributeShardsLike,
+                VPackValue(leader->name()));
+  }
+
+  auto follower = database->createCollection(builder.slice());
+  EXPECT_EQ(follower->shardingInfo()->distributeShardsLike(),
+            std::to_string(leader->id().id()));
+
+  auto marker = follower->toVelocyPackIgnore(
+      volatileKeys(), LogicalDataSource::Serialization::Persistence);
+  EXPECT_EQ(
+      marker.slice().get(StaticStrings::DistributeShardsLike).copyString(),
+      leader->name());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Section 4: properties() reports the live collection
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(LogicalCollectionDescriptorTest, Properties_isALiveSnapshot) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      database->createCollection(representativeCreateDescriptor());
+
+  auto d = collection->properties();
+  // the stored descriptor has no id on the load path; properties() fills it in
+  EXPECT_EQ(d.identity.id, collection->id());
+  EXPECT_EQ(d.mutableProps.name, collection->name());
+  EXPECT_EQ(d.clusteringConstant.numberOfShards, collection->numberOfShards());
+  EXPECT_EQ(d.clusteringConstant.shardKeys, collection->shardKeys());
+  EXPECT_EQ(d.clusteringMutable.replicationFactor,
+            collection->replicationFactor());
+  EXPECT_EQ(d.clusteringMutable.writeConcern, collection->writeConcern());
+}
+
+// properties() has to report the live value of every field it carries. The
+// compiler cannot enforce that -- an unprojected field silently comes back as
+// its default -- so this pins it.
+TEST_F(LogicalCollectionDescriptorTest, Properties_projectsEveryOwnedField) {
+  auto input = representativeCreateDescriptor();
+  input.internal.usesRevisionsAsDocumentIds = true;
+
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection = database->createCollection(input);
+  engine().createCollection(*database, *collection);
+
+  auto const actual = collection->properties();
+
+  auto expected = input;
+  // The fixture has no cache manager, so the physical collection turns the
+  // request down and properties() reports what is in effect.
+  expected.mutableProps.cacheEnabled = false;
+  // Derived from version and the ReplicationFeature, not taken from the input.
+  expected.internal.syncByRevision = actual.internal.syncByRevision;
+  // Assigned by the engine in createCollectionObject.
+  expected.storage.objectId = actual.storage.objectId;
+  // Minted by LogicalDataSource when the input leaves them empty.
+  EXPECT_FALSE(actual.identity.guid.empty());
+  EXPECT_EQ(actual.identity.planId, actual.identity.id);
+  expected.identity.guid = actual.identity.guid;
+  expected.identity.planId = actual.identity.planId;
+  // Not projected: shadowCollections belongs to the Enterprise subclass.
+  expected.constant.shadowCollections = actual.constant.shadowCollections;
+
+  EXPECT_EQ(expected, actual);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Section 5: serializing a collection back to velocypack
+////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(LogicalCollectionDescriptorTest,
        Serialization_emitsEveryKeyExactlyOnce) {
@@ -626,38 +746,6 @@ TEST_F(LogicalCollectionDescriptorTest,
                    .getBool());
 }
 
-// properties() has to report the live value of every field it carries. The
-// compiler cannot enforce that -- an unprojected field silently comes back as
-// its default -- so this pins it.
-TEST_F(LogicalCollectionDescriptorTest, Properties_projectsEveryOwnedField) {
-  auto input = representativeCreateDescriptor();
-  input.internal.usesRevisionsAsDocumentIds = true;
-
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection = database->createCollection(input);
-  engine().createCollection(*database, *collection);
-
-  auto const actual = collection->properties();
-
-  auto expected = input;
-  // The fixture has no cache manager, so the physical collection turns the
-  // request down and properties() reports what is in effect.
-  expected.mutableProps.cacheEnabled = false;
-  // Derived from version and the ReplicationFeature, not taken from the input.
-  expected.internal.syncByRevision = actual.internal.syncByRevision;
-  // Assigned by the engine in createCollectionObject.
-  expected.storage.objectId = actual.storage.objectId;
-  // Minted by LogicalDataSource when the input leaves them empty.
-  EXPECT_FALSE(actual.identity.guid.empty());
-  EXPECT_EQ(actual.identity.planId, actual.identity.id);
-  expected.identity.guid = actual.identity.guid;
-  expected.identity.planId = actual.identity.planId;
-  // Not projected: shadowCollections belongs to the Enterprise subclass.
-  expected.constant.shadowCollections = actual.constant.shadowCollections;
-
-  EXPECT_EQ(expected, actual);
-}
-
 TEST_F(LogicalCollectionDescriptorTest,
        Serialization_descriptorRoundTripIsStable) {
   ASSERT_NO_FATAL_FAILURE(
@@ -670,9 +758,9 @@ TEST_F(LogicalCollectionDescriptorTest,
       expectDescriptorRoundTripIsStable(representativeLoadSlice().slice()));
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-// Section 4: validation differs correctly between contexts
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Section 6: the same field parses differently per context
+////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(LogicalCollectionDescriptorTest, Context_numberOfShardsZeroLoads) {
   auto body = oneKeyObject(StaticStrings::NumberOfShards, VPackValue(0));
@@ -735,6 +823,10 @@ TEST_F(LogicalCollectionDescriptorTest, Context_objectIdIsInternalOnly) {
                    .ok());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Section 7: invalid descriptors are rejected
+////////////////////////////////////////////////////////////////////////////////
+
 TEST_F(LogicalCollectionDescriptorTest,
        Validation_rejectsSmartGraphAttributeWithoutIsSmart) {
   auto descriptor = representativeCreateDescriptor();
@@ -773,102 +865,61 @@ TEST_F(LogicalCollectionDescriptorTest,
       basics::Exception);
 }
 
-// Collections created before 3.4 have no sharding strategy in their meta data.
-TEST_F(LogicalCollectionDescriptorTest,
-       DescriptorCtor_defaultsMissingShardingStrategy) {
-  auto descriptor = representativeCreateDescriptor();
-  descriptor.clusteringConstant.shardingStrategy = std::nullopt;
+////////////////////////////////////////////////////////////////////////////////
+// Section 8: the shard path parses a maintenance docket
+////////////////////////////////////////////////////////////////////////////////
 
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection = database->createCollection(std::move(descriptor));
+TEST_F(LogicalCollectionDescriptorTest, ShardPath_parsesTheMaintenanceDocket) {
+  auto d =
+      CollectionDescriptor::fromVelocyPack(representativeShardDocket().slice());
 
-  EXPECT_FALSE(collection->shardingInfo()->shardingStrategyName().empty());
+  // the collection's properties come through
+  EXPECT_EQ(d.constant.getType(), TRI_COL_TYPE_DOCUMENT);
+  EXPECT_TRUE(d.clusteringMutable.waitForSync);
+  EXPECT_EQ(d.clusteringConstant.numberOfShards, 3U);
+  ASSERT_TRUE(d.clusteringConstant.shardKeys.has_value());
+  EXPECT_EQ(*d.clusteringConstant.shardKeys,
+            (std::vector<std::string>{"_key"}));
+  EXPECT_EQ(d.clusteringConstant.shardingStrategy, "hash");
+
+  // replication-2 additions
+  ASSERT_TRUE(d.clusteringConstant.replicatedStateId.has_value());
+  EXPECT_EQ(d.clusteringConstant.replicatedStateId->id(), 5678U);
+  ASSERT_TRUE(d.clusteringConstant.groupId.has_value());
+  EXPECT_EQ(d.clusteringConstant.groupId->id(), 1234U);
+
+  // the link back to the collection
+  EXPECT_EQ(d.identity.planId, DataSourceId{9988489});
+
+  // but no identity of its own: all four have to be supplied by createShard
+  EXPECT_EQ(d.identity.id, DataSourceId::none());
+  EXPECT_TRUE(d.identity.guid.empty());
+  EXPECT_TRUE(d.mutableProps.name.empty());
+  EXPECT_EQ(d.storage.objectId, 0U);
 }
 
-// The slice ctor goes away in COR-885. Until then, one test keeps it honest:
-// the same input through either ctor must produce the same collection. Delete
-// this block together with the ctor.
-
-TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
-  VPackBuilder sliceBuilder;
-  sliceBuilder.openObject();
-  sliceBuilder.add(VPackObjectIterator(representativeCreateSlice().slice()));
-  // Collections::create injects this for every user create on a single server
-  // or coordinator; without it the two paths legitimately disagree
-  sliceBuilder.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
-  sliceBuilder.close();
-
-  // baseline: the existing slice path
-  auto viaSlice = makeDatabase("viaSlice", 42);
-  auto expected = viaSlice->createCollection(sliceBuilder.slice());
-  engine().createCollection(*viaSlice, *expected);
-
-  // same input, taken through the descriptor factory
-  DatabaseConfiguration config{
-      []() { return DataSourceId(42); },
-      [](std::string const&) -> ResultT<CollectionDescriptor> {
-        return {TRI_ERROR_INTERNAL};
-      }};
-  auto request = CreateCollectionRequest::fromCreateAPIBody(
-      sliceBuilder.slice(), config, /*backwardsCompatibility*/ false);
-  ASSERT_TRUE(request.ok()) << request.errorMessage();
-
-  auto viaDescriptor = makeDatabase("viaDescriptor", 43);
-  auto actual = viaDescriptor->createCollection(std::move(request->descriptor));
-  engine().createCollection(*viaDescriptor, *actual);
-
-  EXPECT_EQ(
-      actual
-          ->toVelocyPackIgnore(volatileKeys(),
-                               LogicalDataSource::Serialization::Persistence)
-          .slice()
-          .toJson(),
-      expected
-          ->toVelocyPackIgnore(volatileKeys(),
-                               LogicalDataSource::Serialization::Persistence)
-          .slice()
-          .toJson());
+TEST_F(LogicalCollectionDescriptorTest, ShardPath_docketRoundTripIsStable) {
+  ASSERT_NO_FATAL_FAILURE(
+      expectDescriptorRoundTripIsStable(representativeShardDocket().slice()));
 }
 
+// Only the internal context accepts shards, groupId and replicatedStateId,
+// and it accepts the identity fields too. So a stray id or guid is adopted and
+// the shard collides with its own collection. The callers strip those keys by
+// hand, and createShard must not assume the context does it.
 TEST_F(LogicalCollectionDescriptorTest,
-       SliceCtor_usesRevisionsAsDocumentIdsDefaults) {
-  // The descriptor defaults to true, matching what Collections::create injects
-  // for a user create. The slice ctor defaults to false, which is what the
-  // agency's own collections and pre-v37 markers rely on.
-  CollectionDescriptor d;
-  EXPECT_TRUE(d.internal.usesRevisionsAsDocumentIds);
-
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection =
-      database->createCollection(representativeCreateSlice().slice());
-  EXPECT_FALSE(collection->usesRevisionsAsDocumentIds());
-}
-
-TEST_F(LogicalCollectionDescriptorTest,
-       SliceCtor_distributeShardsLikeRoundTrip) {
-  // A single server persists the leader's name, so loading such a marker has
-  // to turn it back into a cid.
-  auto database = makeDatabase("testDatabase", 42);
-  auto leader = database->createCollection(representativeCreateDescriptor());
-  engine().createCollection(*database, *leader);
-
-  VPackBuilder builder;
+       ShardPath_parsingAdoptsIdentityFromInput) {
+  VPackBuilder polluted;
   {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::DataSourceName, VPackValue("comments"));
-    builder.add(StaticStrings::DataSourceType,
-                VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    builder.add(StaticStrings::DistributeShardsLike,
-                VPackValue(leader->name()));
+    VPackObjectBuilder obj(&polluted);
+    polluted.add(VPackObjectIterator(representativeShardDocket().slice()));
+    polluted.add(StaticStrings::Id, VPackValue("11"));
+    polluted.add(StaticStrings::DataSourceGuid, VPackValue("h1234/11"));
+    polluted.add(StaticStrings::ObjectId, VPackValue("777"));
   }
 
-  auto follower = database->createCollection(builder.slice());
-  EXPECT_EQ(follower->shardingInfo()->distributeShardsLike(),
-            std::to_string(leader->id().id()));
-
-  auto marker = follower->toVelocyPackIgnore(
-      volatileKeys(), LogicalDataSource::Serialization::Persistence);
-  EXPECT_EQ(
-      marker.slice().get(StaticStrings::DistributeShardsLike).copyString(),
-      leader->name());
+  auto d = CollectionDescriptor::fromVelocyPack(polluted.slice());
+  EXPECT_EQ(d.identity.id, DataSourceId{11});
+  EXPECT_EQ(d.identity.guid, "h1234/11");
+  EXPECT_EQ(d.storage.objectId, 777U);
 }

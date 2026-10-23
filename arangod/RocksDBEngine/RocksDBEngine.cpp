@@ -1061,17 +1061,6 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
                                                          trxType, manager);
 }
 
-void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
-                                                  VPackSlice info) {
-  if (!info.hasKey(StaticStrings::ObjectId)) {
-    builder.add(StaticStrings::ObjectId,
-                VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-  if (!info.get(StaticStrings::CacheEnabled).isBool()) {
-    builder.add(StaticStrings::CacheEnabled, VPackValue(false));
-  }
-}
-
 uint64_t RocksDBEngine::resolveObjectId(
     CollectionStorageProperties const& storage) const {
   return storage.objectId != 0 ? storage.objectId : TRI_NewTickServer();
