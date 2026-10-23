@@ -182,29 +182,24 @@ function readGdbFileFiltered(gdbOutputFile, options) {
 
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   let gdbOutputFile = fs.getTempFile();
-
-  let command = 'ulimit -c 0; sleep 10;(';
-  // send some line breaks in case of gdb wanting to paginate...
-  command += 'printf \'\\n\\n\\n\\n' +
-    'set pagination off\\n' +
-    'set confirm off\\n' +
-    'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging enabled\\n' +
-    'bt\\n' +
-    'thread apply all bt\\n'+
-    'bt full\\n' +
-    '\';';
-
-  command += 'sleep 10;';
-  command += 'echo quit;';
-  command += 'sleep 2';
-  command += ') | nice -17 gdb ' + storeArangodPath + ' ';
-
-  if (options.coreDirectory === '') {
-    command += 'core';
-  } else {
-    command += options.coreDirectory;
+  let commandFile = fs.getTempFile();
+  let coredump = 'core';
+  if (options.coreDirectory !== '') {
+    coredump = options.coreDirectory;
   }
+
+  fs.write(commandFile, `
+set pagination off
+set confirm off
+set logging file ${gdbOutputFile}
+set logging enabled
+bt
+thread apply all bt
+bt full
+quit
+`);
+  let command = `ulimit -c 0; nice -17 gdb -q ${storeArangodPath} -c ${coredump} --command ${commandFile} `;
+
 
   const args = ['-c', command];
   print("launching GDB in foreground: " + JSON.stringify(args));
