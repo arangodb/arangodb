@@ -227,7 +227,7 @@ struct BitmapIndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBBitmapIndex>(id, collection, definition);
+    return RocksDBBitmapIndex::create(id, collection, definition);
   }
 
   Result normalize(velocypack::Builder& normalized,
@@ -246,6 +246,21 @@ struct BitmapIndexFactory : public DefaultIndexFactory {
       normalized.add("shardBits", velocypack::Value(bitmap_index::kShardBits));
     } else if (auto bits = definition.get("shardBits"); bits.isNumber()) {
       normalized.add("shardBits", bits);
+    }
+
+    auto values = definition.get(RocksDBBitmapIndex::kValuesAttribute);
+    if (values.isNone()) {
+      normalized.add(RocksDBBitmapIndex::kValuesAttribute,
+                     velocypack::Value(bitmap_index::AnyValues::kName));
+    } else if (values.isEqualString(bitmap_index::AnyValues::kName) ||
+               values.isEqualString(bitmap_index::ScalarValues::kName)) {
+      normalized.add(RocksDBBitmapIndex::kValuesAttribute, values);
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("<", RocksDBBitmapIndex::kValuesAttribute,
+                                 "> must be \"",
+                                 bitmap_index::AnyValues::kName, "\" or \"",
+                                 bitmap_index::ScalarValues::kName, "\""));
     }
 
     return IndexFactory::enhanceJsonIndexBitmap(definition, normalized,

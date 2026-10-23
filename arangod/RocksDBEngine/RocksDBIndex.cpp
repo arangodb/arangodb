@@ -414,7 +414,11 @@ RocksDBKeyBounds RocksDBIndex::getBounds(IndexType type, uint64_t objectId,
     case IndexType::Vector:
       return RocksDBKeyBounds::VectorVPackIndex(objectId);
     case IndexType::Bitmap:
-      return RocksDBKeyBounds::BitmapIndex(objectId);
+      // the column family depends on the variant, see
+      // RocksDBBitmapIndex::getBounds
+      TRI_ASSERT(false);
+      return RocksDBKeyBounds::BitmapIndex(objectId,
+                                           RocksDBEntryType::BitmapIndexValue);
     case IndexType::Unknown:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

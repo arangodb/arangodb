@@ -99,6 +99,13 @@ static rocksdb::Slice BitmapIndexValue(
         &bitmapIndex),
     1);
 
+static RocksDBEntryType bitmapIndexScalar =
+    RocksDBEntryType::BitmapIndexScalarValue;
+static rocksdb::Slice BitmapIndexScalarValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &bitmapIndexScalar),
+    1);
+
 static RocksDBEntryType vectorVPIndex = RocksDBEntryType::VectorVPackIndexValue;
 static rocksdb::Slice VectorVPackIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
@@ -250,6 +257,8 @@ std::string_view arangodb::rocksDBEntryTypeName(
       return "VectorVPackIndexValue";
     case arangodb::RocksDBEntryType::BitmapIndexValue:
       return "BitmapIndexValue";
+    case arangodb::RocksDBEntryType::BitmapIndexScalarValue:
+      return "BitmapIndexScalarValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
     case RocksDBEntryType::ReplicatedState:
@@ -338,6 +347,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return VectorVPackIndexValue;
     case arangodb::RocksDBEntryType::BitmapIndexValue:
       return BitmapIndexValue;
+    case arangodb::RocksDBEntryType::BitmapIndexScalarValue:
+      return BitmapIndexScalarValue;
     case RocksDBEntryType::FulltextIndexValue:
       return FulltextIndexValue;
     case RocksDBEntryType::LegacyGeoIndexValue:

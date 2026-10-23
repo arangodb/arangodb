@@ -186,6 +186,15 @@ bool IndexTypeFactory::equal(IndexType type, velocypack::Slice lhs,
             value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
       return false;
     }
+  } else if (IndexType::Bitmap == type) {
+    // how values are stored; "any" if not given
+    auto values = [](VPackSlice definition) {
+      VPackSlice v = definition.get("values");
+      return v.isString() ? v.stringView() : std::string_view{"any"};
+    };
+    if (values(lhs) != values(rhs)) {
+      return false;
+    }
   } else if (IndexType::Vector == type) {
     // check if the parameters are the same
     vector::UserDefinition leftDefinition;
