@@ -114,26 +114,9 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
   return error;
 }
 
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
-    aql::AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                      isEmptyExpression);
-}
-
-ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    velocypack::Slice params) {
-  return _aqlFunctionsInternalCache.buildValidator(params);
+aql::AqlFunctionsInternalCache&
+ComputedValuesExpressionContext::functionsCache() {
+  return _aqlFunctionsInternalCache;
 }
 
 aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
