@@ -225,6 +225,87 @@ function BitmapIndexSuite(values) {
       check(['a', 'b']);
     },
 
+    testFailedOperationsInTransactionLeaveNoEntries: function () {
+      // single shard, so that the unique index needs no shard key; it is
+      // created after the bitmap index and fails after it was written
+      const other = cn + 'Unique';
+      db._drop(other);
+      let c = db._create(other, {numberOfShards: 1});
+      try {
+        c.ensureIndex({type: 'bitmap', fields: ['labels'], values});
+        c.ensureIndex({type: 'persistent', fields: ['u'], unique: true});
+        c.insert({_key: 'keep', labels: ['zz'], u: 0});
+        const q = `FOR d IN ${other} FILTER @labels ALL IN d.labels RETURN d._key`;
+        const conflict = errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
+        let trx = db._createTransaction({collections: {write: [other]}});
+        try {
+          let tc = trx.collection(other);
+          tc.insert({_key: 'a', labels: ['zz', 'yy'], u: 1});
+          for (let doc of [{_key: 'b', labels: ['yy', 'xx'], u: 1},
+                           {_key: 'c', labels: ['xx'], u: 0}]) {
+            try {
+              tc.insert(doc);
+              fail();
+            } catch (err) {
+              assertEqual(conflict, err.errorNum);
+            }
+          }
+          try {
+            tc.replace('a', {labels: ['xx'], u: 0});
+            fail();
+          } catch (err) {
+            assertEqual(conflict, err.errorNum);
+          }
+          assertEqual(['a', 'keep'], query(q, {labels: ['zz']}, trx));
+          assertEqual(['a'], query(q, {labels: ['yy']}, trx));
+          assertEqual([], query(q, {labels: ['xx']}, trx));
+          tc.update('keep', {labels: ['xx']});
+          trx.commit();
+        } catch (err) {
+          trx.abort();
+          throw err;
+        }
+        assertEqual(['a'], query(q, {labels: ['zz']}));
+        assertEqual(['a'], query(q, {labels: ['yy']}));
+        assertEqual(['keep'], query(q, {labels: ['xx']}));
+      } finally {
+        db._drop(other);
+      }
+    },
+
+    testLargeTransactions: function () {
+      const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
+      const count = `FOR d IN ${cn} FILTER @labels ALL IN d.labels
+                       COLLECT WITH COUNT INTO n RETURN n`;
+      const insert = (label, from, to) => `FOR i IN ${from}..${to}
+        INSERT {_key: CONCAT('${label}', i), labels: ['${label}', i % 2 == 0 ? 'even' : 'odd']}
+        INTO ${cn}`;
+      let trx = db._createTransaction({collections: {write: [cn]}});
+      try {
+        trx.query(insert('hot', 1, 20000));
+        assertEqual([20000], trx.query(count, {labels: ['hot']}).toArray());
+        trx.query(`FOR i IN 1..20000 FILTER i % 4 == 0 REMOVE CONCAT('hot', i) IN ${cn}`);
+        assertEqual([15000], trx.query(count, {labels: ['hot']}).toArray());
+        assertEqual([5000], trx.query(count, {labels: ['hot', 'even']}).toArray());
+        assertEqual([0], db._query(count, {labels: ['hot']}).toArray());
+        trx.commit();
+      } catch (err) {
+        trx.abort();
+        throw err;
+      }
+      assertEqual([15000], db._query(count, {labels: ['hot']}).toArray());
+      assertEqual([5000], db._query(count, {labels: ['hot', 'even']}).toArray());
+
+      // intermediate commits write the pending entries as well
+      db._query(insert('warm', 1, 20000), {}, {intermediateCommitCount: 777});
+      assertEqual([20000], db._query(count, {labels: ['warm']}).toArray());
+      assertEqual([10000], db._query(count, {labels: ['warm', 'odd']}).toArray());
+      const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true}
+                          FILTER @labels ALL IN d.labels RETURN d._key`;
+      assertEqual(query(fullScan, {labels: ['warm', 'odd']}),
+                  query(q, {labels: ['warm', 'odd']}));
+    },
+
     testTruncate: function () {
       db[cn].truncate({compact: false});
       docs = {};

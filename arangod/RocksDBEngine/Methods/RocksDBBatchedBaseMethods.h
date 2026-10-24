@@ -25,6 +25,8 @@
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 
+#include <memory>
+
 namespace arangodb {
 class RocksDBMethodsMemoryTracker;
 
@@ -32,8 +34,16 @@ class RocksDBBatchedBaseMethods : public RocksDBMethods {
  public:
   explicit RocksDBBatchedBaseMethods(
       RocksDBMethodsMemoryTracker& memoryTracker);
+  ~RocksDBBatchedBaseMethods() override;
 
   void resetMemoryUsage() noexcept;
+
+  bitmap_index::PendingWrites* bitmapIndexWrites() noexcept final override {
+    return _bitmapIndexWrites.get();
+  }
+
+  /// move the pending bitmap index writes into the write batch
+  rocksdb::Status flushBitmapIndexWrites();
 
  protected:
   /// @brief returns the payload size of the transaction's WriteBatch. this
@@ -42,6 +52,8 @@ class RocksDBBatchedBaseMethods : public RocksDBMethods {
 
   /// @brief object used for tracking memory usage
   RocksDBMethodsMemoryTracker& _memoryTracker;
+
+  std::unique_ptr<bitmap_index::PendingWrites> _bitmapIndexWrites;
 };
 
 }  // namespace arangodb

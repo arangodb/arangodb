@@ -84,6 +84,9 @@ Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
                                  RocksDBIndex& ridx, bool isForeground) {
+  if (rocksdb::Status s = batched.flushBitmapIndexWrites(); !s.ok()) {
+    return rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+  }
   auto docsInBatch = batch.GetWriteBatch()->Count();
   if (docsInBatch > 0) {
     rocksdb::WriteOptions wo;
@@ -744,6 +747,9 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   }
 
   auto commitLambda = [&](rocksdb::SequenceNumber seq) {
+    if (rocksdb::Status s = batched.flushBitmapIndexWrites(); !s.ok()) {
+      res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
+    }
     auto docsInBatch = wb.GetWriteBatch()->Count();
 
     if (docsInBatch > 0) {

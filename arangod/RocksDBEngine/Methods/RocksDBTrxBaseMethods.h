@@ -26,6 +26,7 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 namespace arangodb {
@@ -115,6 +116,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
                                  RocksDBKey const& key,
                                  rocksdb::Slice const& val) final override;
+  bitmap_index::PendingWrites* bitmapIndexWrites() noexcept final override {
+    return _bitmapIndexWrites.get();
+  }
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                          RocksDBKey const& key) final override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
@@ -175,6 +179,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief object used for tracking memory usage
   RocksDBMethodsMemoryTracker _memoryTracker;
+
+  /// bitmap index writes not yet in the RocksDB transaction
+  std::unique_ptr<bitmap_index::PendingWrites> _bitmapIndexWrites;
 
   /// @brief timestamp for User-Defined Timestamp column families (time
   /// travel). Set from a document's _created before the operation takes its

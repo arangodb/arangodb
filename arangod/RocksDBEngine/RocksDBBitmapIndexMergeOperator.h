@@ -93,7 +93,9 @@ class MergeOperandCollectorFactory final
   char const* Name() const override { return "ArangoBitmapIndexOperands"; }
 };
 
-/// at this many merge operands in the memtable RocksDB writes a full value
+/// at this many merge operands of a key in the memtable RocksDB writes a full
+/// value, if it can read the key without I/O. Without this, every read of a
+/// key merges all of its operands until the memtable is flushed.
 inline constexpr std::size_t kMaxSuccessiveMerges = 32;
 
 /// set merge operator, compaction filter and properties collector for the

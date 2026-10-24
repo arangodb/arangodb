@@ -30,6 +30,7 @@
 #include "Indexes/BitmapIndexMatcher.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
+#include "RocksDBEngine/RocksDBBitmapIndexPendingWrites.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -645,6 +646,17 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
  private:
   void setup(aql::AstNode const* node) {
+    if (canReadOwnWrites() == ReadOwnWrites::yes) {
+      // own writes are only visible to RocksDB once they are flushed
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(_trx, _collection->id());
+      if (auto* pending = mthds->bitmapIndexWrites();
+          pending != nullptr && !pending->empty()) {
+        if (rocksdb::Status s = pending->flush(*mthds); !s.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+        }
+      }
+    }
     auto parts = bitmap_index::matchCondition(*_index, node, _reference,
                                               /*runtime*/ true);
     if (!parts.has_value()) {
@@ -1117,29 +1129,41 @@ Result RocksDBBitmapIndexImpl<Values>::write(RocksDBMethods* methods,
   prefixValues.close();
 
   std::uint64_t const id = documentId.id();
-  roaring::Roaring single;
-  single.add(bitmap_index::offsetOf(id));
-  roaring::Roaring none;
-  std::string const delta = isInsert ? bitmap_index::encodeDelta(single, none)
-                                     : bitmap_index::encodeDelta(none, single);
-  std::string const countDelta = bitmap_index::encodeCount(
-      bitmap_index::ValueTag::CountDelta, isInsert ? 1 : -1);
+  std::uint32_t const offset = bitmap_index::offsetOf(id);
+  bitmap_index::PendingWrites* pending = methods->bitmapIndexWrites();
+  std::string delta;
+  std::string countDelta;
+  if (pending == nullptr) {
+    roaring::Roaring single;
+    single.add(offset);
+    roaring::Roaring none;
+    delta = isInsert ? bitmap_index::encodeDelta(single, none)
+                     : bitmap_index::encodeDelta(none, single);
+    countDelta = bitmap_index::encodeCount(bitmap_index::ValueTag::CountDelta,
+                                           isInsert ? 1 : -1);
+  }
 
   Result res;
   RocksDBKey key;
   velocypack::Builder stored;
+  std::string bitmapKey;
   for (velocypack::Slice element : elements) {
     stored.clear();
     if (!Values::add(stored, element)) {
       return rejected(element);
     }
-    std::string countKey =
+    std::string const countKey =
         makeKey(objectId(), prefixValues.slice(), stored.slice());
+    bitmapKey = countKey;
+    bitmap_index::appendShard(bitmapKey, bitmap_index::shardOf(id));
+    if (pending != nullptr) {
+      pending->add(_cf, countKey, bitmapKey, offset, isInsert);
+      continue;
+    }
     key.constructFromBuffer(countKey);
     rocksdb::Status s = methods->MergeUntracked(_cf, key, countDelta);
     if (s.ok()) {
-      bitmap_index::appendShard(countKey, bitmap_index::shardOf(id));
-      key.constructFromBuffer(countKey);
+      key.constructFromBuffer(bitmapKey);
       s = methods->MergeUntracked(_cf, key, delta);
     }
     if (!s.ok()) {

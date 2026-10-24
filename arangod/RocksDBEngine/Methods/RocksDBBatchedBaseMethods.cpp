@@ -21,13 +21,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBatchedBaseMethods.h"
+#include "RocksDBEngine/RocksDBBitmapIndexPendingWrites.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
+
+#include <rocksdb/status.h>
 
 using namespace arangodb;
 
 RocksDBBatchedBaseMethods::RocksDBBatchedBaseMethods(
     RocksDBMethodsMemoryTracker& memoryTracker)
-    : RocksDBMethods(), _memoryTracker(memoryTracker) {}
+    : RocksDBMethods(),
+      _memoryTracker(memoryTracker),
+      _bitmapIndexWrites(
+          std::make_unique<bitmap_index::PendingWrites>(memoryTracker)) {}
+
+RocksDBBatchedBaseMethods::~RocksDBBatchedBaseMethods() = default;
+
+rocksdb::Status RocksDBBatchedBaseMethods::flushBitmapIndexWrites() {
+  return _bitmapIndexWrites->flush(*this);
+}
 
 void RocksDBBatchedBaseMethods::resetMemoryUsage() noexcept {
   _memoryTracker.reset();

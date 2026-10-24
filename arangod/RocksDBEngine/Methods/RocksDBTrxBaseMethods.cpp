@@ -24,6 +24,7 @@
 
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBBitmapIndexPendingWrites.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
@@ -63,7 +64,9 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
       _db(db),
       _memoryTracker(_state, ::determineMetric(_state),
                      /*reportGranularity*/
-                     RocksDBMethodsMemoryTracker::kDefaultGranularity) {
+                     RocksDBMethodsMemoryTracker::kDefaultGranularity),
+      _bitmapIndexWrites(
+          std::make_unique<bitmap_index::PendingWrites>(_memoryTracker)) {
   TRI_ASSERT(_state != nullptr);
 
   TRI_ASSERT(!_state->isReadOnlyTransaction());
@@ -360,6 +363,7 @@ void RocksDBTrxBaseMethods::SetSavePoint() {
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->SetSavePoint();
   _memoryTracker.setSavePoint();
+  _bitmapIndexWrites->setSavePoint();
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::RollbackToSavePoint() {
@@ -367,6 +371,7 @@ rocksdb::Status RocksDBTrxBaseMethods::RollbackToSavePoint() {
   rocksdb::Status s = _rocksTransaction->RollbackToSavePoint();
   if (s.ok()) {
     _memoryTracker.rollbackToSavePoint();
+    _bitmapIndexWrites->rollbackToSavePoint();
   }
   return s;
 }
@@ -392,7 +397,10 @@ rocksdb::Status RocksDBTrxBaseMethods::RollbackToWriteBatchSavePoint() {
     // finally, we pop off the SavePoint from the WBWI, which will remove the
     // latest changes from the WBWI and the WB (our dummy SavePoint), but it
     // will _not_ rebuild the entire WBWI from the WB
-    this->PopSavePoint();
+    s = _rocksTransaction->PopSavePoint();
+    TRI_ASSERT(s.ok());
+    _memoryTracker.popSavePoint();
+    _bitmapIndexWrites->rollbackToSavePoint();
   }
   TRI_ASSERT(s.ok());
   return s;
@@ -404,12 +412,19 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
   TRI_ASSERT(s.ok());
   if (s.ok()) {
     _memoryTracker.popSavePoint();
+    _bitmapIndexWrites->popSavePoint();
   }
 }
 
 void RocksDBTrxBaseMethods::beginQuery(
     std::shared_ptr<ResourceMonitor> resourceMonitor,
     bool isModificationQuery) {
+  // queries see the writes made before them
+  if (!_bitmapIndexWrites->empty()) {
+    if (rocksdb::Status s = _bitmapIndexWrites->flush(*this); !s.ok()) {
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+    }
+  }
   if (isModificationQuery) {
     _memoryTracker.beginQuery(resourceMonitor);
   }
@@ -424,6 +439,7 @@ void RocksDBTrxBaseMethods::endQuery(bool isModificationQuery) noexcept {
 void RocksDBTrxBaseMethods::cleanupTransaction() {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
+  _bitmapIndexWrites->clear();
   _memoryTracker.reset();
 }
 
@@ -511,6 +527,10 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
     // don't write anything if the transaction is empty
 #endif
     return {};
+  }
+
+  if (rocksdb::Status s = _bitmapIndexWrites->flush(*this); !s.ok()) {
+    return rocksutils::convertStatus(s);
   }
 
   // we may need to block intermediate commits

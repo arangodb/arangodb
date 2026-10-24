@@ -26,14 +26,19 @@
 #include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
 #include "RocksDBEngine/RocksDBBitmapIndexMergeOperator.h"
+#include "RocksDBEngine/RocksDBBitmapIndexPendingWrites.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
+#include <rocksdb/write_batch.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -151,7 +156,8 @@ class BitmapIndexDBTest : public ::testing::Test {
 }  // namespace
 
 TEST(BitmapIndexFormatTest, shard_encoding_round_trips_and_sorts) {
-  std::vector<std::uint64_t> shards = {0, 1, 255, 256, 65535, 1ULL << 40,
+  std::vector<std::uint64_t> shards = {0, 1, 255, 256, 65535,
+                                       (1ULL << (64 - kShardBits)) / 2 + 1,
                                        (1ULL << (64 - kShardBits)) - 1};
   std::string previous;
   for (auto shard : shards) {
@@ -192,7 +198,7 @@ TEST(BitmapIndexFormatTest, count_key_sorts_before_shard_keys) {
   std::string countKey = key(R"(["v/1", "a"])");
   std::string first = key(R"(["v/1", "a"])", 0);
   std::string second = key(R"(["v/1", "a"])", 1);
-  std::string large = key(R"(["v/1", "a"])", 1ULL << 40);
+  std::string large = key(R"(["v/1", "a"])", shardOf(~std::uint64_t{0}));
   std::string nextElement = key(R"(["v/1", "b"])");
   EXPECT_LT(compare(countKey, first), 0);
   EXPECT_LT(compare(first, second), 0);
@@ -316,6 +322,92 @@ TEST_F(BitmapIndexDBTest, many_memtable_operands_collapse_into_a_full_value) {
   auto value = get("b");
   ASSERT_TRUE(value.has_value());
   EXPECT_EQ(3 * kMaxSuccessiveMerges, contents(*value).size());
+}
+
+class BitmapIndexPendingWritesTest : public BitmapIndexDBTest {
+ protected:
+  BitmapIndexPendingWritesTest()
+      : _tracker(nullptr, nullptr, /*granularity*/ 1),
+        _methods(&_batch, _tracker),
+        _pending(_tracker) {}
+
+  ~BitmapIndexPendingWritesTest() override { _pending.clear(); }
+
+  void add(std::string const& countKey, std::uint32_t offset, bool insert) {
+    std::string bitmapKey = countKey;
+    appendShard(bitmapKey, 0);
+    _pending.add(_db->DefaultColumnFamily(), countKey, bitmapKey, offset,
+                 insert);
+  }
+
+  /// flush into the write batch, write it and return the number of operands
+  std::uint32_t write() {
+    auto s = _pending.flush(_methods);
+    EXPECT_TRUE(s.ok()) << s.ToString();
+    std::uint32_t operands = _batch.Count();
+    s = _db->Write(rocksdb::WriteOptions(), &_batch);
+    EXPECT_TRUE(s.ok()) << s.ToString();
+    _batch.Clear();
+    _methods.resetMemoryUsage();
+    return operands;
+  }
+
+  std::string bitmapKey(std::string countKey) {
+    appendShard(countKey, 0);
+    return countKey;
+  }
+
+  rocksdb::WriteBatch _batch;
+  RocksDBMethodsMemoryTracker _tracker;
+  RocksDBBatchedMethods _methods;
+  PendingWrites _pending;
+};
+
+TEST_F(BitmapIndexPendingWritesTest, writes_one_operand_per_key) {
+  std::string const a = key(R"(["v/1", "a"])");
+  for (std::uint32_t i = 0; i < 1000; ++i) {
+    add(a, i, true);
+  }
+  add(a, 7, false);
+  EXPECT_EQ(2U, write());
+  EXPECT_EQ(999, decodeCount(*get(a)));
+  auto ids = contents(*get(bitmapKey(a)));
+  EXPECT_EQ(999U, ids.size());
+  EXPECT_EQ(ids.end(), std::find(ids.begin(), ids.end(), 7U));
+}
+
+TEST_F(BitmapIndexPendingWritesTest, cancelled_changes_keep_only_the_remove) {
+  std::string const a = key(R"(["v/1", "a"])");
+  merge(bitmapKey(a), addDelta({3}));
+  add(a, 5, true);
+  add(a, 5, false);
+  // the count is unchanged; the remove stays, as the id may already be stored
+  EXPECT_EQ(1U, write());
+  EXPECT_FALSE(get(a).has_value());
+  EXPECT_EQ((std::vector<std::uint32_t>{3}), contents(*get(bitmapKey(a))));
+}
+
+TEST_F(BitmapIndexPendingWritesTest, rollback_undoes_changes_since_savepoint) {
+  std::string const a = key(R"(["v/1", "a"])");
+  std::string const b = key(R"(["v/1", "b"])");
+  add(a, 1, true);
+  add(a, 2, true);
+  _pending.setSavePoint();
+  add(a, 2, false);
+  add(a, 3, true);
+  _pending.setSavePoint();
+  add(b, 4, true);
+  _pending.rollbackToSavePoint();
+  _pending.rollbackToSavePoint();
+  _pending.setSavePoint();
+  add(a, 5, true);
+  _pending.popSavePoint();
+  EXPECT_EQ(2U, write());
+  EXPECT_EQ(3, decodeCount(*get(a)));
+  EXPECT_EQ((std::vector<std::uint32_t>{1, 2, 5}),
+            contents(*get(bitmapKey(a))));
+  EXPECT_FALSE(get(b).has_value());
+  EXPECT_FALSE(get(bitmapKey(b)).has_value());
 }
 
 TEST(BitmapIndexComparatorDBTest, merges_of_equal_values_meet_in_one_key) {

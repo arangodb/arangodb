@@ -32,6 +32,9 @@ class Slice;
 
 namespace arangodb {
 class RocksDBKey;
+namespace bitmap_index {
+class PendingWrites;
+}
 
 class RocksDBMethods {
  public:
@@ -96,6 +99,12 @@ class RocksDBMethods {
   virtual rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
                                          RocksDBKey const&,
                                          rocksdb::Slice const&) = 0;
+
+  /// buffer that coalesces bitmap index writes per key until it is flushed;
+  /// nullptr if they go to RocksDB directly
+  virtual bitmap_index::PendingWrites* bitmapIndexWrites() noexcept {
+    return nullptr;
+  }
 
   virtual rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                                  RocksDBKey const&) = 0;
