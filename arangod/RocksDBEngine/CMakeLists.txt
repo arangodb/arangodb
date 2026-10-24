@@ -3,6 +3,7 @@ add_library(arango_rocksdb STATIC
   RocksDBBitmapIndex.cpp
   RocksDBBitmapIndexFormat.cpp
   RocksDBBitmapIndexMergeOperator.cpp
+  RocksDBBitmapIndexPendingWrites.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
   RocksDBCFStats.cpp
