@@ -34,6 +34,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "VectorIndex/Definition.h"
+#include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -101,6 +102,9 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == IndexType::Bitmap) {
+      _coveredFields =
+          RocksDBBitmapIndex::coveredFieldsFor(collection, _fields);
     } else if (_indexType == IndexType::Vector) {
       velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
       TRI_ASSERT(_vectorIndexDefinition != nullptr);

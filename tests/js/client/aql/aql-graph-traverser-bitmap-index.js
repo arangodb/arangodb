@@ -209,6 +209,41 @@ function TraversalBitmapIndexSuite(values) {
       }
     },
 
+    testCoversOtherVertex: function () {
+      // the other vertex of each edge comes from the edge index
+      for (let [field, other] of [['_from', '_to'], ['_to', '_from']]) {
+        const q = `FOR e IN ${en} FILTER e.${field} == @v AND ['x', 'y'] ALL IN e.labels
+                     RETURN e.${other}`;
+        const fullScan = `FOR e IN ${en} OPTIONS {disableIndex: true}
+                            FILTER e.${field} == @v AND ['x', 'y'] ALL IN e.labels
+                            RETURN e.${other}`;
+        let plan = db._createStatement({query: q, bindVars: {v: vn + '/v3'}}).explain().plan;
+        let idx = plan.nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertTrue(idx.indexes.some((i) => isBitmap(i, field)), JSON.stringify(idx.indexes));
+        assertTrue(idx.indexCoversProjections, JSON.stringify(idx.projections));
+        for (let v of ['v3', 'v17', 'v42', 'v99']) {
+          let expected = db._query(fullScan, {v: vn + '/' + v}).toArray().map(JSON.stringify).sort();
+          assertTrue(expected.length > 0 || v !== 'v3', v);
+          assertEqual(expected, db._query(q, {v: vn + '/' + v}).toArray().map(JSON.stringify).sort(), v);
+        }
+      }
+    },
+
+    testCoveringSeesOwnWrites: function () {
+      let trx = db._createTransaction({collections: {write: [en]}});
+      try {
+        let tc = trx.collection(en);
+        tc.insert({_key: 'own1', _from: vn + '/v1', _to: vn + '/v77', labels: ['own']});
+        tc.insert({_key: 'own2', _from: vn + '/v1', _to: vn + '/v78', labels: ['own', 'x']});
+        let traversal = `WITH ${vn} FOR v, e, p IN 1..1 OUTBOUND @start ${en}
+                           FILTER p.edges[* RETURN ['own'] ALL IN CURRENT.labels] ALL == true
+                           RETURN v._key`;
+        assertEqual(['v77', 'v78'], trx.query(traversal, {start: vn + '/v1'}).toArray().sort());
+      } finally {
+        trx.abort();
+      }
+    },
+
     testDepthSpecificCondition: function () {
       let filter = '@labels ALL IN p.edges[0].labels';
       let firstEdgeMatches = (labelsPerEdge, hasAll) => hasAll(labelsPerEdge[0]);

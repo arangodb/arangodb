@@ -39,6 +39,8 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBValue.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -595,12 +597,29 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
   void resetImpl() override { restart(); }
 
-  /// nothing is covered; late materialization only needs the ids
   bool nextCoveringImpl(CoveringCallback const& callback,
                         uint64_t limit) override {
-    SliceCoveringData covering(velocypack::Slice::emptyArraySlice());
+    if (_index->coveredFields().empty()) {
+      // nothing is covered; late materialization only needs the ids
+      SliceCoveringData covering(velocypack::Slice::emptyArraySlice());
+      return nextImpl(
+          [&](LocalDocumentId id) { return callback(id, covering); }, limit);
+    }
+    // [vertex, other vertex] per edge: the vertex is the searched prefix
+    // value, the other vertex comes from the edge index
+    velocypack::Slice vertex = _prefixValues.slice().at(0);
+    velocypack::Builder covering;
     return nextImpl(
-        [&](LocalDocumentId id) { return callback(id, covering); }, limit);
+        [&](LocalDocumentId id) {
+          covering.clear();
+          covering.openArray();
+          covering.add(vertex);
+          addOtherVertex(covering, vertex, id);
+          covering.close();
+          SliceCoveringData data(covering.slice());
+          return callback(id, data);
+        },
+        limit);
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
@@ -792,8 +811,85 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     return false;
   }
 
+  /// Merge join with the edge index: matching edge ids arrive in ascending
+  /// order, and so do the edge index entries of one vertex. Close targets are
+  /// reached with a few Next() calls, far ones with a Seek().
+  void addOtherVertex(velocypack::Builder& out, velocypack::Slice vertex,
+                      LocalDocumentId id) {
+    if (_edgeIndex == nullptr) {
+      std::string const& attribute = _index->fields()[0][0].name;
+      for (auto const& idx : _collection->getPhysical()->getReadyIndexes()) {
+        if (idx->type() == IndexType::Edge &&
+            idx->fields()[0][0].name == attribute) {
+          _edgeIndex = static_cast<RocksDBIndex const*>(idx.get());
+          break;
+        }
+      }
+      TRI_ASSERT(_edgeIndex != nullptr);
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(_trx, _collection->id());
+      _edgeIterator = mthds->NewIterator(
+          _edgeIndex->columnFamily(), [this](ReadOptions& options) {
+            options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+          });
+    }
+
+    std::string_view v = vertex.stringView();
+    auto atTarget = [&]() -> std::optional<int> {
+      // compares the current entry with the target: <0, 0 or >0, or none if
+      // the iterator left the vertex
+      if (!_edgeIterator->Valid()) {
+        return std::nullopt;
+      }
+      rocksdb::Slice key = _edgeIterator->key();
+      if (RocksDBKey::vertexId(key) != v) {
+        return std::nullopt;
+      }
+      auto current = RocksDBKey::edgeDocumentId(key).id();
+      return current < id.id() ? -1 : (current == id.id() ? 0 : 1);
+    };
+
+    std::optional<int> cmp;
+    if (_edgeVertex == v) {
+      cmp = atTarget();
+      for (int steps = 0; steps < 8 && cmp == -1; ++steps) {
+        _edgeIterator->Next();
+        cmp = atTarget();
+      }
+    }
+    if (cmp != 0) {
+      _edgeVertex.assign(v);
+      RocksDBKey key;
+      key.constructEdgeIndexValue(_edgeIndex->objectId(), v, id);
+      _edgeIterator->Seek(key.string());
+      cmp = atTarget();
+    }
+    if (cmp == 0) {
+      out.add(velocypack::Value(RocksDBValue::vertexId(_edgeIterator->value())));
+      return;
+    }
+
+    // not expected, both indexes are read from the same snapshot: take the
+    // other vertex from the edge document
+    rocksutils::checkIteratorStatus(*_edgeIterator);
+    bool const fromIndex =
+        _index->fields()[0][0].name == StaticStrings::FromString;
+    std::ignore = _collection->getPhysical()->lookup(
+        _trx, id,
+        [&](LocalDocumentId, aql::DocumentData&&, velocypack::Slice doc) {
+          out.add(fromIndex ? transaction::helpers::extractToFromDocument(doc)
+                            : transaction::helpers::extractFromFromDocument(doc));
+          return true;
+        },
+        {.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes});
+  }
+
   RocksDBBitmapIndex const* _index;
   aql::Variable const* _reference;
+  /// edge index on the prefix attribute, for covering the other vertex
+  RocksDBIndex const* _edgeIndex = nullptr;
+  std::unique_ptr<rocksdb::Iterator> _edgeIterator;
+  std::string _edgeVertex;
   /// velocypack array of the searched prefix values
   velocypack::Builder _prefixValues;
   /// the condition with searched values evaluated, and with constants folded
@@ -862,7 +958,8 @@ RocksDBBitmapIndex::RocksDBBitmapIndex(IndexId iid,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase().engine<RocksDBEngine>()) {
+                   collection.vocbase().engine<RocksDBEngine>()),
+      _coveredFields(coveredFieldsFor(collection, _fields)) {
   TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = false;
@@ -890,6 +987,26 @@ void RocksDBBitmapIndex::toVelocyPack(
   builder.add(kShardBitsAttribute, velocypack::Value(bitmap_index::kShardBits));
   builder.add(kValuesAttribute, velocypack::Value(valuesName()));
   builder.close();
+}
+
+std::vector<std::vector<basics::AttributeName>>
+RocksDBBitmapIndex::coveredFieldsFor(
+    LogicalCollection const& collection,
+    std::vector<std::vector<basics::AttributeName>> const& fields) {
+  if (collection.type() != TRI_COL_TYPE_EDGE || fields.size() != 2 ||
+      fields[0].size() != 1) {
+    return {};
+  }
+  std::string const& prefix = fields[0][0].name;
+  if (prefix != StaticStrings::FromString &&
+      prefix != StaticStrings::ToString) {
+    return {};
+  }
+  std::string const& other = prefix == StaticStrings::FromString
+                                 ? StaticStrings::ToString
+                                 : StaticStrings::FromString;
+  return {{basics::AttributeName(prefix, false)},
+          {basics::AttributeName(other, false)}};
 }
 
 bool RocksDBBitmapIndex::matchesDefinition(velocypack::Slice const& info) const {

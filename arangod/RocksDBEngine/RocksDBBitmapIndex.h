@@ -101,10 +101,18 @@ class RocksDBBitmapIndex : public RocksDBIndex {
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
+  /// on edge collections, an index with fields [_from|_to, attr] covers
+  /// [_from, _to] (resp. [_to, _from]): the other vertex of each matching edge
+  /// is taken from the edge index, so traversals need not read edges
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
-    return Index::emptyCoveredFields;
+    return _coveredFields;
   }
+
+  /// covered fields of a bitmap index with the given fields
+  static std::vector<std::vector<basics::AttributeName>> coveredFieldsFor(
+      LogicalCollection const& collection,
+      std::vector<std::vector<basics::AttributeName>> const& fields);
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
@@ -130,6 +138,9 @@ class RocksDBBitmapIndex : public RocksDBIndex {
                      velocypack::Slice info, rocksdb::ColumnFamilyHandle* cf);
 
   virtual std::string_view valuesName() const = 0;
+
+ private:
+  std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
 
 template<typename Values>
