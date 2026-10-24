@@ -118,6 +118,8 @@ struct Expr {
   bool isComplement() const {
     return type == Type::And && children.empty() && !excluded.empty();
   }
+
+  bool operator==(Expr const&) const = default;
 };
 
 /// evaluate the searched values into their stored form. a value that can
@@ -261,26 +263,100 @@ bool evaluate(Expr const& expr, SliceSet const& elements) {
   return false;
 }
 
+/// A Roaring bitmap that is either a read-only view of a RocksDB value (no
+/// copy of its containers) or owned. Views stay valid until the RocksDB
+/// iterator holding the value moves.
+class BitmapRef {
+ public:
+  using Bitmap = roaring::api::roaring_bitmap_t;
+
+  static BitmapRef view(rocksdb::Slice value) {
+    std::string_view v{value.data(), value.size()};
+    if (bitmap_index::tagOf(v) == bitmap_index::ValueTag::Bitmap) {
+      Bitmap* frozen =
+          roaring::api::roaring_bitmap_portable_deserialize_frozen(v.data() + 1);
+      if (frozen == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid bitmap index value");
+      }
+      return BitmapRef(frozen, /*isView*/ true);
+    }
+    // an unmerged delta, decoded into its own containers
+    roaring::Roaring decoded = bitmap_index::decodeBitmap(v);
+    return BitmapRef(roaring::api::roaring_bitmap_copy(&decoded.roaring),
+                     /*isView*/ false);
+  }
+
+  Bitmap const* get() const { return _bitmap.get(); }
+  bool empty() const { return roaring::api::roaring_bitmap_is_empty(get()); }
+
+  void intersect(BitmapRef const& other) {
+    combine(other, roaring::api::roaring_bitmap_and,
+            roaring::api::roaring_bitmap_and_inplace);
+  }
+  void unite(BitmapRef const& other) {
+    combine(other, roaring::api::roaring_bitmap_or,
+            roaring::api::roaring_bitmap_or_inplace);
+  }
+  void subtract(BitmapRef const& other) {
+    combine(other, roaring::api::roaring_bitmap_andnot,
+            roaring::api::roaring_bitmap_andnot_inplace);
+  }
+
+ private:
+  BitmapRef(Bitmap* bitmap, bool isView) : _bitmap(bitmap), _isView(isView) {}
+
+  /// a view cannot be modified, so the result becomes a new owned bitmap
+  template<typename Make, typename InPlace>
+  void combine(BitmapRef const& other, Make make, InPlace inPlace) {
+    if (_isView) {
+      _bitmap.reset(make(get(), other.get()));
+      _isView = false;
+    } else {
+      inPlace(_bitmap.get(), other.get());
+    }
+  }
+
+  struct Free {
+    void operator()(Bitmap* b) const { roaring::api::roaring_bitmap_free(b); }
+  };
+  std::unique_ptr<Bitmap, Free> _bitmap;
+  bool _isView = false;
+};
+
 /// Iterates the shards that may hold results of one part of a condition, in
-/// ascending order. seek() targets never decrease.
+/// ascending order. seek() targets never decrease. The tree is built once per
+/// condition; restart() binds it to (new) prefix values, e.g. per vertex.
 class ShardNode {
  public:
   virtual ~ShardNode() = default;
+  virtual void restart(velocypack::Slice prefixValues) = 0;
   /// position on the first shard >= target that may hold results; false if
   /// there is none
   virtual bool seek(std::uint64_t target) = 0;
   virtual std::uint64_t shard() const = 0;
   /// matching offsets in the current shard
-  virtual roaring::Roaring bitmap() = 0;
+  virtual BitmapRef bitmap() = 0;
   /// estimated number of matching documents
   virtual std::int64_t cost() const = 0;
 };
 
 class TermNode final : public ShardNode {
  public:
-  TermNode(std::string countKey, rocksdb::Iterator& it,
-           rocksdb::Comparator const& cmp)
-      : _countKey(std::move(countKey)), _it(it), _cmp(cmp) {
+  TermNode(std::uint64_t objectId, velocypack::Slice element,
+           rocksdb::Iterator& it, rocksdb::Comparator const& cmp)
+      : _objectId(objectId),
+        _element(reinterpret_cast<char const*>(element.start()),
+                 element.byteSize()),
+        _it(it),
+        _cmp(cmp) {}
+
+  void restart(velocypack::Slice prefixValues) override {
+    _countKey = makeKey(
+        _objectId, prefixValues,
+        velocypack::Slice(reinterpret_cast<uint8_t const*>(_element.data())));
+    _count = 0;
+    _valid = false;
     // the count key sorts directly before the element's shard keys
     _it.Seek(_countKey);
     if (_it.Valid() && suffixLength(_it.key()) == 0) {
@@ -288,10 +364,9 @@ class TermNode final : public ShardNode {
       _count = bitmap_index::decodeCount({value.data(), value.size()});
       _it.Next();
     }
-    if (_count <= 0) {
-      // no document contains this element
-      _exhausted = true;
-    } else {
+    // without documents for this element there is nothing to find
+    _exhausted = _count <= 0;
+    if (!_exhausted) {
       position();
     }
   }
@@ -303,9 +378,9 @@ class TermNode final : public ShardNode {
     if (_valid && _shard >= target) {
       return true;
     }
-    std::string key = _countKey;
-    bitmap_index::appendShard(key, target);
-    _it.Seek(key);
+    _shardKey.assign(_countKey);
+    bitmap_index::appendShard(_shardKey, target);
+    _it.Seek(_shardKey);
     position();
     _exhausted = !_valid;
     return _valid;
@@ -313,10 +388,9 @@ class TermNode final : public ShardNode {
 
   std::uint64_t shard() const override { return _shard; }
 
-  roaring::Roaring bitmap() override {
+  BitmapRef bitmap() override {
     TRI_ASSERT(_valid);
-    rocksdb::Slice value = _it.value();
-    return bitmap_index::decodeBitmap({value.data(), value.size()});
+    return BitmapRef::view(_it.value());
   }
 
   std::int64_t cost() const override { return _count; }
@@ -348,7 +422,8 @@ class TermNode final : public ShardNode {
       return;
     }
     rocksdb::Slice key = _it.key();
-    if (suffixLength(key) != static_cast<std::int64_t>(bitmap_index::kShardBytes)) {
+    if (suffixLength(key) !=
+        static_cast<std::int64_t>(bitmap_index::kShardBytes)) {
       return;
     }
     _shard = bitmap_index::readShard(key.data() + key.size() -
@@ -356,14 +431,18 @@ class TermNode final : public ShardNode {
     _valid = true;
   }
 
-  /// objectId | [prefix values..., element]
-  std::string const _countKey;
+  std::uint64_t const _objectId;
+  /// stored form of the searched element
+  std::string const _element;
   rocksdb::Iterator& _it;
   rocksdb::Comparator const& _cmp;
+  /// objectId | [prefix values..., element]
+  std::string _countKey;
+  std::string _shardKey;
   std::int64_t _count = 0;
   std::uint64_t _shard = 0;
   bool _valid = false;
-  bool _exhausted = false;
+  bool _exhausted = true;
 };
 
 /// intersection of the required children, minus the excluded ones
@@ -373,6 +452,15 @@ class AndNode final : public ShardNode {
           std::vector<std::unique_ptr<ShardNode>> excluded)
       : _required(std::move(required)), _excluded(std::move(excluded)) {
     TRI_ASSERT(!_required.empty());
+  }
+
+  void restart(velocypack::Slice prefixValues) override {
+    for (auto& child : _required) {
+      child->restart(prefixValues);
+    }
+    for (auto& child : _excluded) {
+      child->restart(prefixValues);
+    }
     // the rarest child drives the leapfrog
     std::sort(_required.begin(), _required.end(),
               [](auto const& a, auto const& b) { return a->cost() < b->cost(); });
@@ -400,17 +488,17 @@ class AndNode final : public ShardNode {
 
   std::uint64_t shard() const override { return _shard; }
 
-  roaring::Roaring bitmap() override {
-    roaring::Roaring result = _required[0]->bitmap();
-    for (std::size_t i = 1; i < _required.size() && !result.isEmpty(); ++i) {
-      result &= _required[i]->bitmap();
+  BitmapRef bitmap() override {
+    BitmapRef result = _required[0]->bitmap();
+    for (std::size_t i = 1; i < _required.size() && !result.empty(); ++i) {
+      result.intersect(_required[i]->bitmap());
     }
     for (auto& excluded : _excluded) {
-      if (result.isEmpty()) {
+      if (result.empty()) {
         break;
       }
       if (excluded->seek(_shard) && excluded->shard() == _shard) {
-        result -= excluded->bitmap();
+        result.subtract(excluded->bitmap());
       }
     }
     return result;
@@ -428,8 +516,12 @@ class AndNode final : public ShardNode {
 class OrNode final : public ShardNode {
  public:
   explicit OrNode(std::vector<std::unique_ptr<ShardNode>> children)
-      : _children(std::move(children)) {
-    for (auto const& child : _children) {
+      : _children(std::move(children)) {}
+
+  void restart(velocypack::Slice prefixValues) override {
+    _cost = 0;
+    for (auto& child : _children) {
+      child->restart(prefixValues);
       _cost += child->cost();
     }
   }
@@ -448,14 +540,19 @@ class OrNode final : public ShardNode {
 
   std::uint64_t shard() const override { return _shard; }
 
-  roaring::Roaring bitmap() override {
-    roaring::Roaring result;
+  BitmapRef bitmap() override {
+    std::optional<BitmapRef> result;
     for (auto& child : _children) {
       if (child->seek(_shard) && child->shard() == _shard) {
-        result |= child->bitmap();
+        if (result.has_value()) {
+          result->unite(child->bitmap());
+        } else {
+          result.emplace(child->bitmap());
+        }
       }
     }
-    return result;
+    TRI_ASSERT(result.has_value());
+    return std::move(*result);
   }
 
   std::int64_t cost() const override { return _cost; }
@@ -498,6 +595,14 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
 
   void resetImpl() override { restart(); }
 
+  /// nothing is covered; late materialization only needs the ids
+  bool nextCoveringImpl(CoveringCallback const& callback,
+                        uint64_t limit) override {
+    SliceCoveringData covering(velocypack::Slice::emptyArraySlice());
+    return nextImpl(
+        [&](LocalDocumentId id) { return callback(id, covering); }, limit);
+  }
+
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 uint64_t limit) override {
     if (_scanning) {
@@ -538,8 +643,14 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
       _usable = _usable && Values::add(_prefixValues, value.slice());
     }
     _prefixValues.close();
-    _expr = evaluateValues<Values>(parts->expr);
-    _folded = fold(_expr);
+    Expr expr = evaluateValues<Values>(parts->expr);
+    if (_root == nullptr || expr != _expr) {
+      // usually only the prefix values change, e.g. per traversal vertex;
+      // then the tree is kept and only bound to them again
+      _expr = std::move(expr);
+      _folded = fold(_expr);
+      _root.reset();
+    }
     restart();
   }
 
@@ -560,8 +671,8 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     switch (expr.type) {
       case Expr::Type::Term:
         return std::make_unique<TermNode>(
-            makeKey(_index->objectId(), _prefixValues.slice(), expr.value()),
-            nextIterator(), *_index->columnFamily()->GetComparator());
+            _index->objectId(), expr.value(), nextIterator(),
+            *_index->columnFamily()->GetComparator());
       case Expr::Type::And: {
         std::vector<std::unique_ptr<ShardNode>> required;
         std::vector<std::unique_ptr<ShardNode>> excluded;
@@ -594,8 +705,6 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
     _buffer.clear();
     _pos = 0;
     _nextShard = 0;
-    _root.reset();
-    _iteratorsUsed = 0;
     _scanning = false;
     _exhausted = !_usable || _folded.isConstant(false);
     if (_exhausted) {
@@ -608,7 +717,11 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
       startScan();
       return;
     }
-    _root = build(_folded);
+    if (_root == nullptr) {
+      _iteratorsUsed = 0;
+      _root = build(_folded);
+    }
+    _root->restart(_prefixValues.slice());
   }
 
   void startScan() {
@@ -665,11 +778,12 @@ class RocksDBBitmapIndexIterator final : public IndexIterator {
   bool fillBuffer() {
     while (_root->seek(_nextShard)) {
       std::uint64_t const shard = _root->shard();
-      roaring::Roaring result = _root->bitmap();
+      BitmapRef result = _root->bitmap();
       _nextShard = shard + 1;
-      if (!result.isEmpty()) {
-        _buffer.resize(result.cardinality());
-        result.toUint32Array(_buffer.data());
+      if (!result.empty()) {
+        _buffer.resize(roaring::api::roaring_bitmap_get_cardinality(result.get()));
+        roaring::api::roaring_bitmap_to_uint32_array(result.get(),
+                                                     _buffer.data());
         _bufferShard = shard;
         _pos = 0;
         return true;

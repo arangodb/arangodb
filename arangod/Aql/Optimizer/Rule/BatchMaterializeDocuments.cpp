@@ -49,7 +49,10 @@ bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
     return false;
   }
 
-  if (indexHandle->coveredFields().empty()) {
+  // a bitmap index covers no attributes but produces document ids in
+  // ascending order, which is all a later batched lookup needs
+  if (indexHandle->coveredFields().empty() &&
+      indexHandle->type() != IndexType::Bitmap) {
     LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
              << "does not support covering call";
     return false;
