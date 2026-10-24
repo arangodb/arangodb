@@ -390,6 +390,16 @@ function BitmapIndexSuite(values) {
       }
     },
 
+    testLateMaterialization: function () {
+      // the index only produces document ids, which are looked up in batches
+      const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d`;
+      let plan = db._createStatement({query: q, bindVars: {labels: ['a']}}).explain().plan;
+      assertTrue(plan.nodes.some((n) => n.type === 'MaterializeNode'), plan.nodes.map((n) => n.type));
+      assertTrue(plan.rules.includes('batch-materialize-documents'), plan.rules);
+      let keys = db._query(q, {labels: ['a']}).toArray().map((d) => d._key).sort();
+      assertEqual(expected(['a']), keys);
+    },
+
     testValuesOption: function () {
       // the variant is part of the index identity
       let other = values === 'any' ? 'scalar' : 'any';

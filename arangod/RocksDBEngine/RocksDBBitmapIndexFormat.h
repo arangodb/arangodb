@@ -34,7 +34,7 @@ namespace arangodb::bitmap_index {
 /// Number of low LocalDocumentId bits stored inside one bitmap. Everything
 /// above goes into the key. Changing this changes the on-disk format; the
 /// value an index was built with is persisted in its definition.
-inline constexpr unsigned kShardBits = 19;
+inline constexpr unsigned kShardBits = 31;
 static_assert(kShardBits >= 1 && kShardBits <= 32,
               "offsets must fit a 32-bit Roaring bitmap");
 
