@@ -1,7 +1,7 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
-* Updated ArangoDB Starter to v0.18.32.
+* Updated ArangoDB Starter to v0.18.33.
 
 * Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
   dependencies.
