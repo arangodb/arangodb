@@ -1,15 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.20.0-preview-20.
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
   `--rocksdb.export-read-write-metrics`
-
-* Upgraded included rclone to v1.75.1 with go1.26.9 and non-vulnerable
-  dependencies.
 
 * Upgraded OpenSSL to 3.5.9.
 
