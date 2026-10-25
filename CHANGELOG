@@ -1,10 +1,10 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
-* Updated ArangoDB Starter to v0.18.33.
-
-* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
+
+* Updated ArangoDB Starter to v0.18.33.
 
 * Update timezone database as of 05.10.2026.
 
