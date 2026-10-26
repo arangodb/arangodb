@@ -40,6 +40,7 @@ const actions = require('@arangodb/actions');
 const isZipBuffer = require('@arangodb/util').isZipBuffer;
 const codeFrame = require('@arangodb/util').codeFrame;
 const internal  = require('internal');
+const parseUrl = require('url').parse;
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -72,20 +73,54 @@ function isFoxxmaster () {
   return global.ArangoServerState.isFoxxmaster();
 }
 
+/**
+ * Returns the scheme, host and port of a URL, or null if it has no scheme or host
+ *
+ * A missing port is normalized to the scheme's default, so https://host and
+ * https://host:443 yield the same origin.
+ */
+function parseOrigin (url) {
+  if (typeof url !== 'string') {
+    return null;
+  }
+  const parsed = parseUrl(url);
+  if (!parsed.protocol || !parsed.hostname) {
+    return null;
+  }
+  const defaultPorts = {'http:': '80', 'https:': '443'};
+  return {
+    protocol: parsed.protocol,
+    hostname: parsed.hostname,
+    port: parsed.port || defaultPorts[parsed.protocol] || ''
+  };
+}
+
+/**
+ * Checks whether url has the same scheme, host and port as baseUrl
+ *
+ * URLs that do not parse never match.
+ */
+function hasSameOrigin (url, baseUrl) {
+  const origin = parseOrigin(url);
+  const baseOrigin = parseOrigin(baseUrl);
+  return origin !== null && baseOrigin !== null &&
+    origin.protocol === baseOrigin.protocol &&
+    origin.hostname === baseOrigin.hostname &&
+    origin.port === baseOrigin.port;
+}
+
+/**
+ * Throws ERROR_FORBIDDEN unless url may be installed from while remote installs are disabled
+ *
+ * With FOXX_BASE_URL set, only URLs on the same origin as the base URL are
+ * allowed; otherwise only GitHub URLs are.
+ */
 function validateInstallUrl (url) {
   if (!internal.foxxAllowInstallFromRemote()) {
-    // check if a user-defined install baseurl exists
-    let baseUrl = require('process').env.FOXX_BASE_URL;
-    let invalid = false;
-    if (baseUrl) {
-      if (!url.startsWith(baseUrl)) {
-        // install url does not start with FOXX_BASE_URL
-        invalid = true;
-      }
-    } else {
-      const checkRegex = /^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i;
-      invalid = !checkRegex.test(url);
-    }
+    const baseUrl = require('process').env.FOXX_BASE_URL;
+    const invalid = baseUrl
+      ? !hasSameOrigin(url, baseUrl)
+      : !/^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i.test(url);
 
     if (invalid) {
       throw new ArangoError({
