@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1208: Expose vector index search statistics (searches, lists scanned,
+  distances computed, heap updates, coarse search and list scan time) in query
+  statistics and in the profile output.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
