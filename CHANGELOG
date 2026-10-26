@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.30.
+
 * COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
   ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
   attribute wrongly returning no results when byte order disagrees with ICU
@@ -73,11 +79,6 @@
 * COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
   indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
   matches of accented characters at the end of the search range.
-
-* Updated ArangoDB Starter to v0.19.29.
-
-* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
-  dependencies.
 
 * COR-1083 / github issue #23425:
   Fixed the incorrect usage of released pool analyzer.
