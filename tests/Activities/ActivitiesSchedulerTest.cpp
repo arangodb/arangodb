@@ -27,13 +27,12 @@
 #include "Scheduler/SupervisedScheduler.h"
 #include "gtest/gtest.h"
 #include "Metrics/MetricsFeature.h"
-#include "Helper.h"
 
 using namespace arangodb;
 
 struct ActivitiesSchedulerTest : ::testing::Test {
   static void SetUpTestSuite() {
-    activities::tests::garbageCollectAllOnCurrentThread();
+    arangodb::activities::registry.garbageCollectAll();
   }
 
   ActivitiesSchedulerTest()
@@ -58,7 +57,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   }
 
   ~ActivitiesSchedulerTest() {
-    activities::tests::garbageCollectAllOnCurrentThread();
+    arangodb::activities::registry.garbageCollectAll();
     EXPECT_EQ(arangodb::activities::registry.size(), 0);
   }
 
