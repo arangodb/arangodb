@@ -25,13 +25,10 @@ override_dh_auto_install:
 	cd build/install ; if test -x usr/bin/arangobackup ; then cp -a --parents etc/arangodb3/arangobackup.conf usr/bin/arangobackup ../../debian/@EDITION@-client ; fi
 
 # Strip explicitly instead of via dh_strip: dh_strip rewrites the GNU
-# build-id of every binary it strips. Whitelist only — arangod is
-# stripped solely in the STRIP_ALL variant; the starter and rclone are
-# never touched; symlinked tool names are skipped. Debug files go into
-# the -dbg package as /usr/lib/debug/<path>.debug (debuglink layout).
+# build-id of every binary it strips. See scripts/packaging/strip-debian-packages.sh.
 override_dh_strip:
-	@DEBIAN_STRIP_ALL@sh -ec 'for pkg in @EDITION@ @EDITION@-client; do for rel in usr/bin/arangobackup usr/bin/arangobench usr/bin/arangodump usr/bin/arangoexport usr/bin/arangoimport usr/bin/arangorestore usr/bin/arangosh usr/bin/arangovpack usr/sbin/arangod; do bin="debian/$$pkg/$$rel"; { test -f "$$bin" && test ! -L "$$bin"; } || continue; dbg="debian/@EDITION@-dbg/usr/lib/debug/$$rel.debug"; mkdir -p "$${dbg%/*}"; objcopy --only-keep-debug "$$bin" "$$dbg"; strip --remove-section=.comment --remove-section=.note "$$bin"; objcopy --add-gnu-debuglink="$$dbg" "$$bin"; done; done'
-	@DEBIAN_STRIP_EXCEPT_ARANGOD@sh -ec 'for pkg in @EDITION@ @EDITION@-client; do for rel in usr/bin/arangobackup usr/bin/arangobench usr/bin/arangodump usr/bin/arangoexport usr/bin/arangoimport usr/bin/arangorestore usr/bin/arangosh usr/bin/arangovpack; do bin="debian/$$pkg/$$rel"; { test -f "$$bin" && test ! -L "$$bin"; } || continue; dbg="debian/@EDITION@-dbg/usr/lib/debug/$$rel.debug"; mkdir -p "$${dbg%/*}"; objcopy --only-keep-debug "$$bin" "$$dbg"; strip --remove-section=.comment --remove-section=.note "$$bin"; objcopy --add-gnu-debuglink="$$dbg" "$$bin"; done; done'
+	@DEBIAN_STRIP_ALL@scripts/packaging/strip-debian-packages.sh @EDITION@ All
+	@DEBIAN_STRIP_EXCEPT_ARANGOD@scripts/packaging/strip-debian-packages.sh @EDITION@ ExceptArangod
 	@DEBIAN_STRIP_NONE@
 
 override_dh_builddeb:
