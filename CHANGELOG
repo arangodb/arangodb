@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1183: Authenticate HTTP versions 1.1 and 2 requests after headers are
+  parsed instead of after reading the body. Unauthenticated or unauthorized
+  requests are now rejected immediately.
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to

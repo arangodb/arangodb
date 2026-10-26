@@ -105,6 +105,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_messageDone = false;
   me->_urlCorrupt = false;
   me->_headerCorrupt = false;
+  me->_authRejected = false;
+  me->_earlyAuthToken.reset();
 
   // acquire a new timing data entry for the request
   auto& td = me->acquireTimingData(1UL);
@@ -189,6 +191,13 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
                             std::move(me->_lastHeaderValue));
   }
 
+  // moved here from on_message_complete; _url is already complete
+  try {
+    me->_request->parseUrl(me->_url.data(), me->_url.size());
+  } catch (...) {
+    me->_urlCorrupt = true;
+  }
+
   bool found;
   std::string const& encoding =
       me->_request->header(StaticStrings::TransferEncoding, found);
@@ -210,9 +219,22 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
+  ServerState::Mode mode = ServerState::mode();
+  auto earlyAuth = me->checkAuthEarly(*me->_request, mode);
+  if (earlyAuth.outcome == CommTask::EarlyAuthOutcome::Rejected) {
+    me->_authRejected = true;
+  } else if (earlyAuth.outcome == CommTask::EarlyAuthOutcome::Granted) {
+    me->_earlyAuthToken = std::move(earlyAuth.token);
+  }
+
   std::string const& expect =
       me->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
+    if (me->_authRejected) {
+      me->_authRejected = false;
+      me->sendEarlyAuthRejection(*me->_request);
+      return HPE_USER;
+    }
     LOG_TOPIC("2b604", TRACE, arangodb::Logger::REQUESTS)
         << "received a 100-continue request";
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
@@ -242,7 +264,9 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->appendBody(at, len);
+  if (!me->_authRejected) {
+    me->_request->appendBody(at, len);
+  }
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -257,14 +281,9 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
     auto& td = me->timingData(1UL);
     td.readEnd = RequestTimingData::now();
     me->_messageDone = true;
-    me->_request->parseUrl(me->_url.data(), me->_url.size());
-    me->_urlCorrupt = false;
-    me->_headerCorrupt = false;
   } catch (...) {
     // the caller of this function is a C function, which doesn't know
     // exceptions. we must not let an exception escape from here.
-    me->_urlCorrupt = true;
-    me->_headerCorrupt = false;
   }
   return HPE_PAUSED;
 }
@@ -277,7 +296,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _shouldKeepAlive(false),
       _messageDone(false),
       _urlCorrupt(false),
-      _headerCorrupt(false) {
+      _headerCorrupt(false),
+      _authRejected(false) {
   this->_connectionHttp = this->_generalServerFeature.addHttpConnection();
 
   // initialize http parsing code
@@ -375,6 +395,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
         auto respContentType = _request->contentTypeResponse();
         this->sendErrorResponse(rest::ResponseCode::BAD, respContentType, msgId,
                                 TRI_ERROR_HTTP_BAD_PARAMETER, "URL is corrupt");
+      } else if (_authRejected) {
+        _authRejected = false;
+        this->sendEarlyAuthRejection(*_request);
       } else {
         processRequest();
       }
@@ -601,8 +624,10 @@ void HttpCommTask<T>::doProcessRequest() {
 
   ServerState::Mode mode = ServerState::mode();
 
-  // scrape the auth headers to determine and authenticate the user
-  auto authToken = this->checkAuthHeader(*_request, mode);
+  // reuse the token checkAuthEarly already computed, or scrape it now
+  auto authToken = _earlyAuthToken ? std::move(*_earlyAuthToken)
+                                   : this->checkAuthHeader(*_request, mode);
+  _earlyAuthToken.reset();
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {

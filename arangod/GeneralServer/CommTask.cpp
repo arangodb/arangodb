@@ -325,6 +325,46 @@ CommTask::Flow CommTask::prepareExecution(
   return Flow::Continue;
 }
 
+CommTask::EarlyAuthCheck CommTask::checkAuthEarly(GeneralRequest& req,
+                                                  ServerState::Mode mode) {
+  if (mode != ServerState::Mode::DEFAULT || !_auth->isActive() ||
+      req.requestType() == RequestType::OPTIONS) {
+    return {EarlyAuthOutcome::Skip};
+  }
+
+  std::string const& path = req.requestPath();
+  if (path == "/openapi.json" || path.starts_with("/_open/auth") ||
+      path == "/_admin/server/availability") {
+    return {EarlyAuthOutcome::Skip};
+  }
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  if (req.connectionInfo().endpointType == Endpoint::DomainType::UNIX &&
+      !_auth->authenticationUnixSockets()) {
+    return {EarlyAuthOutcome::Skip};
+  }
+#endif
+
+  auto token = checkAuthHeader(req, mode);
+  bool const rejected =
+      !req.authenticated() ||
+      (_auth->rbacEnabled() &&
+       req.authenticationMethod() == AuthenticationMethod::BASIC);
+  if (rejected) {
+    return {EarlyAuthOutcome::Rejected};
+  }
+
+  return {EarlyAuthOutcome::Granted, std::move(token)};
+}
+
+/// Sends the same response RestHandler::handleAuthorizationChecks() would
+void CommTask::sendEarlyAuthRejection(GeneralRequest& req) {
+  events::NotAuthorized(req);
+  sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                    req.messageId(), TRI_ERROR_FORBIDDEN,
+                    "User not authenticated");
+}
+
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
