@@ -1,5 +1,6 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
+* COR-966 Improve foxx installer url matching
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
