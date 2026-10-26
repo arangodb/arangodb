@@ -26,11 +26,9 @@
 #include "Basics/ErrorCode.h"
 
 #include <string_view>
-#include <unicode/regex.h>
 
 namespace arangodb {
 struct Database;
-struct ValidatorBase;
 namespace transaction {
 class Methods;
 }
@@ -40,6 +38,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+class AqlFunctionsInternalCache;
 struct AqlValue;
 struct Variable;
 
@@ -55,14 +54,7 @@ class ExpressionContext : public arangodb::ICancellationToken {
   virtual void registerWarning(ErrorCode errorCode, std::string_view msg) = 0;
   virtual void registerError(ErrorCode errorCode, std::string_view msg) = 0;
 
-  virtual icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                                     bool caseInsensitive) = 0;
-  virtual icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                                    bool caseInsensitive) = 0;
-  virtual icu_64_64::RegexMatcher* buildSplitMatcher(
-      AqlValue splitExpression, velocypack::Options const* opts,
-      bool& isEmptyExpression) = 0;
-  virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
+  virtual AqlFunctionsInternalCache& functionsCache() = 0;
 
   virtual Database& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;

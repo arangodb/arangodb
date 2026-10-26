@@ -66,6 +66,10 @@ class AqlFunctionFeature final
   void addDateFunctions();
   void addMiscFunctions();
 
+  template<auto Fn>
+  void addStringFunction(char const* arguments,
+                         std::underlying_type_t<Function::Flags> flags);
+
   /// @brief AQL user-callable function names
   Guarded<std::unordered_map<std::string, Function const>> _functionNames;
 };
