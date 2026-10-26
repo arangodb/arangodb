@@ -2966,9 +2966,7 @@ static void JS_Rand(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int iterations = 0;
   while (iterations++ < 5) {
     int32_t value;
-    int result = SslInterface::sslRand(&value);
-
-    if (result != 0) {
+    if (!SslInterface::sslRand(&value)) {
       // error
       break;
     }
@@ -3056,9 +3054,18 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "the pipe from.");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // an exception has been scheduled
+  }
   char content[1024];
   size_t length = sizeof(content) - 1;
-  auto readLen = TRI_ReadPipe(proc, content, length);
+  // note: the callback deliberately uses the non-throwing overload, so that we
+  // don't create a v8 error object on every poll iteration.
+  auto readLen =
+      TRI_ReadPipe(proc, content, length, isExecutionDeadlineReachedPlain);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;  // the read was aborted, an exception has been scheduled
+  }
 
   auto result = TRI_V8_PAIR_STRING(isolate, content, readLen);
 
@@ -4151,9 +4158,9 @@ static void JS_PBKDF2HS1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int iterations = (int)TRI_ObjectToInt64(isolate, args[2]);
   int keyLength = (int)TRI_ObjectToInt64(isolate, args[3]);
 
-  std::string result =
-      SslInterface::sslPBKDF2HS1(salt.c_str(), salt.size(), password.c_str(),
-                                 password.size(), iterations, keyLength);
+  std::string result = SslInterface::sslPBKDF2(
+      salt.c_str(), salt.size(), password.c_str(), password.size(), iterations,
+      keyLength, SslInterface::Algorithm::SHA1);
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -4179,23 +4186,23 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "<algorithm>)");
   }
 
-  SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA1;
+  SslInterface::Algorithm al = SslInterface::Algorithm::SHA1;
   if (args.Length() > 4 && !args[4]->IsUndefined()) {
     std::string algorithm = TRI_ObjectToString(isolate, args[4]);
     StringUtils::tolowerInPlace(algorithm);
 
     if (algorithm == "sha1") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA1;
+      al = SslInterface::Algorithm::SHA1;
     } else if (algorithm == "sha512") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA512;
+      al = SslInterface::Algorithm::SHA512;
     } else if (algorithm == "sha384") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA384;
+      al = SslInterface::Algorithm::SHA384;
     } else if (algorithm == "sha256") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA256;
+      al = SslInterface::Algorithm::SHA256;
     } else if (algorithm == "sha224") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA224;
+      al = SslInterface::Algorithm::SHA224;
     } else if (algorithm == "md5") {
-      al = SslInterface::Algorithm::ALGORITHM_MD5;
+      al = SslInterface::Algorithm::MD5;
     } else {
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <algorithm>");
     }
@@ -4233,23 +4240,23 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
   std::string message = TRI_ObjectToString(isolate, args[1]);
 
-  SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
+  SslInterface::Algorithm al = SslInterface::Algorithm::SHA256;
   if (args.Length() > 2 && !args[2]->IsUndefined()) {
     std::string algorithm = TRI_ObjectToString(isolate, args[2]);
     StringUtils::tolowerInPlace(algorithm);
 
     if (algorithm == "sha1") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA1;
+      al = SslInterface::Algorithm::SHA1;
     } else if (algorithm == "sha512") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA512;
+      al = SslInterface::Algorithm::SHA512;
     } else if (algorithm == "sha384") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA384;
+      al = SslInterface::Algorithm::SHA384;
     } else if (algorithm == "sha256") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA256;
+      al = SslInterface::Algorithm::SHA256;
     } else if (algorithm == "sha224") {
-      al = SslInterface::Algorithm::ALGORITHM_SHA224;
+      al = SslInterface::Algorithm::SHA224;
     } else if (algorithm == "md5") {
-      al = SslInterface::Algorithm::ALGORITHM_MD5;
+      al = SslInterface::Algorithm::MD5;
     } else {
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <algorithm>");
     }

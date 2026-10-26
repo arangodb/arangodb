@@ -66,12 +66,25 @@ struct IndexDescriptor {
 using AqlIndexJoinStrategy =
     IndexJoinStrategy<velocypack::Slice, LocalDocumentId>;
 
+// order in which the index streams return their keys
+enum class IndexJoinKeyOrder {
+  // byte-wise comparison of string keys, as used by the primary index
+  kBinary,
+  // VelocyPackHelper::compare(), as used by persistent indexes
+  kVPack,
+  // VelocyPackHelper::compareLegacy(), as used by persistent indexes if the
+  // storage engine still uses the legacy sorting order
+  kVPackLegacy,
+};
+
 struct IndexJoinStrategyFactory {
   using Descriptor = IndexDescriptor<velocypack::Slice, LocalDocumentId>;
 
+  // all streams in the descriptors must return their keys in keyOrder
   std::unique_ptr<AqlIndexJoinStrategy> createStrategy(
       std::vector<Descriptor>,
-      aql::QueryOptions::JoinStrategyType desiredJoinStrategy);
+      aql::QueryOptions::JoinStrategyType desiredJoinStrategy,
+      IndexJoinKeyOrder keyOrder);
 };
 
 }  // namespace aql

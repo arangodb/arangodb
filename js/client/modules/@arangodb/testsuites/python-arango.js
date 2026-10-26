@@ -30,14 +30,11 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `pythonsource`: directory of the java driver',
   '   - `pythonOptions`: additional arguments to pass via the commandline',
-  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java',
 ];
 
 const internal = require('internal');
 
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
+const { SetGlobalExecutionDeadlineTo } = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -68,20 +65,26 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(options);
+    let jwt_secret_folder = fs.join(fs.getTempPath(), "python_jwt_dir");
+    fs.makeDirectoryRecursive(jwt_secret_folder);
+    fs.write(fs.join(jwt_secret_folder, "first_jwt"), "watch my eyes Mogli watch my eye");
+    fs.write(fs.join(jwt_secret_folder, "second_jwt"), "watch my eye watch my eyes Mogli");
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
-    opts.extraArgs = {
+    let serverOptions = {
       // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
       'server.authentication': 'true',
+      'server.jwt-secret-folder': jwt_secret_folder,
       // need by Python tests to query the options API
       'server.options-api': 'admin',
       'backup.api-enabled': true,
     };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
-    super(opts, testname, ...optionalArgs);
+    super(opts, testname, serverOptions, ...optionalArgs);
     this.info = "runInPythonTest";
+    this.jwt_secret_folder = jwt_secret_folder;
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
@@ -148,14 +151,29 @@ class runInPythonTest extends runWithAllureReport {
     }
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.pythonsource));
-    const rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
-    if (rc.exit !== 0) {
+    SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+    let results;
+    try {
+      const rc = pu.executeAndWait('pytest', args, this.options, "pythonDriver", cwd, false, this.options.oneTestTimeout, this.instanceManager, cwd);
+      if (rc.exit !== 0) {
+        status = false;
+      }
+      results = {
+        message: '',
+        status: status,
+        failed: (status)?0:1,
+      };
+      SetGlobalExecutionDeadlineTo(0.0);
+    } catch (ex) {
       status = false;
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
+      results = {
+        timeout: timeout,
+        status: false,
+        failed: 1,
+        message: `testrun has thrown ${ex.message} \n ${ex.stack}`
+      };
     }
-    let results = {
-      status: status,
-      failed: (status)?0:1,
-    };
     this.getAllureResults(testResultsDir, results, status, "python-arango");
     return results;
   }
