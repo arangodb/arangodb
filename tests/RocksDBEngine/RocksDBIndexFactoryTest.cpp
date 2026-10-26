@@ -176,33 +176,28 @@ TEST_F(RocksDBIndexFactoryTest, createIndexDispatchesToExpectedType) {
   struct Case {
     IndexType type;
     char const* json;
-    bool isClusterConstructor;
   };
+  // Primary/Edge need a real RocksDBEngine, which this mock doesn't have
   std::vector<Case> const cases{
-      {IndexType::Primary, R"({"type": "primary"})", true},
-      {IndexType::Edge, R"({"type": "edge", "fields": ["_from"]})", true},
-      {IndexType::Geo, R"({"type": "geo", "fields": ["loc"]})", false},
-      {IndexType::Geo1, R"({"type": "geo1", "fields": ["loc"]})", false},
-      {IndexType::Geo2, R"({"type": "geo2", "fields": ["lat", "lon"]})", false},
-      {IndexType::Hash, R"({"type": "hash", "fields": ["x"]})", false},
-      {IndexType::Persistent, R"({"type": "persistent", "fields": ["x"]})",
-       false},
-      {IndexType::Skiplist, R"({"type": "skiplist", "fields": ["x"]})", false},
+      {IndexType::Geo, R"({"type": "geo", "fields": ["loc"]})"},
+      {IndexType::Geo1, R"({"type": "geo1", "fields": ["loc"]})"},
+      {IndexType::Geo2, R"({"type": "geo2", "fields": ["lat", "lon"]})"},
+      {IndexType::Hash, R"({"type": "hash", "fields": ["x"]})"},
+      {IndexType::Persistent, R"({"type": "persistent", "fields": ["x"]})"},
+      {IndexType::Skiplist, R"({"type": "skiplist", "fields": ["x"]})"},
       {IndexType::TTL,
        R"({"type": "ttl", "fields": ["x"], "expireAfter": 600, )"
-       R"("unique": false, "sparse": true})",
-       false},
-      {IndexType::Fulltext, R"({"type": "fulltext", "fields": ["x"]})", false},
-      {IndexType::Zkd, R"({"type": "zkd", "fields": ["x"]})", false},
-      {IndexType::MDI, R"({"type": "mdi", "fields": ["x"]})", false},
-      {IndexType::MDIPrefixed, R"({"type": "mdi-prefixed", "fields": ["x"]})",
-       false},
+       R"("unique": false, "sparse": true})"},
+      {IndexType::Fulltext, R"({"type": "fulltext", "fields": ["x"]})"},
+      {IndexType::Zkd, R"({"type": "zkd", "fields": ["x"]})"},
+      {IndexType::MDI, R"({"type": "mdi", "fields": ["x"]})"},
+      {IndexType::MDIPrefixed, R"({"type": "mdi-prefixed", "fields": ["x"]})"},
   };
 
   for (auto const& c : cases) {
     auto definition = velocypack::Parser::fromJson(c.json);
     IndexCreationContext ctx{*collection, definition->slice(), IndexId{1},
-                             c.isClusterConstructor};
+                             /*isClusterConstructor*/ false};
     auto index = factory.createIndex(c.type, ctx);
     ASSERT_NE(index, nullptr) << c.json;
     EXPECT_EQ(index->type(), c.type) << c.json;
