@@ -236,8 +236,8 @@ def load(db, meta, rows):
     def index_id(index_type, descriptor):
         key = (index_type, descriptor)
         if key not in index_ids:
-            # Matched on the descriptor alone; updating also fills in the parsed
-            # fields of setups stored before they existed.
+            # Updating fills in the parsed fields of setups stored before they
+            # existed.
             bind = {"type": index_type, "descriptor": descriptor,
                     "params": {**parse_index_params(descriptor), "descriptor": descriptor}}
             found = db.aql(
@@ -259,8 +259,6 @@ def load(db, meta, rows):
             {"key": key, "values": values},
         )
 
-    # ann-benchmarks repeats one index's build time on every query-parameter row
-    # (e.g. each nProbe), so store each distinct (dataset, build time) once per run.
     seen_builds = set()
 
     n_lat = n_qps = n_build = 0

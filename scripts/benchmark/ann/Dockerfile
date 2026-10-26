@@ -1,5 +1,5 @@
-# ann-benchmarks harness for ArangoDB's vector index. Bakes the pinned fork and
-# its Python deps so a run needs no network beyond arangod + dataset downloads.
+# ann-benchmarks harness for ArangoDB's vector index, with the pinned fork and
+# its Python deps baked in.
 #
 #   docker build -t ann-bench-harness .
 #   docker run --rm --network host -v "$PWD/ann-output:/out" ann-bench-harness

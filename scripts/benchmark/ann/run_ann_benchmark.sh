@@ -19,7 +19,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Configuration (all overridable from the environment)
+# Configuration
 # ---------------------------------------------------------------------------
 
 # System under test. Single server only.
@@ -43,8 +43,7 @@ ANN_RUNS="${ANN_RUNS:-1}"
 # Working + output layout.
 ANN_WORKDIR="${ANN_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/ann-bench.XXXXXX")}"
 ANN_OUTPUT_DIR="${ANN_OUTPUT_DIR:-${ANN_WORKDIR}/output}"
-# Persist datasets across runs (hundreds of MB each). Point at a durable path
-# so each run doesn't re-download.
+# Datasets are hundreds of MB each; point at a durable path to reuse them.
 ANN_DATASET_CACHE="${ANN_DATASET_CACHE:-${ANN_WORKDIR}/data}"
 
 # Results store (schema.js) + dashboard. Both optional: unset => the run is
@@ -233,7 +232,6 @@ export_results() {
   log "Generating website"
   python create_website.py --outputdir "${ANN_OUTPUT_DIR}/site" --scatter --latex
 
-  # Stamp the run's end time into the metadata.
   local endtmp; endtmp="$(mktemp)"
   jq --arg ended "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.ended_at = $ended' \
      "${ANN_OUTPUT_DIR}/run_meta.json" > "${endtmp}" \
@@ -251,7 +249,6 @@ export_results() {
     echo "server:"
     sed 's/^/  /' "${ANN_OUTPUT_DIR}/run_meta.json" 2>/dev/null || echo "  (no metadata)"
   } > "${ANN_OUTPUT_DIR}/site/METADATA.txt"
-  # Gather the artifacts (results + logs) into the site bundle.
   for f in results.csv run_meta.json arangod.log arangod-log.json run.log; do
     cp "${ANN_OUTPUT_DIR}/${f}" "${ANN_OUTPUT_DIR}/site/${f}" 2>/dev/null || true
   done
@@ -291,7 +288,7 @@ main() {
   export_results       # writes artifacts (incl. logs) BEFORE validation can fail
   (( ${#FAILED_DATASETS[@]} == 0 )) \
     || die "ann-benchmarks run.py failed for: ${FAILED_DATASETS[*]} (see run.log)"
-  validate_results     # fails the job if any config produced no results
+  validate_results
   load_results         # only complete runs reach the results store
   log "Done. Artifacts in ${ANN_OUTPUT_DIR} (site/, results.csv, arangod.log)"
 }

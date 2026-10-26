@@ -1,5 +1,4 @@
-# Default (`docker compose up -d`): results store + schema + Grafana, i.e. what
-# CI assumes is already running.
+# Default (`docker compose up -d`): local results store + schema + Grafana.
 # `--profile ci` adds the arangod under test and the harness, wired like the
 # CircleCI job, to reproduce a CI run locally:
 #   docker compose --profile ci up --build harness
@@ -59,7 +58,7 @@ services:
       schema:
         condition: service_completed_successfully
 
-  # System under test: same image + flags as the CircleCI service container.
+  # System under test: same flags as the CircleCI service container.
   arangod-sut:
     profiles: [ci]
     image: *sut-image

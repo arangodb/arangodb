@@ -1,12 +1,6 @@
 version: 2.1
 # Benchmarks pipeline: runs the benchmark selected by the benchmark parameter
 # (scripts in scripts/benchmark/<benchmark>/).
-#
-# Parameters (set when triggering the pipeline):
-#   benchmark      which benchmark to run (ann: ann-benchmarks on the IVF index)
-#   arango-image   image the benchmark runs against (default: 3.12 nightly)
-#   build-arango   true (default): benchmark a release build of this commit;
-#                  false: benchmark arango-image
 
 parameters:
   enterprise-branch:
@@ -93,9 +87,6 @@ commands:
 
   ann-benchmark-harness:
     steps:
-      # Datasets are hundreds of MB each and never change, so they are kept by
-      # name in the runners' S3 bucket (no CircleCI cache egress). Best effort:
-      # on a miss ann-benchmarks downloads the dataset itself.
       - run:
           name: Restore datasets from S3
           command: |
@@ -109,10 +100,18 @@ commands:
                 || echo "${ds} not in S3, ann-benchmarks will download it"
             done
       # The script pins the fork (and so its requirements.txt).
-      - restore_cache:
-          keys:
-            - ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-            - ann-pip-v1-
+      - run:
+          name: Restore pip cache from S3
+          command: |
+            ARCHIVE="ann-pip-v1-$(md5sum scripts/benchmark/ann/run_ann_benchmark.sh | sed "s; .*;;").tar.gz"
+            echo "${ARCHIVE}" > /tmp/ann-pip-archive
+            mkdir -p "${PIP_CACHE_DIR}"
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/ann-pip-caches/${ARCHIVE}" \
+              "/tmp/${ARCHIVE}" \
+              && tar -C "${PIP_CACHE_DIR}" -xzf "/tmp/${ARCHIVE}" \
+              && touch /tmp/ann-pip-in-s3 \
+              || echo "${ARCHIVE} not in S3, pip will download packages"
       - run:
           name: Run ANN benchmark
           no_output_timeout: 3h
@@ -120,7 +119,7 @@ commands:
             RESULTS_ARANGO_URL="${AWS_FIGURES_URL}" \
             RESULTS_ARANGO_USER="${AWS_ARANGODB_ID}" \
             RESULTS_ARANGO_PASSWORD="${AWS_ARANGODB_KEY}" \
-              ./scripts/benchmark/ann/run_ann_benchmark.sh
+            ./scripts/benchmark/ann/run_ann_benchmark.sh
       # Only after a successful run, so a broken download is never stored.
       - run:
           name: Save new datasets to S3
@@ -132,10 +131,17 @@ commands:
                 "s3://${AWS_S3_WORKSPACE_BUCKET}/ann-datasets/${ds}.hdf5" \
                 || echo "WARNING: could not store ${ds} in S3"
             done
-      - save_cache:
-          key: ann-pip-v1-{{ checksum "scripts/benchmark/ann/run_ann_benchmark.sh" }}
-          paths:
-            - /tmp/ann-pip-cache
+      - run:
+          name: Save pip cache to S3
+          command: |
+            [ -e /tmp/ann-pip-in-s3 ] && exit 0
+            ARCHIVE="$(cat /tmp/ann-pip-archive)"
+            tar -C "${PIP_CACHE_DIR}" -czf "/tmp/${ARCHIVE}" .
+            du -sh "/tmp/${ARCHIVE}"
+            aws s3 cp --no-sign-request --profile anon \
+              "/tmp/${ARCHIVE}" \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/ann-pip-caches/${ARCHIVE}" \
+              || echo "WARNING: could not store ${ARCHIVE} in S3"
 
 jobs:
   # Static release build of this commit (as for the nightly packages),
@@ -214,18 +220,15 @@ jobs:
             aws s3 cp --no-sign-request --profile anon install-x64.tar.gz \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/install-x64.tar.gz"
 
-  # Benchmark against arango-image, one job per dataset, each on its own
-  # machine so runs don't compete.
+  # Benchmark against arango-image, one job per dataset.
   ann-benchmark:
     parameters:
       dataset:
         type: string
     docker:
-      # Primary: runs the ann-benchmarks harness.
       - image: cimg/python:3.11.1
-      # Service container: arangod, reachable from the primary at 127.0.0.1:8529
-      # (container runners have no docker daemon, so the harness cannot start it
-      # itself - the executor does, and the script only waits for it).
+      # Container runners have no docker daemon, so arangod is a service
+      # container, reachable at 127.0.0.1:8529.
       - image: << pipeline.parameters.arango-image >>
         name: arangod
         environment:

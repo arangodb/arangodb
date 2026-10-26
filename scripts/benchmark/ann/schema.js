@@ -37,7 +37,8 @@ const COLLECTIONS = {
   },
 };
 
-// Connected with --server.database ann-bench, only rw on ann-bench is needed.
+// Connected with --server.database ann-bench, only rw on ann-bench is needed;
+// otherwise the database is created.
 if (db._name() !== DB_NAME) {
   if (!db._databases().includes(DB_NAME)) {
     db._createDatabase(DB_NAME);
