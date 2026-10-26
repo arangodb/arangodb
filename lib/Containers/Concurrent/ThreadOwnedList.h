@@ -194,16 +194,9 @@ struct ThreadOwnedList
      deletes the head like every other node. This reclaims nodes whose last
      reference is released after the owning thread has exited.
 
-     Can only be called on the owning thread, crashes otherwise. Typically
-     called right before the owning thread exits.
+     Make sure this is not executed at the same time as any add method.
    */
   auto seal() -> void {
-    auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread)
-        << "ThreadOwnedList::seal was called from thread "
-        << inspection::json(current_thread)
-        << " but needs to be called from ThreadOwnedList's owning thread "
-        << inspection::json(thread) << ". " << (void*)this;
     auto guard = std::lock_guard(_mutex);
     _sealed = true;
   }
@@ -323,20 +316,15 @@ struct ThreadOwnedList
   /**
      Marks a node in the list for deletion.
 
-     Can be called from any thread. The node needs to be part of the list,
-     crashes otherwise.
-     Caller needs to make sure that this is not called twice: otherwise there
-     will be a double free.
+     Can be called from any thread.
+     Caller needs to make sure that:
+     - this is not called twice: otherwise there will be a double free.
+     - node is part of this list (&node.list == this)
    */
   auto mark_for_deletion(Node& node) noexcept -> void {
-    // makes sure that node is really in this list
-    ADB_PROD_ASSERT(&node.list == this);
     bool was_marked = false;
     node.is_marked_for_deletion.compare_exchange_strong(
         was_marked, true, std::memory_order_relaxed, std::memory_order_relaxed);
-    ADB_PROD_ASSERT(not was_marked)
-        << "ThreadOwnedList::mark_for_deletion: Node cannot be marked for "
-           "deletion more than once";
 
     push_to_free_list(node);
     // DO NOT access node after this line. The owner thread might already

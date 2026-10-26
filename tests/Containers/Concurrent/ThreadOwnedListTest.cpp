@@ -257,11 +257,3 @@ TEST_F(ThreadOwnedListTest,
   EXPECT_EQ(nodes_in_registry(registry), (std::vector<NodeData::Snapshot>{}));
   EXPECT_EQ(registry->size(), 0);
 }
-
-TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_seal) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
-  auto registry = MyList::make();
-
-  std::jthread(
-      [&]() { EXPECT_DEATH_CORE_FREE(registry->seal(), "Assertion failed"); });
-}
