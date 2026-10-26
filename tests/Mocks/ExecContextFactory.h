@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Mocks/Auth/UserManagerTester.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
@@ -52,11 +53,10 @@ auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
 /// @brief Minimal GeneralRequest subclass for use in tests.
 ///
 /// It satisfies the four pure-virtual requirements of GeneralRequest and
-/// leaves requestedApiVersion() at its default value of 0 (= V0 /
-/// "no versioned prefix"). This means the "return NOT_FOUND to hide existence"
-/// branches in AuthMode::Classic::check() are not taken, which is the correct
-/// behaviour for tests that only check FORBIDDEN / READ_ONLY outcomes. Tests
-/// that do want to reach those branches can call setRequestedApiVersion().
+/// leaves requestedApiVersion() at the server's default
+/// (api_version::defaultApiVersion), like a real request without a versioned
+/// URL prefix. Tests that need a specific version can call
+/// setRequestedApiVersion().
 struct FakeGeneralRequest final : GeneralRequest {
   FakeGeneralRequest() : GeneralRequest(ConnectionInfo{}, 0) {}
 
@@ -67,9 +67,8 @@ struct FakeGeneralRequest final : GeneralRequest {
   }
   void setDefaultContentType() noexcept override {}
 
-  /// @brief Select the requested API version (0 = V0, the default). Normally
-  /// this is derived from the /_arango/vX URL prefix, which a fake request has
-  /// no way of carrying.
+  /// @brief Select the requested API version. Normally this is derived from
+  /// the /_arango/vX URL prefix, which a fake request has no way of carrying.
   void setRequestedApiVersion(uint32_t version) noexcept {
     _requestedApiVersion = version;
   }
@@ -97,12 +96,13 @@ struct ClassicExecContext {
 /// @param isRestApiHardened  Passed to Classic ctor; set true to require admin
 ///                           for hardened actions. Defaults to false.
 /// @param apiVersion  The requested API version recalled by the Classic auth
-///                    context (0 = v0, the default).
+///                    context. Defaults to api_version::defaultApiVersion.
 inline ClassicExecContext makeClassicExecContext(
     std::string username, auth::Level systemLevel,
     std::tuple<std::string, auth::Level> database,
     std::vector<std::tuple<std::string, auth::Level>> collections,
-    bool isRestApiHardened = false, uint32_t apiVersion = 0) {
+    bool isRestApiHardened = false,
+    uint32_t apiVersion = api_version::defaultApiVersion) {
   auto um = std::make_shared<auth::UserManagerTester>();
 
   // Build a UserMap containing one entry for 'username' with the requested
@@ -139,12 +139,10 @@ inline ClassicExecContext makeClassicExecContext(
   return ClassicExecContext{std::move(um), std::move(req), std::move(ctx)};
 }
 
-inline ClassicExecContext makeClassicExecContext(std::string username,
-                                                 std::string dbname,
-                                                 auth::Level systemLevel,
-                                                 auth::Level dbLevel,
-                                                 bool isRestApiHardened = false,
-                                                 uint32_t apiVersion = 0) {
+inline ClassicExecContext makeClassicExecContext(
+    std::string username, std::string dbname, auth::Level systemLevel,
+    auth::Level dbLevel, bool isRestApiHardened = false,
+    uint32_t apiVersion = api_version::defaultApiVersion) {
   return makeClassicExecContext(std::move(username), systemLevel,
                                 {std::move(dbname), dbLevel}, {{"*", dbLevel}},
                                 isRestApiHardened, apiVersion);
