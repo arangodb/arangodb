@@ -1,6 +1,9 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1045: Fixed a server crash when SEARCH on a search-alias view referenced a field
+  not covered by the inverted index and the query ran with `failOnWarning: true`.
+
 * COR-1031: Adapt permissions for `PUT /_api/query/properties`: the endpoint now
   asks the new permission `UpdateQueryProperties`, which is scoped to the database
   of the request, instead of the admin permission `AdminAqlQueries`. With classic
