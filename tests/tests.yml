@@ -64,6 +64,8 @@
           requires:
             coverage: false
 - recovery:
+    requires:
+      coverage: false
     options:
       priority: 2000
       buckets: 6
@@ -73,6 +75,8 @@
 
 # cluster
 - recovery_cluster:
+    requires:
+      coverage: false
     options:
       priority: 2000
       type: cluster
@@ -148,11 +152,21 @@
           args:
             http: true
             suffix: http
-      - hot_backup
-      - hot_backup_views
-      - hot_backup_aql
-      - hot_backup_smart_graphs
-      - hot_backup_el_cheapo
+      - hot_backup:
+          requires:
+            coverage: false
+      - hot_backup_views:
+          requires:
+            coverage: false
+      - hot_backup_aql:
+          requires:
+            coverage: false
+      - hot_backup_smart_graphs:
+          requires:
+            coverage: false
+      - hot_backup_el_cheapo:
+          requires:
+            coverage: false
 
 - shell_client_aql:
     options:
@@ -313,19 +327,19 @@
       forceJson: true
 
 # coverage needs 2 buckets for this
-- load_balancing:
-    options:
-      priority: 500
-      size: medium
-      type: cluster
-      buckets: auto
-    requires:
-      coverage: true
-    args:
-      dumpAgencyOnError: true
-    suites:
-      - load_balancing
-      - load_balancing_auth
+#- load_balancing:
+#    options:
+#      priority: 500
+#      size: medium
+#      type: cluster
+#      buckets: auto
+#    requires:
+#      coverage: true
+#    args:
+#      dumpAgencyOnError: true
+#    suites:
+#      - load_balancing
+#      - load_balancing_auth
 - load_balancing:
     options:
       priority: 500
@@ -486,11 +500,21 @@
     args:
       dumpAgencyOnError: true
     suites:
-      - hot_backup
-      - hot_backup_views
-      - hot_backup_aql
-      - hot_backup_smart_graphs
-      - hot_backup_el_cheapo
+      - hot_backup:
+          requires:
+            coverage: false
+      - hot_backup_views:
+          requires:
+            coverage: false
+      - hot_backup_aql:
+          requires:
+            coverage: false
+      - hot_backup_smart_graphs:
+          requires:
+            coverage: false
+      - hot_backup_el_cheapo:
+          requires:
+            coverage: false
       - BackupAuthNoSysTests
       - BackupAuthSysTests
       - BackupNoAuthSysTests
@@ -728,6 +752,7 @@
       parallelity: 2
       type: single
     requires:
+      coverage: false
       full: true
     suites:
       - communication
@@ -740,6 +765,7 @@
       parallelity: 6
       type: cluster
     requires:
+      coverage: false
       full: true
     suites:
       - communication
