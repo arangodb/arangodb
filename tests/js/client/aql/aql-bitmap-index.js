@@ -225,6 +225,41 @@ function BitmapIndexSuite(values) {
       check(['a', 'b']);
     },
 
+    testDeletesInStreamingTransaction: function () {
+      const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
+      let existing = expected(['a', 'b']);
+      assertTrue(existing.length >= 2);
+      let trx = db._createTransaction({collections: {write: [cn]}});
+      try {
+        let tc = trx.collection(cn);
+        // inserted and removed again before any read
+        tc.insert({_key: 'gone', labels: ['zz']});
+        tc.remove('gone');
+        // removed and inserted again under the same key with other labels
+        tc.remove(existing[0]);
+        tc.insert({_key: existing[0], labels: ['zz']});
+        // removed, inserted and removed again
+        tc.remove(existing[1]);
+        tc.insert({_key: existing[1], labels: ['a', 'b']});
+        tc.remove(existing[1]);
+        trx.query(`INSERT {_key: 'gone2', labels: ['zz', 'a', 'b']} INTO ${cn}`);
+        trx.query(`REMOVE 'gone2' IN ${cn}`);
+
+        let stillThere = existing.slice(2);
+        assertEqual([existing[0]], query(q, {labels: ['zz']}, trx));
+        assertEqual(stillThere, query(q, {labels: ['a', 'b']}, trx));
+        trx.commit();
+        delete docs[existing[1]];
+        docs[existing[0]] = {_key: existing[0], labels: ['zz']};
+      } catch (err) {
+        trx.abort();
+        throw err;
+      }
+      assertEqual([existing[0]], query(q, {labels: ['zz']}));
+      check(['a', 'b']);
+      check(['a']);
+    },
+
     testFailedOperationsInTransactionLeaveNoEntries: function () {
       // single shard, so that the unique index needs no shard key; it is
       // created after the bitmap index and fails after it was written
