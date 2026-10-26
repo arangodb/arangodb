@@ -31,7 +31,6 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Futures/Utilities.h"
-#include "Helper.h"
 
 #include <gtest/gtest.h>
 #include <velocypack/Iterator.h>
@@ -56,14 +55,13 @@ auto isInRegistry(velocypack::SharedSlice snap, ActivityId idToCheck) -> bool {
   }
   return false;
 }
-
 }  // namespace
 
 struct ActivityRegistryTest : ::testing::Test {
-  static void SetUpTestSuite() { tests::garbageCollectAllOnCurrentThread(); }
+  static void SetUpTestSuite() { registry.garbageCollectAll(); }
   ActivityRegistryTest() {}
   ~ActivityRegistryTest() {
-    tests::garbageCollectAllOnCurrentThread();
+    registry.garbageCollectAll();
     EXPECT_EQ(registry.size(), 0);
   }
 };
@@ -94,7 +92,7 @@ TEST_F(ActivityRegistryTest,
 
 TEST_F(ActivityRegistryTest, snapshot_does_not_include_dangling_activities) {
   {
-    auto activity = activities::make<GenericActivity>("my generic activity ",
+    auto activity = activities::make<GenericActivity>("my generic activity",
                                                       GenericActivityData{});
   }
 
@@ -106,7 +104,7 @@ TEST_F(ActivityRegistryTest, snapshot_does_not_include_dangling_activities) {
   // registry still includes activity
   EXPECT_EQ(registry.size(), 1);
   // but it is deleted after gc
-  get_thread_registry().garbage_collect();
+  registry.garbageCollect();
   EXPECT_EQ(registry.size(), 0);
 }
 
@@ -294,43 +292,13 @@ TEST_F(ActivityRegistryTest, gc_requires_several_cycles_to_cleanup_parents) {
       ASSERT_EQ(child_activity->parentId().value(), parent_activity->id());
     }
   }
-
-  ASSERT_EQ(registry.size(),
-            2);  // both parent and child are still in registry
-  get_thread_registry()
-      .garbage_collect();  // deletes child_activity ands its ref to
-                           // parent_activity - only after that there
-                           // is no more reference to parent_activity
+  ASSERT_EQ(registry.size(), 2);  // both parent and child are still in registry
+  registry.garbageCollect();      // deletes child_activity ands its ref to
+                                  // parent_activity - only after that there is
+                                  // no more reference to parent_activity
   ASSERT_EQ(registry.size(), 1);
-  get_thread_registry().garbage_collect();  // deletes parent_activity
+  registry.garbageCollect();  // deletes parent_activity
   ASSERT_EQ(registry.size(), 0);
-}
-
-TEST_F(
-    ActivityRegistryTest,
-    external_gc_reclaims_finished_parent_and_child_after_owning_thread_exited) {
-  // The child is created last, so it is the head of the owning thread's list.
-  // Once the thread has exited, only external gc can run on that list.
-  ActivityId parentId{};
-  std::jthread([&]() {
-    auto parent =
-        activities::make<GenericActivity>("parent", GenericActivityData{});
-    parentId = parent->id();
-    auto scope = Registry::ScopedCurrentlyExecutingActivity(parent);
-    auto child =
-        activities::make<GenericActivity>("child", GenericActivityData{});
-    ASSERT_EQ(child->parentId().value(), parentId);
-  });
-
-  // thread exit alone frees nothing: the finished child still references
-  // the finished parent, which therefore stays visible
-  EXPECT_TRUE(isInRegistry(registry.snapshot().get(), parentId));
-
-  registry.run_external_cleanup();
-
-  // child, parent and the exited thread's list are gone
-  EXPECT_FALSE(isInRegistry(registry.snapshot().get(), parentId));
-  EXPECT_EQ(registry.size(), 0);
 }
 
 TEST_F(ActivityRegistryTest, sets_thread) {

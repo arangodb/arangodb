@@ -39,41 +39,15 @@
 
 namespace arangodb::activities {
 
-struct Snapshot {
-  ActivityId id;
-  std::optional<ActivityId> parentId;
-  ActivityType type;
-  ActivityCreated created;
-  std::vector<basics::ThreadInfo> threads;
-  VPackBuilder data;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Snapshot& x) {
-  return f.object(x).fields(
-      f.field("id", x.id), f.field("parent", x.parentId),
-      f.field("type", x.type),
-      f.field("created", x.created)
-          .transformWith(inspection::TimeStampTransformer{}),
-      f.field("threads", x.threads), f.field("data", x.data));
-}
-
-// We need a wrapper because the concurrent-registry needs a compile-time
-// constant item type but our activities can have different types (all
-// inheriting from Activity)
-struct Activity;
-struct ActivityPtr {
-  Activity* a;
-
-  using Snapshot = Snapshot;
-
-  auto snapshot() const -> Snapshot;
-};
-
-struct Activity : containers::ThreadOwnedList<ActivityPtr>::Node {
-  using Snapshot = Snapshot;
+struct Activity : std::enable_shared_from_this<Activity> {
   using ThreadList = std::list<containers::SharedPtr<basics::ThreadInfo>>;
   using ThreadListIterator = ThreadList::iterator;
-  Activity(ActivityId id, ActivityHandle parent, ActivityType type);
+  Activity(ActivityId id, ActivityHandle parent, ActivityType type)
+      : _id(std::move(id)),
+        _parent(std::move(parent)),
+        _type(std::move(type)),
+        _created(std::chrono::system_clock::now()),
+        _threads{} {}
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };
@@ -81,23 +55,11 @@ struct Activity : containers::ThreadOwnedList<ActivityPtr>::Node {
   auto parentId() const noexcept -> std::optional<ActivityId>;
   auto type() const noexcept -> ActivityType { return _type; }
   auto created() const noexcept -> ActivityCreated { return _created; }
-  virtual auto data() const noexcept -> VPackBuilder {
-    auto builder = VPackBuilder{};
-    builder.openObject();
-    builder.close();
-    return builder;
-  }
   auto threads() const noexcept -> std::vector<basics::ThreadInfo>;
   auto addCurrentThread() -> ThreadListIterator;
   auto removeThread(ThreadListIterator it) -> void;
-  auto snapshot() -> Snapshot {
-    return Snapshot{.id = id(),
-                    .parentId = parentId(),
-                    .type = type(),
-                    .created = created(),
-                    .threads = threads(),
-                    .data = data()};
-  }
+
+  virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
 
  private:
   ActivityId _id;

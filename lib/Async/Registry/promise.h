@@ -161,7 +161,7 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry& operator=(AddToAsyncRegistry const&) = delete;
   AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
-  ~AddToAsyncRegistry() = default;
+  ~AddToAsyncRegistry();
 
   auto id() -> std::optional<PromiseId>;
   auto update_source_location(std::source_location loc) -> void;
@@ -170,7 +170,8 @@ struct AddToAsyncRegistry {
   auto update_requester_to_current_thread() -> void;
 
  private:
-  containers::ThreadOwnedList<Promise>::Handle<> node_in_registry;
+  std::shared_ptr<containers::ThreadOwnedList<Promise>::Node> node_in_registry =
+      nullptr;
 };
 
 }  // namespace arangodb::async_registry

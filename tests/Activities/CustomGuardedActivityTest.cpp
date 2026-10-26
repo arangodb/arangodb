@@ -55,7 +55,7 @@ struct CustomGuardedActivityTest : ::testing::Test {
   CustomGuardedActivityTest() {
     Registry::setCurrentlyExecutingActivity(activities::Root);
   }
-  void TearDown() override { get_thread_registry().garbage_collect(); }
+  void TearDown() override { registry.garbageCollect(); }
 };
 
 TEST_F(CustomGuardedActivityTest, metadata_is_set) {
