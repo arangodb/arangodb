@@ -121,6 +121,18 @@ bool findProjections(ExecutionNode* n, Variable const* v,
         // cannot use projections for this variable
         return false;
       }
+
+      // vertex and edge conditions can refer to variables from outside the
+      // traversal, e.g. FILTER p.edges[*].x ALL IN [doc.y]
+      if (!traversalNode->forEachVertexAndEdgeCondition(
+              [&](AstNode const* condition) {
+                return Ast::getReferencedAttributesRecursive(
+                    condition, v, expectedAttribute, attributes,
+                    traversalNode->plan()->getAst()->query().resourceMonitor());
+              })) {
+        // cannot use projections for this variable
+        return false;
+      }
     } else if (current->getType() == EN::REMOVE) {
       RemoveNode const* removeNode =
           ExecutionNode::castTo<RemoveNode const*>(current);

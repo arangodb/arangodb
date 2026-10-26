@@ -1,5 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.30.
+
 * COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
   ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
   attribute wrongly returning no results when byte order disagrees with ICU
@@ -20,6 +26,13 @@
 
 * BTS-2308: Fixes miscalculation of soft, hard limits and allocated
   values in cache manager.
+
+* AQL graph traversals read every attribute of an outer loop's document that
+  their vertex and edge filter conditions use, such as `d.limit` in
+  `FOR d IN coll FOR v, e, p IN 1..3 OUTBOUND d._id edges
+  FILTER p.edges[*].weight ALL IN [d.limit] RETURN v`. Queries of this shape
+  could return too few results when the optimizer left such an attribute out
+  of the projection of `d`.
 
 * COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
 
@@ -73,11 +86,6 @@
 * COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
   indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
   matches of accented characters at the end of the search range.
-
-* Updated ArangoDB Starter to v0.19.29.
-
-* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
-  dependencies.
 
 * COR-1083 / github issue #23425:
   Fixed the incorrect usage of released pool analyzer.

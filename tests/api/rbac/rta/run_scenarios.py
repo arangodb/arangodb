@@ -130,6 +130,44 @@ PASS = catalog.PASS
 DENY = catalog.DENY
 ERROR = "error"
 
+SUITE_MARKER_RE = re.compile(r"(?:^|[\s|])(\d{3}):\s", re.M)
+# `progress('createView1')` renders as `# <date> - createView1`;
+PROGRESS_MARKER_RE = re.compile(r"^#\s+.*?\s+-\s+(.+?)\s*$", re.M)
+
+
+def failure_location(config, output):
+    """Which suite the run died in, and how far it got. Best effort.
+
+    Returns (suite_id, suite_file, last_progress), any of which may be None -
+    a run denied on its very first request produces no markers at all.
+    """
+    markers = SUITE_MARKER_RE.findall(output or "")
+    suite_id = markers[-1] if markers else None
+    gauges = PROGRESS_MARKER_RE.findall(output or "")
+    last_progress = gauges[-1] if gauges else None
+    suite_file = None
+    if suite_id:
+        suites_dir = os.path.join(config.rta, "test_data", "makedata_suites")
+        try:
+            for name in sorted(os.listdir(suites_dir)):
+                if name.startswith(suite_id) and name.endswith(".js"):
+                    suite_file = name
+                    break
+        except OSError:
+            pass
+    return suite_id, suite_file, last_progress
+
+
+def describe_location(config, phase, output):
+    """One line naming the phase and the suite a run stopped in, or None."""
+    suite_id, suite_file, last_progress = failure_location(config, output)
+    if suite_id is None:
+        return (f"{phase}: stopped before any suite announced itself "
+                f"(no suite marker in the output)")
+    where = suite_file or suite_id
+    tail = f", last progress marker '{last_progress}'" if last_progress else ""
+    return f"{phase}: stopped in suite {where}{tail}"
+
 
 def classify(returncode, output):
     if returncode == 0:
@@ -234,6 +272,7 @@ class Config:
         self.timeout = args.phase_timeout
         self.propagation_timeout = args.propagation_timeout
         self.dry_run = args.dry_run
+        self.log_levels = list(getattr(args, "log_level", []) or [])
         self.verbose = args.verbose
         self.requested_mode = args.auth_mode
         self.external_sidecar = args.external_sidecar
@@ -702,16 +741,57 @@ def wait_until_visible(config, sidecar, scenario):
     if config.dry_run:
         print("    [dry-run] wait for propagation")
         return
+    _wait_for_effect(config, sidecar, scenario.user, "db:Read",
+                     "db:database:_system", "Allow",
+                     f"the binding for {scenario.user}")
+    for statement in scenario.policy:
+        if statement.get("effect") != "Deny":
+            continue
+        for resource in statement.get("resources", []):
+            if "*" in resource:
+                continue
+            action = statement["actions"][0]
+            _wait_for_effect(config, sidecar, scenario.user, action, resource,
+                             "Deny", f"the Deny on {resource} ({action})")
+
+
+def report_undenied(config, sidecar, scenario):
+    if config.dry_run:
+        return
+    probed = False
+    for statement in scenario.policy or []:
+        if statement.get("effect") != "Deny":
+            continue
+        for resource in statement.get("resources", []):
+            if "*" in resource:
+                continue
+            for action in statement.get("actions", []):
+                effect = sidecar.evaluate(scenario.user, action, resource)
+                probed = True
+                print(f"    PDP says {effect} for {action} on {resource} "
+                      f"(as {scenario.user})")
+    if probed:
+        print("    Deny here means the decision point was right and arangod did "
+              "not enforce it; Allow means the policy was not in force.")
+
+
+def _wait_for_effect(config, sidecar, user, action, resource, want, what):
+    """Block until the PDP answers `want` for one action/resource pair."""
     deadline = time.time() + config.propagation_timeout
+    started = time.time()
     while True:
-        effect = sidecar.evaluate(scenario.user, "db:Read", "db:database:_system")
-        if effect == "Allow":
+        effect = sidecar.evaluate(user, action, resource)
+        if effect == want:
+            waited = time.time() - started
+            # Propagation lag is the difference between a real denial and fake
+            if config.verbose or waited >= 2:
+                print(f"    {what} became visible as {want} after {waited:.1f}s")
             return
         if time.time() >= deadline:
             raise RuntimeError(
-                f"the binding for {scenario.user} was not visible to the policy "
-                f"decision point within {config.propagation_timeout}s "
-                f"(last effect: {effect}). Documented worst case is ~30s."
+                f"{what} was not visible to the policy decision point as {want} "
+                f"within {config.propagation_timeout}s (last effect: {effect}). "
+                f"Documented worst case is ~30s."
             )
         time.sleep(2)
 
@@ -784,6 +864,8 @@ def phase_argv(config, phase, token, suite_filter=None):
         # Must be a JWT: see the module docstring.
         "--server.jwt-token", token,
         "--log.level", "warning",
+        *[arg for level in config.log_levels
+          for arg in ("--log.level", level)],
         "--javascript.execute", script,
         # Everything after `--` is ARGUMENTS inside the script; the first
         # positional is the database name.
@@ -871,6 +953,7 @@ class Result:
         self.actual = actual
         self.signature = signature
         self.output = output
+        self.location = None
 
     @property
     def ok(self):
@@ -986,7 +1069,12 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
             f"    {step.phase:<10} as {step.identity:<9} "
             f"expected {step.expect:<4} got {actual:<5}{detail} -> {verdict}{note}"
         )
+        if actual != PASS or not result.ok:
+            result.location = describe_location(config, step.phase, output)
+            print(f"    {result.location}")
         if not result.ok:
+            if step.expect == DENY and actual == PASS:
+                report_undenied(config, sidecar, scenario)
             # Stop this scenario: later steps assume the earlier ones behaved.
             print(f"    ---- last 40 lines of {step.phase} output ----")
             for line in (output.strip().splitlines() or ["<no output>"])[-40:]:
@@ -1001,15 +1089,28 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
     return results
 
 
-def denied_collection_for(suite_filter):
+SUITE_MAX_MAJOR = {"100": 4}
+
+
+def suite_runs(suite, suite_filter, major=None):
+    """Whether `suite` is both selected and supported by the server under test."""
+    if suite_filter and suite not in suite_filter:
+        return False
+    ceiling = SUITE_MAX_MAJOR.get(suite)
+    if ceiling is not None and major is not None and major >= ceiling:
+        return False
+    return True
+
+
+def denied_collection_for(suite_filter, major=None):
     """A collection the selected suites really create.
 
     The deny-precedence scenario is only meaningful if the workload actually
     touches the denied resource; otherwise it would pass vacuously.
     """
-    if not suite_filter or "100" in suite_filter:
+    if suite_runs("100", suite_filter, major):
         return "cgeo_0"  # 100_collections.js: cgeo_${dbCount}
-    if "400" in suite_filter:
+    if suite_runs("400", suite_filter, major):
         return "old_cview1_0"  # 400_views.js: old_cview1_${dbCount}
     return None
 
@@ -1022,11 +1123,10 @@ def denied_collection_for(suite_filter):
 WRITE_ON_RERUN_SUITES = ("100", "400")
 
 
-def writes_on_rerun(suite_filter):
+def writes_on_rerun(suite_filter, major=None):
     """Whether the selected suites write on a re-run over existing data."""
-    if not suite_filter:
-        return True  # no filter means every suite, which includes writers
-    return any(suite in suite_filter for suite in WRITE_ON_RERUN_SUITES)
+    return any(suite_runs(suite, suite_filter, major)
+               for suite in WRITE_ON_RERUN_SUITES)
 
 
 def main():
@@ -1108,6 +1208,13 @@ def main():
                              "configuration, not a broken one - it selects the "
                              "grant-based catalog instead of the policy-based one. "
                              "`auto` probes the server. (default: %(default)s)")
+    parser.add_argument("--log-level", action="append", default=[],
+                        metavar="TOPIC=LEVEL",
+                        help="extra --log.level for the arangosh that runs the "
+                             "workload, e.g. --log-level V8=debug to see what "
+                             "the suite was doing when it was refused. "
+                             "Repeatable; applied after the default "
+                             "'warning', so it only widens what is logged.")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -1135,7 +1242,10 @@ def main():
     caps = selfcheck.capabilities(binary=config.arangod)
     print(selfcheck.describe_capabilities(caps))
 
-    denied = denied_collection_for(config.suite_filter)
+    major, version_source = selfcheck.major_version(binary=config.arangod)
+    denied = denied_collection_for(config.suite_filter, major)
+    print(f"server major version: {major} (from {version_source}); "
+          f"deny-precedence target: {denied or '<none - scenario skipped>'}")
 
     tokens = Tokens(config)
     if args.bootstrap_user or args.remove_bootstrap_user:
@@ -1194,7 +1304,7 @@ def main():
                   f"'{config.suite_filter}' creates no collection this script knows "
                   "how to target.")
 
-    if not writes_on_rerun(config.suite_filter):
+    if not writes_on_rerun(config.suite_filter, major):
         vacuous = [s for s in all_scenarios if s.needs_write_on_rerun]
         all_scenarios = [s for s in all_scenarios if not s.needs_write_on_rerun]
         for scenario in vacuous:
@@ -1287,6 +1397,13 @@ def main():
         )
     print("-" * 78)
     print(f"{len(results)} step(s), {failures} mismatch(es)")
+    mismatched = [result for result in results if not result.ok]
+    if mismatched:
+        print("\nwhere the mismatching steps stopped:")
+        for result in mismatched:
+            where = result.location or describe_location(
+                config, result.phase, result.output)
+            print(f"  {result.scenario.name:<32} {where}")
     if config.dry_run:
         print("\n(dry run: nothing was executed. Each step echoes its expectation, so "
               "'0 mismatches' says the plumbing is wired up, not that RBAC behaves.)")
