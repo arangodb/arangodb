@@ -3206,7 +3206,8 @@ bool Ast::getReferencedAttributesRecursive(
       // 1. iterator `p.edges`
       // 2. expression `CURRENT.a`
       // we first place all the attributes from the expression
-      // on the stack. excluding the
+      // on the stack. excluding the `CURRENT` variable. Then
+      // we add the iterator attributes.
       if (!isPathVariable || ::isSimpleExpansion(expansionNode)) {
         ast::IteratorNode lhs = expansionNode.getIterator();
         AstNode const* rhs = expansionNode.getExpression();
