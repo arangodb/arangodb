@@ -167,9 +167,20 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
   Aql/Function/RangeFunctionTest.cpp
+  Aql/Function/StringFunctions/CharLengthFunctionTest.cpp
+  Aql/Function/StringFunctions/ConcatFunctionTest.cpp
   Aql/Function/StringFunctions/ConcatSeparatorFunctionTest.cpp
+  Aql/Function/StringFunctions/ContainsFunctionTest.cpp
+  Aql/Function/StringFunctions/FindFirstLastFunctionTest.cpp
+  Aql/Function/StringFunctions/LeftRightFunctionTest.cpp
+  Aql/Function/StringFunctions/LikeFunctionTest.cpp
+  Aql/Function/StringFunctions/LowerUpperFunctionTest.cpp
   Aql/Function/StringFunctions/RepeatFunctionTest.cpp
+  Aql/Function/StringFunctions/SplitFunctionTest.cpp
+  Aql/Function/StringFunctions/SubstringBytesFunctionTest.cpp
+  Aql/Function/StringFunctions/SubstringFunctionTest.cpp
   Aql/Function/StringFunctions/SubstituteFunctionTest.cpp
+  Aql/Function/StringFunctions/TrimFunctionTest.cpp
   Aql/Function/StringFunctions/ToCharFunctionTest.cpp
   Aql/Function/StringFunctions/ToStringFunctionTest.cpp
   Aql/InputRangeTest.cpp
