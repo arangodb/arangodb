@@ -28,12 +28,10 @@
 #include "Inspection/VPack.h"
 #include "VectorIndex/Definition.h"
 
-#include <velocypack/Iterator.h>
-
 namespace arangodb {
 
 bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
-                           velocypack::Slice rhs, bool attributeOrderMatters) {
+                           velocypack::Slice rhs) {
   // unique must be identical if present
   bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
       lhs, StaticStrings::IndexUnique, false);
@@ -111,39 +109,9 @@ bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
   value = lhs.get(StaticStrings::IndexFields);
 
   if (value.isArray()) {
-    if (!attributeOrderMatters) {
-      // attributes can be specified in any order
-      velocypack::ValueLength const nv = value.length();
-
-      // compare fields in arbitrary order
-      auto r = rhs.get(StaticStrings::IndexFields);
-
-      if (!r.isArray() || nv != r.length()) {
-        return false;
-      }
-
-      for (size_t i = 0; i < nv; ++i) {
-        velocypack::Slice const v = value.at(i);
-
-        bool found = false;
-
-        for (VPackSlice vr : VPackArrayIterator(r)) {
-          if (basics::VelocyPackHelper::equal(v, vr, false)) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          return false;
-        }
-      }
-    } else {
-      // attribute order matters
-      if (!basics::VelocyPackHelper::equal(
-              value, rhs.get(StaticStrings::IndexFields), false)) {
-        return false;
-      }
+    if (!basics::VelocyPackHelper::equal(
+            value, rhs.get(StaticStrings::IndexFields), false)) {
+      return false;
     }
   }
 

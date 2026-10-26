@@ -39,7 +39,7 @@ class Builder;
 
 /// @brief determine if two index definitions of the given type are equal
 bool indexDefinitionsEqual(IndexType type, velocypack::Slice lhs,
-                           velocypack::Slice rhs, bool attributeOrderMatters);
+                           velocypack::Slice rhs);
 
 struct IndexDefinition {
   explicit IndexDefinition(IndexType type) : _type(type) {}
@@ -51,8 +51,7 @@ struct IndexDefinition {
   ///        index once instantiated
   virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                      std::string const&) const {
-    return indexDefinitionsEqual(_type, lhs, rhs,
-                                 /*attributeOrderMatters*/ true);
+    return indexDefinitionsEqual(_type, lhs, rhs);
   }
 
   /// @brief normalize an Index definition prior to instantiation/persistence

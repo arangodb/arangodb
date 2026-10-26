@@ -37,6 +37,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include <vector>
+
 using namespace arangodb;
 
 namespace {
@@ -64,6 +66,12 @@ class RocksDBIndexFactoryTest : public ::testing::Test {
     auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
                            invertedDefinition);
     ASSERT_TRUE(res.ok()) << res.errorMessage();
+  }
+
+  std::shared_ptr<LogicalCollection> createCollection(char const* json) {
+    auto collectionJson = velocypack::Parser::fromJson(json);
+    return mockServer.getSystemDatabase().createCollection(
+        collectionJson->slice());
   }
 
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
@@ -109,24 +117,32 @@ TEST_F(RocksDBIndexFactoryTest, noObjectIdWhenNormalizeFails) {
   EXPECT_EQ(countObjectId(normalized.slice()), 0);
 }
 
-TEST_F(RocksDBIndexFactoryTest, noObjectIdForEdgeOrPrimaryOnCreation) {
-  for (auto const& definition :
-       {velocypack::Parser::fromJson(R"({"type": "edge"})"),
-        velocypack::Parser::fromJson(R"({"type": "primary"})")}) {
+TEST_F(RocksDBIndexFactoryTest, edgeAndPrimaryNormalizeErrorCodes) {
+  struct Case {
+    char const* type;
+    bool isCreation;
+    ErrorCode expected;
+  };
+  std::vector<Case> const cases{
+      {"edge", true, TRI_ERROR_FORBIDDEN},
+      {"edge", false, TRI_ERROR_INTERNAL},
+      {"primary", true, TRI_ERROR_FORBIDDEN},
+      {"primary", false, TRI_ERROR_INTERNAL},
+  };
+
+  for (auto const& c : cases) {
+    auto definition = velocypack::Parser::fromJson(
+        std::string(R"({"type": ")") + c.type + "\"}");
     velocypack::Builder normalized;
     auto res = factory.enhanceIndexDefinition(definition->slice(), normalized,
-                                              /*isCreation*/ true,
+                                              c.isCreation,
                                               mockServer.getSystemDatabase());
-    ASSERT_TRUE(res.fail());
-    EXPECT_EQ(countObjectId(normalized.slice()), 0);
+    EXPECT_EQ(res.errorNumber(), c.expected) << c.type << " " << c.isCreation;
   }
 }
 
 TEST_F(RocksDBIndexFactoryTest, edgeIndexCannotBeCreatedDirectly) {
-  auto collectionJson =
-      velocypack::Parser::fromJson(R"({"name": "edges", "type": 3})");
-  auto collection =
-      mockServer.getSystemDatabase().createCollection(collectionJson->slice());
+  auto collection = createCollection(R"({"name": "edges", "type": 3})");
 
   auto definition =
       velocypack::Parser::fromJson(R"({"type": "edge", "fields": ["_from"]})");
@@ -141,9 +157,7 @@ TEST_F(RocksDBIndexFactoryTest, edgeIndexCannotBeCreatedDirectly) {
 }
 
 TEST_F(RocksDBIndexFactoryTest, primaryIndexCannotBeCreatedDirectly) {
-  auto collectionJson = velocypack::Parser::fromJson(R"({"name": "docs"})");
-  auto collection =
-      mockServer.getSystemDatabase().createCollection(collectionJson->slice());
+  auto collection = createCollection(R"({"name": "docs"})");
 
   auto definition = velocypack::Parser::fromJson(R"({"type": "primary"})");
   IndexCreationContext ctx{*collection, definition->slice(), IndexId{1},
@@ -153,5 +167,44 @@ TEST_F(RocksDBIndexFactoryTest, primaryIndexCannotBeCreatedDirectly) {
     FAIL() << "expected an exception";
   } catch (basics::Exception const& ex) {
     EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
+  }
+}
+
+TEST_F(RocksDBIndexFactoryTest, createIndexDispatchesToExpectedType) {
+  auto collection = createCollection(R"({"name": "docs", "type": 3})");
+
+  struct Case {
+    IndexType type;
+    char const* json;
+    bool isClusterConstructor;
+  };
+  std::vector<Case> const cases{
+      {IndexType::Primary, R"({"type": "primary"})", true},
+      {IndexType::Edge, R"({"type": "edge", "fields": ["_from"]})", true},
+      {IndexType::Geo, R"({"type": "geo", "fields": ["loc"]})", false},
+      {IndexType::Geo1, R"({"type": "geo1", "fields": ["loc"]})", false},
+      {IndexType::Geo2, R"({"type": "geo2", "fields": ["lat", "lon"]})", false},
+      {IndexType::Hash, R"({"type": "hash", "fields": ["x"]})", false},
+      {IndexType::Persistent, R"({"type": "persistent", "fields": ["x"]})",
+       false},
+      {IndexType::Skiplist, R"({"type": "skiplist", "fields": ["x"]})", false},
+      {IndexType::TTL,
+       R"({"type": "ttl", "fields": ["x"], "expireAfter": 600, )"
+       R"("unique": false, "sparse": true})",
+       false},
+      {IndexType::Fulltext, R"({"type": "fulltext", "fields": ["x"]})", false},
+      {IndexType::Zkd, R"({"type": "zkd", "fields": ["x"]})", false},
+      {IndexType::MDI, R"({"type": "mdi", "fields": ["x"]})", false},
+      {IndexType::MDIPrefixed, R"({"type": "mdi-prefixed", "fields": ["x"]})",
+       false},
+  };
+
+  for (auto const& c : cases) {
+    auto definition = velocypack::Parser::fromJson(c.json);
+    IndexCreationContext ctx{*collection, definition->slice(), IndexId{1},
+                             c.isClusterConstructor};
+    auto index = factory.createIndex(c.type, ctx);
+    ASSERT_NE(index, nullptr) << c.json;
+    EXPECT_EQ(index->type(), c.type) << c.json;
   }
 }

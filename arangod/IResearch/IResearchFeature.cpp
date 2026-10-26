@@ -924,7 +924,21 @@ void IResearchFeature::stop() {
   _searchExecutionPool.stop();
 }
 
-void IResearchFeature::unprepare() { TRI_ASSERT(isEnabled()); }
+void IResearchFeature::unprepare() {
+  TRI_ASSERT(isEnabled());
+  if (!server().hasFeature<StorageEngine>()) {
+    return;
+  }
+  // catalog holds non-owning pointers, so we must unregister them before
+  // they're destroyed
+  auto& catalog = server().getFeature<StorageEngine>().indexTypeCatalog();
+  if (_linkDefinition) {
+    catalog.remove(StaticStrings::ViewArangoSearchType);
+  }
+  if (_invertedDefinition) {
+    catalog.remove(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
+  }
+}
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
