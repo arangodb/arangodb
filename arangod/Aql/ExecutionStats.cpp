@@ -58,6 +58,15 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
   builder.add("intermediateCommits", VPackValue(intermediateCommits));
 
+  if (vectorSearches > 0) {
+    builder.add("vectorSearches", VPackValue(vectorSearches));
+    builder.add("vectorListsScanned", VPackValue(vectorListsScanned));
+    builder.add("vectorDistancesComputed", VPackValue(vectorDistancesComputed));
+    builder.add("vectorHeapUpdates", VPackValue(vectorHeapUpdates));
+    builder.add("vectorCoarseSearchTime", VPackValue(vectorCoarseSearchTime));
+    builder.add("vectorListScanTime", VPackValue(vectorListScanTime));
+  }
+
   if (!_nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
     for (auto const& pair : _nodes) {
@@ -96,6 +105,12 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   count += summand.count;
   peakMemoryUsage = std::max(summand.peakMemoryUsage, peakMemoryUsage);
   intermediateCommits += summand.intermediateCommits;
+  vectorSearches += summand.vectorSearches;
+  vectorListsScanned += summand.vectorListsScanned;
+  vectorDistancesComputed += summand.vectorDistancesComputed;
+  vectorHeapUpdates += summand.vectorHeapUpdates;
+  vectorCoarseSearchTime += summand.vectorCoarseSearchTime;
+  vectorListScanTime += summand.vectorListScanTime;
   // intentionally no modification of executionTime, as the overall
   // time is calculated in the end
 
@@ -157,7 +172,13 @@ ExecutionStats::ExecutionStats() noexcept
       count(0),
       executionTime(0.0),
       peakMemoryUsage(0),
-      intermediateCommits(0) {}
+      intermediateCommits(0),
+      vectorSearches(0),
+      vectorListsScanned(0),
+      vectorDistancesComputed(0),
+      vectorHeapUpdates(0),
+      vectorCoarseSearchTime(0.0),
+      vectorListScanTime(0.0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
   if (!slice.isObject()) {
@@ -206,6 +227,20 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "cacheHits", 0);
   cacheMisses = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "cacheMisses", 0);
+
+  // vector search stats are optional attributes.
+  vectorSearches = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorSearches", 0);
+  vectorListsScanned = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorListsScanned", 0);
+  vectorDistancesComputed = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorDistancesComputed", 0);
+  vectorHeapUpdates = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorHeapUpdates", 0);
+  vectorCoarseSearchTime = basics::VelocyPackHelper::getNumericValue<double>(
+      slice, "vectorCoarseSearchTime", 0.0);
+  vectorListScanTime = basics::VelocyPackHelper::getNumericValue<double>(
+      slice, "vectorListScanTime", 0.0);
 
   // note: fullCount is an optional attribute!
   if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
@@ -275,6 +310,12 @@ void ExecutionStats::clear() noexcept {
   executionTime = 0.0;
   peakMemoryUsage = 0;
   intermediateCommits = 0;
+  vectorSearches = 0;
+  vectorListsScanned = 0;
+  vectorDistancesComputed = 0;
+  vectorHeapUpdates = 0;
+  vectorCoarseSearchTime = 0.0;
+  vectorListScanTime = 0.0;
   _nodes.clear();
 }
 
