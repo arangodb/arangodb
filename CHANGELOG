@@ -581,6 +581,7 @@
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
 
+<<<<<<< HEAD
 3.12.13 (2026-10-28)
 --------------------
 
@@ -614,6 +615,8 @@
   With classic authentication it requires read-write access to that database and
   not read-write access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
 
+=======
+>>>>>>> a5d04f5eb73 (Fix fullCount double-counting for COLLECT WITH COUNT)
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
