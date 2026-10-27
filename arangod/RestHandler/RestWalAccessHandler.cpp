@@ -147,7 +147,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
-  if (_request->requestedApiVersion() == 0) {
+  if (_request->requestedApiVersion() == ApiVersion::V0) {
     filter.includeFoxxQueues =
         _request->parsedValue("includeFoxxQueues", false);
   } else {
@@ -213,7 +213,7 @@ RestStatus RestWalAccessHandler::execute() {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     std::string msg = "expected GET /_api/wal/[tail|range|lastTick";
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       msg.append("|open-transactions");
     }
     msg.append("]");
@@ -237,11 +237,11 @@ RestStatus RestWalAccessHandler::execute() {
     handleCommandTail(wal);
   } else if (suffixes[0] == "open-transactions" &&
              _request->requestType() == RequestType::GET &&
-             _request->requestedApiVersion() == 0) {
+             _request->requestedApiVersion() == ApiVersion::V0) {
     handleCommandDetermineOpenTransactions(wal);
   } else {
     std::string msg = "expected GET /_api/wal/[tail|range|lastTick";
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       msg.append("|open-transactions");
     }
     msg.append("]");

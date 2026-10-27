@@ -151,7 +151,7 @@ auto resourceToWireString(Resource const& resource) -> std::string {
             return std::format("db:user:{}", r.name);
           },
           [](resources::ApiVersion const& r) {
-            return std::format("db:apiversion:v{}", r.version);
+            return std::format("db:apiversion:{}", to_string(r.version));
           },
       },
       resource);
@@ -271,7 +271,7 @@ auto describe(resources::User const& resource) -> std::string {
   return std::format("user '{}'", resource.name);
 }
 auto describe(resources::ApiVersion const& resource) -> std::string {
-  return std::format("API version '{}'", resource.version);
+  return std::format("API version '{}'", to_string(resource.version));
 }
 
 auto describe(Resource const& resource) -> std::string {
