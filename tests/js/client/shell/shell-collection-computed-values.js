@@ -1213,6 +1213,67 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
+    testIndexedAccess: function() {
+      const expressions = {
+        second: `RETURN @doc.values[1]`,
+        last: `RETURN @doc.values[-1]`,
+        outOfBounds: `RETURN @doc.values[99]`,
+        dynamicIndex: `RETURN @doc.values[@doc.idx]`,
+        numericKey: `RETURN @doc.obj["1"]`,
+        dynamicKey: `RETURN @doc.obj[@doc.key]`,
+        computed: `RETURN SPLIT(@doc.name, " ")[0]`,
+        nestedValue: `RETURN @doc.nested[1].values[0]`,
+        inline: `RETURN @doc.nested[* RETURN CURRENT.values[0]]`,
+      };
+      collection.properties({
+        computedValues: Object.keys(expressions).map((name) => ({
+          name,
+          expression: expressions[name],
+          overwrite: false,
+          computeOn: ["insert"]
+        }))
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertEqual(colProperties.computedValues.length, Object.keys(expressions).length);
+      colProperties.computedValues.forEach((cv) => {
+        assertEqual(expressions[cv.name], cv.expression);
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({
+          values: [1, 2, 3, i],
+          idx: i % 4,
+          obj: {"1": "one", a: "A", b: "B"},
+          key: i % 2 === 0 ? "a" : "b",
+          name: `name${i} surname${i}`,
+          nested: [{values: [0]}, {values: [i]}],
+        });
+      }
+      collection.insert(docs);
+
+      const res = db._query(`FOR doc IN ${cn} SORT doc.values[3] RETURN doc`).toArray();
+      assertEqual(res.length, 10);
+      res.forEach((el, i) => {
+        assertEqual(el.second, 2);
+        assertEqual(el.last, i);
+        assertNull(el.outOfBounds);
+        assertEqual(el.dynamicIndex, [1, 2, 3, i][i % 4]);
+        assertEqual(el.numericKey, "one");
+        assertEqual(el.dynamicKey, i % 2 === 0 ? "A" : "B");
+        assertEqual(el.computed, `name${i}`);
+        assertEqual(el.nestedValue, i);
+        assertEqual(el.inline, [0, i]);
+      });
+    },
+
     testArrayOperatorWithInline: function() {
       collection.properties({
         computedValues: [
