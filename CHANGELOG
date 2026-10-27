@@ -27,6 +27,14 @@
 * BTS-2308: Fixes miscalculation of soft, hard limits and allocated
   values in cache manager.
 
+* BTS-2496: AQL `LENGTH()` and `COUNT()` of a subquery that contains a
+  `COLLECT` return the number of rows the subquery produces after the
+  `COLLECT` and any `FILTER` following it. For example,
+  `LENGTH(FOR d IN coll COLLECT WITH COUNT INTO c FILTER c > 0 RETURN true)`
+  returns `1` for a non-empty collection. The `optimize-count` optimizer rule
+  is not applied to such subqueries. Before, such expressions could return
+  `null` or `0`.
+
 * AQL graph traversals read every attribute of an outer loop's document that
   their vertex and edge filter conditions use, such as `d.limit` in
   `FOR d IN coll FOR v, e, p IN 1..3 OUTBOUND d._id edges
