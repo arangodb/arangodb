@@ -58,9 +58,13 @@ function allShortestPathsRegressionTestSuite() {
         `FOR pr IN [["a","d"],["d","d"],["a","d"]]
            LET ps = (FOR p IN OUTBOUND ALL_SHORTEST_PATHS CONCAT("${vName}/",pr[0]) TO CONCAT("${vName}/",pr[1]) ${eName} RETURN p)
              RETURN LENGTH(ps)`).toArray();
-     // assertEqual(r2, [2, 1, 2]);
+      assertEqual(r2, [2, 1, 2]);
       
       // control: SHORTEST_PATH in the same loop
+      // note: SHORTEST_PATH outputs the path in separate rows,
+      //       so LENGTH returns the length of the path,
+      //       whereas ALL_SHORTEST_PATHS returns the paths as objects
+      //       so the LENGTH computes the number of paths.
       const r3 = db._query(
         `FOR pr IN [["a","d"],["x","d"],["a","d"]]
            LET ps = (FOR p IN OUTBOUND SHORTEST_PATH CONCAT("${vName}/",pr[0]) TO CONCAT("${vName}/",pr[1]) ${eName} RETURN p)
