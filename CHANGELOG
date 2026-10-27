@@ -1,6 +1,10 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
+  when used with LIMIT and {fullCount: true}. The single result row was counted
+  twice: once when produced and again during the fullCount skip phase.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
