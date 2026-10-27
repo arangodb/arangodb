@@ -9,12 +9,15 @@ add_executable(${BIN_ARANGOEXPORT}
 target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOEXPORT}
+PUBLIC
   ${SYSTEM_LIBRARIES}
   arango_shell
   clienttools_utils
+PRIVATE 
+  Boost::property_tree
 )
 if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOEXPORT} jemalloc)
+  target_link_libraries(${BIN_ARANGOEXPORT} PUBLIC jemalloc)
 endif ()
 
 

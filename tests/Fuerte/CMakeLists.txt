@@ -12,6 +12,7 @@ target_link_libraries(fuertetest
     arango
     fuerte
     gtest
+    Boost::algorithm
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )

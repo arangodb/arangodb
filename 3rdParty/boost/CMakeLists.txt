@@ -13,6 +13,7 @@ set(BOOST_INCLUDE_LIBRARIES
   crc
   lockfree
   predef
+  property_tree
   range
   system
   thread
