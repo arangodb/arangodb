@@ -27,6 +27,7 @@ for pkg in "${EDITION_PKG}" "${EDITION_PKG}-client"; do
     dbg="debian/${EDITION_PKG}-dbg/usr/lib/debug/${rel}.debug"
     mkdir -p "$(dirname "${dbg}")"
     objcopy --only-keep-debug "${bin}" "${dbg}"
+    chmod 644 "${dbg}"
     strip --remove-section=.comment --remove-section=.note "${bin}"
     objcopy --add-gnu-debuglink="${dbg}" "${bin}"
     id="$(readelf -n "${bin}" 2>/dev/null | sed -n 's/.*Build ID: \([0-9a-f]\{40\}\).*/\1/p' | head -n1)"
