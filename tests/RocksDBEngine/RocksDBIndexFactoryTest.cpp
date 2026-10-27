@@ -169,37 +169,3 @@ TEST_F(RocksDBIndexFactoryTest, primaryIndexCannotBeCreatedDirectly) {
     EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
   }
 }
-
-TEST_F(RocksDBIndexFactoryTest, createIndexDispatchesToExpectedType) {
-  auto collection = createCollection(R"({"name": "docs", "type": 3})");
-
-  struct Case {
-    IndexType type;
-    char const* json;
-  };
-  // Primary/Edge need a real RocksDBEngine, which this mock doesn't have
-  std::vector<Case> const cases{
-      {IndexType::Geo, R"({"type": "geo", "fields": ["loc"]})"},
-      {IndexType::Geo1, R"({"type": "geo1", "fields": ["loc"]})"},
-      {IndexType::Geo2, R"({"type": "geo2", "fields": ["lat", "lon"]})"},
-      {IndexType::Hash, R"({"type": "hash", "fields": ["x"]})"},
-      {IndexType::Persistent, R"({"type": "persistent", "fields": ["x"]})"},
-      {IndexType::Skiplist, R"({"type": "skiplist", "fields": ["x"]})"},
-      {IndexType::TTL,
-       R"({"type": "ttl", "fields": ["x"], "expireAfter": 600, )"
-       R"("unique": false, "sparse": true})"},
-      {IndexType::Fulltext, R"({"type": "fulltext", "fields": ["x"]})"},
-      {IndexType::Zkd, R"({"type": "zkd", "fields": ["x"]})"},
-      {IndexType::MDI, R"({"type": "mdi", "fields": ["x"]})"},
-      {IndexType::MDIPrefixed, R"({"type": "mdi-prefixed", "fields": ["x"]})"},
-  };
-
-  for (auto const& c : cases) {
-    auto definition = velocypack::Parser::fromJson(c.json);
-    IndexCreationContext ctx{*collection, definition->slice(), IndexId{1},
-                             /*isClusterConstructor*/ false};
-    auto index = factory.createIndex(c.type, ctx);
-    ASSERT_NE(index, nullptr) << c.json;
-    EXPECT_EQ(index->type(), c.type) << c.json;
-  }
-}

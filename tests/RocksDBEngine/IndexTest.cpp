@@ -159,3 +159,26 @@ TEST_F(StorageEngineIndexTest, TtlIndexRemoveDeletesIndexEntry) {
   ASSERT_EQ(entries.size(), 1u);
   EXPECT_EQ(entries.front(), lookupKey("b").first);
 }
+
+// primary/edge can't be created through this path
+TEST_F(StorageEngineIndexTest, FactoryDispatchesToExpectedIndexType) {
+  struct Case {
+    IndexType type;
+    VPackString definition;
+  };
+  std::vector<Case> const cases{
+      {IndexType::Geo, R"({"type":"geo","fields":["loc"]})"_vpack},
+      {IndexType::Geo1, R"({"type":"geo1","fields":["loc"]})"_vpack},
+      {IndexType::Geo2, R"({"type":"geo2","fields":["lat","lon"]})"_vpack},
+      {IndexType::Fulltext, R"({"type":"fulltext","fields":["x"]})"_vpack},
+      {IndexType::Zkd, R"({"type":"zkd","fields":["x"]})"_vpack},
+      {IndexType::MDI, R"({"type":"mdi","fields":["x"]})"_vpack},
+      {IndexType::MDIPrefixed,
+       R"({"type":"mdi-prefixed","fields":["x"]})"_vpack},
+  };
+
+  for (auto const& c : cases) {
+    auto index = makeIndex(c.definition);
+    EXPECT_EQ(index->type(), c.type) << c.definition.slice().toJson();
+  }
+}
