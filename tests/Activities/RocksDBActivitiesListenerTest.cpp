@@ -28,7 +28,6 @@
 #include "Activities/Registry.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "RocksDBEngine/Listeners/RocksDBActivitiesListener.h"
-#include "Helper.h"
 
 namespace arangodb {
 
@@ -55,15 +54,12 @@ std::vector<velocypack::Slice> compactionActivities(
   }
   return out;
 }
-
 }  // namespace
 
 struct RocksDBActivitiesListenerTest : public ::testing::Test {
-  static void SetUpTestSuite() {
-    activities::tests::garbageCollectAllOnCurrentThread();
-  }
+  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
   void TearDown() override {
-    activities::tests::garbageCollectAllOnCurrentThread();
+    activities::registry.garbageCollectAll();
     EXPECT_EQ(activities::registry.size(), 0);
   }
   RocksDBActivitiesListener listener;
