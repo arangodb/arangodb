@@ -1116,14 +1116,14 @@ irs::analysis::analyzer::ptr makeAqlAnalyzer(std::string_view json) {
 TEST_F(IResearchAqlAnalyzerTest, test_indexed_access) {
   // positive and negative index
   {
-    auto ptr = makeAqlAnalyzer(
-        R"({"queryString": "RETURN SPLIT(@param, ' ')[1]"})");
+    auto ptr =
+        makeAqlAnalyzer(R"({"queryString": "RETURN SPLIT(@param, ' ')[1]"})");
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "quick brown fox", {{"brown", 0}}, true);
   }
   {
-    auto ptr = makeAqlAnalyzer(
-        R"({"queryString": "RETURN SPLIT(@param, ' ')[-1]"})");
+    auto ptr =
+        makeAqlAnalyzer(R"({"queryString": "RETURN SPLIT(@param, ' ')[-1]"})");
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "quick brown fox", {{"fox", 0}}, true);
   }
@@ -1163,6 +1163,6 @@ TEST_F(IResearchAqlAnalyzerTest, test_indexed_access_invalid) {
   ASSERT_EQ(nullptr,
             makeAqlAnalyzer(
                 R"({"queryString": "RETURN TOKENS(@param, 'identity')[0]"})"));
-  ASSERT_EQ(nullptr, makeAqlAnalyzer(
-                         R"({"queryString": "RETURN [1, 2][@other]"})"));
+  ASSERT_EQ(nullptr,
+            makeAqlAnalyzer(R"({"queryString": "RETURN [1, 2][@other]"})"));
 }
