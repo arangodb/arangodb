@@ -130,7 +130,7 @@ IndexTypeCatalog& StorageEngine::indexTypeCatalog() noexcept {
 }
 
 void StorageEngine::getCapabilities(velocypack::Builder& builder,
-                                    uint32_t apiVersion) const {
+                                    ApiVersion apiVersion) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 

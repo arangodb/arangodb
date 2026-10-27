@@ -104,7 +104,7 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
 
   if (type == rest::RequestType::DELETE_REQ) {
     if (suffixes.empty()) {
-      if (_request->requestedApiVersion() == 0) {
+      if (_request->requestedApiVersion() == ApiVersion::V0) {
         clearLogs();
       } else {
         generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
@@ -124,7 +124,7 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      if (_request->requestedApiVersion() == 0) {
+      if (_request->requestedApiVersion() == ApiVersion::V0) {
         co_await reportLogs(/*newFormat*/ false);
       } else {
         generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,

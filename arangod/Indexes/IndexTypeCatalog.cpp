@@ -117,8 +117,8 @@ bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexTypeCatalog::aliases(uint32_t apiVersion) const {
-  if (apiVersion == 0) {
+IndexTypeCatalog::aliases(ApiVersion apiVersion) const {
+  if (apiVersion == ApiVersion::V0) {
     return {
         {"hash", "persistent"},
         {"skiplist", "persistent"},

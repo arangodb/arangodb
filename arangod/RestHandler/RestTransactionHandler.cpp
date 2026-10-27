@@ -114,7 +114,7 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_await executeBegin();
         co_return;
       } else if (_request->suffixes().empty()) {
-        if (_request->requestedApiVersion() == 0) {
+        if (_request->requestedApiVersion() == ApiVersion::V0) {
           executeJSTransaction();
         } else {
           generateError(

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Indexes/EdgeIndexDefinition.h"
 #include "Indexes/FulltextIndexDefinition.h"
@@ -89,7 +90,7 @@ class IndexTypeCatalog final {
                            std::string const& dbname) const;
 
   [[nodiscard]] std::vector<std::pair<std::string_view, std::string_view>>
-  aliases(uint32_t apiVersion) const;
+  aliases(ApiVersion apiVersion) const;
 
   // definition must outlive the catalog
   [[nodiscard]] Result add(std::string_view name,

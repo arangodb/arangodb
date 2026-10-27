@@ -262,6 +262,7 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango_basic_http_client STATIC
+        Basics/ApiVersion.cpp
         Rest/CommonDefines.cpp
         Rest/GeneralRequest.cpp
         Rest/GeneralResponse.cpp

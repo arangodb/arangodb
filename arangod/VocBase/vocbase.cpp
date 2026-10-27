@@ -1561,10 +1561,10 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
+void Database::toVelocyPack(VPackBuilder& result, ApiVersion apiVersion) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (apiVersion == 0) {
+  if (apiVersion == ApiVersion::V0) {
     if (ServerState::instance()->isCoordinator()) {
       result.add("path", VPackValue("none"));
     } else {
