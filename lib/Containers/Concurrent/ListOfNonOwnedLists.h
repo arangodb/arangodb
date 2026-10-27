@@ -113,6 +113,14 @@ struct ListOfNonOwnedLists {
     }
     return count;
   }
+
+  /**
+     Destructor drains all lists
+   */
+  ~ListOfNonOwnedLists() {
+    while (run_external_cleanup() > 0) {
+    }
+  }
 };
 
 }  // namespace arangodb::containers
