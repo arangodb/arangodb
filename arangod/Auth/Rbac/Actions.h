@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include "Basics/ApiVersion.h"
+
 #include <string>
 #include <variant>
 
@@ -110,7 +111,7 @@ struct User {
 };
 
 struct ApiVersion {
-  uint32_t version;
+  arangodb::ApiVersion version;
 };
 
 }  // namespace resources

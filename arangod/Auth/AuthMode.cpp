@@ -30,7 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rbac/Service.h"
-#include "Rest/ApiVersion.h"
+#include "Basics/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 
 #include <format>
@@ -254,7 +254,7 @@ auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
   return std::format("grant permissions to user '{}'", perm.name);
 }
 auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
-  return std::format("use API version '{}'", perm.version);
+  return std::format("use API version '{}'", to_string(perm.version));
 }
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
@@ -432,8 +432,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 effectiveCollectionAuthLevel(collection.db, collection.name);
 
             if (requestedLevel > effectiveLevel) {
-              // If we are using API version > 0, then we return NOT_FOUND to
-              // hide the fact that the collection exists:
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
@@ -576,7 +574,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           // AdminQueryCache only requires RO access to _system, unlike every
           // other admin action, which requires RW (see below).
           [&](p::AdminQueryCache const&) -> Result {
-            if (_requestedApiVersion == 0) {
+            if (_requestedApiVersion == ApiVersion::V0) {
               return check(p::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Read});
             } else {
@@ -633,7 +631,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
               // API version 0!
-              if (_requestedApiVersion == 0) {
+              if (_requestedApiVersion == ApiVersion::V0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -646,7 +644,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
               // `TRI_ERROR_FORBIDDEN` here for API compatibility for
               // the API Version 0!
-              if (_requestedApiVersion == 0) {
+              if (_requestedApiVersion == ApiVersion::V0) {
                 return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
               } else {
                 return r;
@@ -797,7 +795,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            if (_requestedApiVersion > 0) {
+            if (_requestedApiVersion > ApiVersion::V0) {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(graph, "Cannot write to database.")};
             } else {
@@ -853,7 +851,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              if (_requestedApiVersion == 0) {
+              if (_requestedApiVersion == ApiVersion::V0) {
                 return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
               }
               return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
@@ -922,7 +920,7 @@ Result AuthMode::Classic::isAdmin() const {
 
   auto message =
       std::format("Failed admin-permission check: {}", r.errorMessage());
-  if (_requestedApiVersion == 0) {
+  if (_requestedApiVersion == ApiVersion::V0) {
     return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
   }
   return Result{TRI_ERROR_FORBIDDEN, message};
@@ -1071,7 +1069,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                     checkOne(adminAction(admin), rbac::resources::NoResource{});
                 r.fail()) {
               // This is for backwards compatibility with the classic case
-              return _requestedApiVersion == 0
+              return _requestedApiVersion == ApiVersion::V0
                          ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
                          : r;
             }
@@ -1387,7 +1385,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             if (auto r = checkOne(rbac::Action::Read,
                                   rbac::resources::User{user.name});
                 r.fail()) {
-              return _requestedApiVersion == 0
+              return _requestedApiVersion == ApiVersion::V0
                          ? Result{TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()}
                          : r;
             }

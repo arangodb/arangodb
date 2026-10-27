@@ -166,7 +166,8 @@ TEST(RbacServiceImplCheckTest, translatesUserRead) {
 TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
-      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 1}}};
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version = arangodb::ApiVersion::V1}}};
   f.svc.check({testToken}, queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
@@ -176,11 +177,24 @@ TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
 TEST(RbacServiceImplCheckTest, translatesUseApiVersionZero) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
-      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 0}}};
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version = arangodb::ApiVersion::V0}}};
   f.svc.check({testToken}, queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v0");
+}
+
+TEST(RbacServiceImplCheckTest, translatesUseApiVersionExperimental) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version =
+                                      arangodb::ApiVersion::Experimental}}};
+  f.svc.check({testToken}, queries);
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:experimental");
 }
 
 TEST(RbacServiceImplCheckTest, adminActionHasNoResource) {

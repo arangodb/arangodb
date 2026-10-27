@@ -49,9 +49,10 @@
 //   * Classic asks the UserManager with `configured = true`, so the
 //     read-only-server downgrade never applies here.
 //
-// Unless stated otherwise, tests run with requestedApiVersion() == 0 (V0).
-// Several rules deliberately return a different error code under V0 than under
-// later versions -- both are asserted where that is the case.
+// Unless stated otherwise, tests run with requestedApiVersion() ==
+// ApiVersion::V0. Several rules deliberately return a different error code
+// under V0 than under later versions -- both are asserted where that is the
+// case.
 
 #include "ExecContextFactory.h"
 
@@ -61,7 +62,6 @@
 #include <array>
 #include <format>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -73,7 +73,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Mocks/Auth/UserManagerTester.h"
-#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 namespace p = arangodb::auth::perms;
@@ -146,7 +145,7 @@ struct ClassicAuthModeTest : ::testing::Test {
   // [[nodiscard]].
   Result check(auth::Permission perm) { return classic.check(std::move(perm)); }
 
-  void useApiVersion(uint32_t version) {
+  void useApiVersion(ApiVersion version) {
     classic.setRequestedApiVersion(version);
   }
 
@@ -198,7 +197,7 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV0) {
 TEST_F(ClassicAuthModeTest, UseDatabaseWithoutAccessIsForbiddenUnderV1) {
   // With a versioned API the database's existence must not be revealed.
   beUserWith(NONE);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
                                    .level = DatabaseAccessLevel::Read}),
               TRI_ERROR_FORBIDDEN);
@@ -208,7 +207,7 @@ TEST_F(ClassicAuthModeTest, UseDatabaseWriteWithReadOnlyAccessStaysForbidden) {
   // The "hide existence" branch only applies when there is no access at all;
   // insufficient access remains FORBIDDEN even under a versioned API.
   beUserWith(RO);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::UseDatabase{.name = std::string{kDb},
                                    .level = DatabaseAccessLevel::Write}),
               TRI_ERROR_FORBIDDEN);
@@ -358,7 +357,7 @@ TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsForbiddenUnderV0) {
 
 TEST_F(ClassicAuthModeTest, UseCollectionWithoutAccessIsnderV1) {
   beUserWith(NONE);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::UseCollection{.db = std::string{kDb},
                                      .name = "c",
                                      .level = CollectionAccessLevel::Read}),
@@ -369,7 +368,7 @@ TEST_F(ClassicAuthModeTest,
        UseCollectionWriteDataOnReadOnlyStaysReadOnlyUnderV1) {
   // Partial access is not hidden: the collection is known to exist.
   beUserWith(RO);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(
       check(p::UseCollection{.db = std::string{kDb},
                              .name = "c",
@@ -511,7 +510,7 @@ TEST_F(ClassicAuthModeTest,
 
 TEST_F(ClassicAuthModeTest, DropCollectionReadOnlyCollectionIsReadOnlyUnderV1) {
   beUserWith(RW, {{std::string{kDb}, "c", RO}});
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::DropCollection{.db = std::string{kDb}, .name = "c"}),
               TRI_ERROR_ARANGO_READ_ONLY);
 }
@@ -535,7 +534,7 @@ TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV0) {
 
 TEST_F(ClassicAuthModeTest, ReadViewWithoutAccessIsForbiddenUnderV1) {
   beUserWith(NONE);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::ReadView{.db = std::string{kDb}, .name = "v"}),
               TRI_ERROR_FORBIDDEN);
 }
@@ -593,7 +592,7 @@ TEST_F(ClassicAuthModeTest, CreateViewWrapsLinkFailuresAsForbiddenUnderV1) {
   // Unlike ModifyView below, CreateView normalises every linked-collection
   // failure to FORBIDDEN -- the underlying NOT_FOUND is not passed through.
   beUserWith(RW, {{std::string{kDb}, "secret", NONE}});
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::CreateView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"secret"}}),
@@ -629,7 +628,7 @@ TEST_F(ClassicAuthModeTest, ModifyViewPropagatesLinkFailuresUnverbatim) {
                                   .linkedCollections = {"secret"}}),
               TRI_ERROR_FORBIDDEN);
   // Under a versioned API the inner code reaches the caller unchanged.
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::ModifyView{.db = std::string{kDb},
                                   .name = "v",
                                   .linkedCollections = {"secret"}}),
@@ -825,7 +824,7 @@ TEST_F(ClassicAuthModeTest, CreateGraphWithoutDatabaseWriteIsReadOnlyUnderV0) {
 
 TEST_F(ClassicAuthModeTest, CreateGraphWithoutDatabaseWriteIsForbiddenUnderV1) {
   beUserWith(RO);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   std::vector<std::string> none;
   expectError(check(p::CreateGraph{.db = std::string{kDb},
                                    .name = "g",
@@ -881,7 +880,7 @@ TEST_F(ClassicAuthModeTest,
                                    .collectionNamesToCreate = none,
                                    .collectionNamesToRead = toRead}),
               TRI_ERROR_ARANGO_READ_ONLY);
-  useApiVersion(1);
+  useApiVersion(ApiVersion::V1);
   expectError(check(p::CreateGraph{.db = std::string{kDb},
                                    .name = "g",
                                    .collectionNamesToCreate = none,

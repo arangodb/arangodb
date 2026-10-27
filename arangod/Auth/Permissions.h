@@ -23,13 +23,12 @@
 #pragma once
 
 #include "Basics/Meta/TypeList.h"
+#include "Basics/ApiVersion.h"
 
-#include <cstdint>
 #include <iosfwd>
 #include <span>
 #include <string>
 #include <string_view>
-#include <variant>
 #include <vector>
 
 namespace arangodb {
@@ -361,7 +360,7 @@ struct GrantUserPermissions {
 
 // Grant permission to a specific api version
 struct UseApiVersion {
-  uint32_t version;
+  ApiVersion version;
 };
 
 namespace detail {

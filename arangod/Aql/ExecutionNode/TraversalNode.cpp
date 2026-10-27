@@ -1480,6 +1480,31 @@ void TraversalNode::getPostFilterVariables(
   }
 }
 
+bool TraversalNode::forEachVertexAndEdgeCondition(
+    std::function<bool(AstNode const*)> const& callback) const {
+  for (auto const& it : _globalEdgeConditions) {
+    if (!callback(it)) {
+      return false;
+    }
+  }
+  for (auto const& it : _globalVertexConditions) {
+    if (!callback(it)) {
+      return false;
+    }
+  }
+  for (auto const& [depth, builder] : _edgeConditions) {
+    if (!callback(builder->condition())) {
+      return false;
+    }
+  }
+  for (auto const& [depth, condition] : _vertexConditions) {
+    if (!callback(condition)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool TraversalNode::isPathOutVariableUsedLater() const {
   return _pathOutVariable != nullptr &&
          (options()->producePathsVertices() || options()->producePathsEdges() ||

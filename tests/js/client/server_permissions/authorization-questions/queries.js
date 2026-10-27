@@ -71,7 +71,7 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 const baseQuestions = [
-  'UseApiVersion version=0',
+  'UseApiVersion version=v0',
   `UseDatabase name=${DB} level=read`
 ];
 const monitorQuestions = baseQuestions.concat(['AdminMonitorAqlQueries']);
