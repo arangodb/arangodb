@@ -30,7 +30,9 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
 
@@ -54,30 +56,40 @@ TraversalNode* firstTraversal(ExecutionPlan const& plan) {
   return ExecutionNode::castTo<TraversalNode*>(nodes.front());
 }
 
-EnumerateCollectionNode* firstEnumerateCollection(ExecutionPlan const& plan) {
+std::vector<EnumerateCollectionNode*> enumerateCollections(
+    ExecutionPlan const& plan) {
   arangodb::containers::SmallVector<ExecutionNode*, 8> nodes;
   plan.findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
-  if (nodes.empty()) {
-    return nullptr;
+  std::vector<EnumerateCollectionNode*> enumerates;
+  enumerates.reserve(nodes.size());
+  for (ExecutionNode* node : nodes) {
+    enumerates.push_back(ExecutionNode::castTo<EnumerateCollectionNode*>(node));
   }
-  return ExecutionNode::castTo<EnumerateCollectionNode*>(nodes.front());
+  return enumerates;
 }
 
-bool projectionsContainPath(Projections const& projections,
-                            std::vector<std::string_view> const& path) {
-  for (size_t i = 0; i < projections.size(); ++i) {
-    auto const& projected = projections[i].path.get();
-    if (projected.size() != path.size()) {
-      continue;
-    }
-    bool match = true;
-    for (size_t j = 0; j < path.size(); ++j) {
-      if (projected[j] != path[j]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) {
+// Attributes reduce-extraction-to-projection would keep for this scan.
+// findProjections walks every later use of the enumerate output, which is the
+// same input that rule uses before it sets storage projections.
+struct InferredProjections {
+  bool safe{false};
+  arangodb::containers::FlatHashSet<AttributeNamePath> attributes;
+};
+
+InferredProjections inferProjections(EnumerateCollectionNode* node) {
+  InferredProjections inferred;
+  inferred.safe = utils::findProjections(
+      node, node->outVariable(), /*expectedAttribute*/ "",
+      /*excludeStartNodeFilterCondition*/ false, inferred.attributes);
+  return inferred;
+}
+
+bool containsAttribute(
+    arangodb::containers::FlatHashSet<AttributeNamePath> const& attributes,
+    std::string_view name) {
+  for (auto const& attribute : attributes) {
+    auto const& path = attribute.get();
+    if (path.size() == 1 && path[0] == name) {
       return true;
     }
   }
@@ -200,36 +212,90 @@ TEST_F(BuilderTest, inPatternProjectionAddsCalculation) {
   EXPECT_GE(countNodesOfType(*plan, ExecutionNode::CALCULATION), 1U);
 }
 
-TEST_F(BuilderTest, projectionSetsEnumerateProjections) {
+// The projection calculation already exposes _id and _key as
+// attribute accesses, so the optimizer infers them without a build time push.
+TEST_F(BuilderTest, optimizerInfersInlineProjectionAttributes) {
   auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
-  auto* enumNode = firstEnumerateCollection(*plan);
-  ASSERT_NE(nullptr, enumNode);
-  auto const& projections = enumNode->projections();
-  ASSERT_FALSE(projections.empty());
-  EXPECT_TRUE(projectionsContainPath(projections, {"_id"}));
-  EXPECT_TRUE(projectionsContainPath(projections, {"_key"}));
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+  EXPECT_EQ(2U, inferred.attributes.size());
 }
 
-TEST_F(BuilderTest, projectionWithWhereIncludesFilterAttribute) {
+// WHERE is a calculation on the same enumerate output, so its attribute is
+// included together with the projection attributes.
+TEST_F(BuilderTest, optimizerInfersWhereAttribute) {
   auto parsed = parseMatch("MATCH (v :vc WHERE v.j == 0 RETURN _key) RETURN v");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
-  auto* enumNode = firstEnumerateCollection(*plan);
-  ASSERT_NE(nullptr, enumNode);
-  auto const& projections = enumNode->projections();
-  ASSERT_FALSE(projections.empty());
-  EXPECT_TRUE(projectionsContainPath(projections, {"_id"}));
-  EXPECT_TRUE(projectionsContainPath(projections, {"_key"}));
-  EXPECT_TRUE(projectionsContainPath(projections, {"j"}));
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "j"));
+  EXPECT_EQ(3U, inferred.attributes.size());
 }
 
-TEST_F(BuilderTest, noProjectionLeavesEnumerateWithoutMatchProjections) {
+// No inline projection. RETURN v.name is an ordinary attribute access, which
+// reduce-extraction-to-projection already rewrites.
+TEST_F(BuilderTest, optimizerInfersReturnedAttributeWithoutInlineProjection) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v.name");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "name"));
+  EXPECT_EQ(1U, inferred.attributes.size());
+}
+
+// Returning the whole document is not safe.
+TEST_F(BuilderTest, optimizerKeepsFullDocumentWhenVariableIsReturned) {
   auto parsed = parseMatch("MATCH (v :vc) RETURN v");
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
-  auto* enumNode = firstEnumerateCollection(*plan);
-  ASSERT_NE(nullptr, enumNode);
-  EXPECT_TRUE(enumNode->projections().empty());
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  EXPECT_FALSE(inferred.safe);
+}
+
+// A later pattern reads u.age from the full document, not from u's projection.
+// A scan of only u's RETURN list would miss age, findProjections does not.
+TEST_F(BuilderTest, optimizerInfersAttributeUsedByLaterPattern) {
+  auto parsed = parseMatch(
+      "MATCH (u :vc {_key: 'u1'} RETURN name), "
+      "(w :vc WHERE w.age == u.age) RETURN w");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  bool sawAgeOnProjectedDocument = false;
+  for (EnumerateCollectionNode* node : enumerateCollections(*plan)) {
+    EXPECT_TRUE(node->projections().empty());
+    auto inferred = inferProjections(node);
+    if (!inferred.safe || !containsAttribute(inferred.attributes, "age")) {
+      continue;
+    }
+    sawAgeOnProjectedDocument = true;
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "name"));
+  }
+  EXPECT_TRUE(sawAgeOnProjectedDocument);
 }
