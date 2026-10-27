@@ -38,6 +38,7 @@ enum class Action {
   WriteMeta,
   WriteData,
   UseApiVersion,
+  UpdateQueryProperties,
 
   /* Admin Actions */
   AdminMoveShards = 100,

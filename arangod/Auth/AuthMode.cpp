@@ -159,6 +159,10 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
 auto describe(auth::perms::SeeDatabase const& perm) -> std::string {
   return std::format("see database '{}'", perm.name);
 }
+auto describe(auth::perms::UpdateQueryProperties const& perm) -> std::string {
+  return std::format("update the AQL query properties of database '{}'",
+                     perm.db);
+}
 auto describe(auth::perms::CreateDatabase const& perm) -> std::string {
   return std::format("create database '{}'", perm.name);
 }
@@ -583,6 +587,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::SeeDatabase const& database) -> Result {
             return check(
                 p::UseDatabase{database.name, DatabaseAccessLevel::Read});
+          },
+          [&](p::UpdateQueryProperties const& properties) -> Result {
+            return check(
+                p::UseDatabase{properties.db, DatabaseAccessLevel::Write});
           },
           [&](p::CreateDatabase const& /*database*/) -> Result {
             // Creating a database requires RW access to the _system database.
@@ -1081,6 +1089,13 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             }
             return checkOne(rbac::Action::Read,
                             rbac::resources::Database{database.name});
+          },
+          [&](p::UpdateQueryProperties const& properties) -> Result {
+            if (auto r = auth::isNameAndNoId(properties.db); r.fail()) {
+              return r;
+            }
+            return checkOne(rbac::Action::UpdateQueryProperties,
+                            rbac::resources::Database{properties.db});
           },
           [&](p::CreateDatabase const& database) -> Result {
             return checkOne(rbac::Action::Create,

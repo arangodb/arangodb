@@ -1,6 +1,12 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* COR-1031: Adapt permissions for `PUT /_api/query/properties`: the endpoint now
+  asks the new permission `UpdateQueryProperties`, which is scoped to the database
+  of the request, instead of the admin permission `AdminAqlQueries`. With classic
+  authentication it requires read-write access to that database and not read-write
+  access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 

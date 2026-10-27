@@ -52,6 +52,8 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:WriteData";
     case Action::UseApiVersion:
       return "db:UseApiVersion";
+    case Action::UpdateQueryProperties:
+      return "db:UpdateQueryProperties";
     case Action::AdminMoveShards:
       return "db:AdminMoveShards";
     case Action::AdminMonitoring:
@@ -173,6 +175,8 @@ auto describe(Action action) -> std::string_view {
       return "write data to";
     case Action::UseApiVersion:
       return "use";
+    case Action::UpdateQueryProperties:
+      return "update the AQL query properties of";
     case Action::AdminMoveShards:
       return "move shards (as admin)";
     case Action::AdminMonitoring:
