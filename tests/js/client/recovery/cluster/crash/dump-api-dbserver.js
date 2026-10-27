@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup, assertEqual, assertTrue, assertNotEqual, arango */
+/* global runSetup, getOptions, assertEqual, assertTrue, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,6 +31,11 @@ const request = require('@arangodb/request');
 const IM = global.instanceManager;
 const crashesEndpoint = '/_admin/crashes';
 
+if (getOptions === true) {
+  return {
+    "server.authentication": false,
+  };
+}
 if (runSetup === true) {
   'use strict';
   

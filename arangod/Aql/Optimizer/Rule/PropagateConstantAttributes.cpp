@@ -30,7 +30,7 @@
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetCollection.h"
 #include "Cluster/ServerState.h"
 #include "Containers/ImmutableMap.h"
 #include "Logger/LogMacros.h"
@@ -51,7 +51,7 @@ struct Replacement {
 };
 
 struct VarAttributeAccess {
-  Variable const* var;
+  Variable const* var = nullptr;
   containers::SmallVector<std::string_view, 8> path;
 
   friend bool operator==(VarAttributeAccess const&,
@@ -91,7 +91,9 @@ bool getAttribute(AstNode const* attribute,
     return true;
   } else if (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     ast::AttributeAccessNode attrAccess(attribute);
-    getAttribute(attrAccess.getObject(), attributeAccess);
+    if (!getAttribute(attrAccess.getObject(), attributeAccess)) {
+      return false;
+    }
     attributeAccess.path.emplace_back(attrAccess.getAttributeName());
     return true;
   }
@@ -206,7 +208,7 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
           if (setter != nullptr &&
               (setter->getType() == EN::ENUMERATE_COLLECTION ||
                setter->getType() == EN::INDEX)) {
-            auto collection = utils::getCollection(setter);
+            auto collection = optimizer::getCollection(setter);
             if (collection != nullptr) {
               auto logical = collection->getCollection();
               if (logical->hasSmartJoinAttribute() &&

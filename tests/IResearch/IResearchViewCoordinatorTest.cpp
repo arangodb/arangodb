@@ -193,14 +193,17 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   std::shared_ptr<arangodb::Index> link;
-  auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
-                      .factory<arangodb::ClusterEngine>();
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection0, linkJson->slice(),
-                                         arangodb::IndexId{1}, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection1, linkJson->slice(),
-                                         arangodb::IndexId{2}, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection2, linkJson->slice(),
-                                         arangodb::IndexId{3}, false));
+  auto factory = arangodb::iresearch::IResearchLinkCoordinator::createFactory(
+      server.server());
+  EXPECT_NE(nullptr,
+            factory->instantiate(*logicalCollection0, linkJson->slice(),
+                                 arangodb::IndexId{1}, false));
+  EXPECT_NE(nullptr,
+            factory->instantiate(*logicalCollection1, linkJson->slice(),
+                                 arangodb::IndexId{2}, false));
+  EXPECT_NE(nullptr,
+            factory->instantiate(*logicalCollection2, linkJson->slice(),
+                                 arangodb::IndexId{3}, false));
 
   // visit view
   arangodb::DataSourceId expectedCollections[] = {arangodb::DataSourceId{1},

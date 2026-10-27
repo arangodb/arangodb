@@ -48,6 +48,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/RequestStatisticsMetrics.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -515,6 +516,10 @@ uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
   return _options.compressResponseThreshold;
 }
 
+uint64_t GeneralServerFeature::maxDecompressedRequestBodySize() const noexcept {
+  return _options.maxDecompressedRequestBodySize;
+}
+
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
     const {
   return std::atomic_load_explicit(&_handlerFactory, std::memory_order_relaxed);
@@ -661,18 +666,20 @@ void GeneralServerFeature::defineRemainingHandlers(
     rest::RestHandlerFactory& f) {
   TRI_ASSERT(_jobManager != nullptr);
 
-  AgencyFeature& agency = server().getFeature<AgencyFeature>();
+  AgencyFeature* agency = server().hasFeature<AgencyFeature>()
+                              ? &server().getFeature<AgencyFeature>()
+                              : nullptr;
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
 
   // ...........................................................................
   // /_api
   // ...........................................................................
 
-  f.addPrefixHandler(                         // add handler
-      RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
-      RestHandlerCreator<
-          iresearch::RestAnalyzerHandler>::createNoData,  // handler
-      {1});
+  if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    f.addPrefixHandler(
+        RestVocbaseBaseHandler::ANALYZER_PATH,
+        RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData, {1});
+  }
 
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
@@ -762,16 +769,16 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData, {1});
 
-  if (agency.isEnabled()) {
+  if (agency != nullptr && agency->isEnabled()) {
     f.addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PATH,
         RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-        {1}, agency.agent());
+        {1}, agency->agent());
 
     f.addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
                        RestHandlerCreator<RestAgencyPrivHandler>::createData<
                            consensus::Agent*>,
-                       {1}, agency.agent());
+                       {1}, agency->agent());
   }
 
   if (cluster.isEnabled()) {
@@ -925,7 +932,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   // engine specific handlers
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = server().getFeature<StorageEngine>();
   if (ServerState::instance()->isCoordinator()) {
     ClusterRestHandlers::registerResources(&f);
   } else {

@@ -170,6 +170,8 @@ class Promise {
       if (!_retrieved) {
         _state->detachFuture();
       }
+      // False positive.
+      // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
       if (!_state->hasResult()) {
         auto ptr =
             std::make_exception_ptr(FutureException(ErrorCode::BrokenPromise));

@@ -78,6 +78,8 @@ function switchBinarySet(which) {
   currentBinarySet = which;
 }
 
+const CWD = fs.makeAbsolute(".");
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
@@ -216,80 +218,7 @@ function killRemainingProcesses(results) {
 // //////////////////////////////////////////////////////////////////////////////
 
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief loads the JWT secret from the various ways possible
-// //////////////////////////////////////////////////////////////////////////////
 
-function getJwtSecret(args) {
-  let jwtSecret;
-  if (args.hasOwnProperty('server.jwt-secret-folder')) {
-    let files = fs.list(args['server.jwt-secret-folder']);
-    files.sort();
-    if (files.length > 0) {
-      jwtSecret = fs.read(fs.join(args['server.jwt-secret-folder'], files[0]));
-    }
-  } else {
-    jwtSecret = args['server.jwt-secret'];
-  }
-  return jwtSecret;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief adds authorization headers
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeAuthorizationHeaders (options, args, JWT) {
-  let jwtSecret = getJwtSecret(args);
-  if (JWT) {
-    jwtSecret = JWT;
-  }
-
-  if (jwtSecret) {
-    let jwt;
-    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
-      jwt = crypto.jwtEncode(jwtSecret,
-                             {'server_id': 'none',
-                              'iss': 'arangodb'}, 'ES256');
-    } else {
-      jwt = crypto.jwtEncode(jwtSecret,
-                             {'server_id': 'none',
-                              'iss': 'arangodb'}, 'HS256');
-    }
-    if (options.extremeVerbosity) {
-      print(Date() + ' Using jw token:     ' + jwt);
-    }
-    return {
-      'headers': {
-        'Authorization': 'bearer ' + jwt
-      }
-    };
-  } else {
-    return {
-      'headers': {
-        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
-            options.password)
-      }
-    };
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief converts endpoints to URL
-// //////////////////////////////////////////////////////////////////////////////
-
-function endpointToURL (endpoint) {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-
-  const pos = endpoint.indexOf('://');
-
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-
-  return 'http' + endpoint.substr(pos);
-}
 
 
 
@@ -297,7 +226,10 @@ function endpointToURL (endpoint) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}, cwd=undefined) {
+  if (cwd === undefined) {
+    cwd = CWD;
+  }
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -350,8 +282,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
-
+  let childEnv = sh.getSanOptions();
+  // make the tool use the ICU data of the build it comes from
+  childEnv.push(`ICU_DATA=${binaries[currentBinarySet].BIN_DIR}`);
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, childEnv, cwd);
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
   const deltaTime = (time() - startTime) * 1000;
@@ -391,7 +325,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         timeout: false,
         status: true,
         message: '',
-        duration: deltaTime
+        duration: deltaTime,
+        exit: 0
       };
     } else {
       return {
@@ -400,6 +335,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
+        exit: instanceInfo.exitStatus.exit,
       };
     }
   } else if (instanceInfo.exitStatus.status === 'ABORTED') {
@@ -412,6 +348,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
@@ -435,6 +372,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: true,
       status: false,
       message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
@@ -451,6 +389,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      exit: instanceInfo.exitStatus.exit,
       timeout: false,
       status: false,
       message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
@@ -461,7 +400,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 }
 
 exports.setupBinaries = setupBinaries;
-exports.endpointToURL = endpointToURL;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
@@ -469,7 +407,6 @@ exports.killRemainingProcesses = killRemainingProcesses;
 exports.executableExt = executableExt;
 
 exports.switchBinarySet = switchBinarySet;
-exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 Object.defineProperty(exports, 'JS_DIR', {get: () => binaries[currentBinarySet].JS_DIR});
 Object.defineProperty(exports, 'JS_ENTERPRISE_DIR', {get: () => binaries[currentBinarySet].JS_ENTERPRISE_DIR});
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => binaries[currentBinarySet].ARANGOBACKUP_BIN});
@@ -487,6 +424,7 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => binaries[currentBina
 Object.defineProperty(exports, 'BIN_DIR', {get: () => binaries[currentBinarySet].BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => binaries[currentBinarySet].CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => binaries[currentBinarySet].CONFIG_RELATIVE_DIR});
+Object.defineProperty(exports, 'currentBinarySet', {get: () => currentBinarySet});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {

@@ -30,8 +30,10 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
+#include "Aql/QueryWarnings.h"
 #include "Aql/TypedAstNodes.h"
+#include "Basics/voc-errors.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
@@ -78,7 +80,7 @@ struct InferredProjections {
 
 InferredProjections inferProjections(EnumerateCollectionNode* node) {
   InferredProjections inferred;
-  inferred.safe = utils::findProjections(
+  inferred.safe = optimizer::findProjections(
       node, node->outVariable(), /*expectedAttribute*/ "",
       /*excludeStartNodeFilterCondition*/ false, inferred.attributes);
   return inferred;
@@ -298,4 +300,114 @@ TEST_F(BuilderTest, optimizerInfersAttributeUsedByLaterPattern) {
     EXPECT_TRUE(containsAttribute(inferred.attributes, "name"));
   }
   EXPECT_TRUE(sawAgeOnProjectedDocument);
+}
+
+TEST_F(BuilderTest, excludedProjectionAttributeAccessWarns) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v.age");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  auto warnings = parsed.queryContext->warnings().all();
+  ASSERT_EQ(1U, warnings.size());
+  EXPECT_EQ(TRI_ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE, warnings.front().first);
+  EXPECT_NE(std::string::npos, warnings.front().second.find("age"));
+  EXPECT_NE(std::string::npos, warnings.front().second.find("v"));
+}
+
+TEST_F(BuilderTest, keptProjectionAttributeAccessDoesNotWarn) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN i) RETURN v.i");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, excludedNestedProjectionAttributeAccessWarns) {
+  // Deep excluded access warns on the shortest excluded prefix ("profile").
+  auto parsed = parseMatch("MATCH (v :vc RETURN i) RETURN v.profile.a.b.c");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  auto warnings = parsed.queryContext->warnings().all();
+  ASSERT_EQ(1U, warnings.size());
+  EXPECT_EQ(TRI_ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE, warnings.front().first);
+  EXPECT_NE(std::string::npos, warnings.front().second.find("profile"));
+  EXPECT_EQ(std::string::npos, warnings.front().second.find("profile.a"));
+  EXPECT_NE(std::string::npos, warnings.front().second.find("v"));
+}
+
+TEST_F(BuilderTest, keptNestedProjectionAttributeAccessDoesNotWarn) {
+  // Keeping the parent object covers nested reads such as v.profile.a.b.c.
+  auto parsed =
+      parseMatch("MATCH (v :vc RETURN profile) RETURN v.profile.a.b.c");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, keptNestedPathPrefixAccessDoesNotWarn) {
+  // Keeping profile.a.b.c also allows reading parent prefixes (v.profile).
+  auto parsed =
+      parseMatch("MATCH (v :vc RETURN profile.a.b.c) RETURN v.profile");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, mandatoryProjectionAttributeAccessDoesNotWarn) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v._id");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, excludedEdgeProjectionAttributeAccessWarns) {
+  auto parsed =
+      parseMatch("MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.j");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  auto warnings = parsed.queryContext->warnings().all();
+  ASSERT_EQ(1U, warnings.size());
+  EXPECT_EQ(TRI_ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE, warnings.front().first);
+  EXPECT_NE(std::string::npos, warnings.front().second.find("j"));
+  EXPECT_NE(std::string::npos, warnings.front().second.find("e"));
+}
+
+TEST_F(BuilderTest, keptEdgeProjectionAttributeAccessDoesNotWarn) {
+  auto parsed =
+      parseMatch("MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.i");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, mandatoryEdgeProjectionAttributeAccessDoesNotWarn) {
+  // Edge projections always keep _id/_from/_to.
+  auto parsed =
+      parseMatch("MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e._from");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
+}
+
+TEST_F(BuilderTest, excludedNestedEdgeProjectionAttributeAccessWarns) {
+  auto parsed =
+      parseMatch("MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.meta.a.b.c");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  auto warnings = parsed.queryContext->warnings().all();
+  ASSERT_EQ(1U, warnings.size());
+  EXPECT_EQ(TRI_ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE, warnings.front().first);
+  EXPECT_NE(std::string::npos, warnings.front().second.find("meta"));
+  EXPECT_EQ(std::string::npos, warnings.front().second.find("meta.a"));
+  EXPECT_NE(std::string::npos, warnings.front().second.find("e"));
+}
+
+TEST_F(BuilderTest, keptNestedEdgeProjectionAttributeAccessDoesNotWarn) {
+  auto parsed = parseMatch(
+      "MATCH (u :vc)-[e :ec RETURN meta]->(v :vc) RETURN e.meta.a.b.c");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_TRUE(parsed.queryContext->warnings().empty());
 }

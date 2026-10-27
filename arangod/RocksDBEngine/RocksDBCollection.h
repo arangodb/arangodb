@@ -23,6 +23,7 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 
@@ -50,7 +51,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(
-      LogicalCollection& collection, velocypack::Slice info,
+      LogicalCollection& collection, LocalStorageProperties const& storage,
       cache::Manager* cacheManager,
       std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();
@@ -58,7 +59,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& cb) override final;
 
-  Result updateProperties(velocypack::Slice slice) override;
+  Result setCacheEnabled(bool cacheEnabled) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -155,12 +156,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 OperationOptions const& options) override;
 
   bool cacheEnabled() const noexcept override;
-
-  // Whether this collection stores time-travel history
-  // Immutable, set at creation.
-  bool timeTravelEnabled() const noexcept override {
-    return _timeTravelEnabled;
-  }
 
   ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
       std::string_view key) const override;
@@ -272,8 +267,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   std::optional<RocksDBReadWriteMetrics>& _readWriteMetrics;
 
   std::atomic_bool _cacheEnabled;
-
-  bool const _timeTravelEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

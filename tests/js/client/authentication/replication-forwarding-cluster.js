@@ -180,13 +180,9 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.POST(`/_api/replication/holdReadLockCollection${q}`, {}));
     },
 
-    // The following is explicitly not here for the following reason: For the `restore-collection`
-    // case we already fail at the `testPermissions` stage, so we do not fail with FORBIDDEN,
-    // but with another message. The check that we only forward a few select routes
-    // is done later, so we cannot test this here:
-    //testRestoreCollectionForwardIsForbidden: function () {
-    //  checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-collection${q}`, {}));
-    //},
+    testRestoreCollectionForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-collection${q}`, {}));
+    },
 
     // batch supports the DBserver forward: an authorized user can create a
     // replication batch on the hosting DBServer via ?DBserver= (this is what

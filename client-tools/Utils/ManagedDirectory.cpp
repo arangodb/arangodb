@@ -187,8 +187,10 @@ inline void rawWrite(int fd, char const* data, size_t length,
 inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length,
                                  arangodb::Result& status,
                                  std::string const& path, int flags) {
-  TRI_read_return_t bytesRead =
+  // NOLINTBEGIN(clang-analyzer-unix.BlockInCriticalSection)
+  TRI_read_return_t const bytesRead =
       TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
+  // NOLINTEND(clang-analyzer-unix.BlockInCriticalSection)
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }

@@ -24,11 +24,15 @@
 
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
+#include "Auth/Rbac/Service.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
 
 #include <memory>
+#include <span>
 #include <string>
+#include <string_view>
+#include <vector>
 
 using namespace arangodb;
 using namespace arangodb::tests::mocks;
@@ -267,6 +271,178 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
   }
 
   EXPECT_EQ(ExecContext::currentAsShared(), original);
+}
+
+// --- owner-scoped checks: canMonitorQuery, canKillQuery,
+// canMonitorTransaction, canKillTransaction ---
+
+/**
+ * RBAC service that records the actions it is asked about and answers with a
+ * programmable result
+ */
+struct RecordingRbacService final : rbac::Service {
+  std::vector<rbac::Action> actions;
+  Result answer{};
+
+  auto check(rbac::JwtToken const& /*token*/,
+             std::span<rbac::ActionResource const> queries) -> Result override {
+    for (auto const& query : queries) {
+      actions.push_back(query.action);
+    }
+    return answer;
+  }
+};
+
+/**
+ * An ExecContext check that always allows the caller's own resource and asks
+ * one admin permission for anybody else's, together with the RBAC action that
+ * permission maps to
+ */
+struct OwnerScopedCheck {
+  std::string_view name;
+  Result (ExecContext::*check)(std::string_view owner) const;
+  rbac::Action action;
+};
+
+class OwnerScopedCheckTest : public ::testing::TestWithParam<OwnerScopedCheck> {
+ protected:
+  auto check(ExecContext const& ctx, std::string_view owner) const -> Result {
+    return (ctx.*GetParam().check)(owner);
+  }
+};
+
+TEST_P(OwnerScopedCheckTest, own_resource_is_allowed) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
+
+  EXPECT_TRUE(check(*cec.execContext, "alice").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, foreign_resource_requires_admin) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RO);
+
+  EXPECT_EQ(check(*cec.execContext, "bob").errorNumber(), TRI_ERROR_FORBIDDEN);
+}
+
+TEST_P(OwnerScopedCheckTest, system_read_only_is_not_admin) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::RO, auth::Level::RO);
+
+  EXPECT_FALSE(check(*cec.execContext, "bob").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, admin_may_access_foreign_resource) {
+  // classic admin = read-write access to the _system database
+  auto const cec =
+      makeClassicExecContext("root", "db", auth::Level::RW, auth::Level::RO);
+
+  EXPECT_TRUE(check(*cec.execContext, "bob").ok());
+  // resources without a user (internal ones)
+  EXPECT_TRUE(check(*cec.execContext, "").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, superuser_may_access_any_resource) {
+  auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
+                                           false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(check(*ctx, "bob").ok());
+  EXPECT_TRUE(check(*ctx, "").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, disabled_auth_may_access_any_resource) {
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Disabled{"dummy"}}, false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(check(*ctx, "bob").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, unauthenticated_is_denied_even_for_own_name) {
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
+
+  EXPECT_FALSE(check(*ctx, "dummy").ok());
+}
+
+TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
+  RecordingRbacService service;
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(check(*ctx, "alice").ok());
+  EXPECT_TRUE(service.actions.empty());
+}
+
+TEST_P(OwnerScopedCheckTest, rbac_asks_the_admin_action_for_foreign_resource) {
+  RecordingRbacService service;
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(check(*ctx, "bob").ok());
+  EXPECT_EQ(service.actions, std::vector<rbac::Action>{GetParam().action});
+}
+
+TEST_P(OwnerScopedCheckTest, rbac_denial_is_forwarded) {
+  RecordingRbacService service;
+  service.answer = {TRI_ERROR_FORBIDDEN, "denied by test service"};
+  auto const ctx = createSharedExecContext(
+      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_FALSE(check(*ctx, "bob").ok());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ExecContextTest, OwnerScopedCheckTest,
+    ::testing::Values(
+        OwnerScopedCheck{"canMonitorQuery", &ExecContext::canMonitorQuery,
+                         rbac::Action::AdminMonitorAqlQueries},
+        OwnerScopedCheck{"canKillQuery", &ExecContext::canKillQuery,
+                         rbac::Action::AdminKillAqlQueries},
+        OwnerScopedCheck{"canMonitorTransaction",
+                         &ExecContext::canMonitorTransaction,
+                         rbac::Action::AdminMonitorTransactions},
+        OwnerScopedCheck{"canKillTransaction", &ExecContext::canKillTransaction,
+                         rbac::Action::AdminKillTransactions}),
+    [](::testing::TestParamInfo<OwnerScopedCheck> const& info) {
+      return std::string{info.param.name};
+    });
+
+// --- canChangeQueryProperties ---
+
+TEST(ExecContextTest,
+     canChangeQueryProperties_database_write_access_is_not_enough) {
+  auto const cec =
+      makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
+
+  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+            TRI_ERROR_FORBIDDEN);
+}
+
+TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
+  auto const cec =
+      makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
+
+  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+            TRI_ERROR_FORBIDDEN);
+}
+
+TEST(ExecContextTest,
+     canChangeQueryProperties_admin_may_without_database_write_access) {
+  // classic admin = read-write access to the _system database
+  auto const cec =
+      makeClassicExecContext("carol", "db", auth::Level::RW, auth::Level::RO);
+
+  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+}
+
+TEST(ExecContextTest, canChangeQueryProperties_superuser_may) {
+  auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
+                                           false, VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canChangeQueryProperties("db").ok());
 }
 
 }  // namespace arangodb::tests

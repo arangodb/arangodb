@@ -27,17 +27,13 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -55,11 +51,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 
-  if (!_options.activated) {
-    disable();
-    return;
-  }
-
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
 
@@ -75,12 +66,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
     auto ss = ServerState::instance();
     ss->findHost(fallback);
   }
-
-  // turn off the following features, as they are not needed in an agency:
-  // - ArangoSearch: not needed by agency
-  // - IResearchAnalyzer: analyzers are not needed by agency
-  server.disableFeatures<iresearch::IResearchFeature,
-                         iresearch::IResearchAnalyzerFeature>();
 }
 
 AgencyFeature::~AgencyFeature() = default;
@@ -101,9 +86,10 @@ void AgencyFeature::prepare() {
   if (_options.agencyMyAddress.empty()) {
     std::string port = "8529";
 
-    HttpEndpointProvider& endpointFeature =
-        server().getFeature<HttpEndpointProvider>();
-    auto endpoints = endpointFeature.httpEndpoints();
+    std::vector<std::string> endpoints;
+    if (server().hasFeature<HttpEndpointProvider>()) {
+      endpoints = server().getFeature<HttpEndpointProvider>().httpEndpoints();
+    }
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();

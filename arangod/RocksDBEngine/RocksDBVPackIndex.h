@@ -64,7 +64,7 @@ enum class RocksDBVPackIndexSearchValueFormat : uint8_t {
 };
 
 class RocksDBVPackIndex : public RocksDBIndex {
-  template<bool unique, bool reverse, bool mustCheckBounds>
+  template<bool unique, bool reverse>
   friend class RocksDBVPackIndexIterator;
   friend class RocksDBVPackIndexInIterator;
 

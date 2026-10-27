@@ -832,6 +832,11 @@ bool Index::canUseConditionPart(
     aql::AstNode const* op, aql::Variable const* reference,
     containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
+  if (!access->isDeterministic() || !other->isDeterministic()) {
+    // we can only use deterministic values in index lookups; we should not look
+    // up index for non-deterministic values such as RAND()
+    return false;
+  }
   if (_sparse) {
     if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;

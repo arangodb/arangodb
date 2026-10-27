@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,49 +23,28 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "StorageEngine/StorageEngine.h"
-
-#include <rocksdb/types.h>
 
 #include <atomic>
-
-namespace rocksdb {
-
-class TransactionDB;
-}  // namespace rocksdb
+#include <rocksdb/types.h>
 
 namespace arangodb {
 
 class RocksDBEngine;
 struct IDatabaseProvider;
-struct IRecoveryCallback;
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final {
  public:
-  static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
-
-  explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server,
-      IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
-
-  void start() override;
+  RocksDBRecoveryManager(RocksDBEngine& engine,
+                         std::atomic<rocksdb::SequenceNumber>& recoveryTick);
 
   void runRecovery();
-
-  RecoveryState recoveryState() const noexcept;
-
-  // current recovery sequence number
-  rocksdb::SequenceNumber recoverySequenceNumber() const noexcept;
 
  private:
   Result parseRocksWAL();
 
-  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
-  std::atomic<RecoveryState> _recoveryState;
+  RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
-  IRecoveryCallback& _recoveryCallback;
-  RocksDBEngine* _engine = nullptr;
+  std::atomic<rocksdb::SequenceNumber>& _recoveryTick;
 };
 
 }  // namespace arangodb

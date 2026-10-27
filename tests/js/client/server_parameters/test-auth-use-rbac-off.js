@@ -26,6 +26,7 @@
 if (getOptions === true) {
   return {
     "server.external-rbac-service": "",
+    "server.authentication": false,
   };
 }
 

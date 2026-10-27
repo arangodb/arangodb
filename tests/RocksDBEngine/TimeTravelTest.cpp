@@ -91,17 +91,29 @@ TEST_F(TimeTravelStorageEngineDataTest, TimeTravelFlagPersistsInProperties) {
   auto collection =
       makeCollection(*database, "ttCollection", /*timeTravel*/ true);
 
-  EXPECT_TRUE(
-      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
+  EXPECT_TRUE(collection->timeTravelEnabled());
+  EXPECT_TRUE(collection->properties().constant.enableTimeTravel);
 
-  VPackBuilder builder;
-  builder.openObject();
-  collection->getPhysical()->getPropertiesVPack(builder);
-  builder.close();
-
+  auto builder = collection->toVelocyPackIgnore(
+      {}, LogicalDataSource::Serialization::Persistence);
   auto slice = builder.slice().get(StaticStrings::EnableTimeTravel);
-  ASSERT_TRUE(slice.isBool());
+  ASSERT_TRUE(slice.isBool()) << builder.slice().toJson();
   EXPECT_TRUE(slice.getBool());
+}
+
+// The flag is internal for now, so only the persisted marker carries it.
+TEST_F(TimeTravelStorageEngineDataTest, TimeTravelFlagIsNotReportedToUsers) {
+  auto database = makeDatabase("testDatabase", 42);
+  auto collection =
+      makeCollection(*database, "ttCollection", /*timeTravel*/ true);
+
+  using Serialization = LogicalDataSource::Serialization;
+  for (auto context : {Serialization::List, Serialization::Properties,
+                       Serialization::Inventory}) {
+    auto builder = collection->toVelocyPackIgnore({}, context);
+    EXPECT_TRUE(builder.slice().get(StaticStrings::EnableTimeTravel).isNone())
+        << builder.slice().toJson();
+  }
 }
 
 TEST_F(TimeTravelStorageEngineDataTest, RegularCollectionReportsFlagFalse) {
@@ -109,43 +121,8 @@ TEST_F(TimeTravelStorageEngineDataTest, RegularCollectionReportsFlagFalse) {
   auto collection =
       makeCollection(*database, "plainCollection", /*timeTravel*/ false);
 
-  EXPECT_FALSE(
-      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
-}
-
-TEST_F(TimeTravelStorageEngineDataTest, TimeTravelFlagIsImmutable) {
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection =
-      makeCollection(*database, "ttCollection", /*timeTravel*/ true);
-
-  VPackBuilder update;
-  update.openObject();
-  update.add(StaticStrings::EnableTimeTravel, VPackValue(false));
-  update.close();
-
-  auto res = collection->getPhysical()->updateProperties(update.slice());
-  EXPECT_TRUE(res.ok()) << res.errorMessage();
-
-  EXPECT_TRUE(
-      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
-}
-
-TEST_F(TimeTravelStorageEngineDataTest,
-       RegularCollectionCannotEnableTimeTravel) {
-  auto database = makeDatabase("testDatabase", 42);
-  auto collection =
-      makeCollection(*database, "plainCollection", /*timeTravel*/ false);
-
-  VPackBuilder update;
-  update.openObject();
-  update.add(StaticStrings::EnableTimeTravel, VPackValue(true));
-  update.close();
-
-  auto res = collection->getPhysical()->updateProperties(update.slice());
-  EXPECT_TRUE(res.ok()) << res.errorMessage();
-
-  EXPECT_FALSE(
-      toRocksDBCollection(collection->getPhysical())->timeTravelEnabled());
+  EXPECT_FALSE(collection->timeTravelEnabled());
+  EXPECT_FALSE(collection->properties().constant.enableTimeTravel);
 }
 
 // ================ insert with custom _created ================

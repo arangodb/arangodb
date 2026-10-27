@@ -821,7 +821,7 @@ TEST_F(ClassicAuthModeTest, UserOperationsNeedSystemReadWrite) {
 
 TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
   setGrants({{StaticStrings::SystemDatabase, RO}});
-  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_HTTP_FORBIDDEN);
+  expectError(check(p::ReadUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::CreateUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::DropUser{.name = "alice"}), TRI_ERROR_FORBIDDEN);
   expectError(check(p::ModifyUserProfile{.name = "alice"}),
@@ -845,6 +845,8 @@ using AllAdminPermissions =
     std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
+               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -852,7 +854,7 @@ using AllAdminPermissions =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
 
-static_assert(std::tuple_size_v<AllAdminPermissions> == 26);
+static_assert(std::tuple_size_v<AllAdminPermissions> == 30);
 
 // Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
 // that pin "forbidden without RW", which no longer holds for AdminQueryCache.
@@ -860,6 +862,8 @@ using AllAdminPermissionsExceptQueryCache =
     std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
                p::AdminMonitoringInternal, p::AdminAuthReload,
                p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
+               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
+               p::AdminMonitorTransactions, p::AdminKillTransactions,
                p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
                p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
@@ -867,7 +871,7 @@ using AllAdminPermissionsExceptQueryCache =
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
                p::AdminWalAccess, p::AdminReadAgency>;
 
-static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 25);
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 29);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();
@@ -889,7 +893,7 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
         auto expectDenied = [&](auto const& admin) {
           auto permission = auth::Permission{admin};
           auto r = check(permission);
-          EXPECT_EQ(r.errorNumber(), TRI_ERROR_HTTP_FORBIDDEN) << permission;
+          EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN) << permission;
           EXPECT_NE(r.errorMessage().find("Failed admin-permission check"),
                     std::string::npos)
               << r.errorMessage();
@@ -914,7 +918,7 @@ TEST_F(ClassicAuthModeTest, AdminQueryCacheIsGrantedBySystemReadOnly) {
 
 TEST_F(ClassicAuthModeTest, AdminQueryCacheIsForbiddenWithoutSystemAccess) {
   setGrants({{StaticStrings::SystemDatabase, NONE}});
-  expectError(check(p::AdminQueryCache{}), TRI_ERROR_HTTP_FORBIDDEN);
+  expectError(check(p::AdminQueryCache{}), TRI_ERROR_FORBIDDEN);
 }
 
 // ---------------------------------------------------------------------------
