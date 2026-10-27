@@ -1,6 +1,11 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
 
+* Allow indexed access in standalone AQL (Computed Values and aql Analyzer).
+  This adds NODE_TYPE_INDEXED_ACCESS to the accepted execution plan nodes so
+  that you can write e.g. `RETURN SPLIT(@param, " ")[-1]` in addition to
+  `RETURN LAST(SPLIT(@param, " "))`.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
