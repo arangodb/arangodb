@@ -7,6 +7,8 @@
   authentication it requires read-write access to that database and not read-write
   access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
 
+* COR-1209: Fixed a crash that occurs when a license is being activated.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
