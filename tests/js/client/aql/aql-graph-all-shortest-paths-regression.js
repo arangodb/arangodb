@@ -24,7 +24,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-
+const db = require("@arangodb").db;
+c
 function allShortestPathsRegressionTestSuite() {
   const vName = "UnitTestVertices";
   const eName = "UnitTestEdges";
