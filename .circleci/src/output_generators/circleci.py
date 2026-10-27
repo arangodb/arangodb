@@ -488,12 +488,12 @@ class CircleCIGenerator(OutputGenerator):
         A single TestJob may result in multiple CircleCI jobs if:
         - Deployment type is None (both single and cluster)
         - Replication version 2 is enabled (additional cluster job)
-        - RTA UI tests (one job per deployment: SG, CL)
+        - RTA tests (one job per deployment: SG, CL)
 
         Returns:
             List of job definitions (excludes jobs with no suites after filtering)
         """
-        # Handle RTA UI tests specially - they generate multiple jobs
+        # Handle RTA tests specially - they generate multiple jobs
         if job.job_type == "run-rta-tests":
             return self._create_rta_test_jobs(job, build_config, build_jobs)
 
