@@ -70,6 +70,13 @@
 * COR-1137: Fixed a memory leak in the AQL analyzer when converting
   non-string values to strings.
 
+* BTS-2502: When an AQL `FILTER` with `OR` is answered by several index
+  lookups in one `IndexNode`, for example `FILTER d.a == 1 OR d.b == 2` with
+  an index on each attribute, the query returns the rows of every lookup, no
+  matter how many rows each lookup produces. Affected versions skipped the
+  remaining lookups when the rows found so far added up to an exact multiple
+  of 1000, and the query silently returned too few results.
+
 * COR-1146: Fix AQL arithmetic operators losing precision on integers above
   2^53 when operands are not constant, e.g. document attributes. This fixes
   issue #23400.

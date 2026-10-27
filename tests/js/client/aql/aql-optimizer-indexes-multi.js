@@ -1886,6 +1886,49 @@ function optimizerIndexesMultiTestSuite () {
       }
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that all lookups of an OR are read even if the rows of the
+/// lookups before one of them fill up output blocks exactly
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexesForOrWithLookupEndingAtBlockBoundary : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                              fields: ["a"] } );
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                              fields: ["b"] } );
+      let idx2 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                                  fields: ["c"] } );
+
+      try {
+        const cases = [
+          // 1000 rows, then 70 new rows
+          { filter: `x.a < "a1000" || x.b == "b012"`,
+            maker: (x) => x.a < "a1000" || x.b === "b012",
+            lookups: 2 },
+          // 80 rows, then 920 new rows, then the rest
+          { filter: `x.b == "b012" || x.a < "a0930" || x.c == "c017"`,
+            maker: (x) => x.b === "b012" || x.a < "a0930" || x.c === "c017",
+            lookups: 3 },
+        ];
+
+        cases.forEach(({ filter, maker, lookups }) => {
+          const query = `FOR x IN ${c.name()} FILTER ${filter} RETURN x.a`;
+
+          let indexNodes = db._createStatement(query).explain().plan.nodes
+                             .filter((node) => node.type === "IndexNode");
+          assertEqual(1, indexNodes.length, query);
+          assertEqual(lookups, indexNodes[0].indexes.length, query);
+
+          let results = db._query(query).toArray().sort();
+          let correct = makeResult(maker).map((x) => x.a);
+          assertEqual(correct.length, results.length, query);
+          assertEqual(correct, results, query);
+        });
+      } finally {
+        db._dropIndex(idx2);
+      }
+    },
+
   };
 }
 
