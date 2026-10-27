@@ -36,11 +36,7 @@ var db = internal.db;
 function optimizerRuleUseIndexRangeTester () {
   var ruleName = "use-indexes";
   var collBaseName = "UTUseIndexRange";
-  var collNames = ["NoInd", "SkipInd", "HashInd", "BothInd"];
-  var collNoInd;
-  var collSkipInd;
-  var collHashInd;
-  var collBothInd;
+  var collNames = ["NoInd", "Ind", "TwoInd"];
   var edgeCollName = collBaseName + "Edges";
 
   // various choices to control the optimizer: 
@@ -69,14 +65,10 @@ function optimizerRuleUseIndexRangeTester () {
         }
         colls.push(coll);
       }
-      collNoInd = colls[0];
-      collSkipInd = colls[1];
-      collSkipInd.ensureIndex({ type: "persistent", fields: ["a"] });
-      collHashInd = colls[2];
-      collHashInd.ensureIndex({ type: "persistent", fields: ["a"] });
-      collBothInd = colls[3];
-      collBothInd.ensureIndex({ type: "persistent", fields: ["a"] });
-      collBothInd.ensureIndex({ type: "persistent", fields: ["a"] });
+      colls[1].ensureIndex({ type: "persistent", fields: ["a"] });
+      // two candidate indexes for the same filter condition
+      colls[2].ensureIndex({ type: "persistent", fields: ["a"] });
+      colls[2].ensureIndex({ type: "persistent", fields: ["a", "s"] });
 
       internal.db._drop(edgeCollName);
       let edges = internal.db._createEdgeCollection(edgeCollName);
@@ -102,9 +94,9 @@ function optimizerRuleUseIndexRangeTester () {
     testRuleDisabled : function () {
       var queries = [ 
         "FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a >= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a == 2 RETURN i",
       ];
 
       queries.forEach(function(query) {
@@ -119,30 +111,25 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-        ["FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i", true],
-        ["FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i", true],
-        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a >= 2 RETURN i", false],
+        "FOR i IN UTUseIndexRangeNoInd FILTER i.a >= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeNoInd FILTER i.a == 2 RETURN i",
         // a non-deterministic value can't be an index lookup value
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == FLOOR(RAND() * 10) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= FLOOR(RAND() * 10) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER FLOOR(RAND() * 10) == i.a RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(FLOOR(RAND() * 10)) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a IN [FLOOR(RAND() * 10)] RETURN i", true],
-        ["FOR e IN " + edgeCollName + " FILTER e._from == CONCAT('v/', FLOOR(RAND() * 2)) RETURN e", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(2) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOOPT(2) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i", true],
-        ["FOR i IN UTUseIndexRangeSkipInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i", true],
-        ["FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e", true],
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == FLOOR(RAND() * 10) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a >= FLOOR(RAND() * 10) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER FLOOR(RAND() * 10) == i.a RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == NOOPT(FLOOR(RAND() * 10)) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a IN [FLOOR(RAND() * 10)] RETURN i",
+        "FOR e IN " + edgeCollName + " FILTER e._from == CONCAT('v/', FLOOR(RAND() * 2)) RETURN e",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == NOOPT(2) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == NOOPT(NOOPT(2)) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == DOCUMENT('UTUseIndexRangeNoInd/x').a RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == COLLECTION_COUNT('UTUseIndexRangeNoInd') RETURN i",
+        "FOR e IN " + edgeCollName + " FILTER e._from == NOOPT('v/0') RETURN e",
       ];
 
       queries.forEach(function(query) {
-        var result = db._createStatement({query: query[0], bindVars:  { }, options:  paramEnabled}).explain();
-        if (query[1]) {
-          assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
-        }
+        var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+        assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
       });
     },
 
@@ -152,17 +139,15 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleHasEffect : function () {
       var queries = [ 
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a >= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a < 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a < 2 && i.a > 0 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a <= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a > 2 RETURN i",
         // NOEVAL() is not computed in advance, but is deterministic
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == NOEVAL(2) RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == NOEVAL(2) RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == NOEVAL(2) RETURN i",
         "FOR e IN " + edgeCollName + " FILTER e._from == NOEVAL('v/0') RETURN e",
       ];
 
@@ -179,14 +164,13 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleHasEffectWithAll : function () {
       var queries = [ 
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a >= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
-        "FOR i IN UTUseIndexRangeBothInd FILTER i.a > 2 RETURN i"
+        "FOR i IN UTUseIndexRangeInd FILTER i.a >= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a < 2 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a < 2 && i.a > 0 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a == 2 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a <= 2 RETURN i",
+        "FOR i IN UTUseIndexRangeTwoInd FILTER i.a > 2 RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -196,7 +180,7 @@ function optimizerRuleUseIndexRangeTester () {
     },
 
     testNonDeterministicPartNotInIndexCondition : function () {
-      const query = "FOR i IN UTUseIndexRangeSkipInd " +
+      const query = "FOR i IN UTUseIndexRangeInd " +
                     "FILTER i.a >= 2 && i.a < FLOOR(RAND() * 10) RETURN i";
       const plan = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain().plan;
       const indexNodes = plan.nodes.filter((n) => n.type === "IndexNode");
@@ -211,15 +195,15 @@ function optimizerRuleUseIndexRangeTester () {
 
     testImpossibleRangesAreDetected : function () {
       var queries = [ 
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7 && i.a != 7 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7 && i.a != 7.0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7.0 && i.a != 7.0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7.0 && i.a != 7 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7 && i.a < 7 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7 && i.a < 7.0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7.0 && i.a < 7.0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7.0 && i.a < 7 RETURN i"
+        "FOR i IN UTUseIndexRangeInd FILTER i.a < 2 && i.a > 3 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 7 && i.a != 7 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 7 && i.a != 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 7.0 && i.a != 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a == 7.0 && i.a != 7 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a > 7 && i.a < 7 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a > 7 && i.a < 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a > 7.0 && i.a < 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeInd FILTER i.a > 7.0 && i.a < 7 RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -240,17 +224,17 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleHasNoPlanExplosion : function () {
       var query =
-        "LET A = (FOR a IN UTUseIndexRangeBothInd FILTER a.a == 2 RETURN a) "+
-        "LET B = (FOR b IN UTUseIndexRangeBothInd FILTER b.a == 2 RETURN b) "+
-        "LET C = (FOR c IN UTUseIndexRangeBothInd FILTER c.a == 2 RETURN c) "+
-        "LET D = (FOR d IN UTUseIndexRangeBothInd FILTER d.a == 2 RETURN d) "+
-        "LET E = (FOR e IN UTUseIndexRangeBothInd FILTER e.a == 2 RETURN e) "+
-        "LET F = (FOR f IN UTUseIndexRangeBothInd FILTER f.a == 2 RETURN f) "+
-        "LET G = (FOR g IN UTUseIndexRangeBothInd FILTER g.a == 2 RETURN g) "+
-        "LET H = (FOR h IN UTUseIndexRangeBothInd FILTER h.a == 2 RETURN h) "+
-        "LET I = (FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i) "+
-        "LET J = (FOR j IN UTUseIndexRangeBothInd FILTER j.a == 2 RETURN j) "+
-        "FOR k IN UTUseIndexRangeBothInd FILTER k.a == 2 "+
+        "LET A = (FOR a IN UTUseIndexRangeTwoInd FILTER a.a == 2 RETURN a) "+
+        "LET B = (FOR b IN UTUseIndexRangeTwoInd FILTER b.a == 2 RETURN b) "+
+        "LET C = (FOR c IN UTUseIndexRangeTwoInd FILTER c.a == 2 RETURN c) "+
+        "LET D = (FOR d IN UTUseIndexRangeTwoInd FILTER d.a == 2 RETURN d) "+
+        "LET E = (FOR e IN UTUseIndexRangeTwoInd FILTER e.a == 2 RETURN e) "+
+        "LET F = (FOR f IN UTUseIndexRangeTwoInd FILTER f.a == 2 RETURN f) "+
+        "LET G = (FOR g IN UTUseIndexRangeTwoInd FILTER g.a == 2 RETURN g) "+
+        "LET H = (FOR h IN UTUseIndexRangeTwoInd FILTER h.a == 2 RETURN h) "+
+        "LET I = (FOR i IN UTUseIndexRangeTwoInd FILTER i.a == 2 RETURN i) "+
+        "LET J = (FOR j IN UTUseIndexRangeTwoInd FILTER j.a == 2 RETURN j) "+
+        "FOR k IN UTUseIndexRangeTwoInd FILTER k.a == 2 "+
         "  RETURN {A:A, B:B, C:C, D:D, E:E, F:F, G:G, H:H, I:I, J:J, K:k}";
 
       var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabledAllPlans}).explain();
@@ -265,10 +249,10 @@ function optimizerRuleUseIndexRangeTester () {
 
     testRuleMakesAll : function () {
       var query =
-        "LET A = (FOR a IN UTUseIndexRangeBothInd FILTER a.a == 2 RETURN a) "+
-        "LET B = (FOR b IN UTUseIndexRangeBothInd FILTER b.a == 2 RETURN b) "+
-        "LET C = (FOR c IN UTUseIndexRangeBothInd FILTER c.a == 2 RETURN c) "+
-        "FOR k IN UTUseIndexRangeBothInd FILTER k.a == 2 "+
+        "LET A = (FOR a IN UTUseIndexRangeTwoInd FILTER a.a == 2 RETURN a) "+
+        "LET B = (FOR b IN UTUseIndexRangeTwoInd FILTER b.a == 2 RETURN b) "+
+        "LET C = (FOR c IN UTUseIndexRangeTwoInd FILTER c.a == 2 RETURN c) "+
+        "FOR k IN UTUseIndexRangeTwoInd FILTER k.a == 2 "+
         "  RETURN {A:A, B:B, C:C, K:k}";
 
       var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabledAllPlans}).explain();
