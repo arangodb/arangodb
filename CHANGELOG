@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Allow indexed access in standalone AQL (Computed Values and aql Analyzer).
+  This adds NODE_TYPE_INDEXED_ACCESS to the accepted execution plan nodes so
+  that you can write e.g. `RETURN SPLIT(@param, " ")[-1]` in addition to
+  `RETURN LAST(SPLIT(@param, " "))`.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
