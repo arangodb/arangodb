@@ -223,6 +223,8 @@
             encryptionAtRest: true
             ssl: true
       - rta_makedata:
+          requires:
+            coverage: false
           args:
             cluster: true
             forceOneShard: true
@@ -379,6 +381,8 @@
       - resilience_move
       - resilience_sharddist
 - resilience_failover:
+    requires:
+      coverage: false
     options:
       priority: 1200
       size: medium
@@ -550,7 +554,9 @@
       - dump_multiple_two
       - dump_non_parallel
       - dump_maskings
-      - dump
+      - dump:
+          requires:
+            coverage: false
       - dump:
           options:
             suffix: _vpack
@@ -577,7 +583,11 @@
       dumpAgencyOnError: true
     suites:
       - dump:
+          requires:
+            coverage: false
       - dump:
+          requires:
+            coverage: false
           options:
             suffix: _vpack
           args:
@@ -586,7 +596,11 @@
       - dump_authentication:
       - dump_jwt:
       - dump_multiple_same:
+          requires:
+            coverage: false
       - dump_non_parallel:
+          requires:
+            coverage: false
       - dump_maskings:
       - dump_encrypted:
       - dump_mixed_cluster_single:
