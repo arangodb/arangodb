@@ -1,5 +1,40 @@
 3.12.13 (XXXX-XX-XX)
 --------------------
+
+* BTS-2496: AQL `LENGTH()` and `COUNT()` of a subquery that contains a
+  `COLLECT` return the number of rows the subquery produces after the
+  `COLLECT` and any `FILTER` following it. For example,
+  `LENGTH(FOR d IN coll COLLECT WITH COUNT INTO c FILTER c > 0 RETURN true)`
+  returns `1` for a non-empty collection. The `optimize-count` optimizer rule
+  is not applied to such subqueries. Before, such expressions could return
+  `null` or `0`.
+
+* BTS-2502: When an AQL `FILTER` with `OR` is answered by several index
+  lookups in one `IndexNode`, for example `FILTER d.a == 1 OR d.b == 2` with
+  an index on each attribute, the query returns the rows of every lookup, no
+  matter how many rows each lookup produces. Affected versions skipped the
+  remaining lookups when the rows found so far added up to an exact multiple
+  of 1000, and the query silently returned too few results.
+
+* COR-1209: Fixed a crash that occurs when a license is being activated.
+
+* BTS-2497: Fixed AQL wrong result: ALL_SHORTEST_PATHS inside a loop returns no paths
+  for every row after one whose search is empty or starts at the target.
+
+* COR-1045: Fixed a server crash when SEARCH on a search-alias view referenced a field
+  not covered by the inverted index and the query ran with `failOnWarning: true`.
+
+* COR-1031: Adapt permissions for `PUT /_api/query/properties`: the endpoint now
+  asks the new permission `UpdateQueryProperties`, which is scoped to the database
+  of the request, instead of the admin permission `AdminAqlQueries`. With classic
+  authentication it requires read-write access to that database and not read-write
+  access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
+
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.30.
+
 * COR-1152: Fixed AQL FILTER conditions combining an equality set (IN list,
   ==, or OR of ==) with a range operator (<, <=, >, >=) on the same string
   attribute wrongly returning no results when byte order disagrees with ICU
@@ -20,6 +55,13 @@
 
 * BTS-2308: Fixes miscalculation of soft, hard limits and allocated
   values in cache manager.
+
+* AQL graph traversals read every attribute of an outer loop's document that
+  their vertex and edge filter conditions use, such as `d.limit` in
+  `FOR d IN coll FOR v, e, p IN 1..3 OUTBOUND d._id edges
+  FILTER p.edges[*].weight ALL IN [d.limit] RETURN v`. Queries of this shape
+  could return too few results when the optimizer left such an attribute out
+  of the projection of `d`.
 
 * COR-1031 Add new permissions AdminMonitorAqlQueries and AdminKillAqlQueries that allow for
 
@@ -73,11 +115,6 @@
 * COR-1105: AQL `CONTAINS()` now behaves like `FIND_FIRST()`, fixing wrong
   indexes for multi-byte characters. Fixed `FIND_FIRST()` sometimes missing
   matches of accented characters at the end of the search range.
-
-* Updated ArangoDB Starter to v0.19.29.
-
-* Rebuilt included rclone v1.75.1 with go1.26.9 and non-vulnerable
-  dependencies.
 
 * COR-1083 / github issue #23425:
   Fixed the incorrect usage of released pool analyzer.

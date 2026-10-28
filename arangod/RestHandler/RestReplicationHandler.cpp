@@ -2754,7 +2754,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
                   "invalid collection parameter");
     return false;
   }
-  if (_request->requestedApiVersion() > 0) {
+  if (_request->requestedApiVersion() > ApiVersion::V0) {
     if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
       generateError(r);
       return false;

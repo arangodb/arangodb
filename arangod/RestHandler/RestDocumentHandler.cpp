@@ -162,7 +162,7 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
-  if (_request->requestedApiVersion() > 0 &&
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
       (suffixes.empty() || suffixes[0].empty())) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
@@ -189,7 +189,8 @@ async<void> RestDocumentHandler::insertDocument() {
   }
 
   // if name is a numeric collection id, generate a 400 error
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(cname)) {
     co_return;
   }
 
@@ -216,7 +217,7 @@ async<void> RestDocumentHandler::insertDocument() {
   handleFillIndexCachesValue(opOptions);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
-    if (_request->requestedApiVersion() > 0) {
+    if (_request->requestedApiVersion() > ApiVersion::V0) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "the 'overwrite' option has been removed, use "
                     "'overwriteMode' instead");
@@ -354,7 +355,7 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::string const& collection = suffixes[0];
 
   // if name is a numeric collection id, generate a 400 error
-  if (_request->requestedApiVersion() > 0 &&
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
       rejectNumericCollectionId(collection)) {
     co_return;
   }
@@ -491,7 +492,8 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 2 ||
-      (_request->requestedApiVersion() > 0 && suffixes.size() == 0)) {
+      (_request->requestedApiVersion() > ApiVersion::V0 &&
+       suffixes.size() == 0)) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
@@ -503,7 +505,7 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // if name is a numeric collection id, generate a 400 error
-  if (_request->requestedApiVersion() > 0 &&
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
       rejectNumericCollectionId(suffixes[0])) {
     co_return;
   }
@@ -708,7 +710,8 @@ async<void> RestDocumentHandler::removeDocument() {
   std::string const& cname = suffixes[0];
 
   // if name is a numeric collection id, generate a 400 error
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(cname)) {
     co_return;
   }
 
@@ -852,7 +855,8 @@ async<void> RestDocumentHandler::readManyDocuments() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(cname)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(cname)) {
     co_return;
   }
 
