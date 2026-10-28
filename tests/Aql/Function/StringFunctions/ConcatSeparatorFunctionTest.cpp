@@ -27,16 +27,15 @@
 
 namespace arangodb::tests::aql {
 
-using ConcatSeparatorFunctionTest = StringFunctionTest;
 using arangodb::aql::functions::concatSeparator;
 
-TEST_F(ConcatSeparatorFunctionTest, values_are_joined_with_separator) {
+TEST_F(StringFunctionTest, concat_separator_values_are_joined_with_separator) {
   expectResult(concatSeparator(ctx, str("-"), values(R"(["a"])")), "a");
   expectResult(concatSeparator(ctx, str(", "), values(R"(["a", "b", "c"])")),
                "a, b, c");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, null_values_are_skipped) {
+TEST_F(StringFunctionTest, concat_separator_null_values_are_skipped) {
   expectResult(
       concatSeparator(ctx, str("-"), values(R"([null, "a", null, "b", null])")),
       "a-b");
@@ -44,13 +43,13 @@ TEST_F(ConcatSeparatorFunctionTest, null_values_are_skipped) {
   expectResult(concatSeparator(ctx, str("-"), values(R"([null, null])")), "");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, empty_strings_are_kept) {
+TEST_F(StringFunctionTest, concat_separator_empty_strings_are_kept) {
   expectResult(concatSeparator(ctx, str("-"), values(R"(["", "a", ""])")),
                "-a-");
   expectResult(concatSeparator(ctx, str("-"), values(R"(["", ""])")), "-");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, single_array_argument_is_joined) {
+TEST_F(StringFunctionTest, concat_separator_single_array_argument_is_joined) {
   expectResult(concatSeparator(ctx, str("-"), values(R"([["a", "b", "c"]])")),
                "a-b-c");
   expectResult(
@@ -61,21 +60,22 @@ TEST_F(ConcatSeparatorFunctionTest, single_array_argument_is_joined) {
   expectResult(concatSeparator(ctx, str("-"), values(R"([[null]])")), "");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, nested_values_in_array_are_stringified) {
+TEST_F(StringFunctionTest,
+       concat_separator_nested_values_in_array_are_stringified) {
   expectResult(concatSeparator(ctx, str("-"),
                                values(R"([[1, true, [1, 2], {"a": 1}]])")),
                R"(1-true-[1,2]-{"a":1})");
 }
 
-TEST_F(ConcatSeparatorFunctionTest,
-       arrays_among_several_arguments_are_stringified) {
+TEST_F(StringFunctionTest,
+       concat_separator_arrays_among_several_arguments_are_stringified) {
   expectResult(concatSeparator(ctx, str("-"), values(R"([["a", "b"], "c"])")),
                R"(["a","b"]-c)");
   expectResult(concatSeparator(ctx, str("-"), values(R"(["c", [null]])")),
                "c-[null]");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, non_string_values_are_stringified) {
+TEST_F(StringFunctionTest, concat_separator_non_string_values_are_stringified) {
   expectResult(
       concatSeparator(ctx, str("-"), values(R"([1, -2, 1.5, true, false])")),
       "1--2-1.5-true-false");
@@ -83,7 +83,8 @@ TEST_F(ConcatSeparatorFunctionTest, non_string_values_are_stringified) {
                R"({}-{"a":"b"})");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, non_string_separators_are_stringified) {
+TEST_F(StringFunctionTest,
+       concat_separator_non_string_separators_are_stringified) {
   expectResult(concatSeparator(ctx, json("1"), values(R"(["a", "b"])")), "a1b");
   expectResult(concatSeparator(ctx, json("true"), values(R"(["a", "b"])")),
                "atrueb");
@@ -94,7 +95,8 @@ TEST_F(ConcatSeparatorFunctionTest, non_string_separators_are_stringified) {
       R"(a[","]b)");
 }
 
-TEST_F(ConcatSeparatorFunctionTest, multibyte_strings_are_joined_unchanged) {
+TEST_F(StringFunctionTest,
+       concat_separator_multibyte_strings_are_joined_unchanged) {
   expectResult(concatSeparator(ctx, str("€"), values(R"(["ö", "😀"])")), "ö€😀");
 }
 
