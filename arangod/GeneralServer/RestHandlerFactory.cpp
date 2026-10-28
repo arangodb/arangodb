@@ -20,6 +20,9 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestHandlerFactory.h"
+
+#include "Assertions/ProdAssert.h"
 #include "Basics/ApiVersion.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
@@ -27,20 +30,33 @@
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
-#include "RestHandlerFactory.h"
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
+#include <algorithm>
+
+namespace arangodb {
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandlerFactory::RestHandlerFactory(ApiVersion maxApiVersion)
-    : _sealed(false) {
-  // Initialize with space for API versions 0 through maxApiVersion (inclusive)
-  size_t numVersions = static_cast<size_t>(maxApiVersion) + 1;
-  _constructors.resize(numVersions);
-  _prefixes.resize(numVersions);
+RestHandlerFactory::RestHandlerFactory() : _sealed(false) {
+  // Handlers are kept for every API version.
+  // Reachability is decided per request, when its version is parsed.
+  _routes.reserve(api_version::allApiVersions.size());
+  for (ApiVersion version : api_version::allApiVersions) {
+    _routes.push_back(VersionRoutes{.version = version});
+  }
+}
+
+RestHandlerFactory::VersionRoutes* RestHandlerFactory::find(
+    ApiVersion version) {
+  auto it = std::ranges::find(_routes, version, &VersionRoutes::version);
+  return it == _routes.end() ? nullptr : &*it;
+}
+
+RestHandlerFactory::VersionRoutes const* RestHandlerFactory::find(
+    ApiVersion version) const {
+  return const_cast<RestHandlerFactory*>(this)->find(version);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,15 +70,20 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   TRI_ASSERT(_sealed);
 
   ApiVersion apiVersion = req->requestedApiVersion();
-  // detectAndStripApiVersion only ever stores a version bounded by
-  // api_version::maxApiVersion(), and the tables are sized to match, so an
-  // out-of-range version cannot reach us here.
-  auto versionIdx = static_cast<size_t>(apiVersion);
-  TRI_ASSERT(versionIdx < _constructors.size());
+  auto const* routes = find(apiVersion);
+  // should never happens since invalid versions should be rejected earlier
+  // to_string would abort on such an invalid value, hence the cast.
+  // Note that we cannot cast to `underlying_type` since that would not be
+  // formatted as a number but print as a character
+  TRI_ASSERT(routes != nullptr)
+      << "no routes for API version " << static_cast<unsigned>(apiVersion);
+  if (routes == nullptr) {
+    return nullptr;
+  }
 
   std::string const& path = req->requestPath();
 
-  auto const& constructors = _constructors[versionIdx];
+  auto const& constructors = routes->constructors;
   auto it = constructors.find(path);
 
   if (it != constructors.end()) {
@@ -82,8 +103,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // find longest match
   size_t const pathLength = path.size();
   // prefixes are sorted by length descending
-  auto const& prefixes = _prefixes[versionIdx];
-  for (auto const& p : prefixes) {
+  for (auto const& p : routes->prefixes) {
     size_t const pSize = p.size();
     if (pSize >= pathLength) {
       // prefix too long
@@ -157,17 +177,16 @@ void RestHandlerFactory::addHandler(
   TRI_ASSERT(!_sealed);
 
   for (ApiVersion apiVersion : apiVersions) {
-    if (api_version::isApiVersionRegistrable(apiVersion)) {
-      auto versionIdx = static_cast<size_t>(apiVersion);
-      TRI_ASSERT(versionIdx < _constructors.size());
-      auto& constructors = _constructors[versionIdx];
-      if (!constructors.try_emplace(path, func, data).second) {
-        // there should only be one handler for each path
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            std::string("attempt to register duplicate path handler for '") +
-                path + "' in API version " + std::to_string(versionIdx));
-      }
+    auto* routes = find(apiVersion);
+    ADB_PROD_ASSERT(routes != nullptr)
+        << "no routes for API version " << static_cast<unsigned>(apiVersion);
+    if (!routes->constructors.try_emplace(path, func, data).second) {
+      TRI_ASSERT(false) << "duplicate path handler for '" << path << "'";
+      // there should only be one handler for each path
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("attempt to register duplicate path handler for '", path,
+                       "' in API version ", to_string(apiVersion)));
     }
   }
 }
@@ -184,11 +203,9 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (ApiVersion apiVersion : apiVersions) {
-    if (api_version::isApiVersionRegistrable(apiVersion)) {
-      auto versionIdx = static_cast<size_t>(apiVersion);
-      TRI_ASSERT(versionIdx < _prefixes.size());
-      _prefixes[versionIdx].emplace_back(path);
-    }
+    auto* routes = find(apiVersion);
+    ADB_PROD_ASSERT(routes != nullptr);
+    routes->prefixes.emplace_back(path);
   }
 }
 
@@ -196,8 +213,8 @@ void RestHandlerFactory::seal() {
   TRI_ASSERT(!_sealed);
 
   // sort prefixes by their lengths for each API version
-  for (auto& prefixes : _prefixes) {
-    std::sort(prefixes.begin(), prefixes.end(),
+  for (auto& routes : _routes) {
+    std::sort(routes.prefixes.begin(), routes.prefixes.end(),
               [](std::string const& a, std::string const& b) {
                 return a.size() > b.size();
               });
@@ -205,3 +222,5 @@ void RestHandlerFactory::seal() {
 
   _sealed = true;
 }
+
+}  // namespace arangodb
