@@ -730,12 +730,14 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
-    col = vocbase->lookupCollection(collection.get("oldName").copyString());
-
-    if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "unknown old collection name");
+    auto colResult =
+        vocbase->lookupCollection(collection.get("oldName").copyString());
+    if (colResult.fail()) {
+      return Result(colResult.errorNumber(),
+                    absl::StrCat("unknown old collection name: ",
+                                 colResult.errorMessage()));
     }
+    col = colResult.get();
   } else {
     TRI_ASSERT(col == nullptr);
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,

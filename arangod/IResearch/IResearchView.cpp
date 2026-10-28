@@ -193,13 +193,18 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
     for (auto cid : metaState._collections) {
       // always look up in vocbase
       // (single server or cluster per-shard collection)
-      auto collection = vocbase.lookupCollection(cid);
-      // add placeholders to links,
-      // when the collection comes up it'll bring up the link
-      auto link =
-          collection ? IResearchLinkHelper::find(*collection, *impl) : nullptr;
-      // add placeholders to links, when the link comes up it'll call link(...)
-      impl->_links.try_emplace(cid, link ? link->self() : nullptr);
+      auto collectionResult = vocbase.lookupCollection(cid);
+      if (collectionResult.ok()) {
+        // add placeholders to links,
+        // when the collection comes up it'll bring up the link
+        auto link = IResearchLinkHelper::find(*collectionResult.get(), *impl);
+        // add placeholders to links, when the link comes up it'll call
+        // link(...). The link may not exist yet (find returns nullptr), e.g.
+        // when the view is created before the link.
+        impl->_links.try_emplace(cid, link ? link->self() : nullptr);
+      } else {
+        impl->_links.try_emplace(cid, nullptr);
+      }
     }
     view = impl;
     return {};
@@ -296,9 +301,9 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
     for (auto& entry : _links) {
       // skip collections missing from vocbase or
       // UserTransaction constructor will throw an exception
-      auto coll = vocbase().lookupCollection(entry.first);
-      if (coll) {
-        collections.emplace_back(coll->name());
+      auto collResult = vocbase().lookupCollection(entry.first);
+      if (collResult.ok()) {
+        collections.emplace_back(collResult.get()->name());
       }
     }
     if (!safe) {
@@ -442,7 +447,8 @@ Result IResearchView::dropImpl() {
   }
   auto collectionsCount = collections.size();
   for (auto& entry : collections) {
-    auto collection = vocbase().lookupCollection(entry);
+    auto collectionResult = vocbase().lookupCollection(entry);
+    auto collection = collectionResult.ok() ? collectionResult.get() : nullptr;
     if (!collection || !IResearchLinkHelper::find(*collection, *this)) {
       --collectionsCount;
     }
@@ -588,10 +594,13 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     boost::unique_lock uniqueLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     for (auto& entry : _links) {
-      auto collection = vocbase().lookupCollection(entry.first);
-      if (collection) {
+      auto collectionResult = vocbase().lookupCollection(entry.first);
+      // TODO can be deleted in v1 because check is already done in
+      // lookupCollection
+      if (collectionResult.ok()) {
         if (auto r = ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), AccessLevel::Read);
+                vocbase().name(), collectionResult.get()->name(),
+                AccessLevel::Read);
             !r.ok()) {
           return {TRI_ERROR_FORBIDDEN,
                   absl::StrCat("while updating view definition: ",
@@ -723,16 +732,17 @@ void IResearchView::verifyKnownCollections() {
       modified = true;
     };
     auto cid = it->first;
-    auto collection = vocbase().lookupCollection(cid);
+    auto collectionResult = vocbase().lookupCollection(cid);
     // always look up in vocbase (single server or cluster per-shard collection)
-    if (!collection) {
+    if (collectionResult.fail()) {
       LOG_TOPIC("40976", TRACE, TOPIC)
           << "collection '" << cid
           << "' no longer exists! removing from arangosearch view '" << name()
-          << "'";
+          << "': " << collectionResult.errorMessage();
       remove();
       continue;
     }
+    auto collection = collectionResult.get();
     auto link = IResearchLinkHelper::find(*collection, *this);
     if (!link) {
       LOG_TOPIC("d0509", TRACE, TOPIC)

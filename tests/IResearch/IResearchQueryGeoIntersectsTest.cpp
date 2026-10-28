@@ -54,8 +54,9 @@ class QueryGeoIntersects : public QueryTest {
 
   void queryTests(bool isVPack) {
     static std::vector<velocypack::Slice> const empty;
-    auto collection = _vocbase.lookupCollection("testCollection0");
-    ASSERT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("testCollection0");
+    ASSERT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     // populate collection
     {
       auto docs = VPackParser::fromJson(R"([
@@ -358,8 +359,9 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
                  "analyzer": "mygeojson" }
              ] })",
         version()));
-    auto collection = _vocbase.lookupCollection("testCollection0");
-    EXPECT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("testCollection0");
+    EXPECT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }

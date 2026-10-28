@@ -834,16 +834,17 @@ bool State::configure(Agent* agent) {
 
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
-  return (_vocbase->lookupCollection(name) != nullptr);
+  return _vocbase->lookupCollection(name).ok();
 }
 
 /// Drop
 void State::dropCollection(std::string const& colName) {
   try {
-    auto col = _vocbase->lookupCollection(colName);
-    if (col == nullptr) {
+    auto colResult = _vocbase->lookupCollection(colName);
+    if (colResult.fail()) {
       return;
     }
+    auto col = colResult.get();
     auto res = _vocbase->dropCollection(col->id(), false);
     if (res.fail()) {
       LOG_TOPIC("ba841", FATAL, Logger::AGENCY)
@@ -860,7 +861,7 @@ void State::dropCollection(std::string const& colName) {
 
 /// Create collection by name
 bool State::ensureCollection(std::string const& name, bool drop) {
-  if (_vocbase->lookupCollection(name) != nullptr) {
+  if (_vocbase->lookupCollection(name).ok()) {
     // collection already exists
     return true;
   }
@@ -875,7 +876,7 @@ bool State::ensureCollection(std::string const& name, bool drop) {
              VPackValue(NameValidator::isSystemName(name)));
   }
 
-  if (drop && _vocbase->lookupCollection(name) != nullptr) {
+  if (drop && _vocbase->lookupCollection(name).ok()) {
     dropCollection(name);
   }
 
@@ -1447,13 +1448,14 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   LOG_TOPIC("a8132", DEBUG, Logger::AGENCY) << "Compacting log collection";
   try {
-    auto col = _vocbase->lookupCollection("log");
-    if (col == nullptr) {
+    auto colResult = _vocbase->lookupCollection("log");
+    if (colResult.fail()) {
       LOG_TOPIC("d131f", FATAL, Logger::AGENCY)
-          << "Failed to find log collection in agency.";
+          << "Failed to find log collection in agency: "
+          << colResult.errorMessage();
       FATAL_ERROR_EXIT();
     } else {
-      col->compact();
+      colResult.get()->compact();
     }
   } catch (const std::exception& e) {
     LOG_TOPIC("d13f1", WARN, Logger::AGENCY)
