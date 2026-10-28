@@ -20,6 +20,9 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestHandlerFactory.h"
+
+#include "Assertions/ProdAssert.h"
 #include "Basics/ApiVersion.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
@@ -27,7 +30,6 @@
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
-#include "RestHandlerFactory.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -70,6 +72,9 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   ApiVersion apiVersion = req->requestedApiVersion();
   auto const* routes = find(apiVersion);
   // should never happens since invalid versions should be rejected earlier
+  // to_string would abort on such an invalid value, hence the cast.
+  // Note that we cannot cast to `underlying_type` since that would not be
+  // formatted as a number but print as a character
   TRI_ASSERT(routes != nullptr)
       << "no routes for API version " << static_cast<unsigned>(apiVersion);
   if (routes == nullptr) {
@@ -173,7 +178,7 @@ void RestHandlerFactory::addHandler(
 
   for (ApiVersion apiVersion : apiVersions) {
     auto* routes = find(apiVersion);
-    TRI_ASSERT(routes != nullptr)
+    ADB_PROD_ASSERT(routes != nullptr)
         << "no routes for API version " << static_cast<unsigned>(apiVersion);
     if (!routes->constructors.try_emplace(path, func, data).second) {
       TRI_ASSERT(false) << "duplicate path handler for '" << path << "'";
@@ -198,9 +203,8 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (ApiVersion apiVersion : apiVersions) {
-    // addHandler has thrown for any version without routes
     auto* routes = find(apiVersion);
-    TRI_ASSERT(routes != nullptr);
+    ADB_PROD_ASSERT(routes != nullptr);
     routes->prefixes.emplace_back(path);
   }
 }
