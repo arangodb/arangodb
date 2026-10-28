@@ -31,7 +31,7 @@
 #include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
-#include "Aql/TraversalConditionFinder.h"
+#include "Aql/Optimizer/Utils/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
