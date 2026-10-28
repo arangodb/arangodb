@@ -118,6 +118,19 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&,
                         ServerState::Mode mode);
 
+  enum class EarlyAuthOutcome { Skip, Rejected, Granted };
+  struct EarlyAuthCheck {
+    EarlyAuthOutcome outcome;
+    auth::TokenCache::Entry token = auth::TokenCache::Entry::Unauthenticated();
+  };
+
+  /// May be called as soon as headers are available, before the body is
+  /// read. Does not send a response; caller decides when.
+  EarlyAuthCheck checkAuthEarly(GeneralRequest& req, ServerState::Mode mode);
+
+  /// Sends the rejection response for an EarlyAuthOutcome::Rejected result
+  void sendEarlyAuthRejection(GeneralRequest& req);
+
   /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&, std::string const& cors) const;
 

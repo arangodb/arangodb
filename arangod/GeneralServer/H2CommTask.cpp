@@ -172,15 +172,37 @@ template<SocketType T>
   switch (frame->hd.type) {
     case NGHTTP2_DATA:  // GET or HEAD do not use DATA frames
     case NGHTTP2_HEADERS: {
+      int32_t const sid = frame->hd.stream_id;
+
+      // all header fields are set by now, regardless of END_STREAM
+      if (frame->hd.type == NGHTTP2_HEADERS &&
+          frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+        Stream* strm = me->findStream(sid);
+        if (strm) {
+          ServerState::Mode mode = ServerState::mode();
+          auto earlyAuth = me->checkAuthEarly(*strm->request, mode);
+          if (earlyAuth.outcome == CommTask::EarlyAuthOutcome::Rejected) {
+            strm->authRejected = true;
+          } else if (earlyAuth.outcome == CommTask::EarlyAuthOutcome::Granted) {
+            strm->earlyAuthToken = std::move(earlyAuth.token);
+          }
+        }
+      }
+
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        int32_t const sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
             << "<http2> finalized request on stream " << sid << " with ptr "
             << me;
 
         Stream* strm = me->findStream(sid);
         if (strm && !strm->bodyLimitExceeded) {
-          me->processStream(*strm);
+          if (strm->authRejected) {
+            // pairs with sendResponse()'s unconditional fetch_sub
+            me->_numProcessing.fetch_add(1, std::memory_order_relaxed);
+            me->sendEarlyAuthRejection(*strm->request);
+          } else {
+            me->processStream(*strm);
+          }
         }
       }
       break;
@@ -202,8 +224,7 @@ template<SocketType T>
       << "<http2> received data for stream " << stream_id;
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
-  if (strm) {
-    // auth only runs at END_STREAM, so cap the body as it arrives
+  if (strm && !strm->authRejected) {
     size_t maxBodySize = CommTask::MaximalBodySize;
     TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {
       // lets tests trigger the limit without sending a 1GB body
@@ -690,8 +711,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   ServerState::Mode mode = ServerState::mode();
 
-  // scrape the auth headers to determine and authenticate the user
-  auto authToken = this->checkAuthHeader(*req, mode);
+  auto authToken = stream.earlyAuthToken ? std::move(*stream.earlyAuthToken)
+                                         : this->checkAuthHeader(*req, mode);
+  stream.earlyAuthToken.reset();
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {

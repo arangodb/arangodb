@@ -32,6 +32,7 @@
 #include <atomic>
 #include <memory>
 #include <map>
+#include <optional>
 
 namespace arangodb {
 class HttpRequest;
@@ -102,6 +103,10 @@ class H2CommTask final : public GeneralCommTask<T> {
     size_t bodySize = 0;
     // stream was reset for an oversized body; must not be dispatched
     bool bodyLimitExceeded = false;
+
+    // set once checkAuthEarly runs, as soon as the HEADERS frame is in
+    bool authRejected = false;
+    std::optional<auth::TokenCache::Entry> earlyAuthToken;
   };
 
   /// init h2 session
