@@ -29,7 +29,7 @@
 // Handler: arangod/RestHandler/RestReplicationHandler.cpp
 //          arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp (batch)
 //
-// Every request first asks `UseApiVersion version=0` and then
+// Every request first asks `UseApiVersion version=v0` and then
 // `UseDatabase name=_system level=read` (the paths carry the /_db/_system/ prefix).
 //
 //   batch (POST/PUT/DELETE)  Neither RestReplicationHandler::executeAsync()
@@ -114,7 +114,7 @@ function replicationApiAuthzSuite () {
       const res = arango.POST_RAW(
         `/_db/_system/_api/replication/batch`, { ttl: 30 });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       if (res.parsedBody && res.parsedBody.id) {
@@ -129,7 +129,7 @@ function replicationApiAuthzSuite () {
       arango.PUT_RAW(
         `/_db/_system/_api/replication/batch/${id}`, { ttl: 30 });
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read"
       ], endObserve());
       deleteBatch(id);
@@ -141,7 +141,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_api/replication/batch/${id}`);
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -156,7 +156,7 @@ function replicationApiAuthzSuite () {
       arango.GET_RAW(`/_db/_system/_api/replication/clusterInventory`);
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminDump"
@@ -176,7 +176,7 @@ function replicationApiAuthzSuite () {
         beginObserve();
         restoreCollection(`?overwrite=${overwrite}`);
         assertPermissions([
-          "UseApiVersion version=0",
+          "UseApiVersion version=v0",
           "UseDatabase name=_system level=read",
           `RestoreCollection db=_system name=${cn} overwrite=true`,
           "IsReadOnly",
@@ -196,7 +196,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       restoreCollection();
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read",
         // a coordinator cannot see the existing collection, see above
         ...singleOnly([`RestoreCollection db=_system name=${cn} overwrite=false`]),
@@ -214,7 +214,7 @@ function replicationApiAuthzSuite () {
       beginObserve();
       restoreCollection();
       assertPermissions([
-        "UseApiVersion version=0",
+        "UseApiVersion version=v0",
         "UseDatabase name=_system level=read",
         `RestoreCollection db=_system name=${cn} overwrite=true`,
         "IsReadOnly",

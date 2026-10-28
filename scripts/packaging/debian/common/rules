@@ -24,9 +24,11 @@ override_dh_auto_install:
 	cd build/install ; if test -d usr/share/arangodb3/js/common; then cp -a --parents usr/share/arangodb3/js/common usr/share/arangodb3/js/client usr/share/arangodb3/js/node ../../debian/@EDITION@-client; else cp -a --parents usr/share/arangodb3/js/*/common usr/share/arangodb3/js/*/client usr/share/arangodb3/js/*/node ../../debian/@EDITION@-client; fi
 	cd build/install ; if test -x usr/bin/arangobackup ; then cp -a --parents etc/arangodb3/arangobackup.conf usr/bin/arangobackup ../../debian/@EDITION@-client ; fi
 
+# Strip explicitly instead of via dh_strip: dh_strip rewrites the GNU
+# build-id of every binary it strips. See scripts/packaging/strip-debian-packages.sh.
 override_dh_strip:
-	@DEBIAN_STRIP_ALL@dh_strip --exclude usr/bin/arangodb --dbg-package @EDITION@-dbg
-	@DEBIAN_STRIP_EXCEPT_ARANGOD@dh_strip --exclude usr/bin/arangodb --exclude usr/sbin/arangod --dbg-package @EDITION@-dbg
+	@DEBIAN_STRIP_ALL@scripts/packaging/strip-debian-packages.sh @EDITION@ All
+	@DEBIAN_STRIP_EXCEPT_ARANGOD@scripts/packaging/strip-debian-packages.sh @EDITION@ ExceptArangod
 	@DEBIAN_STRIP_NONE@
 
 override_dh_builddeb:

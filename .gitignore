@@ -152,3 +152,6 @@ swagger-ui.js.map
 
 *.local.*
 js/JS_SHA1SUM.txt
+
+# ANN benchmark output (scripts/benchmark/ann)
+ann-output/
