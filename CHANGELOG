@@ -202,6 +202,13 @@
 
 * COR-522: Use Distribute on repeated smart edge join.
 
+* BTS-2503: The `smart-join-smart-edge` optimizer rule applies to a join of
+  SmartGraph vertices and edges only if every `OR` branch of the join condition
+  matches the same vertex and, outside of disjoint SmartGraphs, uses the same
+  edge attribute (`_from` or `_to`). A join such as
+  `FILTER e._from == v._id OR e._to == v._id` returns the edges of both
+  directions, including those stored with a vertex in another shard.
+
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
 
 * COR-539: The geo index optimizer and iterators now support
