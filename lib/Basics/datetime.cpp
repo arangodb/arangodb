@@ -35,15 +35,12 @@
 #include <utility>
 #include <vector>
 
-#include <date/iso_week.h>
-
 #include "Basics/NumberUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
 namespace {
-using namespace date;
 
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
@@ -55,7 +52,7 @@ std::string tail(std::string const& source, size_t const length) {
 typedef void (*format_func_t)(std::string& wrk,
                               arangodb::tp_sys_clock_ms const&);
 std::unordered_map<std::string, format_func_t> dateMap;
-auto const unixEpoch = date::sys_seconds{std::chrono::seconds{0}};
+auto const unixEpoch = std::chrono::sys_seconds{std::chrono::seconds{0}};
 
 std::vector<std::string> const monthNames = {
     "January", "February", "March",     "April",   "May",      "June",
@@ -65,11 +62,11 @@ std::vector<std::string> const monthNamesShort = {"Jan", "Feb", "Mar", "Apr",
                                                   "May", "Jun", "Jul", "Aug",
                                                   "Sep", "Oct", "Nov", "Dec"};
 
-std::vector<std::string> const weekDayNames = {
+std::vector<std::string> const weekdayNames = {
     "Sunday",   "Monday", "Tuesday", "Wednesday",
     "Thursday", "Friday", "Saturday"};
 
-std::vector<std::string> const weekDayNamesShort = {"Sun", "Mon", "Tue", "Wed",
+std::vector<std::string> const weekdayNamesShort = {"Sun", "Mon", "Tue", "Wed",
                                                     "Thu", "Fri", "Sat"};
 
 std::
@@ -84,7 +81,8 @@ std::
                 // prefix, keep negative as-is
                 {"%yyyyyy",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto yearnum = static_cast<int>(ymd.year());
                    if (yearnum < 0) {
                      if (yearnum > -10) {
@@ -123,13 +121,15 @@ std::
                  }},
                 {"%mmmm",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    wrk.append(
                        ::monthNames[static_cast<unsigned>(ymd.month()) - 1]);
                  }},
                 {"%yyyy",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto yearnum = static_cast<int>(ymd.year());
                    if (yearnum < 0) {
                      if (yearnum > -10) {
@@ -162,25 +162,27 @@ std::
 
                 {"%wwww",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   weekday wd{floor<date::days>(tp)};
+                   std::chrono::weekday wd{floor<std::chrono::days>(tp)};
                    wrk.append(::weekDayNames[wd.c_encoding()]);
                  }},
 
                 {"%mmm",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    wrk.append(
                        ::monthNamesShort[static_cast<unsigned>(ymd.month()) -
                                          1]);
                  }},
                 {"%www",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   weekday wd{floor<date::days>(tp)};
+                   std::chrono::weekday wd{floor<std::chrono::days>(tp)};
                    wrk.append(weekDayNamesShort[wd.c_encoding()]);
                  }},
                 {"%fff",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t millis = day_time.subseconds().count();
                    if (millis < 10) {
                      wrk.append("00");
@@ -191,14 +193,15 @@ std::
                  }},
                 {"%xxx",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto yyyy = year{ymd.year()};
                    // we construct the date with the first day in the
                    // year:
                    auto firstDayInYear = yyyy / jan / day{0};
                    uint64_t daysSinceFirst =
-                       duration_cast<date::days>(tp -
-                                                 date::sys_days(firstDayInYear))
+                       duration_cast<std::chrono::days>(
+                           tp - date::sys_days(firstDayInYear))
                            .count();
                    if (daysSinceFirst < 10) {
                      wrk.append("00");
@@ -213,7 +216,8 @@ std::
                 {
                     "%yy",
                     [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                      auto ymd = year_month_day(floor<date::days>(tp));
+                      auto ymd = std::chrono::year_month_day(
+                          floor<std::chrono::days>(tp));
                       auto yearnum = static_cast<int>(ymd.year());
                       if (yearnum < 10 && yearnum > -10) {
                         wrk.append("0");
@@ -225,7 +229,8 @@ std::
                     }},
                 {"%mm",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto month = static_cast<unsigned>(ymd.month());
                    if (month < 10) {
                      wrk.append("0");
@@ -234,7 +239,8 @@ std::
                  }},
                 {"%dd",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto day = static_cast<unsigned>(ymd.day());
                    if (day < 10) {
                      wrk.append("0");
@@ -243,7 +249,8 @@ std::
                  }},
                 {"%hh",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t hours = day_time.hours().count();
                    if (hours < 10) {
                      wrk.append("0");
@@ -252,7 +259,8 @@ std::
                  }},
                 {"%ii",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t minutes = day_time.minutes().count();
                    if (minutes < 10) {
                      wrk.append("0");
@@ -261,7 +269,8 @@ std::
                  }},
                 {"%ss",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t seconds = day_time.seconds().count();
                    if (seconds < 10) {
                      wrk.append("0");
@@ -270,7 +279,8 @@ std::
                  }},
                 {"%kk",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
+                   iso_week::year_weeknum_weekday yww{
+                       floor<std::chrono::days>(tp)};
                    uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
                    if (isoWeek < 10) {
                      wrk.append("0");
@@ -290,77 +300,87 @@ std::
                  }},
                 {"%z",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   std::string formatted = date::format(
+                   std::string formatted = std::format(
                        "%FT%TZ", floor<std::chrono::milliseconds>(tp));
                    wrk.append(formatted);
                  }},
                 {"%w",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   weekday wd{floor<date::days>(tp)};
+                   std::chrono::weekday wd{floor<std::chrono::days>(tp)};
                    wrk.append(std::to_string(wd.c_encoding()));
                  }},
                 {"%y",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    wrk.append(std::to_string(static_cast<int>(ymd.year())));
                  }},
                 {"%m",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    wrk.append(
                        std::to_string(static_cast<unsigned>(ymd.month())));
                  }},
                 {"%d",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    wrk.append(std::to_string(static_cast<unsigned>(ymd.day())));
                  }},
                 {"%h",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t hours = day_time.hours().count();
                    wrk.append(std::to_string(hours));
                  }},
                 {"%i",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t minutes = day_time.minutes().count();
                    wrk.append(std::to_string(minutes));
                  }},
                 {"%s",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t seconds = day_time.seconds().count();
                    wrk.append(std::to_string(seconds));
                  }},
                 {"%f",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto day_time = make_time(tp - floor<date::days>(tp));
+                   auto day_time =
+                       std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
                    uint64_t millis = day_time.subseconds().count();
                    wrk.append(std::to_string(millis));
                  }},
                 {"%x",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day(floor<date::days>(tp));
+                   auto ymd = std::chrono::year_month_day(
+                       floor<std::chrono::days>(tp));
                    auto yyyy = year{ymd.year()};
                    // We construct the date with the first day in the
                    // year:
                    auto firstDayInYear = yyyy / jan / day{0};
                    uint64_t daysSinceFirst =
-                       duration_cast<date::days>(tp -
-                                                 date::sys_days(firstDayInYear))
+                       duration_cast<std::chrono::days>(
+                           tp - date::sys_days(firstDayInYear))
                            .count();
                    wrk.append(std::to_string(daysSinceFirst));
                  }},
                 {"%k",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
+                   iso_week::year_weeknum_weekday yww{
+                       floor<std::chrono::days>(tp)};
                    uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
                    wrk.append(std::to_string(isoWeek));
                  }},
                 {"%l",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   year_month_day ymd{floor<date::days>(tp)};
+                   std::chrono::year_month_day ymd{
+                       floor<std::chrono::days>(tp)};
                    if (ymd.year().is_leap()) {
                      wrk.append("1");
                    } else {
@@ -369,7 +389,8 @@ std::
                  }},
                 {"%q",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   year_month_day ymd{floor<date::days>(tp)};
+                   std::chrono::year_month_day ymd{
+                       floor<std::chrono::days>(tp)};
                    month m = ymd.month();
                    uint64_t part =
                        static_cast<uint64_t>(std::ceil(unsigned(m) / 3.0f));
@@ -378,7 +399,8 @@ std::
                  }},
                 {"%a",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto ymd = year_month_day{floor<date::days>(tp)};
+                   auto ymd = std::chrono::year_month_day{
+                       floor<std::chrono::days>(tp)};
                    auto lastMonthDay = ymd.year() / ymd.month() / last;
                    wrk.append(std::to_string(
                        static_cast<unsigned>(lastMonthDay.day())));
@@ -681,7 +703,7 @@ bool arangodb::basics::parseDateTime(std::string_view dateTime,
       date_tp -= offset;
 
       // revalidate date after timezone adjustment
-      auto ymd = year_month_day(floor<date::days>(date_tp));
+      auto ymd = std::chrono::year_month_day(floor<std::chrono::days>(date_tp));
       int year = static_cast<int>(ymd.year());
       if (year < 0 || year > 9999) {
         return false;

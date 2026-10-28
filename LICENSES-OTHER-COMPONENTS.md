@@ -54,16 +54,6 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
-### date
-
-* Name: date
-* Version: 3.0.0
-* Date: 2020-06-03
-* Project Home: https://github.com/HowardHinnant/date
-* License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
-* License Name: MIT License
-* License Id: MIT
-
 ### faiss
 
 * Name: faiss
