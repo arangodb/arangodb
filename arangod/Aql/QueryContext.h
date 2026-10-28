@@ -162,8 +162,6 @@ class QueryContext : public arangodb::ICancellationToken {
 
   virtual bool hasEnteredV8Executor() const { return false; }
 
-  virtual void resetRuntimeClock() {}
-
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally
   // free, and there is not other accounting for them. note: this value is
