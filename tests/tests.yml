@@ -84,6 +84,8 @@
       size: small
 
 - shell_api_multi_permissions:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: single
@@ -100,6 +102,8 @@
 
 # Shell client tests Single Server; distribute evenly
 - shell_client:
+    requires:
+      coverage: false
     options:
       priority: 250
       parallelity: 2
@@ -290,6 +294,8 @@
       dumpAgencyOnError: true
 
 - arangobench_deadlock_audit:
+    requires:
+      coverage: false
     options:
       priority: 1000
       type: mixed
@@ -392,6 +398,8 @@
       dumpAgencyOnError: true
 
 - shell_api_multi:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: cluster
