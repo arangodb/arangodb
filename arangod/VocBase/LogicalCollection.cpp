@@ -525,13 +525,13 @@ CollectionDescriptor LogicalCollection::properties() const {
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
-  if (groupId().has_value() && ServerState::instance()->isDBServer()) {
+  if (auto gid = groupIdIfAny();
+      gid.has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    auto const& group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{groupId().value()});
+    auto const& group = ci.getCollectionGroupById(*gid);
     if (group) {
       return group->attributes.mutableAttributes.waitForSync;
     }
@@ -553,13 +553,13 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 }
 
 size_t LogicalCollection::writeConcern() const noexcept {
-  if (groupId().has_value() && ServerState::instance()->isDBServer()) {
+  if (auto gid = groupIdIfAny();
+      gid.has_value() && ServerState::instance()->isDBServer()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    auto const& group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{groupId().value()});
+    auto const& group = ci.getCollectionGroupById(*gid);
     if (group) {
       return group->attributes.mutableAttributes.writeConcern;
     }
@@ -1021,12 +1021,12 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
       group;
-  if (auto gid = groupId(); gid.has_value()) {
+  auto gid = groupIdIfAny();
+  if (gid.has_value()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-    group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{gid.value()});
+    group = ci.getCollectionGroupById(*gid);
   }
   bool const isReplicationTWO = group != nullptr;
 
@@ -1045,7 +1045,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                           includeShardsEntry);
 
   if (group) {
-    build.add(StaticStrings::GroupId, VPackValue(groupId().value()));
+    build.add(StaticStrings::GroupId, VPackValue(gid->id()));
     if (auto stateId = replicatedStateIdIfAny(); stateId.has_value()) {
       build.add("replicatedStateId", VPackValue(*stateId));
     }
@@ -1527,13 +1527,12 @@ void LogicalCollection::decorateWithInternalValidators() {
   decorateWithInternalEEValidators();
 }
 
-std::optional<uint64_t> LogicalCollection::groupId() const noexcept {
+auto LogicalCollection::groupIdIfAny() const noexcept
+    -> std::optional<replication2::agency::CollectionGroupId> {
   if (replicationVersion() != replication::Version::TWO) {
     return std::nullopt;
   }
-  auto const& groupId = _invariants.groupId;
-  return groupId.has_value() ? std::optional{groupId.value().id()}
-                             : std::nullopt;
+  return _invariants.groupId;
 }
 
 replication2::LogId LogicalCollection::shardIdToStateId(
@@ -1648,9 +1647,9 @@ void LogicalCollection::decorateWithInternalEEValidators() {
 
 auto LogicalCollection::groupID() const noexcept
     -> arangodb::replication2::agency::CollectionGroupId {
-  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
-                  groupId().has_value());
-  return arangodb::replication2::agency::CollectionGroupId{groupId().value()};
+  auto gid = groupIdIfAny();
+  ADB_PROD_ASSERT(gid.has_value());
+  return *gid;
 }
 
 auto LogicalCollection::replicatedStateId() const noexcept

@@ -50,12 +50,12 @@ CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
     return {};
   }
   if (acceptNumber && v.isInteger()) {
-    try {
-      result = DataSourceId{v.getNumber<uint64_t>()};
-      return {};
-    } catch (...) {
-      // out of range for an id, e.g. negative
+    // getInt() would throw on a UInt above INT64_MAX, which is a valid id
+    if (!v.isUInt() && v.getInt() < 0) {
+      return {"Expecting a non-negative integer"};
     }
+    result = DataSourceId{v.getUInt()};
+    return {};
   }
   return {"Expecting type String"};
 }

@@ -418,15 +418,11 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_parsesEveryLoadOnlyField) {
 }
 
 // Older markers and plan entries spell these as numbers, which is what
-// IdIdentifier::acceptNumber is for. A user may only send strings.
-TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnlyOnLoad) {
-  auto numeric = [](std::string_view key) {
-    return oneKeyObject(key, VPackValue(9988488));
-  };
-
+// IdIdentifier::acceptNumber is for.
+TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnLoad) {
   for (auto const& key : {StaticStrings::Id, StaticStrings::DataSourceCid,
                           StaticStrings::DataSourcePlanId}) {
-    auto body = numeric(key);
+    auto body = oneKeyObject(key, VPackValue(9988488));
 
     CollectionIdentity internalProps;
     EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
@@ -438,14 +434,20 @@ TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnlyOnLoad) {
                              ? internalProps.planId
                              : internalProps.id;
     EXPECT_EQ(parsed, DataSourceId{9988488}) << " on " << body.toJson();
-
-    CollectionIdentity userProps;
-    EXPECT_FALSE(velocypack::deserializeWithStatus(
-                     body.slice(), userProps, {.ignoreUnknownFields = true},
-                     InspectUserContext{})
-                     .ok())
-        << " on " << body.toJson();
   }
+}
+
+// A user may only spell the id as a string. cid and planId are not part of
+// this test because a user may not send them at all, whatever their type.
+TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberFromAUser) {
+  auto body = oneKeyObject(StaticStrings::Id, VPackValue(9988488));
+
+  CollectionIdentity userProps;
+  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps,
+                                                 {.ignoreUnknownFields = true},
+                                                 InspectUserContext{})
+                   .ok())
+      << " on " << body.toJson();
 }
 
 // A negative or oversized number is not an id, and the transformer reports it

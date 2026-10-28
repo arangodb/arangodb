@@ -761,8 +761,8 @@ void RocksDBEngine::start() {
   if (cfHandles.size() <
       RocksDBColumnFamilyManager::minNumberOfColumnFamilies) {
     LOG_TOPIC("e572e", FATAL, arangodb::Logger::STARTUP)
-        << "unexpected number of column families found in database. " << "got "
-        << cfHandles.size() << ", expecting at least "
+        << "unexpected number of column families found in database. "
+        << "got " << cfHandles.size() << ", expecting at least "
         << RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
@@ -2715,9 +2715,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       Result r = phy->meta().deserializeMeta(_db, *collection);
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
-            << "error while " << "loading metadata of collection '"
-            << vocbase->name() << "/" << collection->name()
-            << "': " << r.errorMessage();
+            << "error while "
+            << "loading metadata of collection '" << vocbase->name() << "/"
+            << collection->name() << "': " << r.errorMessage();
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
@@ -3568,7 +3568,8 @@ bool RocksDBEngine::checkExistingDB(
         RocksDBColumnFamilyManager::minNumberOfColumnFamilies) {
       LOG_TOPIC("e99ec", FATAL, arangodb::Logger::STARTUP)
           << "unexpected number of column families found in database ("
-          << existingColumnFamilies.size() << "). " << "expecting at least "
+          << existingColumnFamilies.size() << "). "
+          << "expecting at least "
           << RocksDBColumnFamilyManager::minNumberOfColumnFamilies
           << ". if you are upgrading from an earlier alpha or beta version "
              "of ArangoDB, it is required to restart with a new database "

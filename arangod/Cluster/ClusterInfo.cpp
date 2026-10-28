@@ -6471,9 +6471,8 @@ void ClusterInfo::triggerWaiting(
   }
 }
 
-auto ClusterInfo::getReplicatedLogPlanSpecification(
-    replication2::LogId id) const
-    -> ResultT<
+auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
+    const -> ResultT<
         std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
   READ_LOCKER(readLocker, _planProt.lock);
 
