@@ -156,6 +156,8 @@ class AqlItemBlock {
       _data[address].erase();
       throw;
     }
+    TRI_ASSERT(!value->isShortLivedSlice())
+        << "short-lived slice pointer stored in an AqlItemBlock";
 
     // Now update the reference count, if this fails, we'll roll it back
     if (value->requiresDestruction()) {
