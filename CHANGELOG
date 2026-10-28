@@ -1,4 +1,4 @@
-3.12.13 (XXXX-XX-XX)
+3.12.13 (2026-10-28)
 --------------------
 
 * BTS-2496: AQL `LENGTH()` and `COUNT()` of a subquery that contains a `COLLECT`

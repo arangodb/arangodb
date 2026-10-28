@@ -14,17 +14,17 @@
   },
   "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",
-  "version": "3.12.12-devel (API experimental)"
+  "version": "3.12.13 (API experimental)"
  },
  "openapi": "3.1.0",
  "paths": {
   "/_arango/experimental/_db/{database-name}/_admin/activities": {
    "get": {
-    "description": "\u003e **WARNING:**\nThe activities API is incomplete and thus an experimental feature.\n\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AqlQuery`,\n`TransactionActivity`), a creation time, an optional parent reference,\nand a `data` object. The structure of `data` depends on the activity type\nand may be extended in future versions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, *administrate* access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint is restricted\nto the superuser and you therefore need to authenticate with a token\ncreated from the JWT secret.\n",
+    "description": "\u003e **WARNING**\n\u003e\n\u003e The activities API is incomplete and thus an experimental feature.\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AqlQuery`,\n`TransactionActivity`), a creation time, an optional parent reference,\nand a `data` object. The structure of `data` depends on the activity type\nand may be extended in future versions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, `rw` access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint requires a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens).",
     "operationId": "getActivities",
     "parameters": [
      {
-      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least `ro` access\nto this database and `rw` access to the `_system` database.\n",
       "example": "_system",
       "in": "path",
       "name": "database-name",
@@ -50,7 +50,7 @@
               "type": "string"
              },
              "data": {
-              "description": "Type-specific details for this activity. The shape of\nthis object depends on the activity type and is\nintentionally left flexible so the feature can grow\nwithout breaking the API. Do not rely on a fixed schema.\n",
+              "description": "Type-specific details for this activity. The shape of\nthis object depends on the activity `type` and is\nintentionally left flexible so the feature can grow\nwithout breaking the API. Do not rely on a fixed schema.\nSee the [Activity types](https://docs.arango.ai/arangodb/3.12/develop/http-api/monitoring/activities/#activity-types) for the details.\n",
               "type": "object"
              },
              "id": {
@@ -63,8 +63,29 @@
               "example": 370,
               "type": "integer"
              },
+             "threads": {
+              "description": "\u003csmall\u003eIntroduced in: v3.12.10\u003c/small\u003e\n\nThe threads that currently execute this activity.\nThe list is empty for activities that no thread\nclaims, like background maintenance activities.\n",
+              "items": {
+               "properties": {
+                "LWPID": {
+                 "description": "The identifier of the light-weight process\n(thread) as assigned by the operating system.\n",
+                 "type": "integer"
+                },
+                "name": {
+                 "description": "The name of the thread.\n",
+                 "type": "string"
+                }
+               },
+               "required": [
+                "LWPID",
+                "name"
+               ],
+               "type": "object"
+              },
+              "type": "array"
+             },
              "type": {
-              "description": "The kind of activity (e.g. `RestHandler`, `AQLQuery`).\n",
+              "description": "The kind of activity (e.g. `RestHandler`, `AQLQuery`).\nSee the [Activity types](https://docs.arango.ai/arangodb/3.12/develop/http-api/monitoring/activities/#activity-types) for the details.\n",
               "example": "RestHandler",
               "type": "string"
              }
@@ -88,6 +109,200 @@
        }
       },
       "description": "The list of activities was returned successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The credentials are wrong or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The request is not authorized due to a lack of permissions.\nThe reason depends on the setting of the\n`--activities.only-superuser-enabled` startup option:\n\n- `false`: The endpoint is restricted to admin users but the\n  user account you authenticated with lacks write access to the\n  `_system` database.\n- `true`: The endpoint requires a superuser JWT but you\n  didn't use one.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The specified database doesn't exist, or the user account you\nauthenticate with has no access to this database.\n\nUp to v3.12.10, a lack of database access resulted in an HTTP `401`\nerror with the `ERROR_FORBIDDEN` (`11`) error number instead of an\nHTTP `404` error with the `ERROR_ARANGO_DATABASE_NOT_FOUND` (`1228`)\nerror number.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when an HTTP method other than `GET` is used.\n"
+     }
+    },
+    "summary": "Get the activities (experimental)",
+    "tags": [
+     "Monitoring"
+    ]
+   }
+  },
+  "/_arango/experimental/_db/{database-name}/_admin/activities/all": {
+   "get": {
+    "description": "\u003e **WARNING**\n\u003e\n\u003e The activities API is incomplete and thus an experimental feature.\n\n\u003csmall\u003eIntroduced in: v3.12.10\u003c/small\u003e\n\nReturns the activities that are currently in progress on every server of\na cluster deployment, grouped by server. The Coordinator you call this\nendpoint on asks all other Coordinators, the DB-Servers, and the Agents\nfor their activities, and adds its own.\n\nYou need to call this endpoint on a Coordinator. It is not available on\nsingle servers, which only ever report their own activities via the\n[`GET /_admin/activities` endpoint](https://docs.arango.ai/arangodb/3.12/develop/http-api/monitoring/activities/#get-the-activities-experimental).\n\nThe endpoint is useful for activities that only occur on particular\nservers, like the [ArangoSearch consolidation](https://docs.arango.ai/arangodb/3.12/develop/http-api/monitoring/activities/#arangosearchconsolidation)\nthat DB-Servers perform.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, `rw` access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint requires a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens).",
+    "operationId": "getActivitiesAllServers",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least `ro` access\nto this database and `rw` access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "activities_per_server": {
+           "additionalProperties": {
+            "description": "The activities of one server, or an error object if they\ncannot be retrieved.\n",
+            "items": {
+             "type": "object"
+            },
+            "type": "array"
+           },
+           "description": "An object with the server IDs as the attribute keys\n(`CRDN-...` for Coordinators, `PRMR-...` for DB-Servers,\nand `AGNT-...` for Agents). The attribute value is the\narray of activity objects of the respective server, using\nthe same format as the\n[`GET /_admin/activities` endpoint](https://docs.arango.ai/arangodb/3.12/develop/http-api/monitoring/activities/#get-the-activities-experimental).\n\nIf the activities of a server cannot be retrieved, for\ninstance because the server doesn't respond in time, the\nattribute value is an object with a `number` attribute\n(the ArangoDB error number) and a `message` attribute\n(a descriptive error message) instead.\n",
+           "type": "object"
+          }
+         },
+         "required": [
+          "activities_per_server"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The activities of all servers were returned successfully.\n"
      },
      "401": {
       "content": {
@@ -159,7 +374,7 @@
         }
        }
       },
-      "description": "The request is not authorized due to a lack of permissions.\nThe reason depends on the setting of the\n`--activities.only-superuser-enabled` startup option:\n\n- `false`: The endpoint is restricted to admin users but the\n  user account you authenticated with lacks write access to the\n  `_system` database.\n- `true`: The endpoint is restricted to the superuser but you didn't\n  authenticate with a token created from the JWT secret.\n"
+      "description": "The request is not authorized. The possible reasons are the\nfollowing:\n\n- You called the endpoint on a server other than a Coordinator.\n- The `--activities.only-superuser-enabled` startup option is\n  `false` and the user account you authenticated with lacks write\n  access to the `_system` database.\n- The `--activities.only-superuser-enabled` startup option is `true`\n  and you didn't use a superuser JWT.\n"
      },
      "405": {
       "content": {
@@ -198,7 +413,387 @@
       "description": "Returned when an HTTP method other than `GET` is used.\n"
      }
     },
-    "summary": "Get the activities (experimental)",
+    "summary": "Get the activities of all servers (experimental)",
+    "tags": [
+     "Monitoring"
+    ]
+   }
+  },
+  "/_arango/experimental/_db/{database-name}/_admin/arangosearch/stats": {
+   "get": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.11\u003c/small\u003e\n\n\u003e **WARNING**\n\u003e\n\u003e The ArangoSearch statistics API is incomplete and thus an experimental\n\u003e feature. It is only available on single servers, and the reported data\n\u003e stores of `arangosearch` Views cannot be mapped back to the View they\n\u003e belong to.\n\u003e\n\u003e In v3.12.11, the endpoint reports the statistics of a single data store\n\u003e that you cannot select, as a flat object without the `numIndexes` and\n\u003e `indexes` attributes, and it returns an empty object if the database has\n\u003e no `arangosearch` View and no inverted index.\n\nReturns the summarized statistics and the per-segment information of the\nArangoSearch data stores of the specified database.\n\nThe endpoint enumerates the collections of the database and reports the\nstatistics of every `arangosearch` View link and every inverted index it\nencounters, identified by the name and type of the index as well as the\ncollection it belongs to. The order in which the data stores are\nreported is not defined and can change. If the database has no\n`arangosearch` View and no inverted index, then the list of data stores\nis empty.\n\nYou need at least `ro` access to the specified database.",
+    "operationId": "getArangoSearchStats",
+    "parameters": [
+     {
+      "description": "The name of the database that holds the `arangosearch` Views or\ninverted indexes you want the statistics of.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "indexes": {
+           "description": "The list of ArangoSearch data stores of the database, each\nwith its summarized statistics and per-segment information.\n",
+           "items": {
+            "properties": {
+             "collection": {
+              "description": "The name of the collection the index belongs to.\n",
+              "example": "coll",
+              "type": "string"
+             },
+             "deletionRatio": {
+              "description": "The share of documents that are marked as deleted,\ncalculated as `(numDocs - numLiveDocs) / numDocs` and\nrounded to two decimal places. It is `0` if the data\nstore is empty. A high value indicates that the data\nstore holds a lot of data that consolidation can\nstill reclaim.\n",
+              "example": 0.17,
+              "type": "number"
+             },
+             "indexName": {
+              "description": "The name of the index the data store belongs to.\n\n- For `inverted` indexes, this is the same as the `name`\n  of the index, which can be user-defined.\n- For the internal indexes of `arangosearch` Views (links),\n  this is an automatically generated name which cannot be\n  mapped back to the View it belongs to.\n",
+              "example": "inv-idx",
+              "type": "string"
+             },
+             "indexSize": {
+              "description": "The size of the data store in bytes, calculated as\nthe sum of the sizes of all segments.\n",
+              "example": 4118,
+              "type": "integer"
+             },
+             "indexType": {
+              "description": "The type of the index the data store belongs to,\nwhich is either `arangosearch` for a View link or\n`inverted` for an inverted index.\n",
+              "enum": [
+               "arangosearch",
+               "inverted"
+              ],
+              "example": "inverted",
+              "type": "string"
+             },
+             "numDocs": {
+              "description": "The number of documents in the data store, including\nthe documents that are marked as deleted but that are\nnot removed yet.\n",
+              "example": 6,
+              "type": "integer"
+             },
+             "numFiles": {
+              "description": "The number of files that represent the data store.\nThis includes the files of all segments as well as\nthe segments file itself.\n",
+              "example": 12,
+              "type": "integer"
+             },
+             "numLiveDocs": {
+              "description": "The number of documents in the data store that are\nnot marked as deleted.\n",
+              "example": 5,
+              "type": "integer"
+             },
+             "numPrimaryDocs": {
+              "description": "The number of top-level documents in the data store.\nIt is equal to `numDocs` unless the View or inverted\nindex indexes nested fields, in which case the child\ndocuments are not counted.\n",
+              "example": 6,
+              "type": "integer"
+             },
+             "numSegments": {
+              "description": "The number of segments the data store is made up of.\n",
+              "example": 2,
+              "type": "integer"
+             },
+             "segments": {
+              "description": "The list of segments the data store is made up of.\n",
+              "items": {
+               "properties": {
+                "byteSize": {
+                 "description": "The size of the segment in bytes.\n",
+                 "example": 3562,
+                 "type": "integer"
+                },
+                "deletionRatio": {
+                 "description": "The share of documents in the segment that are\nmarked as deleted, calculated as\n`(numDocs - numLiveDocs) / numDocs` and rounded\nto two decimal places. It is `0` if the segment\nholds no documents.\n",
+                 "example": 0.2,
+                 "type": "number"
+                },
+                "name": {
+                 "description": "The name of the segment as used on disk, for\ninstance `_1`.\n",
+                 "example": "_1",
+                 "type": "string"
+                },
+                "numDocs": {
+                 "description": "The number of documents in the segment,\nincluding the documents that are marked as\ndeleted but that are not removed yet.\n",
+                 "example": 5,
+                 "type": "integer"
+                },
+                "numLiveDocs": {
+                 "description": "The number of documents in the segment that are\nnot marked as deleted.\n",
+                 "example": 4,
+                 "type": "integer"
+                }
+               },
+               "required": [
+                "name",
+                "numDocs",
+                "numLiveDocs",
+                "byteSize",
+                "deletionRatio"
+               ],
+               "type": "object"
+              },
+              "type": "array"
+             }
+            },
+            "required": [
+             "indexName",
+             "indexType",
+             "collection",
+             "numDocs",
+             "numLiveDocs",
+             "deletionRatio",
+             "numPrimaryDocs",
+             "numSegments",
+             "numFiles",
+             "indexSize",
+             "segments"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          },
+          "numIndexes": {
+           "description": "The number of ArangoSearch data stores the statistics are\nreported for. It is equal to the length of the `indexes`\narray.\n",
+           "example": 2,
+           "type": "integer"
+          }
+         },
+         "required": [
+          "numIndexes",
+          "indexes"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The statistics were returned successfully. The `indexes` array is\nempty if the database contains no `arangosearch` View and no\ninverted index.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The credentials are wrong, the user account is inactive, or the\nspecified database doesn't exist and the user account has no default\naccess to it.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The specified database exists but the user account has no access to it.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "example": 1228,
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The specified database doesn't exist.\nrevealed.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when an HTTP method other than `GET` is used.\n"
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 500,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "An internal error occurred while gathering or serializing the\nstatistics.\n"
+     },
+     "501": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 501,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "example": 1470,
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when the endpoint is called on a cluster deployment.\nThe statistics are only available on single servers.\n"
+     }
+    },
+    "summary": "Get the ArangoSearch statistics (experimental)",
     "tags": [
      "Monitoring"
     ]
@@ -207,7 +802,7 @@
  },
  "tags": [
   {
-   "description": "Access activities",
+   "description": "Access activities and ArangoSearch statistics",
    "name": "Monitoring"
   }
  ]
