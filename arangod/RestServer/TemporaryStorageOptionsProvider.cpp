@@ -101,16 +101,13 @@ query result in RAM, use a streaming query.)");
       .setIntroducedIn(31000);
 
   options
-      ->addOption(
+      ->addObsoleteOption(
           "--temp.intermediate-results-encryption-hardware-acceleration",
           "Use Intel intrinsics-based encryption, requiring a CPU with "
           "the AES-NI instruction set. "
           "If turned off, then OpenSSL is used, which may use "
           "hardware-accelerated encryption, too.",
-          new BooleanParameter(&opts.allowHWAcceleration),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise,
-              arangodb::options::Flags::Experimental))
+          false)
       .setIntroducedIn(31000);
 #endif
 }
