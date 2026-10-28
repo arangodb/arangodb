@@ -28,7 +28,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ConditionFinder.h"
+#include "Aql/Optimizer/Utils/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
