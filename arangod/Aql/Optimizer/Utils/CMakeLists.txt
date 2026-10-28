@@ -1,5 +1,7 @@
 target_sources(arango_aql PRIVATE
   AccessesCollectionVariable.cpp
+  ConditionCoverage.cpp
+  ConditionFinder.cpp
   EnumeratePathsFilterMatcher.cpp
   ExtractNonConstPartsOfIndexCondition.cpp
   FindProjections.cpp
@@ -9,4 +11,5 @@ target_sources(arango_aql PRIVATE
   LateMaterializedCommon.cpp
   OptimizeTraversalPathVariable.cpp
   RewriteProjectionAttributeAccesses.cpp
+  TraversalConditionFinder.cpp
 )
