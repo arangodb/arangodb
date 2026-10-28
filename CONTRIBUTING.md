@@ -312,7 +312,7 @@ build using the officially supported version of the Clang compiler
 (also see the [`VERSIONS`](VERSIONS)):
 
     cd /root/project
-    cmake --preset community -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DOPENSSL_ROOT_DIR=/opt
+    cmake --preset community -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DOPENSSL_ROOT_DIR=/opt -DUSE_ENTERPRISE=OFF
     cmake --build --preset community --parallel (nproc)
 
 For a debug build, you can use the `community-developer` preset instead.
