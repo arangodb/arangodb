@@ -23,7 +23,6 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
@@ -100,11 +99,6 @@ void ServerFeature::prepare() {
     v8dealer->setMinimumExecutors(2);
   }
 #endif
-
-  if (operationMode() == OperationMode::MODE_SERVER ||
-      operationMode() == OperationMode::MODE_CONSOLE) {
-    server().getFeature<ShutdownFeature>().disable();
-  }
 
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
