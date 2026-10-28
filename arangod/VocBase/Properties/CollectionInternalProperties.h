@@ -62,9 +62,11 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
                                      props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
+      // A marker written before this attribute existed means false; a create
+      // that omits it means true.
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
               props.usesRevisionsAsDocumentIds)
-          .fallback(f.keep()),
+          .fallback(!isInternalContext<Inspector>),
       f.field(StaticStrings::IsSmartChild, props.isSmartChild)
           .fallback(f.keep()),
       f.field(StaticStrings::InternalValidatorTypes,

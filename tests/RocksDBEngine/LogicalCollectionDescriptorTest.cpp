@@ -701,6 +701,24 @@ TEST_F(LogicalCollectionDescriptorTest,
                                                  InspectUserContext{})
                    .ok());
 }
+TEST_F(LogicalCollectionDescriptorTest,
+       Context_missingUsesRevisionsAsDocumentIdsMeansFalseOnLoad) {
+  auto body = oneKeyObject(StaticStrings::DataSourceName, VPackValue("test"));
+
+  CollectionInternalProperties internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectInternalContext{})
+                  .ok());
+  EXPECT_FALSE(internalProps.usesRevisionsAsDocumentIds);
+
+  CollectionInternalProperties userProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), userProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectUserContext{})
+                  .ok());
+  EXPECT_TRUE(userProps.usesRevisionsAsDocumentIds);
+}
 
 TEST_F(LogicalCollectionDescriptorTest,
        Context_upgradeKeyGeneratorIsInternalOnly) {
@@ -832,9 +850,6 @@ TEST_F(LogicalCollectionDescriptorTest, SliceCtor_matchesDescriptorCtor) {
 
 TEST_F(LogicalCollectionDescriptorTest,
        SliceCtor_usesRevisionsAsDocumentIdsDefaults) {
-  // The descriptor defaults to true, matching what Collections::create injects
-  // for a user create. The slice ctor defaults to false, which is what the
-  // agency's own collections and pre-v37 markers rely on.
   CollectionDescriptor d;
   EXPECT_TRUE(d.internal.usesRevisionsAsDocumentIds);
 
