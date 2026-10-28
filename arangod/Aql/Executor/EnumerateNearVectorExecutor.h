@@ -82,8 +82,7 @@ class EnumerateNearVectorsExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateNearVectorsExecutorInfos;
-  // TODO(jbajic) add stats
-  using Stats = NoStats;
+  using Stats = EnumerateNearVectorStats;
 
   EnumerateNearVectorsExecutor(Fetcher&, Infos&);
   EnumerateNearVectorsExecutor(EnumerateNearVectorsExecutor const&) = delete;
@@ -133,6 +132,7 @@ class EnumerateNearVectorsExecutor {
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;
   ExecutorState _state{ExecutorState::HASMORE};
+  Stats _stats;
 
   std::vector<float> _distances;
   std::vector<vector::LabelId> _labels;
