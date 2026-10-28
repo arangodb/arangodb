@@ -73,12 +73,7 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
               props.internalValidatorType)
           .fallback(f.keep()),
       f.field(StaticStrings::GraphSmartGraphAttribute,
-              props.smartGraphAttribute),
-      /* Backwards compatibility, field is documented but does not have an
-       * effect
-       */
-      f.ignoreField(StaticStrings::DataSourceGuid),
-      f.ignoreField(StaticStrings::DataSourceDeleted));
+              props.smartGraphAttribute));
 }
 
 }  // namespace arangodb

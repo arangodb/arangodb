@@ -1045,6 +1045,10 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                           includeShardsEntry);
 
   if (group) {
+    build.add(StaticStrings::GroupId, VPackValue(groupId().value()));
+    if (auto stateId = replicatedStateIdIfAny(); stateId.has_value()) {
+      build.add("replicatedStateId", VPackValue(*stateId));
+    }
     // For replication1 the _sharding is responsible.
     // For TWO the group contains those attributes
 

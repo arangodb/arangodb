@@ -372,7 +372,6 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_acceptsInternalOnlyValues) {
       VPackObjectBuilder keyOpts(&builder, StaticStrings::KeyOptions);
       builder.add("type", VPackValue("upgrade"));
     }
-    // every persisted marker carries these; ShardingInfo requires the strategy
     builder.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
     {
       VPackArrayBuilder shardKeys(&builder, StaticStrings::ShardKeys);
@@ -416,6 +415,52 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_parsesEveryLoadOnlyField) {
   ASSERT_EQ(d.indexes.indexes.size(), 2U);
   EXPECT_EQ(d.indexes.indexes[1].slice().get("type").copyString(),
             "persistent");
+}
+
+// Older markers and plan entries spell these as numbers, which is what
+// IdIdentifier::acceptNumber is for. A user may only send strings.
+TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnlyOnLoad) {
+  auto numeric = [](std::string_view key) {
+    return oneKeyObject(key, VPackValue(9988488));
+  };
+
+  for (auto const& key : {StaticStrings::Id, StaticStrings::DataSourceCid,
+                          StaticStrings::DataSourcePlanId}) {
+    auto body = numeric(key);
+
+    CollectionIdentity internalProps;
+    EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                  {.ignoreUnknownFields = true},
+                                                  InspectInternalContext{})
+                    .ok())
+        << " on " << body.toJson();
+    auto const& parsed = key == StaticStrings::DataSourcePlanId
+                             ? internalProps.planId
+                             : internalProps.id;
+    EXPECT_EQ(parsed, DataSourceId{9988488}) << " on " << body.toJson();
+
+    CollectionIdentity userProps;
+    EXPECT_FALSE(velocypack::deserializeWithStatus(
+                     body.slice(), userProps, {.ignoreUnknownFields = true},
+                     InspectUserContext{})
+                     .ok())
+        << " on " << body.toJson();
+  }
+}
+
+// A negative or oversized number is not an id, and the transformer reports it
+// as a type error rather than wrapping around.
+TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberOutOfRange) {
+  for (auto value : {VPackValue(-1), VPackValue(-9988488)}) {
+    auto body = oneKeyObject(StaticStrings::Id, value);
+
+    CollectionIdentity internalProps;
+    EXPECT_FALSE(velocypack::deserializeWithStatus(
+                     body.slice(), internalProps, {.ignoreUnknownFields = true},
+                     InspectInternalContext{})
+                     .ok())
+        << " on " << body.toJson();
+  }
 }
 
 // Pre-3.1 collections store the id only under "cid", so both keys feed
