@@ -71,7 +71,7 @@ const {
   DB
 } = require('@arangodb/testutils/apitest-fixtures');
 
-function versionApiAuthzSuite () {
+function versionApiAuthzSuite() {
   return {
     setUpAll: setUpApiTestData,
     tearDownAll: tearDownApiTestData,

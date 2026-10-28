@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,28 +20,28 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Basics/ApiVersion.h"
 
-#include "VocBase/Properties/ClusteringMutableProperties.h"
-#include "VocBase/Properties/ClusteringConstantProperties.h"
+#include "Basics/ApiVersionFuerte.h"  // included to make sure both Api versions agree with each other
+#include "Basics/debugging.h"
+
+#include <ostream>
 
 namespace arangodb {
-class Result;
 
-struct UserInputCollectionProperties;
-
-struct ClusteringProperties : public ClusteringMutableProperties,
-                              public ClusteringConstantProperties {
-  bool operator==(ClusteringProperties const& other) const = default;
-
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, ClusteringProperties& props) {
-  return f.object(props).fields(
-      f.template embedFields<ClusteringMutableProperties>(props),
-      f.template embedFields<ClusteringConstantProperties>(props));
+std::ostream& operator<<(std::ostream& os, ApiVersion version) {
+  return os << to_string(version);
 }
+
+namespace api_version {
+
+bool isApiVersionRequestable(ApiVersion version) {
+  bool requestable = isApiVersionSupported(version);
+  TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
+    requestable = requestable || version == ApiVersion::V1;
+  }
+  return requestable;
+}
+
+}  // namespace api_version
 }  // namespace arangodb

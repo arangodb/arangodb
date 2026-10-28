@@ -52,6 +52,8 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:WriteData";
     case Action::UseApiVersion:
       return "db:UseApiVersion";
+    case Action::UpdateQueryProperties:
+      return "db:UpdateQueryProperties";
     case Action::AdminMoveShards:
       return "db:AdminMoveShards";
     case Action::AdminMonitoring:
@@ -151,7 +153,7 @@ auto resourceToWireString(Resource const& resource) -> std::string {
             return std::format("db:user:{}", r.name);
           },
           [](resources::ApiVersion const& r) {
-            return std::format("db:apiversion:v{}", r.version);
+            return std::format("db:apiversion:{}", to_string(r.version));
           },
       },
       resource);
@@ -173,6 +175,8 @@ auto describe(Action action) -> std::string_view {
       return "write data to";
     case Action::UseApiVersion:
       return "use";
+    case Action::UpdateQueryProperties:
+      return "update the AQL query properties of";
     case Action::AdminMoveShards:
       return "move shards (as admin)";
     case Action::AdminMonitoring:
@@ -271,7 +275,7 @@ auto describe(resources::User const& resource) -> std::string {
   return std::format("user '{}'", resource.name);
 }
 auto describe(resources::ApiVersion const& resource) -> std::string {
-  return std::format("API version '{}'", resource.version);
+  return std::format("API version '{}'", to_string(resource.version));
 }
 
 auto describe(Resource const& resource) -> std::string {

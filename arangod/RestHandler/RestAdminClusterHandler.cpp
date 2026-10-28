@@ -200,7 +200,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 void buildHealthResult(
     VPackBuilder& builder,
     std::vector<futures::Try<agentConfigHealthResult>> const& config,
-    VPackSlice store, uint32_t apiVersion) {
+    VPackSlice store, ApiVersion apiVersion) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
   using server_set = std::unordered_set<std::string>;
@@ -660,7 +660,7 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
     co_return;
   }
 
-  if (request()->requestedApiVersion() > 0 &&
+  if (request()->requestedApiVersion() > ApiVersion::V0 &&
       !ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
@@ -801,7 +801,7 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
     }
 
     // In the future, only allow collection names here:
-    if (request()->requestedApiVersion() > 0) {
+    if (request()->requestedApiVersion() > ApiVersion::V0) {
       if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
         generateError(r);
         co_return;

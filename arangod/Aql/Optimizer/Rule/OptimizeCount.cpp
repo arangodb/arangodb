@@ -254,33 +254,21 @@ void optimizeCountRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           break;
         }
 
-        case EN::INSERT:
-        case EN::UPDATE:
-        case EN::REPLACE:
-        case EN::REMOVE:
-        case EN::UPSERT:
-          // we don't handle data-modification queries
-
-        case EN::LIMIT:
-          // limit is not yet supported
-
-        case EN::ENUMERATE_LIST:
-        case EN::TRAVERSAL:
-        case EN::SHORTEST_PATH:
-        case EN::ENUMERATE_PATHS:
-        case EN::ENUMERATE_IRESEARCH_VIEW: {
-          // we don't handle nested FOR loops
-          found = nullptr;
-          valid = false;
-          break;
-        }
-
         case EN::RETURN: {
           // we reached the end
           break;
         }
 
-        default: {
+        case EN::CALCULATION:
+        case EN::FILTER:
+        case EN::SORT:
+        case EN::SUBQUERY:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::GATHER:
+        case EN::REMOTE: {
+          // these nodes neither multiply nor merge rows, so they are fine as
+          // long as they don't use the result variable of the FOR loop
           if (outVariable != nullptr) {
             vars.clear();
             current->getVariablesUsedHere(vars);
@@ -291,6 +279,14 @@ void optimizeCountRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               valid = false;
             }
           }
+          break;
+        }
+
+        default: {
+          // any other node (nested loops, COLLECT, LIMIT, data modification,
+          // ...) can change the number of rows the subquery returns
+          found = nullptr;
+          valid = false;
           break;
         }
       }

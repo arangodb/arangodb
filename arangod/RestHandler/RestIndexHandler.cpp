@@ -922,7 +922,7 @@ async<void> RestIndexHandler::createIndex() {
     co_return;
   }
 
-  if (_request->requestedApiVersion() > 0) {
+  if (_request->requestedApiVersion() > ApiVersion::V0) {
     if (auto const typeStr = type.stringView();
         typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
         typeStr == "skiplist" || typeStr == "fulltext") {
@@ -1043,7 +1043,7 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
-  if (_request->requestedApiVersion() > 0 &&
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
       ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,

@@ -64,8 +64,11 @@ using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(
     std::string_view, aql::ExpressionContext*, FieldMeta::Analyzer const&)>;
 
 struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(
-      std::string_view name, aql::ExpressionContext* ctx) const noexcept {
+  // May throw. The analyzer provider reports a missing or mismatched field
+  // through ExpressionContext::registerWarning, and failOnWarning turns that
+  // warning into an exception. This must not be noexcept.
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
+                                           aql::ExpressionContext* ctx) const {
     return fieldAnalyzerProvider
                ? (*fieldAnalyzerProvider)(name, ctx, contextAnalyzer)
                : contextAnalyzer;  // Only possible with ArangoSearch view

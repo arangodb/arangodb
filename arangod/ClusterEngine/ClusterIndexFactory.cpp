@@ -232,7 +232,7 @@ ClusterIndexFactory::~ClusterIndexFactory() = default;
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
-ClusterIndexFactory::indexAliases(uint32_t apiVersion) const {
+ClusterIndexFactory::indexAliases(ApiVersion apiVersion) const {
   return rocksDBIndexFactory().indexAliases(apiVersion);
 }
 

@@ -23,7 +23,6 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Basics/VelocyPackHelper.h"
@@ -53,8 +52,6 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
 }
 
 void ServerFeature::prepare() {
-  server().getFeature<ShutdownFeature>().disable();
-
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
       _options.validateUtf8Strings;

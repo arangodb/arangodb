@@ -30,7 +30,7 @@
 // Handlers: RestAuthReloadHandler, RestAdminClusterHandler, RestCompactHandler,
 // RestCrashHandler, RestAdminDatabaseHandler, RestShutdownHandler.
 //
-// Every request first asks `UseApiVersion version=1` and then
+// Every request first asks `UseApiVersion version=v1` and then
 // `UseDatabase name=<db> level=read`. Beyond that, the cluster handler is the
 // interesting case: several sub-handlers reject non-coordinator requests BEFORE
 // they run the per-user auth check, so on a single server those endpoints emit
@@ -84,7 +84,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/auth/reload`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminAuthReload",
         "UseCollection db=_system name=_users level=read"
@@ -99,7 +99,7 @@ function adminApiAuthzSuite () {
       arango.GET_RAW(`/_db/${DB}/_admin/cluster/collectionShardDistribution?collection=${DOC_COLLECTION}`);
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=d level=read",
         ...clusterOnly([
           "AdminClusterInfo"
@@ -112,7 +112,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/health`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -124,7 +124,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/maintenance`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMaintenance"
       ], endObserve());
@@ -136,7 +136,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/cluster/maintenance`, "off");
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMaintenance"
       ], endObserve());
@@ -148,7 +148,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeEngine`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -158,7 +158,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeStatistics`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -168,7 +168,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/nodeVersion`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -179,7 +179,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/numberOfServers`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -192,7 +192,7 @@ function adminApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_admin/cluster/numberOfServers`, {});
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminMaintenance"
@@ -207,7 +207,7 @@ function adminApiAuthzSuite () {
       arango.GET_RAW(`/_db/_system/_admin/cluster/rebalance`);
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminRebalance"
@@ -221,7 +221,7 @@ function adminApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_admin/cluster/rebalance`, {});
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminRebalance"
@@ -236,7 +236,7 @@ function adminApiAuthzSuite () {
       arango.GET_RAW(`/_db/_system/_admin/cluster/shardDistribution`);
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminClusterInfo"
@@ -251,7 +251,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/shardStatistics`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminClusterInfo"
       ], endObserve());
@@ -263,7 +263,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/statistics`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -275,7 +275,7 @@ function adminApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/cluster/cancelAgencyJob`,
                       { id: "nonexistent-job-apitester" });
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMoveShards"
       ], endObserve());
@@ -287,7 +287,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/cleanOutServer`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMoveShards"
       ], endObserve());
@@ -299,7 +299,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/maintenance/nonexistent`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMaintenance"
       ], endObserve());
@@ -312,7 +312,7 @@ function adminApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_admin/cluster/maintenance/nonexistent`,
                      { mode: "normal" });
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMaintenance"
       ], endObserve());
@@ -327,7 +327,7 @@ function adminApiAuthzSuite () {
                         shard: "s1", fromServer: "from", toServer: "to" });
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminMoveShards"
@@ -341,7 +341,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/queryAgencyJob?id=nonexistent-job-apitester-99999`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMoveShards"
       ], endObserve());
@@ -355,7 +355,7 @@ function adminApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/cluster/rebalanceShards`, {});
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminRebalance"
@@ -370,7 +370,7 @@ function adminApiAuthzSuite () {
       arango.POST_RAW(`/_db/_system/_admin/cluster/removeServer`,
                       { server: "PRMR-nonexistent-apitester" });
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminRemoveServer"
       ], endObserve());
@@ -382,7 +382,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/_system/_admin/cluster/resignLeadership`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMoveShards"
       ], endObserve());
@@ -395,7 +395,7 @@ function adminApiAuthzSuite () {
       arango.PUT_RAW(`/_db/_system/_admin/cluster/uniqId?number=1`, {});
       // a single server rejects the request before asking
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         ...clusterOnly([
           "AdminMaintenance"
@@ -409,7 +409,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/cluster/vpackSortMigration/check`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -421,7 +421,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/compact`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -432,7 +432,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/crashes`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminCrashHandler"
       ], endObserve());
@@ -443,7 +443,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/crashes/nonexistent`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminCrashHandler"
       ], endObserve());
@@ -454,7 +454,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/_system/_admin/crashes/nonexistent`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminCrashHandler"
       ], endObserve());
@@ -467,7 +467,7 @@ function adminApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/shutdown`);
       assertPermissions([
-        "UseApiVersion version=1",
+              "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminShutdown"
       ], endObserve());

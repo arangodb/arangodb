@@ -34,6 +34,7 @@ const pragma = "no-cache";
 const strictTransportSecurity = "max-age=31536000 ; includeSubDomains";
 const xContentTypeOptions = "nosniff";
 const jsunity = require("jsunity");
+const request = require('@arangodb/request');
 const IM = global.instanceManager;
 
 function assertCspHeaders(doc, customContentType = contentType) {
@@ -44,6 +45,27 @@ function assertCspHeaders(doc, customContentType = contentType) {
   assertEqual(doc.headers.pragma, pragma);
   assertEqual(doc.headers['strict-transport-security'], strictTransportSecurity);
   assertEqual(doc.headers['x-content-type-options'], xContentTypeOptions);
+}
+
+// fuerte (behind arango.GET_RAW) moves a /_arango/<x> prefix it does not
+// recognize behind /_db/<name>, so an invalid version prefix would never reach
+// the server's version check. @arangodb/request sends the path verbatim.
+function getBypassingFuerte(path) {
+  const endpoint = arango.getEndpoint()
+    .replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  const res = request({ method: 'GET', url: endpoint + path });
+  return { code: res.statusCode, parsedBody: res.json, headers: res.headers };
+}
+
+function assertInvalidApiVersion(path, query = "") {
+  const doc = getBypassingFuerte(path + query);
+  assertEqual(doc.code, 404);
+  assertTrue(doc.parsedBody.error);
+  assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+  assertEqual(doc.parsedBody.errorMessage,
+              `invalid API version in path '${path}', valid prefixes are: ` +
+              "/_arango/v0, /_arango/experimental");
+  assertCspHeaders(doc, "application/json; charset=utf-8");
 }
 
 
@@ -433,24 +455,12 @@ function API_versioningSuite () {
 
     test_checks_version_endpoint_with_invalid_prefix_no_version_number: function() {
       let cmd = "/_arango/v/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      // Should error because version number is missing
-      assertEqual(doc.code, 404);
-      assertTrue(doc.error);
-      assertTrue(doc.errorNum === 404);
-      assertCspHeaders(doc);
+      assertInvalidApiVersion(cmd);
     },
 
     test_checks_version_endpoint_with_invalid_prefix_invalid_version_format: function() {
       let cmd = "/_arango/vX/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      // Should error because version number is not numeric
-      assertEqual(doc.code, 404);
-      assertTrue(doc.error);
-      assertTrue(doc.errorNum === 404);
-      assertCspHeaders(doc);
+      assertInvalidApiVersion(cmd);
     },
 
     test_checks_version_endpoint_with_v1_prefix_rejects_POST_with_405: function() {
@@ -497,35 +507,32 @@ function API_versioningSuite () {
 
     test_checks_unsupported_api_version_returns_404: function() {
       let cmd = "/_arango/v42/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      // Unsupported API version should return 404
-      assertEqual(doc.code, 404);
-      assertTrue(doc.error);
-      assertTrue(doc.errorNum === 404);
-      assertCspHeaders(doc);
+      assertInvalidApiVersion(cmd);
     },
 
     test_checks_another_unsupported_api_version_returns_404: function() {
       let cmd = "/_arango/v999/_api/version";
-      let doc = arango.GET_RAW(cmd);
+      assertInvalidApiVersion(cmd);
+    },
 
-      // Another unsupported API version should return 404
-      assertEqual(doc.code, 404);
-      assertTrue(doc.error);
-      assertTrue(doc.errorNum === 404);
-      assertCspHeaders(doc);
+    test_checks_version_with_leading_zero_returns_404: function() {
+      let cmd = "/_arango/v01/_api/version";
+      assertInvalidApiVersion(cmd);
+    },
+
+    test_checks_unknown_arango_prefix_returns_404: function() {
+      let cmd = "/_arango/invalid/_api/version";
+      assertInvalidApiVersion(cmd);
+    },
+
+    test_checks_invalid_version_error_omits_query_string: function() {
+      let cmd = "/_arango/v42/_api/version";
+      assertInvalidApiVersion(cmd, "?secret=1");
     },
 
     test_checks_unsupported_api_version_with_different_endpoint: function() {
       let cmd = "/_arango/v100/_api/collection";
-      let doc = arango.GET_RAW(cmd);
-
-      // Unsupported API version should return 404 on any endpoint
-      assertEqual(doc.code, 404);
-      assertTrue(doc.error);
-      assertTrue(doc.errorNum === 404);
-      assertCspHeaders(doc);
+      assertInvalidApiVersion(cmd);
     },
 
     test_checks_unsupported_api_version_0_with_different_endpoint: function() {

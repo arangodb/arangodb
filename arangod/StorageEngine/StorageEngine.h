@@ -23,6 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
@@ -337,7 +338,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual WalAccess const* walAccess() const = 0;
 
   virtual void getCapabilities(velocypack::Builder& builder,
-                               uint32_t apiVersion) const;
+                               ApiVersion apiVersion) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 

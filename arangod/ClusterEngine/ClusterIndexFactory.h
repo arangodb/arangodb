@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
 #include "Indexes/IndexFactory.h"
 
 namespace arangodb {
@@ -51,7 +52,7 @@ class ClusterIndexFactory final : public IndexFactory {
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
   std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
-      uint32_t apiVersion) const override;
+      ApiVersion apiVersion) const override;
 
   void fillSystemIndexes(
       LogicalCollection& col,

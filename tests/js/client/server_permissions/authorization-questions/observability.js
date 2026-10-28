@@ -31,7 +31,7 @@
 //   arangod/SystemMonitor/Activities/RestHandler.cpp
 //   arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp
 //
-// Every request first asks `UseApiVersion version=1` and then
+// Every request first asks `UseApiVersion version=v1` and then
 // `UseDatabase name=_system level=read` (connected database is _system). Both
 // handlers then ask canUseAdminAction(AdminMonitoringInternal), so the
 // observed question is AdminMonitoringInternal.
@@ -55,7 +55,7 @@ const {
   assertPermissions
 } = require('@arangodb/testutils/permissions-observer');
 
-function observabilityApiAuthzSuite () {
+function observabilityApiAuthzSuite() {
 
   return {
     tearDown: function () {
@@ -75,7 +75,7 @@ function observabilityApiAuthzSuite () {
       arango.GET_RAW(`/_arango/experimental/_admin/activities`);
       assertPermissions([
         // the experimental prefix addresses api version 2
-        "UseApiVersion version=2",
+        "UseApiVersion version=experimental",
         "UseDatabase name=_system level=read",
         "AdminMonitoringInternal"
       ], endObserve());
@@ -87,7 +87,7 @@ function observabilityApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/_system/_admin/async-registry`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "AdminMonitoringInternal"
       ], endObserve());

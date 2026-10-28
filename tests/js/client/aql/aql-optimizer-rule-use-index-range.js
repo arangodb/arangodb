@@ -36,7 +36,7 @@ var db = internal.db;
 function optimizerRuleUseIndexRangeTester () {
   var ruleName = "use-indexes";
   var collBaseName = "UTUseIndexRange";
-  var collNames = ["NoInd", "Ind", "TwoInd"];
+  var collNames = ["NoInd", "Ind", "TwoInd", "StrInd", "OtherInd"];
   var edgeCollName = collBaseName + "Edges";
 
   // various choices to control the optimizer: 
@@ -65,10 +65,23 @@ function optimizerRuleUseIndexRangeTester () {
         }
         colls.push(coll);
       }
+      // byte order and ICU collation disagree on this value vs "c"
+      colls[0].insert({"a":100, "s":"{"});
+      colls[0].insert({"a":101, "s":"a"});
+      // uppercase sorts before lowercase bytewise, but not in the collation
+      colls[0].insert({"a":102, "s":"Z"});
       colls[1].ensureIndex({ type: "persistent", fields: ["a"] });
       // two candidate indexes for the same filter condition
       colls[2].ensureIndex({ type: "persistent", fields: ["a"] });
       colls[2].ensureIndex({ type: "persistent", fields: ["a", "s"] });
+      colls[3].ensureIndex({ type: "persistent", fields: ["s"] });
+      // isolated from colls[1], other tests rely on its doc count for cost decisions
+      colls[3].insert({"a":100, "s":"{"});
+      colls[3].insert({"a":101, "s":"a"});
+      // index doesn't cover s: use-indexes normalizes the condition but finds nothing to use
+      colls[4].ensureIndex({ type: "persistent", fields: ["a"] });
+      colls[4].insert({"a":100, "s":"{"});
+      colls[4].insert({"a":101, "s":"a"});
 
       internal.db._drop(edgeCollName);
       let edges = internal.db._createEdgeCollection(edgeCollName);
@@ -215,6 +228,112 @@ function optimizerRuleUseIndexRangeTester () {
           }
         }
         assertTrue(foundNoResults, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that string ranges are not falsely detected as impossible when byte order and ICU collation disagree
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesNotFalselyDetectedForUtf8Strings : function () {
+      var queries = [
+        // single-element IN collapses to ==
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['{'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        // IN-list pruning needs 2+ elements to not collapse
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['{', 'zzz'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s <= 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'a' && i.s > '{' RETURN i.s", [ "a" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'a' && i.s >= '{' RETURN i.s", [ "a" ] ],
+        // operand order must not matter
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s < 'c' && i.s == '{' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER (i.s == '{' || i.s == 'zzz') && i.s < 'c' RETURN i.s", [ "{" ] ],
+        // != paired with an ordering op also needs the collation rule
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s < 'c' && i.s != '{' RETURN i.s", [ "a" ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var result = db._createStatement({query: query[0], bindVars: { }, options: paramAll}).explain();
+        var foundNoResults = false;
+        for (var t in result.plan.nodes) {
+          if (result.plan.nodes[t].type === "NoResultsNode") {
+            foundNoResults = true;
+          }
+        }
+        assertFalse(foundNoResults, query);
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same, but merging IN/== with two range bounds (>= and <) instead of one
+////////////////////////////////////////////////////////////////////////////////
+
+    testTwoSidedRangeMergeForUtf8Strings : function () {
+      var queries = [
+        // byte order wrongly satisfies the lower bound; collation says no
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == '{' && i.s >= 'a' && i.s < '~' RETURN i.s", [ ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['{', 'zzz'] && i.s >= 'a' && i.s < '~' RETURN i.s", [ ] ],
+        // byte order wrongly fails the lower bound; collation says yes
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s == 'Z' && i.s >= 'a' && i.s < 'z' RETURN i.s", [ "Z" ] ],
+        [ "FOR i IN UTUseIndexRangeNoInd FILTER i.s IN ['Z', 'zzz'] && i.s >= 'a' && i.s < 'z' RETURN i.s", [ "Z" ] ]
+      ];
+
+      queries.forEach(function(query) {
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same as above, but with an actual index on s, confirming the fix holds once an IndexNode is picked
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesNotFalselyDetectedForUtf8StringsWithIndex : function () {
+      const queries = [
+        [ "FOR i IN UTUseIndexRangeStrInd FILTER i.s IN ['{'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeStrInd FILTER i.s IN ['{', 'zzz'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeStrInd FILTER i.s == '{' && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeStrInd FILTER (i.s == '{' || i.s == 'zzz') && i.s < 'c' RETURN i.s", [ "{" ] ]
+      ];
+
+      queries.forEach(function(query) {
+        const result = db._createStatement({query: query[0], bindVars: { }, options: paramAll}).explain();
+        let foundNoResults = false;
+        let indexNodes = 0;
+        result.plan.nodes.forEach(function(n) {
+          if (n.type === "NoResultsNode") { foundNoResults = true; }
+          if (n.type === "IndexNode") { indexNodes++; }
+        });
+        assertFalse(foundNoResults, query);
+        assertEqual(1, indexNodes, query);
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same as above, but the index doesn't cover s, so there is nothing for use-indexes to pick
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesNotFalselyDetectedForUtf8StringsIndexNotCoveringAttribute : function () {
+      const queries = [
+        [ "FOR i IN UTUseIndexRangeOtherInd FILTER i.s IN ['{'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeOtherInd FILTER i.s IN ['{', 'zzz'] && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeOtherInd FILTER i.s == '{' && i.s < 'c' RETURN i.s", [ "{" ] ],
+        [ "FOR i IN UTUseIndexRangeOtherInd FILTER (i.s == '{' || i.s == 'zzz') && i.s < 'c' RETURN i.s", [ "{" ] ]
+      ];
+
+      queries.forEach(function(query) {
+        const result = db._createStatement({query: query[0], bindVars: { }, options: paramAll}).explain();
+        let foundNoResults = false;
+        let indexNodes = 0;
+        result.plan.nodes.forEach(function(n) {
+          if (n.type === "NoResultsNode") { foundNoResults = true; }
+          if (n.type === "IndexNode") { indexNodes++; }
+        });
+        assertFalse(foundNoResults, query);
+        // a-index can't serve a filter on s, so this falls back to a full scan, not an IndexNode
+        assertEqual(0, indexNodes, query);
+        assertEqual(query[1], db._query(query[0]).toArray().sort(), query);
       });
     },
 
