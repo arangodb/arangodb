@@ -226,13 +226,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ShardingFeature>();
   _server.addFeature<SharedPRNGFeature>();
   _server.addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
   _server.addFeature<StatisticsFeature>(metrics);
