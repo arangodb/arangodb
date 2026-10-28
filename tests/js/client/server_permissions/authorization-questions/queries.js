@@ -71,11 +71,13 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 const baseQuestions = [
-  'UseApiVersion version=0',
+  'UseApiVersion version=v0',
   `UseDatabase name=${DB} level=read`
 ];
 const monitorQuestions = baseQuestions.concat(['AdminMonitorAqlQueries']);
 const killQuestions = baseQuestions.concat(['AdminKillAqlQueries']);
+const propertiesQuestions =
+  baseQuestions.concat([`UpdateQueryProperties db=${DB}`]);
 
 const password = 'testi';
 const secret = 'alice-secret-4711';
@@ -167,12 +169,15 @@ function queryApiAuthzSuite () {
       users.save('carol', password);
       users.grantDatabase('carol', '_system', 'rw');
       users.grantDatabase('carol', DB, 'ro');
+      // dave may write the test database and has no access to _system
+      users.save('dave', password);
+      users.grantDatabase('dave', DB, 'rw');
       arango.PUT(`${queryApi}/properties`, { slowQueryThreshold: 0.1 });
     },
 
     tearDownAll: function () {
       killAllSleepQueriesAsRoot();
-      ['alice', 'bob', 'carol'].forEach((user) => {
+      ['alice', 'bob', 'carol', 'dave'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -364,24 +369,41 @@ function queryApiAuthzSuite () {
 
     // ── PUT /_api/query/properties ───────────────────────────────────────
 
+    // a read-only user is asked for UpdateQueryProperties on the database,
+    // does not have it, and the properties stay as they were
     testSetQueryPropertiesWithoutDatabaseWriteAccess: function () {
       const before = arango.GET(`${queryApi}/properties`);
 
       beginObserve();
       const res = sendAs('bob', 'PUT', `${queryApi}/properties`, { enabled: false });
-      assertPermissions(baseQuestions.concat(['AdminAqlQueries']),
-                        endObserve());
+      assertPermissions(propertiesQuestions, endObserve());
 
       assertEqual(403, res.status, JSON.stringify(res.json));
       assertTrue(res.json.error, JSON.stringify(res.json));
       assertEqual(before.enabled, arango.GET(`${queryApi}/properties`).enabled);
     },
 
-    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccess: function () {
+    // read-write access to _system does not reach into a database the admin
+    // may only read
+    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccessIsForbidden: function () {
+      const before = arango.GET(`${queryApi}/properties`);
+
       beginObserve();
       const res = sendAs('carol', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
-      assertPermissions(baseQuestions.concat(['AdminAqlQueries', 'IsReadOnly']),
-                        endObserve());
+      assertPermissions(propertiesQuestions, endObserve());
+
+      assertEqual(403, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.error, JSON.stringify(res.json));
+      assertEqual(before.maxSlowQueries,
+                  arango.GET(`${queryApi}/properties`).maxSlowQueries);
+    },
+
+    // write access to the database is what the permission asks for; the
+    // read-only gate is asked afterwards
+    testSetQueryPropertiesWithDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('dave', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(propertiesQuestions.concat(['IsReadOnly']), endObserve());
 
       assertEqual(200, res.status, JSON.stringify(res.json));
       assertEqual(48, res.json.maxSlowQueries);

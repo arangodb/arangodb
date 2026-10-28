@@ -111,17 +111,6 @@ void InsertNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
-void InsertNode::replaceAttributeAccess(ExecutionNode const* self,
-                                        Variable const* searchVariable,
-                                        std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable,
-                                        size_t /*index*/) {
-  if (_inVariable != nullptr && searchVariable == _inVariable &&
-      attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
-    _inVariable = replaceVariable;
-  }
-}
-
 size_t InsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::aql

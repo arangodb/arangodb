@@ -33,7 +33,6 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/LogApiOptions.h"
 
@@ -77,6 +76,7 @@ class GeneralServerFeature final
   std::string const& supportInfoApiPolicy() const noexcept;
   std::string const& optionsApiPolicy() const noexcept;
   uint64_t compressResponseThreshold() const noexcept;
+  uint64_t maxDecompressedRequestBodySize() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();

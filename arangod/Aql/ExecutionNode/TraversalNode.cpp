@@ -183,9 +183,7 @@ TraversalNode::TraversalNode(
       _inVariable(inVariable),
       _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
-  validateCollections();
-}
+      _toCondition(nullptr) {}
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice base)
@@ -1207,6 +1205,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan,
       _defaultDirection, _directions, std::move(tmp), _graphObj);
 
   traversalCloneHelper(*plan, *c);
+  c->validateCollections();
 
   if (_optionsBuilt) {
     c->prepareOptions();
@@ -1479,6 +1478,31 @@ void TraversalNode::getPostFilterVariables(
   for (auto const& it : _postFilterVariables) {
     res.emplace_back(it);
   }
+}
+
+bool TraversalNode::forEachVertexAndEdgeCondition(
+    std::function<bool(AstNode const*)> const& callback) const {
+  for (auto const& it : _globalEdgeConditions) {
+    if (!callback(it)) {
+      return false;
+    }
+  }
+  for (auto const& it : _globalVertexConditions) {
+    if (!callback(it)) {
+      return false;
+    }
+  }
+  for (auto const& [depth, builder] : _edgeConditions) {
+    if (!callback(builder->condition())) {
+      return false;
+    }
+  }
+  for (auto const& [depth, condition] : _vertexConditions) {
+    if (!callback(condition)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool TraversalNode::isPathOutVariableUsedLater() const {
