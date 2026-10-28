@@ -22,11 +22,15 @@ Run standalone, or as `run_scenarios.py --self-check`. Needs no server.
 
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
 SERVICE_IMPL = os.path.join(SOURCE_ROOT, "arangod", "Auth", "Rbac", "ServiceImpl.cpp")
+CMAKELISTS = os.path.join(SOURCE_ROOT, "CMakeLists.txt")
+
+VERSION_MAJOR_RE = re.compile(r'set\(ARANGODB_VERSION_MAJOR\s+"(\d+)"')
 
 # `return "db:Read";` in actionToWireString()
 ACTION_RE = re.compile(r'return\s+"(db:[A-Za-z]+)"\s*;')
@@ -59,7 +63,7 @@ ARANGOD_BINARY = os.path.join(SOURCE_ROOT, "build", "bin", "arangod")
 # Format strings compiled into arangod; their presence in the binary is the
 # ground truth for what the running server can ask about.
 BINARY_MARKERS = {
-    "api_version_gate": b"db:apiversion:v",
+    "api_version_gate": b"db:apiversion:",
     "admin_read_users": b"db:AdminReadUsers",
 }
 
@@ -82,6 +86,29 @@ def _binary_contains(path, needles):
                 break
             tail = window[-overlap:]
     return found
+
+
+def major_version(binary=ARANGOD_BINARY, path=CMAKELISTS):
+    """Major version of the *server* under test, with where it came from.
+
+    Returns (major, source) - major is None if neither can be read.
+    """
+    try:
+        completed = subprocess.run([binary, "--version"], capture_output=True,
+                                   text=True, timeout=60)
+        match = re.match(r"\s*(\d+)\.", completed.stdout)
+        if match:
+            return int(match.group(1)), "arangod --version"
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            match = VERSION_MAJOR_RE.search(handle.read())
+    except OSError:
+        return None, "unreadable"
+    if match is None:
+        return None, "unreadable"
+    return int(match.group(1)), "CMakeLists.txt"
 
 
 def capabilities(path=SERVICE_IMPL, binary=ARANGOD_BINARY):

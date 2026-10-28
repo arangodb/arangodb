@@ -20,15 +20,14 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestHandlerFactory.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/Exceptions.h"
-#include "Basics/debugging.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Rest/ApiVersion.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
+#include "RestHandlerFactory.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -36,7 +35,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
+RestHandlerFactory::RestHandlerFactory(ApiVersion maxApiVersion)
     : _sealed(false) {
   // Initialize with space for API versions 0 through maxApiVersion (inclusive)
   size_t numVersions = static_cast<size_t>(maxApiVersion) + 1;
@@ -50,37 +49,20 @@ RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res,
-    velocypack::Builder& errorBuilder) const {
+    std::unique_ptr<GeneralRequest> req,
+    std::unique_ptr<GeneralResponse> res) const {
   TRI_ASSERT(_sealed);
 
-  uint32_t apiVersion = req->requestedApiVersion();
-
-  // Check if the requested API version is valid
-  if (apiVersion >= _constructors.size()) {
-    LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
-        << "requested API version " << apiVersion
-        << " is not supported (max: " << (_constructors.size() - 1) << ")";
-
-    // Build error response
-    errorBuilder.add(VPackValue(VPackValueType::Object));
-    errorBuilder.add("error", VPackValue(true));
-    errorBuilder.add("code", VPackValue(404));
-    errorBuilder.add("errorNum", VPackValue(404));
-    errorBuilder.add("errorMessage",
-                     VPackValue(absl::StrCat(
-                         "unknown API version ", std::to_string(apiVersion),
-                         " for path '", req->fullUrl(), "'")));
-    errorBuilder.close();
-
-    return nullptr;
-  }
-
-  TRI_ASSERT(apiVersion < _constructors.size());
+  ApiVersion apiVersion = req->requestedApiVersion();
+  // detectAndStripApiVersion only ever stores a version bounded by
+  // api_version::maxApiVersion(), and the tables are sized to match, so an
+  // out-of-range version cannot reach us here.
+  auto versionIdx = static_cast<size_t>(apiVersion);
+  TRI_ASSERT(versionIdx < _constructors.size());
 
   std::string const& path = req->requestPath();
 
-  auto const& constructors = _constructors[apiVersion];
+  auto const& constructors = _constructors[versionIdx];
   auto it = constructors.find(path);
 
   if (it != constructors.end()) {
@@ -100,7 +82,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // find longest match
   size_t const pathLength = path.size();
   // prefixes are sorted by length descending
-  auto const& prefixes = _prefixes[apiVersion];
+  auto const& prefixes = _prefixes[versionIdx];
   for (auto const& p : prefixes) {
     size_t const pSize = p.size();
     if (pSize >= pathLength) {
@@ -141,7 +123,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // For all other versions we return null to indicate that we have not found a
   // handler, which will lead to a 404 response.
   if (it == constructors.end()) {
-    TRI_ASSERT(apiVersion > 0);
+    TRI_ASSERT(apiVersion != ApiVersion::V0);
     return nullptr;
   }
 
@@ -169,31 +151,23 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
-                                    std::initializer_list<uint32_t> apiVersions,
-                                    void* data) {
+void RestHandlerFactory::addHandler(
+    std::string const& path, create_fptr func,
+    std::initializer_list<ApiVersion> apiVersions, void* data) {
   TRI_ASSERT(!_sealed);
 
-  for (uint32_t apiVersion : apiVersions) {
-    bool versionSupported = api_version::isApiVersionSupported(apiVersion);
-    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
-      versionSupported = versionSupported || apiVersion == 1;
-    }
-    if (!versionSupported &&
-        apiVersion != api_version::experimentalApiVersion) {
-      // version 1 has been removed from the list of supported versions, but we
-      // did not change the version list in the handler factory, so we need to
-      // ignore attempts to register handlers for version 1
-      continue;
-    }
-    TRI_ASSERT(apiVersion < _constructors.size());
-    auto& constructors = _constructors[apiVersion];
-    if (!constructors.try_emplace(path, func, data).second) {
-      // there should only be one handler for each path
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          std::string("attempt to register duplicate path handler for '") +
-              path + "' in API version " + std::to_string(apiVersion));
+  for (ApiVersion apiVersion : apiVersions) {
+    if (api_version::isApiVersionRegistrable(apiVersion)) {
+      auto versionIdx = static_cast<size_t>(apiVersion);
+      TRI_ASSERT(versionIdx < _constructors.size());
+      auto& constructors = _constructors[versionIdx];
+      if (!constructors.try_emplace(path, func, data).second) {
+        // there should only be one handler for each path
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            std::string("attempt to register duplicate path handler for '") +
+                path + "' in API version " + std::to_string(versionIdx));
+      }
     }
   }
 }
@@ -204,25 +178,17 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 
 void RestHandlerFactory::addPrefixHandler(
     std::string const& path, create_fptr func,
-    std::initializer_list<uint32_t> apiVersions, void* data) {
+    std::initializer_list<ApiVersion> apiVersions, void* data) {
   TRI_ASSERT(!_sealed);
 
   addHandler(path, func, apiVersions, data);
 
-  for (uint32_t apiVersion : apiVersions) {
-    bool versionSupported = api_version::isApiVersionSupported(apiVersion);
-    TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
-      versionSupported = versionSupported || apiVersion == 1;
+  for (ApiVersion apiVersion : apiVersions) {
+    if (api_version::isApiVersionRegistrable(apiVersion)) {
+      auto versionIdx = static_cast<size_t>(apiVersion);
+      TRI_ASSERT(versionIdx < _prefixes.size());
+      _prefixes[versionIdx].emplace_back(path);
     }
-    if (!versionSupported &&
-        apiVersion != api_version::experimentalApiVersion) {
-      // version 1 has been removed from the list of supported versions, but we
-      // did not change the version list in the handler factory, so we need to
-      // ignore attempts to register handlers for version 1
-      continue;
-    }
-    TRI_ASSERT(apiVersion < _prefixes.size());
-    _prefixes[apiVersion].emplace_back(path);
   }
 }
 
