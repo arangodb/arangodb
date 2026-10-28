@@ -102,8 +102,6 @@
 
 # Shell client tests Single Server; distribute evenly
 - shell_client:
-    requires:
-      coverage: false
     options:
       priority: 250
       parallelity: 2
@@ -447,6 +445,8 @@
     args:
       dumpAgencyOnError: true
 - shell_client:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: cluster
@@ -793,3 +793,179 @@
       - communication
       - communication_ssl
 
+- shell_client:
+    options:
+      priority: 500
+      type: cluster
+      size: medium
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - shell_client:
+          options:
+            suffix: 1
+          args:
+            test: enterprise/tests/js/client/shell/hybrid-smart-graph-enterprise.js
+            suffix: 1
+      - shell_client:
+          options:
+            suffix: 2
+          args:
+            test: enterprise/tests/js/client/shell/shell-db-server-graph-metrics-cluster.js
+            suffix: 2
+      - shell_client:
+          options:
+            suffix: 3
+          args:
+            test: enterprise/tests/js/client/shell/shell-hotbackup-cluster.js
+            suffix: 3
+      - shell_client:
+          options:
+            suffix: 4
+          args:
+            test: enterprise/tests/js/client/shell/shell-smart-graph-creation.js
+            suffix: 4
+      - shell_client:
+          options:
+            suffix: 5
+          args:
+            test: enterprise/tests/js/client/shell/smart-join-aql-query-cluster.js
+            suffix: 5
+      - shell_client:
+          options:
+            suffix: 6
+          args:
+            test: enterprise/tests/js/common/shell/shell-ee-graphs-mix-tests.js
+            suffix: 6
+      - shell_client:
+          options:
+            suffix: 7
+          args:
+            test: tests/js/client/shell/agency-oneshard-regression-nocluster.js
+            suffix: 7
+      - shell_client:
+          options:
+            suffix: 8
+          args:
+            test: tests/js/client/shell/shell-aql-cursors-memory-usage-metric.js
+            suffix: 8
+      - shell_client:
+          options:
+            suffix: 9
+          args:
+            test: tests/js/client/shell/shell-aql-v8-sjs.js
+            suffix: 9
+      - shell_client:
+          options:
+            suffix: 10
+          args:
+            test: tests/js/client/shell/shell-cluster-collection-selectivity.js
+            suffix: 10
+      - shell_client:
+          options:
+            suffix: 11
+          args:
+            test: tests/js/client/shell/shell-collection-computed-values.js
+            suffix: 11
+      - shell_client:
+          options:
+            suffix: 12
+          args:
+            test: tests/js/client/shell/shell-create-database-failure-cluster-fp.js
+            suffix: 12
+      - shell_client:
+          options:
+            suffix: 13
+          args:
+            test: tests/js/client/shell/shell-document-babies.js
+            suffix: 13
+      - shell_client:
+          options:
+            suffix: 14
+          args:
+            test: tests/js/client/shell/shell-drop-followers-while-replicating-cluster-fp.js
+            suffix: 14
+      - shell_client:
+          options:
+            suffix: 15
+          args:
+            test: tests/js/client/shell/shell-edge-index.js
+            suffix: 15
+      - shell_client:
+          options:
+            suffix: 16
+          args:
+            test: tests/js/client/shell/shell-explain-cluster.js
+            suffix: 16
+      - shell_client:
+          options:
+            suffix: 17
+          args:
+            test: tests/js/client/shell/shell-foxx-manager-utils-spec.js
+            suffix: 17
+      - shell_client:
+          options:
+            suffix: 18
+          args:
+            test: tests/js/client/shell/shell-index-cleanup-cluster.js
+            suffix: 18
+      - shell_client:
+          options:
+            suffix: 19
+          args:
+            test: tests/js/client/shell/shell-index-failures-fp.js
+            suffix: 19
+      - shell_client:
+          options:
+            suffix: 20
+          args:
+            test: tests/js/client/shell/shell-iterators-read-standalone.js
+            suffix: 20
+      - shell_client:
+          options:
+            suffix: 21
+          args:
+            test: tests/js/client/shell/shell-metadata-metrics.js
+            suffix: 21
+      - shell_client:
+          options:
+            suffix: 22
+          args:
+            test: tests/js/client/shell/shell-promtool.js
+            suffix: 22
+      - shell_client:
+          options:
+            suffix: 23
+          args:
+            test: tests/js/client/shell/shell-readonly-mode-spec.js
+            suffix: 23
+      - shell_client:
+          options:
+            suffix: 24
+          args:
+            test: tests/js/client/shell/shell-replication-intermediate-commits-cluster-fp.js
+            suffix: 24
+      - shell_client:
+          options:
+            suffix: 25
+          args:
+            suffix: 25
+            test: tests/js/client/shell/shell-responsibleshard-cluster.js
+      - shell_client:
+          options:
+            suffix: 26
+          args:
+            suffix: 26
+            test: tests/js/client/shell/shell-statistics.js
+      - shell_client:
+          options:
+            suffix: 27
+          args:
+            suffix: 27
+            test: tests/js/client/shell/shell-version-check-spec.js
+      - shell_client:
+          options:
+            suffix: 28
+          args:
+            suffix: 28
+            test: tests/js/client/shell/view-drop-database.js
