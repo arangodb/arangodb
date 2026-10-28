@@ -42,7 +42,7 @@ struct ExpressionContextMock final
   static ExpressionContextMock EMPTY;
 
   ExpressionContextMock()
-      : ViewExpressionContextBase(nullptr, nullptr, nullptr) {}
+      : ViewExpressionContextBase(nullptr, nullptr, &_regexCache) {}
 
   ~ExpressionContextMock();
 
