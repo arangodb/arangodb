@@ -266,6 +266,22 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _clientRequest{},
       _stackBeforeWaiting{AqlCallStack::Empty{}},
       _hasUsedDataRangeBlock{false} {
+  if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                BlockPassthrough::Enable) {
+    // Register planning lets a node's output reuse a register that dies on its
+    // input row only if alwaysCopiesRows() is true. A passthrough executor
+    // writes into its input block, so that output would overwrite an input
+    // value that the executor can still read.
+    TRI_ASSERT(!_exeNode->alwaysCopiesRows() ||
+               _exeNode->getVariablesSetHere().empty())
+        << _exeNode->getTypeString() << " " << _exeNode->id().id()
+        << " has a passthrough executor but alwaysCopiesRows() is true";
+    // A passthrough executor hands its input block on, so the output block
+    // has the width of the input depth.
+    TRI_ASSERT(!_exeNode->isIncreaseDepth())
+        << _exeNode->getTypeString() << " " << _exeNode->id().id()
+        << " has a passthrough executor but starts a new depth";
+  }
   if (_exeNode->isCallstackSplitEnabled()) {
     _callstackSplit = std::make_unique<CallstackSplit>(*this);
   }
