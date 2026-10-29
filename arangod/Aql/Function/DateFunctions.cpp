@@ -32,10 +32,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
-#include <date/date.h>
-#include <date/iso_week.h>
-#include <date/tz.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -86,8 +82,8 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
                       bool registerWarning = true) {
   char formatted[24];
 
-  date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = date::make_time(tp - date::sys_days(ymd));
+  std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(tp)};
+  auto day_time = std::chrono::hh_mm_ss(tp - std::chrono::sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
@@ -204,21 +200,28 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   return INVALID;
 }
 
-date::sys_info localizeTimePoint(std::string const& timezone,
-                                 tp_sys_clock_ms& localTimePoint) {
-  auto const utc = floor<milliseconds>(localTimePoint);
-  auto const zoned = date::make_zoned(timezone, utc);
-  localTimePoint = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
-  return zoned.get_info();
+std::chrono::sys_info localizeTimePoint(std::string const& timezone,
+                                        tp_sys_clock_ms& localTimePoint) {
+  auto zone = std::chrono::locate_zone(timezone);
+  TRI_ASSERT(zone != nullptr);
+
+  auto const utc = std::chrono::floor<milliseconds>(localTimePoint);
+  auto const zoned = zone->to_local(utc);
+
+  localTimePoint = tp_sys_clock_ms{zoned.time_since_epoch()};
+  return zone->get_info(localTimePoint);
 }
 
-date::sys_info unlocalizeTimePoint(std::string const& timezone,
-                                   tp_sys_clock_ms& utcTimePoint) {
-  auto const local = date::local_time<milliseconds>{
-      floor<milliseconds>(utcTimePoint).time_since_epoch()};
-  auto const zoned = date::make_zoned(timezone, local);
-  utcTimePoint = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
-  return zoned.get_info();
+std::chrono::sys_info unlocalizeTimePoint(std::string const& timezone,
+                                          tp_sys_clock_ms& utcTimePoint) {
+  auto zone = std::chrono::locate_zone(timezone);
+
+  auto const local = std::chrono::local_time<milliseconds>{
+      std::chrono::floor<milliseconds>(utcTimePoint).time_since_epoch()};
+
+  auto const unzoned = zone->to_sys(local);
+  utcTimePoint = tp_sys_clock_ms{unzoned.time_since_epoch()};
+  return zone->get_info(utcTimePoint);
 }
 
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
@@ -230,8 +233,8 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
-  date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = date::make_time(tp - date::sys_days(ymd));
+  std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(tp)};
+  auto day_time = std::chrono::hh_mm_ss(tp - std::chrono::sys_days(ymd));
 
   DateSelectionModifier flag = parseDateModifierFlag(durationType);
   double intPart = 0.0;
@@ -248,9 +251,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case YEAR:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= date::years{static_cast<int64_t>(intPart)};
+        ymd -= std::chrono::years{static_cast<int64_t>(intPart)};
       } else {
-        ymd += date::years{static_cast<int64_t>(intPart)};
+        ymd += std::chrono::years{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -260,9 +263,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case MONTH:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= date::months{static_cast<int64_t>(intPart)};
+        ymd -= std::chrono::months{static_cast<int64_t>(intPart)};
       } else {
-        ymd += date::months{static_cast<int64_t>(intPart)};
+        ymd += std::chrono::months{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -272,27 +275,27 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     // After this fall through the date may actually a bit off
     case DAY:
       // From here on we do not need leap-day handling
-      ms = date::days{1};
+      ms = std::chrono::days{1};
       ms *= durationUnits;
       break;
     case WEEK:
-      ms = date::weeks{1};
+      ms = std::chrono::weeks{1};
       ms *= durationUnits;
       break;
     case HOUR:
-      ms = hours{1};
+      ms = std::chrono::hours{1};
       ms *= durationUnits;
       break;
     case MINUTE:
-      ms = minutes{1};
+      ms = std::chrono::minutes{1};
       ms *= durationUnits;
       break;
     case SECOND:
-      ms = seconds{1};
+      ms = std::chrono::seconds{1};
       ms *= durationUnits;
       break;
     case MILLI:
-      ms = milliseconds{1};
+      ms = std::chrono::milliseconds{1};
       ms *= durationUnits;
       break;
     default:
@@ -305,11 +308,11 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   tp_sys_clock_ms resTime;
   if (isSubtract) {
     resTime = tp_sys_clock_ms{
-        date::sys_days(ymd) + day_time.to_duration() -
+        std::chrono::sys_days(ymd) + day_time.to_duration() -
         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   } else {
     resTime = tp_sys_clock_ms{
-        date::sys_days(ymd) + day_time.to_duration() +
+        std::chrono::sys_days(ymd) + day_time.to_duration() +
         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
 
@@ -324,8 +327,8 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
     ExpressionContext* expressionContext, tp_sys_clock_ms const& tp,
     std::string_view duration, char const* AFN, bool isSubtract,
     std::string const& timezone) {
-  date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = date::make_time(tp - date::sys_days(ymd));
+  std::chrono::year_month_day ymd{floor<std::chrono::days>(tp)};
+  auto day_time = std::chrono::hh_mm_ss(tp - std::chrono::sys_days(ymd));
 
   basics::ParsedDuration parsedDuration;
   if (!basics::parseIsoDuration(duration, parsedDuration)) {
@@ -335,16 +338,16 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
   }
 
   if (isSubtract) {
-    ymd -= date::years{parsedDuration.years};
-    ymd -= date::months{parsedDuration.months};
+    ymd -= std::chrono::years{parsedDuration.years};
+    ymd -= std::chrono::months{parsedDuration.months};
   } else {
-    ymd += date::years{parsedDuration.years};
-    ymd += date::months{parsedDuration.months};
+    ymd += std::chrono::years{parsedDuration.years};
+    ymd += std::chrono::months{parsedDuration.months};
   }
 
   milliseconds ms{0};
-  ms += date::weeks{parsedDuration.weeks};
-  ms += date::days{parsedDuration.days};
+  ms += std::chrono::weeks{parsedDuration.weeks};
+  ms += std::chrono::days{parsedDuration.days};
   ms += hours{parsedDuration.hours};
   ms += minutes{parsedDuration.minutes};
   ms += seconds{parsedDuration.seconds};
@@ -352,11 +355,11 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
 
   tp_sys_clock_ms resTime;
   if (isSubtract) {
-    resTime =
-        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() - ms};
+    resTime = tp_sys_clock_ms{std::chrono::sys_days(ymd) +
+                              day_time.to_duration() - ms};
   } else {
-    resTime =
-        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() + ms};
+    resTime = tp_sys_clock_ms{std::chrono::sys_days(ymd) +
+                              day_time.to_duration() + ms};
   }
 
   if (timezone != "UTC") {
@@ -442,20 +445,21 @@ AqlValue dateFromParameters(
       }
     }
 
-    date::years y{
-        aql::functions::extractFunctionParameterValue(parameters, 0).toInt64()};
-    date::months m{
-        aql::functions::extractFunctionParameterValue(parameters, 1).toInt64()};
-    date::days d{
-        aql::functions::extractFunctionParameterValue(parameters, 2).toInt64()};
+    // TODO: narrowing?
+    std::chrono::year y(
+        aql::functions::extractFunctionParameterValue(parameters, 0).toInt64());
+    std::chrono::month m(
+        aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
+    std::chrono::day d(
+        aql::functions::extractFunctionParameterValue(parameters, 2).toInt64());
 
-    if ((y < date::years{0} || y > date::years{9999}) ||
-        (m < date::months{0}) || (d < date::days{0})) {
+    if ((y < std::chrono::year{0} || y > std::chrono::year{9999}) ||
+        (m < std::chrono::month{0}) || (d < std::chrono::day{0})) {
       aql::functions::registerWarning(expressionContext, AFN,
                                       TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    date::year_month_day ymd = date::year{y.count()} / m.count() / d.count();
+    std::chrono::year_month_day ymd(y, m, d);
 
     // Parse the time
     hours h(0);
@@ -492,7 +496,7 @@ AqlValue dateFromParameters(
       return AqlValue(AqlValueHintNull());
     }
 
-    time = date::sys_days(ymd).time_since_epoch();
+    time = std::chrono::sys_days(ymd).time_since_epoch();
     time += h;
     time += min;
     time += s;
@@ -573,7 +577,7 @@ AqlValue functions::DateDayOfWeek(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  date::weekday wd{floor<date::days>(tp)};
+  std::chrono::weekday wd{floor<std::chrono::days>(tp)};
 
   return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
@@ -603,7 +607,7 @@ AqlValue functions::DateYear(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto ymd = date::year_month_day(floor<date::days>(tp));
+  auto ymd = std::chrono::year_month_day(floor<std::chrono::days>(tp));
   // Not the library has operator (int) implemented...
   int64_t year = static_cast<int64_t>((int)ymd.year());
   return AqlValue(AqlValueHintInt(year));
@@ -634,7 +638,7 @@ AqlValue functions::DateMonth(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto ymd = date::year_month_day(floor<date::days>(tp));
+  auto ymd = std::chrono::year_month_day(floor<std::chrono::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
   return AqlValue(AqlValueHintUInt(month));
@@ -665,7 +669,7 @@ AqlValue functions::DateDay(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto ymd = date::year_month_day(floor<date::days>(tp));
+  auto ymd = std::chrono::year_month_day(floor<std::chrono::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t day = static_cast<uint64_t>((unsigned)ymd.day());
   return AqlValue(AqlValueHintUInt(day));
@@ -696,7 +700,7 @@ AqlValue functions::DateHour(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto day_time = date::make_time(tp - floor<date::days>(tp));
+  auto day_time = std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
   uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
 }
@@ -726,7 +730,7 @@ AqlValue functions::DateMinute(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto day_time = date::make_time(tp - floor<date::days>(tp));
+  auto day_time = std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
   uint64_t minutes = day_time.minutes().count();
   return AqlValue(AqlValueHintUInt(minutes));
 }
@@ -742,7 +746,7 @@ AqlValue functions::DateSecond(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = date::make_time(tp - floor<date::days>(tp));
+  auto day_time = std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
   uint64_t seconds = day_time.seconds().count();
   return AqlValue(AqlValueHintUInt(seconds));
 }
@@ -757,7 +761,7 @@ AqlValue functions::DateMillisecond(ExpressionContext* expressionContext,
   if (!parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto day_time = date::make_time(tp - floor<date::days>(tp));
+  auto day_time = std::chrono::hh_mm_ss(tp - floor<std::chrono::days>(tp));
   uint64_t millis = day_time.subseconds().count();
   return AqlValue(AqlValueHintUInt(millis));
 }
@@ -787,12 +791,13 @@ AqlValue functions::DateDayOfYear(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto ymd = date::year_month_day(floor<date::days>(tp));
-  auto yyyy = date::year{ymd.year()};
+  auto ymd = std::chrono::year_month_day(floor<std::chrono::days>(tp));
+  auto yyyy = std::chrono::year{ymd.year()};
   // we construct the date with the first day in the year:
-  auto firstDayInYear = yyyy / date::jan / date::day{0};
-  uint64_t daysSinceFirst =
-      duration_cast<date::days>(tp - date::sys_days(firstDayInYear)).count();
+  auto firstDayInYear = yyyy / std::chrono::January / std::chrono::day{0};
+  uint64_t daysSinceFirst = duration_cast<std::chrono::days>(
+                                tp - std::chrono::sys_days(firstDayInYear))
+                                .count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
@@ -822,9 +827,12 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
+  //  iso_week::year_weeknum_weekday yww{floor<std::chrono::days>(tp)};
   // The (unsigned) operator is overloaded...
-  uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+  //
+  // uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+  TRI_ASSERT(false);  // TODO
+  auto isoWeek = 0;
   return AqlValue(AqlValueHintUInt(isoWeek));
 }
 
@@ -853,10 +861,13 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
-  // The (unsigned) operator is overloaded...
-  uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
-  int isoYear = (int)(yww.year());
+  // iso_week::year_weeknum_weekday yww{floor<std::chrono::days>(tp)};
+  //  The (unsigned) operator is overloaded...
+  // uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+  // int isoYear = (int)(yww.year());
+  auto isoWeek = 0;
+  auto isoYear = 0;
+  TRI_ASSERT(false);  // TODO
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("week", VPackValue(isoWeek));
@@ -891,7 +902,7 @@ AqlValue functions::DateLeapYear(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  date::year_month_day ymd{floor<date::days>(tp)};
+  std::chrono::year_month_day ymd{floor<std::chrono::days>(tp)};
 
   return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
 }
@@ -921,8 +932,8 @@ AqlValue functions::DateQuarter(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  date::year_month_day ymd{floor<date::days>(tp)};
-  date::month m = ymd.month();
+  std::chrono::year_month_day ymd{floor<std::chrono::days>(tp)};
+  std::chrono::month m = ymd.month();
 
   // Library has unsigned operator implemented.
   uint64_t part = static_cast<uint64_t>(std::ceil(unsigned(m) / 3.0f));
@@ -956,8 +967,8 @@ AqlValue functions::DateDaysInMonth(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  auto ymd = date::year_month_day{floor<date::days>(tp)};
-  auto lastMonthDay = ymd.year() / ymd.month() / date::last;
+  auto ymd = std::chrono::year_month_day{floor<std::chrono::days>(tp)};
+  auto lastMonthDay = ymd.year() / ymd.month() / std::chrono::last;
 
   // The Library has operator unsigned implemented
   return AqlValue(
@@ -1003,13 +1014,14 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  date::year_month_day ymd{floor<date::days>(tp)};
-  auto day_time = date::make_time(tp - date::sys_days(ymd));
+  std::chrono::year_month_day ymd{floor<std::chrono::days>(tp)};
+  auto day_time = std::chrono::hh_mm_ss(tp - std::chrono::sys_days(ymd));
   milliseconds ms{0};
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = date::year{ymd.year()} / date::jan / date::day{1};
+    ymd = std::chrono::year{ymd.year()} / std::chrono::January /
+          std::chrono::day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
-    ymd = date::year{ymd.year()} / ymd.month() / date::day{1};
+    ymd = std::chrono::year{ymd.year()} / ymd.month() / std::chrono::day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
     // However, we already split ymd to the precision of days,
@@ -1027,7 +1039,7 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
-  tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
+  tp = tp_sys_clock_ms{std::chrono::sys_days(ymd) + ms};
 
   if (parameters.size() == 3) {
     unlocalizeTimePoint(inputTimezone, tp);
@@ -1071,10 +1083,11 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
 
   std::string const tz = timezoneParam.slice().copyString();
   auto const utc = floor<milliseconds>(tp_utc);
-  auto const zoned = date::make_zoned(tz, utc);
-  auto const info = zoned.get_info();
-  auto const tp_local =
-      tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  auto const zone = std::chrono::locate_zone(tz);
+  TRI_ASSERT(zone != nullptr);
+  auto const zoned = zone->to_local(utc);
+  auto const info = zone->get_info(utc);
+  auto const tp_local = tp_sys_clock_ms{zoned.time_since_epoch()};
   AqlValue aqlLocal =
       timeAqlValue(expressionContext, AFN, tp_local,
                    info.offset.count() == 0 && info.save.count() == 0);
@@ -1094,7 +1107,7 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("local", aqlLocal.slice());
-    builder->add("tzdb", VPackValue(date::get_tzdb().version));
+    builder->add("tzdb", VPackValue(std::chrono::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -1164,7 +1177,7 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("utc", aqlUtc.slice());
-    builder->add("tzdb", VPackValue(date::get_tzdb().version));
+    builder->add("tzdb", VPackValue(std::chrono::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -1185,7 +1198,7 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
 AqlValue functions::DateTimeZone(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
-  auto const* zone = date::current_zone();
+  auto const* zone = std::chrono::current_zone();
 
   if (zone != nullptr) {
     return AqlValue(zone->name());
@@ -1198,7 +1211,7 @@ AqlValue functions::DateTimeZone(ExpressionContext* expressionContext,
 AqlValue functions::DateTimeZones(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
-  auto& list = date::get_tzdb_list();
+  auto& list = std::chrono::get_tzdb_list();
   auto& db = list.front();
 
   auto result = ThreadLocalBuilderLeaser::lease();
@@ -1443,21 +1456,24 @@ AqlValue functions::DateDiff(ExpressionContext* expressionContext,
 
   switch (flag) {
     case YEAR:
-      diff = duration_cast<
-                 duration<double, std::ratio_multiply<std::ratio<146097, 400>,
-                                                      date::days::period>>>(
-                 diffDuration)
-                 .count();
+      diff =
+          duration_cast<
+              duration<double, std::ratio_multiply<std::ratio<146097, 400>,
+                                                   std::chrono::days::period>>>(
+              diffDuration)
+              .count();
       break;
     case MONTH:
-      diff = duration_cast<duration<
-          double, std::ratio_divide<date::years::period, std::ratio<12>>>>(
-                 diffDuration)
-                 .count();
+      diff =
+          duration_cast<
+              duration<double, std::ratio_divide<std::chrono::years::period,
+                                                 std::ratio<12>>>>(diffDuration)
+              .count();
       break;
     case WEEK:
       diff = duration_cast<duration<
-          double, std::ratio_multiply<std::ratio<7>, date::days::period>>>(
+          double,
+          std::ratio_multiply<std::ratio<7>, std::chrono::days::period>>>(
                  diffDuration)
                  .count();
       break;
@@ -1584,10 +1600,10 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
     }
   }
 
-  auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
-  auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
-  auto time1 = date::make_time(tp1 - floor<date::days>(tp1));
-  auto time2 = date::make_time(tp2 - floor<date::days>(tp2));
+  auto ymd1 = std::chrono::year_month_day{floor<std::chrono::days>(tp1)};
+  auto ymd2 = std::chrono::year_month_day{floor<std::chrono::days>(tp2)};
+  auto time1 = std::chrono::hh_mm_ss(tp1 - floor<std::chrono::days>(tp1));
+  auto time2 = std::chrono::hh_mm_ss(tp2 - floor<std::chrono::days>(tp2));
 
   // This switch has the following feature:
   // It is ordered by the Highest value of

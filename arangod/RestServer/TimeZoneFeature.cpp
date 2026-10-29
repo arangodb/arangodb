@@ -38,7 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "date/tz.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -78,7 +77,7 @@ void TimeZoneFeature::prepareTimeZoneData(
 
   std::error_code dirEc;
   if (std::filesystem::is_directory(tz_path, dirEc)) {
-    date::set_install(tz_path);
+    //    date::set_install(tz_path);
   } else {
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
         << "failed to locate timezone data " << tz_path
@@ -90,7 +89,7 @@ void TimeZoneFeature::prepareTimeZoneData(
 
   bool gotTZ = true;
   try {
-    auto const* zone = date::current_zone();
+    auto const* zone = std::chrono::current_zone();
     gotTZ = zone != nullptr;
   } catch (std::runtime_error const&) {
     gotTZ = false;
@@ -115,7 +114,7 @@ void TimeZoneFeature::prepare() {
 
 void TimeZoneFeature::start() {
   try {
-    date::reload_tzdb();
+    //    date::reload_tzdb();
   } catch (std::runtime_error const& ex) {
     LOG_TOPIC("67bdd", FATAL, arangodb::Logger::STARTUP) << ex.what();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
