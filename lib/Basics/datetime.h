@@ -27,8 +27,6 @@
 #include <string>
 #include <string_view>
 
-#include <date/date.h>
-
 namespace arangodb {
 
 using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock,
