@@ -9,7 +9,6 @@ tests:
     requires:
       arch: x64
     args:
-      old-version: 3.11.14
       checkdata: true
       run-upgrade: true
       selenium: Remote_CHROME
@@ -20,6 +19,5 @@ tests:
     requires:
       arch: aarch64
     args:
-      old-version: 3.11.14
       checkdata: true
       run-upgrade: true

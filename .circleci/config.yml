@@ -108,6 +108,14 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
+  upgrade_from:
+    type: string
+    default: "3.11.14"
+    description: semicolon separated list of versions to upgrade from, could as well be <source> for this version
+  upgrade_to:
+    type: string
+    default: "source"
+    description: semicolon separated list of versions to upgrade to, could as well be <source> for this version
 
 
 # our defined job, and its steps
