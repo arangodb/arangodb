@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1200: Update boost from 1.78.0 to 1.92.0
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
