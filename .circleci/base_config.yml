@@ -1570,23 +1570,9 @@ jobs:
             done
             set -x
             pwd
-            SRC_VER=$(sed -e "s;-devel;;" "work/ArangoDB/ARANGO-VERSION")-src
-            declare -a FROM=($(sed "s,;, ," < '<< parameters.upgrade_from >>'))
-            declare -a TO=($(sed "s,;, ," < '<< parameters.upgrade_from >>'))
-            for from_ver in "${FROM[@]}"; do
-              for to_ver in "${TO[@]}"; do
-                if [ -n "${UPGRADE_MATRX}" ]; then
-                  UPGRADE_MATRX="${UPGRADE_MATRX};"
-                fi
-                if [ "${from_ver} == "source" ]; then
-                  from_ver="${SRC_VER}"
-                fi
-                if [ "${to_ver} == "source" ]; then
-                  to_ver="${SRC_VER}"
-                fi
-                export UPGRADE_MATRX="${UPGRADE_MATRX}${from_ver}:${to_ver}"
-              done
-            fi
+            export SRC_VER=$(sed -e "s;-devel;;" "$(pwd)/../ArangoDB/ARANGO-VERSION")-src
+            export FROM_VERSION='<< parameters.upgrade_from >>'
+            export TO_VERSION='<< parameters.upgrade_from >>'
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
