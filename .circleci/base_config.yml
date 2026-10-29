@@ -98,7 +98,15 @@ parameters:
   kafkaHostList:
     type: string
     default: "kafka-1:19092,kafka-2:29092,kafka-3:39092"
-
+  run-upgrade-tests:
+    type: boolean
+    default: false
+  upgrade_from:
+    type: string
+    default: "3.11.14"
+  upgrade_to:
+    type: string
+    default: "source"
 
 .shared-test-job-parameters: &shared-test-job-parameters
   suiteName:
@@ -1523,6 +1531,12 @@ jobs:
         type: string
       arch:
         type: string
+      upgrade_from:
+        type: string
+        default: "<< pipeline.parameters.upgrade_from >>"
+      upgrade_to:
+        type: string
+        default: "<< pipeline.parameters.upgrade_to >>"
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
@@ -1556,6 +1570,23 @@ jobs:
             done
             set -x
             pwd
+            SRC_VER=$(sed -e "s;-devel;;" "$(pwd)/../ArangoDB/ARANGO-VERSION")-src
+            IFS=';' read -r -a FROM <<< "<< parameters.upgrade_from >>"
+            IFS=';' read -r -a TO <<< "<< parameters.upgrade_from >>"
+            for from_ver in "${FROM[@]}"; do
+              for to_ver in "${TO[@]}"; do
+                if [ -n "${UPGRADE_MATRX}" ]; then
+                  UPGRADE_MATRX="${UPGRADE_MATRX};"
+                fi
+                if [ "${from_ver} == "source" ]; then
+                  from_ver="${SRC_VER}"
+                fi
+                if [ "${to_ver} == "source" ]; then
+                  to_ver="${SRC_VER}"
+                fi
+                export UPGRADE_MATRX="${UPGRADE_MATRX}${from_ver}:${to_ver}"
+              done
+            fi
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
