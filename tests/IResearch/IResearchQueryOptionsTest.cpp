@@ -1273,8 +1273,8 @@ TEST_P(QueryOptionsSearch, TestNoMaterialization) {
 // exception used to escape a noexcept function.
 TEST_P(QueryOptionsSearch, UnindexedFieldFailOnWarning) {
   // create collection
-  auto collectionJson = VPackParser::fromJson(R"({ "name": "c" })");
-  auto collection = _vocbase.createCollection(collectionJson->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("c");
+  auto collection = _vocbase.createCollection(colDescriptor);
   ASSERT_NE(nullptr, collection);
 
   // insert data into collection
