@@ -251,6 +251,8 @@ class LogicalCollectionDescriptorTest : public StorageEngineDataTest {
   // Save a collection the way shutdown does, load it back the way startup
   // does, expect the same collection. Only markers written by the current
   // code; older ones are the upgrade tests' job.
+  // groupId and replicatedStateId need a ClusterInfo group, which this
+  // fixture has no feature for; the cluster js tests cover them.
   void expectSurvivesRestart(CollectionDescriptor descriptor) {
     using Serialization = LogicalDataSource::Serialization;
 
@@ -755,6 +757,87 @@ TEST_F(LogicalCollectionDescriptorTest,
 ////////////////////////////////////////////////////////////////////////////////
 // Section 6: the same field parses differently per context
 ////////////////////////////////////////////////////////////////////////////////
+
+// Older markers and plan entries spell these as numbers, which is what
+// IdIdentifier::acceptNumber is for.
+TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnLoad) {
+  for (auto const& key : {StaticStrings::Id, StaticStrings::DataSourceCid,
+                          StaticStrings::DataSourcePlanId}) {
+    auto body = oneKeyObject(key, VPackValue(9988488));
+
+    CollectionIdentity internalProps;
+    EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                  {.ignoreUnknownFields = true},
+                                                  InspectInternalContext{})
+                    .ok())
+        << " on " << body.toJson();
+    auto const& parsed = key == StaticStrings::DataSourcePlanId
+                             ? internalProps.planId
+                             : internalProps.id;
+    EXPECT_EQ(parsed, DataSourceId{9988488}) << " on " << body.toJson();
+  }
+}
+
+// The slice path converted any number, so a marker that stored the id as a
+// double still has to load.
+TEST_F(LogicalCollectionDescriptorTest, Context_idAcceptsADoubleOnLoad) {
+  auto body = oneKeyObject(StaticStrings::Id, VPackValue(9988488.0));
+
+  CollectionIdentity internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectInternalContext{})
+                  .ok())
+      << " on " << body.toJson();
+  EXPECT_EQ(internalProps.id, DataSourceId{9988488});
+}
+
+// A user may only spell the id as a string. cid and planId are not part of
+// this test because a user may not send them at all, whatever their type.
+TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberFromAUser) {
+  auto body = oneKeyObject(StaticStrings::Id, VPackValue(9988488));
+
+  CollectionIdentity userProps;
+  EXPECT_FALSE(velocypack::deserializeWithStatus(body.slice(), userProps,
+                                                 {.ignoreUnknownFields = true},
+                                                 InspectUserContext{})
+                   .ok())
+      << " on " << body.toJson();
+}
+
+// A negative number is not an id, and is reported as such rather than
+// wrapping around into a large one.
+TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANegativeNumber) {
+  for (auto value : {VPackValue(-1), VPackValue(-9988488)}) {
+    auto body = oneKeyObject(StaticStrings::Id, value);
+
+    CollectionIdentity internalProps;
+    EXPECT_FALSE(velocypack::deserializeWithStatus(
+                     body.slice(), internalProps, {.ignoreUnknownFields = true},
+                     InspectInternalContext{})
+                     .ok())
+        << " on " << body.toJson();
+  }
+}
+
+TEST_F(LogicalCollectionDescriptorTest,
+       Context_missingUsesRevisionsAsDocumentIdsMeansFalseOnLoad) {
+  auto body = oneKeyObject(StaticStrings::DataSourceName, VPackValue("test"));
+
+  CollectionInternalProperties internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectInternalContext{})
+                  .ok());
+  EXPECT_FALSE(internalProps.usesRevisionsAsDocumentIds);
+
+  CollectionInternalProperties userProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), userProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectUserContext{})
+                  .ok());
+  EXPECT_TRUE(userProps.usesRevisionsAsDocumentIds);
+}
 
 TEST_F(LogicalCollectionDescriptorTest, Context_numberOfShardsZeroLoads) {
   auto body = oneKeyObject(StaticStrings::NumberOfShards, VPackValue(0));

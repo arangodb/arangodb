@@ -32,7 +32,9 @@ const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const {
   sleep,
+  killExternal,
   executeExternal,
+  getExternalSpawned,
   SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
@@ -803,13 +805,31 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.extremeVerbosity !== 'silence') {
     print(argv);
   }
-  
+  let ret;
   let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
   SetGlobalExecutionDeadlineTo(timeout);
-  let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
-  timeout = SetGlobalExecutionDeadlineTo(0.0);
-  if (timeout) {
-    ret.status = false;
+  try {
+    ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    if (timeout) {
+      ret.status = false;
+    }
+  } catch (ex) {
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    print(`${RED}${Date()}rtaMakedata(): caught exception during executing makedata: ${timeout?"timeout ":""}${ex}${RESET}`);
+    ret = {
+      status: false,
+      message: `failed to execute ${argv} by: ${ex} ${ex.stack}`
+    };
+    let running = getExternalSpawned();
+    running.forEach(process => {
+      // [0] is not there in argv, only in arguments.
+      if (process.arguments[0] === pu.ARANGOSH_BIN && (process.arguments.length -1) === argv.length) {
+        print(`${RED}${Date()} rtaMakedata(): identified my process, killing ${JSON.stringify(process)}${RESET}`);
+        let msg = killExternal(process.pid, 9);
+        ret.message += '\n' + msg;
+      }
+    });
   }
   return ret;
 }

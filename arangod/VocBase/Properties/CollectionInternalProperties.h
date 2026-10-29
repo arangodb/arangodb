@@ -62,21 +62,18 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
                                      props.deleted),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
+      // A marker written before this attribute existed means false; a create
+      // that omits it means true.
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,
               props.usesRevisionsAsDocumentIds)
-          .fallback(f.keep()),
+          .fallback(!isInternalContext<Inspector>),
       f.field(StaticStrings::IsSmartChild, props.isSmartChild)
           .fallback(f.keep()),
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
       f.field(StaticStrings::GraphSmartGraphAttribute,
-              props.smartGraphAttribute),
-      /* Backwards compatibility, field is documented but does not have an
-       * effect
-       */
-      f.ignoreField(StaticStrings::DataSourceGuid),
-      f.ignoreField(StaticStrings::DataSourceDeleted));
+              props.smartGraphAttribute));
 }
 
 }  // namespace arangodb

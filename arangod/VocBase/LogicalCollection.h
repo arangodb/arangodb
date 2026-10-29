@@ -434,7 +434,10 @@ class LogicalCollection : public LogicalDataSource {
 
   void decorateWithInternalValidators();
 
-  std::optional<uint64_t> groupId() const noexcept;
+  // The value as stored, but only under replication 2; the public groupID()
+  // additionally requires that it is set.
+  std::optional<replication2::agency::CollectionGroupId> groupIdIfAny()
+      const noexcept;
 
   // The value as stored; the public replicatedStateId() additionally requires
   // that it is set.
@@ -443,10 +446,10 @@ class LogicalCollection : public LogicalDataSource {
     return _invariants.replicatedStateId;
   }
 
- protected:
   // Only contains the immutable properties; single source of truth.
   CollectionInvariants const _invariants;
 
+ protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
   Result appendVPack(velocypack::Builder& build, Serialization ctx,

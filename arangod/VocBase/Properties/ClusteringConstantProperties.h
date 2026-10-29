@@ -52,7 +52,7 @@ struct ClusteringConstantProperties {
   // when the shard is created, so only the load path ever carries it.
   inspection::NonNullOptional<replication2::LogId> replicatedStateId{
       std::nullopt};
-  // The shard-to-serever mapping; maintained by the agency at runtime.
+  // The shard-to-server mapping; maintained by the agency at runtime.
   // CollectionDescriptor only transports a snapshot of it on load path.
   inspection::NonNullOptional<
       containers::FlatHashMap<ShardID, std::vector<std::string>>>

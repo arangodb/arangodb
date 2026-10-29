@@ -1197,12 +1197,26 @@ std::vector<CollectionDescriptor> RocksDBEngine::getCollectionsAndIndexes(
       continue;
     }
 
-    auto descriptor = CollectionDescriptor::fromVelocyPack(
-        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data())));
-    if (descriptor.internal.deleted) {
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    // a dropped collection may have left a stale marker behind, so skip it
+    // before parsing rather than fail the whole database
+    if (basics::VelocyPackHelper::getBooleanValue(
+            slice, StaticStrings::DataSourceDeleted, false)) {
       continue;
     }
-    collections.emplace_back(std::move(descriptor));
+
+    try {
+      collections.emplace_back(CollectionDescriptor::fromVelocyPack(slice));
+    } catch (basics::Exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          ex.code(),
+          absl::StrCat(ex.what(), " in collection '",
+                       basics::VelocyPackHelper::getStringValue(
+                           slice, StaticStrings::DataSourceName, "<unknown>"),
+                       "'"));
+    }
   }
 
   return collections;
@@ -2922,7 +2936,7 @@ DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
 DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
 void RocksDBEngine::getCapabilities(velocypack::Builder& builder,
-                                    uint32_t apiVersion) const {
+                                    ApiVersion apiVersion) const {
   // get generic capabilities
   VPackBuilder main;
   StorageEngine::getCapabilities(main, apiVersion);

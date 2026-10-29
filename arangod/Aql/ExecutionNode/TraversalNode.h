@@ -30,6 +30,7 @@
 #include "Graph/Types/UniquenessLevel.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -78,6 +79,8 @@ class TraversalNode : public virtual GraphNode {
     ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose);
+
+    AstNode const* condition() const { return _modCondition; }
   };
 
   friend class ExecutionBlock;
@@ -227,6 +230,11 @@ class TraversalNode : public virtual GraphNode {
   void getPruneVariables(std::vector<Variable const*>&) const;
 
   void getPostFilterVariables(std::vector<Variable const*>&) const;
+
+  /// @brief calls the callback for every global and depth-specific vertex
+  /// and edge condition. Returns false as soon as the callback returns false.
+  bool forEachVertexAndEdgeCondition(
+      std::function<bool(AstNode const*)> const& callback) const;
 
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation

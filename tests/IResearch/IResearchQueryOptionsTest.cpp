@@ -1267,6 +1267,77 @@ TEST_P(QueryOptionsSearch, TestNoMaterialization) {
   queryTestNoMaterialization();
 }
 
+// Searching a field that is not covered by the inverted index is a warning.
+// failOnWarning must turn that warning into a query error. It must not abort
+// the server: the analyzer lookup runs inside filter building, and an
+// exception used to escape a noexcept function.
+TEST_P(QueryOptionsSearch, UnindexedFieldFailOnWarning) {
+  // create collection
+  auto collectionJson = VPackParser::fromJson(R"({ "name": "c" })");
+  auto collection = _vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(nullptr, collection);
+
+  // insert data into collection
+  {
+    arangodb::OperationOptions opt;
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, {collection->name()}, kEmpty, arangodb::transaction::Options());
+    ASSERT_TRUE(trx.begin().ok());
+    auto doc = VPackParser::fromJson(R"({ "_key": "a", "f": 1, "g": "x" })");
+    auto res = trx.insert(collection->name(), doc->slice(), opt);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+    ASSERT_TRUE(trx.commit().ok());
+  }
+
+  // create index on field 'f' but not on 'g'
+  {
+    bool created = false;
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "i", "type": "inverted", "fields": [{ "name": "f" }] })");
+    collection->createIndex(createJson->slice(), created).waitAndGet();
+    ASSERT_TRUE(created);
+  }
+
+  // create search-alias view
+  auto viewJson = VPackParser::fromJson(
+      R"({ "name": "v", "type": "search-alias",
+           "indexes": [{ "collection": "c", "index": "i" }] })");
+  auto view = _vocbase.createView(viewJson->slice(), false);
+  ASSERT_NE(nullptr, view);
+
+  // query on field 'g'
+  auto const query =
+      "FOR d IN v SEARCH d.g == 'x' OPTIONS {waitForSync:true} RETURN d._key";
+
+  auto control = arangodb::tests::executeQuery(_vocbase, query);
+  ASSERT_TRUE(control.ok()) << control.errorMessage();
+  ASSERT_TRUE(control.data);
+
+  auto result = control.data->slice();
+  ASSERT_TRUE(result.isArray());
+  EXPECT_EQ(0U, result.length());
+  ASSERT_TRUE(control.extra);
+
+  // should show warning and return no results, but
+  // the query shouldn't fail
+  auto warnings = control.extra->slice().get("warnings");
+  ASSERT_TRUE(warnings.isArray());
+  ASSERT_EQ(1U, warnings.length());
+  EXPECT_EQ("Analyzer for field 'g' isn't set",
+            warnings.at(0).get("message").stringView());
+
+  // failOnWarning: true
+  // Query should throw an exception and fail
+  auto failed = arangodb::tests::executeQuery(_vocbase, query, nullptr,
+                                              R"({ "failOnWarning": true })");
+  EXPECT_TRUE(failed.fail());
+  EXPECT_TRUE(failed.is(TRI_ERROR_BAD_PARAMETER)) << failed.errorMessage();
+  EXPECT_NE(std::string::npos,
+            failed.errorMessage().find("Analyzer for field 'g' isn't set"));
+}
+
 INSTANTIATE_TEST_CASE_P(IResearch, QueryOptionsView, GetLinkVersions());
 
 INSTANTIATE_TEST_CASE_P(IResearch, QueryOptionsSearch, GetIndexVersions());

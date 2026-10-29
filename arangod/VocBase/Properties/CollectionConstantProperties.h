@@ -80,7 +80,7 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field(StaticStrings::ShadowCollections, props.shadowCollections)
           .fallback(f.keep())
           .whenLoading([]() {
-            return isInternalContext<Inspector> || isAgencyContext<Inspector>
+            return isInternalContext<Inspector>
                        ? inspection::FieldCondition::Process
                        : inspection::FieldCondition::Ignore;
           }));

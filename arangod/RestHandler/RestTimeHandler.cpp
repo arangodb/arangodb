@@ -38,7 +38,7 @@ RestTimeHandler::RestTimeHandler(
 
 // Mounted at /_admin/time (exact)
 RestStatus RestTimeHandler::execute() {
-  if (_request->requestedApiVersion() > 0 &&
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
       !isAllowedHttpMethod({RequestType::GET})) {
     return RestStatus::DONE;
   }

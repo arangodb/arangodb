@@ -110,7 +110,7 @@ function versionApiAuthzSuite () {
       const res = arango.GET_RAW(`/_arango/v1/_api/version`);
       assertEqual(200, res.code);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

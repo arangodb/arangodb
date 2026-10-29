@@ -624,12 +624,14 @@ jobs:
                 .circleci/config.yml \
                 .circleci/base_config.yml \
                 .circleci/nightly_packages.yml \
-                .circleci/base_nightly_packages.yml
+                .circleci/base_nightly_packages.yml \
+                .circleci/benchmarks.yml
               git add scripts/docker/build/linux/amd64-build-tag.txt \
                       .circleci/config.yml \
                       .circleci/base_config.yml \
                       .circleci/nightly_packages.yml \
-                      .circleci/base_nightly_packages.yml
+                      .circleci/base_nightly_packages.yml \
+                      .circleci/benchmarks.yml
               echo "Staged build image tag: ${IMAGE_REF}"
             fi
       - commit-and-push:

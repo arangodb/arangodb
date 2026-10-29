@@ -368,7 +368,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes(
-    uint32_t apiVersion) const {
+    ApiVersion apiVersion) const {
   std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
@@ -379,7 +379,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes(
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
-  if (apiVersion == 0) {
+  if (apiVersion == ApiVersion::V0) {
     enabledFeatures.push_back("hash");
     enabledFeatures.push_back("skiplist");
     enabledFeatures.push_back("fulltext");
@@ -392,7 +392,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes(
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexFactory::indexAliases(uint32_t apiVersion) const {
+IndexFactory::indexAliases(ApiVersion apiVersion) const {
   return {};
 }
 
