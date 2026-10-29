@@ -62,11 +62,11 @@ std::vector<std::string> const monthNamesShort = {"Jan", "Feb", "Mar", "Apr",
                                                   "May", "Jun", "Jul", "Aug",
                                                   "Sep", "Oct", "Nov", "Dec"};
 
-std::vector<std::string> const weekdayNames = {
+std::vector<std::string> const weekDayNames = {
     "Sunday",   "Monday", "Tuesday", "Wednesday",
     "Thursday", "Friday", "Saturday"};
 
-std::vector<std::string> const weekdayNamesShort = {"Sun", "Mon", "Tue", "Wed",
+std::vector<std::string> const weekDayNamesShort = {"Sun", "Mon", "Tue", "Wed",
                                                     "Thu", "Fri", "Sat"};
 
 std::
@@ -195,13 +195,14 @@ std::
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    auto ymd = std::chrono::year_month_day(
                        floor<std::chrono::days>(tp));
-                   auto yyyy = year{ymd.year()};
+                   auto yyyy = std::chrono::year{ymd.year()};
                    // we construct the date with the first day in the
                    // year:
-                   auto firstDayInYear = yyyy / jan / day{0};
+                   auto firstDayInYear =
+                       yyyy / std::chrono::January / std::chrono::day{0};
                    uint64_t daysSinceFirst =
                        duration_cast<std::chrono::days>(
-                           tp - date::sys_days(firstDayInYear))
+                           tp - std::chrono::sys_days(firstDayInYear))
                            .count();
                    if (daysSinceFirst < 10) {
                      wrk.append("00");
@@ -279,13 +280,15 @@ std::
                  }},
                 {"%kk",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
+                   /*
                    iso_week::year_weeknum_weekday yww{
                        floor<std::chrono::days>(tp)};
                    uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
                    if (isoWeek < 10) {
                      wrk.append("0");
                    }
-                   wrk.append(std::to_string(isoWeek));
+                   wrk.append(std::to_string(isoWeek)); */
+                   wrk.append(std::format("%V", tp));
                  }},
 
                 {"%t",
@@ -360,22 +363,30 @@ std::
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    auto ymd = std::chrono::year_month_day(
                        floor<std::chrono::days>(tp));
-                   auto yyyy = year{ymd.year()};
+                   auto yyyy = std::chrono::year{ymd.year()};
                    // We construct the date with the first day in the
                    // year:
-                   auto firstDayInYear = yyyy / jan / day{0};
+                   auto firstDayInYear =
+                       yyyy / std::chrono::January / std::chrono::day{0};
                    uint64_t daysSinceFirst =
                        duration_cast<std::chrono::days>(
-                           tp - date::sys_days(firstDayInYear))
+                           tp - std::chrono::sys_days(firstDayInYear))
                            .count();
                    wrk.append(std::to_string(daysSinceFirst));
                  }},
                 {"%k",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   iso_week::year_weeknum_weekday yww{
-                       floor<std::chrono::days>(tp)};
+                   auto r = std::format("%V", tp);
+                   if (r[0] == '0') {
+                     wrk.append(r.substr(1));
+                   }
+                   /*
+                   std::chrono
+
+                       : year_month_weekday yww{floor<std::chrono::days>(tp)};
                    uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
                    wrk.append(std::to_string(isoWeek));
+                   */
                  }},
                 {"%l",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -391,7 +402,7 @@ std::
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    std::chrono::year_month_day ymd{
                        floor<std::chrono::days>(tp)};
-                   month m = ymd.month();
+                   std::chrono::month m = ymd.month();
                    uint64_t part =
                        static_cast<uint64_t>(std::ceil(unsigned(m) / 3.0f));
                    TRI_ASSERT(part <= 4);
@@ -401,7 +412,8 @@ std::
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    auto ymd = std::chrono::year_month_day{
                        floor<std::chrono::days>(tp)};
-                   auto lastMonthDay = ymd.year() / ymd.month() / last;
+                   auto lastMonthDay =
+                       ymd.year() / ymd.month() / std::chrono::last;
                    wrk.append(std::to_string(
                        static_cast<unsigned>(lastMonthDay.day())));
                  }},
@@ -688,7 +700,8 @@ bool arangodb::basics::parseDateTime(std::string_view dateTime,
     return false;
   }
 
-  date_tp = sys_days(year{result.year} / result.month / result.day);
+  date_tp = std::chrono::sys_days(std::chrono::year{result.year} /
+                                  result.month / result.day);
   date_tp += std::chrono::hours{result.hour};
   date_tp += std::chrono::minutes{result.minute};
   date_tp += std::chrono::seconds{result.second};
