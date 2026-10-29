@@ -64,7 +64,7 @@ function assertInvalidApiVersion(path, query = "") {
   assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
   assertEqual(doc.parsedBody.errorMessage,
               `invalid API version in path '${path}', valid prefixes are: ` +
-              "/_arango/v0, /_arango/experimental");
+    "/_arango/v1, /_arango/experimental");
   assertCspHeaders(doc, "application/json; charset=utf-8");
 }
 

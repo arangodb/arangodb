@@ -33,12 +33,10 @@ namespace arangodb {
 // fuerte defines its own ApiVersion so that it does not have to include server
 // headers. The two are kept in lockstep by `toFuerte` in ApiVersionFuerte.h,
 // whose switch makes an unmapped enumerator a compile error.
-enum class ApiVersion : std::uint8_t { V0 = 0, V1 = 1, Experimental = 2 };
+enum class ApiVersion : std::uint8_t { V1 = 1, Experimental = 2 };
 
 constexpr std::string_view to_string(ApiVersion version) noexcept {
   switch (version) {
-    case ApiVersion::V0:
-      return "v0";
     case ApiVersion::V1:
       return "v1";
     case ApiVersion::Experimental:
@@ -53,7 +51,6 @@ std::ostream& operator<<(std::ostream& os, ApiVersion version);
 template<class Inspector>
 auto inspect(Inspector& f, ApiVersion& version) {
   return f.enumeration(version).values(
-      ApiVersion::V0, to_string(ApiVersion::V0),  //
       ApiVersion::V1, to_string(ApiVersion::V1),  //
       ApiVersion::Experimental, to_string(ApiVersion::Experimental));
 }
@@ -62,22 +59,23 @@ namespace api_version {
 /// @brief Central configuration for API versioning
 
 // Every enumerator, whether or not it is currently supported.
-inline constexpr std::array allApiVersions{ApiVersion::V0, ApiVersion::V1,
+inline constexpr std::array allApiVersions{ApiVersion::V1,
                                            ApiVersion::Experimental};
 
 static_assert(
     [] {
-      for (unsigned i = 0; i < allApiVersions.size(); ++i) {
-        if (static_cast<unsigned>(allApiVersions[i]) != i) {
-          return false;
-        }
-      }
-      return allApiVersions.back() == ApiVersion::Experimental;
+      auto const isGap = [](ApiVersion a, ApiVersion b) {
+        return static_cast<unsigned>(b) != static_cast<unsigned>(a) + 1;
+      };
+      return allApiVersions.front() == ApiVersion::V1 &&
+             allApiVersions.back() == ApiVersion::Experimental &&
+             std::ranges::adjacent_find(allApiVersions, isGap) ==
+                 allApiVersions.end();
     }(),
     "allApiVersions must list every enumerator, in order and without gaps");
 
 // The list of all supported API versions (both stable and deprecated)
-inline constexpr std::array supportedApiVersions{ApiVersion::V0};
+inline constexpr std::array supportedApiVersions{ApiVersion::V1};
 
 // The list of deprecated API versions (subset of supportedApiVersions)
 inline constexpr std::array<ApiVersion, 0> deprecatedApiVersions{};
@@ -88,7 +86,7 @@ static_assert(std::ranges::is_sorted(supportedApiVersions));
 static_assert(std::ranges::is_sorted(deprecatedApiVersions));
 
 // The API version used when no /_arango/vX prefix is specified.
-inline constexpr ApiVersion defaultApiVersion = ApiVersion::V0;
+inline constexpr ApiVersion defaultApiVersion = ApiVersion::V1;
 
 // The experimental API version (accessed via /_arango/experimental).
 inline constexpr ApiVersion experimentalApiVersion = ApiVersion::Experimental;

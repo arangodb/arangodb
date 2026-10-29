@@ -660,8 +660,7 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
     co_return;
   }
 
-  if (request()->requestedApiVersion() > ApiVersion::V0 &&
-      !ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
     co_return;
@@ -800,17 +799,15 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
       ctx->database = _vocbase.name();
     }
 
-    // In the future, only allow collection names here:
-    if (request()->requestedApiVersion() > ApiVersion::V0) {
-      if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
-        generateError(r);
-        co_return;
-      }
-      if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
-        generateError(r);
-        co_return;
-      }
+    if (auto r = auth::isNameAndNoId(ctx->database); r.fail()) {
+      generateError(r);
+      co_return;
     }
+    if (auto r = auth::isNameAndNoId(ctx->collection); r.fail()) {
+      generateError(r);
+      co_return;
+    }
+
     auto const& exec = ExecContext::current();
     bool canAccess =
         exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||

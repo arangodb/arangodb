@@ -108,7 +108,7 @@ struct MockService : rbac::Service {
 // Fixture bundling a mock service and the Rbac auth mode under test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  AuthMode::Rbac rbac{svc, "myuser", "mytoken", ApiVersion::V0};
+  AuthMode::Rbac rbac{svc, "myuser", "mytoken", ApiVersion::V1};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
   // tests that only inspect the recorded queries would otherwise not compile
@@ -508,8 +508,8 @@ TEST_F(RbacAuthModeTest, UseApiVersionAsksForTheVersionAsResource) {
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDistinguishesVersions) {
-  check(p::UseApiVersion{.version = ApiVersion::V0});
-  expectSingle(rbac::Action::UseApiVersion, "apiversion:v0");
+  check(p::UseApiVersion{.version = ApiVersion::Experimental});
+  expectSingle(rbac::Action::UseApiVersion, "apiversion:experimental");
 }
 
 TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {

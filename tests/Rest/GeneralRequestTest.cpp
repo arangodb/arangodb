@@ -47,7 +47,7 @@ std::string detect(HttpRequest& request, std::string const& path) {
 }  // namespace
 
 TEST(GeneralRequestTest, ValidApiVersionPrefixesListsSupportedAndExperimental) {
-  EXPECT_EQ("/_arango/v0, /_arango/experimental",
+  EXPECT_EQ("/_arango/v1, /_arango/experimental",
             GeneralRequest::validApiVersionPrefixes());
 }
 
@@ -62,8 +62,8 @@ TEST_F(ApiVersionDetectionTest, NewRequestHasDefaultVersion) {
   EXPECT_EQ(api_version::defaultApiVersion, request.requestedApiVersion());
 }
 
-TEST_F(ApiVersionDetectionTest, DefaultApiVersionIsV0) {
-  EXPECT_EQ(ApiVersion::V0, api_version::defaultApiVersion);
+TEST_F(ApiVersionDetectionTest, DefaultApiVersionIsV1) {
+  EXPECT_EQ(ApiVersion::V1, api_version::defaultApiVersion);
 }
 
 TEST_F(ApiVersionDetectionTest, NoApiVersionPrefix) {
@@ -88,18 +88,18 @@ TEST_F(ApiVersionDetectionTest, ArangoWithoutTrailingSlashIsNoPrefix) {
   EXPECT_EQ(api_version::defaultApiVersion, request.requestedApiVersion());
 }
 
-TEST_F(ApiVersionDetectionTest, V0IsStripped) {
+TEST_F(ApiVersionDetectionTest, V1IsStripped) {
   HttpRequest request(ci, 1);
-  EXPECT_EQ("/path", detect(request, "/_arango/v0/path"));
+  EXPECT_EQ("/path", detect(request, "/_arango/v1/path"));
   ASSERT_TRUE(request.hasValidApiVersion());
-  EXPECT_EQ(ApiVersion::V0, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::V1, request.requestedApiVersion());
 }
 
 TEST_F(ApiVersionDetectionTest, PathEndingAtVersion) {
   HttpRequest request(ci, 1);
-  EXPECT_EQ("", detect(request, "/_arango/v0"));
+  EXPECT_EQ("", detect(request, "/_arango/v1"));
   ASSERT_TRUE(request.hasValidApiVersion());
-  EXPECT_EQ(ApiVersion::V0, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::V1, request.requestedApiVersion());
 }
 
 TEST_F(ApiVersionDetectionTest, ExperimentalIsStripped) {
@@ -116,32 +116,6 @@ TEST_F(ApiVersionDetectionTest, PathEndingAtExperimental) {
   ASSERT_TRUE(request.hasValidApiVersion());
   EXPECT_EQ(api_version::experimentalApiVersion, request.requestedApiVersion());
 }
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-// V1 is not supported yet, but tests make it requestable via a failure point.
-TEST_F(ApiVersionDetectionTest, V1IsStrippedWhenMadeRequestable) {
-  TRI_AddFailurePointDebugging("ApiVersion::treatVersion1AsSupported");
-  auto guard = scopeGuard([]() noexcept {
-    TRI_RemoveFailurePointDebugging("ApiVersion::treatVersion1AsSupported");
-  });
-
-  HttpRequest request(ci, 1);
-  EXPECT_EQ("/path", detect(request, "/_arango/v1/path"));
-  ASSERT_TRUE(request.hasValidApiVersion());
-  EXPECT_EQ(ApiVersion::V1, request.requestedApiVersion());
-}
-
-// The reported prefixes must be exactly those the parser accepts.
-TEST_F(ApiVersionDetectionTest, ValidPrefixesIncludeV1WhenMadeRequestable) {
-  TRI_AddFailurePointDebugging("ApiVersion::treatVersion1AsSupported");
-  auto guard = scopeGuard([]() noexcept {
-    TRI_RemoveFailurePointDebugging("ApiVersion::treatVersion1AsSupported");
-  });
-
-  EXPECT_EQ("/_arango/v0, /_arango/v1, /_arango/experimental",
-            GeneralRequest::validApiVersionPrefixes());
-}
-#endif
 
 // Every path below carries a /_arango/ prefix that does not name a requestable
 // version. Detection must not throw, must leave the request without a valid
@@ -170,9 +144,9 @@ INSTANTIATE_TEST_SUITE_P(
         "/_arango/v00/path", "/_arango/v000", "/_arango/v01/path",
         "/_arango/v007/path", "/_arango/v010", "/_arango/v0100/path",
         "/_arango/v0123/_api/version",
-        // well-formed, but not requestable (v1 only behind a failure point)
-        "/_arango/v1/_api/version", "/_arango/v2/path", "/_arango/v3/path",
-        "/_arango/v7/_api/cursor", "/_arango/v42/_api/version",
+        // well-formed, but not requestable
+        "/_arango/v2/path", "/_arango/v3/path", "/_arango/v7/_api/cursor",
+        "/_arango/v42/_api/version",
         // 256 would truncate to V0 if cast to the underlying type unchecked
         "/_arango/v256/path",
         "/_arango/v" + std::to_string(std::numeric_limits<uint32_t>::max()) +

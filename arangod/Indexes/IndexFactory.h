@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -110,13 +109,12 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string_view> supportedIndexes(
-      ApiVersion apiVersion) const;
+  virtual std::vector<std::string_view> supportedIndexes() const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
   virtual std::vector<std::pair<std::string_view, std::string_view>>
-  indexAliases(ApiVersion apiVersion) const;
+  indexAliases() const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

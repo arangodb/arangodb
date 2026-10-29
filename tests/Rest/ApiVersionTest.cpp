@@ -39,7 +39,6 @@ using namespace arangodb;
 
 TEST(ApiVersionTest, ToStringYieldsTheNameAndCoexistsWithStdToString) {
   using std::to_string;
-  EXPECT_EQ("v0", to_string(ApiVersion::V0));
   EXPECT_EQ("v1", to_string(ApiVersion::V1));
   EXPECT_EQ("experimental", to_string(ApiVersion::Experimental));
 }
@@ -51,21 +50,18 @@ TEST(ApiVersionTest, StreamingYieldsTheName) {
     return os.str();
   };
 
-  EXPECT_EQ("v0", streamed(ApiVersion::V0));
   EXPECT_EQ("v1", streamed(ApiVersion::V1));
   EXPECT_EQ("experimental", streamed(ApiVersion::Experimental));
 }
 
 TEST(ApiVersionTest, ToFuerteMapsEveryEnumerator) {
-  EXPECT_EQ(fuerte::api_version::ApiVersion::V0, toFuerte(ApiVersion::V0));
   EXPECT_EQ(fuerte::api_version::ApiVersion::V1, toFuerte(ApiVersion::V1));
   EXPECT_EQ(fuerte::api_version::ApiVersion::Experimental,
             toFuerte(ApiVersion::Experimental));
 }
 
 TEST(ApiVersionTest, InspectSerializesTheName) {
-  for (auto version :
-       {ApiVersion::V0, ApiVersion::V1, ApiVersion::Experimental}) {
+  for (auto version : {ApiVersion::V1, ApiVersion::Experimental}) {
     velocypack::Builder builder;
     velocypack::serialize(builder, version);
     ASSERT_TRUE(builder.slice().isString());
@@ -74,8 +70,7 @@ TEST(ApiVersionTest, InspectSerializesTheName) {
 }
 
 TEST(ApiVersionTest, InspectDeserializesTheName) {
-  for (auto version :
-       {ApiVersion::V0, ApiVersion::V1, ApiVersion::Experimental}) {
+  for (auto version : {ApiVersion::V1, ApiVersion::Experimental}) {
     auto const json = velocypack::Parser::fromJson(
         "\"" + std::string{to_string(version)} + "\"");
     ApiVersion result{};

@@ -862,7 +862,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
+  vocbase->toVelocyPack(resultBuilder);
   vocbase.reset();
 
   auto& exec = ExecContext::current();
@@ -2756,11 +2756,10 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
                   "invalid collection parameter");
     return false;
   }
-  if (_request->requestedApiVersion() > ApiVersion::V0) {
-    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
-      generateError(r);
-      return false;
-    }
+
+  if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
+    generateError(r);
+    return false;
   }
 
   // print request

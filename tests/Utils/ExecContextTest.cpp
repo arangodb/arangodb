@@ -131,8 +131,8 @@ TEST(ExecContextTest, canUseApiVersion_classic_grants_every_version) {
   auto cec = makeClassicExecContext("user", "mydb", auth::Level::NONE,
                                     auth::Level::NONE);
 
-  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::V0).ok());
   EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::V1).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::Experimental).ok());
 }
 
 TEST(ExecContextTest, canUseApiVersion_superuser_grants_every_version) {
@@ -373,7 +373,7 @@ TEST_P(OwnerScopedCheckTest, unauthenticated_is_denied_even_for_own_name) {
 TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
       false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "alice").ok());
@@ -383,7 +383,7 @@ TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
 TEST_P(OwnerScopedCheckTest, rbac_asks_the_admin_action_for_foreign_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
       false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "bob").ok());
@@ -394,7 +394,7 @@ TEST_P(OwnerScopedCheckTest, rbac_denial_is_forwarded) {
   RecordingRbacService service;
   service.answer = {TRI_ERROR_FORBIDDEN, "denied by test service"};
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V0}},
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
       false, VocbasePtr{nullptr});
 
   EXPECT_FALSE(check(*ctx, "bob").ok());

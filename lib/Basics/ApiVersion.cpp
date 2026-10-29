@@ -36,11 +36,7 @@ std::ostream& operator<<(std::ostream& os, ApiVersion version) {
 namespace api_version {
 
 bool isApiVersionRequestable(ApiVersion version) {
-  bool requestable = isApiVersionSupported(version);
-  TRI_IF_FAILURE("ApiVersion::treatVersion1AsSupported") {
-    requestable = requestable || version == ApiVersion::V1;
-  }
-  return requestable;
+  return isApiVersionSupported(version);
 }
 
 }  // namespace api_version

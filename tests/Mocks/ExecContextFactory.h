@@ -52,7 +52,7 @@ auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
 /// @brief Minimal GeneralRequest subclass for use in tests.
 ///
 /// It satisfies the four pure-virtual requirements of GeneralRequest and
-/// leaves requestedApiVersion() at its default value of ApiVersion::V0
+/// leaves requestedApiVersion() at its default value of ApiVersion::V1
 /// ("no versioned prefix"). This means the "return NOT_FOUND to hide existence"
 /// branches in AuthMode::Classic::check() are not taken, which is the correct
 /// behaviour for tests that only check FORBIDDEN / READ_ONLY outcomes. Tests
@@ -67,7 +67,7 @@ struct FakeGeneralRequest final : GeneralRequest {
   }
   void setDefaultContentType() noexcept override {}
 
-  /// @brief Select the requested API version (V0 is the default). Normally
+  /// @brief Select the requested API version (V1 is the default). Normally
   /// this is derived from the /_arango/vX URL prefix, which a fake request has
   /// no way of carrying.
   void setRequestedApiVersion(ApiVersion version) noexcept {

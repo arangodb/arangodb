@@ -817,8 +817,7 @@ async<void> RestDocumentHandler::readManyDocuments() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  if (_request->requestedApiVersion() > ApiVersion::V0 &&
-      rejectNumericCollectionId(cname)) {
+  if (rejectNumericCollectionId(cname)) {
     co_return;
   }
 

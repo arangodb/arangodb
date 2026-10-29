@@ -812,9 +812,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              if (_requestedApiVersion == ApiVersion::V0) {
-                return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
-              }
               return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
@@ -881,9 +878,6 @@ Result AuthMode::Classic::isAdmin() const {
 
   auto message =
       std::format("Failed admin-permission check: {}", r.errorMessage());
-  if (_requestedApiVersion == ApiVersion::V0) {
-    return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
-  }
   return Result{TRI_ERROR_FORBIDDEN, message};
 }
 
