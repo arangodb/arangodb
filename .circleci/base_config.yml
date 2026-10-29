@@ -1571,8 +1571,9 @@ jobs:
             set -x
             pwd
             SRC_VER=$(sed -e "s;-devel;;" "work/ArangoDB/ARANGO-VERSION")-src
-            IFS=';' read -r -a FROM \<\<\< "<< parameters.upgrade_from >>"
-            IFS=';' read -r -a TO \<\<\< "<< parameters.upgrade_from >>"
+            IFS=';'
+            printf '<< parameters.upgrade_from >>' | read -r -a FROM
+            printf '<< parameters.upgrade_from >>' | read -r -a TO
             for from_ver in "${FROM[@]}"; do
               for to_ver in "${TO[@]}"; do
                 if [ -n "${UPGRADE_MATRX}" ]; then
