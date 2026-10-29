@@ -182,9 +182,6 @@ struct Socket<SocketType::Tcp> {
     try {
       timer.cancel();
     } catch (boost::system::system_error const& ex) {
-      // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
-      // to the old code, we extract the code from the exception that can be
-      // thrown by timer.cancel()
       ec = ex.code();
     }
 
@@ -429,9 +426,6 @@ struct Socket<fuerte::SocketType::Unix> {
     try {
       timer.cancel();
     } catch (boost::system::system_error const& ex) {
-      // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
-      // to the old code, we extract the code from the exception that can be
-      // thrown by timer.cancel()
       ec = ex.code();
     }
     try {
