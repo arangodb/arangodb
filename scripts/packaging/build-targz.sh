@@ -61,10 +61,21 @@ cp -a "${SCRIPT_DIR}/binForTarGz" bin
 find bin \( -name "*.bak" -o -name "*~" \) -delete
 cp "bin/README.${OS}.server" ./README
 sed -i -E "s/@ARANGODB_PACKAGE_NAME@/${NAME}-${OS}-${V}${ARCH_SUFFIX}/g" README
-# prepareInstall: strip client tools per policy; arangod stays unstripped.
+# prepareInstall: strip client tools per policy (extracting their debug
+# information first); arangod stays unstripped.
+if [ "${PACKAGE_STRIP}" != "None" ]; then
+  export DEBUG_SYMBOLS_DIR="${WORK}/${NAME}-dbg-${OS}-${V}${ARCH_SUFFIX}"
+fi
 "${SCRIPT_DIR}/strip-install-tree.sh" "${WORK}/targz"
 
 mkdir -p "${PACKAGES_OUT}"
+
+# Debug-symbols bundle: usr/lib/debug/.build-id/... debug files for the
+# binaries stripped above.
+if [ -n "${DEBUG_SYMBOLS_DIR:-}" ] && [ -d "${DEBUG_SYMBOLS_DIR}/usr/lib/debug" ]; then
+  DBG="$(basename "${DEBUG_SYMBOLS_DIR}")"
+  tar czf "${PACKAGES_OUT}/${DBG}.tar.gz" -C "${WORK}" "${DBG}"
+fi
 
 # Server bundle
 cd "${WORK}"

@@ -97,7 +97,7 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
     co_await showLatestBatch();
     co_return;
   } else if (type == rest::RequestType::PUT &&
-             _request->requestedApiVersion() == 0) {
+             _request->requestedApiVersion() == ApiVersion::V0) {
     co_await modifyQueryCursor();
     co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {

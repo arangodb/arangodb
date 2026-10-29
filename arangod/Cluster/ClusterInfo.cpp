@@ -1700,26 +1700,14 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           basics::VelocyPackHelper::getBooleanValue(
               collectionSlice, StaticStrings::AttrIsBuilding, false);
 
-      CollectionWithHash cwh{};
-      try {
-        // check if we already know this collection (i.e. have it in our local
-        // cache). we do this to avoid rebuilding LogicalCollection objects from
-        // scratch in every iteration the cache check is very coarse-grained: it
-        // simply hashes the Plan VelocyPack data for the collection, and will
-        // only reuse a collection from the cache if the hash is identical.
-        cwh = buildCollection(isBuilding, existingCollections, collectionId,
-                              collectionSlice, *vocbase, changeSet.version,
-                              cleanupLinkResponsible);
-      } catch (std::exception const& ex) {
-        // The plan contains an invalid collection definition. The cluster
-        // should not fail over it.
-        LOG_TOPIC("5dc60", ERR, Logger::AGENCY)
-            << "Failed to build collection '" << collectionId
-            << "': " << ex.what() << ". invalid information in plan. The "
-            << "collection will be ignored for now. VelocyPack: "
-            << collectionSlice.toJson();
-        continue;
-      }
+      // check if we already know this collection (i.e. have it in our local
+      // cache). we do this to avoid rebuilding LogicalCollection objects from
+      // scratch in every iteration the cache check is very coarse-grained: it
+      // simply hashes the Plan VelocyPack data for the collection, and will
+      // only reuse a collection from the cache if the hash is identical.
+      CollectionWithHash cwh = buildCollection(
+          isBuilding, existingCollections, collectionId, collectionSlice,
+          *vocbase, changeSet.version, cleanupLinkResponsible);
       auto& newCollection = cwh.collection;
       TRI_ASSERT(newCollection != nullptr);
 

@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Basics/ApiVersion.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -279,7 +280,7 @@ struct Database {
   bool isOneShard() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& result,
-                    uint32_t apiVersion) const;
+                    ApiVersion apiVersion) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
