@@ -422,8 +422,7 @@ TEST(ExecContextTest, canUpdateQueryProperties_database_write_access_suffices) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
 
-  EXPECT_EQ(cec.execContext->canUpdateQueryProperties("db").errorNumber(),
-            TRI_ERROR_FORBIDDEN);
+  EXPECT_TRUE(cec.execContext->canUpdateQueryProperties("db").ok());
 }
 
 TEST(ExecContextTest, canUpdateQueryProperties_read_access_is_not_enough) {
