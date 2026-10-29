@@ -148,7 +148,8 @@ async<void> RestCollectionHandler::handleCommandGet() {
 
   std::string const& name = suffixes[0];
 
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(name)) {
     co_return;
   }
 
@@ -440,7 +441,8 @@ async<void> RestCollectionHandler::handleCommandPut() {
 
   std::string const& name = suffixes[0];
 
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(name)) {
     co_return;
   }
 
@@ -471,7 +473,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   TRI_ASSERT(coll);
 
-  if (sub == "load" && _request->requestedApiVersion() == 0) {
+  if (sub == "load" && _request->requestedApiVersion() == ApiVersion::V0) {
     // "load" is a no-op starting with 3.9
     bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
     co_await collectionRepresentation(
@@ -480,7 +482,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         /*showCount*/ cc ? CountType::Standard : CountType::None);
     co_return standardResponse();
   }
-  if (sub == "unload" && _request->requestedApiVersion() == 0) {
+  if (sub == "unload" && _request->requestedApiVersion() == ApiVersion::V0) {
     bool flush = _request->parsedValue("flush", false);
 
     if (flush && !coll->deleted()) {
@@ -496,7 +498,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   if (sub == "compact") {
     // We only enforce WriteMeta access here if the API version is higher
     // than 0 for backwards compatibility:
-    if (_request.get()->requestedApiVersion() > 0) {
+    if (_request->requestedApiVersion() > ApiVersion::V0) {
       if (auto r = ExecContext::current().canUseCollection(
               _vocbase.name(), coll->name(), AccessLevel::WriteMeta);
           r.fail()) {
@@ -651,7 +653,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         StaticStrings::WaitForSyncString, StaticStrings::Schema,
         StaticStrings::ReplicationFactor, StaticStrings::WriteConcern,
         StaticStrings::ComputedValues,    StaticStrings::CacheEnabled};
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       keep.emplace_back(StaticStrings::MinReplicationFactor);  // deprecated
     }
     VPackBuilder props = VPackCollection::keep(body, keep);
@@ -710,7 +712,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   auto resExtra = co_await handleExtraCommandPut(coll, sub, _builder);
   if (resExtra.is(TRI_ERROR_NOT_IMPLEMENTED)) {
     std::string msg = "expecting one of the actions ";
-    if (_request->requestedApiVersion() == 0) {
+    if (_request->requestedApiVersion() == ApiVersion::V0) {
       msg += "'load', 'unload', ";
     }
     resExtra.reset(TRI_ERROR_HTTP_NOT_FOUND,
@@ -738,7 +740,8 @@ async<void> RestCollectionHandler::handleCommandDelete() {
 
   std::string const& name = suffixes[0];
 
-  if (_request->requestedApiVersion() > 0 && rejectNumericCollectionId(name)) {
+  if (_request->requestedApiVersion() > ApiVersion::V0 &&
+      rejectNumericCollectionId(name)) {
     co_return;
   }
 
@@ -747,7 +750,7 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   _builder.clear();
 
   // From API V1 we only allow collection names here:
-  if (request()->requestedApiVersion() > 0) {
+  if (request()->requestedApiVersion() > ApiVersion::V0) {
     if (auto r = auth::isNameAndNoId(name); r.fail()) {
       events::DropCollection(_vocbase.name(), name, r.errorNumber());
       generateError(r);

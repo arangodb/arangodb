@@ -22,6 +22,15 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
+#include "Basics/ResourceUsage.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -29,18 +38,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-
-#include "Basics/Result.h"
-#include "Basics/ResourceUsage.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Endpoint/Endpoint.h"
-#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 class ExecContext;
@@ -211,19 +209,34 @@ class GeneralRequest {
     _authenticationMethod = method;
   }
 
+  /// @brief false if the path carried a /_arango/ prefix with an invalid API
+  /// version. Such a request must be rejected before anything reads
+  /// requestedApiVersion().
+  bool hasValidApiVersion() const noexcept {
+    return _requestedApiVersion.has_value();
+  }
+
   /// @brief get the requested API version
-  uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
+  /// @pre hasValidApiVersion()
+  ApiVersion requestedApiVersion() const noexcept;
 
   /// @brief detect and strip /_arango/vX or /_arango/experimental prefix.
+  /// If the path has no such prefix, requestedApiVersion stays unchanged.
+  /// If the prefix contains a valid version, requestedApiVersion is set
+  /// accordingly and the prefix is stripped; otherwise, nothing is stripped and
+  /// requestedApiVersion is cleared (i.e., hasValidApiVersion() becomes false).
   /// @param start  reference to current position pointer; advanced past the
   ///               prefix on success
   /// @param end    one-past-the-end pointer of the URL buffer
-  /// @throws ArangoException if /_arango prefix is present but invalid
   void detectAndStripApiVersion(char const*& start, char const* end);
 
   void setPayloadMemory(ResourceUsageScope scope) {
     _payloadMemory.emplace(std::move(scope));
   }
+
+  /// @brief the prefixes that select a version a request may ask for, as a
+  /// comma-separated list for error messages
+  static std::string validApiVersionPrefixes();
 
  protected:
   static RequestType findRequestType(char const*, size_t const);
@@ -273,8 +286,9 @@ class GeneralRequest {
 
   rest::AuthenticationMethod _authenticationMethod;
 
-  // API version requested (0 by default, max for experimental)
-  uint32_t _requestedApiVersion;
+  // API version requested; empty if the request asked for an invalid one
+  std::optional<ApiVersion> _requestedApiVersion =
+      api_version::defaultApiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..

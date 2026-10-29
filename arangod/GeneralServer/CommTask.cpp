@@ -205,6 +205,17 @@ CommTask::Flow CommTask::prepareExecution(
            !ServerState::isDBServerId(_requestSource);
   });
 
+  // Everything below, including the ExecContext, reads the requested API
+  // version, so a request for an invalid one must not get any further.
+  if (!req.hasValidApiVersion()) {
+    sendErrorResponse(ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_HTTP_NOT_FOUND,
+                      absl::StrCat("invalid API version in path '",
+                                   req.requestPath(), "', valid prefixes are: ",
+                                   GeneralRequest::validApiVersionPrefixes()));
+    return Flow::Abort;
+  }
+
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
@@ -472,19 +483,16 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder errorBuilder(buffer);
-  auto handler = factory->createHandler(server, std::move(request),
-                                        std::move(response), errorBuilder);
+  auto handler =
+      factory->createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
 
-    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       std::move(buffer));
+                       VPackBuffer<uint8_t>{});
     return;
   }
 
@@ -694,7 +702,6 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       << "Handling request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -744,7 +751,6 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       << "Handling async request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
