@@ -427,7 +427,7 @@ class LogicalCollection : public LogicalDataSource {
 
  private:
   /// @brief The slice ctor delegates here to keep the parsed descriptor alive
-  /// for the whole body. Collapses into the descriptor ctor in COR-885.
+  /// for the whole body. Collapses into the descriptor ctor in COR-940.
   LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
                     velocypack::Slice info, bool isAStub);
 

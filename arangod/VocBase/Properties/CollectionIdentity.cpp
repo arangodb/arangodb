@@ -28,6 +28,7 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
@@ -49,13 +50,15 @@ CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
     result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + length)};
     return {};
   }
-  if (acceptNumber && v.isInteger()) {
-    // getInt() would throw on a UInt above INT64_MAX, which is a valid id
-    if (!v.isUInt() && v.getInt() < 0) {
-      return {"Expecting a non-negative integer"};
+  if (acceptNumber && v.isNumber()) {
+    // the slice path took any number through getNumericValue
+    try {
+      result = DataSourceId{v.getNumber<uint64_t>()};
+      return {};
+    } catch (velocypack::Exception const&) {
+      // negative, or beyond what an id can hold
+      return {"Expecting a non-negative number"};
     }
-    result = DataSourceId{v.getUInt()};
-    return {};
   }
   return {"Expecting type String"};
 }

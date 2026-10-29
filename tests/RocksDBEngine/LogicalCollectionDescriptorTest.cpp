@@ -204,6 +204,8 @@ class LogicalCollectionDescriptorTest : public StorageEngineDataTest {
   //
   // This covers only markers written by the current code. Markers written by
   // an older release are the upgrade tests' job.
+  // groupId and replicatedStateId need a ClusterInfo group, which this
+  // fixture has no feature for; the cluster js tests cover them.
   void expectSurvivesRestart(CollectionDescriptor descriptor) {
     using Serialization = LogicalDataSource::Serialization;
 
@@ -372,11 +374,6 @@ TEST_F(LogicalCollectionDescriptorTest, LoadPath_acceptsInternalOnlyValues) {
       VPackObjectBuilder keyOpts(&builder, StaticStrings::KeyOptions);
       builder.add("type", VPackValue("upgrade"));
     }
-    builder.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
-    {
-      VPackArrayBuilder shardKeys(&builder, StaticStrings::ShardKeys);
-      builder.add(VPackValue(StaticStrings::KeyString));
-    }
   }
 
   std::shared_ptr<LogicalCollection> collection;
@@ -437,6 +434,20 @@ TEST_F(LogicalCollectionDescriptorTest, Context_idsAcceptANumberOnLoad) {
   }
 }
 
+// The slice path converted any number, so a marker that stored the id as a
+// double still has to load.
+TEST_F(LogicalCollectionDescriptorTest, Context_idAcceptsADoubleOnLoad) {
+  auto body = oneKeyObject(StaticStrings::Id, VPackValue(9988488.0));
+
+  CollectionIdentity internalProps;
+  EXPECT_TRUE(velocypack::deserializeWithStatus(body.slice(), internalProps,
+                                                {.ignoreUnknownFields = true},
+                                                InspectInternalContext{})
+                  .ok())
+      << " on " << body.toJson();
+  EXPECT_EQ(internalProps.id, DataSourceId{9988488});
+}
+
 // A user may only spell the id as a string. cid and planId are not part of
 // this test because a user may not send them at all, whatever their type.
 TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberFromAUser) {
@@ -450,9 +461,9 @@ TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberFromAUser) {
       << " on " << body.toJson();
 }
 
-// A negative or oversized number is not an id, and the transformer reports it
-// as a type error rather than wrapping around.
-TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANumberOutOfRange) {
+// A negative number is not an id, and is reported as such rather than
+// wrapping around into a large one.
+TEST_F(LogicalCollectionDescriptorTest, Context_idRejectsANegativeNumber) {
   for (auto value : {VPackValue(-1), VPackValue(-9988488)}) {
     auto body = oneKeyObject(StaticStrings::Id, value);
 
@@ -850,7 +861,7 @@ TEST_F(LogicalCollectionDescriptorTest,
   EXPECT_FALSE(collection->shardingInfo()->shardingStrategyName().empty());
 }
 
-// The slice ctor goes away in COR-885. Until then, one test keeps it honest:
+// The slice ctor goes away in COR-940. Until then, one test keeps it honest:
 // the same input through either ctor must produce the same collection. Delete
 // this block together with the ctor.
 

@@ -489,11 +489,11 @@ CollectionDescriptor LogicalCollection::properties() const {
   if (auto shards = shardIds(); shards != nullptr && !shards->empty()) {
     d.clusteringConstant.shards = *shards;
   }
-  if (_invariants.groupId.has_value()) {
-    d.clusteringConstant.groupId = *_invariants.groupId;
+  if (auto gid = groupIdIfAny(); gid.has_value()) {
+    d.clusteringConstant.groupId = *gid;
   }
-  if (_invariants.replicatedStateId.has_value()) {
-    d.clusteringConstant.replicatedStateId = *_invariants.replicatedStateId;
+  if (auto stateId = replicatedStateIdIfAny(); stateId.has_value()) {
+    d.clusteringConstant.replicatedStateId = *stateId;
   }
   // shardsR2 is agency plan content with no owner here.
 
