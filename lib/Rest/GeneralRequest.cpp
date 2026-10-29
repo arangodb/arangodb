@@ -31,7 +31,6 @@
 #include <absl/strings/str_cat.h>
 
 #include <algorithm>
-#include <array>
 #include <ranges>
 
 namespace arangodb {
@@ -60,24 +59,10 @@ rest::RequestType translateMethodHelper(std::string_view method) noexcept {
 
 constexpr std::string_view apiVersionPrefix = "/_arango/";
 
-// Every enumerator, whether or not it is currently supported.
-constexpr std::array allApiVersions{ApiVersion::V0, ApiVersion::V1,
-                                    ApiVersion::Experimental};
-
-static_assert(
-    [] {
-      for (unsigned i = 0; i < allApiVersions.size(); ++i) {
-        if (static_cast<unsigned>(allApiVersions[i]) != i) {
-          return false;
-        }
-      }
-      return allApiVersions.back() == ApiVersion::Experimental;
-    }(),
-    "allApiVersions must list every enumerator, in order and without gaps");
-
 // The versions a request may select via /_arango/<name>.
 auto selectableApiVersions() {
-  return allApiVersions | std::views::filter([](ApiVersion version) {
+  return api_version::allApiVersions |
+         std::views::filter([](ApiVersion version) {
            return version == api_version::experimentalApiVersion ||
                   api_version::isApiVersionRequestable(version);
          });
