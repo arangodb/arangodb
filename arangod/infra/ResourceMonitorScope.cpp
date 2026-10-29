@@ -19,15 +19,32 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CurrentResourceMonitor.h"
+#include "ResourceMonitorScope.h"
+
+#include <utility>
 
 namespace arangodb::infra {
+namespace {
 
-// Function-scoped thread_local avoids initialization-order issues
-// and provides a stable ABI.
-auto currentResourceMonitor() noexcept -> ResourceMonitorRef& {
-  thread_local ResourceMonitorRef monitor;
-  return monitor;
+// Internal linkage confines every write to this file. Must stay trivially
+// destructible and constant-initialized: a thread-local with a destructor
+// registers a __cxa_thread_atexit handler, and glibc allocates that handler's
+// node -- re-entering malloc, which reads this thread-local, until the stack is
+// gone. The ref lives in ResourceMonitorScope for that reason.
+constinit thread_local ResourceMonitorBase* tlsCurrentMonitor = nullptr;
+
+}  // namespace
+
+auto detail::currentResourceMonitor() noexcept -> ResourceMonitorBase* {
+  return tlsCurrentMonitor;
+}
+
+ResourceMonitorScope::ResourceMonitorScope(ResourceMonitorRef monitor) noexcept
+    : _monitor(std::move(monitor)),
+      _previous(std::exchange(tlsCurrentMonitor, _monitor.get())) {}
+
+ResourceMonitorScope::~ResourceMonitorScope() {
+  tlsCurrentMonitor = _previous;
 }
 
 }  // namespace arangodb::infra

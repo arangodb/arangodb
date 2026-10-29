@@ -25,7 +25,21 @@
 #include "infra/ResourceMonitor.h"
 #include "infra/StaticResourceMonitor.h"
 
+#include <type_traits>
+
 using namespace arangodb::infra;
+
+// The registry has process lifetime, so a free() before main or during static
+// destruction must still find it valid. Both properties are of the type itself,
+// hence compile-time assertions.
+static_assert(std::is_trivially_destructible_v<MonitorRegistry>);
+constinit MonitorRegistry gConstinitRegistry;
+
+TEST(MonitorRegistryTest, constant_initialized_registry_is_usable) {
+  StaticResourceMonitor s;
+  gConstinitRegistry.insert(s);
+  EXPECT_EQ(1u, gConstinitRegistry.size());
+}
 
 TEST(MonitorRegistryTest, empty_registry_has_size_zero) {
   MonitorRegistry registry;

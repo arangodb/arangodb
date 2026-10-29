@@ -21,23 +21,21 @@
 
 #include "gtest/gtest.h"
 
-#include "infra/CurrentResourceMonitor.h"
 #include "infra/ResourceMonitorScope.h"
 
 using namespace arangodb::infra;
 
 TEST(ResourceMonitorScopeTest, thread_local_is_null_by_default) {
-  auto& current = currentResourceMonitor();
-  EXPECT_EQ(nullptr, current.get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }
 
 TEST(ResourceMonitorScopeTest, scope_restores_null_on_destruction) {
   StaticResourceMonitor monitor;
   {
     ResourceMonitorScope scope{ResourceMonitorRef{monitor}};
-    EXPECT_EQ(&monitor, currentResourceMonitor().get());
+    EXPECT_EQ(&monitor, detail::currentResourceMonitor());
   }
-  EXPECT_EQ(nullptr, currentResourceMonitor().get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }
 
 TEST(ResourceMonitorScopeTest, nested_scopes_restore_correctly) {
@@ -46,17 +44,17 @@ TEST(ResourceMonitorScopeTest, nested_scopes_restore_correctly) {
 
   {
     ResourceMonitorScope outerScope{ResourceMonitorRef{outer}};
-    EXPECT_EQ(&outer, currentResourceMonitor().get());
+    EXPECT_EQ(&outer, detail::currentResourceMonitor());
 
     {
       ResourceMonitorScope innerScope{ResourceMonitorRef{inner}};
-      EXPECT_EQ(&inner, currentResourceMonitor().get());
+      EXPECT_EQ(&inner, detail::currentResourceMonitor());
     }
 
-    EXPECT_EQ(&outer, currentResourceMonitor().get());
+    EXPECT_EQ(&outer, detail::currentResourceMonitor());
   }
 
-  EXPECT_EQ(nullptr, currentResourceMonitor().get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }
 
 TEST(ResourceMonitorScopeTest, scope_with_dynamic_monitor_manages_refcount) {
@@ -65,12 +63,12 @@ TEST(ResourceMonitorScopeTest, scope_with_dynamic_monitor_manages_refcount) {
 
   {
     ResourceMonitorScope scope{ResourceMonitorRef{monitor}};
-    EXPECT_EQ(&monitor, currentResourceMonitor().get());
+    EXPECT_EQ(&monitor, detail::currentResourceMonitor());
     EXPECT_EQ(1u, monitor.refCount());
   }
 
   EXPECT_EQ(0u, monitor.refCount());
-  EXPECT_EQ(nullptr, currentResourceMonitor().get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }
 
 TEST(ResourceMonitorScopeTest,
@@ -104,7 +102,7 @@ TEST(ResourceMonitorScopeTest,
     {
       ResourceMonitorScope scope(std::move(ref));
       EXPECT_EQ(1u, monitor.refCount());
-      EXPECT_EQ(&monitor, currentResourceMonitor().get());
+      EXPECT_EQ(&monitor, detail::currentResourceMonitor());
     }
 
     EXPECT_EQ(0u, monitor.refCount());
@@ -115,16 +113,16 @@ TEST(ResourceMonitorScopeTest, scope_with_null_ref_sets_thread_local_to_null) {
   StaticResourceMonitor monitor;
   {
     ResourceMonitorScope outerScope{ResourceMonitorRef{monitor}};
-    EXPECT_EQ(&monitor, currentResourceMonitor().get());
+    EXPECT_EQ(&monitor, detail::currentResourceMonitor());
 
     {
       ResourceMonitorScope innerScope{ResourceMonitorRef{}};
-      EXPECT_EQ(nullptr, currentResourceMonitor().get());
+      EXPECT_EQ(nullptr, detail::currentResourceMonitor());
     }
 
-    EXPECT_EQ(&monitor, currentResourceMonitor().get());
+    EXPECT_EQ(&monitor, detail::currentResourceMonitor());
   }
-  EXPECT_EQ(nullptr, currentResourceMonitor().get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }
 
 TEST(ResourceMonitorScopeTest, nested_scopes_with_mixed_types_manage_refcount) {
@@ -134,19 +132,19 @@ TEST(ResourceMonitorScopeTest, nested_scopes_with_mixed_types_manage_refcount) {
   {
     ResourceMonitorScope outerScope{ResourceMonitorRef{dynamic}};
     EXPECT_EQ(1u, dynamic.refCount());
-    EXPECT_EQ(&dynamic, currentResourceMonitor().get());
+    EXPECT_EQ(&dynamic, detail::currentResourceMonitor());
 
     {
       ResourceMonitorScope innerScope{ResourceMonitorRef{staticMon}};
-      EXPECT_EQ(&staticMon, currentResourceMonitor().get());
-      // _previous holds a copy of the outer thread-local (dynamic ref)
+      EXPECT_EQ(&staticMon, detail::currentResourceMonitor());
+      // the outer scope still owns the ref while its pointer is displaced
       EXPECT_EQ(1u, dynamic.refCount());
     }
 
-    EXPECT_EQ(&dynamic, currentResourceMonitor().get());
+    EXPECT_EQ(&dynamic, detail::currentResourceMonitor());
     EXPECT_EQ(1u, dynamic.refCount());
   }
 
   EXPECT_EQ(0u, dynamic.refCount());
-  EXPECT_EQ(nullptr, currentResourceMonitor().get());
+  EXPECT_EQ(nullptr, detail::currentResourceMonitor());
 }

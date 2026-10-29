@@ -22,65 +22,31 @@
 #include "MallocOverride.h"
 
 #include "Assertions/Assert.h"
-#include "infra/CurrentResourceMonitor.h"
+#include "infra/AllocHeader.h"
+#include "infra/ResourceMonitorScope.h"
 #include "infra/ResizeAccounting.h"
 #include "infra/ResourceMonitor.h"
 
+#include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <unistd.h>
 
 #define JEMALLOC_NO_DEMANGLE
 #include <jemalloc/jemalloc.h>
 
+using namespace arangodb::infra;
+
 namespace {
 
-// 16-byte allocation header, placed immediately before the user pointer.
-// For normal allocations (malloc/calloc/realloc and aligned with
-// alignment<=16), real_ptr == header, so we don't store it. For aligned
-// allocations with alignment >= 32, real_ptr is stored in the alignment gap at
-// (header - 8) for free, and bit 0 of monitor_tagged is set.
-struct AllocHeader {
-  uintptr_t monitor_tagged;  // ResourceMonitor* | tag bit 0
-  size_t requested_size;
-};
-static_assert(sizeof(AllocHeader) == 16);
-static_assert(sizeof(AllocHeader) == alignof(std::max_align_t));
+StaticResourceMonitor g_global_monitor;
 
-arangodb::infra::StaticResourceMonitor g_global_monitor;
-
-auto userPtr(AllocHeader* header) -> void* { return header + 1; }
-
-auto headerPtr(void* user) -> AllocHeader* {
-  return static_cast<AllocHeader*>(user) - 1;
-}
-
-auto effectiveMonitor() -> arangodb::infra::ResourceMonitorBase* {
-  auto* m = arangodb::infra::currentResourceMonitor().get();
+auto effectiveMonitor() -> ResourceMonitorBase* {
+  auto* m = detail::currentResourceMonitor();
   return m ? m : &g_global_monitor;
-}
-
-auto getMonitor(AllocHeader* header) -> arangodb::infra::ResourceMonitorBase* {
-  return reinterpret_cast<arangodb::infra::ResourceMonitorBase*>(
-      header->monitor_tagged & ~uintptr_t{1});
-}
-
-auto isAlignedAlloc(AllocHeader* header) -> bool {
-  return (header->monitor_tagged & 1) != 0;
-}
-
-auto getRealPtr(AllocHeader* header) -> void* {
-  if (!isAlignedAlloc(header)) [[likely]] {
-    return header;
-  }
-  return *(reinterpret_cast<void**>(header) - 1);
-}
-
-auto headerOverhead(AllocHeader* header) -> size_t {
-  return static_cast<size_t>(reinterpret_cast<char*>(userPtr(header)) -
-                             reinterpret_cast<char*>(getRealPtr(header)));
 }
 
 // Computes base + extra without wrapping. Returns false on overflow, so an
@@ -91,39 +57,33 @@ auto checkedAdd(size_t base, size_t extra, size_t& result) -> bool {
   return !__builtin_add_overflow(base, extra, &result);
 }
 
-void initHeader(AllocHeader* header,
-                arangodb::infra::ResourceMonitorBase* monitor,
-                size_t requested) {
-  header->monitor_tagged = reinterpret_cast<uintptr_t>(monitor);
-  header->requested_size = requested;
+auto isPowerOfTwo(size_t value) -> bool {
+  return value != 0 && (value & (value - 1)) == 0;
 }
 
-void initAlignedHeader(AllocHeader* header,
-                       arangodb::infra::ResourceMonitorBase* monitor,
-                       void* real_ptr, size_t requested) {
-  *(reinterpret_cast<void**>(header) - 1) = real_ptr;
-  header->monitor_tagged = reinterpret_cast<uintptr_t>(monitor) | uintptr_t{1};
-  header->requested_size = requested;
+// Rejected by posix_memalign's contract, and the over-alignment path's round-up
+// is only correct for powers of two.
+auto isValidAlignment(size_t alignment) -> bool {
+  return isPowerOfTwo(alignment) && alignment % sizeof(void*) == 0;
 }
 
-auto tryIncrease(arangodb::infra::ResourceMonitorBase* base, uint64_t requested,
-                 uint64_t actual) -> bool {
+auto pageSize() -> size_t { return static_cast<size_t>(sysconf(_SC_PAGESIZE)); }
+
+auto tryIncrease(ResourceMonitorBase* base, uint64_t requested, uint64_t actual)
+    -> bool {
   if (base->isStatic()) {
-    return static_cast<arangodb::infra::StaticResourceMonitor*>(base)->increase(
-        requested, actual);
+    return static_cast<StaticResourceMonitor*>(base)->increase(requested,
+                                                               actual);
   }
-  return static_cast<arangodb::infra::ResourceMonitor*>(base)->increase(
-      requested, actual);
+  return static_cast<ResourceMonitor*>(base)->increase(requested, actual);
 }
 
-void doDecrease(arangodb::infra::ResourceMonitorBase* base, uint64_t requested,
+void doDecrease(ResourceMonitorBase* base, uint64_t requested,
                 uint64_t actual) {
   if (base->isStatic()) {
-    static_cast<arangodb::infra::StaticResourceMonitor*>(base)->decrease(
-        requested, actual);
+    static_cast<StaticResourceMonitor*>(base)->decrease(requested, actual);
   } else {
-    static_cast<arangodb::infra::ResourceMonitor*>(base)->decrease(requested,
-                                                                   actual);
+    static_cast<ResourceMonitor*>(base)->decrease(requested, actual);
   }
 }
 
@@ -274,6 +234,10 @@ void* realloc(void* ptr, size_t size) noexcept {
 }
 
 int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
+  if (!isValidAlignment(alignment)) [[unlikely]] {
+    return EINVAL;
+  }
+
   if (alignment <= sizeof(AllocHeader)) {
     size_t total = 0;
     if (!checkedAdd(size, sizeof(AllocHeader), total)) [[unlikely]] {
@@ -335,6 +299,53 @@ void* aligned_alloc(size_t alignment, size_t size) noexcept {
     return nullptr;
   }
   return result;
+}
+
+// glibc defines these and prefixed jemalloc exports none of them, so without our
+// definitions the call reaches glibc's arena while the matching free() reaches
+// us. Each reduces to an entry point above; only the contracts differ.
+
+void* memalign(size_t alignment, size_t size) noexcept {
+  if (!isPowerOfTwo(alignment)) [[unlikely]] {
+    errno = EINVAL;
+    return nullptr;
+  }
+  // memalign allows alignments posix_memalign rejects; over-aligning is
+  // still a valid answer.
+  if (alignment < sizeof(void*)) {
+    alignment = sizeof(void*);
+  }
+  void* result = nullptr;
+  if (int rc = posix_memalign(&result, alignment, size); rc != 0) [[unlikely]] {
+    errno = rc;
+    return nullptr;
+  }
+  return result;
+}
+
+void* valloc(size_t size) noexcept { return memalign(pageSize(), size); }
+
+void* pvalloc(size_t size) noexcept {
+  auto page = pageSize();
+  // pvalloc rounds the request up to a whole number of pages, never zero.
+  size_t rounded = 0;
+  if (!checkedAdd(size, page - 1, rounded)) [[unlikely]] {
+    errno = ENOMEM;
+    return nullptr;
+  }
+  rounded &= ~(page - 1);
+  if (rounded == 0) {
+    rounded = page;
+  }
+  return memalign(page, rounded);
+}
+
+void* reallocarray(void* ptr, size_t nmemb, size_t size) noexcept {
+  if (nmemb != 0 && size > SIZE_MAX / nmemb) [[unlikely]] {
+    errno = ENOMEM;
+    return nullptr;
+  }
+  return realloc(ptr, nmemb * size);
 }
 
 size_t malloc_usable_size(void* ptr) noexcept {

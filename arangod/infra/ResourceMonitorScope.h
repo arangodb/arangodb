@@ -21,18 +21,31 @@
 
 #pragma once
 
-#include "infra/CurrentResourceMonitor.h"
-
-#include <utility>
+#include "infra/ResourceMonitorRef.h"
 
 namespace arangodb::infra {
 
-struct ResourceMonitorScope {
-  explicit ResourceMonitorScope(ResourceMonitorRef monitor) noexcept
-      : _previous(std::exchange(currentResourceMonitor(), std::move(monitor))) {
-  }
+namespace detail {
 
-  ~ResourceMonitorScope() { currentResourceMonitor() = std::move(_previous); }
+// The calling thread's monitor, or nullptr if it has none.
+//
+// Safe to dereference without touching a refcount, because the thread-local is
+// non-null only while a ResourceMonitorScope holds a reference. That argument
+// covers the current call only: to keep the pointer, take a ResourceMonitorRef.
+//
+// Returned by value; a reference would hand out write access.
+auto currentResourceMonitor() noexcept -> ResourceMonitorBase*;
+
+}  // namespace detail
+
+// Installs a monitor as the calling thread's current monitor for the lifetime of
+// the guard. The only way to change it: the thread-local has internal linkage,
+// so a stray write cannot leave a thread charging allocations to a retired
+// monitor.
+class ResourceMonitorScope {
+ public:
+  explicit ResourceMonitorScope(ResourceMonitorRef monitor) noexcept;
+  ~ResourceMonitorScope();
 
   ResourceMonitorScope(ResourceMonitorScope const&) = delete;
   ResourceMonitorScope& operator=(ResourceMonitorScope const&) = delete;
@@ -40,7 +53,8 @@ struct ResourceMonitorScope {
   ResourceMonitorScope& operator=(ResourceMonitorScope&&) = delete;
 
  private:
-  ResourceMonitorRef _previous;
+  ResourceMonitorRef _monitor;
+  ResourceMonitorBase* _previous;
 };
 
 }  // namespace arangodb::infra
