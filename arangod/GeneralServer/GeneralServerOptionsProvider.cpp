@@ -23,6 +23,10 @@
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -144,6 +148,22 @@ Requests exceeding the limit are rejected with HTTP 413.
 Note that this limits the body size *after* decompression. The size of the
 request as it arrives on the wire is limited separately.)");
 
+  opts->addOption(
+          "--http.decompressed-request-body-global-memory-limit",
+          "The maximum combined size of all decompressed request bodies held "
+          "by the server at the same time (in bytes).",
+          new UInt64Parameter(
+              &options.decompressedRequestBodyGlobalMemoryLimit),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(Each compressed request body (gzip, deflate or lz4)
+reserves its decompressed size from this budget until the request is finished.
+Requests that would exceed the budget are rejected with HTTP 503 and can be
+retried later.
+
+The default is 10% of the physical memory. A value of `0` disables the limit.)");
+
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",
@@ -194,7 +214,7 @@ the `Content-Encoding` header even if the request is not authenticated.)");
 }
 
 void GeneralServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
+    std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members
     for (auto& it : options.accessControlAllowOrigins) {
@@ -221,6 +241,28 @@ void GeneralServerOptionsProvider::validateOptionsImpl(
                          return basics::StringUtils::trim(value).empty();
                        }),
         options.accessControlAllowOrigins.end());
+  }
+  uint64_t& globalBudget = options.decompressedRequestBodyGlobalMemoryLimit;
+  uint64_t& perRequestLimit = options.maxDecompressedRequestBodySize;
+  if (globalBudget != 0 && globalBudget < perRequestLimit) {
+    bool globalBudgetSet = opts->processingResult().touched(
+        "http.decompressed-request-body-global-memory-limit");
+    bool perRequestLimitSet = opts->processingResult().touched(
+        "http.max-decompressed-request-body-size");
+    if (globalBudgetSet && perRequestLimitSet) {
+      LOG_TOPIC("6d094", FATAL, Logger::FIXME)
+          << "invalid value for "
+             "`--http.decompressed-request-body-global-memory-limit`. "
+             "expecting 0 or a value >= "
+             "`--http.max-decompressed-request-body-size`";
+      FATAL_ERROR_EXIT();
+    } else if (globalBudgetSet) {
+      // a global budget below the default per-request max also caps it
+      perRequestLimit = globalBudget;
+    } else {
+      // the global budget must fit at least one allowed request
+      globalBudget = perRequestLimit;
+    }
   }
 }
 

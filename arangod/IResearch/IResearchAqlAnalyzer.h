@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/CalculationQueryContext.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearchVPackTermAttribute.h"
 #include "StorageEngine/TransactionState.h"
@@ -46,7 +47,6 @@ namespace arangodb::aql {
 struct AstNode;
 class CalculationNode;
 class ExecutionPlan;
-class QueryContext;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
@@ -129,7 +129,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   Options _options;
   aql::AqlValue _valueBuffer;
-  std::unique_ptr<aql::QueryContext> _query;
+  std::unique_ptr<arangodb::aql::CalculationQueryContext> _query;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;

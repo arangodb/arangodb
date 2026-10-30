@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/ApiVersion.h"
+#include "Basics/ResourceUsage.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
 
@@ -229,6 +230,10 @@ class GeneralRequest {
   /// @param end    one-past-the-end pointer of the URL buffer
   void detectAndStripApiVersion(char const*& start, char const* end);
 
+  void setPayloadMemory(ResourceUsageScope scope) {
+    _payloadMemory.emplace(std::move(scope));
+  }
+
   /// @brief the prefixes that select a version a request may ask for, as a
   /// comma-separated list for error messages
   static std::string validApiVersionPrefixes();
@@ -246,6 +251,8 @@ class GeneralRequest {
   velocypack::Options const* validationOptions(bool strictValidation);
 
   ConnectionInfo _connectionInfo;  /// connection info
+
+  std::optional<ResourceUsageScope> _payloadMemory;
 
   /// request payload buffer, exact access semantics are defined in subclass
   velocypack::Buffer<uint8_t> _payload;
