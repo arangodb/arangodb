@@ -1,7 +1,0 @@
-[#getting_started_38]
-
-  #include <boost/metaparse/fail_at_first_char_expected.hpp>
-  #include <boost/metaparse/first_of.hpp>
-  struct plus_exp4 : first_of< foldl_start_with_parser< sequence<one_of<plus_token, minus_token>, mult_exp6>, mult_exp6, boost::mpl::quote2<binary_op> >, fail_at_first_char_expected< sequence<one_of<plus_token, minus_token>, mult_exp6> > > {};
-  using exp_parser21 = build_parser<plus_exp4>;
-

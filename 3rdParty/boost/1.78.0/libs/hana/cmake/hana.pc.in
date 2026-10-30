@@ -1,5 +1,0 @@
-Name: Boost.Hana
-Description: A modern C++ metaprogramming library
-URL: https://github.com/boostorg/hana
-Version: @Boost.Hana_VERSION_STRING@
-Cflags: -I@CMAKE_INSTALL_PREFIX@/include
