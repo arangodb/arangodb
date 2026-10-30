@@ -21,6 +21,9 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     _isDone = false;
     _startVertex =
         _graph.ensureVertex(VertexIdLabel{source.getID().toString()});
+
+    _queue.clear();
+    _queue.emplace_back(_startVertex.value());
   }
   void resetManyStartVertices(
       std::vector<VertexDescription> const& vertices) override {
@@ -30,6 +33,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   auto prepareIndexExpressions(aql::Ast* ast) -> void override {
     TRI_ASSERT(false);
   };
+
   auto getNextPath() -> std::unique_ptr<IPathResult> override {
     if (not _startVertex.has_value()) {
       return nullptr;
@@ -52,6 +56,29 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
     return std::make_unique<SingleServerPathResult>(
         std::vector<VertexId>{_startVertex.value(), firstEdgeTo},
         std::vector<EdgeId>{edgeIds[0]});
+
+    if (_queue.empty()) {
+      _isDone = true;
+      return nullptr;
+    }
+
+    {
+      auto initEdges = _graph.outEdges(_startVertex.value());
+      for (auto&& ei : edgeIds) {
+        _edgeQueue.emplace_back(ei);
+      }
+
+      auto ne = _edgeQueue.front();
+      _edgeQueue.pop_front();
+
+      _graph.outEdges(ne);
+
+      auto to = _graph.ensureEdgeToVertex(ne);
+      auto ee = _graph.outEdges(to);
+      for (auto&& ei : ee) {
+        _edgeQueue.emplace_back(ei);
+      }
+    }
   }
 
   // batched [later]:
@@ -105,6 +132,9 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   bool _isDone = true;
   std::optional<VertexId> _startVertex;
   std::deque<VertexId> _queue;  // BFS
+  std::deque<EdgeId> _edgeQueue;
+  containers::HashSet<EdgeId> _seenEdges;
+
   size_t _state = 0;
 };
 }  // namespace arangodb::graph::experimental

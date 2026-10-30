@@ -7,7 +7,6 @@
 #include <string>
 #include "Graph/Types/VertexRef.h"
 #include "Graph/SimplifiedTraversal/IGraphView.h"
-#include "immer/flex_vector_transient.hpp"
 
 namespace arangodb::graph::experimental {
 
@@ -80,6 +79,18 @@ struct InMemoryGraphView : IGraphView {
     return result;
   }
 
+  auto outEdges(EdgeId edge) -> std::vector<EdgeId> override {
+    std::vector<EdgeId> result;
+    auto vertex = _graph.getVertexTo(_edgeIdLabels[edge.id]).value();
+    auto id = ensureVertex(vertex);
+    auto edgeLabels = _graph.outEdges(_vertexIdLabels[id.id]);
+    for (auto const& edge : edgeLabels) {
+      if (auto e = ensureEdge(edge); e != std::nullopt) {
+        result.emplace_back(e.value());
+      }
+    }
+    return result;
+  }
   /**
      Assumes that a vertex exists in the graph
 

@@ -94,7 +94,13 @@ struct IGraphView {
   // Q: use VertexRef or using VertexId = std::string (as defined in
   //    SingleServerPathResult.h)
   // Q: return Edge or Step?
+
+  // returns edges whose _from is equal to the VertexIdLabel associated with
+  // VertexId
   virtual auto outEdges(VertexId vertex) -> std::vector<EdgeId> = 0;
+
+  // returns edges whose _from is equal to _to of the edge with id EdgeId
+  virtual auto outEdges(EdgeId edge) -> std::vector<EdgeId> = 0;
 
   // TODO needs to return at some point Vertex data
   virtual auto ensureVertex(VertexIdLabel const& vertex) -> VertexId = 0;
