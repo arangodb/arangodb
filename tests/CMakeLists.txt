@@ -321,6 +321,7 @@ add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_subdirectory(Basics)
+add_subdirectory(Infra)
 add_subdirectory(Inspection)
 add_subdirectory(VelocyPackUtils)
 
@@ -349,6 +350,7 @@ endif()
 target_link_libraries(arangodbtests
   arango
   arango_tests_activities
+  arango_tests_infra
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2

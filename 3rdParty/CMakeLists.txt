@@ -81,6 +81,10 @@ endif ()
 ################################################################################
 
 if (USE_JEMALLOC)
+  if (USE_MEMORY_TRACKING)
+    set(JEMALLOC_PREFIX "--with-jemalloc-prefix=je_")
+    set(JEMALLOC_DISABLE_CXX "--disable-cxx")
+  endif ()
   add_subdirectory(jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
@@ -168,7 +172,16 @@ add_subdirectory(velocypack)
 
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
-add_subdirectory(rocksdb)
+if (USE_MEMORY_TRACKING)
+  # Disable RocksDB's direct jemalloc integration — it conflicts with arangod's
+  # malloc override. RocksDB still benefits from jemalloc through the
+  # process-wide malloc/free interposition.
+  set(USE_JEMALLOC OFF)
+  add_subdirectory(rocksdb)
+  set(USE_JEMALLOC ON)
+else ()
+  add_subdirectory(rocksdb)
+endif ()
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb)
