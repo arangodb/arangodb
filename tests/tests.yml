@@ -64,6 +64,8 @@
           requires:
             coverage: false
 - recovery:
+    requires:
+      coverage: false
     options:
       priority: 2000
       buckets: 6
@@ -73,6 +75,8 @@
 
 # cluster
 - recovery_cluster:
+    requires:
+      coverage: false
     options:
       priority: 2000
       type: cluster
@@ -80,6 +84,8 @@
       size: small
 
 - shell_api_multi_permissions:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: single
@@ -148,11 +154,21 @@
           args:
             http: true
             suffix: http
-      - hot_backup
-      - hot_backup_views
-      - hot_backup_aql
-      - hot_backup_smart_graphs
-      - hot_backup_el_cheapo
+      - hot_backup:
+          requires:
+            coverage: false
+      - hot_backup_views:
+          requires:
+            coverage: false
+      - hot_backup_aql:
+          requires:
+            coverage: false
+      - hot_backup_smart_graphs:
+          requires:
+            coverage: false
+      - hot_backup_el_cheapo:
+          requires:
+            coverage: false
 
 - shell_client_aql:
     options:
@@ -215,6 +231,8 @@
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
 - rta_makedata_rbac:
+    requires:
+      coverage: false
     job: run-rbac-tests
     suites:
       - rta_makedata
@@ -274,6 +292,8 @@
       dumpAgencyOnError: true
 
 - arangobench_deadlock_audit:
+    requires:
+      coverage: false
     options:
       priority: 1000
       type: mixed
@@ -304,6 +324,8 @@
             suffix: single
 
 - restart:
+    requires:
+      coverage: false
     options:
       priority: 1000
       size: medium
@@ -313,19 +335,19 @@
       forceJson: true
 
 # coverage needs 2 buckets for this
-- load_balancing:
-    options:
-      priority: 500
-      size: medium
-      type: cluster
-      buckets: auto
-    requires:
-      coverage: true
-    args:
-      dumpAgencyOnError: true
-    suites:
-      - load_balancing
-      - load_balancing_auth
+#- load_balancing:
+#    options:
+#      priority: 500
+#      size: medium
+#      type: cluster
+#      buckets: auto
+#    requires:
+#      coverage: true
+#    args:
+#      dumpAgencyOnError: true
+#    suites:
+#      - load_balancing
+#      - load_balancing_auth
 - load_balancing:
     options:
       priority: 500
@@ -365,6 +387,8 @@
       - resilience_move
       - resilience_sharddist
 - resilience_failover:
+    requires:
+      coverage: false
     options:
       priority: 1200
       size: medium
@@ -374,6 +398,8 @@
       dumpAgencyOnError: true
 
 - shell_api_multi:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: cluster
@@ -421,6 +447,8 @@
     args:
       dumpAgencyOnError: true
 - shell_client:
+    requires:
+      coverage: false
     options:
       priority: 500
       type: cluster
@@ -479,6 +507,8 @@
       type: single
 
 - hot_backup:
+    requires:
+      coverage: false
     options:
       type: cluster
       size: large
@@ -526,7 +556,9 @@
       - dump_multiple_two
       - dump_non_parallel
       - dump_maskings
-      - dump
+      - dump:
+          requires:
+            coverage: false
       - dump:
           options:
             suffix: _vpack
@@ -553,7 +585,11 @@
       dumpAgencyOnError: true
     suites:
       - dump:
+          requires:
+            coverage: false
       - dump:
+          requires:
+            coverage: false
           options:
             suffix: _vpack
           args:
@@ -562,7 +598,11 @@
       - dump_authentication:
       - dump_jwt:
       - dump_multiple_same:
+          requires:
+            coverage: false
       - dump_non_parallel:
+          requires:
+            coverage: false
       - dump_maskings:
       - dump_encrypted:
       - dump_mixed_cluster_single:
@@ -728,6 +768,7 @@
       parallelity: 2
       type: single
     requires:
+      coverage: false
       full: true
     suites:
       - communication
@@ -740,8 +781,185 @@
       parallelity: 6
       type: cluster
     requires:
+      coverage: false
       full: true
     suites:
       - communication
       - communication_ssl
 
+- shell_client:
+    options:
+      priority: 500
+      type: cluster
+      size: medium
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - shell_client:
+          options:
+            suffix: 1
+          args:
+            test: enterprise/tests/js/client/shell/hybrid-smart-graph-enterprise.js
+            suffix: 1
+      - shell_client:
+          options:
+            suffix: 2
+          args:
+            test: enterprise/tests/js/client/shell/shell-db-server-graph-metrics-cluster.js
+            suffix: 2
+      - shell_client:
+          options:
+            suffix: 3
+          args:
+            test: enterprise/tests/js/client/shell/shell-hotbackup-cluster.js
+            suffix: 3
+      - shell_client:
+          options:
+            suffix: 4
+          args:
+            test: enterprise/tests/js/client/shell/shell-smart-graph-creation.js
+            suffix: 4
+      - shell_client:
+          options:
+            suffix: 5
+          args:
+            test: enterprise/tests/js/client/shell/smart-join-aql-query-cluster.js
+            suffix: 5
+      - shell_client:
+          options:
+            suffix: 6
+          args:
+            test: enterprise/tests/js/common/shell/shell-ee-graphs-mix-tests.js
+            suffix: 6
+      - shell_client:
+          options:
+            suffix: 7
+          args:
+            test: tests/js/client/shell/agency-oneshard-regression-nocluster.js
+            suffix: 7
+      - shell_client:
+          options:
+            suffix: 8
+          args:
+            test: tests/js/client/shell/shell-aql-cursors-memory-usage-metric.js
+            suffix: 8
+      - shell_client:
+          options:
+            suffix: 9
+          args:
+            test: tests/js/client/shell/shell-aql-v8-sjs.js
+            suffix: 9
+      - shell_client:
+          options:
+            suffix: 10
+          args:
+            test: tests/js/client/shell/shell-cluster-collection-selectivity.js
+            suffix: 10
+      - shell_client:
+          options:
+            suffix: 11
+          args:
+            test: tests/js/client/shell/shell-collection-computed-values.js
+            suffix: 11
+      - shell_client:
+          options:
+            suffix: 12
+          args:
+            test: tests/js/client/shell/shell-create-database-failure-cluster-fp.js
+            suffix: 12
+      - shell_client:
+          options:
+            suffix: 13
+          args:
+            test: tests/js/client/shell/shell-document-babies.js
+            suffix: 13
+      - shell_client:
+          options:
+            suffix: 14
+          args:
+            test: tests/js/client/shell/shell-drop-followers-while-replicating-cluster-fp.js
+            suffix: 14
+      - shell_client:
+          options:
+            suffix: 15
+          args:
+            test: tests/js/client/shell/shell-edge-index.js
+            suffix: 15
+      - shell_client:
+          options:
+            suffix: 16
+          args:
+            test: tests/js/client/shell/shell-explain-cluster.js
+            suffix: 16
+      - shell_client:
+          options:
+            suffix: 17
+          args:
+            test: tests/js/client/shell/shell-foxx-manager-utils-spec.js
+            suffix: 17
+      - shell_client:
+          options:
+            suffix: 18
+          args:
+            test: tests/js/client/shell/shell-index-cleanup-cluster.js
+            suffix: 18
+      - shell_client:
+          options:
+            suffix: 19
+          args:
+            test: tests/js/client/shell/shell-index-failures-fp.js
+            suffix: 19
+      - shell_client:
+          options:
+            suffix: 20
+          args:
+            test: tests/js/client/shell/shell-iterators-read-standalone.js
+            suffix: 20
+      - shell_client:
+          options:
+            suffix: 21
+          args:
+            test: tests/js/client/shell/shell-metadata-metrics.js
+            suffix: 21
+      - shell_client:
+          options:
+            suffix: 22
+          args:
+            test: tests/js/client/shell/shell-promtool.js
+            suffix: 22
+      - shell_client:
+          options:
+            suffix: 23
+          args:
+            test: tests/js/client/shell/shell-readonly-mode-spec.js
+            suffix: 23
+      - shell_client:
+          options:
+            suffix: 24
+          args:
+            test: tests/js/client/shell/shell-replication-intermediate-commits-cluster-fp.js
+            suffix: 24
+      - shell_client:
+          options:
+            suffix: 25
+          args:
+            suffix: 25
+            test: tests/js/client/shell/shell-responsibleshard-cluster.js
+      - shell_client:
+          options:
+            suffix: 26
+          args:
+            suffix: 26
+            test: tests/js/client/shell/shell-statistics.js
+      - shell_client:
+          options:
+            suffix: 27
+          args:
+            suffix: 27
+            test: tests/js/client/shell/shell-version-check-spec.js
+      - shell_client:
+          options:
+            suffix: 28
+          args:
+            suffix: 28
+            test: tests/js/client/shell/view-drop-database.js
