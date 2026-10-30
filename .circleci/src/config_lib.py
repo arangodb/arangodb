@@ -805,8 +805,8 @@ class TestJob:
 class TestDefinitionFile:
     """Complete representation of a test definition YAML file."""
 
-    use_non_maintainer_build: bool = False
     jobs: Dict[str, TestJob]
+    use_non_maintainer_build: bool = False
 
     def __post_init__(self):
         """Validate test definition file."""
