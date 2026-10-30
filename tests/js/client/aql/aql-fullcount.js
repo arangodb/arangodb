@@ -258,8 +258,8 @@ function optimizerFullcountTestSuite () {
       assertEqual(1, result.getExtra().stats.fullCount);
     },
 
-   // COLLECT AGGREGATE without group keys returns one row even for empty input.
-   // Ensure fullCount does not count this row twice.
+    // COLLECT AGGREGATE without group keys returns one row even for empty input.
+    // Ensure fullCount does not count this row twice.
     testCollectAggregateEmptyInputLimitFullCount : function () {
       let result = executeQuery(
         "FOR doc IN UnitTestsCollection FILTER false COLLECT AGGREGATE m = MAX(doc.values) LIMIT 0, 1 RETURN m",
