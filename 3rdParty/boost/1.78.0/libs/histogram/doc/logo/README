@@ -1,4 +1,0 @@
-The logo was edited using inkscape using the Denmark font that is used by the main Boost logo. The Denmark font is not embedded in the source SVG "color_source.svg" and cannot be displayed correctly on platforms which do not have it. Therefore the svg version "color.svg" used in the docs and the README.md has the letters rendered as shapes.
-
-It seems possible to manually embed the font, but this was not attempted.
-https://graphicdesign.stackexchange.com/questions/43300/embedding-fonts-in-inkscape
