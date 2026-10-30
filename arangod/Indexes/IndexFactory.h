@@ -25,7 +25,13 @@
 #include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexDefinition.h"
+#include "Indexes/IndexType.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include <functional>
+#include <memory>
+#include <utility>
 
 namespace arangodb {
 
@@ -38,6 +44,8 @@ namespace application_features {
 class ApplicationServer;
 
 }  // namespace application_features
+
+class IndexTypeCatalog;
 namespace velocypack {
 
 class Builder;
@@ -51,56 +59,46 @@ std::string_view extractName(velocypack::Slice slice) noexcept;
 
 }  // namespace helpers
 
-/// @brief factory for comparing/instantiating/normalizing a definition for a
-///        specific Index type
-struct IndexTypeFactory {
-  explicit IndexTypeFactory(application_features::ApplicationServer& server);
-  virtual ~IndexTypeFactory() = default;  // define to silence warning
-
-  /// @brief determine if the two Index definitions will result in the same
-  ///        index once instantiated
-  virtual bool equal(IndexType type, velocypack::Slice lhs,
-                     velocypack::Slice rhs, bool attributeOrderMatters) const;
-
-  virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-                     std::string const& dbname) const = 0;
-
-  /// @brief instantiate an Index definition
-  virtual std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const = 0;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation,
-                           Database const& vocbase) const = 0;
-
-  /// @brief the order of attributes matters by default
-  virtual bool attributeOrderMatters() const {
-    // can be overridden by specific indexes
-    return true;
-  }
-
- protected:
-  application_features::ApplicationServer& _server;
+// the inputs every create*() call needs, bundled so they don't repeat
+// across every method/call site
+struct IndexCreationContext {
+  LogicalCollection& collection;
+  velocypack::Slice definition;
+  IndexId id;
+  bool isClusterConstructor;
 };
 
 class IndexFactory {
  public:
-  IndexFactory(application_features::ApplicationServer&);
+  IndexFactory(application_features::ApplicationServer&,
+               IndexTypeCatalog const& catalog);
   virtual ~IndexFactory() = default;
 
-  /// @brief returns if 'factory' for 'type' was added successfully
-  Result emplace(std::string const& type, IndexTypeFactory const& factory);
+  // one switch-on-type entry point per engine, replacing a virtual per type
+  virtual std::shared_ptr<Index> createIndex(
+      IndexType type, IndexCreationContext const& ctx) const = 0;
+
+  // the arangosearch link is created by a function IResearchFeature injects
+  // at startup, not by the engines directly, keeping
+  // RocksDBIndexFactory/ClusterIndexFactory free of a compile-time
+  // dependency on iresearch
+  using LinkCreator =
+      std::function<std::shared_ptr<Index>(IndexCreationContext const&)>;
+  void setLinkCreator(LinkCreator creator);
+  std::shared_ptr<Index> createIResearchLink(
+      IndexCreationContext const& ctx) const;
 
   virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
                                         bool isCreation,
                                         Database const& vocbase) const;
 
-  /// @brief returns factory for the specified type or a failing placeholder if
-  /// no such type
-  IndexTypeFactory const& factory(std::string const& type) const noexcept;
+  // engine-specific step run after a type's normalize() succeeds and before
+  // the normalized definition is closed (e.g. RocksDB adds the objectId that
+  // becomes part of the persisted definition); no-op by default
+  virtual void finalizeDefinition(velocypack::Builder& normalized,
+                                  velocypack::Slice definition,
+                                  bool isCreation) const {}
 
   /// @brief returns the index created from the definition
   /// will throw if an error occurs
@@ -222,16 +220,13 @@ class IndexFactory {
                                        bool create);
 
  protected:
-  /// @brief clear internal factory/normalizer maps
-  void clear();
-
   static IndexId validateSlice(velocypack::Slice info, bool generateKey,
                                bool isClusterConstructor);
 
  protected:
   application_features::ApplicationServer& _server;
-  std::unordered_map<std::string, IndexTypeFactory const*> _factories;
-  std::unique_ptr<IndexTypeFactory> _invalid;
+  IndexTypeCatalog const& _catalog;
+  LinkCreator _linkCreator;
 };
 
 }  // namespace arangodb

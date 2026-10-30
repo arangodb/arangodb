@@ -29,6 +29,7 @@
 #include "Assertions/ProdAssert.h"
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -47,13 +48,14 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::unique_ptr<IndexFactory>&& indexFactory,
+                             IVectorIndexProvider const& vectorIndexProvider,
                              IDatabaseProvider& databaseProvider,
                              IDatabaseBootstrap& databaseBootstrap)
     : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _databaseBootstrap(databaseBootstrap),
-      _indexFactory(std::move(indexFactory)),
+      _indexTypeCatalog(
+          std::make_unique<IndexTypeCatalog>(server, vectorIndexProvider)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
@@ -99,11 +101,32 @@ void StorageEngine::scheduleFullIndexRefill(std::string const& database,
 
 void StorageEngine::syncIndexCaches() {}
 
+StorageEngine::~StorageEngine() = default;
+
+void StorageEngine::setIndexFactory(
+    std::unique_ptr<IndexFactory>&& indexFactory) {
+  TRI_ASSERT(_indexFactory == nullptr);
+  _indexFactory = std::move(indexFactory);
+}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
   TRI_ASSERT(_indexFactory.get() != nullptr);
   return *_indexFactory;
+}
+
+IndexFactory& StorageEngine::mutableIndexFactory() noexcept {
+  TRI_ASSERT(_indexFactory != nullptr);
+  return *_indexFactory;
+}
+
+IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
+  return *_indexTypeCatalog;
+}
+
+IndexTypeCatalog& StorageEngine::indexTypeCatalog() noexcept {
+  return *_indexTypeCatalog;
 }
 
 void StorageEngine::getCapabilities(velocypack::Builder& builder,
