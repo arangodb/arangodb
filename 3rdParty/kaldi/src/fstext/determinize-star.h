@@ -80,6 +80,9 @@ namespace fst {
     If allow_partial is true, the algorithm will output partial results when the
     specified max_states is reached (when larger than zero), instead of throwing
     out an error.
+    If max_seconds is positive, determinization also stops once that many
+    seconds have elapsed. stop, when set, is polled the same way and requests
+    an early stop. timed_out is set when one of those two stops the algorithm.
 
     Caution, the return status is un-intuitive: this function will return false if
     determinization completed normally, and true if it was stopped early by
@@ -90,7 +93,11 @@ bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta = kDelta,
                      bool *debug_ptr = NULL,
                      int max_states = -1,
-                     bool allow_partial = false);
+                     bool allow_partial = false,
+                     double max_seconds = -1,
+                     bool (*stop)(void*) = nullptr,
+                     void* stop_ctx = nullptr,
+                     bool* timed_out = nullptr);
 
 
 
@@ -102,6 +109,9 @@ bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
     If allow_partial is true, the algorithm will output partial results when the
     specified max_states is reached (when larger than zero), instead of throwing
     out an error.
+    If max_seconds is positive, determinization also stops once that many
+    seconds have elapsed. stop, when set, is polled the same way and requests
+    an early stop. timed_out is set when one of those two stops the algorithm.
 
     Caution, the return status is un-intuitive: this function will return false if
     determinization completed normally, and true if it was stopped early by
@@ -111,7 +121,11 @@ template<class F>
 bool DeterminizeStar(F &ifst, MutableFst<GallicArc<typename F::Arc> > *ofst,
                      float delta = kDelta, bool *debug_ptr = NULL,
                      int max_states = -1,
-                     bool allow_partial = false);
+                     bool allow_partial = false,
+                     double max_seconds = -1,
+                     bool (*stop)(void*) = nullptr,
+                     void* stop_ctx = nullptr,
+                     bool* timed_out = nullptr);
 
 
 /// @} end "addtogroup fst_extensions"

@@ -81,7 +81,7 @@ struct GetVisitor {
   }
 
   field_visitor operator()(const by_wildcard_options& part) const {
-    return by_wildcard::visitor(part.term);
+    return by_wildcard::visitor(part.term, part.stop, part.stop_ctx);
   }
 
   field_visitor operator()(const by_edit_distance_options& part) const {
@@ -118,7 +118,8 @@ struct PrepareVisitor : util::noncopyable {
   }
 
   auto operator()(const by_wildcard_options& part) const {
-    return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit);
+    return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit,
+                                part.stop, part.stop_ctx);
   }
 
   auto operator()(const by_edit_distance_options& part) const {

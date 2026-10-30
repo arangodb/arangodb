@@ -21,9 +21,12 @@
 
 #include "utils/wildcard_utils.hpp"
 
+#include "error/error.hpp"
 #include "tests_shared.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
+
+#include <string>
 
 class wildcard_utils_test : public test_base {
  protected:
@@ -1502,6 +1505,26 @@ TEST_F(wildcard_utils_test, match_wildcard) {
   ASSERT_EQ(2, irs::FromWildcard("\xD0").NumStates());
   ASSERT_EQ(3, irs::FromWildcard("\xE2\x9E").NumStates());
   ASSERT_EQ(4, irs::FromWildcard("\xF0\x9F\x98").NumStates());
+}
+
+bool StopImmediately(void*) { return true; }
+
+TEST_F(wildcard_utils_test, determinization_time_budget) {
+  // The callback is polled the same way query execution polls maxRuntime.
+  // A request to stop must fail the pattern instead of running to completion.
+  EXPECT_THROW(irs::FromWildcard("%a%", &StopImmediately, nullptr),
+               irs::illegal_argument);
+}
+
+TEST_F(wildcard_utils_test, complex_pattern) {
+  std::string pattern;
+  for (size_t i = 0; i < 17; ++i) {
+    pattern += "_%";
+  }
+
+  auto const expression = irs::ViewCast<irs::byte_type>(pattern);
+  ASSERT_FALSE(irs::IsWildcardPatternValid(expression));
+  ASSERT_EQ(0, irs::FromWildcard(expression).NumStates());
 }
 
 TEST_F(wildcard_utils_test, wildcard_type) {

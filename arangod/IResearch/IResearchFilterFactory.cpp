@@ -46,9 +46,11 @@
 #include "search/term_filter.hpp"
 #include "search/top_terms_collector.hpp"
 #include "search/wildcard_filter.hpp"
+#include "utils/wildcard_utils.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Range.h"
@@ -77,6 +79,24 @@
 using namespace std::literals::string_literals;
 
 namespace arangodb::iresearch {
+
+namespace {
+
+bool wildcardDeterminizationKilled(void* ctx) {
+  return static_cast<aql::ExpressionContext*>(ctx)->killed();
+}
+
+Result validateWildcardPattern(char const* funcName, std::string_view pattern) {
+  if (!irs::IsWildcardPatternValid(irs::ViewCast<irs::byte_type>(pattern))) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("'", funcName,
+                         "' AQL function: wildcard pattern is too complex")};
+  }
+
+  return {};
+}
+
+}  // namespace
 
 Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
                   aql::AstNode const& node);
@@ -2736,7 +2756,7 @@ Result fromFuncPhraseStartsWith(
 Result fromFuncPhraseLike(char const* funcName,
                           size_t const funcArgumentPosition,
                           char const* subFuncName, irs::by_phrase* filter,
-                          FilterContext const&, const VPackSlice& elem,
+                          FilterContext const& filterCtx, const VPackSlice& elem,
                           size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   std::string_view term;
@@ -2745,12 +2765,19 @@ Result fromFuncPhraseLike(char const* funcName,
   if (res.fail()) {
     return res;
   }
+  if (res = validateWildcardPattern(subFuncName, term); res.fail()) {
+    return res;
+  }
   if (filter) {
     auto& wildcard =
         filter->mutable_options()->push_back<irs::by_wildcard_options>(
             firstOffset);
     wildcard.term.assign(irs::ViewCast<irs::byte_type>(term));
     wildcard.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
+    if (filterCtx.query.ctx != nullptr) {
+      wildcard.stop = &wildcardDeterminizationKilled;
+      wildcard.stop_ctx = filterCtx.query.ctx;
+    }
   }
   return {};
 }
@@ -3805,6 +3832,9 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   if (!res.ok()) {
     return res;
   }
+  if (res = validateWildcardPattern(funcName, pattern); res.fail()) {
+    return res;
+  }
 
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
@@ -3829,6 +3859,10 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
       auto* opts = wildcardFilter.mutable_options();
       opts->scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
       opts->term = irs::ViewCast<irs::byte_type>(pattern);
+      if (ctx.ctx != nullptr) {
+        opts->stop = &wildcardDeterminizationKilled;
+        opts->stop_ctx = ctx.ctx;
+      }
     }
   }
 

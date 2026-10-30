@@ -40,8 +40,20 @@
 #endif
 
 #include "automaton_utils.hpp"
+#include "error/error.hpp"
 
 namespace irs {
+namespace {
+
+constexpr size_t kMaxWildcardPatternLength = 1024;
+constexpr size_t kMaxWildcardOperators = 16;
+constexpr int kMaxDeterminizedStates = 10000;
+// Wall-clock budget for NFA determinization. This is the same kind of limit
+// query execution applies through maxRuntime: work stops once the deadline
+// passes, instead of running until the pattern is fully expanded.
+constexpr double kMaxDeterminizeSeconds = 1.0;
+
+}  // namespace
 
 WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
   if (pattern.empty()) {
@@ -87,7 +99,33 @@ WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
   return WildcardType::kWildcard;
 }
 
-automaton FromWildcard(bytes_view expr) {
+bool IsWildcardPatternValid(bytes_view expr) noexcept {
+  if (expr.size() > kMaxWildcardPatternLength) {
+    return false;
+  }
+
+  bool escaped = false;
+  size_t wildcardOperators = 0;
+  for (const auto c : expr) {
+    if (escaped) {
+      escaped = false;
+    } else if (c == WildcardMatch::kEscape) {
+      escaped = true;
+    } else if (c == WildcardMatch::kAnyStr || c == WildcardMatch::kAnyChr) {
+      if (++wildcardOperators > kMaxWildcardOperators) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+automaton FromWildcard(bytes_view expr, bool (*stop)(void*), void* stop_ctx) {
+  if (!IsWildcardPatternValid(expr)) {
+    return {};
+  }
+
   bool escaped = false;
   std::vector<automaton> parts;
   parts.reserve(expr.size());
@@ -150,7 +188,14 @@ automaton FromWildcard(bytes_view expr) {
   nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
 
   automaton dfa;
-  if (fst::DeterminizeStar(nfa, &dfa)) {
+  bool timedOut = false;
+  if (fst::DeterminizeStar(nfa, &dfa, fst::kDelta, nullptr,
+                           kMaxDeterminizedStates, true,
+                           kMaxDeterminizeSeconds, stop, stop_ctx, &timedOut)) {
+    if (timedOut) {
+      throw irs::illegal_argument{
+        "wildcard pattern determinization exceeded the time budget"};
+    }
     // nfa isn't fully determinized
     return {};
   }

@@ -25,8 +25,9 @@
 #include "base/kaldi-error.h"
 #include "utils/automaton.hpp"
 
-#include <unordered_map>
 #include <algorithm>
+#include <chrono>
+#include <unordered_map>
 using std::unordered_map;
 
 #include <vector>
@@ -158,6 +159,39 @@ template<class Label, class StringId> class StringRepository {
   MapType map_;
 };
 
+struct DeterminizeBudget {
+  using clock = std::chrono::steady_clock;
+
+  DeterminizeBudget(double max_seconds, bool (*stop)(void*), void* stop_ctx)
+    : start_(clock::now()),
+      max_seconds_(max_seconds),
+      stop(stop),
+      stop_ctx_(stop_ctx) {}
+
+  bool exceeded() {
+    if (timed_out_) {
+      return true;
+    }
+    if (stop != nullptr && stop(stop_ctx_)) {
+      timed_out_ = true;
+      return true;
+    }
+    if (max_seconds_ > 0 &&
+        std::chrono::duration<double>(clock::now() - start_).count() >
+          max_seconds_) {
+      timed_out_ = true;
+      return true;
+    }
+    return false;
+  }
+
+  clock::time_point start_;
+  double max_seconds_;
+  bool (*stop)(void*);
+  void* stop_ctx_;
+  bool timed_out_{false};
+};
+
 template<class F> class DeterminizerStar {
   typedef typename F::Arc Arc;
  public:
@@ -176,7 +210,9 @@ template<class F> class DeterminizerStar {
   // Initializer.  After initializing the object you will typically call
   // Determinize() and then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
-                   int max_states = -1, bool allow_partial = false)
+                   int max_states = -1, bool allow_partial = false,
+                   double max_seconds = -1, bool (*stop)(void*) = nullptr,
+                   void* stop_ctx = nullptr)
     : ifst_(ifst.Copy()),
       delta_(delta),
       max_states_(max_states),
@@ -187,7 +223,8 @@ template<class F> class DeterminizerStar {
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
             SubsetKey(), SubsetEqual(delta_)),
-      epsilon_closure_(ifst_, max_states, &repository_, delta) {
+      budget_(max_seconds, stop, stop_ctx),
+      epsilon_closure_(ifst_, max_states, &repository_, delta, &budget_) {
   }
 
   void Determinize(bool *debug_ptr) {
@@ -206,9 +243,17 @@ template<class F> class DeterminizerStar {
     }
     closed_subset_.clear();
     while (!Q_.empty()) {
+      if (budget_.exceeded()) {
+        is_partial_ = true;
+        break;
+      }
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
       ProcessSubset(cur_pair);
+      if (budget_.timed_out) {
+        is_partial_ = true;
+        break;
+      }
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
         if (allow_partial_ == false) {
@@ -228,6 +273,8 @@ template<class F> class DeterminizerStar {
   bool IsPartial() {
     return is_partial_;
   }
+
+  bool TimedOut() const { return budget_.timed_out; }
 
   // frees all except output_arcs_, which contains the important info
   // we need to output.
@@ -380,11 +427,13 @@ template<class F> class DeterminizerStar {
   class EpsilonClosure {
    public:
     EpsilonClosure(const Fst<Arc> *ifst, int max_states,
-        StringRepository<Label, StringId> *repository, float delta):
+        StringRepository<Label, StringId> *repository, float delta,
+        DeterminizeBudget* budget):
       ifst_(ifst),
       max_states_(max_states),
       repository_(repository),
       delta_(delta),
+      budget_(budget),
       sorted_(ifst->Properties(kILabelSorted, false) & kILabelSorted) {
     }
 
@@ -464,6 +513,7 @@ template<class F> class DeterminizerStar {
     int max_states_;
     StringRepository<Label, StringId> *repository_;
     float delta_;
+    DeterminizeBudget* budget_;
     bool sorted_;
   };
 
@@ -657,6 +707,9 @@ template<class F> class DeterminizerStar {
     OutputStateId state = pair.second;
 
     epsilon_closure_.GetEpsilonClosure(*pair.first, &closed_subset_);
+    if (budget_.timed_out) {
+      return;
+    }
 
     // Now follow non-epsilon arcs [and also process final states]
     ProcessFinal(closed_subset_, state);
@@ -684,6 +737,7 @@ template<class F> class DeterminizerStar {
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
 
   StringRepository<Label, StringId> repository_;  // associate integer id's with sequences of labels.
+  DeterminizeBudget budget_;
   EpsilonClosure epsilon_closure_;
 };
 
@@ -691,12 +745,20 @@ template<class F> class DeterminizerStar {
 template<class F>
 bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta, bool *debug_ptr, int max_states,
-                     bool allow_partial) {
+                     bool allow_partial, double max_seconds,
+                     bool (*stop)(void*), void* stop_ctx, bool* timed_out) {
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial, max_seconds,
+                          stop, stop_ctx);
   det.Determinize(debug_ptr);
-  det.Output(ofst);
+  if (timed_out != nullptr) {
+    *timed_out = det.TimedOut();
+  }
+  // A timed-out determinization has no usable acceptor. Skip materializing it.
+  if (!det.TimedOut()) {
+    det.Output(ofst);
+  }
   return det.IsPartial();
 }
 
@@ -705,12 +767,20 @@ template<class F>
 bool DeterminizeStar(F &ifst,
                      MutableFst<GallicArc<typename F::Arc> > *ofst, float delta,
                      bool *debug_ptr, int max_states,
-                     bool allow_partial) {
+                     bool allow_partial, double max_seconds,
+                     bool (*stop)(void*), void* stop_ctx, bool* timed_out) {
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial, max_seconds,
+                          stop, stop_ctx);
   det.Determinize(debug_ptr);
-  det.Output(ofst);
+  if (timed_out != nullptr) {
+    *timed_out = det.TimedOut();
+  }
+  // A timed-out determinization has no usable acceptor. Skip materializing it.
+  if (!det.TimedOut()) {
+    det.Output(ofst);
+  }
   return det.IsPartial();
 }
 
@@ -776,6 +846,9 @@ void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
     if (max_states_ > 0 && counter++ > max_states_) {
       KALDI_ERR << "Determinization aborted since looped more than "
                 << max_states_ << " times during epsilon closure";
+    }
+    if ((counter & 1023) == 0 && budget_->exceeded()) {
+      return;
     }
 
     // generally we need to be careful about iterator-invalidation problem

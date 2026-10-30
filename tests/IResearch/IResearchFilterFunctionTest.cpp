@@ -6520,6 +6520,14 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
                    "FOR d IN myView FILTER LIKE(d.foo, []) RETURN d");
   assertFilterFail(vocbase(),
                    "FOR d IN myView FILTER LIKE(d.foo, {}) RETURN d");
+  {
+    std::string pattern;
+    for (size_t i = 0; i < 17; ++i) {
+      pattern += "_%";
+    }
+    assertFilterFail(vocbase(), "FOR d IN myView FILTER LIKE(d.foo, '" +
+                                  pattern + "') RETURN d");
+  }
   assertFilterExecutionFail(
       vocbase(), "FOR d IN myView FILTER LIKE(d.foo, _FORWARD_({})) RETURN d",
       &ExpressionContextMock::EMPTY);

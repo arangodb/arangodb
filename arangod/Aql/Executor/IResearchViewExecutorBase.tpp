@@ -29,6 +29,7 @@
 #include "IResearch/Search.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchReadUtils.h"
+#include "error/error.hpp"
 
 namespace arangodb::aql {
 
@@ -817,12 +818,16 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
   }
 
   // compile filter
-  _filter = root->prepare({
-      .index = *_reader,
-      .memory = _memory,
-      .scorers = _scorers,
-      .ctx = &_filterCtx,
-  });
+  try {
+    _filter = root->prepare({
+        .index = *_reader,
+        .memory = _memory,
+        .scorers = _scorers,
+        .ctx = &_filterCtx,
+    });
+  } catch (irs::illegal_argument const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, ex.what());
+  }
 
   if constexpr (ExecutionTraits::EmitSearchDoc) {
     TRI_ASSERT(_filterCookie);

@@ -43,14 +43,26 @@ enum WildcardMatch : uint8_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a wildcard expression has an acceptable complexity
+/// @note this must be checked before constructing and determinizing an automaton
+////////////////////////////////////////////////////////////////////////////////
+bool IsWildcardPatternValid(bytes_view expr) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates minimal DFA from a specified UTF-8 encoded wildcard
 ///        sequence
 /// @returns DFA accpeting a specified wildcard expression
+/// @param stop optional callback polled during determinization, for example
+///        the query cancellation token. A true result aborts determinization.
 /// @note control symbols are WildcardMatch
 /// @note non UTF-8 bytes transition instatiated as bytes
 /// @note invalid last escape, instatiate transition as byte
+/// @note determinization is also aborted after a fixed wall-clock budget
+/// @throws irs::illegal_argument when determinization exceeds that budget or
+///         stop requests cancellation
 ////////////////////////////////////////////////////////////////////////////////
-automaton FromWildcard(bytes_view expr);
+automaton FromWildcard(bytes_view expr, bool (*stop)(void*) = nullptr,
+                       void* stop_ctx = nullptr);
 
 inline automaton FromWildcard(std::string_view expr) {
   return FromWildcard(ViewCast<byte_type>(expr));
