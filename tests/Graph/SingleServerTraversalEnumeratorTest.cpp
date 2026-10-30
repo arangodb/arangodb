@@ -135,3 +135,46 @@ TEST(SingleServerTraversalEnumeratorTest, querying_path_of_length_one) {
     EXPECT_TRUE(enumerator.isDone());
   }
 }
+
+TEST(SingleServerTraversalEnumeratorTest, querying_two_paths_of_length_one) {
+  auto v0 = std::string{"v/0"};
+  auto v1 = std::string{"v/1"};
+  auto v2 = std::string{"v/2"};
+  auto graph = experimental::InMemoryGraph{
+      {VertexIdLabel{v0}, VertexIdLabel{v1}, VertexIdLabel{v2}},
+      {{EdgeIdLabel{"e/0"}, {VertexIdLabel{v0}, VertexIdLabel{v1}}},
+       {EdgeIdLabel{"e/1"}, {VertexIdLabel{v0}, VertexIdLabel{v2}}}}};
+  auto graphView = experimental::InMemoryGraphView(graph);
+  auto enumerator = SingleServerTraversalEnumerator(graphView);
+  enumerator.reset(VertexRef{velocypack::HashedStringRef{
+      v0.c_str(), static_cast<uint32_t>(v0.length())}});
+  auto vertexIdv0 = graphView.ensureVertex(VertexIdLabel{v0});
+  auto vertexIdv1 = graphView.ensureVertex(VertexIdLabel{v1});
+  auto vertexIdv2 = graphView.ensureVertex(VertexIdLabel{v1});
+  auto edgeId = graphView.queryEdge(vertexIdv0, vertexIdv1);
+  EXPECT_TRUE(edgeId.has_value());
+
+  {  // path of lenght 0
+    auto nextPath = enumerator.getNextPath();
+    EXPECT_NE(nextPath, nullptr);
+    auto expected = SingleServerPathResult{{vertexIdv0}, {}};
+    assertEqual(*nextPath, expected);
+    EXPECT_FALSE(enumerator.isDone());
+  }
+  {  // path of length 1
+    auto nextPath = enumerator.getNextPath();
+    EXPECT_NE(nextPath, nullptr);
+    auto expected =
+        SingleServerPathResult{{vertexIdv0, vertexIdv1}, {edgeId.value()}};
+    assertEqual(*nextPath, expected);
+    EXPECT_FALSE(enumerator.isDone());
+  }
+  {  // path of length 1
+    auto nextPath = enumerator.getNextPath();
+    EXPECT_NE(nextPath, nullptr);
+    auto expected =
+        SingleServerPathResult{{vertexIdv0, vertexIdv2}, {edgeId.value()}};
+    assertEqual(*nextPath, expected);
+    EXPECT_TRUE(enumerator.isDone());
+  }
+}
