@@ -55,6 +55,8 @@
 #include "V8Server/FoxxFeature.h"
 #endif
 
+#include <absl/strings/str_cat.h>
+
 #include <string_view>
 
 using namespace arangodb;
@@ -202,6 +204,17 @@ CommTask::Flow CommTask::prepareExecution(
     return !ServerState::isCoordinatorId(_requestSource) &&
            !ServerState::isDBServerId(_requestSource);
   });
+
+  // Everything below, including the ExecContext, reads the requested API
+  // version, so a request for an invalid one must not get any further.
+  if (!req.hasValidApiVersion()) {
+    sendErrorResponse(ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_HTTP_NOT_FOUND,
+                      absl::StrCat("invalid API version in path '",
+                                   req.requestPath(), "', valid prefixes are: ",
+                                   GeneralRequest::validApiVersionPrefixes()));
+    return Flow::Abort;
+  }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -470,19 +483,16 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder errorBuilder(buffer);
-  auto handler = factory->createHandler(server, std::move(request),
-                                        std::move(response), errorBuilder);
+  auto handler =
+      factory->createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
 
-    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       std::move(buffer));
+                       VPackBuffer<uint8_t>{});
     return;
   }
 
@@ -692,7 +702,6 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       << "Handling request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -742,7 +751,6 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       << "Handling async request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
@@ -965,68 +973,47 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
 
+    ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
+    VPackBuffer<uint8_t> dst;
+    size_t const maxSize =
+        _generalServerFeature.maxDecompressedRequestBodySize();
+
+    ErrorCode r = TRI_ERROR_NO_ERROR;
+    std::string_view name;
     if (encoding == StaticStrings::EncodingGzip) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::gzipUncompress(
-              src, len, dst,
-              _generalServerFeature.maxDecompressedRequestBodySize());
-          r != TRI_ERROR_NO_ERROR) {
-        if (r == TRI_ERROR_RESOURCE_LIMIT) {
-          return {r,
-                  "decompressed size of Content-Encoding:gzip body exceeds "
-                  "the allowed maximum"};
-        }
-        return {
-            r,
-            "a decoding error occurred while handling Content-Encoding: gzip"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
-      return {};
+      name = "gzip";
+      r = arangodb::encoding::gzipUncompress(src, len, dst, maxSize, &scope);
     } else if (encoding == StaticStrings::EncodingDeflate) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::zlibInflate(
-              src, len, dst,
-              _generalServerFeature.maxDecompressedRequestBodySize());
-          r != TRI_ERROR_NO_ERROR) {
-        if (r == TRI_ERROR_RESOURCE_LIMIT) {
-          return {r,
-                  "decompressed size of Content-Encoding:deflate body exceeds "
-                  "the allowed maximum"};
-        }
-        return {r,
-                "a decoding error occurred while handling Content-Encoding: "
-                "deflate"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
-      return {};
+      name = "deflate";
+      r = arangodb::encoding::zlibInflate(src, len, dst, maxSize, &scope);
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::lz4Uncompress(
-              src, len, dst,
-              _generalServerFeature.maxDecompressedRequestBodySize());
-          r != TRI_ERROR_NO_ERROR) {
-        if (r == TRI_ERROR_RESOURCE_LIMIT) {
-          return {r,
-                  "decompressed size of Content-Encoding:lz4 body exceeds the "
-                  "allowed maximum"};
-        }
-        return {
-            r,
-            "a decoding error occurred while handling Content-Encoding: lz4"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
+      name = "lz4";
+      r = arangodb::encoding::lz4Uncompress(src, len, dst, maxSize, &scope);
+    } else {
+      // unknown encoding. let it through without modifying the request body.
       return {};
     }
-    // unknown encoding. let it through without modifying the request body.
+
+    if (r == TRI_ERROR_RESOURCE_LIMIT) {
+      return {r, absl::StrCat("decompressed size of Content-Encoding: ", name,
+                              " body exceeds the allowed maximum")};
+    }
+    if (r == TRI_ERROR_OUT_OF_MEMORY) {
+      return {r, absl::StrCat("not enough memory to decompress the "
+                              "Content-Encoding: ",
+                              name, " body right now; try again later")};
+    }
+    if (r != TRI_ERROR_NO_ERROR) {
+      return {r, absl::StrCat("a decoding error occurred while handling "
+                              "Content-Encoding: ",
+                              name)};
+    }
+
+    req.setPayload(std::move(dst));
+    req.setPayloadMemory(std::move(scope));
+    // as we have decoded, remove the encoding header.
+    // this prevents duplicate decoding
+    req.removeHeader(header);
     return {};
   };
 
@@ -1043,4 +1030,16 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
     return decode(StaticStrings::ContentEncoding, val);
   }
   return {};
+}
+
+rest::ResponseCode CommTask::contentEncodingErrorCode(
+    Result const& res) noexcept {
+  if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
+    return rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE;
+  }
+  if (res.is(TRI_ERROR_OUT_OF_MEMORY)) {
+    // temporary shortage on the server, the client may retry
+    return rest::ResponseCode::SERVICE_UNAVAILABLE;
+  }
+  return rest::ResponseCode::BAD;
 }

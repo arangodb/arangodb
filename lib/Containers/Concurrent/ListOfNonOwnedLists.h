@@ -103,15 +103,13 @@ struct ListOfNonOwnedLists {
   /**
      Executes the external garbage collection on each inner list.
    */
-  size_t run_external_cleanup() noexcept {
-    size_t count = 0;
+  void run_external_cleanup() noexcept {
     auto lists = _lists.copy();
     for (auto& weak_list : lists) {
       if (auto list = weak_list.lock()) {
-        count += list->garbage_collect_external();
+        list->garbage_collect_external();
       }
     }
-    return count;
   }
 };
 

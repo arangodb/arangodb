@@ -28,8 +28,8 @@
 #include <memory>
 
 #include <velocypack/Builder.h>
-#include "Inspection/VPack.h"
-#include "Inspection/VPackWithErrorT.h"
+#include "Inspection/Transformers.h"
+#include "Inspection/VPackSaveInspector.h"
 
 namespace arangodb::activities {
 
@@ -49,18 +49,36 @@ struct GuardedActivity : Activity {
       : Activity(std::move(id), std::move(parent), std::move(type)),
         _data(std::move(data)) {}
 
-  auto data() const noexcept -> VPackBuilder override {
-    auto data = _data.copy();
-    auto sharedSlice = inspection::serializeWithErrorT(data);
-    if (not sharedSlice.ok()) {
-      auto builder = VPackBuilder{};
-      {
-        VPackObjectBuilder ob(&builder);
-        builder.add("error", VPackValue(sharedSlice.error().error()));
-      }
-      return builder;
+  struct Snapshot {
+    ActivityId id;
+    std::optional<ActivityId> parent;
+    ActivityType type;
+    ActivityCreated created;
+    std::vector<basics::ThreadInfo> threads;
+    Data data;
+
+    template<typename Inspector>
+    friend auto inline inspect(Inspector& f, Snapshot& s) {
+      return f.object(s).fields(
+          f.field("id", s.id),          //
+          f.field("parent", s.parent),  //
+          f.field("type", s.type),      //
+          f.field("created", s.created)
+              .transformWith(inspection::TimeStampTransformer{}),  //
+          f.field("threads", s.threads),                           //
+          f.field("data", s.data));
     }
-    return VPackBuilder{sharedSlice->slice()};
+  };
+
+  auto snapshot(velocypack::Builder& builder) -> inspection::Status override {
+    auto snap = Snapshot{.id = id(),            //
+                         .parent = parentId(),  //
+                         .type = type(),        //
+                         .created = created(),  //
+                         .threads = threads(),  //
+                         .data = _data.copy()};
+    auto inspector = inspection::VPackSaveInspector<>(builder);
+    return inspector.apply(snap);
   }
 
   // Copying is not noexcept because it takes a lock, and that can throw
@@ -74,7 +92,6 @@ struct GuardedActivity : Activity {
   template<typename F>
   requires DataAccessor<F, Data>
   auto updateData(F&& mutator) { return _data.doUnderLock(std::move(mutator)); }
-
   using HandleType = std::shared_ptr<Derived>;
 
  protected:
