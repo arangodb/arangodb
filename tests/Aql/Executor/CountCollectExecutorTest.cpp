@@ -238,6 +238,23 @@ TEST_P(CountCollectExecutorTest, count_input_fullCount) {
       .run();
 }
 
+// Produce the single count row, then fullCount-skip: the produced row must not
+// be counted again (LIMIT 0,1 RETURN n with {fullCount: true}).
+TEST_P(CountCollectExecutorTest, count_input_produce_then_fullCount) {
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),
+                                         MakeCountCollectExecutorInfos(1),
+                                         ExecutionNode::COLLECT)
+      .expectedStats(ExecutionStats{})
+      .setInputSplitType(GetSplit())
+      .setInputValue({{0}, {1}, {2}, {3}})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({1}, {{4}})
+      .expectSkipped(0)
+      .setCall(AqlCall{0, true, 1, AqlCall::LimitType::HARD})
+      .run();
+}
+
 TEST_P(CountCollectExecutorTest, count_input_softlimit) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<CountCollectExecutor>(MakeCountCollectRegisterInfos(1),

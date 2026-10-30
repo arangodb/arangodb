@@ -245,6 +245,17 @@ function optimizerFullcountTestSuite () {
 
       assertEqual(3, result.getExtra().stats.fullCount);
       assertEqual(1, result.toArray().length);
+    },
+
+    // COLLECT WITH COUNT always yields one row, fullCount must not count that
+    // row twice when LIMIT consumes it and then fast-forwards for fullCount.
+    testCollectWithCountLimitFullCount : function () {
+      let result = executeQuery(
+        "FOR doc IN UnitTestsCollection COLLECT WITH COUNT INTO n LIMIT 0, 1 RETURN n",
+        null, { fullCount: true });
+
+      assertEqual([3], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
     }
 
   };

@@ -1,6 +1,9 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
+  when used with LIMIT and {fullCount: true}. The single result row was counted
+  twice: once when produced and again during the fullCount skip phase.
 
 3.12.13 (2026-10-28)
 --------------------
@@ -164,6 +167,8 @@
   SatelliteCollection.
 
 * Upgraded OpenSSL to 3.5.9.
+
+* COR-1019: Security issue fix to enable interrupting unbounded AQL analyzers.
 
 * Updated node modules:
  - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277

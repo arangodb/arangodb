@@ -55,7 +55,7 @@ auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   // within a single call
   TRI_ASSERT(inputRange.skippedInFlight() == 0 ||
              inputRange.upstreamState() == ExecutorState::DONE);
-  if (inputRange.upstreamState() == ExecutorState::DONE) {
+  if (!_rowAccounted && inputRange.upstreamState() == ExecutorState::DONE) {
     // We have skipped all, report it.
     // In general, we do not have an input row. In fact, we never fetch one.
     output.setAllowSourceRowUninitialized();
@@ -65,6 +65,7 @@ auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                           InputAqlItemRow{CreateInvalidInputRowHint{}},
                           AqlValue(AqlValueHintUInt(inputRange.skipAll())));
     output.advanceRow();
+    _rowAccounted = true;
   }
   // We always send a hardLimit with fullcount to upstream
   return {inputRange.upstreamState(), NoStats{},
@@ -82,12 +83,13 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   // within a single call
   TRI_ASSERT(inputRange.skippedInFlight() == 0 ||
              inputRange.upstreamState() == ExecutorState::DONE);
-  if (inputRange.upstreamState() == ExecutorState::DONE) {
+  if (!_rowAccounted && inputRange.upstreamState() == ExecutorState::DONE) {
     // We have skipped all, report it.
     auto skipped = inputRange.skipAll();
     // We request to just forward, we do not even care how much
     TRI_ASSERT(skipped == 0);
     call.didSkip(1);
+    _rowAccounted = true;
   }
   // We always send a hardLimit with fullcount to upstream
   return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
