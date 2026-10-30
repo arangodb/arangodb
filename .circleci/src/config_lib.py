@@ -882,7 +882,7 @@ class TestDefinitionFile:
             TestDefinitionFile instance
         """
         jobs: Dict[str, TestJob] = {}
-        use_non_maintainer_build: bool = False
+        use_non_maintainer_build = False
         repo_config = None
 
         # Check if this is the driver test format with 'jobProperties' and 'tests'
