@@ -327,6 +327,8 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(
             output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        // Already reported. fullCount fast-forward must not count it again.
+        _haveSeenData = true;
       }
       break;
     }

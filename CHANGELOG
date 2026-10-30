@@ -5,6 +5,11 @@
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
 
+* Fixed an issue where AQL COLLECT AGGREGATE without group keys reported an
+  incorrect fullCount for empty input when used with LIMIT and {fullCount: true}.
+  The single result row was counted twice: once when produced and again during
+  the fullCount phase.
+
 3.12.13 (2026-10-28)
 --------------------
 
