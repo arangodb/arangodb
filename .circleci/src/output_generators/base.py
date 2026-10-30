@@ -49,6 +49,7 @@ class GeneratorConfig:
     circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
     validate_only: bool = False
     build_variants: List[BuildVariant] = field(default_factory=list)
+    use_non_maintainer_build: bool = False
 
 
 class OutputGenerator(ABC):

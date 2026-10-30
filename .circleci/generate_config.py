@@ -158,6 +158,7 @@ def create_generator_config(
     create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
+    use_non_maintainer_build: bool,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -218,6 +219,7 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        use_non_maintainer_build=use_non_maintainer_build,
     )
 
 
@@ -360,6 +362,11 @@ def main(
         else:
             test_defs = []
 
+        use_non_maintainer_build = False
+        for defn in test_defs:
+            if defn.use_non_maintainer_build:
+                use_non_maintainer_build = True
+
         # Create generator config
         config = create_generator_config(
             tsan=tsan,
@@ -378,6 +385,7 @@ def main(
             create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
+            use_non_maintainer_build=use_non_maintainer_build,
         )
 
         # If validate-only, we're done

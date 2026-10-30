@@ -112,6 +112,7 @@ class CircleCIGenerator(OutputGenerator):
                     architecture=architecture,
                     build_variant=build_variant,
                     nightly=self.config.filter_criteria.is_full_run,
+                    publish_non_maintainer=self.config.use_non_maintainer_build
                 )
                 self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
@@ -235,6 +236,7 @@ class CircleCIGenerator(OutputGenerator):
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
+            "prefix": "",
         }
 
         if build_config.architecture == Architecture.AARCH64:
@@ -267,8 +269,9 @@ class CircleCIGenerator(OutputGenerator):
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
-            "publish-artifacts": False,
-            "build-tests": False,
+            "publish-artifacts": build_config.publish_non_maintainer,
+            "build-tests": build_config.publish_non_maintainer,
+            "prefix": "prod_",
         }
 
         if build_config.architecture == Architecture.AARCH64:
