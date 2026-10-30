@@ -190,6 +190,8 @@ class CircleCIGenerator(OutputGenerator):
         if not build_config.publish_non_maintainer:
             build_job = self._create_build_job(build_config)
             workflow["jobs"].append(build_job)
+            # Extract job names from the dicts
+            build_job_name = build_job["compile-linux"]["name"]
 
         frontend_job = self._create_frontend_build_job(build_config)
         workflow["jobs"].append(frontend_job)
@@ -198,9 +200,9 @@ class CircleCIGenerator(OutputGenerator):
         if not build_config.build_variant.is_instrumented:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
+            if not build_config.publish_non_maintainer:
+                build_job_name = non_maintainer_job["compile-linux"]["name"]
 
-        # Extract job names from the dicts
-        build_job_name = build_job["compile-linux"]["name"]
         frontend_job_name = frontend_job["build-frontend"]["name"]
 
         return [build_job_name, frontend_job_name]
