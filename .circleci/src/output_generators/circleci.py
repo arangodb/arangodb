@@ -270,7 +270,7 @@ class CircleCIGenerator(OutputGenerator):
             "enterprise": True,
             "arch": build_config.architecture.value,
             "publish-artifacts": build_config.publish_non_maintainer,
-            "build-tests": build_config.publish_non_maintainer,
+            "build-tests": False,
             "prefix": "prod_",
         }
 
