@@ -8,7 +8,6 @@ add_library(arango_network STATIC
   Utils.cpp)
 
 target_link_libraries(arango_network
-  boost_boost
   fuerte
   llhttp
   nghttp2

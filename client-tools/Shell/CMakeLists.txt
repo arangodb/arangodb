@@ -9,8 +9,6 @@ add_library(arango_shell STATIC
 target_link_libraries(arango_shell
   arango_basic_utils
   ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
   fuerte
 )
 
@@ -45,8 +43,6 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_basic_http_client
   fuerte
   ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
   arango_shell
   arangoimport_utils
   clienttools_utils

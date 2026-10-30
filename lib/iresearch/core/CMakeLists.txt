@@ -285,7 +285,6 @@ include_directories(
 
 set(IRESEARCH_EXTERNAL_INCLUDES
   ${EXTERNAL_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${Lz4_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})
@@ -417,6 +416,8 @@ target_link_libraries(iresearch-static
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
   PUBLIC absl::crc32c
+  PUBLIC Boost::container
+  PUBLIC Boost::container_hash
   ${GCOV_LIBRARY}
   ${Lz4_STATIC_LIB}
   ${DL_LIBRARY}
@@ -681,8 +682,17 @@ add_library(iresearch-analyzer-segmentation-static
   ./analysis/segmentation_token_stream.cpp
   )
 
-target_link_libraries(
-  iresearch-analyzer-segmentation-static
+target_link_libraries(iresearch-analyzer-segmentation-static
+  # These are needed to make the 3rdParty/text work here
+  # I am not sure why text does not provide it,
+  # but the wannabe boost library that is text is just that great.
+  # Not worth the headache
+PRIVATE 
+  Boost::algorithm
+  Boost::predef
+  Boost::throw_exception
+  Boost::type_traits
+PUBLIC 
   text
 )
 
@@ -698,7 +708,7 @@ target_include_directories(iresearch-analyzer-segmentation-static
   )
 
 target_link_libraries(iresearch-analyzer-segmentation-static
-  iresearch-static
+  PUBLIC iresearch-static
   )
 
 ################################################################################
