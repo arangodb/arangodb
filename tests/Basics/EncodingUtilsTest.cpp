@@ -22,6 +22,8 @@
 
 #include "Basics/EncodingUtils.h"
 #include "Basics/Endian.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/fasthash.h"
 
@@ -78,6 +80,53 @@ ErrorCode lz4Compress(std::string_view input,
                       arangodb::basics::StringBuffer& compressed) {
   return arangodb::encoding::lz4Compress(
       reinterpret_cast<uint8_t const*>(input.data()), input.size(), compressed);
+}
+
+// spans many 32 KiB accounting chunks, so the global counter really moves
+std::string const largeBody(1 << 20, 'x');
+
+// compresses body with each format and decodes it into a VPackBuffer,
+// the type the server uses for request payloads
+using Decoder = std::function<ErrorCode(std::string_view compressed,
+                                        VPackBuffer<uint8_t>& out,
+                                        ResourceUsageScope* scope)>;
+
+std::vector<std::pair<std::string, Decoder>> decoders(std::string_view body) {
+  auto bytes = [](std::string_view s) {
+    return reinterpret_cast<uint8_t const*>(s.data());
+  };
+  auto compressWith = [&](auto compress) {
+    basics::StringBuffer out(1024, false);
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, compress(bytes(body), body.size(), out));
+    return std::string(out.data(), out.size());
+  };
+  std::string gzip = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::gzipCompress(p, n, o); });
+  std::string deflate = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::zlibDeflate(p, n, o); });
+  std::string lz4 = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::lz4Compress(p, n, o); });
+
+  return {
+      {"gzip",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::gzipUncompress(bytes(gzip), gzip.size(), out,
+                                         encoding::defaultMaxUncompressedSize,
+                                         scope);
+       }},
+      {"deflate",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::zlibInflate(bytes(deflate), deflate.size(), out,
+                                      encoding::defaultMaxUncompressedSize,
+                                      scope);
+       }},
+      {"lz4",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::lz4Uncompress(bytes(lz4), lz4.size(), out,
+                                        encoding::defaultMaxUncompressedSize,
+                                        scope);
+       }},
+  };
 }
 }  // namespace
 
@@ -581,4 +630,41 @@ TEST(EncodingUtilsTest, testStringBufferGzipOutputOverLimit) {
       encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
                                buffer.size(), uncompressed, limit));
   EXPECT_EQ(limit, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testUncompressRejectsBodyOverMemoryBudget) {
+  for (auto const& [name, decode] : decoders(::largeBody)) {
+    SCOPED_TRACE(name);
+    GlobalResourceMonitor global;
+    global.memoryLimit(256 * 1024);  // well below the 1 MiB body
+    ResourceMonitor monitor(global);
+    {
+      ResourceUsageScope scope(monitor);
+      VPackBuffer<uint8_t> out;
+      EXPECT_EQ(TRI_ERROR_OUT_OF_MEMORY, decode({}, out, &scope));
+      EXPECT_EQ(0, out.size());
+    }
+    // the partial reservation is gone once the scope is
+    EXPECT_EQ(0, global.current());
+  }
+}
+
+TEST(EncodingUtilsTest, testUncompressChargesMemoryBudgetForDecodedBody) {
+  for (auto const& [name, decode] : decoders(::largeBody)) {
+    SCOPED_TRACE(name);
+    GlobalResourceMonitor global;
+    global.memoryLimit(4 * 1024 * 1024);
+    ResourceMonitor monitor(global);
+    {
+      ResourceUsageScope scope(monitor);
+      VPackBuffer<uint8_t> out;
+      ASSERT_EQ(TRI_ERROR_NO_ERROR, decode({}, out, &scope));
+      EXPECT_EQ(::largeBody,
+                std::string_view(reinterpret_cast<char const*>(out.data()),
+                                 out.size()));
+      EXPECT_EQ(::largeBody.size(), scope.tracked());
+      EXPECT_GT(global.current(), 0);
+    }
+    EXPECT_EQ(0, global.current());
+  }
 }
