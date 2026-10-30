@@ -135,6 +135,9 @@ parameters:
   docker_image:
     type: string
     default: "<< pipeline.parameters.test-docker-image >>"
+  prefix:
+    type: string
+    default: ""
 
 
 commands:
@@ -535,7 +538,7 @@ commands:
           steps:
             - attach_workspace_from_s3:
                 at: .
-                archive: binaries.tar.gz
+                archive: << parameters.prefix >>binaries.tar.gz
             - attach_workspace_from_s3:
                 at: .
                 archive: frontend.tar.gz
@@ -971,6 +974,9 @@ jobs:
         default: ""
       arch:
         type: string
+      prefix:
+        type: string
+        default: ""
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -1117,13 +1123,13 @@ jobs:
                     | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
-                archive: compile_commands.tar.gz
+                archive: << parameters.prefix >>compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
                   tidy-headers
             - persist_workspace_to_s3:
                 root: .
-                archive: binaries.tar.gz
+                archive: << parameters.prefix >>binaries.tar.gz
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
