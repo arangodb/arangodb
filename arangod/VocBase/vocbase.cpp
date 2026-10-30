@@ -936,12 +936,6 @@ Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
 }
 
 #ifndef USE_ENTERPRISE
-void Database::addSmartGraphCollections(
-    std::shared_ptr<LogicalCollection> const& /*collection*/,
-    std::vector<std::shared_ptr<LogicalCollection>>& /*collections*/) const {
-  // nothing to be done here. more in EE version
-}
-
 Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};

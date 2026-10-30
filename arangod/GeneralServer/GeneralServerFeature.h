@@ -24,6 +24,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerOptions.h"
@@ -101,6 +103,10 @@ class GeneralServerFeature final
     return _options.startedListening;
   }
 
+  ResourceMonitor& decompressionMemory() noexcept {
+    return _decompressionMemory;
+  }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -127,6 +133,9 @@ class GeneralServerFeature final
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
   metrics::MetricsFeature& _metricsFeature;
+
+  GlobalResourceMonitor _decompressionGlobal;
+  ResourceMonitor _decompressionMemory{_decompressionGlobal};
 };
 
 }  // namespace arangodb

@@ -38,6 +38,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/vocbase.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
@@ -273,10 +274,12 @@ Result CreateCollection::createCollectionReplication1(
   }
 
   std::shared_ptr<LogicalCollection> col;
-  OperationOptions options;
-  auto res = Collections::createShard(
-      vocbase, options, shard, collectionType,
-      CollectionDescriptor::fromVelocyPack(properties), col);
+  auto res = basics::catchToResult([&]() -> Result {
+    OperationOptions options;
+    return Collections::createShard(
+        vocbase, options, shard, collectionType,
+        CollectionDescriptor::fromVelocyPack(properties), col);
+  });
   if (col) {
     LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
         << "local collection " << vocbase.name() << "/" << shard

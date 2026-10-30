@@ -29,6 +29,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Collection.h>
 

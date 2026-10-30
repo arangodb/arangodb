@@ -55,7 +55,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Indexes/IndexFactory.h"
 #include "Network/NetworkFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -81,32 +80,6 @@
 #include "velocypack/Slice.h"
 
 namespace {
-
-struct TestIndex : arangodb::Index {
-  TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
-            arangodb::velocypack::Slice const& definition)
-      : arangodb::Index(id, collection, definition) {}
-  bool canBeDropped() const override { return false; }
-  bool hasSelectivityEstimate() const override { return false; }
-  bool isHidden() const override { return false; }
-  bool isSorted() const override { return false; }
-  std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
-      arangodb::ResourceMonitor& /* monitor */,
-      arangodb::transaction::Methods* /* trx */,
-      arangodb::aql::AstNode const* /* node */,
-      arangodb::aql::Variable const* /* reference */,
-      arangodb::IndexIteratorOptions const& /* opts */, arangodb::ReadOwnWrites,
-      int) override {
-    return nullptr;
-  }
-  void load() override {}
-  size_t memory() const override { return sizeof(Index); }
-  arangodb::IndexType type() const override {
-    return arangodb::IndexType::Unknown;
-  }
-  char const* typeName() const override { return "testType"; }
-  void unload() override {}
-};
 
 class ReNormalizingAnalyzer final
     : public irs::analysis::TypedAnalyzer<ReNormalizingAnalyzer> {
@@ -1359,20 +1332,14 @@ class IResearchAnalyzerFeatureCoordinatorTest
   arangodb::DatabaseFeature& _databaseFeature;
   arangodb::SystemDatabaseFeature::ptr _system;
   TRI_vocbase_t* _vocbase;
-  arangodb::iresearch::IResearchAnalyzerFeature& _feature;
 
  protected:
   IResearchAnalyzerFeatureCoordinatorTest()
       : server("CRDN_0001"),
         _dbName("TestVocbase"),
         _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()),
-        _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
-        _feature(
-            server
-                .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+        _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::init();
-
-    // server.addFeature<arangodb::ViewTypesFeature>(true);
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -1396,127 +1363,66 @@ class IResearchAnalyzerFeatureCoordinatorTest
     }
   }
 
-  arangodb::iresearch::IResearchAnalyzerFeature& feature() {
-    // Cannot use TestAsserts here, only in void funtions
-    return _feature;
-  }
-
-  std::string sysName() const {
-    return arangodb::StaticStrings::SystemDatabase + shortName();
-  }
-
-  std::string specificName() const { return _dbName + shortName(); }
-  std::string shortName() const { return "::test_analyzer"; }
-
   TRI_vocbase_t* system() const { return _system.get(); }
-
-  TRI_vocbase_t* specificBase() const { return _vocbase; }
 };
 
-TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
-  // add index factory
-  {
-    struct IndexTypeFactory : public arangodb::IndexTypeFactory {
-      IndexTypeFactory(
-          arangodb::application_features::ApplicationServer& server)
-          : arangodb::IndexTypeFactory(server) {}
-
-      virtual bool equal(arangodb::velocypack::Slice lhs,
-                         arangodb::velocypack::Slice rhs,
-                         std::string const&) const override {
-        return false;
-      }
-
-      std::shared_ptr<arangodb::Index> instantiate(
-          arangodb::LogicalCollection& collection,
-          arangodb::velocypack::Slice definition, arangodb::IndexId id,
-          bool isClusterConstructor) const override {
-        EXPECT_TRUE(
-            collection.vocbase()
-                .server()
-                .hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
-        return std::make_shared<TestIndex>(id, collection, definition);
-      }
-
-      virtual arangodb::Result normalize(
-          arangodb::velocypack::Builder& normalized,
-          arangodb::velocypack::Slice definition, bool isCreation,
-          TRI_vocbase_t const& vocbase) const override {
-        EXPECT_TRUE(arangodb::iresearch::mergeSlice(normalized, definition));
-        return arangodb::Result();
-      }
-    };
-    static const IndexTypeFactory indexTypeFactory(server.server());
-    auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.getFeature<arangodb::StorageEngine>().indexFactory());
-    indexFactory.emplace("testType", indexTypeFactory);
-  }
-
+TEST_F(IResearchAnalyzerFeatureCoordinatorTest,
+       test_ensure_index_no_recursive_load_plan) {
   // get missing via link creation (coordinator) ensure no recursive
   // ClusterInfo::loadPlan() call
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  auto res = arangodb::methods::Collections::lookup(
+      *system(), arangodb::tests::AnalyzerCollectionName, logicalCollection);
+  ASSERT_TRUE(res.ok());
+  ASSERT_NE(nullptr, logicalCollection);
+
+  // simulate heartbeat thread
+  // We need this call BEFORE creation of collection if at all
   {
-    auto createCollectionJson =
-        VPackParser::fromJson(std::string("{ \"id\": 42, \"name\": \"") +
-                              arangodb::tests::AnalyzerCollectionName +
-                              "\", \"isSystem\": true, \"shards\": { }, "
-                              "\"type\": 2 }");  // 'id' and 'shards' required
-                                                 // for coordinator tests
-    auto collectionId = std::to_string(42);
-
-    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-
-    std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
-    auto res = arangodb::methods::Collections::lookup(
-        *system(), arangodb::tests::AnalyzerCollectionName, logicalCollection);
-    ASSERT_TRUE(res.ok());
-    ASSERT_NE(nullptr, logicalCollection);
-
-    // simulate heartbeat thread
-    // We need this call BEFORE creation of collection if at all
-    {
-      auto const colPath = "/Current/Collections/_system/" +
-                           std::to_string(logicalCollection->id().id());
-      auto const colValue = VPackParser::fromJson(
-          "{ \"s1337\": { \"indexes\": [ { "
-          "\"id\": \"43\" "
-          "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } "
-          "}");  // '1' must match 'idString' in
-                 // ClusterInfo::ensureIndexCoordinatorInner(...)
-      EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                      .setValue(colPath, colValue->slice(), 0.0)
-                      .successful());
-      auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
-          "\": { \"name\": \"testCollection\", "
-          "\"shards\": { \"s1337\": [ "
-          "\"same-as-dummy-shard-server\" ] } } } }");
-      EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                      .setValue(dummyPath, dummyValue->slice(), 0.0)
-                      .successful());
-      auto const versionPath = "/Plan/Version";
-      auto const versionValue =
-          VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
-      EXPECT_TRUE((arangodb::AgencyComm(server.server())
-                       .setValue(versionPath, versionValue->slice(), 0.0)
-                       .successful()));  // force loadPlan() update
-    }
-
-    arangodb::velocypack::Builder builder;
-    arangodb::velocypack::Builder tmp;
-
-    builder.openObject();
-    builder.add(arangodb::StaticStrings::IndexType,
-                arangodb::velocypack::Value("testType"));
-    builder.add(arangodb::StaticStrings::IndexFields,
-                arangodb::velocypack::Slice::emptyArraySlice());
-    builder.add("id", VPackValue("43"));
-    builder.close();
-    res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
-                                                  builder.slice(), true, tmp)
-              .waitAndGet();
-    EXPECT_TRUE(res.ok());
+    auto const colPath = "/Current/Collections/_system/" +
+                         std::to_string(logicalCollection->id().id());
+    auto const colValue = VPackParser::fromJson(
+        "{ \"s1337\": { \"indexes\": [ { "
+        "\"id\": \"43\" "
+        "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } "
+        "}");  // '1' must match 'idString' in
+               // ClusterInfo::ensureIndexCoordinatorInner(...)
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(colPath, colValue->slice(), 0.0)
+                    .successful());
+    auto const dummyPath = "/Plan/Collections";
+    auto const dummyValue = VPackParser::fromJson(
+        "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
+        "\": { \"name\": \"testCollection\", "
+        "\"shards\": { \"s1337\": [ "
+        "\"same-as-dummy-shard-server\" ] } } } }");
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(dummyPath, dummyValue->slice(), 0.0)
+                    .successful());
+    auto const versionPath = "/Plan/Version";
+    auto const versionValue =
+        VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
+    EXPECT_TRUE((arangodb::AgencyComm(server.server())
+                     .setValue(versionPath, versionValue->slice(), 0.0)
+                     .successful()));  // force loadPlan() update
   }
+
+  arangodb::velocypack::Builder builder;
+  arangodb::velocypack::Builder tmp;
+
+  builder.openObject();
+  builder.add(arangodb::StaticStrings::IndexType,
+              arangodb::velocypack::Value("persistent"));
+  builder.add(arangodb::StaticStrings::IndexFields,
+              VPackParser::fromJson("[\"value\"]")->slice());
+  builder.add("id", VPackValue("43"));
+  builder.close();
+  res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
+                                                builder.slice(), true, tmp)
+            .waitAndGet();
+  EXPECT_TRUE(res.ok());
 }
 
 // -----------------------------------------------------------------------------
