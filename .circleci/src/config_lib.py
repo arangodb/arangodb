@@ -807,6 +807,7 @@ class TestJob:
 class TestDefinitionFile:
     """Complete representation of a test definition YAML file."""
 
+    use_non_maintainer_build: bool = False
     jobs: Dict[str, TestJob]
 
     def __post_init__(self):
@@ -867,7 +868,7 @@ class TestDefinitionFile:
 
     @classmethod
     def from_dict(
-        cls, data: Union[Dict[str, Any], List[Dict[str, Any]]]
+            cls, data: Union[Dict[str, Any], List[Dict[str, Any]]]
     ) -> "TestDefinitionFile":
         """
         Create TestDefinitionFile from a dictionary or list.
@@ -898,7 +899,9 @@ class TestDefinitionFile:
                     "init_command": job_properties.get("init_command"),
                     "container_suffix": job_properties.get("container_suffix"),
                     "maven_cache": job_properties.get("maven_cache", False),
+                    "use_non_maintainer_build": job_properties.get("use_non_maintainer_build", False),
                 }
+                cls.use_non_maintainer_build = repo_config['use_non_maintainer_build']
 
             # Parse the tests list
             tests_data = data["tests"]
@@ -1027,3 +1030,4 @@ class BuildConfig:
     architecture: Architecture
     build_variant: BuildVariant = BuildVariant.NORMAL
     nightly: bool = False
+    publish_non_maintainer: bool = False
