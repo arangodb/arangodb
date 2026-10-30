@@ -1123,7 +1123,7 @@ jobs:
                     | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
                 root: .
-                archive: compile_commands.tar.gz
+                archive: << parameters.prefix >>compile_commands.tar.gz
                 paths: |
                   build/compile_commands.json
                   tidy-headers

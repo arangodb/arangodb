@@ -186,10 +186,12 @@ class CircleCIGenerator(OutputGenerator):
         Returns:
             List of build job names that tests depend on
         """
-        build_job = self._create_build_job(build_config)
-        frontend_job = self._create_frontend_build_job(build_config)
 
-        workflow["jobs"].append(build_job)
+        if not build_config.publish_non_maintainer:
+            build_job = self._create_build_job(build_config)
+            workflow["jobs"].append(build_job)
+
+        frontend_job = self._create_frontend_build_job(build_config)
         workflow["jobs"].append(frontend_job)
 
         # Add non-maintainer smoke build (non-instrumented builds only)
