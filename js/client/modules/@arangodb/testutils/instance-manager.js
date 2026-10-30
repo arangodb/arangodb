@@ -705,7 +705,7 @@ class instanceManager {
   readImportantLogLines (logPath) {
     let importantLines = {};
     this.arangods.forEach(arangod => {
-      let lines = arangod.readImportantLogLines();
+      let lines = arangod.readImportantLogLines([]);
       if (lines.length > 0) {
         importantLines[arangod.name] = lines;
       }

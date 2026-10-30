@@ -43,12 +43,5 @@ bool isApiVersionRequestable(ApiVersion version) {
   return requestable;
 }
 
-bool isApiVersionRegistrable(ApiVersion version) {
-  // version 1 may have been removed from the list of supported versions
-  // without the handler registrations being changed, so registration silently
-  // tolerates versions that requests cannot reach.
-  return isApiVersionRequestable(version) || version == experimentalApiVersion;
-}
-
 }  // namespace api_version
 }  // namespace arangodb

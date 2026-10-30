@@ -160,6 +160,10 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   /// decompress content
   Result handleContentEncoding(GeneralRequest&);
 
+  // HTTP status for a failed handleContentEncoding()
+  static rest::ResponseCode contentEncodingErrorCode(
+      Result const& res) noexcept;
+
  private:
   void handleRequestStartup(std::shared_ptr<RestHandler>);
   void handleRequestSync(std::shared_ptr<RestHandler>);

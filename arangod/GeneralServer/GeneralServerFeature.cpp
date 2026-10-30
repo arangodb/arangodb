@@ -362,12 +362,17 @@ void GeneralServerFeature::prepare() {
   // this initial factory only knows a few selected RestHandlers.
   // we will later create another RestHandlerFactory that knows
   // all routes.
-  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>();
   defineInitialHandlers(*hf);
   // make handler-factory read-only
   hf->seal();
 
   std::atomic_store(&_handlerFactory, std::move(hf));
+
+  uint64_t budget = _options.decompressedRequestBodyGlobalMemoryLimit;
+  TRI_ASSERT(budget == 0 || budget >= _options.maxDecompressedRequestBodySize);
+  _decompressionGlobal.memoryLimit(static_cast<std::int64_t>(
+      std::min<uint64_t>(budget, std::numeric_limits<std::int64_t>::max())));
 
   buildServers();
 
@@ -391,7 +396,7 @@ void GeneralServerFeature::start() {
   // create the full RestHandlerFactory that knows all the routes.
   // this will replace the previous, stripped-down RestHandlerFactory
   // instance.
-  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>();
 
   defineInitialHandlers(*hf);
   defineRemainingHandlers(*hf);

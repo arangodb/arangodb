@@ -52,7 +52,7 @@ class RestHandlerFactory {
       application_features::ApplicationServer&, GeneralRequest*,
       GeneralResponse*, void* data);
 
-  explicit RestHandlerFactory(ApiVersion maxApiVersion);
+  RestHandlerFactory();
 
   // creates a new handler; returns nullptr if no route matches
   std::shared_ptr<RestHandler> createHandler(
@@ -73,12 +73,21 @@ class RestHandlerFactory {
   void seal();
 
  private:
-  // list of constructors per API version
-  std::vector<std::unordered_map<std::string, std::pair<create_fptr, void*>>>
-      _constructors;
+  using HandlerMap =
+      std::unordered_map<std::string, std::pair<create_fptr, void*>>;
 
-  // list of prefix handlers per API version
-  std::vector<std::vector<std::string>> _prefixes;
+  struct VersionRoutes {
+    ApiVersion version;
+    HandlerMap constructors;
+    // sorted by length descending once sealed
+    std::vector<std::string> prefixes;
+  };
+
+  VersionRoutes* find(ApiVersion version);
+  VersionRoutes const* find(ApiVersion version) const;
+
+  // There are only ever a handful of versions, so a linear scan is enough.
+  std::vector<VersionRoutes> _routes;
 
   // whether or not handlers can be added (sealed = false)
   bool _sealed;

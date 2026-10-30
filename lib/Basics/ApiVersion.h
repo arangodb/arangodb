@@ -61,6 +61,21 @@ auto inspect(Inspector& f, ApiVersion& version) {
 namespace api_version {
 /// @brief Central configuration for API versioning
 
+// Every enumerator, whether or not it is currently supported.
+inline constexpr std::array allApiVersions{ApiVersion::V0, ApiVersion::V1,
+                                           ApiVersion::Experimental};
+
+static_assert(
+    [] {
+      for (unsigned i = 0; i < allApiVersions.size(); ++i) {
+        if (static_cast<unsigned>(allApiVersions[i]) != i) {
+          return false;
+        }
+      }
+      return allApiVersions.back() == ApiVersion::Experimental;
+    }(),
+    "allApiVersions must list every enumerator, in order and without gaps");
+
 // The list of all supported API versions (both stable and deprecated)
 inline constexpr std::array supportedApiVersions{ApiVersion::V0};
 
@@ -86,25 +101,10 @@ constexpr bool isApiVersionSupported(ApiVersion version) {
          supportedApiVersions.end();
 }
 
-// The highest version any handler may be registered for. Experimental is
-// included because it is routable even though it is not "supported".
-constexpr ApiVersion maxApiVersion() {
-  ApiVersion maxVersion = experimentalApiVersion;
-  for (ApiVersion version : supportedApiVersions) {
-    if (version > maxVersion) {
-      maxVersion = version;
-    }
-  }
-  return maxVersion;
-}
-
 // Whether an incoming request may ask for this version via /_arango/vX.
 // Deliberately excludes the experimental version: that is reached via
 // /_arango/experimental, never via its version number.
 bool isApiVersionRequestable(ApiVersion version);
-
-// Whether a handler may be registered for this version.
-bool isApiVersionRegistrable(ApiVersion version);
 
 }  // namespace api_version
 }  // namespace arangodb
