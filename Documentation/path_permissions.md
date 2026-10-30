@@ -272,7 +272,7 @@ return a `Result`, so that a decline can return the actual reason
  - `canModifyUserProfile(std::string_view user) -> Result`
  - `canGrantUserPermissions(std::string_view user) -> Result`
 
- - `canUseApiVersion(uint32_t version) -> Result`
+ - `canUseApiVersion(ApiVersion version) -> Result`
 
  - `isSuperuser() -> bool`
 
@@ -995,7 +995,7 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    | X  | GET    | `/_api/query/slow`                                           | RestQueryHandler           | own or canUseAdmin(MonitorAqlQueries)    | AUTHEN, own/AdminMonitorAqlQueries  | all DBs: _system + SUPER                 |                        |
 | X  |    | X  | GET    | `/_api/query/current`                                        | RestQueryHandler           | own or canUseAdmin(MonitorAqlQueries)    | AUTHEN, own/AdminMonitorAqlQueries  | all DBs: _system + SUPER                 |                        |
 | X  |    | X  | GET    | `/_api/query/properties`                                     | RestQueryHandler           | -                                        | AUTHEN                              |                                          |                        |
-| X  |    | X  | PUT    | `/_api/query/properties`                                     | RestQueryHandler           | canUseAdmin(AdminAqlQueries)             | AdminAqlQueries                     |                                          |                        |
+| X  |    | X  | PUT    | `/_api/query/properties`                                     | RestQueryHandler           | canUpdateQueryProperties(db)             | UpdateQueryProperties(db)           | classic: DB RW                           | Was: AdminAqlQueries   |
 | X  |    | X  | GET    | `/_api/query/registry`                                       | RestQueryHandler           | isSuperuser                              | SUPER                               |                                          |                        |
 | X  |    | X  | GET    | `/_api/query/rules`                                          | RestQueryHandler           | -                                        | AUTHEN                              |                                          |                        |
 | X  |    | X  | POST   | `/_api/query`                                                | RestQueryHandler           | -                                        | AUTHEN                              |                                          |                        |
