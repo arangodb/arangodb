@@ -37,8 +37,6 @@
 
 namespace arangodb {
 
-struct CollectionCreationInfo;
-
 namespace graph {
 
 class GraphManager {

@@ -36,6 +36,7 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "Mocks/StorageEngineMock.h"
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
@@ -241,8 +242,7 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
  public:
   IndexAggregateScanExecutorTest()
       : vocbase{_server->getSystemDatabase()},
-        collection{LogicalCollection{
-            vocbase, velocypack::Slice::emptyObjectSlice(), true}} {}
+        collection{LogicalCollection{vocbase, CollectionDescriptor{}, true}} {}
   auto registerInfos(RegIdSet registers) -> RegisterInfos {
     return RegisterInfos{{},         // readable input registers
                          registers,  // writable output registers

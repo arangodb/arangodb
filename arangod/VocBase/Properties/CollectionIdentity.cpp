@@ -32,7 +32,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 inspection::Status CollectionIdentity::Transformers::IdIdentifier::toSerialized(
     DataSourceId v, velocypack::Builder& result) const {
@@ -63,7 +63,7 @@ CollectionIdentity::Transformers::IdIdentifier::fromSerialized(
   return {"Expecting type String"};
 }
 
-[[nodiscard]] arangodb::Result
+[[nodiscard]] Result
 CollectionIdentity::applyDefaultsAndValidateDatabaseConfiguration(
     DatabaseConfiguration const& config) {
   if (id.empty()) {
@@ -71,3 +71,5 @@ CollectionIdentity::applyDefaultsAndValidateDatabaseConfiguration(
   }
   return {TRI_ERROR_NO_ERROR};
 }
+
+}  // namespace arangodb

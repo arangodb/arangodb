@@ -45,9 +45,6 @@ class ShardingFeature : public application_features::ApplicationFeature {
   void registerFactory(std::string const& name,
                        ShardingStrategy::FactoryFunction const&);
 
-  std::unique_ptr<ShardingStrategy> fromVelocyPack(
-      arangodb::velocypack::Slice slice, ShardingInfo* sharding);
-
   std::unique_ptr<ShardingStrategy> create(std::string const& name,
                                            ShardingInfo* sharding);
 
@@ -56,11 +53,6 @@ class ShardingFeature : public application_features::ApplicationFeature {
   /// persisted, so a descriptor read back from a marker has none.
   std::unique_ptr<ShardingStrategy> createOrDefault(
       std::optional<std::string> const& name, ShardingInfo* sharding);
-
-  /// @brief returns the name of the default sharding strategy for new
-  /// collections
-  std::string getDefaultShardingStrategyForNewCollection(
-      VPackSlice const& properties) const;
 
  private:
   /// @brief returns the name of the default sharding strategy for existing
