@@ -113,56 +113,71 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
 
   auto stats = ModificationStats{};
 
-  auto const maxRows =
-      std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
+  // Process as many batches as the current input range can fill. Returning
+  // HASMORE while rows remain in `_lastRange` would make ExecutionBlockImpl
+  // fetch a new upstream range and discard the unconsumed rows.
+  // AqlItemBlockInputRange::upstreamState() reports HASMORE whenever the
+  // current block still has data rows, even if the upstream query is already
+  // DONE — so a full batch alone must not trigger an upstream fetch.
+  while (true) {
+    auto const maxRows =
+        std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
 
-  // Read as much input as possible
-  while (input.hasDataRow() && _modifier->nrOfOperations() < maxRows) {
-    auto row = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second;
+    // Read as much input as possible for this batch
+    while (input.hasDataRow() && _modifier->nrOfOperations() < maxRows) {
+      auto row = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second;
 
-    TRI_ASSERT(row.isInitialized());
-    _modifier->accumulate(row);
-  }
-
-  bool const inputDone = input.upstreamState() == ExecutorState::DONE;
-  bool const enoughOutputAvailable = maxRows == _modifier->nrOfOperations();
-  bool const hasAtLeastOneModification = _modifier->nrOfOperations() > 0;
-
-  // outputFull => enoughOutputAvailable
-  TRI_ASSERT(produceOrSkipData.needMoreOutput() || enoughOutputAvailable);
-
-  if (!inputDone && !enoughOutputAvailable) {
-    // This case handles when there's still work to do, but no input in the
-    // current range.
-    TRI_ASSERT(!input.hasDataRow());
-
-    return {ExecutionState::HASMORE, stats, upstreamCall};
-  }
-
-  if (hasAtLeastOneModification) {
-    TRI_ASSERT(inputDone || enoughOutputAvailable);
-    ExecutionState modifierState = _modifier->transact(_trx);
-
-    if (modifierState == ExecutionState::WAITING) {
-      TRI_ASSERT(!ServerState::instance()->isSingleServer());
-      return {ExecutionState::WAITING, stats, upstreamCall};
+      TRI_ASSERT(row.isInitialized());
+      _modifier->accumulate(row);
     }
 
-    TRI_ASSERT(_modifier->hasResultOrException());
+    bool const inputDone = input.upstreamState() == ExecutorState::DONE;
+    bool const enoughOutputAvailable = maxRows == _modifier->nrOfOperations();
+    bool const hasAtLeastOneModification = _modifier->nrOfOperations() > 0;
 
-    _modifier->checkException();
-    if (_infos._doCount) {
-      stats.incrWritesExecuted(_modifier->nrOfWritesExecuted());
-      stats.incrWritesIgnored(_modifier->nrOfWritesIgnored());
+    // outputFull => enoughOutputAvailable
+    TRI_ASSERT(produceOrSkipData.needMoreOutput() || enoughOutputAvailable);
+
+    if (!inputDone && !enoughOutputAvailable) {
+      // This case handles when there's still work to do, but no input in the
+      // current range.
+      TRI_ASSERT(!input.hasDataRow());
+
+      return {ExecutionState::HASMORE, stats, upstreamCall};
     }
 
-    produceOrSkipData.doOutput();
-    _modifier->reset();
+    if (hasAtLeastOneModification) {
+      TRI_ASSERT(inputDone || enoughOutputAvailable);
+      ExecutionState modifierState = _modifier->transact(_trx);
+
+      if (modifierState == ExecutionState::WAITING) {
+        TRI_ASSERT(!ServerState::instance()->isSingleServer());
+        return {ExecutionState::WAITING, stats, upstreamCall};
+      }
+
+      TRI_ASSERT(_modifier->hasResultOrException());
+
+      _modifier->checkException();
+      if (_infos._doCount) {
+        stats.incrWritesExecuted(_modifier->nrOfWritesExecuted());
+        stats.incrWritesIgnored(_modifier->nrOfWritesIgnored());
+      }
+
+      produceOrSkipData.doOutput();
+      _modifier->reset();
+
+      // More rows remain in this range and the caller still wants output /
+      // fullCount skip — continue with another batch instead of returning
+      // HASMORE (which would replace the range).
+      if (input.hasDataRow() && produceOrSkipData.needMoreOutput()) {
+        continue;
+      }
+    }
+
+    TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
+
+    return {translateReturnType(input.upstreamState()), stats, upstreamCall};
   }
-
-  TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
-
-  return {translateReturnType(input.upstreamState()), stats, upstreamCall};
 }
 
 template<typename FetcherType, typename ModifierType>
