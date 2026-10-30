@@ -488,20 +488,31 @@ Collections::create(         // create collection
     OperationOptions const& options,
     ShardID const& name,              // shardName
     TRI_col_type_e collectionType,    // collection type
-    CollectionDescriptor descriptor,  // collection properties
+    CollectionDescriptor descriptor,  // the shard's properties, from the Plan
     std::shared_ptr<LogicalCollection>& ret) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(!vocbase.isDangling());
+  TRI_ASSERT(descriptor.identity.planId.isSet());
 
   // The descriptor comes from the Plan entry of the collection this shard
   // belongs to, so it carries that collection's properties but must not carry
-  // its identity: a shard is a data source of its own, and gets a fresh id,
-  // guid and objectId below. planId keeps the link to the collection.
+  // its identity: a shard is a data source of its own. Cleared here, then
+  // assigned by LogicalDataSource and the engine. planId keeps the link to
+  // the collection.
   descriptor.mutableProps.name = std::string{name};
   descriptor.constant.type = collectionType;
   descriptor.identity.id = DataSourceId::none();
   descriptor.identity.guid.clear();
   descriptor.storage.objectId = 0;
+
+  // validate computed values
+  if (auto res = ComputedValues::buildInstance(
+          vocbase, {}, descriptor.mutableProps.computedValues.slice(),
+          transaction::OperationOriginInternal{ComputedValues::moduleName});
+      res.fail()) {
+    events::CreateCollection(vocbase.name(), name, res.errorNumber());
+    return res.result();
+  }
 
   // serialized before the descriptor is handed over
   auto report = collectionCreateResponse(descriptor);

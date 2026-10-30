@@ -29,6 +29,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Collection.h>
 
@@ -152,8 +153,8 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 }
 
 auto MaintenanceActionExecutor::executeDropIndex(
-    std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
-    -> Result {
+    std::shared_ptr<LogicalCollection> col,
+    IndexId indexId) noexcept -> Result {
   auto res = basics::catchToResult([&] {
     return methods::Indexes::dropDBServer(*col, indexId).waitAndGet();
   });

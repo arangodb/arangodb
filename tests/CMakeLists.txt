@@ -285,6 +285,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/QuickGen.cpp
   VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
+  VocBase/CreateShardTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp

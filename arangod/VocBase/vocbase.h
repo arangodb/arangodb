@@ -207,7 +207,8 @@ struct Database {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
@@ -409,7 +410,7 @@ struct Database {
   arangodb::Result renameView(arangodb::DataSourceId cid,
                               std::string_view oldName);
 
-  /// @brief creates an array of new collections from parameter set.
+  /// @brief creates an array of new collections from the given descriptors.
   /// all descriptors are validated first. upon validation error, an exception
   /// is thrown. if all descriptors have passed validation, the collection
   /// objects will be created and registered, so that the collections can be
@@ -427,7 +428,7 @@ struct Database {
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
-  // TODO (COR965): delete this bridge function
+  // TODO (COR-965): delete this bridge function
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
@@ -485,14 +486,6 @@ struct Database {
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
 
  private:
-  /// @brief adds further SmartGraph-specific sub-collections to the vector of
-  /// collections if collection is a SmartGraph edge collection that requires
-  /// it. otherwise does nothing.
-  void addSmartGraphCollections(
-      std::shared_ptr<arangodb::LogicalCollection> const& collection,
-      std::vector<std::shared_ptr<arangodb::LogicalCollection>>& collections)
-      const;
-
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.
   void persistCollection(
