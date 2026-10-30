@@ -31,6 +31,7 @@
 #include "Basics/datetime.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -567,28 +568,9 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(IndexTypeCatalog const& catalog, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto normalizeType = [](VPackSlice s) -> std::string_view {
-    TRI_ASSERT(s.isString());
-    // "zkd" is the old naming for "mdi", so we have to treat these
-    // two type names as identical.
-    if (s.stringView() == "zkd") {
-      return "mdi";
-    }
-    return s.stringView();
-  };
-
-  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
-  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
-
-  if (lhsType != rhsType) {
-    return false;
-  }
-
-  return engine.indexFactory()
-      .factory(std::string{lhsType})
-      .equal(lhs, rhs, dbname);
+  return catalog.equal(lhs, rhs, dbname);
 }
 
 /// @brief return a contextual string for logging

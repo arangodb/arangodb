@@ -26,7 +26,6 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

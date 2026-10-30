@@ -702,10 +702,8 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*req); res.fail()) {
-    auto code = res.is(TRI_ERROR_RESOURCE_LIMIT)
-                    ? rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE
-                    : rest::ResponseCode::BAD;
-    this->sendErrorResponse(code, req->contentTypeResponse(), 1,
+    this->sendErrorResponse(this->contentEncodingErrorCode(res),
+                            req->contentTypeResponse(), messageId,
                             res.errorNumber(), res.errorMessage());
     return;
   }
