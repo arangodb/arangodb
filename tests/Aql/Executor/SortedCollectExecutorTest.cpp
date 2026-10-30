@@ -1059,4 +1059,56 @@ INSTANTIATE_TEST_CASE_P(SortedCollectExecutor, SortedCollectExecutorTestSplit,
                         ::testing::Values(splitIntoBlocks<2, 3>,
                                           splitIntoBlocks<3, 4>, splitStep<2>));
 
+// COLLECT AGGREGATE without group keys emits one row for empty input.
+// Once produced, this row must not be counted again during fullCount
+// fast-forward.
+TEST(SortedCollectExecutorEmptyAggregate,
+     produceThenFullCountDoesNotDoubleCount) {
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor};
+
+  mocks::MockAqlServer server{};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+  std::vector<std::string> aggregateTypes{"MAX"};
+  std::vector<std::pair<std::string, RegisterId>> variables;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+
+  auto registerInfos = RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, RegIdSet{},
+                                     RegIdSetStack{{}});
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister, nullptr,
+      std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
+
+  auto input = VPackParser::fromJson("[]");
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
+  SortedCollectExecutor testee(fetcher, executorInfos);
+
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
+
+  auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
+  ASSERT_EQ(ExecutorState::DONE, state);
+  ASSERT_EQ(1, result.numRowsWritten());
+  AqlValue aggregate = outputBlock->getValue(0, 1);
+  EXPECT_TRUE(aggregate.isNull(false));
+
+  AqlCall fullCountSkip{0, true, 0, AqlCall::LimitType::HARD};
+  auto [skipState, skipStats, skipped, skipCall] =
+      testee.skipRowsRange(inputRange, fullCountSkip);
+  EXPECT_EQ(ExecutorState::DONE, skipState);
+  EXPECT_EQ(0, skipped);
+}
+
 }  // namespace arangodb::tests::aql

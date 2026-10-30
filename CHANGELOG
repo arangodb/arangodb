@@ -640,9 +640,18 @@
   how large a compressed HTTP request body may be after decompression. The
   default is 512 MiB.
 
+<<<<<<< HEAD
 * COR-1086: Replaced deprecated OpenSSL functions with the proper newer, higher
   level envelope calls. Removed unused functions and refactored some minor parts
   of the SslInterface.
+=======
+* Fixed an issue where AQL COLLECT AGGREGATE without group keys reported an 
+  incorrect fullCount for empty input when used with LIMIT and {fullCount: true}. The single result row was counted twice: once when produced and again during the fullCount phase.
+
+* COR-1086: Replaced deprecated OpenSSL functions with the proper newer,
+  higher level envelope calls. Removed unused functions and refactored some
+  minor parts of the SslInterface.
+>>>>>>> 22ccce2adb4 (Fix fullCount double-counting for empty COLLECT AGGREGATE)
 
 * BTS-2308: Fixes miscalculation of soft, hard limits and allocated values in
   cache manager.
