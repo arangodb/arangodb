@@ -265,6 +265,7 @@ void optimizeCountRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         case EN::SUBQUERY:
         case EN::NORESULTS:
         case EN::SCATTER:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::REMOTE: {
           // these nodes neither multiply nor merge rows, so they are fine as
