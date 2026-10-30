@@ -1223,10 +1223,10 @@ class TestSanitizerSuffixInJobNames:
         )
 
     def test_rta_job_names_include_sanitizer_suffix(self):
-        """Test that RTA UI job names include sanitizer suffix."""
+        """Test that RTA job names include sanitizer suffix."""
         gen = self.create_generator()
         job = TestJob(
-            name="ui_tests",
+            name="UI",
             suites=[SuiteConfig(name="UserPageTestSuite")],
             options=TestOptions(),
             job_type="run-rta-tests",

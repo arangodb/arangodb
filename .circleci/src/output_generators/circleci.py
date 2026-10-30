@@ -488,12 +488,12 @@ class CircleCIGenerator(OutputGenerator):
         A single TestJob may result in multiple CircleCI jobs if:
         - Deployment type is None (both single and cluster)
         - Replication version 2 is enabled (additional cluster job)
-        - RTA UI tests (one job per deployment: SG, CL)
+        - RTA tests (one job per deployment: SG, CL)
 
         Returns:
             List of job definitions (excludes jobs with no suites after filtering)
         """
-        # Handle RTA UI tests specially - they generate multiple jobs
+        # Handle RTA tests specially - they generate multiple jobs
         if job.job_type == "run-rta-tests":
             return self._create_rta_test_jobs(job, build_config, build_jobs)
 
@@ -572,6 +572,25 @@ class CircleCIGenerator(OutputGenerator):
                     parts.append("true" if value else "false")
                 else:
                     parts.append(str(value))
+        return " ".join(parts)
+
+    @staticmethod
+    def _dict_to_python_args_string(args_dict: Dict[str, Any]) -> str:
+        """Convert args dict directly to space-separated command-line string."""
+        parts = []
+        for key, value in args_dict.items():
+            if key == "moreArgv":
+                # Special case: moreArgv value is appended directly
+                parts.append(str(value))
+            # Always append value (boolean values become "true"/"false" strings)
+            if isinstance(value, bool):
+                if value:
+                    parts.append(f"--{key}")
+                else:
+                    parts.append(f"--no-{key}")
+            else:
+                parts.append(f"--{key}")
+                parts.append(str(value))
         return " ".join(parts)
 
     @staticmethod
@@ -800,11 +819,14 @@ class CircleCIGenerator(OutputGenerator):
         result_jobs = []
         for deployment in deployments:
             job_dict = {
-                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
-                "suiteName": f"{deployment}-UI",
-                "arangosh_args": "",
+                "name": f"test-{deployment}-{job.name}-{build_config.architecture.value}{sanitizer_suffix}",
+                "suiteName": f"{deployment}-rta",
+                "arch": build_config.architecture.value,
+                "resource-class": self.sizer.get_resource_class(
+                    ResourceSize.CIRCLECI_LARGE, build_config.architecture
+                ),
+                "arangosh_args": self._dict_to_python_args_string(job.arguments.extra_args),
                 "deployment": "SG" if deployment == "single" else "CL",
-                "browser": "Remote_CHROME",
                 "enterprise": "EP",
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
