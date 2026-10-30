@@ -501,8 +501,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
-RocksDBIndexFactory::indexAliases(uint32_t apiVersion) const {
-  if (apiVersion == 0) {
+RocksDBIndexFactory::indexAliases(ApiVersion apiVersion) const {
+  if (apiVersion == ApiVersion::V0) {
     return {
         {"hash", "persistent"},
         {"skiplist", "persistent"},

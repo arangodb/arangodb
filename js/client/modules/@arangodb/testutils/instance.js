@@ -1053,6 +1053,15 @@ class instance {
     if (this.exitStatus === null) {
       return 'Not yet launched!';
     }
+    // try to find the assert line:
+    let assertLines = this.readImportantLogLines([
+      'a7902', // signal handler line
+      'a7902', // the assert line
+      '308c3'  // crash stack frame
+    ]);
+    assertLines.forEach(line => {
+      crashUtils.GDB_OUTPUT += line + "\n";
+    });
     return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -1337,7 +1346,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
-  readImportantLogLines () {
+  readImportantLogLines (findTheseLogIDs) {
     if (!fs.exists(fs.join(this.logFile))) {
       print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
       return [];
@@ -1351,7 +1360,14 @@ class instance {
       if (buf[j] === 10) { // \n
         const line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
-
+        if (findTheseLogIDs.length > 0) {
+          findTheseLogIDs.forEach(logid => {
+            if (line.search(logid) !== -1) {
+              fnLines.push(line);
+            }
+          });
+          continue;
+        }
         // filter out regular INFO lines, and test related messages
         let warn = line.search('WARNING about to execute:') !== -1;
         let info = line.search(' INFO ') !== -1;

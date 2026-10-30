@@ -367,11 +367,10 @@ void ArangodServer::addFeatures() {
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
 #ifdef USE_V8
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
+  if (operationMode == OperationMode::MODE_SCRIPT) {
+    addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(ScriptFeature))});
+  }
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
