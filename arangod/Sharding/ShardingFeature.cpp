@@ -187,5 +187,4 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::createOrDefault(
   return create(getDefaultShardingStrategy(sharding), sharding);
 }
 
-
 }  // namespace arangodb

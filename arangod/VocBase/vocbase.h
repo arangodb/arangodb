@@ -207,8 +207,7 @@ struct Database {
 
   template<typename As>
   As& engine() const noexcept
-    requires(std::derived_from<As, arangodb::StorageEngine>)
-  {
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
     TRI_ASSERT(dynamic_cast<As*>(&_engine) != nullptr);
     return static_cast<As&>(_engine);
   }
