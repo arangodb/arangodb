@@ -187,7 +187,7 @@ class CircleCIGenerator(OutputGenerator):
             List of build job names that tests depend on
         """
 
-        build_job_name = ""
+        build_job_name = "none"
         if not build_config.publish_non_maintainer:
             build_job = self._create_build_job(build_config)
             workflow["jobs"].append(build_job)
