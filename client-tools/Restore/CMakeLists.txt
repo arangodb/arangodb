@@ -27,6 +27,9 @@ target_link_libraries(${BIN_ARANGORESTORE}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGORESTORE} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGORESTORE} mimalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
