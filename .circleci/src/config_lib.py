@@ -899,7 +899,7 @@ class TestDefinitionFile:
                     "container_suffix": job_properties.get("container_suffix"),
                     "maven_cache": job_properties.get("maven_cache", False),
                 }
-                use_non_maintainer_build = job_properties.get("use_non_maintainer_build", False),
+                use_non_maintainer_build = job_properties.get("use_non_maintainer_build", False)
 
             # Parse the tests list
             tests_data = data["tests"]
