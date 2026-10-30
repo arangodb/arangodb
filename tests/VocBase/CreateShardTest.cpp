@@ -38,8 +38,7 @@
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-
+namespace arangodb {
 namespace {
 
 // A Plan entry as the maintenance hands it to createShard: the collection's
@@ -65,10 +64,9 @@ std::shared_ptr<velocypack::Builder> docket(std::string_view computedValues) {
 
 class CreateShardTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
-                                            arangodb::LogLevel::FATAL> {
+      public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
  protected:
-  arangodb::tests::mocks::MockDBServer server;
+  tests::mocks::MockDBServer server;
 
   CreateShardTest() : server("PRMR-1234") {}
 
@@ -112,3 +110,5 @@ TEST_F(CreateShardTest, refusesComputedValuesItCannotBuild) {
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_BAD_PARAMETER);
   EXPECT_EQ(shard, nullptr);
 }
+
+}  // namespace arangodb
