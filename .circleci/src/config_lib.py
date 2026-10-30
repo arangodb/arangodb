@@ -882,6 +882,7 @@ class TestDefinitionFile:
             TestDefinitionFile instance
         """
         jobs: Dict[str, TestJob] = {}
+        use_non_maintainer_build: bool = False
         repo_config = None
 
         # Check if this is the driver test format with 'jobProperties' and 'tests'
@@ -897,9 +898,8 @@ class TestDefinitionFile:
                     "init_command": job_properties.get("init_command"),
                     "container_suffix": job_properties.get("container_suffix"),
                     "maven_cache": job_properties.get("maven_cache", False),
-                    "use_non_maintainer_build": job_properties.get("use_non_maintainer_build", False),
                 }
-                cls.use_non_maintainer_build = repo_config['use_non_maintainer_build']
+                use_non_maintainer_build = use_non_maintainer_build or job_properties.get("use_non_maintainer_build", False),
 
             # Parse the tests list
             tests_data = data["tests"]
@@ -965,7 +965,7 @@ class TestDefinitionFile:
                 f"Test definition data must be a dict or list, got: {type(data)}"
             )
 
-        return cls(jobs=jobs)
+        return cls(jobs=jobs, use_non_maintainer_build=use_non_maintainer_build)
 
     def get_job_names(self) -> List[str]:
         """Get sorted list of all job names."""
