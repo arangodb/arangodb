@@ -53,7 +53,7 @@ TEST_F(ClusterIndexFactoryTest, edgeIndexCannotBeCreatedDirectly) {
         IndexType::Edge, ctx);
     FAIL() << "expected an exception";
   } catch (basics::Exception const& ex) {
-    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_BAD_PARAMETER);
   }
 }
 
@@ -71,6 +71,6 @@ TEST_F(ClusterIndexFactoryTest, primaryIndexCannotBeCreatedDirectly) {
         IndexType::Primary, ctx);
     FAIL() << "expected an exception";
   } catch (basics::Exception const& ex) {
-    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_BAD_PARAMETER);
   }
 }
