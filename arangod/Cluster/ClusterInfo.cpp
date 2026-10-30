@@ -869,7 +869,8 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has
     // changed
-    collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
+    collection = vocbase.createCollectionObject(
+        CollectionDescriptor::fromVelocyPack(data), /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
 
     if (countCache != transaction::CountCache::kNotPopulated) {
@@ -2478,8 +2479,8 @@ ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::ignore = _agencyCache.get(collectionsBuilder, collectionsPath);
   auto collectionsSlice = collectionsBuilder.slice();
   for (auto const& [cid, colData] : VPackObjectIterator(collectionsSlice)) {
-    auto collection =
-        database.createCollectionObject(colData, /*isAStub*/ true);
+    auto collection = database.createCollectionObject(
+        CollectionDescriptor::fromVelocyPack(colData), /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     result.emplace(collection->name(), collection);
   }

@@ -160,13 +160,6 @@ class StorageEngine : public application_features::ApplicationFeature {
                                  bool includeIndexes,
                                  TRI_voc_tick_t maxTick) = 0;
 
-  // fill the Builder object with an array of collections (and their
-  // corresponding indexes) that were detected by the storage engine. called at
-  // server start separately for each database
-  virtual ErrorCode getCollectionsAndIndexes(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-      bool wasCleanShutdown, bool isUpgrade) = 0;
-
   virtual ErrorCode getViews(TRI_vocbase_t& vocbase,
                              arangodb::velocypack::Builder& result) = 0;
 

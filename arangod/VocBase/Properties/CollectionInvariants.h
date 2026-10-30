@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "VocBase/voc-types.h"
 
 #include <optional>
@@ -41,6 +43,8 @@ struct CollectionInvariants {
   bool isSmartChild{false};
 
   std::optional<std::string> smartJoinAttribute;
+  std::optional<replication2::agency::CollectionGroupId> groupId;
+  std::optional<replication2::LogId> replicatedStateId;
 
   bool operator==(CollectionInvariants const&) const = default;
 };
