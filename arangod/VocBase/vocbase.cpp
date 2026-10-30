@@ -341,16 +341,6 @@ bool Database::dropCollectionCallback(LogicalCollection& collection) {
 
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> Database::createCollectionObject(
-    velocypack::Slice data, bool isAStub) {
-  // every collection object on coordinators must be a stub
-  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
-  // collection objects on single servers must not be stubs
-  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
-
-  return std::make_shared<LogicalCollection>(*this, data, isAStub);
-}
-
-std::shared_ptr<LogicalCollection> Database::createCollectionObject(
     CollectionDescriptor descriptor, bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
@@ -755,15 +745,6 @@ std::shared_ptr<LogicalView> Database::lookupView(
     return nullptr;
   }
   return basics::downCast<LogicalView>(std::move(ptr));
-}
-
-std::shared_ptr<LogicalCollection> Database::createCollection(
-    velocypack::Slice parameters) {
-  if (!parameters.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "collection parameters should be an object");
-  }
-  return createCollection(CollectionDescriptor::fromVelocyPack(parameters));
 }
 
 std::shared_ptr<LogicalCollection> Database::createCollection(

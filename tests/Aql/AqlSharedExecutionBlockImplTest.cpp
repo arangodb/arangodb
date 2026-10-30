@@ -24,6 +24,7 @@
 
 #include "AqlItemBlockHelper.h"
 #include "ExecutorTestHelper.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
@@ -93,10 +94,10 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       server.createFakeQuery(false, "", [&](aql::Query& query) {
         if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
           // Create dummy collection
-          auto info =
-              VPackParser::fromJson(R"({"name": ")" + collectionName + R"("})");
+          auto colDescriptor =
+              arangodb::tests::testCollectionDescriptor(collectionName);
           auto collection =
-              server.getSystemDatabase().createCollection(info->slice());
+              server.getSystemDatabase().createCollection(colDescriptor);
           //"Failed to create collection";
           TRI_ASSERT(collection.get() != nullptr);
           auto& collections = query.collections();

@@ -27,6 +27,7 @@
 #include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndexDefinition.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -68,10 +69,11 @@ class RocksDBIndexFactoryTest : public ::testing::Test {
     ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 
-  std::shared_ptr<LogicalCollection> createCollection(char const* json) {
-    auto collectionJson = velocypack::Parser::fromJson(json);
+  std::shared_ptr<LogicalCollection> createCollection(
+      std::string name, TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT) {
     return mockServer.getSystemDatabase().createCollection(
-        collectionJson->slice());
+        tests::testCollectionDescriptor(std::move(name), DataSourceId::none(),
+                                        type));
   }
 
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
@@ -142,7 +144,7 @@ TEST_F(RocksDBIndexFactoryTest, edgeAndPrimaryNormalizeErrorCodes) {
 }
 
 TEST_F(RocksDBIndexFactoryTest, edgeIndexCannotBeCreatedDirectly) {
-  auto collection = createCollection(R"({"name": "edges", "type": 3})");
+  auto collection = createCollection("edges", TRI_COL_TYPE_EDGE);
 
   auto definition =
       velocypack::Parser::fromJson(R"({"type": "edge", "fields": ["_from"]})");
@@ -157,7 +159,7 @@ TEST_F(RocksDBIndexFactoryTest, edgeIndexCannotBeCreatedDirectly) {
 }
 
 TEST_F(RocksDBIndexFactoryTest, primaryIndexCannotBeCreatedDirectly) {
-  auto collection = createCollection(R"({"name": "docs"})");
+  auto collection = createCollection("docs");
 
   auto definition = velocypack::Parser::fromJson(R"({"type": "primary"})");
   IndexCreationContext ctx{*collection, definition->slice(), IndexId{1},

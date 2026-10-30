@@ -27,6 +27,7 @@
 #include "Aql/QueryHelper.h"
 #include "Aql/RowFetcherHelper.h"
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 
 #include "Aql/AqlCall.h"
@@ -70,7 +71,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
   TRI_vocbase_t& vocbase;
-  std::shared_ptr<VPackBuilder> json;
+  arangodb::CollectionDescriptor colDescriptor;
   std::shared_ptr<LogicalCollection> collection;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
@@ -93,10 +94,11 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
       : AqlExecutorTestCase(),
         itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
-        json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
+        colDescriptor(
+            arangodb::tests::testCollectionDescriptor("UnitTestCollection")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(json->slice())),
+                       : vocbase.createCollection(colDescriptor)),
         outVariable("name", 1, false, resourceMonitor),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
@@ -255,7 +257,7 @@ class EnumerateCollectionExecutorTestProduce
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;
-  std::shared_ptr<VPackBuilder> json;
+  arangodb::CollectionDescriptor colDescriptor;
   std::shared_ptr<LogicalCollection> collection;
 
   SharedAqlItemBlockPtr block;
@@ -276,10 +278,11 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorTestProduce()
       : itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
-        json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
+        colDescriptor(
+            arangodb::tests::testCollectionDescriptor("UnitTestCollection")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(json->slice())),
+                       : vocbase.createCollection(colDescriptor)),
         outVariable("name", 1, false, monitor),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),

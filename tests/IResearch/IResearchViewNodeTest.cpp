@@ -30,6 +30,7 @@
 #include "velocypack/Iterator.h"
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -3345,25 +3346,25 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection0", arangodb::DataSourceId{42});
+    collection0 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection0);
   }
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection1\", \"id\" : \"4242\"  }");
-    collection1 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection1", arangodb::DataSourceId{4242});
+    collection1 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection1);
   }
 
   // create collection2
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection2\" , \"id\" : \"424242\" }");
-    ASSERT_NE(nullptr, vocbase.createCollection(createJson->slice()));
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection2", arangodb::DataSourceId{424242});
+    ASSERT_NE(nullptr, vocbase.createCollection(colDescriptor));
   }
 
   // create view
@@ -3439,9 +3440,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   // create collection0
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection0", arangodb::DataSourceId{42});
+    collection0 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3713,16 +3714,16 @@ class IResearchViewVolatitlityTest
     EXPECT_NE(nullptr, vocbase);
     std::shared_ptr<arangodb::LogicalCollection> collection0;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection0", arangodb::DataSourceId{42});
+      collection0 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection0);
     }
     std::shared_ptr<arangodb::LogicalCollection> collection1;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\", \"id\" : \"43\" }");
-      collection1 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection1", arangodb::DataSourceId{43});
+      collection1 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection1);
     }
     arangodb::LogicalView::ptr logicalView0;
@@ -4131,9 +4132,9 @@ class IResearchViewBlockTest
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> collection0;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection0", arangodb::DataSourceId{42});
+      collection0 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection0);
     }
     auto createJson = arangodb::velocypack::Parser::fromJson(

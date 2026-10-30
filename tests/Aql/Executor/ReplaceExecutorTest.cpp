@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryHelper.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "gtest/gtest.h"
 
@@ -53,8 +54,9 @@ class ReplaceExecutorTest : public testing::Test {
 
   void SetUp() override {
     SCOPED_TRACE("Setup");
-    auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(info->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("UnitTestCollection");
+    auto collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     // Insert Documents
     std::string insertQuery =
@@ -137,8 +139,9 @@ class ReplaceExecutorIntegrationTest : public testing::TestWithParam<size_t> {
 
   void SetUp() override {
     SCOPED_TRACE("Setup");
-    auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(info->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("UnitTestCollection");
+    auto collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     size_t numDocs = GetParam();
     // Insert Documents
