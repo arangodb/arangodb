@@ -311,7 +311,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, databaseName).waitAndGet();
+            abortOrSoftAbortManagedTrx(tid, databaseName);
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -1350,6 +1350,35 @@ void Manager::iterateManagedTrx(
   }
 }
 
+Result Manager::abortOrSoftAbortManagedTrx(TransactionId tid,
+                                           std::string const& database) {
+  Result res = abortManagedTrx(tid, database).waitAndGet();
+  if (res.is(TRI_ERROR_LOCKED)) {
+    // The transaction is still in use after waiting for it. if it's left it
+    // may never get aborted. The lock remains here until expiry.
+    if (softAbortManagedTrx(tid)) {
+      LOG_TOPIC("1f9e5", INFO, Logger::TRANSACTIONS)
+          << "soft-aborting transaction " << tid << " which is in use";
+    }
+  }
+  return res;
+}
+
+bool Manager::softAbortManagedTrx(TransactionId tid) noexcept {
+  size_t bucket = getBucket(tid);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+  auto it = _transactions[bucket]._managed.find(tid);
+  if (it == _transactions[bucket]._managed.end() ||
+      it->second.type != MetaType::Managed) {
+    return false;
+  }
+  // returnManagedTrx() aborts the transaction when it finds this value, and
+  // garbageCollect() aborts it as an expired transaction otherwise
+  it->second.expiryTime = 0;
+  return true;
+}
+
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1485,8 +1514,13 @@ bool Manager::abortSelectedTrx(std::vector<SelectedTrx> const& selected) {
   for (auto const& trx : selected) {
     Result res = updateAuthorizedTransaction(trx.tid, Status::ABORTED,
                                              /*clearSrvs*/ true);
-    if (res.fail() &&
-        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // the transaction was selected, but is in use now. make sure it does
+      // not survive its current user
+      softAbortManagedTrx(trx.tid);
+    } else if (res.fail() &&
+               !res.is(
+                   TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)
           << "error aborting transaction " << trx.tid << ": "
           << res.errorMessage();
