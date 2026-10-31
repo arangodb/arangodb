@@ -100,10 +100,11 @@ GenerateBoolAttributeTest(ClusteringMutablePropertiesTest, waitForSync);
 
 GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
                                      replicationFactor);
-GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
-                                     writeConcern);
+// NOTE: Inspect() parses a zero, but applyDefaultsAndValidate() rejects it,
+// which is tested in the CreateCollectionRequestTest.
+GenerateIntegerAttributeTest(ClusteringMutablePropertiesTest, writeConcern);
 GeneratePositiveIntegerAttributeTestInternal(ClusteringMutablePropertiesTest,
                                              minReplicationFactor, writeConcern,
-                                             false);
+                                             true);
 
 }  // namespace arangodb::tests

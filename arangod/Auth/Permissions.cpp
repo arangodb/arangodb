@@ -150,6 +150,9 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
             os << "UseDatabase name=" << p.name
                << " level=" << to_string(p.level);
           },
+          [&](UpdateQueryProperties const& p) {
+            os << "UpdateQueryProperties db=" << p.db;
+          },
 
           // collections
           [&](SeeCollection const& p) {

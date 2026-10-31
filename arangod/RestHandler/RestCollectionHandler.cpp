@@ -45,7 +45,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
@@ -371,7 +372,8 @@ async<void> RestCollectionHandler::handleCommandPost() {
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection = CreateCollectionBody::fromCreateAPIBody(body, config);
+  auto planCollection =
+      CreateCollectionRequest::fromCreateAPIBody(body, config);
 
   if (planCollection.fail()) {
     // error message generated in inspect
@@ -386,17 +388,18 @@ async<void> RestCollectionHandler::handleCommandPost() {
                              planCollection.errorNumber());
     co_return;
   }
-  std::vector<CreateCollectionBody> collections{
-      std::move(planCollection.get())};
+  std::vector<CollectionDescriptor> collections{
+      std::move(planCollection->descriptor)};
+
+  // isNewDatabase, allowEnterpriseCollectionsOnSingleServer and isRestore keep
+  // their defaults
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.waitForSyncReplication = waitForSyncReplication;
+  internalOptions.enforceReplicationFactor = enforceReplicationFactor;
 
   OperationOptions options;
   auto result = methods::Collections::create(
-      _vocbase,  // collection vocbase
-      options, collections,
-      waitForSyncReplication,    // replication wait flag
-      enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false    // here always false
-  );
+      _vocbase, options, collections, internalOptions, planCollection->options);
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
@@ -467,16 +470,13 @@ async<void> RestCollectionHandler::handleCommandPut() {
   TRI_ASSERT(coll);
 
   if (sub == "compact") {
-    // We only enforce WriteMeta access here if the API version is higher
-    // than 0 for backwards compatibility:
-    if (_request.get()->requestedApiVersion() > 0) {
-      if (auto r = ExecContext::current().canUseCollection(
-              _vocbase.name(), coll->name(), AccessLevel::WriteMeta);
-          r.fail()) {
-        generateError(r);
-        co_return;
-      }
+    if (auto r = ExecContext::current().canUseCollection(
+            _vocbase.name(), coll->name(), AccessLevel::WriteMeta);
+        r.fail()) {
+      generateError(r);
+      co_return;
     }
+
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();
       // while this call is technically blocking, the requests to the
@@ -679,14 +679,9 @@ async<void> RestCollectionHandler::handleCommandPut() {
 
   auto resExtra = co_await handleExtraCommandPut(coll, sub, _builder);
   if (resExtra.is(TRI_ERROR_NOT_IMPLEMENTED)) {
-    std::string msg = "expecting one of the actions ";
-    if (_request->requestedApiVersion() == 0) {
-      msg += "'load', 'unload', ";
-    }
     resExtra.reset(TRI_ERROR_HTTP_NOT_FOUND,
-                   msg +
-                       "'truncate', 'properties', 'compact', 'rename', "
-                       "'loadIndexesIntoMemory'");
+                   "expecting one of the actions 'truncate', 'properties', "
+                   "'compact', 'rename', 'loadIndexesIntoMemory'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
     generateError(resExtra);
@@ -715,13 +710,10 @@ async<void> RestCollectionHandler::handleCommandDelete() {
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
 
-  // From API V1 we only allow collection names here:
-  if (request()->requestedApiVersion() > 0) {
-    if (auto r = auth::isNameAndNoId(name); r.fail()) {
-      events::DropCollection(_vocbase.name(), name, r.errorNumber());
-      generateError(r);
-      co_return;
-    }
+  if (auto r = auth::isNameAndNoId(name); r.fail()) {
+    events::DropCollection(_vocbase.name(), name, r.errorNumber());
+    generateError(r);
+    co_return;
   }
 
   // Note that this check will be done in methods::Collections::drop below

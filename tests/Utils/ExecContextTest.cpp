@@ -32,6 +32,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 using namespace arangodb;
@@ -130,24 +131,24 @@ TEST(ExecContextTest, canUseApiVersion_classic_grants_every_version) {
   auto cec = makeClassicExecContext("user", "mydb", auth::Level::NONE,
                                     auth::Level::NONE);
 
-  EXPECT_TRUE(cec.execContext->canUseApiVersion(0).ok());
-  EXPECT_TRUE(cec.execContext->canUseApiVersion(1).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::V1).ok());
+  EXPECT_TRUE(cec.execContext->canUseApiVersion(ApiVersion::Experimental).ok());
 }
 
 TEST(ExecContextTest, canUseApiVersion_superuser_grants_every_version) {
   auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
                                      VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canUseApiVersion(1).ok());
+  EXPECT_TRUE(ctx->canUseApiVersion(ApiVersion::V1).ok());
 }
 
 TEST(ExecContextTest, canUseApiVersion_unauthenticated_is_denied) {
   auto ctx = createSharedExecContext(
       AuthMode{AuthMode::Unauthenticated{"dummy"}}, false, VocbasePtr{nullptr});
 
-  auto const result = ctx->canUseApiVersion(1);
+  auto const result = ctx->canUseApiVersion(ApiVersion::V1);
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
-  EXPECT_TRUE(result.errorMessage().find("API version '1'") !=
+  EXPECT_TRUE(result.errorMessage().find("API version 'v1'") !=
               std::string_view::npos)
       << result.errorMessage();
 }
@@ -277,17 +278,22 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
 // canMonitorTransaction, canKillTransaction ---
 
 /**
- * RBAC service that records the actions it is asked about and answers with a
- * programmable result
+ * RBAC service that records the actions it is asked about, the databases
+ * those questions name, and answers with a programmable result
  */
 struct RecordingRbacService final : rbac::Service {
   std::vector<rbac::Action> actions;
+  std::vector<std::string> databases;
   Result answer{};
 
   auto check(rbac::JwtToken const& /*token*/,
              std::span<rbac::ActionResource const> queries) -> Result override {
     for (auto const& query : queries) {
       actions.push_back(query.action);
+      if (auto const* database =
+              std::get_if<rbac::resources::Database>(&query.resource)) {
+        databases.emplace_back(database->name);
+      }
     }
     return answer;
   }
@@ -367,8 +373,8 @@ TEST_P(OwnerScopedCheckTest, unauthenticated_is_denied_even_for_own_name) {
 TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "alice").ok());
   EXPECT_TRUE(service.actions.empty());
@@ -377,8 +383,8 @@ TEST_P(OwnerScopedCheckTest, rbac_does_not_ask_for_own_resource) {
 TEST_P(OwnerScopedCheckTest, rbac_asks_the_admin_action_for_foreign_resource) {
   RecordingRbacService service;
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_TRUE(check(*ctx, "bob").ok());
   EXPECT_EQ(service.actions, std::vector<rbac::Action>{GetParam().action});
@@ -388,8 +394,8 @@ TEST_P(OwnerScopedCheckTest, rbac_denial_is_forwarded) {
   RecordingRbacService service;
   service.answer = {TRI_ERROR_FORBIDDEN, "denied by test service"};
   auto const ctx = createSharedExecContext(
-      AuthMode{AuthMode::Rbac{service, "alice", "token", 0}}, false,
-      VocbasePtr{nullptr});
+      AuthMode{AuthMode::Rbac{service, "alice", "token", ApiVersion::V1}},
+      false, VocbasePtr{nullptr});
 
   EXPECT_FALSE(check(*ctx, "bob").ok());
 }
@@ -410,39 +416,37 @@ INSTANTIATE_TEST_SUITE_P(
       return std::string{info.param.name};
     });
 
-// --- canChangeQueryProperties ---
+// --- canUpdateQueryProperties ---
 
-TEST(ExecContextTest,
-     canChangeQueryProperties_database_write_access_is_not_enough) {
+TEST(ExecContextTest, canUpdateQueryProperties_database_write_access_suffices) {
   auto const cec =
       makeClassicExecContext("alice", "db", auth::Level::NONE, auth::Level::RW);
 
-  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
-            TRI_ERROR_FORBIDDEN);
+  EXPECT_TRUE(cec.execContext->canUpdateQueryProperties("db").ok());
 }
 
-TEST(ExecContextTest, canChangeQueryProperties_read_access_is_not_enough) {
+TEST(ExecContextTest, canUpdateQueryProperties_read_access_is_not_enough) {
   auto const cec =
       makeClassicExecContext("bob", "db", auth::Level::NONE, auth::Level::RO);
 
-  EXPECT_EQ(cec.execContext->canChangeQueryProperties("db").errorNumber(),
+  EXPECT_EQ(cec.execContext->canUpdateQueryProperties("db").errorNumber(),
             TRI_ERROR_FORBIDDEN);
 }
 
 TEST(ExecContextTest,
-     canChangeQueryProperties_admin_may_without_database_write_access) {
-  // classic admin = read-write access to the _system database
+     canUpdateQueryProperties_admin_without_database_write_access_may_not) {
   auto const cec =
       makeClassicExecContext("carol", "db", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_TRUE(cec.execContext->canChangeQueryProperties("db").ok());
+  EXPECT_EQ(cec.execContext->canUpdateQueryProperties("db").errorNumber(),
+            TRI_ERROR_FORBIDDEN);
 }
 
-TEST(ExecContextTest, canChangeQueryProperties_superuser_may) {
+TEST(ExecContextTest, canUpdateQueryProperties_superuser_may) {
   auto const ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}},
                                            false, VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx->canChangeQueryProperties("db").ok());
+  EXPECT_TRUE(ctx->canUpdateQueryProperties("db").ok());
 }
 
 }  // namespace arangodb::tests
