@@ -29,6 +29,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Collection.h>
 
@@ -69,7 +70,8 @@ auto MaintenanceActionExecutor::executeCreateCollection(
   auto res = basics::catchToResult([&]() -> Result {
     OperationOptions options;
     return methods::Collections::createShard(
-        _vocbase, options, shard, collectionType, properties.slice(), col);
+        _vocbase, options, shard, collectionType,
+        CollectionDescriptor::fromVelocyPack(properties.slice()), col);
   });
 
   LOG_CTX("ef1bc", DEBUG, _loggerContext)

@@ -38,6 +38,9 @@ struct CollectionIndexesProperties {
 
   static CollectionIndexesProperties defaultIndexesForCollectionType(
       TRI_col_type_e type);
+
+  // velocypack::Builder has no operator==, so the slices are compared instead.
+  bool operator==(CollectionIndexesProperties const& other) const;
 };
 
 template<class Inspector>

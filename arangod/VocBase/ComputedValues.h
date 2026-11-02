@@ -46,7 +46,7 @@ namespace aql {
 struct AstNode;
 class Expression;
 class ExpressionContext;
-class QueryContext;
+class CalculationQueryContext;
 struct Variable;
 }  // namespace aql
 
@@ -155,7 +155,7 @@ class ComputedValues {
     bool _overwrite;
     bool _failOnWarning;
     bool _keepNull;
-    std::unique_ptr<aql::QueryContext> _queryContext;
+    std::unique_ptr<arangodb::aql::CalculationQueryContext> _queryContext;
 
     std::unique_ptr<aql::Expression> _expression;
     // temporary variable we will use for injecting the bind
