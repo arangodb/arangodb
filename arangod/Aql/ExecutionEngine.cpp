@@ -716,9 +716,10 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   }
 #endif
 
-  LOG_TOPIC("f0cle", INFO, Logger::QUERIES)
-      << "memory old=" << _query.resourceMonitor().current()
-      << "memory new=" << _query.resourceMonitor().monitorRef.get()->actualBytes();
+  LOG_TOPIC("f0c1e", INFO, Logger::QUERIES)
+      << " memory old: " << _query.resourceMonitor().current()
+      << " memory new: "
+      << _query.resourceMonitor().monitorRef.get()->actualBytes();
   return res;
 }
 

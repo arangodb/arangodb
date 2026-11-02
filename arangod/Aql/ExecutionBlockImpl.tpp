@@ -45,6 +45,7 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <absl/strings/str_cat.h>
@@ -1009,7 +1010,10 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       if (shouldSchedule) {
         bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
-            [block = this, task = _prefetchTask]() mutable {
+            [block = this, task = _prefetchTask,
+             monitor =
+                 _engine->getQuery().resourceMonitor().monitorRef]() mutable {
+              infra::ResourceMonitorScope memoryScope(std::move(monitor));
               TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
                 // We need to simulate that we are not picking up this task.
                 // So we simply continue sleeping until the failure point is
@@ -2690,7 +2694,8 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared()) {}
+      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared(),
+              block._engine->getQuery().resourceMonitor().monitorRef) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2732,8 +2737,10 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    std::shared_ptr<ExecContext const> execContext) {
+    std::shared_ptr<ExecContext const> execContext,
+    infra::ResourceMonitorRef monitor) {
   ExecContextScope scope(execContext);
+  infra::ResourceMonitorScope memoryScope(std::move(monitor));
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {
