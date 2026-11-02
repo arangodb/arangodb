@@ -115,6 +115,20 @@
             http: true
             suffix: http
 
+- shell_client_http2:
+    options:
+      priority: 250
+      type: single
+    suites:
+      - shell_client_http2:
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_http2:
+          args:
+            http: true
+            suffix: http
+
 - shell_client_hot_backup_traffic_multi:
     options:
       priority: 250
