@@ -27,7 +27,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "Mocks/Servers.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -37,14 +36,6 @@
 #include <vector>
 
 using namespace arangodb;
-
-namespace {
-
-struct DisabledVectorIndexProvider final : IVectorIndexProvider {
-  bool isVectorIndexEnabled() const noexcept override { return false; }
-};
-
-}  // namespace
 
 class IndexTypeCatalogTest : public ::testing::Test {
  protected:
@@ -57,11 +48,10 @@ class IndexTypeCatalogTest : public ::testing::Test {
 
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
-  DisabledVectorIndexProvider vectorIndexProvider;
   // must outlive catalog
   iresearch::IResearchInvertedIndexDefinition invertedDefinition{
       mockServer.server()};
-  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  IndexTypeCatalog catalog{mockServer.server()};
 };
 
 TEST_F(IndexTypeCatalogTest, resolvesBuiltInNamesToIndexTypes) {
@@ -94,18 +84,9 @@ TEST_F(IndexTypeCatalogTest, unknownNamesResolveToUnknown) {
             IndexType::Unknown);
 }
 
-TEST_F(IndexTypeCatalogTest, aliasesForApiVersion0) {
+TEST_F(IndexTypeCatalogTest, aliases) {
   using Alias = std::pair<std::string_view, std::string_view>;
-  EXPECT_EQ(
-      catalog.aliases(ApiVersion::V0),
-      (std::vector<Alias>{
-          {"hash", "persistent"}, {"skiplist", "persistent"}, {"zkd", "mdi"}}));
-}
-
-TEST_F(IndexTypeCatalogTest, aliasesForApiVersion1) {
-  using Alias = std::pair<std::string_view, std::string_view>;
-  EXPECT_EQ(catalog.aliases(ApiVersion::V1),
-            (std::vector<Alias>{{"zkd", "mdi"}}));
+  EXPECT_EQ(catalog.aliases(), (std::vector<Alias>{{"zkd", "mdi"}}));
 }
 
 TEST_F(IndexTypeCatalogTest, geo2EqualChecksGeoJson) {

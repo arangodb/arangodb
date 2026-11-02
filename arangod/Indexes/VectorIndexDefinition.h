@@ -26,20 +26,12 @@
 
 namespace arangodb {
 
-struct IVectorIndexProvider;
-
 struct VectorIndexDefinition : public IndexDefinition {
-  explicit VectorIndexDefinition(
-      IVectorIndexProvider const& vectorIndexProvider)
-      : IndexDefinition(IndexType::Vector),
-        _vectorIndexProvider(vectorIndexProvider) {}
+  explicit VectorIndexDefinition() : IndexDefinition(IndexType::Vector) {}
 
   Result normalize(velocypack::Builder& normalized,
                    velocypack::Slice definition, bool isCreation,
                    Database const& vocbase) const override;
-
- protected:
-  IVectorIndexProvider const& _vectorIndexProvider;
 };
 
 }  // namespace arangodb

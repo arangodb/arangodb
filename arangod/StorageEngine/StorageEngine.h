@@ -63,7 +63,6 @@ class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
 struct IDatabaseBootstrap;
-struct IVectorIndexProvider;
 struct CollectionStorageProperties;
 
 namespace rest {
@@ -103,7 +102,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the factory is set by the engine: it needs this base's catalog first
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                IVectorIndexProvider const& vectorIndexProvider,
                 IDatabaseProvider& databaseProvider,
                 IDatabaseBootstrap& databaseBootstrap);
   ~StorageEngine() override;

@@ -30,7 +30,6 @@
 #include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -43,10 +42,6 @@
 using namespace arangodb;
 
 namespace {
-
-struct DisabledVectorIndexProvider final : IVectorIndexProvider {
-  bool isVectorIndexEnabled() const noexcept override { return false; }
-};
 
 size_t countObjectId(velocypack::Slice normalized) {
   size_t count = 0;
@@ -78,11 +73,10 @@ class RocksDBIndexFactoryTest : public ::testing::Test {
 
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
-  DisabledVectorIndexProvider vectorIndexProvider;
   // must outlive catalog
   iresearch::IResearchInvertedIndexDefinition invertedDefinition{
       mockServer.server()};
-  IndexTypeCatalog catalog{mockServer.server(), vectorIndexProvider};
+  IndexTypeCatalog catalog{mockServer.server()};
   RocksDBIndexFactory factory{mockServer.server(), catalog};
 };
 

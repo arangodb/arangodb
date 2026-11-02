@@ -55,11 +55,4 @@ void CalculationQueryContext::resetRuntimeClock() {
   _startTime = aql::currentSteadyClockValue();
 }
 
-void CalculationQueryContext::enterV8Executor() {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "CalculationQueryContext: entering V8 executor is not implemented");
-}
-
 }  // namespace arangodb::aql

@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
+#include "Indexes/DeprecatedSecondaryIndexDefinition.h"
 #include "Indexes/EdgeIndexDefinition.h"
 #include "Indexes/FulltextIndexDefinition.h"
 #include "Indexes/Geo1IndexDefinition.h"
@@ -51,7 +51,6 @@ class ApplicationServer;
 }  // namespace application_features
 
 struct Database;
-struct IVectorIndexProvider;
 
 namespace velocypack {
 class Builder;
@@ -69,8 +68,7 @@ struct TransparentStringHash {
 // Index type names and equal/normalize rules, shared by both engines.
 class IndexTypeCatalog final {
  public:
-  IndexTypeCatalog(application_features::ApplicationServer& server,
-                   IVectorIndexProvider const& vectorIndexProvider);
+  IndexTypeCatalog(application_features::ApplicationServer& server);
 
   [[nodiscard]] IndexType resolve(std::string_view name) const noexcept;
 
@@ -90,7 +88,7 @@ class IndexTypeCatalog final {
                            std::string const& dbname) const;
 
   [[nodiscard]] std::vector<std::pair<std::string_view, std::string_view>>
-  aliases(ApiVersion apiVersion) const;
+  aliases() const;
 
   // definition must outlive the catalog
   [[nodiscard]] Result add(std::string_view name,
@@ -105,9 +103,9 @@ class IndexTypeCatalog final {
   GeoIndexDefinition _geo;
   Geo1IndexDefinition _geo1;
   Geo2IndexDefinition _geo2;
-  SecondaryIndexDefinition _hash;
   SecondaryIndexDefinition _persistent;
-  SecondaryIndexDefinition _skiplist;
+  DeprecatedSecondaryIndexDefinition _hash;
+  DeprecatedSecondaryIndexDefinition _skiplist;
   PrimaryIndexDefinition _primary;
   TtlIndexDefinition _ttl;
   MdiIndexDefinition _zkd;

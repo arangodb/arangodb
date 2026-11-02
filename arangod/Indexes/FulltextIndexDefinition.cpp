@@ -35,6 +35,12 @@ Result FulltextIndexDefinition::normalize(velocypack::Builder& normalized,
                                           velocypack::Slice definition,
                                           bool isCreation,
                                           Database const& /*vocbase*/) const {
+  if (isCreation) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "fulltext indexes are no longer supported since ArangoDB "
+                  "4.0. Please use ArangoSearch instead.");
+  }
+
   TRI_ASSERT(normalized.isOpenObject());
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(IndexType::Fulltext)));

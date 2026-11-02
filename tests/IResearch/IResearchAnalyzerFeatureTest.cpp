@@ -34,10 +34,12 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Mocks/Auth/UserManagerTester.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Cluster/ClusterFeature.h"

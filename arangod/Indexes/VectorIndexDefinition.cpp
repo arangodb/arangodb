@@ -25,7 +25,6 @@
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -37,12 +36,6 @@ Result VectorIndexDefinition::normalize(velocypack::Builder& normalized,
                                         bool isCreation,
                                         Database const& /*vocbase*/) const {
   TRI_ASSERT(normalized.isOpenObject());
-
-  if (!_vectorIndexProvider.isVectorIndexEnabled()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "vector index feature is not enabled. Run ArangoDB with "
-            "`--vector-index` flag turned on."};
-  }
 
   normalized.add(StaticStrings::IndexType,
                  velocypack::Value(Index::oldtypeName(_type)));

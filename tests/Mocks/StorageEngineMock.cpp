@@ -25,38 +25,28 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
-#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/asio_ns.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchInvertedIndex.h"
-#include "IResearch/IResearchLinkCoordinator.h"
-#include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexTypeCatalog.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/IDatabaseProvider.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ticks.h"
 #include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
@@ -68,10 +58,6 @@
 #include <velocypack/Slice.h>
 
 namespace {
-
-struct NoVectorIndexProvider : arangodb::IVectorIndexProvider {
-  bool isVectorIndexEnabled() const noexcept override { return false; }
-};
 
 struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
@@ -216,14 +202,10 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-// the engine's catalog keeps a reference to this, so it must be static
-static NoVectorIndexProvider const kNoVectorIndexProvider;
-
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "Mock", kNoVectorIndexProvider, _dbProvider,
-                    _dbProvider),
+    : StorageEngine(server, "Mock", "Mock", _dbProvider, _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
   setIndexFactory(std::unique_ptr<arangodb::IndexFactory>(

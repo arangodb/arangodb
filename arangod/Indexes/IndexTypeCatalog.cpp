@@ -34,14 +34,13 @@
 using namespace arangodb;
 
 IndexTypeCatalog::IndexTypeCatalog(
-    application_features::ApplicationServer& server,
-    IVectorIndexProvider const& vectorIndexProvider)
-    : _hash(IndexType::Hash),
-      _persistent(IndexType::Persistent),
-      _skiplist(IndexType::Skiplist),
+    application_features::ApplicationServer& server)
+    : _persistent(IndexType::Persistent),
+      _hash(IndexType::Hash, "hash"),
+      _skiplist(IndexType::Skiplist, "skiplist"),
       _zkd(IndexType::Zkd),
       _mdi(IndexType::MDI),
-      _vector(vectorIndexProvider) {
+      _vector() {
   // a definition is registered under its persisted name, see Index::oldtypeName
   auto reg = [&](IndexDefinition const& definition) {
     _byName.try_emplace(std::string{Index::oldtypeName(definition.type())},
@@ -117,14 +116,7 @@ bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
-IndexTypeCatalog::aliases(ApiVersion apiVersion) const {
-  if (apiVersion == ApiVersion::V0) {
-    return {
-        {"hash", "persistent"},
-        {"skiplist", "persistent"},
-        {"zkd", "mdi"},
-    };
-  }
+IndexTypeCatalog::aliases() const {
   return {{"zkd", "mdi"}};
 }
 

@@ -48,14 +48,12 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             IVectorIndexProvider const& vectorIndexProvider,
                              IDatabaseProvider& databaseProvider,
                              IDatabaseBootstrap& databaseBootstrap)
     : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _databaseBootstrap(databaseBootstrap),
-      _indexTypeCatalog(
-          std::make_unique<IndexTypeCatalog>(server, vectorIndexProvider)),
+      _indexTypeCatalog(std::make_unique<IndexTypeCatalog>(server)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at

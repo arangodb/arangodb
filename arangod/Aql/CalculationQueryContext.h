@@ -86,8 +86,6 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 
   bool isAsyncQuery() const noexcept override { return false; }
 
-  void enterV8Executor() override;
-
  private:
   arangodb::aql::QueryOptions _queryOptions;
   arangodb::CollectionNameResolver _resolver;

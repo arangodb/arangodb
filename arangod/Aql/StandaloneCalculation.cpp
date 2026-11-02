@@ -25,18 +25,14 @@
 #include "Aql/Ast.h"
 #include "Aql/CalculationQueryContext.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
-#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
-
-using namespace arangodb;
-using namespace arangodb::aql;
 
 namespace arangodb::aql {
 

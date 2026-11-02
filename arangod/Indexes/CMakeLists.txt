@@ -1,5 +1,6 @@
 add_library(arango_indexes STATIC
   EdgeIndexDefinition.cpp
+  DeprecatedSecondaryIndexDefinition.cpp
   FulltextIndexDefinition.cpp
   Geo1IndexDefinition.cpp
   Geo2IndexDefinition.cpp
@@ -30,7 +31,7 @@ target_link_libraries(arango_indexes
     faiss
   PRIVATE
     date_interface)
-  
+
 target_include_directories(arango_indexes
     PUBLIC ${IRESEARCH_INCLUDE}
 )
