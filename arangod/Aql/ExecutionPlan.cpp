@@ -25,6 +25,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Ast/ParseModificationOptions.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
@@ -1155,9 +1156,12 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
     std::string_view operationName, AstNode const* node) {
-  ModificationOptions options = parseModificationOptions(
-      _ast->query(), operationName, node, /*addWarnings*/ true);
-  return options;
+  auto parseResult = ast::parseModificationOptions(operationName, node);
+
+  for (auto&& [errorReason, operationName, name] : parseResult.warnings) {
+    invalidOptionAttribute(_ast->query(), errorReason, operationName, name);
+  }
+  return parseResult.options;
 }
 
 /// @brief create COLLECT options from an AST node
