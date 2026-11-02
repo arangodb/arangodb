@@ -156,7 +156,7 @@ request as it arrives on the wire is limited separately.)");
               &options.decompressedRequestBodyGlobalMemoryLimit),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(31213)
+      .setIntroducedIn(31214)
       .setLongDescription(R"(Each compressed request body (gzip, deflate or lz4)
 reserves its decompressed size from this budget until the request is finished.
 Requests that would exceed the budget are rejected with HTTP 503 and can be
