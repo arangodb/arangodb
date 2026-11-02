@@ -87,7 +87,7 @@ class CalculationExecutorTest
 
   CalculationExecutorTest()
       : itemBlockManager(monitor),
-        ast(*fakedQuery.get()),
+        ast(*fakedQuery.get(), resourceMonitor),
         one(ast.createNodeValueInt(1)),
         var("a", 0, false, resourceMonitor),
         a(::initializeReference(ast, var)),

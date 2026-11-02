@@ -91,8 +91,9 @@ class Ast {
   Ast& operator=(Ast const&) = delete;
 
   /// @brief create the AST
-  explicit Ast(QueryContext&, AstPropertiesFlagsType flags =
-                                  AstPropertyFlag::AST_FLAG_DEFAULT);
+  explicit Ast(
+      QueryContext&, ResourceMonitor& resourceMonitor,
+      AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT);
 
   /// @brief destroy the AST
   ~Ast();
@@ -751,6 +752,8 @@ class Ast {
 
   /// @brief the query
   QueryContext& _query;
+
+  ResourceMonitor& _resourceMonitor;
 
   AstResources _resources;
 

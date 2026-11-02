@@ -292,7 +292,7 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -326,7 +326,7 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -372,7 +372,7 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -418,7 +418,7 @@ TEST_F(IndexAggregateScanExecutorTest, groups_by_several_index_fields) {
   auto groupRegisterId_1 = 2;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -470,7 +470,7 @@ TEST_F(IndexAggregateScanExecutorTest, aggregates_different_columns) {
   auto aggregationRegisterId_0 = 1;
   auto aggregationRegisterId_1 = 2;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable_0 = ast.variables()->createTemporaryVariable();
   auto aggregationVariable_1 = ast.variables()->createTemporaryVariable();
   auto aggregationExpression_0 =
@@ -530,7 +530,7 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto aggregationRegisterId_0 = 1;
   auto aggregationRegisterId_1 = 2;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -582,7 +582,7 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable_0 = ast.variables()->createTemporaryVariable();
   auto aggregationVariable_1 = ast.variables()->createTemporaryVariable();
   // doc.a + doc.b
@@ -642,7 +642,7 @@ TEST_F(IndexAggregateScanExecutorTest, skip) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -675,7 +675,7 @@ TEST_F(IndexAggregateScanExecutorTest, hard_limit) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -708,7 +708,7 @@ TEST_F(IndexAggregateScanExecutorTest, soft_limit) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -741,7 +741,7 @@ TEST_F(IndexAggregateScanExecutorTest, fullcount) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -774,7 +774,7 @@ TEST_F(IndexAggregateScanExecutorTest, skip_produce_fullcount) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
@@ -807,7 +807,7 @@ TEST_F(IndexAggregateScanExecutorTest, skip_too_much) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
-  auto ast = Ast{*fakedQuery.get()};
+  auto ast = Ast{*fakedQuery.get(), fakedQuery->resourceMonitor()};
   auto aggregationVariable = ast.variables()->createTemporaryVariable();
   auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 

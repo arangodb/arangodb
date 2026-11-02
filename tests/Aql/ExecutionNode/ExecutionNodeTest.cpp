@@ -60,7 +60,7 @@ class ExecutionNodeTest : public ::testing::Test {
  public:
   ExecutionNodeTest()
       : fakedQuery(server.createFakeQuery()),
-        ast(*fakedQuery.get()),
+        ast(*fakedQuery.get(), resourceMonitor),
         plan(&ast, false) {}
 };
 
