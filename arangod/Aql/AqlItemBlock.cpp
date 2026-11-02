@@ -66,7 +66,8 @@ inline void copyValueOver(ValueCopyCache& cache, AqlValue const& a,
         b.destroy();
         throw;
       }
-      cache.emplace(a.data(), b.data());
+      cache.emplace(a.data(),
+                    b.data());  // so later cells sharing the same pointer reuse
     } else {
       res->setValue(rowNumber, col, AqlValue(a, (*it).second));
     }
@@ -512,14 +513,12 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            // the stolen value moves into `res` as-is, so the target payload
-            // is the source payload
-            auto [it, inserted] = cache.emplace(a.data(), a.data());
-            res->setValue(row, col, AqlValue(a, (*it).second));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            // shadow rows are always clones of data, no referencing is
+            // possible, therefore no cache/dedup step is needed here
+            // a shared pointer across columns is still safe since setValue's
+            // _valueCount refcounts it
+            res->setValue(row, col, a);
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }
