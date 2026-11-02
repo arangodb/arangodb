@@ -1,7 +1,0 @@
-[chapter Topics
-    [quickbook 1.7]
-]
-
-[include calling.qbk]
-[include pickle.qbk]
-[include indexing.qbk]

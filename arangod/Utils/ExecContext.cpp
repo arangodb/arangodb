@@ -565,10 +565,10 @@ Result ExecContext::canKillQuery(std::string_view queryUser) const {
 }
 
 /// @brief returns true if the query properties of the given database
-/// may be changed
-Result ExecContext::canChangeQueryProperties(std::string_view db) const {
+/// may be updated
+Result ExecContext::canUpdateQueryProperties(std::string_view db) const {
   using namespace auth::perms;
-  if (auto r = can(AdminAqlQueries{}); r.fail()) {
+  if (auto r = can(UpdateQueryProperties{.db{db}}); r.fail()) {
     return r;
   }
   if (auto r = checkNotReadOnly(); r.fail()) {
@@ -653,7 +653,7 @@ Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
 }
 
 /// @brief returns whether the given REST API version may be used
-Result ExecContext::canUseApiVersion(uint32_t version) const {
+Result ExecContext::canUseApiVersion(ApiVersion version) const {
   using namespace auth::perms;
   // Using an API version never modifies anything, so the read-only gate does
   // not apply here.

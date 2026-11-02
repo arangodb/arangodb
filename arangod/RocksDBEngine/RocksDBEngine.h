@@ -218,8 +218,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       LogicalCollection& collection,
       LocalStorageProperties const& storage) override;
 
-  void getCapabilities(velocypack::Builder& builder,
-                       uint32_t apiVersion) const override;
+  void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const override;

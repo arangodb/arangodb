@@ -25,6 +25,7 @@
 #include "Assertions/ProdAssert.h"
 #include "Auth/AuthMode.h"
 #include "Auth/Permissions.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -251,8 +252,8 @@ class ExecContext {
   [[nodiscard]] Result canKillQuery(std::string_view queryUser) const;
 
   /// @brief returns true if the query properties of the given
-  /// database may be changed
-  [[nodiscard]] Result canChangeQueryProperties(std::string_view db) const;
+  /// database may be updated
+  [[nodiscard]] Result canUpdateQueryProperties(std::string_view db) const;
 
   /// @brief returns true if the transaction of the given user may be seen
   /// (listed, or its state requested). Own transactions always may be; other
@@ -287,7 +288,7 @@ class ExecContext {
   /// @brief returns whether the given REST API version may be used, e.g. 1 for
   /// `/_arango/v1`. Note that this does not ask whether the version exists -
   /// that is decided by the handler factory.
-  Result canUseApiVersion(uint32_t version) const;
+  Result canUseApiVersion(ApiVersion version) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {

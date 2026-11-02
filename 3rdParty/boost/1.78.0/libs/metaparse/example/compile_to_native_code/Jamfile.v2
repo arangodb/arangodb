@@ -1,1 +1,0 @@
-exe compile_to_native_code :  main.cpp ;

@@ -279,6 +279,53 @@ function optimizerRuleReplaceEqualAttributeAccess() {
       });
 
       assertEqual(_.uniq(vars).length, 3);
+    },
+
+    testModificationDocumentsAreNotReplacedByKey: function () {
+      const source = db._create("Source");
+      const target = db._create("Target");
+      try {
+        const keys = ["a", "b", "c"];
+        source.insert(keys.map((k) => ({_key: k, value: k})));
+
+        // the document operands need the whole document, not only its key
+        let res = db._query(`
+          FOR k IN @keys
+            FOR d IN Source
+              FILTER d._key == k
+              INSERT d INTO Target
+              RETURN NEW.value`, {keys}, options).toArray();
+        assertEqual(keys, res.sort());
+
+        res = db._query(`
+          FOR k IN @keys
+            FOR d IN Source
+              FILTER d._key == k
+              UPDATE d IN Target
+              RETURN NEW.value`, {keys}, options).toArray();
+        assertEqual(keys, res.sort());
+
+        target.truncate({compact: false});
+        res = db._query(`
+          FOR k IN @keys
+            FOR d IN Source
+              FILTER d._key == k
+              UPSERT {_key: d._key} INSERT d UPDATE d IN Target
+              RETURN NEW.value`, {keys}, options).toArray();
+        assertEqual(keys, res.sort());
+
+        // the lookup key alone can be taken from the equal variable
+        res = db._query(`
+          FOR k IN @keys
+            FOR d IN Source
+              FILTER d._key == k
+              UPDATE d WITH {updated: true} IN Target
+              RETURN [NEW.value, NEW.updated]`, {keys}, options).toArray();
+        assertEqual(keys.map((k) => [k, true]), res.sort());
+      } finally {
+        db._drop("Target");
+        db._drop("Source");
+      }
     }
   };
 }

@@ -22,16 +22,6 @@
 
 #pragma once
 
-#include <atomic>
-#include <concepts>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
-
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -45,6 +35,16 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <concepts>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace application_features {
@@ -97,7 +97,6 @@ struct DatabaseConfiguration;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -272,8 +271,7 @@ struct Database {
   decltype(auto) sharding() const { return _info.sharding(); }
   bool isOneShard() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    uint32_t apiVersion) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
@@ -421,7 +419,7 @@ struct Database {
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
@@ -444,10 +442,16 @@ struct Database {
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
 
-  /// @brief validate a collection descriptor before it is used to create a
-  /// collection.
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
   arangodb::Result validateCollectionDescriptor(
-      arangodb::CollectionDescriptor const& descriptor);
+      CollectionDescriptor const& descriptor);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
@@ -505,11 +509,6 @@ struct Database {
   /// in community edition or if the collection is not a SmartGraph collection.
   arangodb::Result validateExtendedCollectionParameters(
       arangodb::velocypack::Slice parameters);
-
-  /// @brief checks the licence for SmartGraph collections. does nothing in
-  /// community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateEnterpriseLicense(
-      CollectionDescriptor const& descriptor);
 
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.

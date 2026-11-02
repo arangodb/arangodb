@@ -252,6 +252,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/ApiVersionTest.cpp
   Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
@@ -373,7 +374,9 @@ target_link_libraries(arangodbtests
   rocksdb
   snappy
   gtest
-  boost_boost
+  Boost::container
+  Boost::core
+  Boost::lockfree
   velocypack_utils
 )
 

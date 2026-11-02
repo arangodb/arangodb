@@ -1,4 +1,0 @@
-Increasing number of strings with 64 length.
-Measured on a Linux-3.13.0-24-generic-x86_64-with-Ubuntu-14.04-trusty host with 16 GB memory. Compiler used: gcc 4.8.5.
-
-[$images/metaparse/number_gcc_4.8.5.png [width 100%]]

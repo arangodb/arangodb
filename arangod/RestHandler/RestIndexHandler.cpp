@@ -922,18 +922,16 @@ async<void> RestIndexHandler::createIndex() {
     co_return;
   }
 
-  if (_request->requestedApiVersion() > 0) {
-    if (auto const typeStr = type.stringView();
-        typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
-        typeStr == "skiplist" || typeStr == "fulltext") {
-      events::CreateIndexEnd(_vocbase.name(), cName, body,
-                             TRI_ERROR_BAD_PARAMETER);
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-          absl::StrCat("index type '", typeStr,
-                       "' is not supported in API version 1 or higher"));
-      co_return;
-    }
+  if (auto const typeStr = type.stringView();
+      typeStr == "geo1" || typeStr == "geo2" || typeStr == "hash" ||
+      typeStr == "skiplist" || typeStr == "fulltext") {
+    events::CreateIndexEnd(_vocbase.name(), cName, body,
+                           TRI_ERROR_BAD_PARAMETER);
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("index type '", typeStr,
+                     "' is not supported in API version 1 or higher"));
+    co_return;
   }
 
   VPackBuilder indexInfo;
@@ -1043,8 +1041,7 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
-  if (_request->requestedApiVersion() > 0 &&
-      ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "Not implemented on coordinators!");

@@ -541,7 +541,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
 /// @brief index name aliases (e.g. "zkd" => "mdi") used to display storage
 /// engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
-RocksDBIndexFactory::indexAliases(uint32_t apiVersion) const {
+RocksDBIndexFactory::indexAliases() const {
   return {{"zkd", "mdi"}};
 }
 

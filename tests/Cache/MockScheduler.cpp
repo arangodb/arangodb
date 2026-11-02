@@ -25,7 +25,7 @@
 #include <thread>
 #include <vector>
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include "Basics/asio_ns.h"
 
@@ -36,7 +36,7 @@ using namespace arangodb::cache;
 struct MockScheduler::Impl {
   explicit Impl(std::size_t threads)
       : _ioService(new asio_ns::io_context()),
-        _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
+        _serviceGuard(asio_ns::make_work_guard(*_ioService)) {
     for (std::size_t i = 0; i < threads; i++) {
       auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
                                   &asio_ns::io_context::run),
@@ -52,9 +52,9 @@ struct MockScheduler::Impl {
     }
     _ioService->stop();
   }
-  typedef std::unique_ptr<asio_ns::io_context::work> asio_worker;
   std::unique_ptr<asio_ns::io_context> _ioService;
-  std::unique_ptr<asio_ns::io_context::work> _serviceGuard;
+  boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
+      _serviceGuard;
   std::vector<std::thread*> _group;
 };
 
@@ -63,6 +63,6 @@ MockScheduler::MockScheduler(std::size_t threads)
 
 MockScheduler::~MockScheduler() = default;
 
-void MockScheduler::post(std::function<void()> fn) {
-  _impl->_ioService->post(fn);
+void MockScheduler::post(std::function<void()> fn) const {
+  asio_ns::post(*_impl->_ioService, fn);
 }

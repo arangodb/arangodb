@@ -70,9 +70,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
@@ -829,7 +828,6 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
     events::CreateCollection(dbName, name, res.errorNumber());
     THROW_ARANGO_EXCEPTION(res);
   }
-
   try {
     auto collection =
         createCollectionObject(std::move(descriptor), /*isAStub*/ false);
@@ -860,7 +858,7 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
 
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 Database::createCollections(
-    std::vector<arangodb::CreateCollectionBody> const& collections,
+    std::vector<arangodb::CollectionDescriptor> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -878,13 +876,7 @@ Database::createCollections(
   // typed path: hand the properties down as a descriptor instead of
   // serializing them and parsing them again
   try {
-    std::vector<CollectionDescriptor> descriptors;
-    descriptors.reserve(collections.size());
-    for (auto const& c : collections) {
-      descriptors.emplace_back(c.toDescriptor());
-    }
-
-    auto result = createCollections(std::move(descriptors));
+    auto result = createCollections(std::move(collections));
 
     if (ServerState::instance()->isSingleServer() &&
         _server.hasFeature<DatabaseFeature>()) {
@@ -1078,30 +1070,26 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
   return validateExtendedCollectionParameters(parameters);
 }
 
-Result Database::validateCollectionDescriptor(
-    CollectionDescriptor const& descriptor) {
-  auto const& name = descriptor.mutableProps.name;
+Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
   if (auto res = CollectionNameValidator::validateName(
-          descriptor.constant.isSystem, extendedNames(), name);
+          d.constant.isSystem, extendedNames(), d.mutableProps.name);
       res.fail()) {
     return res;
   }
 
-  auto collectionType = descriptor.constant.getType();
-  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+  auto type = d.constant.getType();
+  if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
     return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-            "invalid collection type for collection '" + name + "'"};
+            "invalid collection type for collection '" +
+                std::string{d.mutableProps.name} + "'"};
   }
 
-  if (auto status =
-          CollectionDescriptor::Invariants::isSmartConfiguration(descriptor);
+  if (auto status = CollectionDescriptor::Invariants::isSmartConfiguration(d);
       !status.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, status.error()};
   }
 
-  // needed for EE
-  return validateEnterpriseLicense(descriptor);
+  return validateEnterpriseLicense(d);
 }
 
 #ifndef USE_ENTERPRISE
@@ -1564,7 +1552,7 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
+void Database::toVelocyPack(VPackBuilder& result) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
 }
@@ -1788,8 +1776,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   DatabaseConfiguration config{
       std::move(idGenerator),
-      [this](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      [this](std::string const& name) -> ResultT<CollectionDescriptor> {
         CollectionNameResolver resolver{*this};
         auto c = resolver.getCollection(name);
         if (c == nullptr) {
@@ -1797,7 +1784,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                         absl::StrCat("Collection not found: ", name,
                                      " in database ", this->name())};
         }
-        return c->getCollectionProperties();
+        return c->properties();
       }};
 
   config.isSystemDB = isSystem();
