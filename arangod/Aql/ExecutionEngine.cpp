@@ -57,6 +57,7 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
 #include "ExecutionNode/IndexNode.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -694,6 +695,7 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
 
   TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
     _query.debugKillQuery();
@@ -713,6 +715,10 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
     TRI_ASSERT(block == nullptr);
   }
 #endif
+
+  LOG_TOPIC("f0cle", INFO, Logger::QUERIES)
+      << "memory old=" << _query.resourceMonitor().current()
+      << "memory new=" << _query.resourceMonitor().monitorRef.get()->actualBytes();
   return res;
 }
 
@@ -722,6 +728,7 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
 
   auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
   if (rootBlock == nullptr) {

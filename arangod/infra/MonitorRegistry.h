@@ -65,4 +65,6 @@ struct MonitorRegistry {
   std::atomic<ResourceMonitorBase*> _head{nullptr};
 };
 
+MonitorRegistry& globalMonitorRegistry() noexcept;
+
 }  // namespace arangodb::infra

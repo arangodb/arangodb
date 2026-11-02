@@ -25,6 +25,10 @@
 
 namespace arangodb::infra {
 
+namespace {
+constinit MonitorRegistry gMonitorRegistry;
+}
+
 // Skip the head node during cleanup to avoid ABA with concurrent
 // lock-free inserts that CAS on _head.
 auto MonitorRegistry::cleanup() -> std::size_t {
@@ -62,5 +66,7 @@ auto MonitorRegistry::size() const -> std::size_t {
   }
   return count;
 }
+
+MonitorRegistry& globalMonitorRegistry() noexcept { return gMonitorRegistry; }
 
 }  // namespace arangodb::infra

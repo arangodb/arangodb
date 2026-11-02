@@ -21,20 +21,20 @@
 
 #pragma once
 
+#include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
 
 namespace arangodb::infra {
 
+struct StaticResourceMonitor;
+class ResourceMonitor;
+
 struct ResourceMonitorRef {
   ResourceMonitorRef() noexcept = default;
 
-  explicit ResourceMonitorRef(StaticResourceMonitor& m) noexcept
-      : _ptr(&m), _refCounted(false) {}
+  explicit ResourceMonitorRef(StaticResourceMonitor& m) noexcept;
 
-  explicit ResourceMonitorRef(ResourceMonitor& m) noexcept
-      : _ptr(&m), _refCounted(true) {
-    m.acquireRef();
-  }
+  explicit ResourceMonitorRef(ResourceMonitor& m) noexcept;
 
   ResourceMonitorRef(ResourceMonitorRef&& other) noexcept
       : _ptr(other._ptr), _refCounted(other._refCounted) {
@@ -42,11 +42,14 @@ struct ResourceMonitorRef {
     other._refCounted = false;
   }
 
-  ResourceMonitorRef(ResourceMonitorRef const& other) noexcept
-      : _ptr(other._ptr), _refCounted(other._refCounted) {
-    if (_refCounted && _ptr) {
-      static_cast<ResourceMonitor*>(_ptr)->acquireRef();
-    }
+  ResourceMonitorRef(ResourceMonitorRef const& other) noexcept;
+
+  static ResourceMonitorRef create(StaticResourceMonitor* parent = nullptr) {
+    // TODO: place cleanup() somewhere else for a periodical task
+    globalMonitorRegistry().cleanup();
+    auto* m = new ResourceMonitor(parent);
+    globalMonitorRegistry().insert(*m);
+    return ResourceMonitorRef(*m);
   }
 
   auto operator=(ResourceMonitorRef&& other) noexcept -> ResourceMonitorRef& {
@@ -61,17 +64,7 @@ struct ResourceMonitorRef {
   }
 
   auto operator=(ResourceMonitorRef const& other) noexcept
-      -> ResourceMonitorRef& {
-    if (this != &other) {
-      releaseIfNeeded();
-      _ptr = other._ptr;
-      _refCounted = other._refCounted;
-      if (_refCounted && _ptr) {
-        static_cast<ResourceMonitor*>(_ptr)->acquireRef();
-      }
-    }
-    return *this;
-  }
+      -> ResourceMonitorRef&;
 
   ~ResourceMonitorRef() { releaseIfNeeded(); }
 
@@ -88,11 +81,7 @@ struct ResourceMonitorRef {
   }
 
  private:
-  void releaseIfNeeded() noexcept {
-    if (_refCounted && _ptr) {
-      static_cast<ResourceMonitor*>(_ptr)->releaseRef();
-    }
-  }
+  void releaseIfNeeded() noexcept;
 
   ResourceMonitorBase* _ptr = nullptr;
   bool _refCounted = false;

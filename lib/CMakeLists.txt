@@ -174,6 +174,7 @@ target_link_libraries(arango_basic_utils
          snappy
          lz4_static
          arango_activities_global
+         arango_infra # temporary; needs to be included in a proper lib
 )
 
 # Enterprise

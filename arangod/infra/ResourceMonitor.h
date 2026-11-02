@@ -79,7 +79,8 @@ class ResourceMonitor : public ResourceMonitorBase {
   }
 
   [[nodiscard]] auto isReclaimable() const noexcept -> bool {
-    return isRetired() && actualBytes() == 0;
+    return isRetired() && actualBytes() == 0 &&
+           _externalRefs.load(std::memory_order_acquire) == 0;
   }
 
   [[nodiscard]] auto parent() const noexcept -> StaticResourceMonitor* {

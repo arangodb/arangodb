@@ -25,11 +25,14 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/ResourceMonitor.h"
 
 using namespace arangodb;
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
-    : _current(0), _peak(0), _limit(0), _global(global) {}
+    : _current(0), _peak(0), _limit(0), _global(global) {
+  monitorRef = infra::ResourceMonitorRef::create();
+}
 
 ResourceMonitor::~ResourceMonitor() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -39,6 +42,8 @@ ResourceMonitor::~ResourceMonitor() {
   [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
+  static_cast<infra::ResourceMonitor*>(monitorRef.get())->retire();
+  monitorRef.reset();
 }
 
 /// @brief sets a memory limit
