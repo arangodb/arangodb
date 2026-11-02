@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
+  (previously g++-13).
+
+* Update libunwind from 1.7.2 to 1.8.3
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
