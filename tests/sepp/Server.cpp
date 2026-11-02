@@ -203,8 +203,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ShardingFeature>();
   _server.addFeature<SharedPRNGFeature>();
   _server.addFeature<ShellColorsFeature>();
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
   _server.addFeature<SystemDatabaseFeature>();

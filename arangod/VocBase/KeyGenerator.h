@@ -116,6 +116,9 @@ class KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(velocypack::Builder&) const;
 
+  /// @brief typed counterpart of toVelocyPack
+  virtual KeyGeneratorProperties properties() const = 0;
+
   /// @brief initialize key generator state, reading data/state from the
   /// state object. state is guaranteed to be a velocypack object
   virtual void initState(velocypack::Slice state);
@@ -171,6 +174,10 @@ class KeyGeneratorWrapper : public KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   void toVelocyPack(velocypack::Builder& result) const override {
     _wrapped->toVelocyPack(result);
+  }
+
+  KeyGeneratorProperties properties() const override {
+    return _wrapped->properties();
   }
 
  protected:

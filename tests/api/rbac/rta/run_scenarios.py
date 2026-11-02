@@ -130,6 +130,44 @@ PASS = catalog.PASS
 DENY = catalog.DENY
 ERROR = "error"
 
+SUITE_MARKER_RE = re.compile(r"(?:^|[\s|])(\d{3}):\s", re.M)
+# `progress('createView1')` renders as `# <date> - createView1`;
+PROGRESS_MARKER_RE = re.compile(r"^#\s+.*?\s+-\s+(.+?)\s*$", re.M)
+
+
+def failure_location(config, output):
+    """Which suite the run died in, and how far it got. Best effort.
+
+    Returns (suite_id, suite_file, last_progress), any of which may be None -
+    a run denied on its very first request produces no markers at all.
+    """
+    markers = SUITE_MARKER_RE.findall(output or "")
+    suite_id = markers[-1] if markers else None
+    gauges = PROGRESS_MARKER_RE.findall(output or "")
+    last_progress = gauges[-1] if gauges else None
+    suite_file = None
+    if suite_id:
+        suites_dir = os.path.join(config.rta, "test_data", "makedata_suites")
+        try:
+            for name in sorted(os.listdir(suites_dir)):
+                if name.startswith(suite_id) and name.endswith(".js"):
+                    suite_file = name
+                    break
+        except OSError:
+            pass
+    return suite_id, suite_file, last_progress
+
+
+def describe_location(config, phase, output):
+    """One line naming the phase and the suite a run stopped in, or None."""
+    suite_id, suite_file, last_progress = failure_location(config, output)
+    if suite_id is None:
+        return (f"{phase}: stopped before any suite announced itself "
+                f"(no suite marker in the output)")
+    where = suite_file or suite_id
+    tail = f", last progress marker '{last_progress}'" if last_progress else ""
+    return f"{phase}: stopped in suite {where}{tail}"
+
 
 def classify(returncode, output):
     if returncode == 0:
@@ -234,6 +272,7 @@ class Config:
         self.timeout = args.phase_timeout
         self.propagation_timeout = args.propagation_timeout
         self.dry_run = args.dry_run
+        self.log_levels = list(getattr(args, "log_level", []) or [])
         self.verbose = args.verbose
         self.requested_mode = args.auth_mode
         self.external_sidecar = args.external_sidecar
@@ -825,6 +864,8 @@ def phase_argv(config, phase, token, suite_filter=None):
         # Must be a JWT: see the module docstring.
         "--server.jwt-token", token,
         "--log.level", "warning",
+        *[arg for level in config.log_levels
+          for arg in ("--log.level", level)],
         "--javascript.execute", script,
         # Everything after `--` is ARGUMENTS inside the script; the first
         # positional is the database name.
@@ -912,6 +953,7 @@ class Result:
         self.actual = actual
         self.signature = signature
         self.output = output
+        self.location = None
 
     @property
     def ok(self):
@@ -1027,6 +1069,9 @@ def run_scenario(config, sidecar, tokens, scenario, grants=None, mode="rbac"):
             f"    {step.phase:<10} as {step.identity:<9} "
             f"expected {step.expect:<4} got {actual:<5}{detail} -> {verdict}{note}"
         )
+        if actual != PASS or not result.ok:
+            result.location = describe_location(config, step.phase, output)
+            print(f"    {result.location}")
         if not result.ok:
             if step.expect == DENY and actual == PASS:
                 report_undenied(config, sidecar, scenario)
@@ -1163,6 +1208,13 @@ def main():
                              "configuration, not a broken one - it selects the "
                              "grant-based catalog instead of the policy-based one. "
                              "`auto` probes the server. (default: %(default)s)")
+    parser.add_argument("--log-level", action="append", default=[],
+                        metavar="TOPIC=LEVEL",
+                        help="extra --log.level for the arangosh that runs the "
+                             "workload, e.g. --log-level V8=debug to see what "
+                             "the suite was doing when it was refused. "
+                             "Repeatable; applied after the default "
+                             "'warning', so it only widens what is logged.")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -1345,6 +1397,13 @@ def main():
         )
     print("-" * 78)
     print(f"{len(results)} step(s), {failures} mismatch(es)")
+    mismatched = [result for result in results if not result.ok]
+    if mismatched:
+        print("\nwhere the mismatching steps stopped:")
+        for result in mismatched:
+            where = result.location or describe_location(
+                config, result.phase, result.output)
+            print(f"  {result.scenario.name:<32} {where}")
     if config.dry_run:
         print("\n(dry run: nothing was executed. Each step echoes its expectation, so "
               "'0 mismatches' says the plumbing is wired up, not that RBAC behaves.)")

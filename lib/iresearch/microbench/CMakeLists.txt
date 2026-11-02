@@ -50,7 +50,6 @@ include_directories(iresearch-microbench
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:iresearch-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>

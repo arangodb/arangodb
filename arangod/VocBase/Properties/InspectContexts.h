@@ -72,18 +72,6 @@ struct NonNullUserOptional : inspection::NonNullOptional<T> {
     return this->has_value() && this->value() == other;
   }
 };
-
-// Applies `invariant` to `field` only when the value come from user input
-template<class Inspector, class Field, class Invariant>
-auto userInvariant(Inspector&, Field&& field, Invariant&& invariant) {
-  if constexpr (isInternalContext<Inspector>) {
-    return std::forward<Field>(field);
-  } else {
-    return std::forward<Field>(field).invariant(
-        std::forward<Invariant>(invariant));
-  }
-}
-
 }  // namespace arangodb
 
 namespace arangodb::inspection {

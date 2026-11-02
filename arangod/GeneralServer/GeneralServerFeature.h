@@ -36,7 +36,6 @@
 #include "Metrics/GaugeCounterGuard.h"
 #include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/LogApiOptions.h"
 

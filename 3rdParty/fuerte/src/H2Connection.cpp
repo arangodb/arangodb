@@ -692,18 +692,17 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   // Inspect the data we've received so far.
   size_t parsedBytes = 0;
-  for (auto const& buffer : this->_receiveBuffer.data()) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
+  auto const buffer = this->_receiveBuffer.data();
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0) {
-      FUERTE_LOG_ERROR << "http2 parsing error";
-      this->shutdownConnection(Error::ProtocolError, "http2 parsing error");
-      return;  // stop read loop
-    }
-
-    parsedBytes += static_cast<size_t>(rv);
+  ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+  if (rv < 0) {
+    FUERTE_LOG_ERROR << "http2 parsing error";
+    this->shutdownConnection(Error::ProtocolError, "http2 parsing error");
+    return;  // stop read loop
   }
+
+  parsedBytes += static_cast<size_t>(rv);
 
   FUERTE_ASSERT(this->_receiveBuffer.size() == parsedBytes);
 

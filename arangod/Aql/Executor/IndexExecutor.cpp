@@ -921,7 +921,8 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           getCursor().readIndex(output, _documentProducingFunctionContext);
       TRI_ASSERT(more == getCursor().hasMore());
 
-      if (!more && _currentIndex + 1 >= _cursors.size() && output.isFull()) {
+      if (!more && _currentIndex + 1 >= _infos.getIndexes().size() &&
+          output.isFull()) {
         // optimization for the case that the cursor cannot produce more data,
         // we are at the last cursor and we have filled up the output block
         // completely.

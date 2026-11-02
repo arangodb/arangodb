@@ -22,8 +22,6 @@ target_link_libraries(arango_v8
   arango_basic_features
   arango_basic_logger
   arango_inspection
-  boost_boost
-  boost_system
   absl::flat_hash_set
   absl::synchronization
   arango_async

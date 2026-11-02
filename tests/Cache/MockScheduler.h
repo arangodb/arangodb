@@ -35,7 +35,7 @@ class MockScheduler {
  public:
   MockScheduler(std::size_t threads);
   ~MockScheduler();
-  void post(std::function<void()> fn);
+  void post(std::function<void()> fn) const;
 };
 
 };  // end namespace cache

@@ -81,7 +81,7 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  _engine.getCapabilities(result, _request->requestedApiVersion());
+  _engine.getCapabilities(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

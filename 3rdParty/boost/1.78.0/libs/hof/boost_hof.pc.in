@@ -1,6 +1,0 @@
-Name: boost_hof
-Description: C++ function utility library
-URL: https://github.com/pfultz2/hof
-Version: @boost_hof_VERSION_MAJOR@.@boost_hof_VERSION_MINOR@
-
-Cflags: -I@CMAKE_INSTALL_PREFIX@/include

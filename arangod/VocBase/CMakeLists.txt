@@ -25,7 +25,7 @@ target_link_libraries(arango_vocbase
   arango_replication
   arango_replication2
   arango_vocbase_api
-  boost_system
+  Boost::uuid
   arango::validation)
 
 target_include_directories(arango_vocbase PRIVATE
