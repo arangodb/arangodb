@@ -219,6 +219,14 @@ template<SocketType T>
       return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
                                        stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
     }
+    if (!me->_generalServerFeature.reserveHttp2BodyBytes(len)) {
+      LOG_TOPIC("2823e", WARN, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the global process-wide limit, resetting the stream";
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    }
     strm->bodySize += len;
     me->_bufferedBodyBytes += len;
     strm->request->appendBody(reinterpret_cast<char const*>(data), len);
@@ -236,6 +244,7 @@ void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
   if (strm.bodySize != 0) {
     TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
     _bufferedBodyBytes -= strm.bodySize;
+    this->_generalServerFeature.releaseHttp2BodyBytes(strm.bodySize);
     strm.bodySize = 0;
   }
 }

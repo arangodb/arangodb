@@ -98,6 +98,9 @@ class GeneralServerFeature final
 
   void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
 
+  bool reserveHttp2BodyBytes(std::uint64_t len) noexcept;
+  void releaseHttp2BodyBytes(std::uint64_t len) noexcept;
+
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
   [[nodiscard]] bool startedListening() const noexcept {
@@ -165,6 +168,7 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
   metrics::Gauge<double>& _connectionHttp;
 
+  metrics::Gauge<std::uint64_t>& _globalHttp2BodyBytes;
   metrics::MetricsFeature& _metricsFeature;
 };
 

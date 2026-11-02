@@ -121,6 +121,21 @@ Requests exceeding the limit are rejected with HTTP 413.
 Note that this limits the body size *after* decompression. The size of the
 request as it arrives on the wire is limited separately.)");
 
+  opts->addOption("--http.max-http2-global-body-size",
+                  "The maximum total size of all HTTP/2 request bodies "
+                  "currently being buffered process-wide, before "
+                  "authentication (in bytes).",
+                  new UInt64Parameter(&options.maxGlobalHttp2BodySize))
+      .setIntroducedIn(31214)
+      .setLongDescription(R"(HTTP/2 request bodies are buffered before
+authentication, so a single connection's body size is already capped. This
+option additionally caps the sum of all such buffered bytes across every
+HTTP/2 connection in the process at once, so that many connections opened
+concurrently cannot together exhaust memory even while each individually
+respects its own per-connection limit.
+
+Requests exceeding the limit are rejected by resetting the HTTP/2 stream.)");
+
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",

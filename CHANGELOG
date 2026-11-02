@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1007: Added `--http.max-http2-global-body-size` startup option, which
+  limits the total size of all HTTP/2 request bodies being buffered across
+  the whole process at once, before authentication. The default is 4 GB.
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
