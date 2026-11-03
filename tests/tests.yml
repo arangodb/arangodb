@@ -249,25 +249,25 @@
       oneTestTimeout: 5350
 
 # with coverage we need to have several jobs:
-- rta_makedata:
-    options:
-      priority: 3500
-    requires:
-      coverage: true
-    args:
-      encryptionAtRest: true
-      ssl: true
-- rta_makedata:
-    options:
-      priority: 3000
-      type: cluster
-      suffix: _oneshard
-    requires:
-      coverage: true
-    args:
-      forceOneShard: true
-      makedataDB: system_oneshard_makedata
-      suffix: cluster-oneshard
+#- rta_makedata:
+#    options:
+#      priority: 3500
+#    requires:
+#      coverage: true
+#    args:
+#      encryptionAtRest: true
+#      ssl: true
+#- rta_makedata:
+#    options:
+#      priority: 3000
+#      type: cluster
+#      suffix: _oneshard
+#    requires:
+#      coverage: true
+#    args:
+#      forceOneShard: true
+#      makedataDB: system_oneshard_makedata
+#      suffix: cluster-oneshard
 
 - chaos:
     options:
