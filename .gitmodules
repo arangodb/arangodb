@@ -29,3 +29,6 @@
 [submodule "3rdParty/lz4"]
 	path = 3rdParty/lz4
 	url = https://github.com/lz4/lz4.git
+[submodule "3rdParty/mimalloc/mimalloc"]
+	path = 3rdParty/mimalloc/mimalloc
+	url = https://github.com/microsoft/mimalloc.git

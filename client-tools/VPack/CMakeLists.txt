@@ -17,6 +17,9 @@ target_link_libraries(${BIN_ARANGOVPACK}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOVPACK} jemalloc)
 endif ()
+if (USE_MIMALLOC)
+  target_link_libraries(${BIN_ARANGOVPACK} mimalloc)
+endif ()
 
 
 install(
