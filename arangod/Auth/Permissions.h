@@ -90,9 +90,8 @@ struct AdminMonitoringInternal {};
 struct AdminAuthReload {};
 struct AdminCrashHandler {};
 struct AdminApiCalls {};
-struct AdminAqlQueries {};
-struct AdminMonitorAqlQueries {};
-struct AdminKillAqlQueries {};
+struct AdminMonitorQueries {};
+struct AdminKillQueries {};
 struct AdminMonitorTransactions {};
 struct AdminKillTransactions {};
 struct AdminShutdown {};
@@ -117,10 +116,10 @@ struct AdminQueryCache {};
 namespace detail {
 using AdminList = meta::TypeList<
     AdminReadUsers, AdminMoveShards, AdminMonitoring, AdminMonitoringInternal,
-    AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
-    AdminMonitorAqlQueries, AdminKillAqlQueries, AdminMonitorTransactions,
-    AdminKillTransactions, AdminShutdown, AdminReadLogs, AdminSetLogLevel,
-    AdminOptions, AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
+    AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminMonitorQueries,
+    AdminKillQueries, AdminMonitorTransactions, AdminKillTransactions,
+    AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
+    AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
     AdminMaintenance, AdminRebalance, AdminLicense, AdminBackup,
     AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump, AdminRestore,
     AdminWalAccess, AdminReadAgency, AdminQueryCache>;

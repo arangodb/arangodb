@@ -48,7 +48,6 @@ enum class Action {
   AdminAuthReload,
   AdminCrashHandler,
   AdminApiCalls,
-  AdminAqlQueries,
   AdminShutdown,
   AdminReadLogs,
   AdminSetLogLevel,
@@ -72,8 +71,8 @@ enum class Action {
   AdminWriteAqlFunctions,
   AdminQueryCache,
   AdminReadUsers,
-  AdminMonitorAqlQueries,
-  AdminKillAqlQueries,
+  AdminMonitorQueries,
+  AdminKillQueries,
   AdminMonitorTransactions,
   AdminKillTransactions,
 };
