@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, print, fail */
+/*global assertEqual, assertTrue, assertFalse, print, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -114,6 +114,21 @@ function aqlMatchStatementVariableLengthTestSuite() {
             db.mec1.save({_from: "mvc/v2", _to: "mvc/v3"});
             db._createEdgeCollection("mec2");
             db.mec2.save({_from: "mvc/v0", _to: "mvc/v2"});
+
+            // Dataset for endpoint projection vs path.vertices consistency.
+            db._create("people");
+            db.people.insert([
+              {_key: "a", name: "A", age: 1},
+              {_key: "b", name: "B", age: 2},
+              {_key: "c", name: "C", age: 3},
+              {_key: "d", name: "D", age: 4}
+            ]);
+            db._createEdgeCollection("knows");
+            db.knows.insert([
+              {_from: "people/a", _to: "people/b"},
+              {_from: "people/b", _to: "people/c"},
+              {_from: "people/c", _to: "people/d"}
+            ]);
        },
 
         tearDownAll: function () {
@@ -570,6 +585,137 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
 
+        // start or end vertex should contain only the projected attributes in p.vertices
+        // Intermediate vertices without a projection stay full documents.
+        testMatchPathBothEndpointsProjected: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"} RETURN name)
+                      -[:knows * 2..2]->
+                      (y:people RETURN name)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(3, row.path.length);
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[2]);
+          assertEqual("people/a", row.path[0]._id);
+          assertEqual("A", row.path[0].name);
+          assertFalse(row.path[0].hasOwnProperty("age"));
+          assertEqual("people/b", row.path[1]._id);
+          assertEqual(2, row.path[1].age);
+          assertEqual("people/c", row.path[2]._id);
+          assertEqual("C", row.path[2].name);
+          assertFalse(row.path[2].hasOwnProperty("age"));
+        },
+
+        testMatchPathOnlyStartProjected: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"} RETURN name)
+                      -[:knows * 2..2]->
+                      (y:people)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[2]);
+          assertFalse(row.path[0].hasOwnProperty("age"));
+          assertTrue(row.path[2].hasOwnProperty("age"));
+          assertEqual(3, row.path[2].age);
+        },
+
+        testMatchPathOnlyEndProjected: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"})
+                      -[:knows * 2..2]->
+                      (y:people RETURN name)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[2]);
+          assertTrue(row.path[0].hasOwnProperty("age"));
+          assertEqual(1, row.path[0].age);
+          assertFalse(row.path[2].hasOwnProperty("age"));
+          assertEqual("C", row.path[2].name);
+        },
+
+        testMatchPathNeitherEndpointProjected: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"})
+                      -[:knows * 2..2]->
+                      (y:people)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[2]);
+          assertEqual(1, row.path[0].age);
+          assertEqual(2, row.path[1].age);
+          assertEqual(3, row.path[2].age);
+        },
+
+        testMatchPathFixedLengthBothEndpointsProjected: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"} RETURN name)
+                      -[:knows]->
+                      (y:people RETURN name)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(2, row.path.length);
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[1]);
+          assertFalse(row.path[0].hasOwnProperty("age"));
+          assertFalse(row.path[1].hasOwnProperty("age"));
+        },
+
+        testMatchPathVariableLengthMultipleIntermediates: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"} RETURN name)
+                      -[:knows * 3..3]->
+                      (y:people RETURN name)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(4, row.path.length);
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[3]);
+          assertFalse(row.path[0].hasOwnProperty("age"));
+          assertEqual(2, row.path[1].age);
+          assertEqual(3, row.path[2].age);
+          assertFalse(row.path[3].hasOwnProperty("age"));
+        },
+
+        testMatchPathMinLengthNoIntermediate: function () {
+          const result = db._query(`
+            WITH people
+            MATCH p = (x:people {_key: "a"} RETURN name)
+                      -[:knows * 1..1]->
+                      (y:people RETURN name)
+            RETURN {path: p.vertices, x, y}
+          `, {}, options).toArray();
+          assertEqual(1, result.length);
+          const row = result[0];
+          assertEqual(2, row.path.length);
+          assertEqual(row.x, row.path[0]);
+          assertEqual(row.y, row.path[1]);
+          assertEqual("A", row.path[0].name);
+          assertEqual("B", row.path[1].name);
+          assertFalse(row.path[0].hasOwnProperty("age"));
+          assertFalse(row.path[1].hasOwnProperty("age"));
+        },
     };
 }
 
