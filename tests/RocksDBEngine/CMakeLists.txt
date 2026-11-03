@@ -31,7 +31,8 @@ target_link_libraries(arango_tests_rocksdb_engine
 add_executable(arangodbtests_rocksdb
   main.cpp
   RestHandlersStub.cpp
-  ${PROJECT_SOURCE_DIR}/tests/Mocks/FakeScheduler.cpp)
+  ${PROJECT_SOURCE_DIR}/tests/Mocks/FakeScheduler.cpp
+  ${PROJECT_SOURCE_DIR}/tests/Basics/icu-helper.cpp)
 
 target_include_directories(arangodbtests_rocksdb PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
@@ -41,6 +42,7 @@ target_include_directories(arangodbtests_rocksdb PRIVATE
 
 target_link_libraries(arangodbtests_rocksdb
   arango_tests_rocksdb_engine
+  arango_crashhandler_light
   arango_rocksdb
   arango_metrics_base
   arango_vocbase
