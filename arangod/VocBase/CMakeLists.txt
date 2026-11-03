@@ -10,6 +10,9 @@ add_library(arango_vocbase STATIC
   ticks.cpp
   vocbase.cpp
   VocbaseMetrics.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/Aql/CalculationTransactionState.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/Aql/CalculationTransactionContext.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/Aql/CalculationQueryContext.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/QueryCursor.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/StandaloneCalculation.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Utils/CollectionNameResolver.cpp
