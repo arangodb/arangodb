@@ -68,12 +68,6 @@ class InsertNode : public ModificationNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
-  void replaceAttributeAccess(ExecutionNode const* self,
-                              Variable const* searchVariable,
-                              std::span<std::string_view> attribute,
-                              Variable const* replaceVariable,
-                              size_t index) override;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
     vars.emplace(_inVariable);

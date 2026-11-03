@@ -36,17 +36,10 @@
 // the detailed version information is included - that one is silent without
 // --server.harden.
 //
-// Any other API version is gated as everywhere else, on this route too. API
-// version 1 is not in ApiVersion.h's supportedApiVersions yet, so it is
-// normally rejected before any handler runs; the
-// 'ApiVersion::treatVersion1AsSupported' failure point makes the version
-// checks treat it as supported. It must be armed before the server registers
-// its routes at startup, hence the startup option (see also
-// failing-user-access-does-not-reveal-information.js).
+// Any other API version is gated as everywhere else, on this route too.
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'server.failure-point': 'ApiVersion::treatVersion1AsSupported',
     // the observer reads the log file right after the request, so the log must
     // not be written by the logging thread
     'log.force-direct': 'true',
@@ -71,7 +64,7 @@ const {
   DB
 } = require('@arangodb/testutils/apitest-fixtures');
 
-function versionApiAuthzSuite () {
+function versionApiAuthzSuite() {
   return {
     setUpAll: setUpApiTestData,
     tearDownAll: tearDownApiTestData,

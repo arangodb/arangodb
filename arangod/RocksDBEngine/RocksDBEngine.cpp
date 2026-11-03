@@ -22,6 +22,7 @@
 
 #include "RocksDBEngine.h"
 
+#include <algorithm>
 #include <atomic>
 #include <filesystem>
 
@@ -292,9 +293,8 @@ RocksDBEngine::RocksDBEngine(
     IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
-    : StorageEngine(server, kEngineName, name(),
-                    std::make_unique<RocksDBIndexFactory>(server),
-                    databaseProvider, databaseBootstrap),
+    : StorageEngine(server, kEngineName, name(), databaseProvider,
+                    databaseBootstrap),
       _databasePathProvider(databasePathProvider),
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
@@ -350,6 +350,9 @@ RocksDBEngine::RocksDBEngine(
           metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
+  setIndexFactory(
+      std::make_unique<RocksDBIndexFactory>(server, indexTypeCatalog()));
+
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -1043,17 +1046,6 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
                                                          trxType, manager);
 }
 
-void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
-                                                  VPackSlice info) {
-  if (!info.hasKey(StaticStrings::ObjectId)) {
-    builder.add(StaticStrings::ObjectId,
-                VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-  if (!info.get(StaticStrings::CacheEnabled).isBool()) {
-    builder.add(StaticStrings::CacheEnabled, VPackValue(false));
-  }
-}
-
 uint64_t RocksDBEngine::resolveObjectId(
     CollectionStorageProperties const& storage) const {
   return storage.objectId != 0 ? storage.objectId : TRI_NewTickServer();
@@ -1174,15 +1166,13 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
   builder.close();
 }
 
-ErrorCode RocksDBEngine::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
+std::vector<CollectionDescriptor> RocksDBEngine::getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase) {
+  std::vector<CollectionDescriptor> collections;
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
       readOptions, RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Definitions)));
-
-  result.openArray();
 
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
 
@@ -1195,17 +1185,26 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(
     auto slice =
         VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+    // a dropped collection may have left a stale marker behind, so skip it
+    // before parsing rather than fail the whole database
+    if (basics::VelocyPackHelper::getBooleanValue(
             slice, StaticStrings::DataSourceDeleted, false)) {
       continue;
     }
 
-    result.add(slice);
+    try {
+      collections.emplace_back(CollectionDescriptor::fromVelocyPack(slice));
+    } catch (basics::Exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          ex.code(),
+          absl::StrCat(ex.what(), " in collection '",
+                       basics::VelocyPackHelper::getStringValue(
+                           slice, StaticStrings::DataSourceName, "<unknown>"),
+                       "'"));
+    }
   }
 
-  result.close();
-
-  return TRI_ERROR_NO_ERROR;
+  return collections;
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -2660,31 +2659,22 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // scan the database path for collections
   try {
-    VPackBuilder builder;
-    auto res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown,
-                                        isUpgrade);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
+    auto descriptors = getCollectionsAndIndexes(*vocbase);
 
     LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
-        << "processing collections metadata in database '" << vocbase->name()
-        << "': " << slice.toJson();
+        << "processing metadata of " << descriptors.size()
+        << " collections in database '" << vocbase->name() << "'";
 
-    for (VPackSlice it : VPackArrayIterator(slice)) {
+    for (auto& descriptor : descriptors) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
           << "processing collection metadata in database '" << vocbase->name()
-          << "': " << it.toJson();
+          << "': " << descriptor.mutableProps.name;
 
-      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      TRI_ASSERT(!it.get("deleted").isTrue());
+      TRI_ASSERT(!descriptor.identity.id.empty());
 
-      auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
+      auto collection = vocbase->createCollectionObject(std::move(descriptor),
+                                                        /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
@@ -2919,11 +2909,10 @@ DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
               "rocksdb_live_blob_file_garbage_size");
 DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
-void RocksDBEngine::getCapabilities(velocypack::Builder& builder,
-                                    uint32_t apiVersion) const {
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   // get generic capabilities
   VPackBuilder main;
-  StorageEngine::getCapabilities(main, apiVersion);
+  StorageEngine::getCapabilities(main);
 
   VPackBuilder own;
   own.openObject();

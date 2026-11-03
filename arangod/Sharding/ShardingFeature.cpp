@@ -123,25 +123,6 @@ void ShardingFeature::registerFactory(
   }
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
-    VPackSlice slice, ShardingInfo* sharding) {
-  if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid collection meta data");
-  }
-
-  std::string name;
-  // determine the correct method for sharding
-  VPackSlice s = slice.get("shardingStrategy");
-  if (s.isString()) {
-    name = s.copyString();
-  } else {
-    name = getDefaultShardingStrategy(sharding);
-  }
-
-  return create(name, sharding);
-}
-
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
   // TODO change these to use better algorithms when we no longer
@@ -204,43 +185,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::createOrDefault(
     return create(name.value(), sharding);
   }
   return create(getDefaultShardingStrategy(sharding), sharding);
-}
-
-std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
-    VPackSlice const& properties) const {
-  // from 3.4 onwards, the default sharding strategy for new collections is
-  // "hash"
-#ifdef USE_ENTERPRISE
-  bool isSmart = VelocyPackHelper::getBooleanValue(
-      properties, StaticStrings::IsSmart, false);
-  bool isEdge =
-      TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
-                               properties, "type", TRI_COL_TYPE_DOCUMENT);
-  if (isSmart) {
-    if (isEdge) {
-      // Smart Edge Collection
-      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
-    } else {
-      // Smart Vertex Collection
-      // We need to differentiate between SmartGraphs and EnterpriseGraphs here.
-      VPackSlice sga = properties.get(StaticStrings::GraphSmartGraphAttribute);
-      if (sga.isNone()) {
-        // Means we're in the EnterpriseGraph Case.
-        // In case we do have a SmartVertex collection without a
-        // SmartGraphAttribute given, we use a different sharding strategy.
-        // In case it is given, we fall back to the default ShardingStrategyHash
-        // strategy.
-        return ShardingStrategyEnterpriseHexSmartVertex::NAME;
-      } else {
-        // Means we're in the SmartGraph case.
-        return ShardingStrategyHash::NAME;
-      }
-    }
-  }
-#endif
-
-  // Info: Satellite collections will use this ShardingStrategy as well.
-  return ShardingStrategyHash::NAME;
 }
 
 }  // namespace arangodb

@@ -28,7 +28,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/InspectContexts.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
 #include <optional>
@@ -81,22 +80,20 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
                        ? inspection::FieldCondition::Process
                        : inspection::FieldCondition::Ignore;
           }),
-      userInvariant(
-          f,
-          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
-          UtilityInvariants::isNonEmptyIfPresent),
-      userInvariant(
-          f,
-          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
-          UtilityInvariants::isValidCollectionType),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+      f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      // Written by the server. Not user-modifyable, so the attribute is
-      // accepted and dropped on input while still being written out.
+      // Written by the server; ignored from users, who do not own this field.
       f.field(StaticStrings::ShadowCollections, props.shadowCollections)
-          .whenLoading([]() { return inspection::FieldCondition::Ignore; }));
+          .fallback(f.keep())
+          .whenLoading([]() {
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Ignore;
+          }));
 }
 
 }  // namespace arangodb

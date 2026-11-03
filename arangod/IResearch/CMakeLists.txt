@@ -43,6 +43,8 @@ add_library(arango_iresearch STATIC
   IResearchInvertedClusterIndex.h
   IResearchInvertedIndex.cpp
   IResearchInvertedIndex.h
+  IResearchInvertedIndexDefinition.cpp
+  IResearchInvertedIndexDefinition.h
   IResearchInvertedIndexMeta.cpp
   IResearchInvertedIndexMeta.h
   IResearchKludge.cpp
@@ -108,7 +110,8 @@ target_link_libraries(arango_iresearch
   arango_cluster_engine
   arango_indexes
   arango_vocbase
-  boost_thread # required by IResearchView upgrade_mutex
+  Boost::container
+  Boost::thread # required by IResearchView upgrade_mutex
   iresearch-static
   s2 # needed for some includes
 )

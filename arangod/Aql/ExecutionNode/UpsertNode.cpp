@@ -171,23 +171,6 @@ void UpsertNode::replaceVariables(
   }
 }
 
-void UpsertNode::replaceAttributeAccess(ExecutionNode const* self,
-                                        Variable const* searchVariable,
-                                        std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable,
-                                        size_t /*index*/) {
-  auto replace = [&](Variable const*& variable) {
-    if (variable != nullptr && searchVariable == variable &&
-        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
-      variable = replaceVariable;
-    }
-  };
-
-  replace(_inDocVariable);
-  replace(_insertVariable);
-  replace(_updateVariable);
-}
-
 size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::aql

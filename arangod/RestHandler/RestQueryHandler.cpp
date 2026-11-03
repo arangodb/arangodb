@@ -332,7 +332,7 @@ void RestQueryHandler::replaceProperties() {
     return;
   }
 
-  if (auto r = ExecContext::current().canChangeQueryProperties(_vocbase.name());
+  if (auto r = ExecContext::current().canUpdateQueryProperties(_vocbase.name());
       r.fail()) {
     generateError(r);
     return;

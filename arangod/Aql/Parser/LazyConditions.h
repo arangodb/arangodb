@@ -59,21 +59,25 @@ class LazyConditions {
   Conditions& peek();
 
   bool forceInline() const noexcept;
-  void pushForceInline() noexcept;
+  void pushForceInline();
   void popForceInline() noexcept;
 
   void flushAssignments();
   void flushFilters() const;
 
  private:
+  // conditions outside of any pushForceInline() are extractable
+  // into a LET and used as a guard.
+  size_t numExtractableConditions() const noexcept;
+
   /// @brief the underlying AST
   Ast& _ast;
 
   /// @brief the stack of lazy conditions
   Conditions _stack;
 
-  /// @brief whether or not conditional operators must be inlined (value > 0).
-  size_t _forceInlineRequests;
+  /// @brief stack sizes at each pushForceInline()
+  std::vector<size_t> _inlineBarriers;
 };
 
 }  // namespace arangodb::aql

@@ -23,16 +23,23 @@
 #include "Aql/Match/MatchTestHelper.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/TypedAstNodes.h"
 #include "Basics/voc-errors.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/TraverserOptions.h"
+
+#include <string_view>
+#include <vector>
 
 using namespace arangodb::aql;
 using namespace arangodb::aql::match;
@@ -49,6 +56,46 @@ TraversalNode* firstTraversal(ExecutionPlan const& plan) {
     return nullptr;
   }
   return ExecutionNode::castTo<TraversalNode*>(nodes.front());
+}
+
+std::vector<EnumerateCollectionNode*> enumerateCollections(
+    ExecutionPlan const& plan) {
+  arangodb::containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan.findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+  std::vector<EnumerateCollectionNode*> enumerates;
+  enumerates.reserve(nodes.size());
+  for (ExecutionNode* node : nodes) {
+    enumerates.push_back(ExecutionNode::castTo<EnumerateCollectionNode*>(node));
+  }
+  return enumerates;
+}
+
+// Attributes reduce-extraction-to-projection would keep for this scan.
+// findProjections walks every later use of the enumerate output, which is the
+// same input that rule uses before it sets storage projections.
+struct InferredProjections {
+  bool safe{false};
+  arangodb::containers::FlatHashSet<AttributeNamePath> attributes;
+};
+
+InferredProjections inferProjections(EnumerateCollectionNode* node) {
+  InferredProjections inferred;
+  inferred.safe = optimizer::findProjections(
+      node, node->outVariable(), /*expectedAttribute*/ "",
+      /*excludeStartNodeFilterCondition*/ false, inferred.attributes);
+  return inferred;
+}
+
+bool containsAttribute(
+    arangodb::containers::FlatHashSet<AttributeNamePath> const& attributes,
+    std::string_view name) {
+  for (auto const& attribute : attributes) {
+    auto const& path = attribute.get();
+    if (path.size() == 1 && path[0] == name) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -165,6 +212,94 @@ TEST_F(BuilderTest, inPatternProjectionAddsCalculation) {
   auto plan = instantiatePlan(parsed);
   ASSERT_NE(nullptr, plan);
   EXPECT_GE(countNodesOfType(*plan, ExecutionNode::CALCULATION), 1U);
+}
+
+// The projection calculation already exposes _id and _key as
+// attribute accesses, so the optimizer infers them without a build time push.
+TEST_F(BuilderTest, optimizerInfersInlineProjectionAttributes) {
+  auto parsed = parseMatch("MATCH (v :vc RETURN _key) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+  EXPECT_EQ(2U, inferred.attributes.size());
+}
+
+// WHERE is a calculation on the same enumerate output, so its attribute is
+// included together with the projection attributes.
+TEST_F(BuilderTest, optimizerInfersWhereAttribute) {
+  auto parsed = parseMatch("MATCH (v :vc WHERE v.j == 0 RETURN _key) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "j"));
+  EXPECT_EQ(3U, inferred.attributes.size());
+}
+
+// No inline projection. RETURN v.name is an ordinary attribute access, which
+// reduce-extraction-to-projection already rewrites.
+TEST_F(BuilderTest, optimizerInfersReturnedAttributeWithoutInlineProjection) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v.name");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  ASSERT_TRUE(inferred.safe);
+  EXPECT_TRUE(containsAttribute(inferred.attributes, "name"));
+  EXPECT_EQ(1U, inferred.attributes.size());
+}
+
+// Returning the whole document is not safe.
+TEST_F(BuilderTest, optimizerKeepsFullDocumentWhenVariableIsReturned) {
+  auto parsed = parseMatch("MATCH (v :vc) RETURN v");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto enumerates = enumerateCollections(*plan);
+  ASSERT_EQ(1U, enumerates.size());
+  EXPECT_TRUE(enumerates[0]->projections().empty());
+
+  auto inferred = inferProjections(enumerates[0]);
+  EXPECT_FALSE(inferred.safe);
+}
+
+// A later pattern reads u.age from the full document, not from u's projection.
+// A scan of only u's RETURN list would miss age, findProjections does not.
+TEST_F(BuilderTest, optimizerInfersAttributeUsedByLaterPattern) {
+  auto parsed = parseMatch(
+      "MATCH (u :vc {_key: 'u1'} RETURN name), "
+      "(w :vc WHERE w.age == u.age) RETURN w");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+
+  bool sawAgeOnProjectedDocument = false;
+  for (EnumerateCollectionNode* node : enumerateCollections(*plan)) {
+    EXPECT_TRUE(node->projections().empty());
+    auto inferred = inferProjections(node);
+    if (!inferred.safe || !containsAttribute(inferred.attributes, "age")) {
+      continue;
+    }
+    sawAgeOnProjectedDocument = true;
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "_id"));
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "_key"));
+    EXPECT_TRUE(containsAttribute(inferred.attributes, "name"));
+  }
+  EXPECT_TRUE(sawAgeOnProjectedDocument);
 }
 
 TEST_F(BuilderTest, excludedProjectionAttributeAccessWarns) {

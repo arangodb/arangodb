@@ -29,6 +29,7 @@
 #include "Assertions/ProdAssert.h"
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -47,13 +48,12 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::unique_ptr<IndexFactory>&& indexFactory,
                              IDatabaseProvider& databaseProvider,
                              IDatabaseBootstrap& databaseBootstrap)
     : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _databaseBootstrap(databaseBootstrap),
-      _indexFactory(std::move(indexFactory)),
+      _indexTypeCatalog(std::make_unique<IndexTypeCatalog>(server)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
@@ -66,9 +66,6 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<transaction::ManagerFeature>();
   startsAfter<ViewTypesFeature>();
 }
-
-void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
-                                                  VPackSlice) {}
 
 uint64_t StorageEngine::resolveObjectId(
     CollectionStorageProperties const& storage) const {
@@ -99,6 +96,14 @@ void StorageEngine::scheduleFullIndexRefill(std::string const& database,
 
 void StorageEngine::syncIndexCaches() {}
 
+StorageEngine::~StorageEngine() = default;
+
+void StorageEngine::setIndexFactory(
+    std::unique_ptr<IndexFactory>&& indexFactory) {
+  TRI_ASSERT(_indexFactory == nullptr);
+  _indexFactory = std::move(indexFactory);
+}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
@@ -106,22 +111,34 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-void StorageEngine::getCapabilities(velocypack::Builder& builder,
-                                    uint32_t apiVersion) const {
+IndexFactory& StorageEngine::mutableIndexFactory() noexcept {
+  TRI_ASSERT(_indexFactory != nullptr);
+  return *_indexFactory;
+}
+
+IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
+  return *_indexTypeCatalog;
+}
+
+IndexTypeCatalog& StorageEngine::indexTypeCatalog() noexcept {
+  return *_indexTypeCatalog;
+}
+
+void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
 
   builder.add("supports", velocypack::Value(VPackValueType::Object));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
-  for (auto const& it : indexFactory().supportedIndexes(apiVersion)) {
+  for (auto const& it : indexFactory().supportedIndexes()) {
     builder.add(velocypack::Value(it));
   }
   builder.close();  // indexes
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& [alias, type] : indexFactory().indexAliases(apiVersion)) {
+  for (auto const& [alias, type] : indexFactory().indexAliases()) {
     builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes

@@ -23,13 +23,12 @@
 #pragma once
 
 #include "Basics/Meta/TypeList.h"
+#include "Basics/ApiVersion.h"
 
-#include <cstdint>
 #include <iosfwd>
 #include <span>
 #include <string>
 #include <string_view>
-#include <variant>
 #include <vector>
 
 namespace arangodb {
@@ -155,6 +154,11 @@ struct DropDatabase {
 struct UseDatabase {
   std::string name;
   DatabaseAccessLevel level;
+};
+
+// Update the AQL query tracking properties of database `db`
+struct UpdateQueryProperties {
+  std::string db;
 };
 
 // ---------------------------------------------------------------------------
@@ -356,7 +360,7 @@ struct GrantUserPermissions {
 
 // Grant permission to a specific api version
 struct UseApiVersion {
-  uint32_t version;
+  ApiVersion version;
 };
 
 namespace detail {
@@ -365,6 +369,7 @@ namespace detail {
 using NonAdminList = meta::TypeList<
     // database permissions
     SeeDatabase, CreateDatabase, DropDatabase, UseDatabase,
+    UpdateQueryProperties,
     // collection permissions
     SeeCollection, CreateCollection, DropCollection, UseCollection,
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,

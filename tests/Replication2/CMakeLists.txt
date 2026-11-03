@@ -85,8 +85,7 @@ target_link_libraries(arangodbtests_replication2 PRIVATE
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arangoserver
-  boost_boost)
+  arangoserver)
 
 add_test(NAME replication2
   COMMAND arangodbtests_replication2)
@@ -135,7 +134,8 @@ target_link_libraries(arango_tests_replication2_pure PUBLIC
   gmock
   immer
   rocksdb_interface
-  boost_boost
+  Boost::container_hash
+  Boost::core
   )
 
 target_include_directories(arango_tests_replication2_pure PRIVATE "${PROJECT_SOURCE_DIR}/tests")

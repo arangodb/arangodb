@@ -32,11 +32,11 @@ namespace arangodb {
 struct Database;
 }
 namespace arangodb::aql {
-class QueryContext;
+class CalculationQueryContext;
 
 class StandaloneCalculation {
  public:
-  static std::unique_ptr<QueryContext> buildQueryContext(
+  static std::unique_ptr<CalculationQueryContext> buildQueryContext(
       Database& vocbase, transaction::OperationOrigin operationOrigin);
 
   static arangodb::Result validateQuery(

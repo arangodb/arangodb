@@ -30,7 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rbac/Service.h"
-#include "Rest/ApiVersion.h"
+#include "Basics/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 
 #include <format>
@@ -159,6 +159,10 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
 auto describe(auth::perms::SeeDatabase const& perm) -> std::string {
   return std::format("see database '{}'", perm.name);
 }
+auto describe(auth::perms::UpdateQueryProperties const& perm) -> std::string {
+  return std::format("update the AQL query properties of database '{}'",
+                     perm.db);
+}
 auto describe(auth::perms::CreateDatabase const& perm) -> std::string {
   return std::format("create database '{}'", perm.name);
 }
@@ -250,7 +254,7 @@ auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
   return std::format("grant permissions to user '{}'", perm.name);
 }
 auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
-  return std::format("use API version '{}'", perm.version);
+  return std::format("use API version '{}'", to_string(perm.version));
 }
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
@@ -408,8 +412,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 effectiveCollectionAuthLevel(collection.db, collection.name);
 
             if (requestedLevel > effectiveLevel) {
-              // If we are using API version > 0, then we return NOT_FOUND to
-              // hide the fact that the collection exists:
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
@@ -558,6 +560,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::SeeDatabase const& database) -> Result {
             return check(
                 p::UseDatabase{database.name, DatabaseAccessLevel::Read});
+          },
+          [&](p::UpdateQueryProperties const& properties) -> Result {
+            return check(
+                p::UseDatabase{properties.db, DatabaseAccessLevel::Write});
           },
           [&](p::CreateDatabase const& /*database*/) -> Result {
             // Creating a database requires RW access to the _system database.
@@ -806,9 +812,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                     .name = StaticStrings::SystemDatabase,
                     .level = DatabaseAccessLevel::Write});
                 r.fail()) {
-              if (_requestedApiVersion == 0) {
-                return {TRI_ERROR_HTTP_FORBIDDEN, r.errorMessage()};
-              }
               return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
@@ -875,9 +878,6 @@ Result AuthMode::Classic::isAdmin() const {
 
   auto message =
       std::format("Failed admin-permission check: {}", r.errorMessage());
-  if (_requestedApiVersion == 0) {
-    return Result{TRI_ERROR_HTTP_FORBIDDEN, message};
-  }
   return Result{TRI_ERROR_FORBIDDEN, message};
 }
 
@@ -1036,6 +1036,13 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             }
             return checkOne(rbac::Action::Read,
                             rbac::resources::Database{database.name});
+          },
+          [&](p::UpdateQueryProperties const& properties) -> Result {
+            if (auto r = auth::isNameAndNoId(properties.db); r.fail()) {
+              return r;
+            }
+            return checkOne(rbac::Action::UpdateQueryProperties,
+                            rbac::resources::Database{properties.db});
           },
           [&](p::CreateDatabase const& database) -> Result {
             return checkOne(rbac::Action::Create,

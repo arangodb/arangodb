@@ -218,8 +218,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       LogicalCollection& collection,
       LocalStorageProperties const& storage) override;
 
-  void getCapabilities(velocypack::Builder& builder,
-                       uint32_t apiVersion) const override;
+  void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const override;
@@ -233,10 +232,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                          velocypack::Builder& result, bool includeIndexes,
                          TRI_voc_tick_t maxTick) override;
 
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     velocypack::Builder& result,
-                                     bool wasCleanShutdown,
-                                     bool isUpgrade) override;
+  std::vector<CollectionDescriptor> getCollectionsAndIndexes(
+      TRI_vocbase_t& vocbase);
 
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      velocypack::Builder& result) override;
@@ -341,8 +338,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
-  void addParametersForNewCollection(velocypack::Builder& builder,
-                                     velocypack::Slice info) override;
   uint64_t resolveObjectId(
       CollectionStorageProperties const& storage) const override;
 

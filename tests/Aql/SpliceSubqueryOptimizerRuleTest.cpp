@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Mocks/CollectionDescriptors.h"
 #include "QueryHelper.h"
 
 #include "Aql/Ast.h"
@@ -473,8 +474,9 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_empty_subqueries) {
 // Regression test for https://github.com/arangodb/arangodb/issues/10852
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
-  auto const info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-  auto const collection = vocbase.createCollection(info->slice());
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("UnitTestCollection");
+  auto const collection = vocbase.createCollection(colDescriptor);
   auto const queryString = R"aql(
     LET new_id = (
         UPSERT { _key: @key }

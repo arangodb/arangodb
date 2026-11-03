@@ -30,6 +30,7 @@
 #include "velocypack/Iterator.h"
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -64,6 +65,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewSort.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
@@ -2429,6 +2431,44 @@ TEST_F(IResearchViewNodeTest, clone) {
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
   }
+
+  // primary sort condition
+  {
+    arangodb::iresearch::IResearchViewSort sort;
+    sort.emplace_back({{std::string_view("a"), false}}, true);
+    sort.emplace_back({{std::string_view("b"), false}}, false);
+
+    arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), arangodb::aql::ExecutionNodeId{42},
+        vocbase,      // database
+        logicalView,  // view
+        outVariable,
+        nullptr,  // no filter condition
+        nullptr,  // no options
+        {});      // no scorers
+    node.setSort(sort, 1);
+    ASSERT_EQ(&sort, node.sort().first);
+    ASSERT_EQ(1, node.sort().second);
+
+    // clone into the same plan
+    {
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(query.plan(), true));
+      EXPECT_EQ(node.sort(), cloned.sort());
+    }
+    // clone into another plan
+    {
+      MockQuery otherQuery(
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(std::string_view("RETURN 1")));
+      arangodb::tests::waitForAsync(otherQuery.prepareQuery());
+
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(otherQuery.plan(), true));
+      EXPECT_EQ(node.sort(), cloned.sort());
+    }
+  }
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
@@ -3303,25 +3343,25 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection0", arangodb::DataSourceId{42});
+    collection0 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection0);
   }
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection1\", \"id\" : \"4242\"  }");
-    collection1 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection1", arangodb::DataSourceId{4242});
+    collection1 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection1);
   }
 
   // create collection2
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection2\" , \"id\" : \"424242\" }");
-    ASSERT_NE(nullptr, vocbase.createCollection(createJson->slice()));
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection2", arangodb::DataSourceId{424242});
+    ASSERT_NE(nullptr, vocbase.createCollection(colDescriptor));
   }
 
   // create view
@@ -3397,9 +3437,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   // create collection0
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(createJson->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection0", arangodb::DataSourceId{42});
+    collection0 = vocbase.createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3671,16 +3711,16 @@ class IResearchViewVolatitlityTest
     EXPECT_NE(nullptr, vocbase);
     std::shared_ptr<arangodb::LogicalCollection> collection0;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection0", arangodb::DataSourceId{42});
+      collection0 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection0);
     }
     std::shared_ptr<arangodb::LogicalCollection> collection1;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection1\", \"id\" : \"43\" }");
-      collection1 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection1", arangodb::DataSourceId{43});
+      collection1 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection1);
     }
     arangodb::LogicalView::ptr logicalView0;
@@ -4089,9 +4129,9 @@ class IResearchViewBlockTest
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> collection0;
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(createJson->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "testCollection0", arangodb::DataSourceId{42});
+      collection0 = vocbase->createCollection(colDescriptor);
       EXPECT_NE(nullptr, collection0);
     }
     auto createJson = arangodb::velocypack::Parser::fromJson(

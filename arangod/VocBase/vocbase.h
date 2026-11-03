@@ -22,16 +22,6 @@
 
 #pragma once
 
-#include <atomic>
-#include <concepts>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
-
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -45,6 +35,16 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <concepts>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace application_features {
@@ -97,7 +97,6 @@ struct DatabaseConfiguration;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -272,8 +271,7 @@ struct Database {
   decltype(auto) sharding() const { return _info.sharding(); }
   bool isOneShard() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    uint32_t apiVersion) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
@@ -422,26 +420,21 @@ struct Database {
   arangodb::Result renameView(arangodb::DataSourceId cid,
                               std::string_view oldName);
 
-  /// @brief creates an array of new collections from parameter set. the
-  /// input slice must be an array of collection description objects.
-  /// all collection descriptions are validated first. upon validation error,
-  /// an exception is thrown. if all collection descriptions have passed
-  /// validation, the collection objects will be created and registered,
-  /// so that the collections can be looked up and found by name, guid etc.
+  /// @brief creates an array of new collections from the given descriptors.
+  /// all descriptors are validated first. upon validation error, an exception
+  /// is thrown. if all descriptors have passed validation, the collection
+  /// objects will be created and registered, so that the collections can be
+  /// looked up and found by name, guid etc.
   /// if creating or registering any of the collections fails after the
   /// initial validation, any already created collections are not deleted
   /// (i.e. no rollback if only some of the collections can be created or
   /// registered after initial validation).
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
-      arangodb::velocypack::Slice infoSlice,
-      bool allowEnterpriseCollectionsOnSingleServer);
-
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
       std::vector<CollectionDescriptor> descriptors);
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+  createCollections(std::vector<arangodb::CollectionDescriptor> const&
                         parametersOfCollections,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
@@ -451,23 +444,22 @@ struct Database {
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
-      arangodb::velocypack::Slice parameters);
-
-  std::shared_ptr<arangodb::LogicalCollection> createCollection(
       CollectionDescriptor descriptor);
 
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem);
 
-  /// @brief validate parameters for collection creation.
-  arangodb::Result validateCollectionParameters(
-      arangodb::velocypack::Slice parameters);
-
-  /// @brief validate a collection descriptor before it is used to create a
-  /// collection.
+  /// @brief checks a descriptor on its own. Checks that need the
+  /// `DatabaseConfiguration` are in `applyDefaultsAndValidate()`,
+  /// at construction site of the descriptor.
   arangodb::Result validateCollectionDescriptor(
-      arangodb::CollectionDescriptor const& descriptor);
+      CollectionDescriptor const& descriptor);
+
+  /// @brief checks the licence for SmartGraph collections. does nothing in
+  /// community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateEnterpriseLicense(
+      CollectionDescriptor const& descriptor);
 
   /// @brief locks a collection for usage by id.
   /// note: when the collection is not used anymore, the caller *must*
@@ -494,43 +486,12 @@ struct Database {
   /// the isAStub flag should be set to true for collections created by
   /// ClusterInfo.
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, bool isAStub);
-
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
       CollectionDescriptor descriptor, bool isAStub);
-
-  /// @brief creates a collection object (of type LogicalCollection or one of
-  /// the SmartGraph-specific subtypes) for storage. The object is augmented
-  /// with storage engine-specific data (e.g. objectId). the object only exists
-  /// on the heap and is not yet persisted anywhere. note: this should only be
-  /// called for valid collection definitions (i.e. validation should be done
-  /// before!) and not on coordinators (coordinators are not expected to store
-  /// any collections).
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
-      arangodb::velocypack::Slice parameters);
 
   /// @brief callback for collection dropping
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
 
  private:
-  /// @brief adds further SmartGraph-specific sub-collections to the vector of
-  /// collections if collection is a SmartGraph edge collection that requires
-  /// it. otherwise does nothing.
-  void addSmartGraphCollections(
-      std::shared_ptr<arangodb::LogicalCollection> const& collection,
-      std::vector<std::shared_ptr<arangodb::LogicalCollection>>& collections)
-      const;
-
-  /// @brief validates SmartGraph-specific collection parameters. does nothing
-  /// in community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateExtendedCollectionParameters(
-      arangodb::velocypack::Slice parameters);
-
-  /// @brief checks the licence for SmartGraph collections. does nothing in
-  /// community edition or if the collection is not a SmartGraph collection.
-  arangodb::Result validateEnterpriseLicense(
-      CollectionDescriptor const& descriptor);
-
   /// @brief stores the collection object in the list of available collections,
   /// so it can later be looked up and found by name, guid etc.
   void persistCollection(

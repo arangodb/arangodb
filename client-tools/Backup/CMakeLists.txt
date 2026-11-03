@@ -12,8 +12,6 @@ if (USE_ENTERPRISE)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     ${SYSTEM_LIBRARIES}
-    boost_system
-    boost_boost
     arango_shell
     clienttools_utils
     fuerte

@@ -150,7 +150,7 @@ class GeneralConnection : public fuerte::Connection {
     // `Disconnected` or `Connected` or `Failed` state, but not in the
     // `Connecting` state in this case.
     if (!this->_active.exchange(true)) {
-      this->_io_context->post([self(Connection::shared_from_this())] {
+      asio_ns::post(*_io_context, [self(Connection::shared_from_this())] {
         static_cast<GeneralConnection<ST, RT>&>(*self).activate();
       });
     }

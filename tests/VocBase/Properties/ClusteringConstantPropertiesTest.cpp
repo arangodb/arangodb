@@ -119,43 +119,40 @@ TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
         createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
   }
 
+  // NOTE: Inspect() parses an unknown strategy name parses here,
+  // but applyDefaultsAndValidate() rejects it, which is tested
+  // in the CreateCollectionRequestTest.
   GenerateFailsOnBool(shardingStrategy);
-  GenerateFailsOnNonEmptyString(shardingStrategy);
   GenerateFailsOnInteger(shardingStrategy);
   GenerateFailsOnDouble(shardingStrategy);
   GenerateFailsOnArray(shardingStrategy);
   GenerateFailsOnObject(shardingStrategy);
 }
 
-GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
-                                     numberOfShards);
+// Note: Inspect() parse a zero, but applyDefaultsAndValidate() rejects it,
+// which is tested in the CreateCollectionRequestTest.
+GenerateIntegerAttributeTest(ClusteringConstantPropertiesTest, numberOfShards);
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
 
-TEST_F(ClusteringConstantPropertiesTest, test_distributeShardsLikeUserContext) {
-  ClusteringConstantProperties props;
-  props.distributeShardsLike = "test";
-  props.distributeShardsLikeCid = "42";
-  VPackBuilder serial;
-  velocypack::serializeWithContext(serial, props, InspectUserContext{});
-  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
-  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
-  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
-            props.distributeShardsLike);
-}
-
 TEST_F(ClusteringConstantPropertiesTest,
-       test_distributeShardsLikeAgencyContext) {
+       test_distributeShardsLikeIsContextFree) {
   ClusteringConstantProperties props;
-  props.distributeShardsLike = "test";
-  props.distributeShardsLikeCid = "42";
-  VPackBuilder serial;
-  velocypack::serializeWithContext(serial, props, InspectAgencyContext{});
-  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
-  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
-  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
-            props.distributeShardsLikeCid);
+  props.distributeShardsLike = "42";
+
+  auto emits = [&](auto context) {
+    VPackBuilder serial;
+    velocypack::serializeWithContext(serial, props, context);
+    ASSERT_TRUE(serial.slice().hasKey(StaticStrings::DistributeShardsLike));
+    EXPECT_EQ(
+        serial.slice().get(StaticStrings::DistributeShardsLike).copyString(),
+        "42");
+  };
+
+  emits(InspectUserContext{});
+  emits(InspectAgencyContext{});
+  emits(InspectInternalContext{});
 }
 
 // shardsR2 and groupId are written by the server. The create API has to answer

@@ -119,7 +119,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     builder.close();
   } else if (suffixes[0] == "current") {
-    _vocbase.toVelocyPack(builder, _request->requestedApiVersion());
+    _vocbase.toVelocyPack(builder);
   } else if (suffixes[0] == "shardStatistics") {
     // shard statistics for the database
     if (!ServerState::instance()->isCoordinator()) {

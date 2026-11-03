@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
 #include "RestHandler/RestBaseHandler.h"
 
 #include <string_view>
@@ -48,7 +49,7 @@ class RestOpenApiHandler : public arangodb::RestBaseHandler {
   async<Result> checkDatabaseAccess() const override { co_return Result{}; }
 
  private:
-  std::string_view getOpenApiSpec(uint32_t apiVersion) const;
+  std::string_view getOpenApiSpec(ApiVersion apiVersion) const;
 };
 
 }  // namespace arangodb

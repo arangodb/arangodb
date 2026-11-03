@@ -72,7 +72,7 @@ struct FakeGeneralRequest final : GeneralRequest {
   void setRequestedApiVersion(uint32_t version) noexcept {
     _requestedApiVersion = version;
   }
-};
+};  // namespace arangodb::tests::mocks
 
 /// @brief Bundled ownership for a Classic-auth ExecContext created by the
 /// factory. All three members must outlive any ExecContextScope that uses

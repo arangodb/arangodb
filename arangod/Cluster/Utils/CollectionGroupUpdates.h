@@ -28,7 +28,7 @@
 #include <unordered_set>
 
 namespace arangodb {
-struct UserInputCollectionProperties;
+struct CollectionDescriptor;
 class DataSourceId;
 }  // namespace arangodb
 
@@ -44,7 +44,7 @@ struct CollectionGroupUpdates {
   std::vector<AddCollectionToGroup> additionsToGroup;
 
   agency::CollectionGroupId addNewGroup(
-      UserInputCollectionProperties const& collection,
+      CollectionDescriptor const& collection,
       std::function<uint64_t()> const& generateId);
 
   void addToNewGroup(agency::CollectionGroupId const& groupId,

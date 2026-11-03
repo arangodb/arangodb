@@ -63,7 +63,7 @@ ARANGOD_BINARY = os.path.join(SOURCE_ROOT, "build", "bin", "arangod")
 # Format strings compiled into arangod; their presence in the binary is the
 # ground truth for what the running server can ask about.
 BINARY_MARKERS = {
-    "api_version_gate": b"db:apiversion:v",
+    "api_version_gate": b"db:apiversion:",
     "admin_read_users": b"db:AdminReadUsers",
 }
 
