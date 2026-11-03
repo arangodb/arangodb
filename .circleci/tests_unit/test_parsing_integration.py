@@ -12,6 +12,7 @@ from src.config_lib import TestDefinitionFile, DeploymentType
 
 TESTS_DIR = Path(__file__).parent.parent.parent / "tests"
 MAIN_TEST_DEFINITIONS = "tests.yml"
+CTEST_TEST_DEFINITIONS = "ctests.yml"
 
 
 class TestParsingIntegration:
@@ -63,13 +64,23 @@ class TestParsingIntegration:
             if job.options.buckets == "auto":
                 assert job.get_bucket_count() == len(job.suites)
 
+    def test_ctest_tests_have_ctest_job(self):
+        yaml_file = TESTS_DIR / CTEST_TEST_DEFINITIONS
+
+        test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
+
+        for job in test_def.jobs.values():
+            assert (
+                    job.job == run-ctest-tests
+                ), f"Ctest job in {yaml_file.name} should use ctest job run-ctest-tests"
+
     def test_driver_tests_have_repository_config(self):
         """Verify driver test files correctly set repository configuration."""
         yaml_files = sorted(TESTS_DIR.glob("*.yml"))
 
         for yaml_file in yaml_files:
             # Skip main test definitions - it contains regular tests, not driver tests
-            if yaml_file.name == MAIN_TEST_DEFINITIONS:
+            if yaml_file.name == MAIN_TEST_DEFINITIONS || yaml_file.name == CTEST_TEST_DEFINITIONS:
                 continue
 
             test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))

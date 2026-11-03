@@ -17,7 +17,7 @@ RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 \
-    7zip gdb tzdata curl jq binutils gcc \
+    7zip gdb cmake tzdata curl jq binutils gcc \
     llvm-${CLANG_VERSION} libatomic1 net-tools \
     libc6 libstdc++6 \
     libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget sed \

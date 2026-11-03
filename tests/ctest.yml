@@ -1,0 +1,9 @@
+---
+# ctest-registered tests. `suites` here are exact ctest test names.
+- ctest-arangodb:
+    job: run-ctest-tests
+    options:
+      type: single
+    suites:
+      - async_registry_python_pretty_printer_test
+      - async_registry_gdb_pretty_printer_test
