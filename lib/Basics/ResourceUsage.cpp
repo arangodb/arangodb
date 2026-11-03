@@ -25,9 +25,28 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
+#include "Logger/LogMacros.h"
+
+#include <sstream>
+#include <string>
 
 using namespace arangodb;
+
+namespace {
+
+// Every monitor in the registry with its bytes, including those of finished
+// queries that still have memory charged to them.
+auto describeRegistry() -> std::string {
+  std::ostringstream out;
+  infra::globalMonitorRegistry().forEach([&](infra::ResourceMonitorBase& m) {
+    out << &m << ':' << m.actualBytes() << ' ';
+  });
+  return out.str();
+}
+
+}  // namespace
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
     : _current(0), _peak(0), _limit(0), _global(global) {
@@ -42,6 +61,11 @@ ResourceMonitor::~ResourceMonitor() {
   [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
+  LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
+      << "monitor end: monitor=" << monitorRef.get()
+      << " left=" << monitorRef.get()->actualBytes() << " registry=["
+      << describeRegistry() << "]";
+
   static_cast<infra::ResourceMonitor*>(monitorRef.get())->retire();
   monitorRef.reset();
 }

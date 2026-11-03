@@ -64,6 +64,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -616,6 +617,7 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(!_queryString.empty());
+  infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
       << " this: " << (uintptr_t)this;

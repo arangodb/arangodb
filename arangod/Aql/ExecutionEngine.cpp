@@ -715,11 +715,6 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
     TRI_ASSERT(block == nullptr);
   }
 #endif
-
-  LOG_TOPIC("f0c1e", INFO, Logger::QUERIES)
-      << " memory old: " << _query.resourceMonitor().current()
-      << " memory new: "
-      << _query.resourceMonitor().monitorRef.get()->actualBytes();
   return res;
 }
 
