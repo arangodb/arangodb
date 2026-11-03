@@ -40,7 +40,6 @@ namespace arangodb {
 struct Database;
 class ClusterFeature;
 class LogicalCollection;
-struct CollectionCreationInfo;
 class CollectionNameResolver;
 struct CollectionDescriptor;
 struct ShardID;
@@ -120,9 +119,9 @@ struct Collections {
   [[nodiscard]] static arangodb::Result createShard(
       Database& vocbase,  // shard database
       OperationOptions const& options,
-      ShardID const& name,                     // shard name
-      TRI_col_type_e collectionType,           // shard type
-      velocypack::Slice properties,            // shard properties
+      ShardID const& name,              // shard name
+      TRI_col_type_e collectionType,    // shard type
+      CollectionDescriptor descriptor,  // the shard's properties, from the Plan
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
   );
 

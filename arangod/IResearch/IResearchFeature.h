@@ -38,7 +38,6 @@
 namespace arangodb {
 struct Database;
 class DatabasePathFeature;
-struct IndexTypeFactory;
 namespace metrics {
 struct IRegistry;
 }  // namespace metrics
@@ -57,6 +56,8 @@ class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
 
 struct IResearchExecutionPool;
+struct IResearchLinkDefinition;
+class IResearchInvertedIndexDefinition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -112,6 +113,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
                             IResearchOptions options);
   explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
+  ~IResearchFeature() override;
 
   void prepare() final;
   void start() final;
@@ -180,7 +182,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   irs::IResourceManager& _columnsCacheMemoryUsed;
 #endif
 
-  std::shared_ptr<IndexTypeFactory> _factory;
+  // owned here because the catalog keeps a pointer to it
+  std::unique_ptr<IResearchLinkDefinition> _linkDefinition;
+
+  // owned here because the catalog keeps a pointer to it
+  std::unique_ptr<IResearchInvertedIndexDefinition> _invertedDefinition;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
