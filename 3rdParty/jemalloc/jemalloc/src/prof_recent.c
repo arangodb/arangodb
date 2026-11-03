@@ -7,18 +7,18 @@
 #include "jemalloc/internal/prof_data.h"
 #include "jemalloc/internal/prof_recent.h"
 
-ssize_t opt_prof_recent_alloc_max = PROF_RECENT_ALLOC_MAX_DEFAULT;
-malloc_mutex_t prof_recent_alloc_mtx; /* Protects the fields below */
+ssize_t            opt_prof_recent_alloc_max = PROF_RECENT_ALLOC_MAX_DEFAULT;
+malloc_mutex_t     prof_recent_alloc_mtx; /* Protects the fields below */
 static atomic_zd_t prof_recent_alloc_max;
-static ssize_t prof_recent_alloc_count = 0;
+static ssize_t     prof_recent_alloc_count = 0;
 prof_recent_list_t prof_recent_alloc_list;
 
 malloc_mutex_t prof_recent_dump_mtx; /* Protects dumping. */
 
 static void
 prof_recent_alloc_max_init(void) {
-	atomic_store_zd(&prof_recent_alloc_max, opt_prof_recent_alloc_max,
-	    ATOMIC_RELAXED);
+	atomic_store_zd(
+	    &prof_recent_alloc_max, opt_prof_recent_alloc_max, ATOMIC_RELAXED);
 }
 
 static inline ssize_t
@@ -144,26 +144,26 @@ edata_prof_recent_alloc_get_no_lock_test(const edata_t *edata) {
 static inline prof_recent_t *
 edata_prof_recent_alloc_get(tsd_t *tsd, const edata_t *edata) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
-	prof_recent_t *recent_alloc =
-	    edata_prof_recent_alloc_get_no_lock(edata);
-	assert(recent_alloc == NULL ||
-	    prof_recent_alloc_edata_get(tsd, recent_alloc) == edata);
+	prof_recent_t *recent_alloc = edata_prof_recent_alloc_get_no_lock(
+	    edata);
+	assert(recent_alloc == NULL
+	    || prof_recent_alloc_edata_get(tsd, recent_alloc) == edata);
 	return recent_alloc;
 }
 
 static prof_recent_t *
-edata_prof_recent_alloc_update_internal(tsd_t *tsd, edata_t *edata,
-    prof_recent_t *recent_alloc) {
+edata_prof_recent_alloc_update_internal(
+    tsd_t *tsd, edata_t *edata, prof_recent_t *recent_alloc) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
-	prof_recent_t *old_recent_alloc =
-	    edata_prof_recent_alloc_get(tsd, edata);
+	prof_recent_t *old_recent_alloc = edata_prof_recent_alloc_get(
+	    tsd, edata);
 	edata_prof_recent_alloc_set_dont_call_directly(edata, recent_alloc);
 	return old_recent_alloc;
 }
 
 static void
-edata_prof_recent_alloc_set(tsd_t *tsd, edata_t *edata,
-    prof_recent_t *recent_alloc) {
+edata_prof_recent_alloc_set(
+    tsd_t *tsd, edata_t *edata, prof_recent_t *recent_alloc) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
 	assert(recent_alloc != NULL);
 	prof_recent_t *old_recent_alloc =
@@ -173,8 +173,8 @@ edata_prof_recent_alloc_set(tsd_t *tsd, edata_t *edata,
 }
 
 static void
-edata_prof_recent_alloc_reset(tsd_t *tsd, edata_t *edata,
-    prof_recent_t *recent_alloc) {
+edata_prof_recent_alloc_reset(
+    tsd_t *tsd, edata_t *edata, prof_recent_t *recent_alloc) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
 	assert(recent_alloc != NULL);
 	prof_recent_t *old_recent_alloc =
@@ -265,14 +265,14 @@ prof_recent_alloc_assert_count(tsd_t *tsd) {
 	if (!config_debug) {
 		return;
 	}
-	ssize_t count = 0;
+	ssize_t        count = 0;
 	prof_recent_t *n;
-	ql_foreach(n, &prof_recent_alloc_list, link) {
+	ql_foreach (n, &prof_recent_alloc_list, link) {
 		++count;
 	}
 	assert(count == prof_recent_alloc_count);
-	assert(prof_recent_alloc_max_get(tsd) == -1 ||
-	    count <= prof_recent_alloc_max_get(tsd));
+	assert(prof_recent_alloc_max_get(tsd) == -1
+	    || count <= prof_recent_alloc_max_get(tsd));
 }
 
 void
@@ -319,8 +319,8 @@ prof_recent_alloc(tsd_t *tsd, edata_t *edata, size_t size, size_t usize) {
 	 * the allocation locks.
 	 */
 	prof_recent_t *reserve = NULL;
-	if (prof_recent_alloc_max_get(tsd) == -1 ||
-	    prof_recent_alloc_count < prof_recent_alloc_max_get(tsd)) {
+	if (prof_recent_alloc_max_get(tsd) == -1
+	    || prof_recent_alloc_count < prof_recent_alloc_max_get(tsd)) {
 		assert(prof_recent_alloc_max_get(tsd) != 0);
 		malloc_mutex_unlock(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
 		reserve = prof_recent_allocate_node(tsd_tsdn(tsd));
@@ -346,8 +346,9 @@ prof_recent_alloc(tsd_t *tsd, edata_t *edata, size_t size, size_t usize) {
 		ql_rotate(&prof_recent_alloc_list, link);
 	} else {
 		/* Otherwise make use of the new node. */
-		assert(prof_recent_alloc_max_get(tsd) == -1 ||
-		    prof_recent_alloc_count < prof_recent_alloc_max_get(tsd));
+		assert(prof_recent_alloc_max_get(tsd) == -1
+		    || prof_recent_alloc_count
+		        < prof_recent_alloc_max_get(tsd));
 		if (reserve == NULL) {
 			goto label_rollback;
 		}
@@ -421,7 +422,7 @@ prof_recent_alloc_restore_locked(tsd_t *tsd, prof_recent_list_t *to_delete) {
 	}
 
 	prof_recent_t *node;
-	ql_foreach(node, &prof_recent_alloc_list, link) {
+	ql_foreach (node, &prof_recent_alloc_list, link) {
 		if (prof_recent_alloc_count == max) {
 			break;
 		}
@@ -462,7 +463,7 @@ prof_recent_alloc_max_ctl_write(tsd_t *tsd, ssize_t max) {
 	assert(max >= -1);
 	malloc_mutex_lock(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
 	prof_recent_alloc_assert_count(tsd);
-	const ssize_t old_max = prof_recent_alloc_max_update(tsd, max);
+	const ssize_t      old_max = prof_recent_alloc_max_update(tsd, max);
 	prof_recent_list_t to_delete;
 	prof_recent_alloc_restore_locked(tsd, &to_delete);
 	malloc_mutex_unlock(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
@@ -472,7 +473,7 @@ prof_recent_alloc_max_ctl_write(tsd_t *tsd, ssize_t max) {
 
 static void
 prof_recent_alloc_dump_bt(emitter_t *emitter, prof_tctx_t *tctx) {
-	char bt_buf[2 * sizeof(intptr_t) + 3];
+	char  bt_buf[2 * sizeof(intptr_t) + 3];
 	char *s = bt_buf;
 	assert(tctx != NULL);
 	prof_bt_t *bt = &tctx->gctx->bt;
@@ -501,8 +502,8 @@ prof_recent_alloc_dump_node(emitter_t *emitter, prof_recent_t *node) {
 		    emitter_type_string, &thread_name);
 	}
 	uint64_t alloc_time_ns = nstime_ns(&node->alloc_time);
-	emitter_json_kv(emitter, "alloc_time", emitter_type_uint64,
-	    &alloc_time_ns);
+	emitter_json_kv(
+	    emitter, "alloc_time", emitter_type_uint64, &alloc_time_ns);
 	emitter_json_array_kv_begin(emitter, "alloc_trace");
 	prof_recent_alloc_dump_bt(emitter, node->alloc_tctx);
 	emitter_json_array_end(emitter);
@@ -539,8 +540,8 @@ prof_recent_alloc_dump(tsd_t *tsd, write_cb_t *write_cb, void *cbopaque) {
 	buf_writer_init(tsd_tsdn(tsd), &buf_writer, write_cb, cbopaque, NULL,
 	    PROF_RECENT_PRINT_BUFSIZE);
 	emitter_t emitter;
-	emitter_init(&emitter, emitter_output_json_compact, buf_writer_cb,
-	    &buf_writer);
+	emitter_init(
+	    &emitter, emitter_output_json_compact, buf_writer_cb, &buf_writer);
 	prof_recent_list_t temp_list;
 
 	malloc_mutex_lock(tsd_tsdn(tsd), &prof_recent_alloc_mtx);
@@ -554,13 +555,13 @@ prof_recent_alloc_dump(tsd_t *tsd, write_cb_t *write_cb, void *cbopaque) {
 
 	emitter_begin(&emitter);
 	uint64_t sample_interval = (uint64_t)1U << lg_prof_sample;
-	emitter_json_kv(&emitter, "sample_interval", emitter_type_uint64,
-	    &sample_interval);
-	emitter_json_kv(&emitter, "recent_alloc_max", emitter_type_ssize,
-	    &dump_max);
+	emitter_json_kv(
+	    &emitter, "sample_interval", emitter_type_uint64, &sample_interval);
+	emitter_json_kv(
+	    &emitter, "recent_alloc_max", emitter_type_ssize, &dump_max);
 	emitter_json_array_kv_begin(&emitter, "recent_alloc");
 	prof_recent_t *node;
-	ql_foreach(node, &temp_list, link) {
+	ql_foreach (node, &temp_list, link) {
 		prof_recent_alloc_dump_node(&emitter, node);
 	}
 	emitter_json_array_end(&emitter);
@@ -587,12 +588,12 @@ prof_recent_init(void) {
 	prof_recent_alloc_max_init();
 
 	if (malloc_mutex_init(&prof_recent_alloc_mtx, "prof_recent_alloc",
-	    WITNESS_RANK_PROF_RECENT_ALLOC, malloc_mutex_rank_exclusive)) {
+	        WITNESS_RANK_PROF_RECENT_ALLOC, malloc_mutex_rank_exclusive)) {
 		return true;
 	}
 
 	if (malloc_mutex_init(&prof_recent_dump_mtx, "prof_recent_dump",
-	    WITNESS_RANK_PROF_RECENT_DUMP, malloc_mutex_rank_exclusive)) {
+	        WITNESS_RANK_PROF_RECENT_DUMP, malloc_mutex_rank_exclusive)) {
 		return true;
 	}
 

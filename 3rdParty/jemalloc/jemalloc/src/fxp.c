@@ -83,8 +83,8 @@ fxp_parse(fxp_t *result, const char *str, char **end) {
 	}
 
 	assert(fractional_part < frac_div);
-	uint32_t fractional_repr = (uint32_t)(
-	    (fractional_part << 16) / frac_div);
+	uint32_t fractional_repr = (uint32_t)((fractional_part << 16)
+	    / frac_div);
 
 	/* Success! */
 	*result = (integer_part << 16) + fractional_repr;
@@ -99,7 +99,7 @@ fxp_print(fxp_t a, char buf[FXP_BUF_SIZE]) {
 	uint32_t integer_part = fxp_round_down(a);
 	uint32_t fractional_part = (a & ((1U << 16) - 1));
 
-	int leading_fraction_zeros = 0;
+	int      leading_fraction_zeros = 0;
 	uint64_t fraction_digits = fractional_part;
 	for (int i = 0; i < FXP_FRACTIONAL_PART_DIGITS; i++) {
 		if (fraction_digits < (1U << 16)
@@ -113,12 +113,12 @@ fxp_print(fxp_t a, char buf[FXP_BUF_SIZE]) {
 		fraction_digits /= 10;
 	}
 
-	size_t printed = malloc_snprintf(buf, FXP_BUF_SIZE, "%"FMTu32".",
-	    integer_part);
+	size_t printed = malloc_snprintf(
+	    buf, FXP_BUF_SIZE, "%" FMTu32 ".", integer_part);
 	for (int i = 0; i < leading_fraction_zeros; i++) {
 		buf[printed] = '0';
 		printed++;
 	}
-	malloc_snprintf(&buf[printed], FXP_BUF_SIZE - printed, "%"FMTu64,
-	    fraction_digits);
+	malloc_snprintf(
+	    &buf[printed], FXP_BUF_SIZE - printed, "%" FMTu64, fraction_digits);
 }

@@ -4,10 +4,10 @@
 # AccessModifierOffset: -2
 AlignAfterOpenBracket: DontAlign
 AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveDeclarations: true
 AlignEscapedNewlines: Right
 AlignOperands: false
-AlignTrailingComments: false
+AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
@@ -20,16 +20,16 @@ AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:
-  AfterClass: false
-  AfterControlStatement: false
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterObjCDeclaration: false
-  AfterStruct: false
-  AfterUnion: false
-  BeforeCatch: false
-  BeforeElse: false
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
   IndentBraces: false
 # BreakAfterJavaFieldAnnotations: true
 BreakBeforeBinaryOperators: NonAssignment
@@ -43,7 +43,7 @@ ColumnLimit: 80
 # CompactNamespaces: true
 # ConstructorInitializerAllOnOneLineOrOnePerLine: true
 # ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 2
+ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 DisableFormat:   false
@@ -57,7 +57,7 @@ ForEachMacros:   [ ql_foreach, qr_foreach, ]
 # IncludeIsMainRegex: ''
 IndentCaseLabels: false
 IndentPPDirectives: AfterHash
-IndentWidth: 4
+IndentWidth: 8
 IndentWrappedFunctionNames: false
 # JavaImportGroups: []
 # JavaScriptQuotes: Leave
@@ -73,8 +73,8 @@ MaxEmptyLinesToKeep: 1
 # ObjCSpaceAfterProperty: false
 # ObjCSpaceBeforeProtocolList: false
 
-PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyBreakAssignment: 100
+PenaltyBreakBeforeFirstCallParameter: 100
 PenaltyBreakComment: 300
 PenaltyBreakFirstLessLess: 120
 PenaltyBreakString: 1000
@@ -96,7 +96,7 @@ PointerAlignment: Right
 #         - 'cpp'
 #       BasedOnStyle: llvm
 #       CanonicalDelimiter: 'cc'
-ReflowComments: true
+ReflowComments: false
 SortIncludes: false
 SpaceAfterCStyleCast: false
 # SpaceAfterTemplateKeyword: true
@@ -107,7 +107,7 @@ SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 # SpaceBeforeRangeBasedForLoopColon: true
 SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 2
+SpacesBeforeTrailingComments: 1
 SpacesInAngles:  false
 SpacesInCStyleCastParentheses: false
 # SpacesInContainerLiterals: false
@@ -118,5 +118,5 @@ SpacesInSquareBrackets: false
 # used by some of the core jemalloc developers.
 # StatementMacros: []
 TabWidth: 8
-UseTab: Never
+UseTab: ForIndentation
 ...

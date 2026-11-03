@@ -8,7 +8,10 @@
 #define N_BIN_SHARDS_DEFAULT 1
 
 /* Used in TSD static initializer only. Real init in arena_bind(). */
-#define TSD_BINSHARDS_ZERO_INITIALIZER {{UINT8_MAX}}
+#define TSD_BINSHARDS_ZERO_INITIALIZER                                         \
+	{                                                                      \
+		{ UINT8_MAX }                                                  \
+	}
 
 typedef struct tsd_binshards_s tsd_binshards_t;
 struct tsd_binshards_s {

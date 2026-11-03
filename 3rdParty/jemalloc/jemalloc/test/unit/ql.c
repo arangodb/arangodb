@@ -15,16 +15,16 @@ struct list_s {
 
 static void
 test_empty_list(list_head_t *head) {
-	list_t *t;
+	list_t  *t;
 	unsigned i;
 
 	expect_true(ql_empty(head), "Unexpected element for empty list");
 	expect_ptr_null(ql_first(head), "Unexpected element for empty list");
-	expect_ptr_null(ql_last(head, link),
-	    "Unexpected element for empty list");
+	expect_ptr_null(
+	    ql_last(head, link), "Unexpected element for empty list");
 
 	i = 0;
-	ql_foreach(t, head, link) {
+	ql_foreach (t, head, link) {
 		i++;
 	}
 	expect_u_eq(i, 0, "Unexpected element for empty list");
@@ -56,48 +56,48 @@ init_entries(list_t *entries, unsigned nentries) {
 
 static void
 test_entries_list(list_head_t *head, list_t *entries, unsigned nentries) {
-	list_t *t;
+	list_t  *t;
 	unsigned i;
 
 	expect_false(ql_empty(head), "List should not be empty");
 	expect_c_eq(ql_first(head)->id, entries[0].id, "Element id mismatch");
-	expect_c_eq(ql_last(head, link)->id, entries[nentries-1].id,
+	expect_c_eq(ql_last(head, link)->id, entries[nentries - 1].id,
 	    "Element id mismatch");
 
 	i = 0;
-	ql_foreach(t, head, link) {
+	ql_foreach (t, head, link) {
 		expect_c_eq(t->id, entries[i].id, "Element id mismatch");
 		i++;
 	}
 
 	i = 0;
 	ql_reverse_foreach(t, head, link) {
-		expect_c_eq(t->id, entries[nentries-i-1].id,
-		    "Element id mismatch");
+		expect_c_eq(
+		    t->id, entries[nentries - i - 1].id, "Element id mismatch");
 		i++;
 	}
 
-	for (i = 0; i < nentries-1; i++) {
+	for (i = 0; i < nentries - 1; i++) {
 		t = ql_next(head, &entries[i], link);
-		expect_c_eq(t->id, entries[i+1].id, "Element id mismatch");
+		expect_c_eq(t->id, entries[i + 1].id, "Element id mismatch");
 	}
-	expect_ptr_null(ql_next(head, &entries[nentries-1], link),
-	    "Unexpected element");
+	expect_ptr_null(
+	    ql_next(head, &entries[nentries - 1], link), "Unexpected element");
 
 	expect_ptr_null(ql_prev(head, &entries[0], link), "Unexpected element");
 	for (i = 1; i < nentries; i++) {
 		t = ql_prev(head, &entries[i], link);
-		expect_c_eq(t->id, entries[i-1].id, "Element id mismatch");
+		expect_c_eq(t->id, entries[i - 1].id, "Element id mismatch");
 	}
 }
 
 TEST_BEGIN(test_ql_tail_insert) {
 	list_head_t head;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
 		ql_tail_insert(&head, &entries[i], link);
 	}
@@ -108,17 +108,17 @@ TEST_END
 
 TEST_BEGIN(test_ql_tail_remove) {
 	list_head_t head;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
 		ql_tail_insert(&head, &entries[i], link);
 	}
 
 	for (i = 0; i < NENTRIES; i++) {
-		test_entries_list(&head, entries, NENTRIES-i);
+		test_entries_list(&head, entries, NENTRIES - i);
 		ql_tail_remove(&head, list_t, link);
 	}
 	test_empty_list(&head);
@@ -127,13 +127,13 @@ TEST_END
 
 TEST_BEGIN(test_ql_head_insert) {
 	list_head_t head;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
-		ql_head_insert(&head, &entries[NENTRIES-i-1], link);
+		ql_head_insert(&head, &entries[NENTRIES - i - 1], link);
 	}
 
 	test_entries_list(&head, entries, NENTRIES);
@@ -142,17 +142,17 @@ TEST_END
 
 TEST_BEGIN(test_ql_head_remove) {
 	list_head_t head;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
-		ql_head_insert(&head, &entries[NENTRIES-i-1], link);
+		ql_head_insert(&head, &entries[NENTRIES - i - 1], link);
 	}
 
 	for (i = 0; i < NENTRIES; i++) {
-		test_entries_list(&head, &entries[i], NENTRIES-i);
+		test_entries_list(&head, &entries[i], NENTRIES - i);
 		ql_head_remove(&head, list_t, link);
 	}
 	test_empty_list(&head);
@@ -161,11 +161,11 @@ TEST_END
 
 TEST_BEGIN(test_ql_insert) {
 	list_head_t head;
-	list_t entries[8];
-	list_t *a, *b, *c, *d, *e, *f, *g, *h;
+	list_t      entries[8];
+	list_t     *a, *b, *c, *d, *e, *f, *g, *h;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	a = &entries[0];
 	b = &entries[1];
 	c = &entries[2];
@@ -190,13 +190,13 @@ TEST_BEGIN(test_ql_insert) {
 	ql_after_insert(c, d, link);
 	ql_before_insert(&head, f, e, link);
 
-	test_entries_list(&head, entries, sizeof(entries)/sizeof(list_t));
+	test_entries_list(&head, entries, sizeof(entries) / sizeof(list_t));
 }
 TEST_END
 
 static void
-test_concat_split_entries(list_t *entries, unsigned nentries_a,
-    unsigned nentries_b) {
+test_concat_split_entries(
+    list_t *entries, unsigned nentries_a, unsigned nentries_b) {
 	init_entries(entries, nentries_a + nentries_b);
 
 	list_head_t head_a;
@@ -253,8 +253,8 @@ TEST_BEGIN(test_ql_concat_split) {
 
 	test_concat_split_entries(entries, 0, NENTRIES);
 	test_concat_split_entries(entries, 1, NENTRIES - 1);
-	test_concat_split_entries(entries, NENTRIES / 2,
-	    NENTRIES - NENTRIES / 2);
+	test_concat_split_entries(
+	    entries, NENTRIES / 2, NENTRIES - NENTRIES / 2);
 	test_concat_split_entries(entries, NENTRIES - 1, 1);
 	test_concat_split_entries(entries, NENTRIES, 0);
 }
@@ -262,11 +262,11 @@ TEST_END
 
 TEST_BEGIN(test_ql_rotate) {
 	list_head_t head;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head);
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
 		ql_tail_insert(&head, &entries[i], link);
 	}
@@ -284,15 +284,15 @@ TEST_END
 
 TEST_BEGIN(test_ql_move) {
 	list_head_t head_dest, head_src;
-	list_t entries[NENTRIES];
-	unsigned i;
+	list_t      entries[NENTRIES];
+	unsigned    i;
 
 	ql_new(&head_src);
 	ql_move(&head_dest, &head_src);
 	test_empty_list(&head_src);
 	test_empty_list(&head_dest);
 
-	init_entries(entries, sizeof(entries)/sizeof(list_t));
+	init_entries(entries, sizeof(entries) / sizeof(list_t));
 	for (i = 0; i < NENTRIES; i++) {
 		ql_tail_insert(&head_src, &entries[i], link);
 	}
@@ -304,14 +304,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_ql_empty,
-	    test_ql_tail_insert,
-	    test_ql_tail_remove,
-	    test_ql_head_insert,
-	    test_ql_head_remove,
-	    test_ql_insert,
-	    test_ql_concat_split,
-	    test_ql_rotate,
-	    test_ql_move);
+	return test(test_ql_empty, test_ql_tail_insert, test_ql_tail_remove,
+	    test_ql_head_insert, test_ql_head_remove, test_ql_insert,
+	    test_ql_concat_split, test_ql_rotate, test_ql_move);
 }

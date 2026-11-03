@@ -27,9 +27,10 @@ extent_alloc_core(tsdn_t *tsdn, arena_t *arena, void *new_addr, size_t size,
 	assert(alignment != 0);
 
 	/* "primary" dss. */
-	if (have_dss && dss_prec == dss_prec_primary && (ret =
-	    extent_alloc_dss(tsdn, arena, new_addr, size, alignment, zero,
-	    commit)) != NULL) {
+	if (have_dss && dss_prec == dss_prec_primary
+	    && (ret = extent_alloc_dss(
+	            tsdn, arena, new_addr, size, alignment, zero, commit))
+	        != NULL) {
 		return ret;
 	}
 	/* mmap. */
@@ -38,9 +39,10 @@ extent_alloc_core(tsdn_t *tsdn, arena_t *arena, void *new_addr, size_t size,
 		return ret;
 	}
 	/* "secondary" dss. */
-	if (have_dss && dss_prec == dss_prec_secondary && (ret =
-	    extent_alloc_dss(tsdn, arena, new_addr, size, alignment, zero,
-	    commit)) != NULL) {
+	if (have_dss && dss_prec == dss_prec_secondary
+	    && (ret = extent_alloc_dss(
+	            tsdn, arena, new_addr, size, alignment, zero, commit))
+	        != NULL) {
 		return ret;
 	}
 
@@ -53,11 +55,12 @@ ehooks_default_alloc_impl(tsdn_t *tsdn, void *new_addr, size_t size,
     size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	arena_t *arena = arena_get(tsdn, arena_ind, false);
 	/* NULL arena indicates arena_create. */
-	assert(arena != NULL || alignment == HUGEPAGE);
-	dss_prec_t dss = (arena == NULL) ? dss_prec_disabled :
-	    (dss_prec_t)atomic_load_u(&arena->dss_prec, ATOMIC_RELAXED);
-	void *ret = extent_alloc_core(tsdn, arena, new_addr, size, alignment,
-	    zero, commit, dss);
+	assert(arena != NULL || alignment == BASE_BLOCK_MIN_ALIGN);
+	dss_prec_t dss = (arena == NULL)
+	    ? dss_prec_disabled
+	    : (dss_prec_t)atomic_load_u(&arena->dss_prec, ATOMIC_RELAXED);
+	void      *ret = extent_alloc_core(
+            tsdn, arena, new_addr, size, alignment, zero, commit, dss);
 	if (have_madvise_huge && ret) {
 		pages_set_thp_state(ret, size);
 	}
@@ -100,8 +103,8 @@ ehooks_default_destroy(extent_hooks_t *extent_hooks, void *addr, size_t size,
 
 bool
 ehooks_default_commit_impl(void *addr, size_t offset, size_t length) {
-	return pages_commit((void *)((byte_t *)addr + (uintptr_t)offset),
-	    length);
+	return pages_commit(
+	    (void *)((byte_t *)addr + (uintptr_t)offset), length);
 }
 
 static bool
@@ -112,8 +115,8 @@ ehooks_default_commit(extent_hooks_t *extent_hooks, void *addr, size_t size,
 
 bool
 ehooks_default_decommit_impl(void *addr, size_t offset, size_t length) {
-	return pages_decommit((void *)((byte_t *)addr + (uintptr_t)offset),
-	    length);
+	return pages_decommit(
+	    (void *)((byte_t *)addr + (uintptr_t)offset), length);
 }
 
 static bool
@@ -125,8 +128,8 @@ ehooks_default_decommit(extent_hooks_t *extent_hooks, void *addr, size_t size,
 #ifdef PAGES_CAN_PURGE_LAZY
 bool
 ehooks_default_purge_lazy_impl(void *addr, size_t offset, size_t length) {
-	return pages_purge_lazy((void *)((byte_t *)addr + (uintptr_t)offset),
-	    length);
+	return pages_purge_lazy(
+	    (void *)((byte_t *)addr + (uintptr_t)offset), length);
 }
 
 static bool
@@ -143,8 +146,8 @@ ehooks_default_purge_lazy(extent_hooks_t *extent_hooks, void *addr, size_t size,
 #ifdef PAGES_CAN_PURGE_FORCED
 bool
 ehooks_default_purge_forced_impl(void *addr, size_t offset, size_t length) {
-	return pages_purge_forced((void *)((byte_t *)addr +
-	    (uintptr_t)offset), length);
+	return pages_purge_forced(
+	    (void *)((byte_t *)addr + (uintptr_t)offset), length);
 }
 
 static bool
@@ -201,11 +204,11 @@ ehooks_default_merge_impl(tsdn_t *tsdn, void *addr_a, void *addr_b) {
 		return true;
 	}
 	if (config_debug) {
-		edata_t *a = emap_edata_lookup(tsdn, &arena_emap_global,
-		    addr_a);
-		bool head_a = edata_is_head_get(a);
-		edata_t *b = emap_edata_lookup(tsdn, &arena_emap_global,
-		    addr_b);
+		edata_t *a = emap_edata_lookup(
+		    tsdn, &arena_emap_global, addr_a);
+		bool     head_a = edata_is_head_get(a);
+		edata_t *b = emap_edata_lookup(
+		    tsdn, &arena_emap_global, addr_b);
 		bool head_b = edata_is_head_get(b);
 		emap_assert_mapped(tsdn, &arena_emap_global, a);
 		emap_assert_mapped(tsdn, &arena_emap_global, b);
@@ -254,22 +257,17 @@ ehooks_default_unguard_impl(void *guard1, void *guard2) {
 	pages_unmark_guards(guard1, guard2);
 }
 
-const extent_hooks_t ehooks_default_extent_hooks = {
-	ehooks_default_alloc,
-	ehooks_default_dalloc,
-	ehooks_default_destroy,
-	ehooks_default_commit,
-	ehooks_default_decommit,
+const extent_hooks_t ehooks_default_extent_hooks = {ehooks_default_alloc,
+    ehooks_default_dalloc, ehooks_default_destroy, ehooks_default_commit,
+    ehooks_default_decommit,
 #ifdef PAGES_CAN_PURGE_LAZY
-	ehooks_default_purge_lazy,
+    ehooks_default_purge_lazy,
 #else
-	NULL,
+    NULL,
 #endif
 #ifdef PAGES_CAN_PURGE_FORCED
-	ehooks_default_purge_forced,
+    ehooks_default_purge_forced,
 #else
-	NULL,
+    NULL,
 #endif
-	ehooks_default_split,
-	ehooks_default_merge
-};
+    ehooks_default_split, ehooks_default_merge};

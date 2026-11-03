@@ -28,7 +28,7 @@ TEST_BEGIN(test_prof_sys_thread_name) {
 	test_skip_if(!config_prof);
 	test_skip_if(!opt_prof_sys_thread_name);
 
-	bool oldval;
+	bool   oldval;
 	size_t sz = sizeof(oldval);
 	assert_d_eq(mallctl("opt.prof_sys_thread_name", &oldval, &sz, NULL, 0),
 	    0, "mallctl failed");
@@ -43,8 +43,8 @@ TEST_BEGIN(test_prof_sys_thread_name) {
 	thread_name = test_thread_name;
 	assert_d_eq(mallctl("thread.prof.name", NULL, NULL, &thread_name, sz),
 	    ENOENT, "mallctl write for thread name should fail");
-	assert_ptr_eq(thread_name, test_thread_name,
-	    "Thread name should not be touched");
+	assert_ptr_eq(
+	    thread_name, test_thread_name, "Thread name should not be touched");
 
 	prof_sys_thread_name_read_t *orig_prof_sys_thread_name_read =
 	    prof_sys_thread_name_read;
@@ -69,14 +69,15 @@ TEST_BEGIN(test_prof_sys_thread_name) {
 	free(p);
 	assert_d_eq(mallctl("thread.prof.name", &thread_name, &sz, NULL, 0), 0,
 	    "mallctl read for thread name should not fail");
-	expect_str_eq(thread_name, "", "Thread name should be updated if the "
+	expect_str_eq(thread_name, "",
+	    "Thread name should be updated if the "
 	    "system call returns a different name");
 
 	prof_sys_thread_name_read = orig_prof_sys_thread_name_read;
 }
 TEST_END
 
-#define ITER (16*1024)
+#define ITER (16 * 1024)
 static void *
 thd_start(void *unused) {
 	/* Triggering samples which loads thread names. */
@@ -94,7 +95,7 @@ TEST_BEGIN(test_prof_sys_thread_name_mt) {
 	test_skip_if(!opt_prof_sys_thread_name);
 
 #define NTHREADS 4
-	thd_t thds[NTHREADS];
+	thd_t    thds[NTHREADS];
 	unsigned thd_args[NTHREADS];
 	unsigned i;
 
@@ -105,8 +106,8 @@ TEST_BEGIN(test_prof_sys_thread_name_mt) {
 	/* Prof dump which reads the thread names. */
 	for (i = 0; i < ITER; i++) {
 		expect_d_eq(mallctl("prof.dump", NULL, NULL,
-		    (void *)&dump_filename, sizeof(dump_filename)), 0,
-		    "Unexpected mallctl failure while dumping");
+		                (void *)&dump_filename, sizeof(dump_filename)),
+		    0, "Unexpected mallctl failure while dumping");
 	}
 
 	for (i = 0; i < NTHREADS; i++) {
@@ -119,7 +120,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_prof_sys_thread_name,
-	    test_prof_sys_thread_name_mt);
+	return test(test_prof_sys_thread_name, test_prof_sys_thread_name_mt);
 }

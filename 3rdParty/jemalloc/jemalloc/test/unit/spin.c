@@ -13,6 +13,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_spin);
+	return test(test_spin);
 }

@@ -89,7 +89,7 @@ fxp_round_down(fxp_t a) {
 
 static inline uint32_t
 fxp_round_nearest(fxp_t a) {
-	uint32_t fractional_part = (a  & ((1U << 16) - 1));
+	uint32_t fractional_part = (a & ((1U << 16) - 1));
 	uint32_t increment = (uint32_t)(fractional_part >= (1U << 15));
 	return (a >> 16) + increment;
 }

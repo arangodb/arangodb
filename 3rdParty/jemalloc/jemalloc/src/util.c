@@ -8,8 +8,8 @@ bool
 multi_setting_parse_next(const char **setting_segment_cur, size_t *len_left,
     size_t *key_start, size_t *key_end, size_t *value) {
 	const char *cur = *setting_segment_cur;
-	char *end;
-	uintmax_t um;
+	char       *end;
+	uintmax_t   um;
 
 	set_errno(0);
 
@@ -46,4 +46,3 @@ multi_setting_parse_next(const char **setting_segment_cur, size_t *len_left,
 
 	return false;
 }
-

@@ -11,6 +11,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_malloc_init(
-	    test_a0);
+	return test_no_malloc_init(test_a0);
 }

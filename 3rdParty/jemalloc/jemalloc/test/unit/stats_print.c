@@ -21,22 +21,22 @@ typedef enum {
 
 typedef struct parser_s parser_t;
 typedef struct {
-	parser_t	*parser;
-	token_type_t	token_type;
-	size_t		pos;
-	size_t		len;
-	size_t		line;
-	size_t		col;
+	parser_t    *parser;
+	token_type_t token_type;
+	size_t       pos;
+	size_t       len;
+	size_t       line;
+	size_t       col;
 } token_t;
 
 struct parser_s {
-	bool verbose;
-	char	*buf; /* '\0'-terminated. */
-	size_t	len; /* Number of characters preceding '\0' in buf. */
-	size_t	pos;
-	size_t	line;
-	size_t	col;
-	token_t	token;
+	bool    verbose;
+	char   *buf; /* '\0'-terminated. */
+	size_t  len; /* Number of characters preceding '\0' in buf. */
+	size_t  pos;
+	size_t  line;
+	size_t  col;
+	token_t token;
 };
 
 static void
@@ -63,12 +63,12 @@ token_error(token_t *token) {
 		    token->line, token->col);
 		break;
 	default:
-		malloc_printf("%zu:%zu: Unexpected token: ", token->line,
-		    token->col);
+		malloc_printf(
+		    "%zu:%zu: Unexpected token: ", token->line, token->col);
 		break;
 	}
-	UNUSED ssize_t err = malloc_write_fd(STDERR_FILENO,
-	    &token->parser->buf[token->pos], token->len);
+	UNUSED ssize_t err = malloc_write_fd(
+	    STDERR_FILENO, &token->parser->buf[token->pos], token->len);
 	malloc_printf("\n");
 }
 
@@ -92,9 +92,9 @@ parser_fini(parser_t *parser) {
 static bool
 parser_append(parser_t *parser, const char *str) {
 	size_t len = strlen(str);
-	char *buf = (parser->buf == NULL) ? mallocx(len + 1,
-	    MALLOCX_TCACHE_NONE) : rallocx(parser->buf, parser->len + len + 1,
-	    MALLOCX_TCACHE_NONE);
+	char  *buf = (parser->buf == NULL)
+	     ? mallocx(len + 1, MALLOCX_TCACHE_NONE)
+	     : rallocx(parser->buf, parser->len + len + 1, MALLOCX_TCACHE_NONE);
 	if (buf == NULL) {
 		return true;
 	}
@@ -109,9 +109,19 @@ parser_tokenize(parser_t *parser) {
 	enum {
 		STATE_START,
 		STATE_EOI,
-		STATE_N, STATE_NU, STATE_NUL, STATE_NULL,
-		STATE_F, STATE_FA, STATE_FAL, STATE_FALS, STATE_FALSE,
-		STATE_T, STATE_TR, STATE_TRU, STATE_TRUE,
+		STATE_N,
+		STATE_NU,
+		STATE_NUL,
+		STATE_NULL,
+		STATE_F,
+		STATE_FA,
+		STATE_FAL,
+		STATE_FALS,
+		STATE_FALSE,
+		STATE_T,
+		STATE_TR,
+		STATE_TRU,
+		STATE_TRUE,
 		STATE_LBRACKET,
 		STATE_RBRACKET,
 		STATE_LBRACE,
@@ -120,7 +130,10 @@ parser_tokenize(parser_t *parser) {
 		STATE_COMMA,
 		STATE_CHARS,
 		STATE_CHAR_ESCAPE,
-		STATE_CHAR_U, STATE_CHAR_UD, STATE_CHAR_UDD, STATE_CHAR_UDDD,
+		STATE_CHAR_U,
+		STATE_CHAR_UD,
+		STATE_CHAR_UDD,
+		STATE_CHAR_UDDD,
 		STATE_STRING,
 		STATE_MINUS,
 		STATE_LEADING_ZERO,
@@ -132,12 +145,12 @@ parser_tokenize(parser_t *parser) {
 		STATE_EXP_DIGITS,
 		STATE_ACCEPT
 	} state = STATE_START;
-	size_t token_pos JEMALLOC_CC_SILENCE_INIT(0);
+	size_t token_pos  JEMALLOC_CC_SILENCE_INIT(0);
 	size_t token_line JEMALLOC_CC_SILENCE_INIT(1);
-	size_t token_col JEMALLOC_CC_SILENCE_INIT(0);
+	size_t token_col  JEMALLOC_CC_SILENCE_INIT(0);
 
-	expect_zu_le(parser->pos, parser->len,
-	    "Position is past end of buffer");
+	expect_zu_le(
+	    parser->pos, parser->len, "Position is past end of buffer");
 
 	while (state != STATE_ACCEPT) {
 		char c = parser->buf[parser->pos];
@@ -148,7 +161,11 @@ parser_tokenize(parser_t *parser) {
 			token_line = parser->line;
 			token_col = parser->col;
 			switch (c) {
-			case ' ': case '\b': case '\n': case '\r': case '\t':
+			case ' ':
+			case '\b':
+			case '\n':
+			case '\r':
+			case '\t':
 				break;
 			case '\0':
 				state = STATE_EOI;
@@ -189,21 +206,29 @@ parser_tokenize(parser_t *parser) {
 			case '0':
 				state = STATE_LEADING_ZERO;
 				break;
-			case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				state = STATE_DIGITS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_EOI:
-			token_init(&parser->token, parser,
-			    TOKEN_TYPE_EOI, token_pos, parser->pos -
-			    token_pos, token_line, token_col);
+			token_init(&parser->token, parser, TOKEN_TYPE_EOI,
+			    token_pos, parser->pos - token_pos, token_line,
+			    token_col);
 			state = STATE_ACCEPT;
 			break;
 		case STATE_N:
@@ -213,8 +238,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -225,8 +251,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -237,22 +264,32 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_NULL:
 			switch (c) {
-			case ' ': case '\b': case '\n': case '\r': case '\t':
+			case ' ':
+			case '\b':
+			case '\n':
+			case '\r':
+			case '\t':
 			case '\0':
-			case '[': case ']': case '{': case '}': case ':':
+			case '[':
+			case ']':
+			case '{':
+			case '}':
+			case ':':
 			case ',':
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			token_init(&parser->token, parser, TOKEN_TYPE_NULL,
@@ -267,8 +304,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -279,8 +317,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -291,8 +330,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -303,27 +343,37 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_FALSE:
 			switch (c) {
-			case ' ': case '\b': case '\n': case '\r': case '\t':
+			case ' ':
+			case '\b':
+			case '\n':
+			case '\r':
+			case '\t':
 			case '\0':
-			case '[': case ']': case '{': case '}': case ':':
+			case '[':
+			case ']':
+			case '{':
+			case '}':
+			case ':':
 			case ',':
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
-			token_init(&parser->token, parser,
-			    TOKEN_TYPE_FALSE, token_pos, parser->pos -
-			    token_pos, token_line, token_col);
+			token_init(&parser->token, parser, TOKEN_TYPE_FALSE,
+			    token_pos, parser->pos - token_pos, token_line,
+			    token_col);
 			state = STATE_ACCEPT;
 			break;
 		case STATE_T:
@@ -333,8 +383,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -345,8 +396,9 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -357,22 +409,32 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_TRUE:
 			switch (c) {
-			case ' ': case '\b': case '\n': case '\r': case '\t':
+			case ' ':
+			case '\b':
+			case '\n':
+			case '\r':
+			case '\t':
 			case '\0':
-			case '[': case ']': case '{': case '}': case ':':
+			case '[':
+			case ']':
+			case '{':
+			case '}':
+			case ':':
 			case ',':
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			token_init(&parser->token, parser, TOKEN_TYPE_TRUE,
@@ -424,16 +486,42 @@ parser_tokenize(parser_t *parser) {
 			case '"':
 				state = STATE_STRING;
 				break;
-			case 0x00: case 0x01: case 0x02: case 0x03: case 0x04:
-			case 0x05: case 0x06: case 0x07: case 0x08: case 0x09:
-			case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e:
-			case 0x0f: case 0x10: case 0x11: case 0x12: case 0x13:
-			case 0x14: case 0x15: case 0x16: case 0x17: case 0x18:
-			case 0x19: case 0x1a: case 0x1b: case 0x1c: case 0x1d:
-			case 0x1e: case 0x1f:
+			case 0x00:
+			case 0x01:
+			case 0x02:
+			case 0x03:
+			case 0x04:
+			case 0x05:
+			case 0x06:
+			case 0x07:
+			case 0x08:
+			case 0x09:
+			case 0x0a:
+			case 0x0b:
+			case 0x0c:
+			case 0x0d:
+			case 0x0e:
+			case 0x0f:
+			case 0x10:
+			case 0x11:
+			case 0x12:
+			case 0x13:
+			case 0x14:
+			case 0x15:
+			case 0x16:
+			case 0x17:
+			case 0x18:
+			case 0x19:
+			case 0x1a:
+			case 0x1b:
+			case 0x1c:
+			case 0x1d:
+			case 0x1e:
+			case 0x1f:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			default:
 				break;
@@ -441,8 +529,13 @@ parser_tokenize(parser_t *parser) {
 			break;
 		case STATE_CHAR_ESCAPE:
 			switch (c) {
-			case '"': case '\\': case '/': case 'b': case 'n':
-			case 'r': case 't':
+			case '"':
+			case '\\':
+			case '/':
+			case 'b':
+			case 'n':
+			case 'r':
+			case 't':
 				state = STATE_CHARS;
 				break;
 			case 'u':
@@ -450,76 +543,145 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_CHAR_U:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
-			case 'a': case 'b': case 'c': case 'd': case 'e':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case 'a':
+			case 'b':
+			case 'c':
+			case 'd':
+			case 'e':
 			case 'f':
-			case 'A': case 'B': case 'C': case 'D': case 'E':
+			case 'A':
+			case 'B':
+			case 'C':
+			case 'D':
+			case 'E':
 			case 'F':
 				state = STATE_CHAR_UD;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_CHAR_UD:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
-			case 'a': case 'b': case 'c': case 'd': case 'e':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case 'a':
+			case 'b':
+			case 'c':
+			case 'd':
+			case 'e':
 			case 'f':
-			case 'A': case 'B': case 'C': case 'D': case 'E':
+			case 'A':
+			case 'B':
+			case 'C':
+			case 'D':
+			case 'E':
 			case 'F':
 				state = STATE_CHAR_UDD;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_CHAR_UDD:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
-			case 'a': case 'b': case 'c': case 'd': case 'e':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case 'a':
+			case 'b':
+			case 'c':
+			case 'd':
+			case 'e':
 			case 'f':
-			case 'A': case 'B': case 'C': case 'D': case 'E':
+			case 'A':
+			case 'B':
+			case 'C':
+			case 'D':
+			case 'E':
 			case 'F':
 				state = STATE_CHAR_UDDD;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_CHAR_UDDD:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
-			case 'a': case 'b': case 'c': case 'd': case 'e':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case 'a':
+			case 'b':
+			case 'c':
+			case 'd':
+			case 'e':
 			case 'f':
-			case 'A': case 'B': case 'C': case 'D': case 'E':
+			case 'A':
+			case 'B':
+			case 'C':
+			case 'D':
+			case 'E':
 			case 'F':
 				state = STATE_CHARS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -534,14 +696,22 @@ parser_tokenize(parser_t *parser) {
 			case '0':
 				state = STATE_LEADING_ZERO;
 				break;
-			case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				state = STATE_DIGITS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
@@ -552,95 +722,152 @@ parser_tokenize(parser_t *parser) {
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_NUMBER, token_pos, parser->pos -
-				    token_pos, token_line, token_col);
+				    TOKEN_TYPE_NUMBER, token_pos,
+				    parser->pos - token_pos, token_line,
+				    token_col);
 				state = STATE_ACCEPT;
 				break;
 			}
 			break;
 		case STATE_DIGITS:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				break;
 			case '.':
 				state = STATE_DECIMAL;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_NUMBER, token_pos, parser->pos -
-				    token_pos, token_line, token_col);
+				    TOKEN_TYPE_NUMBER, token_pos,
+				    parser->pos - token_pos, token_line,
+				    token_col);
 				state = STATE_ACCEPT;
 				break;
 			}
 			break;
 		case STATE_DECIMAL:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				state = STATE_FRAC_DIGITS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_FRAC_DIGITS:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				break;
-			case 'e': case 'E':
+			case 'e':
+			case 'E':
 				state = STATE_EXP;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_NUMBER, token_pos, parser->pos -
-				    token_pos, token_line, token_col);
+				    TOKEN_TYPE_NUMBER, token_pos,
+				    parser->pos - token_pos, token_line,
+				    token_col);
 				state = STATE_ACCEPT;
 				break;
 			}
 			break;
 		case STATE_EXP:
 			switch (c) {
-			case '-': case '+':
+			case '-':
+			case '+':
 				state = STATE_EXP_SIGN;
 				break;
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				state = STATE_EXP_DIGITS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_EXP_SIGN:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				state = STATE_EXP_DIGITS;
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_ERROR, token_pos, parser->pos + 1
-				    - token_pos, token_line, token_col);
+				    TOKEN_TYPE_ERROR, token_pos,
+				    parser->pos + 1 - token_pos, token_line,
+				    token_col);
 				return true;
 			}
 			break;
 		case STATE_EXP_DIGITS:
 			switch (c) {
-			case '0': case '1': case '2': case '3': case '4':
-			case '5': case '6': case '7': case '8': case '9':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				break;
 			default:
 				token_init(&parser->token, parser,
-				    TOKEN_TYPE_NUMBER, token_pos, parser->pos -
-				    token_pos, token_line, token_col);
+				    TOKEN_TYPE_NUMBER, token_pos,
+				    parser->pos - token_pos, token_line,
+				    token_col);
 				state = STATE_ACCEPT;
 				break;
 			}
@@ -662,8 +889,8 @@ parser_tokenize(parser_t *parser) {
 	return false;
 }
 
-static bool	parser_parse_array(parser_t *parser);
-static bool	parser_parse_object(parser_t *parser);
+static bool parser_parse_array(parser_t *parser);
+static bool parser_parse_object(parser_t *parser);
 
 static bool
 parser_parse_value(parser_t *parser) {
@@ -824,80 +1051,80 @@ label_error:
 }
 
 TEST_BEGIN(test_json_parser) {
-	size_t i;
+	size_t      i;
 	const char *invalid_inputs[] = {
-		/* Tokenizer error case tests. */
-		"{ \"string\": X }",
-		"{ \"string\": nXll }",
-		"{ \"string\": nuXl }",
-		"{ \"string\": nulX }",
-		"{ \"string\": nullX }",
-		"{ \"string\": fXlse }",
-		"{ \"string\": faXse }",
-		"{ \"string\": falXe }",
-		"{ \"string\": falsX }",
-		"{ \"string\": falseX }",
-		"{ \"string\": tXue }",
-		"{ \"string\": trXe }",
-		"{ \"string\": truX }",
-		"{ \"string\": trueX }",
-		"{ \"string\": \"\n\" }",
-		"{ \"string\": \"\\z\" }",
-		"{ \"string\": \"\\uX000\" }",
-		"{ \"string\": \"\\u0X00\" }",
-		"{ \"string\": \"\\u00X0\" }",
-		"{ \"string\": \"\\u000X\" }",
-		"{ \"string\": -X }",
-		"{ \"string\": 0.X }",
-		"{ \"string\": 0.0eX }",
-		"{ \"string\": 0.0e+X }",
+	    /* Tokenizer error case tests. */
+	    "{ \"string\": X }",
+	    "{ \"string\": nXll }",
+	    "{ \"string\": nuXl }",
+	    "{ \"string\": nulX }",
+	    "{ \"string\": nullX }",
+	    "{ \"string\": fXlse }",
+	    "{ \"string\": faXse }",
+	    "{ \"string\": falXe }",
+	    "{ \"string\": falsX }",
+	    "{ \"string\": falseX }",
+	    "{ \"string\": tXue }",
+	    "{ \"string\": trXe }",
+	    "{ \"string\": truX }",
+	    "{ \"string\": trueX }",
+	    "{ \"string\": \"\n\" }",
+	    "{ \"string\": \"\\z\" }",
+	    "{ \"string\": \"\\uX000\" }",
+	    "{ \"string\": \"\\u0X00\" }",
+	    "{ \"string\": \"\\u00X0\" }",
+	    "{ \"string\": \"\\u000X\" }",
+	    "{ \"string\": -X }",
+	    "{ \"string\": 0.X }",
+	    "{ \"string\": 0.0eX }",
+	    "{ \"string\": 0.0e+X }",
 
-		/* Parser error test cases. */
-		"{\"string\": }",
-		"{\"string\" }",
-		"{\"string\": [ 0 }",
-		"{\"string\": {\"a\":0, 1 } }",
-		"{\"string\": {\"a\":0: } }",
-		"{",
-		"{}{",
+	    /* Parser error test cases. */
+	    "{\"string\": }",
+	    "{\"string\" }",
+	    "{\"string\": [ 0 }",
+	    "{\"string\": {\"a\":0, 1 } }",
+	    "{\"string\": {\"a\":0: } }",
+	    "{",
+	    "{}{",
 	};
 	const char *valid_inputs[] = {
-		/* Token tests. */
-		"null",
-		"false",
-		"true",
-		"{}",
-		"{\"a\": 0}",
-		"[]",
-		"[0, 1]",
-		"0",
-		"1",
-		"10",
-		"-10",
-		"10.23",
-		"10.23e4",
-		"10.23e-4",
-		"10.23e+4",
-		"10.23E4",
-		"10.23E-4",
-		"10.23E+4",
-		"-10.23",
-		"-10.23e4",
-		"-10.23e-4",
-		"-10.23e+4",
-		"-10.23E4",
-		"-10.23E-4",
-		"-10.23E+4",
-		"\"value\"",
-		"\" \\\" \\/ \\b \\n \\r \\t \\u0abc \\u1DEF \"",
+	    /* Token tests. */
+	    "null",
+	    "false",
+	    "true",
+	    "{}",
+	    "{\"a\": 0}",
+	    "[]",
+	    "[0, 1]",
+	    "0",
+	    "1",
+	    "10",
+	    "-10",
+	    "10.23",
+	    "10.23e4",
+	    "10.23e-4",
+	    "10.23e+4",
+	    "10.23E4",
+	    "10.23E-4",
+	    "10.23E+4",
+	    "-10.23",
+	    "-10.23e4",
+	    "-10.23e-4",
+	    "-10.23e+4",
+	    "-10.23E4",
+	    "-10.23E-4",
+	    "-10.23E+4",
+	    "\"value\"",
+	    "\" \\\" \\/ \\b \\n \\r \\t \\u0abc \\u1DEF \"",
 
-		/* Parser test with various nesting. */
-		"{\"a\":null, \"b\":[1,[{\"c\":2},3]], \"d\":{\"e\":true}}",
+	    /* Parser test with various nesting. */
+	    "{\"a\":null, \"b\":[1,[{\"c\":2},3]], \"d\":{\"e\":true}}",
 	};
 
-	for (i = 0; i < sizeof(invalid_inputs)/sizeof(const char *); i++) {
+	for (i = 0; i < sizeof(invalid_inputs) / sizeof(const char *); i++) {
 		const char *input = invalid_inputs[i];
-		parser_t parser;
+		parser_t    parser;
 		parser_init(&parser, false);
 		expect_false(parser_append(&parser, input),
 		    "Unexpected input appending failure");
@@ -906,9 +1133,9 @@ TEST_BEGIN(test_json_parser) {
 		parser_fini(&parser);
 	}
 
-	for (i = 0; i < sizeof(valid_inputs)/sizeof(const char *); i++) {
+	for (i = 0; i < sizeof(valid_inputs) / sizeof(const char *); i++) {
 		const char *input = valid_inputs[i];
-		parser_t parser;
+		parser_t    parser;
 		parser_init(&parser, true);
 		expect_false(parser_append(&parser, input),
 		    "Unexpected input appending failure");
@@ -929,27 +1156,27 @@ write_cb(void *opaque, const char *str) {
 
 TEST_BEGIN(test_stats_print_json) {
 	const char *opts[] = {
-		"J",
-		"Jg",
-		"Jm",
-		"Jd",
-		"Jmd",
-		"Jgd",
-		"Jgm",
-		"Jgmd",
-		"Ja",
-		"Jb",
-		"Jl",
-		"Jx",
-		"Jbl",
-		"Jal",
-		"Jab",
-		"Jabl",
-		"Jax",
-		"Jbx",
-		"Jlx",
-		"Jablx",
-		"Jgmdablx",
+	    "J",
+	    "Jg",
+	    "Jm",
+	    "Jd",
+	    "Jmd",
+	    "Jgd",
+	    "Jgm",
+	    "Jgmd",
+	    "Ja",
+	    "Jb",
+	    "Jl",
+	    "Jx",
+	    "Jbl",
+	    "Jal",
+	    "Jab",
+	    "Jabl",
+	    "Jax",
+	    "Jbx",
+	    "Jlx",
+	    "Jablx",
+	    "Jgmdablx",
 	};
 	unsigned arena_ind, i;
 
@@ -962,23 +1189,27 @@ TEST_BEGIN(test_stats_print_json) {
 		case 1: {
 			size_t sz = sizeof(arena_ind);
 			expect_d_eq(mallctl("arenas.create", (void *)&arena_ind,
-			    &sz, NULL, 0), 0, "Unexpected mallctl failure");
+			                &sz, NULL, 0),
+			    0, "Unexpected mallctl failure");
 			break;
-		} case 2: {
+		}
+		case 2: {
 			size_t mib[3];
-			size_t miblen = sizeof(mib)/sizeof(size_t);
-			expect_d_eq(mallctlnametomib("arena.0.destroy",
-			    mib, &miblen), 0,
-			    "Unexpected mallctlnametomib failure");
+			size_t miblen = sizeof(mib) / sizeof(size_t);
+			expect_d_eq(
+			    mallctlnametomib("arena.0.destroy", mib, &miblen),
+			    0, "Unexpected mallctlnametomib failure");
 			mib[1] = arena_ind;
-			expect_d_eq(mallctlbymib(mib, miblen, NULL, NULL, NULL,
-			    0), 0, "Unexpected mallctlbymib failure");
+			expect_d_eq(
+			    mallctlbymib(mib, miblen, NULL, NULL, NULL, 0), 0,
+			    "Unexpected mallctlbymib failure");
 			break;
-		} default:
+		}
+		default:
 			not_reached();
 		}
 
-		for (j = 0; j < sizeof(opts)/sizeof(const char *); j++) {
+		for (j = 0; j < sizeof(opts) / sizeof(const char *); j++) {
 			parser_t parser;
 
 			parser_init(&parser, true);
@@ -993,7 +1224,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_json_parser,
-	    test_stats_print_json);
+	return test(test_json_parser, test_stats_print_json);
 }

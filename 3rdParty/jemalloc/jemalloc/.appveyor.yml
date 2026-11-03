@@ -9,6 +9,7 @@ environment:
   - MSYSTEM: MINGW64
     CPU: x86_64
     CONFIG_FLAGS: --enable-debug
+    EXTRA_CFLAGS: "-fcommon"
   - MSYSTEM: MINGW32
     CPU: i686
     MSVC: x86
@@ -16,21 +17,30 @@ environment:
   - MSYSTEM: MINGW32
     CPU: i686
     CONFIG_FLAGS: --enable-debug
+    EXTRA_CFLAGS: "-fcommon"
   - MSYSTEM: MINGW64
     CPU: x86_64
     MSVC: amd64
+    CONFIG_FLAGS:
   - MSYSTEM: MINGW64
     CPU: x86_64
+    CONFIG_FLAGS:
+    EXTRA_CFLAGS: "-fcommon"
   - MSYSTEM: MINGW32
     CPU: i686
     MSVC: x86
+    CONFIG_FLAGS:
   - MSYSTEM: MINGW32
     CPU: i686
+    CONFIG_FLAGS:
+    EXTRA_CFLAGS: "-fcommon"
 
 install:
   - set PATH=c:\msys64\%MSYSTEM%\bin;c:\msys64\usr\bin;%PATH%
   - if defined MSVC call "c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %MSVC%
   - if defined MSVC pacman --noconfirm -Rsc mingw-w64-%CPU%-gcc gcc
+  - pacman --noconfirm -Syuu
+  - pacman --noconfirm -S autoconf
 
 build_script:
   - bash -c "autoconf"

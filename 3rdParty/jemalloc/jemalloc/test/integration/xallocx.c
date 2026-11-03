@@ -11,15 +11,16 @@ arena_ind(void) {
 
 	if (ind == 0) {
 		size_t sz = sizeof(ind);
-		expect_d_eq(mallctl("arenas.create", (void *)&ind, &sz, NULL,
-		    0), 0, "Unexpected mallctl failure creating arena");
+		expect_d_eq(
+		    mallctl("arenas.create", (void *)&ind, &sz, NULL, 0), 0,
+		    "Unexpected mallctl failure creating arena");
 	}
 
 	return ind;
 }
 
 TEST_BEGIN(test_same_size) {
-	void *p;
+	void  *p;
 	size_t sz, tsz;
 
 	p = mallocx(42, 0);
@@ -34,14 +35,14 @@ TEST_BEGIN(test_same_size) {
 TEST_END
 
 TEST_BEGIN(test_extra_no_move) {
-	void *p;
+	void  *p;
 	size_t sz, tsz;
 
 	p = mallocx(42, 0);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
 	sz = sallocx(p, 0);
 
-	tsz = xallocx(p, sz, sz-42, 0);
+	tsz = xallocx(p, sz, sz - 42, 0);
 	expect_zu_eq(tsz, sz, "Unexpected size change: %zu --> %zu", sz, tsz);
 
 	dallocx(p, 0);
@@ -49,7 +50,7 @@ TEST_BEGIN(test_extra_no_move) {
 TEST_END
 
 TEST_BEGIN(test_no_move_fail) {
-	void *p;
+	void  *p;
 	size_t sz, tsz;
 
 	p = mallocx(42, 0);
@@ -66,7 +67,7 @@ TEST_END
 static unsigned
 get_nsizes_impl(const char *cmd) {
 	unsigned ret;
-	size_t z;
+	size_t   z;
 
 	z = sizeof(unsigned);
 	expect_d_eq(mallctl(cmd, (void *)&ret, &z, NULL, 0), 0,
@@ -93,12 +94,12 @@ get_size_impl(const char *cmd, size_t ind) {
 	size_t miblen = 4;
 
 	z = sizeof(size_t);
-	expect_d_eq(mallctlnametomib(cmd, mib, &miblen),
-	    0, "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
+	expect_d_eq(mallctlnametomib(cmd, mib, &miblen), 0,
+	    "Unexpected mallctlnametomib(\"%s\", ...) failure", cmd);
 	mib[2] = ind;
 	z = sizeof(size_t);
-	expect_d_eq(mallctlbymib(mib, miblen, (void *)&ret, &z, NULL, 0),
-	    0, "Unexpected mallctlbymib([\"%s\", %zu], ...) failure", cmd, ind);
+	expect_d_eq(mallctlbymib(mib, miblen, (void *)&ret, &z, NULL, 0), 0,
+	    "Unexpected mallctlbymib([\"%s\", %zu], ...) failure", cmd, ind);
 
 	return ret;
 }
@@ -115,25 +116,25 @@ get_large_size(size_t ind) {
 
 TEST_BEGIN(test_size) {
 	size_t small0, largemax;
-	void *p;
+	void  *p;
 
 	/* Get size classes. */
 	small0 = get_small_size(0);
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 
 	p = mallocx(small0, 0);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
 
 	/* Test smallest supported size. */
-	expect_zu_eq(xallocx(p, 1, 0, 0), small0,
-	    "Unexpected xallocx() behavior");
+	expect_zu_eq(
+	    xallocx(p, 1, 0, 0), small0, "Unexpected xallocx() behavior");
 
 	/* Test largest supported size. */
 	expect_zu_le(xallocx(p, largemax, 0, 0), largemax,
 	    "Unexpected xallocx() behavior");
 
 	/* Test size overflow. */
-	expect_zu_le(xallocx(p, largemax+1, 0, 0), largemax,
+	expect_zu_le(xallocx(p, largemax + 1, 0, 0), largemax,
 	    "Unexpected xallocx() behavior");
 	expect_zu_le(xallocx(p, SIZE_T_MAX, 0, 0), largemax,
 	    "Unexpected xallocx() behavior");
@@ -144,29 +145,29 @@ TEST_END
 
 TEST_BEGIN(test_size_extra_overflow) {
 	size_t small0, largemax;
-	void *p;
+	void  *p;
 
 	/* Get size classes. */
 	small0 = get_small_size(0);
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 
 	p = mallocx(small0, 0);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
 
 	/* Test overflows that can be resolved by clamping extra. */
-	expect_zu_le(xallocx(p, largemax-1, 2, 0), largemax,
+	expect_zu_le(xallocx(p, largemax - 1, 2, 0), largemax,
 	    "Unexpected xallocx() behavior");
 	expect_zu_le(xallocx(p, largemax, 1, 0), largemax,
 	    "Unexpected xallocx() behavior");
 
 	/* Test overflow such that largemax-size underflows. */
-	expect_zu_le(xallocx(p, largemax+1, 2, 0), largemax,
+	expect_zu_le(xallocx(p, largemax + 1, 2, 0), largemax,
 	    "Unexpected xallocx() behavior");
-	expect_zu_le(xallocx(p, largemax+2, 3, 0), largemax,
+	expect_zu_le(xallocx(p, largemax + 2, 3, 0), largemax,
 	    "Unexpected xallocx() behavior");
-	expect_zu_le(xallocx(p, SIZE_T_MAX-2, 2, 0), largemax,
+	expect_zu_le(xallocx(p, SIZE_T_MAX - 2, 2, 0), largemax,
 	    "Unexpected xallocx() behavior");
-	expect_zu_le(xallocx(p, SIZE_T_MAX-1, 1, 0), largemax,
+	expect_zu_le(xallocx(p, SIZE_T_MAX - 1, 1, 0), largemax,
 	    "Unexpected xallocx() behavior");
 
 	dallocx(p, 0);
@@ -175,21 +176,21 @@ TEST_END
 
 TEST_BEGIN(test_extra_small) {
 	size_t small0, small1, largemax;
-	void *p;
+	void  *p;
 
 	/* Get size classes. */
 	small0 = get_small_size(0);
 	small1 = get_small_size(1);
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 
 	p = mallocx(small0, 0);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
 
-	expect_zu_eq(xallocx(p, small1, 0, 0), small0,
-	    "Unexpected xallocx() behavior");
+	expect_zu_eq(
+	    xallocx(p, small1, 0, 0), small0, "Unexpected xallocx() behavior");
 
-	expect_zu_eq(xallocx(p, small1, 0, 0), small0,
-	    "Unexpected xallocx() behavior");
+	expect_zu_eq(
+	    xallocx(p, small1, 0, 0), small0, "Unexpected xallocx() behavior");
 
 	expect_zu_eq(xallocx(p, small0, small1 - small0, 0), small0,
 	    "Unexpected xallocx() behavior");
@@ -205,16 +206,16 @@ TEST_BEGIN(test_extra_small) {
 TEST_END
 
 TEST_BEGIN(test_extra_large) {
-	int flags = MALLOCX_ARENA(arena_ind());
+	int    flags = MALLOCX_ARENA(arena_ind());
 	size_t smallmax, large1, large2, large3, largemax;
-	void *p;
+	void  *p;
 
 	/* Get size classes. */
-	smallmax = get_small_size(get_nsmall()-1);
+	smallmax = get_small_size(get_nsmall() - 1);
 	large1 = get_large_size(1);
 	large2 = get_large_size(2);
 	large3 = get_large_size(3);
-	largemax = get_large_size(get_nlarge()-1);
+	largemax = get_large_size(get_nlarge() - 1);
 
 	p = mallocx(large3, flags);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
@@ -246,7 +247,7 @@ TEST_BEGIN(test_extra_large) {
 	/* Test size increase with zero extra. */
 	expect_zu_le(xallocx(p, large3, 0, flags), large3,
 	    "Unexpected xallocx() behavior");
-	expect_zu_le(xallocx(p, largemax+1, 0, flags), large3,
+	expect_zu_le(xallocx(p, largemax + 1, 0, flags), large3,
 	    "Unexpected xallocx() behavior");
 
 	expect_zu_ge(xallocx(p, large1, 0, flags), large1,
@@ -276,8 +277,8 @@ TEST_END
 static void
 print_filled_extents(const void *p, uint8_t c, size_t len) {
 	const uint8_t *pc = (const uint8_t *)p;
-	size_t i, range0;
-	uint8_t c0;
+	size_t         i, range0;
+	uint8_t        c0;
 
 	malloc_printf("  p=%p, c=%#x, len=%zu:", p, c, len);
 	range0 = 0;
@@ -295,10 +296,10 @@ print_filled_extents(const void *p, uint8_t c, size_t len) {
 static bool
 validate_fill(const void *p, uint8_t c, size_t offset, size_t len) {
 	const uint8_t *pc = (const uint8_t *)p;
-	bool err;
-	size_t i;
+	bool           err;
+	size_t         i;
 
-	for (i = offset, err = false; i < offset+len; i++) {
+	for (i = offset, err = false; i < offset + len; i++) {
 		if (pc[i] != c) {
 			err = true;
 		}
@@ -313,16 +314,16 @@ validate_fill(const void *p, uint8_t c, size_t offset, size_t len) {
 
 static void
 test_zero(size_t szmin, size_t szmax) {
-	int flags = MALLOCX_ARENA(arena_ind()) | MALLOCX_ZERO;
+	int    flags = MALLOCX_ARENA(arena_ind()) | MALLOCX_ZERO;
 	size_t sz, nsz;
-	void *p;
+	void  *p;
 #define FILL_BYTE 0x7aU
 
 	sz = szmax;
 	p = mallocx(sz, flags);
 	expect_ptr_not_null(p, "Unexpected mallocx() error");
-	expect_false(validate_fill(p, 0x00, 0, sz), "Memory not filled: sz=%zu",
-	    sz);
+	expect_false(
+	    validate_fill(p, 0x00, 0, sz), "Memory not filled: sz=%zu", sz);
 
 	/*
 	 * Fill with non-zero so that non-debug builds are more likely to detect
@@ -342,16 +343,16 @@ test_zero(size_t szmin, size_t szmax) {
 	    "Memory not filled: sz=%zu", sz);
 
 	for (sz = szmin; sz < szmax; sz = nsz) {
-		nsz = nallocx(sz+1, flags);
-		if (xallocx(p, sz+1, 0, flags) != nsz) {
-			p = rallocx(p, sz+1, flags);
+		nsz = nallocx(sz + 1, flags);
+		if (xallocx(p, sz + 1, 0, flags) != nsz) {
+			p = rallocx(p, sz + 1, flags);
 			expect_ptr_not_null(p, "Unexpected rallocx() failure");
 		}
 		expect_false(validate_fill(p, FILL_BYTE, 0, sz),
 		    "Memory not filled: sz=%zu", sz);
-		expect_false(validate_fill(p, 0x00, sz, nsz-sz),
-		    "Memory not filled: sz=%zu, nsz-sz=%zu", sz, nsz-sz);
-		memset((void *)((uintptr_t)p + sz), FILL_BYTE, nsz-sz);
+		expect_false(validate_fill(p, 0x00, sz, nsz - sz),
+		    "Memory not filled: sz=%zu, nsz-sz=%zu", sz, nsz - sz);
+		memset((void *)((uintptr_t)p + sz), FILL_BYTE, nsz - sz);
 		expect_false(validate_fill(p, FILL_BYTE, 0, nsz),
 		    "Memory not filled: nsz=%zu", nsz);
 	}
@@ -372,13 +373,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_same_size,
-	    test_extra_no_move,
-	    test_no_move_fail,
-	    test_size,
-	    test_size_extra_overflow,
-	    test_extra_small,
-	    test_extra_large,
-	    test_zero_large);
+	return test(test_same_size, test_extra_no_move, test_no_move_fail,
+	    test_size, test_size_extra_overflow, test_extra_small,
+	    test_extra_large, test_zero_large);
 }

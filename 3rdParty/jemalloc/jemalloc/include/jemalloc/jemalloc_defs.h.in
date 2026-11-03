@@ -46,6 +46,12 @@
  */
 #undef JEMALLOC_USE_CXX_THROW
 
+/*
+ * If undefined, disables reading configuration from environment variable or file
+ */
+#undef JEMALLOC_CONFIG_ENV
+#undef JEMALLOC_CONFIG_FILE
+
 #ifdef _MSC_VER
 #  ifdef _WIN64
 #    define LG_SIZEOF_PTR_WIN 3

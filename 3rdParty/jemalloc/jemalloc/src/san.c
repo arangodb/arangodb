@@ -20,8 +20,8 @@ ssize_t opt_lg_san_uaf_align = SAN_LG_UAF_ALIGN_DEFAULT;
 uintptr_t san_cache_bin_nonfast_mask = SAN_CACHE_BIN_NONFAST_MASK_DEFAULT;
 
 static inline void
-san_find_guarded_addr(edata_t *edata, void **guard1, void **guard2,
-    void **addr, size_t size, bool left, bool right) {
+san_find_guarded_addr(edata_t *edata, void **guard1, void **guard2, void **addr,
+    size_t size, bool left, bool right) {
 	assert(!edata_guarded_get(edata));
 	assert(size % PAGE == 0);
 	*addr = edata_base_get(edata);
@@ -74,8 +74,8 @@ san_guard_pages(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata, emap_t *emap,
 	    : san_one_side_unguarded_sz(size_with_guards);
 
 	void *guard1, *guard2, *addr;
-	san_find_guarded_addr(edata, &guard1, &guard2, &addr, usize, left,
-	    right);
+	san_find_guarded_addr(
+	    edata, &guard1, &guard2, &addr, usize, left, right);
 
 	assert(edata_state_get(edata) == extent_state_active);
 	ehooks_guard(tsdn, ehooks, guard1, guard2);
@@ -109,8 +109,8 @@ san_unguard_pages_impl(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
 	    : san_one_side_guarded_sz(size);
 
 	void *guard1, *guard2, *addr;
-	san_find_unguarded_addr(edata, &guard1, &guard2, &addr, size, left,
-	    right);
+	san_find_unguarded_addr(
+	    edata, &guard1, &guard2, &addr, size, left, right);
 
 	ehooks_unguard(tsdn, ehooks, (void *)guard1, (void *)guard2);
 
@@ -130,15 +130,15 @@ san_unguard_pages_impl(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
 }
 
 void
-san_unguard_pages(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
-    emap_t *emap, bool left, bool right) {
+san_unguard_pages(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata, emap_t *emap,
+    bool left, bool right) {
 	san_unguard_pages_impl(tsdn, ehooks, edata, emap, left, right,
 	    /* remap */ true);
 }
 
 void
-san_unguard_pages_pre_destroy(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
-    emap_t *emap) {
+san_unguard_pages_pre_destroy(
+    tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata, emap_t *emap) {
 	emap_assert_not_mapped(tsdn, emap, edata);
 	/*
 	 * We don't want to touch the emap of about to be destroyed extents, as
@@ -146,7 +146,7 @@ san_unguard_pages_pre_destroy(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
 	 * we unguard the extents to the right, because retained extents only
 	 * own their right guard page per san_bump_alloc's logic.
 	 */
-	 san_unguard_pages_impl(tsdn, ehooks, edata, emap, /* left */ false,
+	san_unguard_pages_impl(tsdn, ehooks, edata, emap, /* left */ false,
 	    /* right */ true, /* remap */ false);
 }
 
@@ -163,9 +163,9 @@ san_stashed_corrupted(void *ptr, size_t size) {
 
 	void *first, *mid, *last;
 	san_junk_ptr_locations(ptr, size, &first, &mid, &last);
-	if (*(uintptr_t *)first != uaf_detect_junk ||
-	    *(uintptr_t *)mid != uaf_detect_junk ||
-	    *(uintptr_t *)last != uaf_detect_junk) {
+	if (*(uintptr_t *)first != uaf_detect_junk
+	    || *(uintptr_t *)mid != uaf_detect_junk
+	    || *(uintptr_t *)last != uaf_detect_junk) {
 		return true;
 	}
 
@@ -183,7 +183,8 @@ san_check_stashed_ptrs(void **ptrs, size_t nstashed, size_t usize) {
 		assert(stashed != NULL);
 		assert(cache_bin_nonfast_aligned(stashed));
 		if (unlikely(san_stashed_corrupted(stashed, usize))) {
-			safety_check_fail("<jemalloc>: Write-after-free "
+			safety_check_fail(
+			    "<jemalloc>: Write-after-free "
 			    "detected on deallocated pointer %p (size %zu).\n",
 			    stashed, usize);
 		}

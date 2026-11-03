@@ -36,7 +36,7 @@ malloc_mutex_t prof_dump_mtx;
  * and destroying mutexes causes complications for systems that allocate when
  * creating/destroying mutexes.
  */
-malloc_mutex_t *gctx_locks;
+malloc_mutex_t   *gctx_locks;
 static atomic_u_t cum_gctxs; /* Atomic counter. */
 
 /*
@@ -69,33 +69,32 @@ static int
 prof_tctx_comp(const prof_tctx_t *a, const prof_tctx_t *b) {
 	uint64_t a_thr_uid = a->thr_uid;
 	uint64_t b_thr_uid = b->thr_uid;
-	int ret = (a_thr_uid > b_thr_uid) - (a_thr_uid < b_thr_uid);
+	int      ret = (a_thr_uid > b_thr_uid) - (a_thr_uid < b_thr_uid);
 	if (ret == 0) {
 		uint64_t a_thr_discrim = a->thr_discrim;
 		uint64_t b_thr_discrim = b->thr_discrim;
-		ret = (a_thr_discrim > b_thr_discrim) - (a_thr_discrim <
-		    b_thr_discrim);
+		ret = (a_thr_discrim > b_thr_discrim)
+		    - (a_thr_discrim < b_thr_discrim);
 		if (ret == 0) {
 			uint64_t a_tctx_uid = a->tctx_uid;
 			uint64_t b_tctx_uid = b->tctx_uid;
-			ret = (a_tctx_uid > b_tctx_uid) - (a_tctx_uid <
-			    b_tctx_uid);
+			ret = (a_tctx_uid > b_tctx_uid)
+			    - (a_tctx_uid < b_tctx_uid);
 		}
 	}
 	return ret;
 }
 
 /* NOLINTBEGIN(performance-no-int-to-ptr) */
-rb_gen(static UNUSED, tctx_tree_, prof_tctx_tree_t, prof_tctx_t,
-    tctx_link, prof_tctx_comp)
-/* NOLINTEND(performance-no-int-to-ptr) */
+rb_gen(static UNUSED, tctx_tree_, prof_tctx_tree_t, prof_tctx_t, tctx_link,
+    prof_tctx_comp)
+    /* NOLINTEND(performance-no-int-to-ptr) */
 
-static int
-prof_gctx_comp(const prof_gctx_t *a, const prof_gctx_t *b) {
+    static int prof_gctx_comp(const prof_gctx_t *a, const prof_gctx_t *b) {
 	unsigned a_len = a->bt.len;
 	unsigned b_len = b->bt.len;
 	unsigned comp_len = (a_len < b_len) ? a_len : b_len;
-	int ret = memcmp(a->bt.vec, b->bt.vec, comp_len * sizeof(void *));
+	int      ret = memcmp(a->bt.vec, b->bt.vec, comp_len * sizeof(void *));
 	if (ret == 0) {
 		ret = (a_len > b_len) - (a_len < b_len);
 	}
@@ -105,11 +104,10 @@ prof_gctx_comp(const prof_gctx_t *a, const prof_gctx_t *b) {
 /* NOLINTBEGIN(performance-no-int-to-ptr) */
 rb_gen(static UNUSED, gctx_tree_, prof_gctx_tree_t, prof_gctx_t, dump_link,
     prof_gctx_comp)
-/* NOLINTEND(performance-no-int-to-ptr) */
+    /* NOLINTEND(performance-no-int-to-ptr) */
 
-static int
-prof_tdata_comp(const prof_tdata_t *a, const prof_tdata_t *b) {
-	int ret;
+    static int prof_tdata_comp(const prof_tdata_t *a, const prof_tdata_t *b) {
+	int      ret;
 	uint64_t a_uid = a->thr_uid;
 	uint64_t b_uid = b->thr_uid;
 
@@ -126,12 +124,11 @@ prof_tdata_comp(const prof_tdata_t *a, const prof_tdata_t *b) {
 /* NOLINTBEGIN(performance-no-int-to-ptr) */
 rb_gen(static UNUSED, tdata_tree_, prof_tdata_tree_t, prof_tdata_t, tdata_link,
     prof_tdata_comp)
-/* NOLINTEND(performance-no-int-to-ptr) */
+    /* NOLINTEND(performance-no-int-to-ptr) */
 
-/******************************************************************************/
+    /******************************************************************************/
 
-static malloc_mutex_t *
-prof_gctx_mutex_choose(void) {
+    static malloc_mutex_t *prof_gctx_mutex_choose(void) {
 	unsigned ngctxs = atomic_fetch_add_u(&cum_gctxs, 1, ATOMIC_RELAXED);
 
 	return &gctx_locks[(ngctxs - 1) % PROF_NCTX_LOCKS];
@@ -145,8 +142,8 @@ prof_tdata_mutex_choose(uint64_t thr_uid) {
 bool
 prof_data_init(tsd_t *tsd) {
 	tdata_tree_new(&tdatas);
-	return ckh_new(tsd, &bt2gctx, PROF_CKH_MINITEMS,
-	    prof_bt_hash, prof_bt_keycomp);
+	return ckh_new(
+	    tsd, &bt2gctx, PROF_CKH_MINITEMS, prof_bt_hash, prof_bt_keycomp);
 }
 
 static void
@@ -195,8 +192,8 @@ prof_gctx_create(tsdn_t *tsdn, prof_bt_t *bt) {
 	 */
 	size_t size = offsetof(prof_gctx_t, vec) + (bt->len * sizeof(void *));
 	prof_gctx_t *gctx = (prof_gctx_t *)iallocztm(tsdn, size,
-	    sz_size2index(size), false, NULL, true, arena_get(TSDN_NULL, 0, true),
-	    true);
+	    sz_size2index(size), false, NULL, true,
+	    arena_get(TSDN_NULL, 0, true), true);
 	if (gctx == NULL) {
 		return NULL;
 	}
@@ -215,8 +212,7 @@ prof_gctx_create(tsdn_t *tsdn, prof_bt_t *bt) {
 }
 
 static void
-prof_gctx_try_destroy(tsd_t *tsd, prof_tdata_t *tdata_self,
-    prof_gctx_t *gctx) {
+prof_gctx_try_destroy(tsd_t *tsd, prof_tdata_t *tdata_self, prof_gctx_t *gctx) {
 	cassert(config_prof);
 
 	/*
@@ -267,12 +263,12 @@ static bool
 prof_lookup_global(tsd_t *tsd, prof_bt_t *bt, prof_tdata_t *tdata,
     void **p_btkey, prof_gctx_t **p_gctx, bool *p_new_gctx) {
 	union {
-		prof_gctx_t	*p;
-		void		*v;
+		prof_gctx_t *p;
+		void        *v;
 	} gctx, tgctx;
 	union {
-		prof_bt_t	*p;
-		void		*v;
+		prof_bt_t *p;
+		void      *v;
 	} btkey;
 	bool new_gctx;
 
@@ -316,8 +312,8 @@ prof_lookup_global(tsd_t *tsd, prof_bt_t *bt, prof_tdata_t *tdata,
 
 		if (tgctx.v != NULL) {
 			/* Lost race to insert. */
-			idalloctm(tsd_tsdn(tsd), tgctx.v, NULL, NULL, true,
-			    true);
+			idalloctm(
+			    tsd_tsdn(tsd), tgctx.v, NULL, NULL, true, true);
 		}
 	}
 	prof_leave(tsd, tdata);
@@ -331,11 +327,11 @@ prof_lookup_global(tsd_t *tsd, prof_bt_t *bt, prof_tdata_t *tdata,
 prof_tctx_t *
 prof_lookup(tsd_t *tsd, prof_bt_t *bt) {
 	union {
-		prof_tctx_t	*p;
-		void		*v;
+		prof_tctx_t *p;
+		void        *v;
 	} ret;
 	prof_tdata_t *tdata;
-	bool not_found;
+	bool          not_found;
 
 	cassert(config_prof);
 
@@ -349,16 +345,16 @@ prof_lookup(tsd_t *tsd, prof_bt_t *bt) {
 	}
 	malloc_mutex_unlock(tsd_tsdn(tsd), tdata->lock);
 	if (not_found) {
-		void *btkey;
+		void        *btkey;
 		prof_gctx_t *gctx;
-		bool new_gctx, error;
+		bool         new_gctx, error;
 
 		/*
 		 * This thread's cache lacks bt.  Look for it in the global
 		 * cache.
 		 */
-		if (prof_lookup_global(tsd, bt, tdata, &btkey, &gctx,
-		    &new_gctx)) {
+		if (prof_lookup_global(
+		        tsd, bt, tdata, &btkey, &gctx, &new_gctx)) {
 			return NULL;
 		}
 
@@ -403,8 +399,8 @@ prof_lookup(tsd_t *tsd, prof_bt_t *bt) {
 
 /* Used in unit tests. */
 static prof_tdata_t *
-prof_tdata_count_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
-    void *arg) {
+prof_tdata_count_iter(
+    prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata, void *arg) {
 	size_t *tdata_count = (size_t *)arg;
 
 	(*tdata_count)++;
@@ -415,13 +411,13 @@ prof_tdata_count_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
 /* Used in unit tests. */
 size_t
 prof_tdata_count(void) {
-	size_t tdata_count = 0;
+	size_t  tdata_count = 0;
 	tsdn_t *tsdn;
 
 	tsdn = tsdn_fetch();
 	malloc_mutex_lock(tsdn, &tdatas_mtx);
-	tdata_tree_iter(&tdatas, NULL, prof_tdata_count_iter,
-	    (void *)&tdata_count);
+	tdata_tree_iter(
+	    &tdatas, NULL, prof_tdata_count_iter, (void *)&tdata_count);
 	malloc_mutex_unlock(tsdn, &tdatas_mtx);
 
 	return tdata_count;
@@ -430,8 +426,8 @@ prof_tdata_count(void) {
 /* Used in unit tests. */
 size_t
 prof_bt_count(void) {
-	size_t bt_count;
-	tsd_t *tsd;
+	size_t        bt_count;
+	tsd_t        *tsd;
 	prof_tdata_t *tdata;
 
 	tsd = tsd_fetch();
@@ -477,10 +473,10 @@ prof_thread_name_set_impl(tsd_t *tsd, const char *thread_name) {
 
 JEMALLOC_FORMAT_PRINTF(3, 4)
 static void
-prof_dump_printf(write_cb_t *prof_dump_write, void *cbopaque,
-    const char *format, ...) {
+prof_dump_printf(
+    write_cb_t *prof_dump_write, void *cbopaque, const char *format, ...) {
 	va_list ap;
-	char buf[PROF_PRINTF_BUFSIZE];
+	char    buf[PROF_PRINTF_BUFSIZE];
 
 	va_start(ap, format);
 	malloc_vsnprintf(buf, sizeof(buf), format, ap);
@@ -509,11 +505,18 @@ prof_double_uint64_cast(double d) {
 }
 #endif
 
-void prof_unbias_map_init(void) {
+void
+prof_unbias_map_init(void) {
 	/* See the comment in prof_sample_new_event_wait */
 #ifdef JEMALLOC_PROF
 	for (szind_t i = 0; i < SC_NSIZES; i++) {
-		double sz = (double)sz_index2size(i);
+		/*
+		 * With large size classes disabled, the unbiased calculation
+		 * here is not as accurate as it was because usize now changes
+		 * in a finer grain while the unbiased_sz is still calculated
+		 * using the old way.
+		 */
+		double sz = (double)sz_index2size_unsafe(i);
 		double rate = (double)(ZU(1) << lg_prof_sample);
 		double div_val = 1.0 - exp(-sz / rate);
 		double unbiased_sz = sz / div_val;
@@ -615,8 +618,8 @@ prof_do_unbias(uint64_t c_out_shifted_i, uint64_t s_out_i, uint64_t *r_c_in,
 }
 
 static void
-prof_dump_print_cnts(write_cb_t *prof_dump_write, void *cbopaque,
-    const prof_cnt_t *cnts) {
+prof_dump_print_cnts(
+    write_cb_t *prof_dump_write, void *cbopaque, const prof_cnt_t *cnts) {
 	uint64_t curobjs;
 	uint64_t curbytes;
 	uint64_t accumobjs;
@@ -633,8 +636,8 @@ prof_dump_print_cnts(write_cb_t *prof_dump_write, void *cbopaque,
 		accumbytes = cnts->accumbytes;
 	}
 	prof_dump_printf(prof_dump_write, cbopaque,
-	    "%"FMTu64": %"FMTu64" [%"FMTu64": %"FMTu64"]",
-	    curobjs, curbytes, accumobjs, accumbytes);
+	    "%" FMTu64 ": %" FMTu64 " [%" FMTu64 ": %" FMTu64 "]", curobjs,
+	    curbytes, accumobjs, accumbytes);
 }
 
 static void
@@ -654,11 +657,11 @@ prof_tctx_merge_tdata(tsdn_t *tsdn, prof_tctx_t *tctx, prof_tdata_t *tdata) {
 		memcpy(&tctx->dump_cnts, &tctx->cnts, sizeof(prof_cnt_t));
 
 		tdata->cnt_summed.curobjs += tctx->dump_cnts.curobjs;
-		tdata->cnt_summed.curobjs_shifted_unbiased
-		    += tctx->dump_cnts.curobjs_shifted_unbiased;
+		tdata->cnt_summed.curobjs_shifted_unbiased +=
+		    tctx->dump_cnts.curobjs_shifted_unbiased;
 		tdata->cnt_summed.curbytes += tctx->dump_cnts.curbytes;
-		tdata->cnt_summed.curbytes_unbiased
-		    += tctx->dump_cnts.curbytes_unbiased;
+		tdata->cnt_summed.curbytes_unbiased +=
+		    tctx->dump_cnts.curbytes_unbiased;
 		if (opt_prof_accum) {
 			tdata->cnt_summed.accumobjs +=
 			    tctx->dump_cnts.accumobjs;
@@ -681,17 +684,17 @@ prof_tctx_merge_gctx(tsdn_t *tsdn, prof_tctx_t *tctx, prof_gctx_t *gctx) {
 	malloc_mutex_assert_owner(tsdn, gctx->lock);
 
 	gctx->cnt_summed.curobjs += tctx->dump_cnts.curobjs;
-	gctx->cnt_summed.curobjs_shifted_unbiased
-	    += tctx->dump_cnts.curobjs_shifted_unbiased;
+	gctx->cnt_summed.curobjs_shifted_unbiased +=
+	    tctx->dump_cnts.curobjs_shifted_unbiased;
 	gctx->cnt_summed.curbytes += tctx->dump_cnts.curbytes;
 	gctx->cnt_summed.curbytes_unbiased += tctx->dump_cnts.curbytes_unbiased;
 	if (opt_prof_accum) {
 		gctx->cnt_summed.accumobjs += tctx->dump_cnts.accumobjs;
-		gctx->cnt_summed.accumobjs_shifted_unbiased
-		    += tctx->dump_cnts.accumobjs_shifted_unbiased;
+		gctx->cnt_summed.accumobjs_shifted_unbiased +=
+		    tctx->dump_cnts.accumobjs_shifted_unbiased;
 		gctx->cnt_summed.accumbytes += tctx->dump_cnts.accumbytes;
-		gctx->cnt_summed.accumbytes_unbiased
-		    += tctx->dump_cnts.accumbytes_unbiased;
+		gctx->cnt_summed.accumbytes_unbiased +=
+		    tctx->dump_cnts.accumbytes_unbiased;
 	}
 }
 
@@ -709,6 +712,7 @@ prof_tctx_merge_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *arg) {
 	case prof_tctx_state_purgatory:
 		prof_tctx_merge_gctx(tsdn, tctx, tctx->gctx);
 		break;
+	case prof_tctx_state_initializing:
 	default:
 		not_reached();
 	}
@@ -718,9 +722,9 @@ prof_tctx_merge_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *arg) {
 
 typedef struct prof_dump_iter_arg_s prof_dump_iter_arg_t;
 struct prof_dump_iter_arg_s {
-	tsdn_t *tsdn;
+	tsdn_t     *tsdn;
 	write_cb_t *prof_dump_write;
-	void *cbopaque;
+	void       *cbopaque;
 };
 
 static prof_tctx_t *
@@ -736,9 +740,9 @@ prof_tctx_dump_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *opaque) {
 	case prof_tctx_state_dumping:
 	case prof_tctx_state_purgatory:
 		prof_dump_printf(arg->prof_dump_write, arg->cbopaque,
-		    "  t%"FMTu64": ", tctx->thr_uid);
-		prof_dump_print_cnts(arg->prof_dump_write, arg->cbopaque,
-		    &tctx->dump_cnts);
+		    "  t%" FMTu64 ": ", tctx->thr_uid);
+		prof_dump_print_cnts(
+		    arg->prof_dump_write, arg->cbopaque, &tctx->dump_cnts);
 		arg->prof_dump_write(arg->cbopaque, "\n");
 		break;
 	default:
@@ -749,7 +753,7 @@ prof_tctx_dump_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *opaque) {
 
 static prof_tctx_t *
 prof_tctx_finish_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *arg) {
-	tsdn_t *tsdn = (tsdn_t *)arg;
+	tsdn_t      *tsdn = (tsdn_t *)arg;
 	prof_tctx_t *ret;
 
 	malloc_mutex_assert_owner(tsdn, tctx->gctx->lock);
@@ -764,6 +768,7 @@ prof_tctx_finish_iter(prof_tctx_tree_t *tctxs, prof_tctx_t *tctx, void *arg) {
 	case prof_tctx_state_purgatory:
 		ret = tctx;
 		goto label_return;
+	case prof_tctx_state_initializing:
 	default:
 		not_reached();
 	}
@@ -803,8 +808,8 @@ prof_gctx_merge_iter(prof_gctx_tree_t *gctxs, prof_gctx_t *gctx, void *opaque) {
 	prof_gctx_merge_iter_arg_t *arg = (prof_gctx_merge_iter_arg_t *)opaque;
 
 	malloc_mutex_lock(arg->tsdn, gctx->lock);
-	tctx_tree_iter(&gctx->tctxs, NULL, prof_tctx_merge_iter,
-	    (void *)arg->tsdn);
+	tctx_tree_iter(
+	    &gctx->tctxs, NULL, prof_tctx_merge_iter, (void *)arg->tsdn);
 	if (gctx->cnt_summed.curobjs != 0) {
 		(*arg->leak_ngctx)++;
 	}
@@ -816,7 +821,7 @@ prof_gctx_merge_iter(prof_gctx_tree_t *gctxs, prof_gctx_t *gctx, void *opaque) {
 static void
 prof_gctx_finish(tsd_t *tsd, prof_gctx_tree_t *gctxs) {
 	prof_tdata_t *tdata = prof_tdata_get(tsd, false);
-	prof_gctx_t *gctx;
+	prof_gctx_t  *gctx;
 
 	/*
 	 * Standard tree iteration won't work here, because as soon as we
@@ -832,15 +837,14 @@ prof_gctx_finish(tsd_t *tsd, prof_gctx_tree_t *gctxs) {
 
 			next = NULL;
 			do {
-				prof_tctx_t *to_destroy =
-				    tctx_tree_iter(&gctx->tctxs, next,
-				    prof_tctx_finish_iter,
+				prof_tctx_t *to_destroy = tctx_tree_iter(
+				    &gctx->tctxs, next, prof_tctx_finish_iter,
 				    (void *)tsd_tsdn(tsd));
 				if (to_destroy != NULL) {
-					next = tctx_tree_next(&gctx->tctxs,
-					    to_destroy);
-					tctx_tree_remove(&gctx->tctxs,
-					    to_destroy);
+					next = tctx_tree_next(
+					    &gctx->tctxs, to_destroy);
+					tctx_tree_remove(
+					    &gctx->tctxs, to_destroy);
 					idalloctm(tsd_tsdn(tsd), to_destroy,
 					    NULL, NULL, true, true);
 				} else {
@@ -861,41 +865,41 @@ prof_gctx_finish(tsd_t *tsd, prof_gctx_tree_t *gctxs) {
 
 typedef struct prof_tdata_merge_iter_arg_s prof_tdata_merge_iter_arg_t;
 struct prof_tdata_merge_iter_arg_s {
-	tsdn_t *tsdn;
+	tsdn_t     *tsdn;
 	prof_cnt_t *cnt_all;
 };
 
 static prof_tdata_t *
-prof_tdata_merge_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
-    void *opaque) {
-	prof_tdata_merge_iter_arg_t *arg =
-	    (prof_tdata_merge_iter_arg_t *)opaque;
+prof_tdata_merge_iter(
+    prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata, void *opaque) {
+	prof_tdata_merge_iter_arg_t *arg = (prof_tdata_merge_iter_arg_t *)
+	    opaque;
 
 	malloc_mutex_lock(arg->tsdn, tdata->lock);
 	if (!tdata->expired) {
 		size_t tabind;
 		union {
-			prof_tctx_t	*p;
-			void		*v;
+			prof_tctx_t *p;
+			void        *v;
 		} tctx;
 
 		tdata->dumping = true;
 		memset(&tdata->cnt_summed, 0, sizeof(prof_cnt_t));
-		for (tabind = 0; !ckh_iter(&tdata->bt2tctx, &tabind, NULL,
-		    &tctx.v);) {
+		for (tabind = 0;
+		     !ckh_iter(&tdata->bt2tctx, &tabind, NULL, &tctx.v);) {
 			prof_tctx_merge_tdata(arg->tsdn, tctx.p, tdata);
 		}
 
 		arg->cnt_all->curobjs += tdata->cnt_summed.curobjs;
-		arg->cnt_all->curobjs_shifted_unbiased
-		    += tdata->cnt_summed.curobjs_shifted_unbiased;
+		arg->cnt_all->curobjs_shifted_unbiased +=
+		    tdata->cnt_summed.curobjs_shifted_unbiased;
 		arg->cnt_all->curbytes += tdata->cnt_summed.curbytes;
-		arg->cnt_all->curbytes_unbiased
-		    += tdata->cnt_summed.curbytes_unbiased;
+		arg->cnt_all->curbytes_unbiased +=
+		    tdata->cnt_summed.curbytes_unbiased;
 		if (opt_prof_accum) {
 			arg->cnt_all->accumobjs += tdata->cnt_summed.accumobjs;
-			arg->cnt_all->accumobjs_shifted_unbiased
-			    += tdata->cnt_summed.accumobjs_shifted_unbiased;
+			arg->cnt_all->accumobjs_shifted_unbiased +=
+			    tdata->cnt_summed.accumobjs_shifted_unbiased;
 			arg->cnt_all->accumbytes +=
 			    tdata->cnt_summed.accumbytes;
 			arg->cnt_all->accumbytes_unbiased +=
@@ -910,17 +914,17 @@ prof_tdata_merge_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
 }
 
 static prof_tdata_t *
-prof_tdata_dump_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
-    void *opaque) {
+prof_tdata_dump_iter(
+    prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata, void *opaque) {
 	if (!tdata->dumping) {
 		return NULL;
 	}
 
 	prof_dump_iter_arg_t *arg = (prof_dump_iter_arg_t *)opaque;
-	prof_dump_printf(arg->prof_dump_write, arg->cbopaque, "  t%"FMTu64": ",
-	    tdata->thr_uid);
-	prof_dump_print_cnts(arg->prof_dump_write, arg->cbopaque,
-	    &tdata->cnt_summed);
+	prof_dump_printf(arg->prof_dump_write, arg->cbopaque,
+	    "  t%" FMTu64 ": ", tdata->thr_uid);
+	prof_dump_print_cnts(
+	    arg->prof_dump_write, arg->cbopaque, &tdata->cnt_summed);
 	if (!prof_thread_name_empty(tdata)) {
 		arg->prof_dump_write(arg->cbopaque, " ");
 		arg->prof_dump_write(arg->cbopaque, tdata->thread_name);
@@ -932,7 +936,7 @@ prof_tdata_dump_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
 static void
 prof_dump_header(prof_dump_iter_arg_t *arg, const prof_cnt_t *cnt_all) {
 	prof_dump_printf(arg->prof_dump_write, arg->cbopaque,
-	    "heap_v2/%"FMTu64"\n  t*: ", ((uint64_t)1U << lg_prof_sample));
+	    "heap_v2/%" FMTu64 "\n  t*: ", ((uint64_t)1U << lg_prof_sample));
 	prof_dump_print_cnts(arg->prof_dump_write, arg->cbopaque, cnt_all);
 	arg->prof_dump_write(arg->cbopaque, "\n");
 
@@ -948,8 +952,8 @@ prof_dump_gctx(prof_dump_iter_arg_t *arg, prof_gctx_t *gctx,
 	malloc_mutex_assert_owner(arg->tsdn, gctx->lock);
 
 	/* Avoid dumping such gctx's that have no useful data. */
-	if ((!opt_prof_accum && gctx->cnt_summed.curobjs == 0) ||
-	    (opt_prof_accum && gctx->cnt_summed.accumobjs == 0)) {
+	if ((!opt_prof_accum && gctx->cnt_summed.curobjs == 0)
+	    || (opt_prof_accum && gctx->cnt_summed.accumobjs == 0)) {
 		assert(gctx->cnt_summed.curobjs == 0);
 		assert(gctx->cnt_summed.curbytes == 0);
 		/*
@@ -968,12 +972,12 @@ prof_dump_gctx(prof_dump_iter_arg_t *arg, prof_gctx_t *gctx,
 	arg->prof_dump_write(arg->cbopaque, "@");
 	for (unsigned i = 0; i < bt->len; i++) {
 		prof_dump_printf(arg->prof_dump_write, arg->cbopaque,
-		    " %#"FMTxPTR, (uintptr_t)bt->vec[i]);
+		    " %#" FMTxPTR, (uintptr_t)bt->vec[i]);
 	}
 
 	arg->prof_dump_write(arg->cbopaque, "\n  t*: ");
-	prof_dump_print_cnts(arg->prof_dump_write, arg->cbopaque,
-	    &gctx->cnt_summed);
+	prof_dump_print_cnts(
+	    arg->prof_dump_write, arg->cbopaque, &gctx->cnt_summed);
 	arg->prof_dump_write(arg->cbopaque, "\n");
 
 	tctx_tree_iter(&gctx->tctxs, NULL, prof_tctx_dump_iter, arg);
@@ -994,18 +998,21 @@ prof_leakcheck(const prof_cnt_t *cnt_all, size_t leak_ngctx) {
 	 */
 	if (cnt_all->curbytes != 0) {
 		double sample_period = (double)((uint64_t)1 << lg_prof_sample);
-		double ratio = (((double)cnt_all->curbytes) /
-		    (double)cnt_all->curobjs) / sample_period;
-		double scale_factor = 1.0 / (1.0 - exp(-ratio));
-		uint64_t curbytes = (uint64_t)round(((double)cnt_all->curbytes)
-		    * scale_factor);
-		uint64_t curobjs = (uint64_t)round(((double)cnt_all->curobjs) *
-		    scale_factor);
+		double ratio = (((double)cnt_all->curbytes)
+		                   / (double)cnt_all->curobjs)
+		    / sample_period;
+		double   scale_factor = 1.0 / (1.0 - exp(-ratio));
+		uint64_t curbytes = (uint64_t)round(
+		    ((double)cnt_all->curbytes) * scale_factor);
+		uint64_t curobjs = (uint64_t)round(
+		    ((double)cnt_all->curobjs) * scale_factor);
 
-		malloc_printf("<jemalloc>: Leak approximation summary: ~%"FMTu64
-		    " byte%s, ~%"FMTu64" object%s, >= %zu context%s\n",
-		    curbytes, (curbytes != 1) ? "s" : "", curobjs, (curobjs !=
-		    1) ? "s" : "", leak_ngctx, (leak_ngctx != 1) ? "s" : "");
+		malloc_printf(
+		    "<jemalloc>: Leak approximation summary: ~%" FMTu64
+		    " byte%s, ~%" FMTu64 " object%s, >= %zu context%s\n",
+		    curbytes, (curbytes != 1) ? "s" : "", curobjs,
+		    (curobjs != 1) ? "s" : "", leak_ngctx,
+		    (leak_ngctx != 1) ? "s" : "");
 		malloc_printf(
 		    "<jemalloc>: Run jeprof on dump output for leak detail\n");
 		if (opt_prof_leak_error) {
@@ -1036,8 +1043,8 @@ prof_dump_prep(tsd_t *tsd, prof_tdata_t *tdata, prof_cnt_t *cnt_all,
     size_t *leak_ngctx, prof_gctx_tree_t *gctxs) {
 	size_t tabind;
 	union {
-		prof_gctx_t	*p;
-		void		*v;
+		prof_gctx_t *p;
+		void        *v;
 	} gctx;
 
 	prof_enter(tsd, tdata);
@@ -1056,19 +1063,19 @@ prof_dump_prep(tsd_t *tsd, prof_tdata_t *tdata, prof_cnt_t *cnt_all,
 	 * stats and merge them into the associated gctx's.
 	 */
 	memset(cnt_all, 0, sizeof(prof_cnt_t));
-	prof_tdata_merge_iter_arg_t prof_tdata_merge_iter_arg = {tsd_tsdn(tsd),
-	    cnt_all};
+	prof_tdata_merge_iter_arg_t prof_tdata_merge_iter_arg = {
+	    tsd_tsdn(tsd), cnt_all};
 	malloc_mutex_lock(tsd_tsdn(tsd), &tdatas_mtx);
-	tdata_tree_iter(&tdatas, NULL, prof_tdata_merge_iter,
-	    &prof_tdata_merge_iter_arg);
+	tdata_tree_iter(
+	    &tdatas, NULL, prof_tdata_merge_iter, &prof_tdata_merge_iter_arg);
 	malloc_mutex_unlock(tsd_tsdn(tsd), &tdatas_mtx);
 
 	/* Merge tctx stats into gctx's. */
 	*leak_ngctx = 0;
-	prof_gctx_merge_iter_arg_t prof_gctx_merge_iter_arg = {tsd_tsdn(tsd),
-	    leak_ngctx};
-	gctx_tree_iter(gctxs, NULL, prof_gctx_merge_iter,
-	    &prof_gctx_merge_iter_arg);
+	prof_gctx_merge_iter_arg_t prof_gctx_merge_iter_arg = {
+	    tsd_tsdn(tsd), leak_ngctx};
+	gctx_tree_iter(
+	    gctxs, NULL, prof_gctx_merge_iter, &prof_gctx_merge_iter_arg);
 
 	prof_leave(tsd, tdata);
 }
@@ -1077,12 +1084,12 @@ void
 prof_dump_impl(tsd_t *tsd, write_cb_t *prof_dump_write, void *cbopaque,
     prof_tdata_t *tdata, bool leakcheck) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &prof_dump_mtx);
-	prof_cnt_t cnt_all;
-	size_t leak_ngctx;
+	prof_cnt_t       cnt_all;
+	size_t           leak_ngctx;
 	prof_gctx_tree_t gctxs;
 	prof_dump_prep(tsd, tdata, &cnt_all, &leak_ngctx, &gctxs);
-	prof_dump_iter_arg_t prof_dump_iter_arg = {tsd_tsdn(tsd),
-	    prof_dump_write, cbopaque};
+	prof_dump_iter_arg_t prof_dump_iter_arg = {
+	    tsd_tsdn(tsd), prof_dump_write, cbopaque};
 	prof_dump_header(&prof_dump_iter_arg, &cnt_all);
 	gctx_tree_iter(&gctxs, NULL, prof_gctx_dump_iter, &prof_dump_iter_arg);
 	prof_gctx_finish(tsd, &gctxs);
@@ -1094,12 +1101,12 @@ prof_dump_impl(tsd_t *tsd, write_cb_t *prof_dump_write, void *cbopaque,
 /* Used in unit tests. */
 void
 prof_cnt_all(prof_cnt_t *cnt_all) {
-	tsd_t *tsd = tsd_fetch();
+	tsd_t        *tsd = tsd_fetch();
 	prof_tdata_t *tdata = prof_tdata_get(tsd, false);
 	if (tdata == NULL) {
 		memset(cnt_all, 0, sizeof(prof_cnt_t));
 	} else {
-		size_t leak_ngctx;
+		size_t           leak_ngctx;
 		prof_gctx_tree_t gctxs;
 		prof_dump_prep(tsd, tdata, cnt_all, &leak_ngctx, &gctxs);
 		prof_gctx_finish(tsd, &gctxs);
@@ -1140,8 +1147,8 @@ prof_tdata_init_impl(tsd_t *tsd, uint64_t thr_uid, uint64_t thr_discrim,
 	/* Initialize an empty cache for this thread. */
 	size_t tdata_sz = ALIGNMENT_CEILING(sizeof(prof_tdata_t), QUANTUM);
 	size_t total_sz = tdata_sz + sizeof(void *) * opt_prof_bt_max;
-	tdata = (prof_tdata_t *)iallocztm(tsd_tsdn(tsd),
-	    total_sz, sz_size2index(total_sz), false, NULL, true,
+	tdata = (prof_tdata_t *)iallocztm(tsd_tsdn(tsd), total_sz,
+	    sz_size2index(total_sz), false, NULL, true,
 	    arena_get(TSDN_NULL, 0, true), true);
 	if (tdata == NULL) {
 		return NULL;
@@ -1162,7 +1169,7 @@ prof_tdata_init_impl(tsd_t *tsd, uint64_t thr_uid, uint64_t thr_discrim,
 	prof_thread_name_assert(tdata);
 
 	if (ckh_new(tsd, &tdata->bt2tctx, PROF_CKH_MINITEMS, prof_bt_hash,
-	    prof_bt_keycomp)) {
+	        prof_bt_keycomp)) {
 		idalloctm(tsd_tsdn(tsd), tdata, NULL, NULL, true, true);
 		return NULL;
 	}
@@ -1193,16 +1200,16 @@ prof_tdata_should_destroy_unlocked(prof_tdata_t *tdata, bool even_if_attached) {
 }
 
 static bool
-prof_tdata_should_destroy(tsdn_t *tsdn, prof_tdata_t *tdata,
-    bool even_if_attached) {
+prof_tdata_should_destroy(
+    tsdn_t *tsdn, prof_tdata_t *tdata, bool even_if_attached) {
 	malloc_mutex_assert_owner(tsdn, tdata->lock);
 
 	return prof_tdata_should_destroy_unlocked(tdata, even_if_attached);
 }
 
 static void
-prof_tdata_destroy_locked(tsd_t *tsd, prof_tdata_t *tdata,
-    bool even_if_attached) {
+prof_tdata_destroy_locked(
+    tsd_t *tsd, prof_tdata_t *tdata, bool even_if_attached) {
 	malloc_mutex_assert_owner(tsd_tsdn(tsd), &tdatas_mtx);
 	malloc_mutex_assert_not_owner(tsd_tsdn(tsd), tdata->lock);
 
@@ -1226,8 +1233,8 @@ prof_tdata_detach(tsd_t *tsd, prof_tdata_t *tdata) {
 
 	malloc_mutex_lock(tsd_tsdn(tsd), tdata->lock);
 	if (tdata->attached) {
-		destroy_tdata = prof_tdata_should_destroy(tsd_tsdn(tsd), tdata,
-		    true);
+		destroy_tdata = prof_tdata_should_destroy(
+		    tsd_tsdn(tsd), tdata, true);
 		/*
 		 * Only detach if !destroy_tdata, because detaching would allow
 		 * another thread to win the race to destroy tdata.
@@ -1262,8 +1269,8 @@ prof_tdata_expire(tsdn_t *tsdn, prof_tdata_t *tdata) {
 }
 
 static prof_tdata_t *
-prof_tdata_reset_iter(prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata,
-    void *arg) {
+prof_tdata_reset_iter(
+    prof_tdata_tree_t *tdatas_ptr, prof_tdata_t *tdata, void *arg) {
 	tsdn_t *tsdn = (tsdn_t *)arg;
 
 	return (prof_tdata_expire(tsdn, tdata) ? tdata : NULL);
@@ -1283,8 +1290,8 @@ prof_reset(tsd_t *tsd, size_t lg_sample) {
 
 	next = NULL;
 	do {
-		prof_tdata_t *to_destroy = tdata_tree_iter(&tdatas, next,
-		    prof_tdata_reset_iter, (void *)tsd);
+		prof_tdata_t *to_destroy = tdata_tree_iter(
+		    &tdatas, next, prof_tdata_reset_iter, (void *)tsd);
 		if (to_destroy != NULL) {
 			next = tdata_tree_next(&tdatas, to_destroy);
 			prof_tdata_destroy_locked(tsd, to_destroy, false);
@@ -1347,8 +1354,8 @@ prof_tctx_destroy(tsd_t *tsd, prof_tctx_t *tctx) {
 		prof_tdata_t *tdata = tctx->tdata;
 		tctx->tdata = NULL;
 		ckh_remove(tsd, &tdata->bt2tctx, &gctx->bt, NULL, NULL);
-		bool destroy_tdata = prof_tdata_should_destroy(tsd_tsdn(tsd),
-		    tdata, false);
+		bool destroy_tdata = prof_tdata_should_destroy(
+		    tsd_tsdn(tsd), tdata, false);
 		malloc_mutex_unlock(tsd_tsdn(tsd), tdata->lock);
 		if (destroy_tdata) {
 			prof_tdata_destroy(tsd, tdata, false);
@@ -1393,6 +1400,8 @@ prof_tctx_destroy(tsd_t *tsd, prof_tctx_t *tctx) {
 		destroy_tctx = false;
 		destroy_gctx = false;
 		break;
+	case prof_tctx_state_initializing:
+	case prof_tctx_state_purgatory:
 	default:
 		not_reached();
 		destroy_tctx = false;

@@ -4,7 +4,6 @@
 #define JEMALLOC_INTERNAL_TSD_INTERNALS_H
 
 #include "jemalloc/internal/jemalloc_preamble.h"
-#include "jemalloc/internal/activity_callback.h"
 #include "jemalloc/internal/arena_types.h"
 #include "jemalloc/internal/assert.h"
 #include "jemalloc/internal/bin_types.h"
@@ -15,6 +14,7 @@
 #include "jemalloc/internal/rtree_tsd.h"
 #include "jemalloc/internal/tcache_structs.h"
 #include "jemalloc/internal/tcache_types.h"
+#include "jemalloc/internal/thread_event_registry.h"
 #include "jemalloc/internal/tsd_types.h"
 #include "jemalloc/internal/util.h"
 #include "jemalloc/internal/witness.h"
@@ -47,133 +47,110 @@
 
 #ifdef JEMALLOC_JET
 typedef void (*test_callback_t)(int *);
-#  define MALLOC_TSD_TEST_DATA_INIT 0x72b65c10
-#  define MALLOC_TEST_TSD \
-    O(test_data,		int,			int)		\
-    O(test_callback,		test_callback_t,	int)
-#  define MALLOC_TEST_TSD_INITIALIZER , MALLOC_TSD_TEST_DATA_INIT, NULL
+#	define MALLOC_TSD_TEST_DATA_INIT 0x72b65c10
+#	define MALLOC_TEST_TSD                                                \
+		O(test_data, int, int)                                         \
+		O(test_callback, test_callback_t, int)
+#	define MALLOC_TEST_TSD_INITIALIZER , MALLOC_TSD_TEST_DATA_INIT, NULL
 #else
-#  define MALLOC_TEST_TSD
-#  define MALLOC_TEST_TSD_INITIALIZER
+#	define MALLOC_TEST_TSD
+#	define MALLOC_TEST_TSD_INITIALIZER
 #endif
 
 typedef ql_elm(tsd_t) tsd_link_t;
 
 /*  O(name,			type,			nullable type) */
-#define TSD_DATA_SLOW							\
-    O(tcache_enabled,		bool,			bool)		\
-    O(reentrancy_level,		int8_t,			int8_t)		\
-    O(min_init_state_nfetched,		uint8_t,	uint8_t)	\
-    O(thread_allocated_last_event,	uint64_t,	uint64_t)	\
-    O(thread_allocated_next_event,	uint64_t,	uint64_t)	\
-    O(thread_deallocated_last_event,	uint64_t,	uint64_t)	\
-    O(thread_deallocated_next_event,	uint64_t,	uint64_t)	\
-    O(tcache_gc_event_wait,	uint64_t,		uint64_t)	\
-    O(tcache_gc_dalloc_event_wait,	uint64_t,	uint64_t)	\
-    O(prof_sample_event_wait,	uint64_t,		uint64_t)	\
-    O(prof_sample_last_event,	uint64_t,		uint64_t)	\
-    O(stats_interval_event_wait,	uint64_t,	uint64_t)	\
-    O(stats_interval_last_event,	uint64_t,	uint64_t)	\
-    O(peak_alloc_event_wait,	uint64_t,		uint64_t)	\
-    O(peak_dalloc_event_wait,	uint64_t,	uint64_t)		\
-    O(prof_tdata,		prof_tdata_t *,		prof_tdata_t *)	\
-    O(prng_state,		uint64_t,		uint64_t)	\
-    O(san_extents_until_guard_small,	uint64_t,	uint64_t)	\
-    O(san_extents_until_guard_large,	uint64_t,	uint64_t)	\
-    O(iarena,			arena_t *,		arena_t *)	\
-    O(arena,			arena_t *,		arena_t *)	\
-    O(arena_decay_ticker,	ticker_geom_t,		ticker_geom_t)	\
-    O(sec_shard,		uint8_t,		uint8_t)	\
-    O(binshards,		tsd_binshards_t,	tsd_binshards_t)\
-    O(tsd_link,			tsd_link_t,		tsd_link_t)	\
-    O(in_hook,			bool,			bool)		\
-    O(peak,			peak_t,			peak_t)		\
-    O(activity_callback_thunk,	activity_callback_thunk_t,		\
-	activity_callback_thunk_t)					\
-    O(tcache_slow,		tcache_slow_t,		tcache_slow_t)	\
-    O(rtree_ctx,		rtree_ctx_t,		rtree_ctx_t)
+#define TSD_DATA_SLOW                                                          \
+	O(tcache_enabled, bool, bool)                                          \
+	O(reentrancy_level, int8_t, int8_t)                                    \
+	O(min_init_state_nfetched, uint8_t, uint8_t)                           \
+	O(thread_allocated_last_event, uint64_t, uint64_t)                     \
+	O(thread_allocated_next_event, uint64_t, uint64_t)                     \
+	O(thread_deallocated_last_event, uint64_t, uint64_t)                   \
+	O(thread_deallocated_next_event, uint64_t, uint64_t)                   \
+	O(te_data, te_data_t, te_data_t)                                       \
+	O(prof_sample_last_event, uint64_t, uint64_t)                          \
+	O(stats_interval_last_event, uint64_t, uint64_t)                       \
+	O(prof_tdata, prof_tdata_t *, prof_tdata_t *)                          \
+	O(prng_state, uint64_t, uint64_t)                                      \
+	O(san_extents_until_guard_small, uint64_t, uint64_t)                   \
+	O(san_extents_until_guard_large, uint64_t, uint64_t)                   \
+	O(iarena, arena_t *, arena_t *)                                        \
+	O(arena, arena_t *, arena_t *)                                         \
+	O(arena_decay_ticker, ticker_geom_t, ticker_geom_t)                    \
+	O(sec_shard, uint8_t, uint8_t)                                         \
+	O(binshards, tsd_binshards_t, tsd_binshards_t)                         \
+	O(tsd_link, tsd_link_t, tsd_link_t)                                    \
+	O(in_hook, bool, bool)                                                 \
+	O(peak, peak_t, peak_t)                                                \
+	O(tcache_slow, tcache_slow_t, tcache_slow_t)                           \
+	O(rtree_ctx, rtree_ctx_t, rtree_ctx_t)
 
-#define TSD_DATA_SLOW_INITIALIZER					\
-    /* tcache_enabled */	TCACHE_ENABLED_ZERO_INITIALIZER,	\
-    /* reentrancy_level */	0,					\
-    /* min_init_state_nfetched */	0,				\
-    /* thread_allocated_last_event */	0,				\
-    /* thread_allocated_next_event */	0,				\
-    /* thread_deallocated_last_event */	0,				\
-    /* thread_deallocated_next_event */	0,				\
-    /* tcache_gc_event_wait */		0,				\
-    /* tcache_gc_dalloc_event_wait */	0,				\
-    /* prof_sample_event_wait */	0,				\
-    /* prof_sample_last_event */	0,				\
-    /* stats_interval_event_wait */	0,				\
-    /* stats_interval_last_event */	0,				\
-    /* peak_alloc_event_wait */		0,				\
-    /* peak_dalloc_event_wait */	0,				\
-    /* prof_tdata */		NULL,					\
-    /* prng_state */		0,					\
-    /* san_extents_until_guard_small */	0,				\
-    /* san_extents_until_guard_large */	0,				\
-    /* iarena */		NULL,					\
-    /* arena */			NULL,					\
-    /* arena_decay_ticker */						\
-	TICKER_GEOM_INIT(ARENA_DECAY_NTICKS_PER_UPDATE),		\
-    /* sec_shard */		(uint8_t)-1,				\
-    /* binshards */		TSD_BINSHARDS_ZERO_INITIALIZER,		\
-    /* tsd_link */		{NULL},					\
-    /* in_hook */		false,					\
-    /* peak */			PEAK_INITIALIZER,			\
-    /* activity_callback_thunk */					\
-	ACTIVITY_CALLBACK_THUNK_INITIALIZER,				\
-    /* tcache_slow */		TCACHE_SLOW_ZERO_INITIALIZER,		\
-    /* rtree_ctx */		RTREE_CTX_INITIALIZER,
+#define TSD_DATA_SLOW_INITIALIZER                                              \
+	/* tcache_enabled */ TCACHE_ENABLED_ZERO_INITIALIZER,                  \
+	    /* reentrancy_level */ 0, /* min_init_state_nfetched */ 0,         \
+	    /* thread_allocated_last_event */ 0,                               \
+	    /* thread_allocated_next_event */ 0,                               \
+	    /* thread_deallocated_last_event */ 0,                             \
+	    /* thread_deallocated_next_event */ 0,                             \
+	    /* te_data */ TE_DATA_INITIALIZER, /* prof_sample_last_event */ 0, \
+	    /* stats_interval_last_event */ 0, /* prof_tdata */ NULL,          \
+	    /* prng_state */ 0, /* san_extents_until_guard_small */ 0,         \
+	    /* san_extents_until_guard_large */ 0, /* iarena */ NULL,          \
+	    /* arena */ NULL, /* arena_decay_ticker */                         \
+	    TICKER_GEOM_INIT(ARENA_DECAY_NTICKS_PER_UPDATE),                   \
+	    /* sec_shard */ (uint8_t) - 1,                                     \
+	    /* binshards */ TSD_BINSHARDS_ZERO_INITIALIZER,                    \
+	    /* tsd_link */ {NULL}, /* in_hook */ false,                        \
+	    /* peak */ PEAK_INITIALIZER,                                       \
+	    /* tcache_slow */ TCACHE_SLOW_ZERO_INITIALIZER,                    \
+	    /* rtree_ctx */ RTREE_CTX_INITIALIZER,
 
 /*  O(name,			type,			nullable type) */
-#define TSD_DATA_FAST							\
-    O(thread_allocated,		uint64_t,		uint64_t)	\
-    O(thread_allocated_next_event_fast,	uint64_t,	uint64_t)	\
-    O(thread_deallocated,	uint64_t,		uint64_t)	\
-    O(thread_deallocated_next_event_fast, uint64_t,	uint64_t)	\
-    O(tcache,			tcache_t,		tcache_t)
+#define TSD_DATA_FAST                                                          \
+	O(thread_allocated, uint64_t, uint64_t)                                \
+	O(thread_allocated_next_event_fast, uint64_t, uint64_t)                \
+	O(thread_deallocated, uint64_t, uint64_t)                              \
+	O(thread_deallocated_next_event_fast, uint64_t, uint64_t)              \
+	O(tcache, tcache_t, tcache_t)
 
-#define TSD_DATA_FAST_INITIALIZER					\
-    /* thread_allocated */	0,					\
-    /* thread_allocated_next_event_fast */ 0, 				\
-    /* thread_deallocated */	0,					\
-    /* thread_deallocated_next_event_fast */	0,			\
-    /* tcache */		TCACHE_ZERO_INITIALIZER,
+#define TSD_DATA_FAST_INITIALIZER                                              \
+	/* thread_allocated */ 0, /* thread_allocated_next_event_fast */ 0,    \
+	    /* thread_deallocated */ 0,                                        \
+	    /* thread_deallocated_next_event_fast */ 0,                        \
+	    /* tcache */ TCACHE_ZERO_INITIALIZER,
 
 /*  O(name,			type,			nullable type) */
-#define TSD_DATA_SLOWER							\
-    O(witness_tsd,              witness_tsd_t,		witness_tsdn_t)	\
-    MALLOC_TEST_TSD
+#define TSD_DATA_SLOWER                                                        \
+	O(witness_tsd, witness_tsd_t, witness_tsdn_t)                          \
+	MALLOC_TEST_TSD
 
-#define TSD_DATA_SLOWER_INITIALIZER					\
-    /* witness */		WITNESS_TSD_INITIALIZER			\
-    /* test data */		MALLOC_TEST_TSD_INITIALIZER
+#define TSD_DATA_SLOWER_INITIALIZER                                            \
+	/* witness */ WITNESS_TSD_INITIALIZER                                  \
+	/* test data */ MALLOC_TEST_TSD_INITIALIZER
 
-
-#define TSD_INITIALIZER {						\
-    				TSD_DATA_SLOW_INITIALIZER		\
-    /* state */			ATOMIC_INIT(tsd_state_uninitialized),	\
-    				TSD_DATA_FAST_INITIALIZER		\
-    				TSD_DATA_SLOWER_INITIALIZER		\
-}
+#define TSD_INITIALIZER                                                        \
+	{                                                                      \
+		TSD_DATA_SLOW_INITIALIZER                                      \
+		/* state */ ATOMIC_INIT(tsd_state_uninitialized),              \
+		    TSD_DATA_FAST_INITIALIZER TSD_DATA_SLOWER_INITIALIZER      \
+	}
 
 #if defined(JEMALLOC_MALLOC_THREAD_CLEANUP) || defined(_WIN32)
 void _malloc_tsd_cleanup_register(bool (*f)(void));
 #endif
 
-void *malloc_tsd_malloc(size_t size);
-void malloc_tsd_dalloc(void *wrapper);
+void  *malloc_tsd_malloc(size_t size);
+void   malloc_tsd_dalloc(void *wrapper);
 tsd_t *malloc_tsd_boot0(void);
-void malloc_tsd_boot1(void);
-void tsd_cleanup(void *arg);
+void   malloc_tsd_boot1(void);
+void   tsd_cleanup(void *arg);
 tsd_t *tsd_fetch_slow(tsd_t *tsd, bool minimal);
-void tsd_state_set(tsd_t *tsd, uint8_t new_state);
-void tsd_slow_update(tsd_t *tsd);
-void tsd_prefork(tsd_t *tsd);
-void tsd_postfork_parent(tsd_t *tsd);
-void tsd_postfork_child(tsd_t *tsd);
+void   tsd_state_set(tsd_t *tsd, uint8_t new_state);
+void   tsd_slow_update(tsd_t *tsd);
+void   tsd_prefork(tsd_t *tsd);
+void   tsd_postfork_parent(tsd_t *tsd);
+void   tsd_postfork_child(tsd_t *tsd);
 
 /*
  * Call ..._inc when your module wants to take all threads down the slow paths,
@@ -233,15 +210,15 @@ enum {
 #define TSD_MANGLE(n) cant_access_tsd_items_directly_use_a_getter_or_setter_##n
 
 #ifdef JEMALLOC_U8_ATOMICS
-#  define tsd_state_t atomic_u8_t
-#  define tsd_atomic_load atomic_load_u8
-#  define tsd_atomic_store atomic_store_u8
-#  define tsd_atomic_exchange atomic_exchange_u8
+#	define tsd_state_t atomic_u8_t
+#	define tsd_atomic_load atomic_load_u8
+#	define tsd_atomic_store atomic_store_u8
+#	define tsd_atomic_exchange atomic_exchange_u8
 #else
-#  define tsd_state_t atomic_u32_t
-#  define tsd_atomic_load atomic_load_u32
-#  define tsd_atomic_store atomic_store_u32
-#  define tsd_atomic_exchange atomic_exchange_u32
+#	define tsd_state_t atomic_u32_t
+#	define tsd_atomic_load atomic_load_u32
+#	define tsd_atomic_store atomic_store_u32
+#	define tsd_atomic_exchange atomic_exchange_u32
 #endif
 
 /* The actual tsd. */
@@ -252,8 +229,7 @@ struct tsd_s {
 	 * setters below.
 	 */
 
-#define O(n, t, nt)							\
-	t TSD_MANGLE(n);
+#define O(n, t, nt) t TSD_MANGLE(n);
 
 	TSD_DATA_SLOW
 	/*

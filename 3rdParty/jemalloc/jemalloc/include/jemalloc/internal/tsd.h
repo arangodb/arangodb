@@ -7,14 +7,14 @@
  * tsd_boot1, tsd_boot, tsd_booted_get, tsd_get_allocates, tsd_get, and tsd_set.
  */
 #ifdef JEMALLOC_MALLOC_THREAD_CLEANUP
-#include "jemalloc/internal/jemalloc_preamble.h"
-#include "jemalloc/internal/tsd_malloc_thread_cleanup.h"
+#	include "jemalloc/internal/jemalloc_preamble.h"
+#	include "jemalloc/internal/tsd_malloc_thread_cleanup.h"
 #elif (defined(JEMALLOC_TLS))
-#include "jemalloc/internal/tsd_tls.h"
+#	include "jemalloc/internal/tsd_tls.h"
 #elif (defined(_WIN32))
-#include "jemalloc/internal/tsd_win.h"
+#	include "jemalloc/internal/tsd_win.h"
 #else
-#include "jemalloc/internal/tsd_generic.h"
+#	include "jemalloc/internal/tsd_generic.h"
 #endif
 
 /*
@@ -22,16 +22,16 @@
  * foo.  This omits some safety checks, and so can be used during tsd
  * initialization and cleanup.
  */
-#define O(n, t, nt)							\
-JEMALLOC_ALWAYS_INLINE t *						\
-tsd_##n##p_get_unsafe(tsd_t *tsd) {					\
-	return &tsd->TSD_MANGLE(n);					\
-}
+#define O(n, t, nt)                                                            \
+	JEMALLOC_ALWAYS_INLINE t *tsd_##n##p_get_unsafe(tsd_t *tsd) {          \
+		return &tsd->TSD_MANGLE(n);                                    \
+	}
 TSD_DATA_SLOW
 TSD_DATA_FAST
 TSD_DATA_SLOWER
 #undef O
 
+/* clang-format off */
 /* tsd_foop_get(tsd) returns a pointer to the thread-local instance of foo. */
 #define O(n, t, nt)							\
 JEMALLOC_ALWAYS_INLINE t *						\
@@ -48,6 +48,7 @@ tsd_##n##p_get(tsd_t *tsd) {						\
 	    state == tsd_state_minimal_initialized);			\
 	return tsd_##n##p_get_unsafe(tsd);				\
 }
+/* clang-format on */
 TSD_DATA_SLOW
 TSD_DATA_FAST
 TSD_DATA_SLOWER
@@ -57,39 +58,36 @@ TSD_DATA_SLOWER
  * tsdn_foop_get(tsdn) returns either the thread-local instance of foo (if tsdn
  * isn't NULL), or NULL (if tsdn is NULL), cast to the nullable pointer type.
  */
-#define O(n, t, nt)							\
-JEMALLOC_ALWAYS_INLINE nt *						\
-tsdn_##n##p_get(tsdn_t *tsdn) {						\
-	if (tsdn_null(tsdn)) {						\
-		return NULL;						\
-	}								\
-	tsd_t *tsd = tsdn_tsd(tsdn);					\
-	return (nt *)tsd_##n##p_get(tsd);				\
-}
+#define O(n, t, nt)                                                            \
+	JEMALLOC_ALWAYS_INLINE nt *tsdn_##n##p_get(tsdn_t *tsdn) {             \
+		if (tsdn_null(tsdn)) {                                         \
+			return NULL;                                           \
+		}                                                              \
+		tsd_t *tsd = tsdn_tsd(tsdn);                                   \
+		return (nt *)tsd_##n##p_get(tsd);                              \
+	}
 TSD_DATA_SLOW
 TSD_DATA_FAST
 TSD_DATA_SLOWER
 #undef O
 
 /* tsd_foo_get(tsd) returns the value of the thread-local instance of foo. */
-#define O(n, t, nt)							\
-JEMALLOC_ALWAYS_INLINE t						\
-tsd_##n##_get(tsd_t *tsd) {						\
-	return *tsd_##n##p_get(tsd);					\
-}
+#define O(n, t, nt)                                                            \
+	JEMALLOC_ALWAYS_INLINE t tsd_##n##_get(tsd_t *tsd) {                   \
+		return *tsd_##n##p_get(tsd);                                   \
+	}
 TSD_DATA_SLOW
 TSD_DATA_FAST
 TSD_DATA_SLOWER
 #undef O
 
 /* tsd_foo_set(tsd, val) updates the thread-local instance of foo to be val. */
-#define O(n, t, nt)							\
-JEMALLOC_ALWAYS_INLINE void						\
-tsd_##n##_set(tsd_t *tsd, t val) {					\
-	assert(tsd_state_get(tsd) != tsd_state_reincarnated &&		\
-	    tsd_state_get(tsd) != tsd_state_minimal_initialized);	\
-	*tsd_##n##p_get(tsd) = val;					\
-}
+#define O(n, t, nt)                                                            \
+	JEMALLOC_ALWAYS_INLINE void tsd_##n##_set(tsd_t *tsd, t val) {         \
+		assert(tsd_state_get(tsd) != tsd_state_reincarnated            \
+		    && tsd_state_get(tsd) != tsd_state_minimal_initialized);   \
+		*tsd_##n##p_get(tsd) = val;                                    \
+	}
 TSD_DATA_SLOW
 TSD_DATA_FAST
 TSD_DATA_SLOWER
@@ -102,8 +100,8 @@ tsd_assert_fast(tsd_t *tsd) {
 	 * counters; it's not in general possible to ensure that they won't
 	 * change asynchronously from underneath us.
 	 */
-	assert(!malloc_slow && tsd_tcache_enabled_get(tsd) &&
-	    tsd_reentrancy_level_get(tsd) == 0);
+	assert(!malloc_slow && tsd_tcache_enabled_get(tsd)
+	    && tsd_reentrancy_level_get(tsd) == 0);
 }
 
 JEMALLOC_ALWAYS_INLINE bool
@@ -192,8 +190,8 @@ tsdn_rtree_ctx(tsdn_t *tsdn, rtree_ctx_t *fallback) {
 
 static inline bool
 tsd_state_nocleanup(tsd_t *tsd) {
-	return tsd_state_get(tsd) == tsd_state_reincarnated ||
-	    tsd_state_get(tsd) == tsd_state_minimal_initialized;
+	return tsd_state_get(tsd) == tsd_state_reincarnated
+	    || tsd_state_get(tsd) == tsd_state_minimal_initialized;
 }
 
 /*

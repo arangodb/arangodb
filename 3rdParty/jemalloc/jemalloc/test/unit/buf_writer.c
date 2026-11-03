@@ -5,24 +5,24 @@
 #define TEST_BUF_SIZE 16
 #define UNIT_MAX (TEST_BUF_SIZE * 3)
 
-static size_t test_write_len;
-static char test_buf[TEST_BUF_SIZE];
+static size_t   test_write_len;
+static char     test_buf[TEST_BUF_SIZE];
 static uint64_t arg;
 static uint64_t arg_store;
 
 static void
 test_write_cb(void *cbopaque, const char *s) {
 	size_t prev_test_write_len = test_write_len;
-	test_write_len += strlen(s); /* only increase the length */
+	test_write_len += strlen(s);       /* only increase the length */
 	arg_store = *(uint64_t *)cbopaque; /* only pass along the argument */
-	assert_zu_le(prev_test_write_len, test_write_len,
-	    "Test write overflowed");
+	assert_zu_le(
+	    prev_test_write_len, test_write_len, "Test write overflowed");
 }
 
 static void
 test_buf_writer_body(tsdn_t *tsdn, buf_writer_t *buf_writer) {
-	char s[UNIT_MAX + 1];
-	size_t n_unit, remain, i;
+	char    s[UNIT_MAX + 1];
+	size_t  n_unit, remain, i;
 	ssize_t unit;
 
 	assert(buf_writer->buf != NULL);
@@ -41,7 +41,8 @@ test_buf_writer_body(tsdn_t *tsdn, buf_writer_t *buf_writer) {
 				remain += unit;
 				if (remain > buf_writer->buf_size) {
 					/* Flushes should have happened. */
-					assert_u64_eq(arg_store, arg, "Call "
+					assert_u64_eq(arg_store, arg,
+					    "Call "
 					    "back argument didn't get through");
 					remain %= buf_writer->buf_size;
 					if (remain == 0) {
@@ -51,12 +52,14 @@ test_buf_writer_body(tsdn_t *tsdn, buf_writer_t *buf_writer) {
 				}
 				assert_zu_eq(test_write_len + remain, i * unit,
 				    "Incorrect length after writing %zu strings"
-				    " of length %zu", i, unit);
+				    " of length %zu",
+				    i, unit);
 			}
 			buf_writer_flush(buf_writer);
 			expect_zu_eq(test_write_len, n_unit * unit,
 			    "Incorrect length after flushing at the end of"
-			    " writing %zu strings of length %zu", n_unit, unit);
+			    " writing %zu strings of length %zu",
+			    n_unit, unit);
 		}
 	}
 	buf_writer_terminate(tsdn, buf_writer);
@@ -64,9 +67,9 @@ test_buf_writer_body(tsdn_t *tsdn, buf_writer_t *buf_writer) {
 
 TEST_BEGIN(test_buf_write_static) {
 	buf_writer_t buf_writer;
-	tsdn_t *tsdn = tsdn_fetch();
+	tsdn_t      *tsdn = tsdn_fetch();
 	assert_false(buf_writer_init(tsdn, &buf_writer, test_write_cb, &arg,
-	    test_buf, TEST_BUF_SIZE),
+	                 test_buf, TEST_BUF_SIZE),
 	    "buf_writer_init() should not encounter error on static buffer");
 	test_buf_writer_body(tsdn, &buf_writer);
 }
@@ -74,22 +77,24 @@ TEST_END
 
 TEST_BEGIN(test_buf_write_dynamic) {
 	buf_writer_t buf_writer;
-	tsdn_t *tsdn = tsdn_fetch();
+	tsdn_t      *tsdn = tsdn_fetch();
 	assert_false(buf_writer_init(tsdn, &buf_writer, test_write_cb, &arg,
-	    NULL, TEST_BUF_SIZE), "buf_writer_init() should not OOM");
+	                 NULL, TEST_BUF_SIZE),
+	    "buf_writer_init() should not OOM");
 	test_buf_writer_body(tsdn, &buf_writer);
 }
 TEST_END
 
 TEST_BEGIN(test_buf_write_oom) {
 	buf_writer_t buf_writer;
-	tsdn_t *tsdn = tsdn_fetch();
+	tsdn_t      *tsdn = tsdn_fetch();
 	assert_true(buf_writer_init(tsdn, &buf_writer, test_write_cb, &arg,
-	    NULL, SC_LARGE_MAXCLASS + 1), "buf_writer_init() should OOM");
+	                NULL, SC_LARGE_MAXCLASS + 1),
+	    "buf_writer_init() should OOM");
 	assert(buf_writer.buf == NULL);
 
-	char s[UNIT_MAX + 1];
-	size_t n_unit, i;
+	char    s[UNIT_MAX + 1];
+	size_t  n_unit, i;
 	ssize_t unit;
 
 	memset(s, 'a', UNIT_MAX);
@@ -107,20 +112,22 @@ TEST_BEGIN(test_buf_write_oom) {
 				    "Call back argument didn't get through");
 				assert_zu_eq(test_write_len, i * unit,
 				    "Incorrect length after writing %zu strings"
-				    " of length %zu", i, unit);
+				    " of length %zu",
+				    i, unit);
 			}
 			buf_writer_flush(&buf_writer);
 			expect_zu_eq(test_write_len, n_unit * unit,
 			    "Incorrect length after flushing at the end of"
-			    " writing %zu strings of length %zu", n_unit, unit);
+			    " writing %zu strings of length %zu",
+			    n_unit, unit);
 		}
 	}
 	buf_writer_terminate(tsdn, &buf_writer);
 }
 TEST_END
 
-static int test_read_count;
-static size_t test_read_len;
+static int      test_read_count;
+static size_t   test_read_len;
 static uint64_t arg_sum;
 
 ssize_t
@@ -142,8 +149,8 @@ test_read_cb(void *cbopaque, void *buf, size_t limit) {
 		memset(buf, 'a', read_len);
 		size_t prev_test_read_len = test_read_len;
 		test_read_len += read_len;
-		assert_zu_le(prev_test_read_len, test_read_len,
-		    "Test read overflowed");
+		assert_zu_le(
+		    prev_test_read_len, test_read_len, "Test read overflowed");
 		return read_len;
 	}
 }
@@ -168,9 +175,9 @@ test_buf_writer_pipe_body(tsdn_t *tsdn, buf_writer_t *buf_writer) {
 
 TEST_BEGIN(test_buf_write_pipe) {
 	buf_writer_t buf_writer;
-	tsdn_t *tsdn = tsdn_fetch();
+	tsdn_t      *tsdn = tsdn_fetch();
 	assert_false(buf_writer_init(tsdn, &buf_writer, test_write_cb, &arg,
-	    test_buf, TEST_BUF_SIZE),
+	                 test_buf, TEST_BUF_SIZE),
 	    "buf_writer_init() should not encounter error on static buffer");
 	test_buf_writer_pipe_body(tsdn, &buf_writer);
 }
@@ -178,19 +185,16 @@ TEST_END
 
 TEST_BEGIN(test_buf_write_pipe_oom) {
 	buf_writer_t buf_writer;
-	tsdn_t *tsdn = tsdn_fetch();
+	tsdn_t      *tsdn = tsdn_fetch();
 	assert_true(buf_writer_init(tsdn, &buf_writer, test_write_cb, &arg,
-	    NULL, SC_LARGE_MAXCLASS + 1), "buf_writer_init() should OOM");
+	                NULL, SC_LARGE_MAXCLASS + 1),
+	    "buf_writer_init() should OOM");
 	test_buf_writer_pipe_body(tsdn, &buf_writer);
 }
 TEST_END
 
 int
 main(void) {
-	return test(
-	    test_buf_write_static,
-	    test_buf_write_dynamic,
-	    test_buf_write_oom,
-	    test_buf_write_pipe,
-	    test_buf_write_pipe_oom);
+	return test(test_buf_write_static, test_buf_write_dynamic,
+	    test_buf_write_oom, test_buf_write_pipe, test_buf_write_pipe_oom);
 }

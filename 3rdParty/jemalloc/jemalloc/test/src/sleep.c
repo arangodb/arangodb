@@ -6,7 +6,7 @@
  */
 void
 sleep_ns(unsigned ns) {
-	assert(ns <= 1000*1000*1000);
+	assert(ns <= 1000 * 1000 * 1000);
 
 #ifdef _WIN32
 	Sleep(ns / 1000 / 1000);
@@ -14,7 +14,7 @@ sleep_ns(unsigned ns) {
 	{
 		struct timespec timeout;
 
-		if (ns < 1000*1000*1000) {
+		if (ns < 1000 * 1000 * 1000) {
 			timeout.tv_sec = 0;
 			timeout.tv_nsec = ns;
 		} else {

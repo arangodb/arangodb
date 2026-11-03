@@ -4,11 +4,10 @@
 
 TEST_BEGIN(test_peak) {
 	peak_t peak = PEAK_INITIALIZER;
-	expect_u64_eq(0, peak_max(&peak),
-	    "Peak should be zero at initialization");
+	expect_u64_eq(
+	    0, peak_max(&peak), "Peak should be zero at initialization");
 	peak_update(&peak, 100, 50);
-	expect_u64_eq(50, peak_max(&peak),
-	    "Missed update");
+	expect_u64_eq(50, peak_max(&peak), "Missed update");
 	peak_update(&peak, 100, 100);
 	expect_u64_eq(50, peak_max(&peak), "Dallocs shouldn't change peak");
 	peak_update(&peak, 100, 200);
@@ -42,6 +41,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_peak);
+	return test_no_reentrancy(test_peak);
 }

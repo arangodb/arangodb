@@ -46,10 +46,10 @@ extern const extent_hooks_t ehooks_default_extent_hooks;
  */
 void *ehooks_default_alloc_impl(tsdn_t *tsdn, void *new_addr, size_t size,
     size_t alignment, bool *zero, bool *commit, unsigned arena_ind);
-bool ehooks_default_dalloc_impl(void *addr, size_t size);
-void ehooks_default_destroy_impl(void *addr, size_t size);
-bool ehooks_default_commit_impl(void *addr, size_t offset, size_t length);
-bool ehooks_default_decommit_impl(void *addr, size_t offset, size_t length);
+bool  ehooks_default_dalloc_impl(void *addr, size_t size);
+void  ehooks_default_destroy_impl(void *addr, size_t size);
+bool  ehooks_default_commit_impl(void *addr, size_t offset, size_t length);
+bool  ehooks_default_decommit_impl(void *addr, size_t offset, size_t length);
 #ifdef PAGES_CAN_PURGE_LAZY
 bool ehooks_default_purge_lazy_impl(void *addr, size_t offset, size_t length);
 #endif
@@ -116,8 +116,8 @@ ehooks_get_extent_hooks_ptr(ehooks_t *ehooks) {
 
 static inline bool
 ehooks_are_default(ehooks_t *ehooks) {
-	return ehooks_get_extent_hooks_ptr(ehooks) ==
-	    &ehooks_default_extent_hooks;
+	return ehooks_get_extent_hooks_ptr(ehooks)
+	    == &ehooks_default_extent_hooks;
 }
 
 /*
@@ -189,16 +189,15 @@ ehooks_debug_zero_check(void *addr, size_t size) {
 	}
 }
 
-
 static inline void *
 ehooks_alloc(tsdn_t *tsdn, ehooks_t *ehooks, void *new_addr, size_t size,
     size_t alignment, bool *zero, bool *commit) {
-	bool orig_zero = *zero;
-	void *ret;
+	bool            orig_zero = *zero;
+	void           *ret;
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
 	if (extent_hooks == &ehooks_default_extent_hooks) {
-		ret = ehooks_default_alloc_impl(tsdn, new_addr, size,
-		    alignment, zero, commit, ehooks_ind_get(ehooks));
+		ret = ehooks_default_alloc_impl(tsdn, new_addr, size, alignment,
+		    zero, commit, ehooks_ind_get(ehooks));
 	} else {
 		ehooks_pre_reentrancy(tsdn);
 		ret = extent_hooks->alloc(extent_hooks, new_addr, size,
@@ -214,8 +213,8 @@ ehooks_alloc(tsdn_t *tsdn, ehooks_t *ehooks, void *new_addr, size_t size,
 }
 
 static inline bool
-ehooks_dalloc(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size,
-    bool committed) {
+ehooks_dalloc(
+    tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size, bool committed) {
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
 	if (extent_hooks == &ehooks_default_extent_hooks) {
 		return ehooks_default_dalloc_impl(addr, size);
@@ -231,8 +230,8 @@ ehooks_dalloc(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size,
 }
 
 static inline void
-ehooks_destroy(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size,
-    bool committed) {
+ehooks_destroy(
+    tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size, bool committed) {
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
 	if (extent_hooks == &ehooks_default_extent_hooks) {
 		ehooks_default_destroy_impl(addr, size);
@@ -250,15 +249,15 @@ static inline bool
 ehooks_commit(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size,
     size_t offset, size_t length) {
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
-	bool err;
+	bool            err;
 	if (extent_hooks == &ehooks_default_extent_hooks) {
 		err = ehooks_default_commit_impl(addr, offset, length);
 	} else if (extent_hooks->commit == NULL) {
 		err = true;
 	} else {
 		ehooks_pre_reentrancy(tsdn);
-		err = extent_hooks->commit(extent_hooks, addr, size,
-		    offset, length, ehooks_ind_get(ehooks));
+		err = extent_hooks->commit(extent_hooks, addr, size, offset,
+		    length, ehooks_ind_get(ehooks));
 		ehooks_post_reentrancy(tsdn);
 	}
 	if (!err) {
@@ -384,7 +383,7 @@ ehooks_zero(tsdn_t *tsdn, ehooks_t *ehooks, void *addr, size_t size) {
 
 static inline bool
 ehooks_guard(tsdn_t *tsdn, ehooks_t *ehooks, void *guard1, void *guard2) {
-	bool err;
+	bool            err;
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
 
 	if (extent_hooks == &ehooks_default_extent_hooks) {
@@ -399,7 +398,7 @@ ehooks_guard(tsdn_t *tsdn, ehooks_t *ehooks, void *guard1, void *guard2) {
 
 static inline bool
 ehooks_unguard(tsdn_t *tsdn, ehooks_t *ehooks, void *guard1, void *guard2) {
-	bool err;
+	bool            err;
 	extent_hooks_t *extent_hooks = ehooks_get_extent_hooks_ptr(ehooks);
 
 	if (extent_hooks == &ehooks_default_extent_hooks) {

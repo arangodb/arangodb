@@ -12,7 +12,7 @@
 #include "jemalloc/internal/prof_log.h"
 #include "jemalloc/internal/prof_sys.h"
 
-bool opt_prof_log = false;
+bool                              opt_prof_log = false;
 typedef enum prof_logging_state_e prof_logging_state_t;
 enum prof_logging_state_e {
 	prof_logging_state_stopped,
@@ -32,8 +32,8 @@ static bool prof_log_dummy = false;
 
 /* Incremented for every log file that is output. */
 static uint64_t log_seq = 0;
-static char log_filename[
-    /* Minimize memory bloat for non-prof builds. */
+static char     log_filename[
+/* Minimize memory bloat for non-prof builds. */
 #ifdef JEMALLOC_PROF
     PATH_MAX +
 #endif
@@ -51,8 +51,8 @@ typedef struct prof_bt_node_s prof_bt_node_t;
 
 struct prof_bt_node_s {
 	prof_bt_node_t *next;
-	size_t index;
-	prof_bt_t bt;
+	size_t          index;
+	prof_bt_t       bt;
 	/* Variable size backtrace vector pointed to by bt. */
 	void *vec[1];
 };
@@ -61,8 +61,8 @@ typedef struct prof_thr_node_s prof_thr_node_t;
 
 struct prof_thr_node_s {
 	prof_thr_node_t *next;
-	size_t index;
-	uint64_t thr_uid;
+	size_t           index;
+	uint64_t         thr_uid;
 	/* Variable size based on thr_name_sz. */
 	char name[1];
 };
@@ -91,15 +91,15 @@ struct prof_alloc_node_s {
  * These are the backtraces and threads that have already been logged by an
  * allocation.
  */
-static bool log_tables_initialized = false;
+static bool  log_tables_initialized = false;
 static ckh_t log_bt_node_set;
 static ckh_t log_thr_node_set;
 
 /* Store linked lists for logged data. */
-static prof_bt_node_t *log_bt_first = NULL;
-static prof_bt_node_t *log_bt_last = NULL;
-static prof_thr_node_t *log_thr_first = NULL;
-static prof_thr_node_t *log_thr_last = NULL;
+static prof_bt_node_t    *log_bt_first = NULL;
+static prof_bt_node_t    *log_bt_last = NULL;
+static prof_thr_node_t   *log_thr_first = NULL;
+static prof_thr_node_t   *log_thr_last = NULL;
 static prof_alloc_node_t *log_alloc_first = NULL;
 static prof_alloc_node_t *log_alloc_last = NULL;
 
@@ -131,12 +131,12 @@ prof_log_bt_index(tsd_t *tsd, prof_bt_t *bt) {
 
 	/* See if this backtrace is already cached in the table. */
 	if (ckh_search(&log_bt_node_set, (void *)(&dummy_node),
-	    (void **)(&node), NULL)) {
-		size_t sz = offsetof(prof_bt_node_t, vec) +
-			        (bt->len * sizeof(void *));
-		prof_bt_node_t *new_node = (prof_bt_node_t *)
-		    iallocztm(tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL,
-		    true, arena_get(TSDN_NULL, 0, true), true);
+	        (void **)(&node), NULL)) {
+		size_t sz = offsetof(prof_bt_node_t, vec)
+		    + (bt->len * sizeof(void *));
+		prof_bt_node_t *new_node = (prof_bt_node_t *)iallocztm(
+		    tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL, true,
+		    arena_get(TSDN_NULL, 0, true), true);
 		if (log_bt_first == NULL) {
 			log_bt_first = new_node;
 			log_bt_last = new_node;
@@ -174,11 +174,11 @@ prof_log_thr_index(tsd_t *tsd, uint64_t thr_uid, const char *name) {
 
 	/* See if this thread is already cached in the table. */
 	if (ckh_search(&log_thr_node_set, (void *)(&dummy_node),
-	    (void **)(&node), NULL)) {
+	        (void **)(&node), NULL)) {
 		size_t sz = offsetof(prof_thr_node_t, name) + strlen(name) + 1;
-		prof_thr_node_t *new_node = (prof_thr_node_t *)
-		    iallocztm(tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL,
-		    true, arena_get(TSDN_NULL, 0, true), true);
+		prof_thr_node_t *new_node = (prof_thr_node_t *)iallocztm(
+		    tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL, true,
+		    arena_get(TSDN_NULL, 0, true), true);
 		if (log_thr_first == NULL) {
 			log_thr_first = new_node;
 			log_thr_last = new_node;
@@ -225,9 +225,9 @@ prof_try_log(tsd_t *tsd, size_t usize, prof_info_t *prof_info) {
 
 	if (!log_tables_initialized) {
 		bool err1 = ckh_new(tsd, &log_bt_node_set, PROF_CKH_MINITEMS,
-				prof_bt_node_hash, prof_bt_node_keycomp);
+		    prof_bt_node_hash, prof_bt_node_keycomp);
 		bool err2 = ckh_new(tsd, &log_thr_node_set, PROF_CKH_MINITEMS,
-				prof_thr_node_hash, prof_thr_node_keycomp);
+		    prof_thr_node_hash, prof_thr_node_keycomp);
 		if (err1 || err2) {
 			goto label_done;
 		}
@@ -238,9 +238,9 @@ prof_try_log(tsd_t *tsd, size_t usize, prof_info_t *prof_info) {
 	nstime_t free_time;
 	nstime_prof_init_update(&free_time);
 
-	size_t sz = sizeof(prof_alloc_node_t);
-	prof_alloc_node_t *new_node = (prof_alloc_node_t *)
-	    iallocztm(tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL, true,
+	size_t             sz = sizeof(prof_alloc_node_t);
+	prof_alloc_node_t *new_node = (prof_alloc_node_t *)iallocztm(
+	    tsd_tsdn(tsd), sz, sz_size2index(sz), false, NULL, true,
 	    arena_get(TSDN_NULL, 0, true), true);
 
 	const char *prod_thr_name = tctx->tdata->thread_name;
@@ -256,10 +256,10 @@ prof_try_log(tsd_t *tsd, size_t usize, prof_info_t *prof_info) {
 	prof_bt_t *prod_bt = &tctx->gctx->bt;
 
 	new_node->next = NULL;
-	new_node->alloc_thr_ind = prof_log_thr_index(tsd, tctx->tdata->thr_uid,
-				      prod_thr_name);
-	new_node->free_thr_ind = prof_log_thr_index(tsd, cons_tdata->thr_uid,
-				     cons_thr_name);
+	new_node->alloc_thr_ind = prof_log_thr_index(
+	    tsd, tctx->tdata->thr_uid, prod_thr_name);
+	new_node->free_thr_ind = prof_log_thr_index(
+	    tsd, cons_tdata->thr_uid, cons_thr_name);
 	new_node->alloc_bt_ind = prof_log_bt_index(tsd, prod_bt);
 	new_node->free_bt_ind = prof_log_bt_index(tsd, cons_bt);
 	new_node->alloc_time_ns = nstime_ns(&alloc_time);
@@ -288,8 +288,8 @@ static bool
 prof_bt_node_keycomp(const void *k1, const void *k2) {
 	const prof_bt_node_t *bt_node1 = (prof_bt_node_t *)k1;
 	const prof_bt_node_t *bt_node2 = (prof_bt_node_t *)k2;
-	return prof_bt_keycomp((void *)(&bt_node1->bt),
-	    (void *)(&bt_node2->bt));
+	return prof_bt_keycomp(
+	    (void *)(&bt_node1->bt), (void *)(&bt_node2->bt));
 }
 
 static void
@@ -309,7 +309,7 @@ prof_thr_node_keycomp(const void *k1, const void *k2) {
 size_t
 prof_log_bt_count(void) {
 	cassert(config_prof);
-	size_t cnt = 0;
+	size_t          cnt = 0;
 	prof_bt_node_t *node = log_bt_first;
 	while (node != NULL) {
 		cnt++;
@@ -322,7 +322,7 @@ prof_log_bt_count(void) {
 size_t
 prof_log_alloc_count(void) {
 	cassert(config_prof);
-	size_t cnt = 0;
+	size_t             cnt = 0;
 	prof_alloc_node_t *node = log_alloc_first;
 	while (node != NULL) {
 		cnt++;
@@ -335,7 +335,7 @@ prof_log_alloc_count(void) {
 size_t
 prof_log_thr_count(void) {
 	cassert(config_prof);
-	size_t cnt = 0;
+	size_t           cnt = 0;
 	prof_thr_node_t *node = log_thr_first;
 	while (node != NULL) {
 		cnt++;
@@ -374,9 +374,8 @@ prof_log_rep_check(void) {
 	size_t thr_count = prof_log_thr_count();
 	size_t alloc_count = prof_log_alloc_count();
 
-
 	if (prof_logging_state == prof_logging_state_stopped) {
-		if (bt_count != 0 || thr_count != 0 || alloc_count || 0) {
+		if (bt_count != 0 || thr_count != 0 || alloc_count != 0) {
 			return true;
 		}
 	}
@@ -435,7 +434,8 @@ prof_log_start(tsdn_t *tsdn, const char *filename) {
 	if (!prof_log_atexit_called) {
 		prof_log_atexit_called = true;
 		if (atexit(prof_log_stop_final) != 0) {
-			malloc_write("<jemalloc>: Error in atexit() "
+			malloc_write(
+			    "<jemalloc>: Error in atexit() "
 			    "for logging\n");
 			if (opt_abort) {
 				abort();
@@ -469,14 +469,14 @@ label_done:
 }
 
 struct prof_emitter_cb_arg_s {
-	int fd;
+	int     fd;
 	ssize_t ret;
 };
 
 static void
 prof_emitter_write_cb(void *opaque, const char *to_write) {
-	struct prof_emitter_cb_arg_s *arg =
-	    (struct prof_emitter_cb_arg_s *)opaque;
+	struct prof_emitter_cb_arg_s *arg = (struct prof_emitter_cb_arg_s *)
+	    opaque;
 	size_t bytes = strlen(to_write);
 	if (prof_log_dummy) {
 		return;
@@ -501,8 +501,8 @@ prof_log_emit_threads(tsd_t *tsd, emitter_t *emitter) {
 
 		char *thr_name = thr_node->name;
 
-		emitter_json_kv(emitter, "thr_name", emitter_type_string,
-		    &thr_name);
+		emitter_json_kv(
+		    emitter, "thr_name", emitter_type_string, &thr_name);
 
 		emitter_json_object_end(emitter);
 		thr_old_node = thr_node;
@@ -521,7 +521,7 @@ prof_log_emit_traces(tsd_t *tsd, emitter_t *emitter) {
 	 * Calculate how many hex digits we need: twice number of bytes, two for
 	 * "0x", and then one more for terminating '\0'.
 	 */
-	char buf[2 * sizeof(intptr_t) + 3];
+	char   buf[2 * sizeof(intptr_t) + 3];
 	size_t buf_sz = sizeof(buf);
 	while (bt_node != NULL) {
 		emitter_json_array_begin(emitter);
@@ -529,8 +529,8 @@ prof_log_emit_traces(tsd_t *tsd, emitter_t *emitter) {
 		for (i = 0; i < bt_node->bt.len; i++) {
 			malloc_snprintf(buf, buf_sz, "%p", bt_node->bt.vec[i]);
 			char *trace_str = buf;
-			emitter_json_value(emitter, emitter_type_string,
-			    &trace_str);
+			emitter_json_value(
+			    emitter, emitter_type_string, &trace_str);
 		}
 		emitter_json_array_end(emitter);
 
@@ -561,21 +561,21 @@ prof_log_emit_allocs(tsd_t *tsd, emitter_t *emitter) {
 		emitter_json_kv(emitter, "free_trace", emitter_type_size,
 		    &alloc_node->free_bt_ind);
 
-		emitter_json_kv(emitter, "alloc_timestamp",
-		    emitter_type_uint64, &alloc_node->alloc_time_ns);
+		emitter_json_kv(emitter, "alloc_timestamp", emitter_type_uint64,
+		    &alloc_node->alloc_time_ns);
 
 		emitter_json_kv(emitter, "free_timestamp", emitter_type_uint64,
 		    &alloc_node->free_time_ns);
 
-		emitter_json_kv(emitter, "usize", emitter_type_uint64,
-		    &alloc_node->usize);
+		emitter_json_kv(
+		    emitter, "usize", emitter_type_uint64, &alloc_node->usize);
 
 		emitter_json_object_end(emitter);
 
 		alloc_old_node = alloc_node;
 		alloc_node = alloc_node->next;
-		idalloctm(tsd_tsdn(tsd), alloc_old_node, NULL, NULL, true,
-		    true);
+		idalloctm(
+		    tsd_tsdn(tsd), alloc_old_node, NULL, NULL, true, true);
 	}
 	emitter_json_array_end(emitter);
 }
@@ -591,15 +591,14 @@ prof_log_emit_metadata(emitter_t *emitter) {
 	emitter_json_kv(emitter, "duration", emitter_type_uint64, &ns);
 
 	char *vers = JEMALLOC_VERSION;
-	emitter_json_kv(emitter, "version",
-	    emitter_type_string, &vers);
+	emitter_json_kv(emitter, "version", emitter_type_string, &vers);
 
-	emitter_json_kv(emitter, "lg_sample_rate",
-	    emitter_type_int, &lg_prof_sample);
+	emitter_json_kv(
+	    emitter, "lg_sample_rate", emitter_type_int, &lg_prof_sample);
 
 	const char *res_type = prof_time_res_mode_names[opt_prof_time_res];
-	emitter_json_kv(emitter, "prof_time_resolution", emitter_type_string,
-	    &res_type);
+	emitter_json_kv(
+	    emitter, "prof_time_resolution", emitter_type_string, &res_type);
 
 	int pid = prof_getpid();
 	emitter_json_kv(emitter, "pid", emitter_type_int, &pid);
@@ -632,7 +631,6 @@ prof_log_stop(tsdn_t *tsdn) {
 	prof_logging_state = prof_logging_state_dumping;
 	malloc_mutex_unlock(tsdn, &log_mtx);
 
-
 	emitter_t emitter;
 
 	/* Create a file. */
@@ -645,8 +643,10 @@ prof_log_stop(tsdn_t *tsdn) {
 	}
 
 	if (fd == -1) {
-		malloc_printf("<jemalloc>: creat() for log file \"%s\" "
-			      " failed with %d\n", log_filename, errno);
+		malloc_printf(
+		    "<jemalloc>: creat() for log file \"%s\" "
+		    " failed with %d\n",
+		    log_filename, errno);
 		if (opt_abort) {
 			abort();
 		}
@@ -659,8 +659,8 @@ prof_log_stop(tsdn_t *tsdn) {
 	buf_writer_t buf_writer;
 	buf_writer_init(tsdn, &buf_writer, prof_emitter_write_cb, &arg, NULL,
 	    PROF_LOG_STOP_BUFSIZE);
-	emitter_init(&emitter, emitter_output_json_compact, buf_writer_cb,
-	    &buf_writer);
+	emitter_init(
+	    &emitter, emitter_output_json_compact, buf_writer_cb, &buf_writer);
 
 	emitter_begin(&emitter);
 	prof_log_emit_metadata(&emitter);
@@ -701,8 +701,8 @@ JEMALLOC_COLD
 bool
 prof_log_init(tsd_t *tsd) {
 	cassert(config_prof);
-	if (malloc_mutex_init(&log_mtx, "prof_log",
-	    WITNESS_RANK_PROF_LOG, malloc_mutex_rank_exclusive)) {
+	if (malloc_mutex_init(&log_mtx, "prof_log", WITNESS_RANK_PROF_LOG,
+	        malloc_mutex_rank_exclusive)) {
 		return true;
 	}
 

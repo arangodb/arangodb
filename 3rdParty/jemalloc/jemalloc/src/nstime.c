@@ -5,8 +5,8 @@
 
 #include "jemalloc/internal/assert.h"
 
-#define BILLION	UINT64_C(1000000000)
-#define MILLION	UINT64_C(1000000)
+#define BILLION UINT64_C(1000000000)
+#define MILLION UINT64_C(1000000)
 
 static void
 nstime_set_initialized(nstime_t *time) {
@@ -22,8 +22,8 @@ nstime_assert_initialized(const nstime_t *time) {
 	 * Some parts (e.g. stats) rely on memset to zero initialize.  Treat
 	 * these as valid initialization.
 	 */
-	assert(time->magic == NSTIME_MAGIC ||
-	    (time->magic == 0 && time->ns == 0));
+	assert(
+	    time->magic == NSTIME_MAGIC || (time->magic == 0 && time->ns == 0));
 #endif
 }
 
@@ -63,7 +63,7 @@ nstime_ns(const nstime_t *time) {
 }
 
 uint64_t
-nstime_msec(const nstime_t *time) {
+nstime_ms(const nstime_t *time) {
 	nstime_assert_initialized(time);
 	return time->ns / MILLION;
 }
@@ -133,8 +133,10 @@ nstime_isubtract(nstime_t *time, uint64_t subtrahend) {
 void
 nstime_imultiply(nstime_t *time, uint64_t multiplier) {
 	nstime_assert_initialized(time);
-	assert((((time->ns | multiplier) & (UINT64_MAX << (sizeof(uint64_t) <<
-	    2))) == 0) || ((time->ns * multiplier) / multiplier == time->ns));
+	assert(
+	    (((time->ns | multiplier) & (UINT64_MAX << (sizeof(uint64_t) << 2)))
+	        == 0)
+	    || ((time->ns * multiplier) / multiplier == time->ns));
 
 	nstime_initialize_operand(time);
 	time->ns *= multiplier;
@@ -158,7 +160,20 @@ nstime_divide(const nstime_t *time, const nstime_t *divisor) {
 	return time->ns / divisor->ns;
 }
 
-/* Returns time since *past, w/o updating *past. */
+uint64_t
+nstime_ns_between(const nstime_t *earlier, const nstime_t *later) {
+	nstime_assert_initialized(earlier);
+	nstime_assert_initialized(later);
+	assert(nstime_compare(later, earlier) >= 0);
+	return later->ns - earlier->ns;
+}
+
+uint64_t
+nstime_ms_between(const nstime_t *earlier, const nstime_t *later) {
+	return nstime_ns_between(earlier, later) / MILLION;
+}
+
+/* Returns time since *past in nanoseconds, w/o updating *past. */
 uint64_t
 nstime_ns_since(const nstime_t *past) {
 	nstime_assert_initialized(past);
@@ -166,13 +181,17 @@ nstime_ns_since(const nstime_t *past) {
 	nstime_t now;
 	nstime_copy(&now, past);
 	nstime_update(&now);
+	return nstime_ns_between(past, &now);
+}
 
-	assert(nstime_compare(&now, past) >= 0);
-	return now.ns - past->ns;
+/* Returns time since *past in milliseconds, w/o updating *past. */
+uint64_t
+nstime_ms_since(const nstime_t *past) {
+	return nstime_ns_since(past) / MILLION;
 }
 
 #ifdef _WIN32
-#  define NSTIME_MONOTONIC true
+#	define NSTIME_MONOTONIC false
 static void
 nstime_get(nstime_t *time) {
 	FILETIME ft;
@@ -184,7 +203,7 @@ nstime_get(nstime_t *time) {
 	nstime_init(time, ticks_100ns * 100);
 }
 #elif defined(JEMALLOC_HAVE_CLOCK_MONOTONIC_COARSE)
-#  define NSTIME_MONOTONIC true
+#	define NSTIME_MONOTONIC true
 static void
 nstime_get(nstime_t *time) {
 	struct timespec ts;
@@ -193,7 +212,7 @@ nstime_get(nstime_t *time) {
 	nstime_init2(time, ts.tv_sec, ts.tv_nsec);
 }
 #elif defined(JEMALLOC_HAVE_CLOCK_MONOTONIC)
-#  define NSTIME_MONOTONIC true
+#	define NSTIME_MONOTONIC true
 static void
 nstime_get(nstime_t *time) {
 	struct timespec ts;
@@ -201,14 +220,25 @@ nstime_get(nstime_t *time) {
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	nstime_init2(time, ts.tv_sec, ts.tv_nsec);
 }
-#elif defined(JEMALLOC_HAVE_MACH_ABSOLUTE_TIME)
-#  define NSTIME_MONOTONIC true
+#elif defined(JEMALLOC_HAVE_CLOCK_GETTIME_NSEC_NP)
+#	define NSTIME_MONOTONIC true
 static void
 nstime_get(nstime_t *time) {
-	nstime_init(time, mach_absolute_time());
+	nstime_init(time, clock_gettime_nsec_np(CLOCK_UPTIME_RAW));
+}
+#elif defined(JEMALLOC_HAVE_MACH_ABSOLUTE_TIME)
+#	define NSTIME_MONOTONIC true
+static void
+nstime_get(nstime_t *time) {
+	static mach_timebase_info_data_t sTimebaseInfo;
+	if (sTimebaseInfo.denom == 0) {
+		(void)mach_timebase_info(&sTimebaseInfo);
+	}
+	nstime_init(time,
+	    mach_absolute_time() * sTimebaseInfo.numer / sTimebaseInfo.denom);
 }
 #else
-#  define NSTIME_MONOTONIC false
+#	define NSTIME_MONOTONIC false
 static void
 nstime_get(nstime_t *time) {
 	struct timeval tv;
@@ -225,14 +255,12 @@ nstime_monotonic_impl(void) {
 }
 nstime_monotonic_t *JET_MUTABLE nstime_monotonic = nstime_monotonic_impl;
 
-prof_time_res_t opt_prof_time_res =
-	prof_time_res_default;
+prof_time_res_t opt_prof_time_res = prof_time_res_default;
 
 const char *const prof_time_res_mode_names[] = {
-	"default",
-	"high",
+    "default",
+    "high",
 };
-
 
 static void
 nstime_get_realtime(nstime_t *time) {
@@ -285,5 +313,3 @@ nstime_prof_init_update(nstime_t *time) {
 	nstime_init_zero(time);
 	nstime_prof_update(time);
 }
-
-

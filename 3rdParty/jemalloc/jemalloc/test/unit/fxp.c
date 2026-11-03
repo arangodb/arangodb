@@ -28,7 +28,7 @@ fxp_close(fxp_t a, fxp_t b) {
 static fxp_t
 xparse_fxp(const char *str) {
 	fxp_t result;
-	bool err = fxp_parse(&result, str, NULL);
+	bool  err = fxp_parse(&result, str, NULL);
 	assert_false(err, "Invalid fxp string: %s", str);
 	return result;
 }
@@ -36,14 +36,14 @@ xparse_fxp(const char *str) {
 static void
 expect_parse_accurate(const char *str, const char *parse_str) {
 	double true_val = strtod(str, NULL);
-	fxp_t fxp_val;
-	char *end;
-	bool err = fxp_parse(&fxp_val, parse_str, &end);
+	fxp_t  fxp_val;
+	char  *end;
+	bool   err = fxp_parse(&fxp_val, parse_str, &end);
 	expect_false(err, "Unexpected parse failure");
-	expect_ptr_eq(parse_str + strlen(str), end,
-	    "Didn't parse whole string");
-	expect_true(double_close(fxp2double(fxp_val), true_val),
-	    "Misparsed %s", str);
+	expect_ptr_eq(
+	    parse_str + strlen(str), end, "Didn't parse whole string");
+	expect_true(
+	    double_close(fxp2double(fxp_val), true_val), "Misparsed %s", str);
 }
 
 static void
@@ -100,12 +100,12 @@ static void
 expect_parse_failure(const char *str) {
 	fxp_t result = FXP_INIT_INT(333);
 	char *end = (void *)0x123;
-	bool err = fxp_parse(&result, str, &end);
+	bool  err = fxp_parse(&result, str, &end);
 	expect_true(err, "Expected a parse error on: %s", str);
-	expect_ptr_eq((void *)0x123, end,
-	    "Parse error shouldn't change results");
-	expect_u32_eq(result, FXP_INIT_INT(333),
-	    "Parse error shouldn't change results");
+	expect_ptr_eq(
+	    (void *)0x123, end, "Parse error shouldn't change results");
+	expect_u32_eq(
+	    result, FXP_INIT_INT(333), "Parse error shouldn't change results");
 }
 
 TEST_BEGIN(test_parse_invalid) {
@@ -129,7 +129,6 @@ expect_init_percent(unsigned percent, const char *str) {
 	    "Expect representations of FXP_INIT_PERCENT(%u) and "
 	    "fxp_parse(\"%s\") to be equal; got %x and %x",
 	    percent, str, result_init, result_parse);
-
 }
 
 /*
@@ -145,12 +144,12 @@ TEST_BEGIN(test_init_percent) {
 TEST_END
 
 static void
-expect_add(const char *astr, const char *bstr, const char* resultstr) {
+expect_add(const char *astr, const char *bstr, const char *resultstr) {
 	fxp_t a = xparse_fxp(astr);
 	fxp_t b = xparse_fxp(bstr);
 	fxp_t result = xparse_fxp(resultstr);
-	expect_true(fxp_close(fxp_add(a, b), result),
-	    "Expected %s + %s == %s", astr, bstr, resultstr);
+	expect_true(fxp_close(fxp_add(a, b), result), "Expected %s + %s == %s",
+	    astr, bstr, resultstr);
 }
 
 TEST_BEGIN(test_add_simple) {
@@ -164,12 +163,12 @@ TEST_BEGIN(test_add_simple) {
 TEST_END
 
 static void
-expect_sub(const char *astr, const char *bstr, const char* resultstr) {
+expect_sub(const char *astr, const char *bstr, const char *resultstr) {
 	fxp_t a = xparse_fxp(astr);
 	fxp_t b = xparse_fxp(bstr);
 	fxp_t result = xparse_fxp(resultstr);
-	expect_true(fxp_close(fxp_sub(a, b), result),
-	    "Expected %s - %s == %s", astr, bstr, resultstr);
+	expect_true(fxp_close(fxp_sub(a, b), result), "Expected %s - %s == %s",
+	    astr, bstr, resultstr);
 }
 
 TEST_BEGIN(test_sub_simple) {
@@ -183,12 +182,12 @@ TEST_BEGIN(test_sub_simple) {
 TEST_END
 
 static void
-expect_mul(const char *astr, const char *bstr, const char* resultstr) {
+expect_mul(const char *astr, const char *bstr, const char *resultstr) {
 	fxp_t a = xparse_fxp(astr);
 	fxp_t b = xparse_fxp(bstr);
 	fxp_t result = xparse_fxp(resultstr);
-	expect_true(fxp_close(fxp_mul(a, b), result),
-	    "Expected %s * %s == %s", astr, bstr, resultstr);
+	expect_true(fxp_close(fxp_mul(a, b), result), "Expected %s * %s == %s",
+	    astr, bstr, resultstr);
 }
 
 TEST_BEGIN(test_mul_simple) {
@@ -202,12 +201,12 @@ TEST_BEGIN(test_mul_simple) {
 TEST_END
 
 static void
-expect_div(const char *astr, const char *bstr, const char* resultstr) {
+expect_div(const char *astr, const char *bstr, const char *resultstr) {
 	fxp_t a = xparse_fxp(astr);
 	fxp_t b = xparse_fxp(bstr);
 	fxp_t result = xparse_fxp(resultstr);
-	expect_true(fxp_close(fxp_div(a, b), result),
-	    "Expected %s / %s == %s", astr, bstr, resultstr);
+	expect_true(fxp_close(fxp_div(a, b), result), "Expected %s / %s == %s",
+	    astr, bstr, resultstr);
 }
 
 TEST_BEGIN(test_div_simple) {
@@ -223,11 +222,11 @@ TEST_END
 
 static void
 expect_round(const char *str, uint32_t rounded_down, uint32_t rounded_nearest) {
-	fxp_t fxp = xparse_fxp(str);
+	fxp_t    fxp = xparse_fxp(str);
 	uint32_t fxp_rounded_down = fxp_round_down(fxp);
 	uint32_t fxp_rounded_nearest = fxp_round_nearest(fxp);
-	expect_u32_eq(rounded_down, fxp_rounded_down,
-	    "Mistake rounding %s down", str);
+	expect_u32_eq(
+	    rounded_down, fxp_rounded_down, "Mistake rounding %s down", str);
 	expect_u32_eq(rounded_nearest, fxp_rounded_nearest,
 	    "Mistake rounding %s to nearest", str);
 }
@@ -248,11 +247,11 @@ TEST_END
 
 static void
 expect_mul_frac(size_t a, const char *fracstr, size_t expected) {
-	fxp_t frac = xparse_fxp(fracstr);
+	fxp_t  frac = xparse_fxp(fracstr);
 	size_t result = fxp_mul_frac(a, frac);
 	expect_true(double_close(expected, result),
-	    "Expected %zu * %s == %zu (fracmul); got %zu", a, fracstr,
-	    expected, result);
+	    "Expected %zu * %s == %zu (fracmul); got %zu", a, fracstr, expected,
+	    result);
 }
 
 TEST_BEGIN(test_mul_frac_simple) {
@@ -273,7 +272,7 @@ TEST_END
 static void
 expect_print(const char *str) {
 	fxp_t fxp = xparse_fxp(str);
-	char buf[FXP_BUF_SIZE];
+	char  buf[FXP_BUF_SIZE];
 	fxp_print(fxp, buf);
 	expect_d_eq(0, strcmp(str, buf), "Couldn't round-trip print %s", str);
 }
@@ -298,33 +297,32 @@ TEST_BEGIN(test_print_simple) {
 TEST_END
 
 TEST_BEGIN(test_stress) {
-	const char *numbers[] = {
-		"0.0", "0.1", "0.2", "0.3", "0.4",
-		"0.5", "0.6", "0.7", "0.8", "0.9",
+	const char *numbers[] = {"0.0", "0.1", "0.2", "0.3", "0.4", "0.5",
+	    "0.6", "0.7", "0.8", "0.9",
 
-		"1.0", "1.1", "1.2", "1.3", "1.4",
-		"1.5", "1.6", "1.7", "1.8", "1.9",
+	    "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8",
+	    "1.9",
 
-		"2.0", "2.1", "2.2", "2.3", "2.4",
-		"2.5", "2.6", "2.7", "2.8", "2.9",
+	    "2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8",
+	    "2.9",
 
-		"17.0", "17.1", "17.2", "17.3", "17.4",
-		"17.5", "17.6", "17.7", "17.8", "17.9",
+	    "17.0", "17.1", "17.2", "17.3", "17.4", "17.5", "17.6", "17.7",
+	    "17.8", "17.9",
 
-		"18.0", "18.1", "18.2", "18.3", "18.4",
-		"18.5", "18.6", "18.7", "18.8", "18.9",
+	    "18.0", "18.1", "18.2", "18.3", "18.4", "18.5", "18.6", "18.7",
+	    "18.8", "18.9",
 
-		"123.0", "123.1", "123.2", "123.3", "123.4",
-		"123.5", "123.6", "123.7", "123.8", "123.9",
+	    "123.0", "123.1", "123.2", "123.3", "123.4", "123.5", "123.6",
+	    "123.7", "123.8", "123.9",
 
-		"124.0", "124.1", "124.2", "124.3", "124.4",
-		"124.5", "124.6", "124.7", "124.8", "124.9",
+	    "124.0", "124.1", "124.2", "124.3", "124.4", "124.5", "124.6",
+	    "124.7", "124.8", "124.9",
 
-		"125.0", "125.1", "125.2", "125.3", "125.4",
-		"125.5", "125.6", "125.7", "125.8", "125.9"};
-	size_t numbers_len = sizeof(numbers)/sizeof(numbers[0]);
+	    "125.0", "125.1", "125.2", "125.3", "125.4", "125.5", "125.6",
+	    "125.7", "125.8", "125.9"};
+	size_t      numbers_len = sizeof(numbers) / sizeof(numbers[0]);
 	for (size_t i = 0; i < numbers_len; i++) {
-		fxp_t fxp_a = xparse_fxp(numbers[i]);
+		fxp_t  fxp_a = xparse_fxp(numbers[i]);
 		double double_a = strtod(numbers[i], NULL);
 
 		uint32_t fxp_rounded_down = fxp_round_down(fxp_a);
@@ -338,37 +336,35 @@ TEST_BEGIN(test_stress) {
 		    "Incorrectly rounded-to-nearest %s", numbers[i]);
 
 		for (size_t j = 0; j < numbers_len; j++) {
-			fxp_t fxp_b = xparse_fxp(numbers[j]);
+			fxp_t  fxp_b = xparse_fxp(numbers[j]);
 			double double_b = strtod(numbers[j], NULL);
 
-			fxp_t fxp_sum = fxp_add(fxp_a, fxp_b);
+			fxp_t  fxp_sum = fxp_add(fxp_a, fxp_b);
 			double double_sum = double_a + double_b;
 			expect_true(
 			    double_close(fxp2double(fxp_sum), double_sum),
 			    "Miscomputed %s + %s", numbers[i], numbers[j]);
 
 			if (double_a > double_b) {
-				fxp_t fxp_diff = fxp_sub(fxp_a, fxp_b);
+				fxp_t  fxp_diff = fxp_sub(fxp_a, fxp_b);
 				double double_diff = double_a - double_b;
-				expect_true(
-				    double_close(fxp2double(fxp_diff),
-				    double_diff),
+				expect_true(double_close(fxp2double(fxp_diff),
+				                double_diff),
 				    "Miscomputed %s - %s", numbers[i],
 				    numbers[j]);
 			}
 
-			fxp_t fxp_prod = fxp_mul(fxp_a, fxp_b);
+			fxp_t  fxp_prod = fxp_mul(fxp_a, fxp_b);
 			double double_prod = double_a * double_b;
 			expect_true(
 			    double_close(fxp2double(fxp_prod), double_prod),
 			    "Miscomputed %s * %s", numbers[i], numbers[j]);
 
 			if (double_b != 0.0) {
-				fxp_t fxp_quot = fxp_div(fxp_a, fxp_b);
+				fxp_t  fxp_quot = fxp_div(fxp_a, fxp_b);
 				double double_quot = double_a / double_b;
-				expect_true(
-				    double_close(fxp2double(fxp_quot),
-				    double_quot),
+				expect_true(double_close(fxp2double(fxp_quot),
+				                double_quot),
 				    "Miscomputed %s / %s", numbers[i],
 				    numbers[j]);
 			}
@@ -379,16 +375,8 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_parse_valid,
-	    test_parse_invalid,
-	    test_init_percent,
-	    test_add_simple,
-	    test_sub_simple,
-	    test_mul_simple,
-	    test_div_simple,
-	    test_round_simple,
-	    test_mul_frac_simple,
-	    test_print_simple,
-	    test_stress);
+	return test_no_reentrancy(test_parse_valid, test_parse_invalid,
+	    test_init_percent, test_add_simple, test_sub_simple,
+	    test_mul_simple, test_div_simple, test_round_simple,
+	    test_mul_frac_simple, test_print_simple, test_stress);
 }
