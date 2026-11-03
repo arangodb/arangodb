@@ -61,12 +61,13 @@ ResourceMonitor::~ResourceMonitor() {
   [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
+  auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
-      << "monitor end: monitor=" << monitorRef.get()
-      << " left=" << monitorRef.get()->actualBytes() << " registry=["
-      << describeRegistry() << "]";
+      << "memory: monitor=" << m << " old peak=" << peak()
+      << " new peak=" << m->peakBytes() << " new left=" << m->actualBytes()
+      << " registry=[" << describeRegistry() << "]";
 
-  static_cast<infra::ResourceMonitor*>(monitorRef.get())->retire();
+  m->retire();
   monitorRef.reset();
 }
 
