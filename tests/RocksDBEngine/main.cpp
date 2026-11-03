@@ -23,6 +23,7 @@
 
 #include "Activities/RegistryGlobalVariable.h"
 #include "Async/Registry/registry_variable.h"
+#include "Basics/icu-helper.h"
 #include "Basics/VelocyPackHelper.h"
 
 // Entry point for the standalone storage-engine test binary.
@@ -44,6 +45,8 @@ int main(int argc, char** argv) {
 
   arangodb::async_registry::registry.set_metrics(nullptr);
   arangodb::activities::registry.setMetrics(nullptr);
+  
+  IcuInitializer::setup(argv[0]);
 
   return RUN_ALL_TESTS();
 }
