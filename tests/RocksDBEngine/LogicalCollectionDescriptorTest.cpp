@@ -168,7 +168,8 @@ VPackBuilder representativeShardDocket() {
     VPackObjectBuilder obj(&builder);
     // the docket carries the collection's properties but none of its identity,
     // so the name is dropped here too and reaches createShard as an argument
-    for (auto it : VPackObjectIterator(representativeCreateSlice().slice())) {
+    auto const data = representativeCreateSlice();
+    for (auto it : VPackObjectIterator(data.slice())) {
       if (it.key.stringView() != StaticStrings::DataSourceName) {
         builder.add(it.key.stringView(), it.value);
       }
