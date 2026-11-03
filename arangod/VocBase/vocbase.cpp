@@ -686,7 +686,8 @@ auto applyVisibilityMatrix(std::shared_ptr<LogicalDataSource> dataSource,
 
   auto const& exec = ExecContext::current();
   if (auto const apiVersion = exec.requestedApiVersion();
-      apiVersion.has_value() && *apiVersion > 1) {
+      apiVersion.has_value() &&
+      static_cast<std::uint8_t>(apiVersion.value()) > 1) {
     auto const nameToCheck =
         exists ? std::string_view{dataSource->name()} : requestedName;
     if (nameToCheck.empty() || exec.canSeeCollection(db, nameToCheck).fail()) {

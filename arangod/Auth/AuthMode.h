@@ -72,12 +72,12 @@ struct AuthMode {
     [[nodiscard]] virtual auto check(auth::Permission permission) const
         -> Result = 0;
 
-    // The API version requested by the current request (0 = v0 / no versioned
-    // prefix). Version-gated permission checks consult this. Modes without a
+    // The API version requested by the current request.
+    // Version-gated permission checks consult this. Modes without a
     // request (Superuser, Disabled, Unauthenticated) have no version and
     // report std::nullopt.
     [[nodiscard]] virtual auto requestedApiVersion() const noexcept
-        -> std::optional<uint32_t> {
+        -> std::optional<ApiVersion> {
       return std::nullopt;
     }
   };
@@ -105,7 +105,7 @@ struct AuthMode {
         -> Result override;
 
     [[nodiscard]] auto requestedApiVersion() const noexcept
-        -> std::optional<uint32_t> override {
+        -> std::optional<ApiVersion> override {
       return _requestedApiVersion;
     }
 
@@ -145,7 +145,7 @@ struct AuthMode {
         -> Result override;
 
     [[nodiscard]] auto requestedApiVersion() const noexcept
-        -> std::optional<uint32_t> override {
+        -> std::optional<ApiVersion> override {
       return _requestedApiVersion;
     }
   };

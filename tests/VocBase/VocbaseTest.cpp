@@ -234,13 +234,14 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
 }
 
 TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": "
-      "\"testCollection\" }");
   Vocbase vocbase(testDBInfo(server.server()), server.engine());
+  arangodb::CollectionDescriptor descriptor;
+  descriptor.identity.id = arangodb::DataSourceId{100};
+  descriptor.identity.guid = "testCollectionGUID";
+  descriptor.mutableProps.name = "testCollection";
 
   // The collection itself is created as the (default) superuser context.
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(descriptor);
   ASSERT_NE(collection, nullptr);
   auto const cid = collection->id();
 
@@ -251,8 +252,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         "restricted", arangodb::auth::Level::NONE,
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::NONE}},
-        /*isRestApiHardened*/ false,
-        /*apiVersion*/ 2);
+        /*isRestApiHardened*/ false, arangodb::ApiVersion::Experimental);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);
@@ -291,8 +291,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         "reader", arangodb::auth::Level::NONE,
         {"testVocbase", arangodb::auth::Level::NONE},
         {{"testCollection", arangodb::auth::Level::RO}},
-        /*isRestApiHardened*/ false,
-        /*apiVersion*/ 2);
+        /*isRestApiHardened*/ false, arangodb::ApiVersion::Experimental);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
@@ -325,7 +324,7 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "dbReader", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RO, /*isRestApiHardened*/ false,
-        /*apiVersion*/ 2);
+        arangodb::ApiVersion::Experimental);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
@@ -340,31 +339,31 @@ TEST_F(VocbaseTest, test_lookupCollection_requiresSeePermission) {
         TRI_ERROR_FORBIDDEN);
   }
 
-  // API versions 0 and 1 keep the legacy behaviour: the visibility check is
+  // API version 1 keeps the legacy behaviour: the visibility check is
   // not enforced, so even a user without access resolves the collection.
-  for (uint32_t const apiVersion : {0u, 1u}) {
-    auto ctx = arangodb::tests::mocks::makeClassicExecContext(
-        "reader", arangodb::auth::Level::RO,
-        {"testVocbase", arangodb::auth::Level::NONE},
-        {{"testCollection", arangodb::auth::Level::NONE}},
-        /*isRestApiHardened*/ false, apiVersion);
-    arangodb::ExecContextScope scope(ctx.execContext);
+  auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+      "reader", arangodb::auth::Level::RO,
+      {"testVocbase", arangodb::auth::Level::NONE},
+      {{"testCollection", arangodb::auth::Level::NONE}},
+      /*isRestApiHardened*/ false, arangodb::ApiVersion::V1);
+  arangodb::ExecContextScope scope(ctx.execContext);
 
-    EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
-    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
-    EXPECT_TRUE(vocbase.lookupCollectionByUuid("testCollectionGUID").ok());
-  }
+  EXPECT_TRUE(vocbase.lookupCollection(cid).ok());
+  EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
+  EXPECT_TRUE(vocbase.lookupCollectionByUuid("testCollectionGUID").ok());
 
   EXPECT_TRUE(vocbase.dropCollection(cid, true).ok());
 }
 
 TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
-  auto systemCollectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"globallyUniqueId\": \"testSystemGUID\", \"id\": 101, \"name\": "
-      "\"_testSystem\", \"isSystem\": true }");
   Vocbase vocbase(testDBInfo(server.server()), server.engine());
+  arangodb::CollectionDescriptor descriptor;
+  descriptor.identity.id = arangodb::DataSourceId{101};
+  descriptor.identity.guid = "testSystemGUID";
+  descriptor.constant.isSystem = true;
+  descriptor.mutableProps.name = "_testSystem";
 
-  auto collection = vocbase.createCollection(systemCollectionJson->slice());
+  auto collection = vocbase.createCollection(descriptor);
   ASSERT_NE(collection, nullptr);
   auto const cid = collection->id();
 
@@ -385,8 +384,7 @@ TEST_F(VocbaseTest, test_lookupCollection_systemCollection) {
     auto ctx = arangodb::tests::mocks::makeClassicExecContext(
         "restricted", arangodb::auth::Level::NONE,
         {"testVocbase", arangodb::auth::Level::NONE}, {},
-        /*isRestApiHardened*/ false,
-        /*apiVersion*/ 2);
+        /*isRestApiHardened*/ false, arangodb::ApiVersion::Experimental);
     arangodb::ExecContextScope scope(ctx.execContext);
 
     EXPECT_EQ(vocbase.lookupCollection(cid).errorNumber(), TRI_ERROR_FORBIDDEN);

@@ -28,7 +28,6 @@
 #include "Basics/StaticStrings.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Mocks/Auth/UserManagerTester.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
@@ -69,7 +68,7 @@ struct FakeGeneralRequest final : GeneralRequest {
 
   /// @brief Select the requested API version. Normally this is derived from
   /// the /_arango/vX URL prefix, which a fake request has no way of carrying.
-  void setRequestedApiVersion(uint32_t version) noexcept {
+  void setRequestedApiVersion(ApiVersion version) noexcept {
     _requestedApiVersion = version;
   }
 };  // namespace arangodb::tests::mocks
@@ -102,7 +101,7 @@ inline ClassicExecContext makeClassicExecContext(
     std::tuple<std::string, auth::Level> database,
     std::vector<std::tuple<std::string, auth::Level>> collections,
     bool isRestApiHardened = false,
-    uint32_t apiVersion = api_version::defaultApiVersion) {
+    ApiVersion apiVersion = api_version::defaultApiVersion) {
   auto um = std::make_shared<auth::UserManagerTester>();
 
   // Build a UserMap containing one entry for 'username' with the requested
@@ -142,7 +141,7 @@ inline ClassicExecContext makeClassicExecContext(
 inline ClassicExecContext makeClassicExecContext(
     std::string username, std::string dbname, auth::Level systemLevel,
     auth::Level dbLevel, bool isRestApiHardened = false,
-    uint32_t apiVersion = api_version::defaultApiVersion) {
+    ApiVersion apiVersion = api_version::defaultApiVersion) {
   return makeClassicExecContext(std::move(username), systemLevel,
                                 {std::move(dbname), dbLevel}, {{"*", dbLevel}},
                                 isRestApiHardened, apiVersion);

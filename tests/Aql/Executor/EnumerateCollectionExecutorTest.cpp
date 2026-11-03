@@ -99,7 +99,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         collection([&]() -> std::shared_ptr<arangodb::LogicalCollection> {
           auto result = vocbase.lookupCollection("UnitTestCollection");
           return result.ok() ? result.get()
-                             : vocbase.createCollection(json->slice());
+                             : vocbase.createCollection(colDescriptor);
         }()),
         outVariable("name", 1, false, resourceMonitor),
         varUsedLater(false),
@@ -285,7 +285,7 @@ class EnumerateCollectionExecutorTestProduce
         collection([&]() -> std::shared_ptr<arangodb::LogicalCollection> {
           auto result = vocbase.lookupCollection("UnitTestCollection");
           return result.ok() ? result.get()
-                             : vocbase.createCollection(json->slice());
+                             : vocbase.createCollection(colDescriptor);
         }()),
         outVariable("name", 1, false, monitor),
         varUsedLater(true),
