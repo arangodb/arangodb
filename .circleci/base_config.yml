@@ -1290,6 +1290,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+          prefix: << parameters.prefix >>
 
   run-linux-tests-with-smocker:
     parameters:
