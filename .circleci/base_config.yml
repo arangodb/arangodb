@@ -1664,7 +1664,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: << parameters.prefix >>compile_commands.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
@@ -1707,7 +1707,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: << parameters.prefix >>compile_commands.tar.gz
+          archive: compile_commands.tar.gz
       - run:
           name: Print workspace size
           command: |
