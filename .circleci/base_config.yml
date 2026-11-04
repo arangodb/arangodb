@@ -1563,6 +1563,9 @@ jobs:
       upgrade_to:
         type: string
         default: "<< pipeline.parameters.upgrade_to >>"
+      prefix:
+        type: string
+        default: ""
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
