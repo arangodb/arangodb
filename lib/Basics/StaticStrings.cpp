@@ -237,6 +237,7 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoApiVersion("x-arango-api-version");
 std::string const StaticStrings::ContentSecurityPolicy(
     "content-security-policy");
 std::string const StaticStrings::Pragma("pragma");

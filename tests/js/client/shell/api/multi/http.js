@@ -57,6 +57,21 @@ function getBypassingFuerte(path) {
   return { code: res.statusCode, parsedBody: res.json, headers: res.headers };
 }
 
+const apiVersionHeader = "x-arango-api-version";
+// The branch tag of the served API version is the major product version.
+const branch = parseInt(db._version().split('.')[0]);
+const servedApiVersion = `v1.0-${branch}`;
+
+function assertApiVersionMismatch(path, requested) {
+  const doc = arango.GET_RAW(path, { [apiVersionHeader]: requested });
+  assertEqual(doc.code, 400);
+  assertTrue(doc.parsedBody.error);
+  assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_HTTP_API_VERSION_MISMATCH.code);
+  assertEqual(doc.parsedBody.errorMessage,
+              `requested API version ${requested} is not compatible with ` +
+              `served API version ${servedApiVersion}`);
+}
+
 function assertInvalidApiVersion(path, query = "") {
   const doc = getBypassingFuerte(path + query);
   assertEqual(doc.code, 404);
@@ -533,6 +548,48 @@ function API_versioningSuite () {
     test_checks_unsupported_api_version_with_different_endpoint: function() {
       let cmd = "/_arango/v100/_api/collection";
       assertInvalidApiVersion(cmd);
+    },
+
+    test_api_version_header_accepts_the_served_version: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version",
+                               { [apiVersionHeader]: servedApiVersion });
+      assertEqual(doc.code, 200);
+    },
+
+    // A client written against 3.12 keeps working after the upgrade.
+    test_api_version_header_accepts_a_lower_branch: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version",
+                               { [apiVersionHeader]: `v1.0-${branch - 1}` });
+      assertEqual(doc.code, 200);
+    },
+
+    test_api_version_header_rejects_a_higher_minor_version: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v1.1-${branch}`);
+    },
+
+    test_api_version_header_rejects_a_higher_branch: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v1.0-${branch + 1}`);
+    },
+
+    test_api_version_header_rejects_a_major_version_that_differs_from_the_url: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v2.0-${branch}`);
+    },
+
+    test_api_version_header_is_checked_against_the_default_version: function() {
+      assertApiVersionMismatch("/_api/version", `v1.1-${branch}`);
+    },
+
+    test_api_version_header_rejects_a_malformed_value: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version", { [apiVersionHeader]: "v1" });
+      assertEqual(doc.code, 400);
+      assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
+    },
+
+    test_api_version_header_is_not_allowed_for_experimental: function() {
+      let doc = arango.GET_RAW("/_arango/experimental/openapi.json",
+                               { [apiVersionHeader]: servedApiVersion });
+      assertEqual(doc.code, 400);
+      assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
     test_checks_unsupported_api_version_0_with_different_endpoint: function() {

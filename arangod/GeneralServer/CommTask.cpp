@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
@@ -201,6 +202,22 @@ CommTask::Flow CommTask::prepareExecution(
                                    req.requestPath(), "', valid prefixes are: ",
                                    GeneralRequest::validApiVersionPrefixes()));
     return Flow::Abort;
+  }
+
+  if (_isUserRequest) {
+    bool found = false;
+    std::string const& headerVersion =
+        req.header(StaticStrings::XArangoApiVersion, found);
+    if (found) {
+      if (auto res = api_version::checkRequestedApiVersion(
+              req.requestedApiVersion(), headerVersion);
+          res.fail()) {
+        sendErrorResponse(GeneralResponse::responseCode(res.errorNumber()),
+                          req.contentTypeResponse(), req.messageId(),
+                          res.errorNumber(), res.errorMessage());
+        return Flow::Abort;
+      }
+    }
   }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
