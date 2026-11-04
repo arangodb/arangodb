@@ -970,12 +970,12 @@ jobs:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
           archive: frontend.tar.gz
-      - persist_to_workspace:
-          root: .
-          paths: frontend.tar.gz
       - persist_workspace_to_s3:
           root: .
           archive: frontend.tar.gz
+      - persist_to_workspace:
+          root: .
+          paths: /tmp/circleci-workspace/frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -1137,25 +1137,25 @@ jobs:
                 archive: << parameters.prefix >>binaries.tar.gz
                 root: .
                 paths: |
-                  - VERSIONS
-                  - ARANGO-VERSION
-                  - build/bin
-                  - build/etc
-                  - scripts/
-                  - js/
-                  - enterprise/js
-                  - etc/
-                  - tests/js
-                  - enterprise/tests/js
-                  - utils
-                  - lib/iresearch/tests/resources
-                  - 3rdParty/rta-makedata
-                  - tsan_arangodb_suppressions.txt
-                  - ubsan_arangodb_suppressions.txt
-                  - lsan_arangodb_suppressions.txt
+                  VERSIONS
+                  ARANGO-VERSION
+                  build/bin
+                  build/etc
+                  scripts/
+                  js/
+                  enterprise/js
+                  etc/
+                  tests/js
+                  enterprise/tests/js
+                  utils
+                  lib/iresearch/tests/resources
+                  3rdParty/rta-makedata
+                  tsan_arangodb_suppressions.txt
+                  ubsan_arangodb_suppressions.txt
+                  lsan_arangodb_suppressions.txt
             - persist_to_workspace:
                 root: .
-                paths: << parameters.prefix >>binaries.tar.gz
+                paths: /tmp/circleci-workspace/<< parameters.prefix >>binaries.tar.gz
             - persist_workspace_to_s3:
                 root: .
                 archive: << parameters.prefix >>binaries.tar.gz
@@ -1167,7 +1167,7 @@ jobs:
                   tidy-headers
             - persist_to_workspace:
                 root: .
-                paths: << parameters.prefix >>compile_commands.tar.gz
+                paths: /tmp/circleci-workspace/<< parameters.prefix >>compile_commands.tar.gz
             - persist_workspace_to_s3:
                 root: .
                 archive: << parameters.prefix >>compile_commands.tar.gz
