@@ -195,7 +195,6 @@ class TestRequirements:
             return cls()
 
         kwargs: Dict[str, Any] = {}
-
         # Direct field mappings
         if "full" in data:
             kwargs["full"] = data["full"]

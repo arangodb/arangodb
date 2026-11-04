@@ -206,7 +206,10 @@ class CircleCIGenerator(OutputGenerator):
 
         frontend_job_name = frontend_job["build-frontend"]["name"]
 
-        return [build_job_name, frontend_job_name]
+        if build_job_name != "none":
+            return [build_job_name, frontend_job_name]
+        else:
+            return [frontend_job_name]
 
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
