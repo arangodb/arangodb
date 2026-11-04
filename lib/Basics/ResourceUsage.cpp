@@ -71,7 +71,7 @@ ResourceMonitor::~ResourceMonitor() {
       << "query memory " << m                                    //
       << " | old: peak=" << peak()                               //
       << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
-      << " | rocksdb write: " << infra::rocksdbWriteMonitor().actualBytes()
+      << " | rocksdb: " << infra::rocksdbMonitor().actualBytes()
       << " | monitors: " << describeRegistry();
 
   m->retire();

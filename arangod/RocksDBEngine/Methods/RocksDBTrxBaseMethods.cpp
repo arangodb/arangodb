@@ -222,6 +222,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
                                            ReadOwnWrites readOwnWrites) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro = withUdtReadTimestamp(_readOptions, cf);
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
@@ -234,7 +235,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr ||
@@ -259,7 +260,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -280,7 +281,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -299,7 +300,7 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -318,7 +319,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -578,7 +579,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   }
   rocksdb::Status s;
   {
-    infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+    infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
     s = _rocksTransaction->Commit();
   }
   if (!s.ok()) {  // cleanup performed by scope-guard
@@ -634,6 +635,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 rocksdb::Status RocksDBTrxBaseMethods::SingleGet(
     rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
     rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {
     _readOptions.snapshot = was;
   };
@@ -647,6 +649,7 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                      size_t count, rocksdb::Slice const* keys,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   // make a copy of the ReadOptions, as we are going to modify the snapshot
   ReadOptions ro = _readOptions;
   ro.snapshot = snapshot;
@@ -660,6 +663,7 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses,
                                      ReadOwnWrites readOwnWrites) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   if (readOwnWrites == ReadOwnWrites::yes) {
     _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
                                 statuses, false);

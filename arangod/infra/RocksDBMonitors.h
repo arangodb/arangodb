@@ -5,13 +5,13 @@
 
 namespace arangodb::infra {
 
-inline StaticResourceMonitor& rocksdbWriteMonitor() noexcept {
+inline StaticResourceMonitor& rocksdbMonitor() noexcept {
   static StaticResourceMonitor monitor;
   return monitor;
 }
 
-[[nodiscard]] inline ResourceMonitorScope rocksdbWriteScope() noexcept {
-  return ResourceMonitorScope(ResourceMonitorRef(rocksdbWriteMonitor()));
+[[nodiscard]] inline ResourceMonitorScope rocksdbScope() noexcept {
+  return ResourceMonitorScope(ResourceMonitorRef(rocksdbMonitor()));
 }
 
 }  // namespace arangodb::infra
