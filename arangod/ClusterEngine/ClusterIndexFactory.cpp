@@ -90,39 +90,45 @@ std::shared_ptr<Index> ClusterIndexFactory::createIndex(
     case IndexType::MDIPrefixed:
     case IndexType::Vector:
       return createGeneric(type, collection, definition, id);
-    case IndexType::Inverted: {
-      using namespace arangodb::iresearch;
-      auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
-      std::string indexName;
-      if (!nameSlice.isNone()) {
-        if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
-          LOG_TOPIC("91ebe", ERR, TOPIC)
-              << "failed to initialize index from definition, error in "
-                 "attribute '" +
-                     arangodb::StaticStrings::IndexName +
-                     "': " + definition.toString();
-          return nullptr;
-        }
-        indexName = nameSlice.copyString();
-      }
-      auto objectId = basics::VelocyPackHelper::stringUInt64(
-          definition, arangodb::StaticStrings::ObjectId);
-      auto index = std::make_shared<IResearchInvertedClusterIndex>(
-          id, objectId, collection, indexName);
-      bool pathExists = false;
-      if (index->init(definition, pathExists).fail()) {
-        return nullptr;
-      }
-      index->initFields();
-      return index;
-    }
+    case IndexType::Inverted:
+      return createInverted(collection, definition, id);
     case IndexType::Unknown:
     case IndexType::NoAccess:
     case IndexType::IResearchLink:
+      // unreachable: prepareIndexFromSlice routes this to createIResearchLink()
       TRI_ASSERT(false) << "ClusterIndexFactory::createIndex called for "
                         << int(type);
       return nullptr;
   }
+}
+
+std::shared_ptr<Index> ClusterIndexFactory::createInverted(
+    LogicalCollection& collection, velocypack::Slice definition,
+    IndexId id) const {
+  using namespace arangodb::iresearch;
+  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+  std::string indexName;
+  if (!nameSlice.isNone()) {
+    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+      LOG_TOPIC("91ebe", ERR, TOPIC)
+          << "failed to initialize index from definition, error in "
+             "attribute '" +
+                 arangodb::StaticStrings::IndexName +
+                 "': " + definition.toString();
+      return nullptr;
+    }
+    indexName = nameSlice.copyString();
+  }
+  auto objectId = basics::VelocyPackHelper::stringUInt64(
+      definition, arangodb::StaticStrings::ObjectId);
+  auto index = std::make_shared<IResearchInvertedClusterIndex>(
+      id, objectId, collection, indexName);
+  bool pathExists = false;
+  if (index->init(definition, pathExists).fail()) {
+    return nullptr;
+  }
+  index->initFields();
+  return index;
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

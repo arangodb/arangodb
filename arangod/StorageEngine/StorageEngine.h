@@ -36,6 +36,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -54,6 +55,7 @@ class OptimizerRulesFeature;
 
 class DatabaseInitialSyncer;
 class IndexTypeCatalog;
+struct IndexDefinition;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -98,12 +100,16 @@ class StorageSnapshot {
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
+  // passed in since the engine may need a ref only its own ctor has yet
+  using IndexFactoryCreator =
+      std::function<std::unique_ptr<IndexFactory>(IndexTypeCatalog const&)>;
+
   // create the storage engine
-  // the factory is set by the engine: it needs this base's catalog first
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
                 IDatabaseProvider& databaseProvider,
-                IDatabaseBootstrap& databaseBootstrap);
+                IDatabaseBootstrap& databaseBootstrap,
+                IndexFactoryCreator createIndexFactory);
   ~StorageEngine() override;
 
   virtual HealthData healthCheck() = 0;
@@ -313,10 +319,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   // of the IndexFactory. This is used to validate
   // information about indexes.
   virtual IndexFactory const& indexFactory() const;
-  IndexFactory& mutableIndexFactory() noexcept;
+
+  // IResearchFeature injects this in a later feature phase, after construction
+  void setLinkCreator(IndexFactory::LinkCreator creator);
 
   IndexTypeCatalog const& indexTypeCatalog() const noexcept;
-  IndexTypeCatalog& indexTypeCatalog() noexcept;
+
+  // non-owning: callers register their own instead of a mutable catalog handle
+  Result registerIndexDefinition(std::string_view name,
+                                 IndexDefinition const& definition);
+  void unregisterIndexDefinition(std::string_view name) noexcept;
 
   // AQL functions
   // -------------
@@ -380,11 +392,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // startup-lifecycle hooks called as the engine opens.
   IDatabaseBootstrap& _databaseBootstrap;
 
-  void setIndexFactory(std::unique_ptr<IndexFactory>&& indexFactory);
-
  private:
   std::unique_ptr<IndexTypeCatalog> const _indexTypeCatalog;
-  std::unique_ptr<IndexFactory> _indexFactory;
+  std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;
   // non-owning handle to the manager created in createTransactionManager;
