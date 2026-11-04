@@ -1749,6 +1749,12 @@ Result RestReplicationHandler::processRestoreIndexes(
     return r;
   }
 
+  ExecContextSuperuserScope escope(
+      ExecContext::current()
+          .canUseAdminAction(auth::perms::AdminRestore{})
+          .ok() &&
+      !ServerState::readOnly());
+
   auto collResult = _vocbase.lookupCollection(name);
   if (not collResult.ok()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -1759,12 +1765,6 @@ Result RestReplicationHandler::processRestoreIndexes(
   VPackBuilder rebuilder;
 
   Result fres;
-
-  ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(auth::perms::AdminRestore{})
-          .ok() &&
-      !ServerState::readOnly());
 
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 

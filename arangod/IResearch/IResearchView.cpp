@@ -595,9 +595,16 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     for (auto& entry : _links) {
       auto collectionResult = vocbase().lookupCollection(entry.first);
-      // TODO can be deleted in v1 because check is already done in
-      // lookupCollection
-      if (collectionResult.ok()) {
+      if (collectionResult.fail()) {
+        return {
+            TRI_ERROR_FORBIDDEN,
+            absl::StrCat("while updating view definition: ", r.errorMessage())};
+      }
+      // explicit permission check for v == 1; for v>1 this check is already
+      // done in lookupCollection
+      if (auto apiVersion = ExecContext::current().requestedApiVersion();
+          apiVersion.has_value() &&
+          static_cast<std::uint8_t>(apiVersion.value()) == 1) {
         if (auto r = ExecContext::current().canUseCollection(
                 vocbase().name(), collectionResult.get()->name(),
                 AccessLevel::Read);

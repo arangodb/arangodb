@@ -257,30 +257,29 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
   }
 
   auto collResult = vocbase.lookupCollection(name);
-  if (collResult.ok()) {
-    auto coll = collResult.get();
-    // check authentication after ensuring the collection exists
-    if (auto r = ExecContext::current().canUseCollection(
-            vocbase.name(), coll->name(), AccessLevel::Read);
-        r.fail()) {
-      return r;
-    }
-    try {
-      ret = std::move(coll);
-    } catch (basics::Exception const& ex) {
-      return Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          "internal error during collection lookup - canUseCollection");
-    }
-
-    return Result();
+  if (collResult.fail()) {
+    return collResult.result();
   }
 
-  return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  auto coll = collResult.get();
+  // check authentication after ensuring the collection exists
+  if (auto r = ExecContext::current().canUseCollection(
+          vocbase.name(), coll->name(), AccessLevel::Read);
+      r.fail()) {
+    return r;
+  }
+  try {
+    ret = std::move(coll);
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL,
+                  "internal error during collection lookup - canUseCollection");
+  }
+
+  return Result();
 }
 
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
