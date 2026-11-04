@@ -233,7 +233,7 @@ commands:
           command: |
             set -eo pipefail
             set -x
-
+            WD=$(pwd)
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
             ARCHIVE="<< parameters.archive >>"
@@ -245,6 +245,7 @@ commands:
 
             tar -czf "$TAR" $PATHS
             du -sh "$TAR"
+            mv "$TAR" "$WD"
   persist_workspace_to_s3:
     parameters:
       root:
@@ -1155,7 +1156,7 @@ jobs:
                   lsan_arangodb_suppressions.txt
             - persist_to_workspace:
                 root: .
-                paths: /tmp/circleci-workspace/<< parameters.prefix >>binaries.tar.gz
+                paths: << parameters.prefix >>binaries.tar.gz
             - persist_workspace_to_s3:
                 root: .
                 archive: << parameters.prefix >>binaries.tar.gz
@@ -1167,7 +1168,7 @@ jobs:
                   tidy-headers
             - persist_to_workspace:
                 root: .
-                paths: /tmp/circleci-workspace/<< parameters.prefix >>compile_commands.tar.gz
+                paths: << parameters.prefix >>compile_commands.tar.gz
             - persist_workspace_to_s3:
                 root: .
                 archive: << parameters.prefix >>compile_commands.tar.gz
