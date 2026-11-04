@@ -966,7 +966,7 @@ jobs:
       - create_tarball:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: : << parameters.prefix >>frontend.tar.gz
+          archive: << parameters.prefix >>frontend.tar.gz
       - persist_to_workspace:
           root: .
           paths: << parameters.prefix >>frontend.tar.gz
@@ -1540,7 +1540,8 @@ jobs:
       rta-branch:
         type: string
         default: "main"
-      arangosh_args: # converted to rta_args later on...
+      # converted to rta_args later on...
+      arangosh_args:
         type: string
         default: ""
       docker_image:
