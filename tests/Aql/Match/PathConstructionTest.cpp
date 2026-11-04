@@ -66,46 +66,84 @@ TEST_F(PathConstructionTest, addPathVertexAndEdgeAppendReferences) {
 
 TEST_F(PathConstructionTest, appendTraversalPathSplicesVerticesAndEdges) {
   Variable const* start = ast.variables()->createTemporaryVariable();
+  Variable const* target = ast.variables()->createTemporaryVariable();
   Variable const* path = ast.variables()->createTemporaryVariable();
   std::vector<AstNode const*> vertices;
   std::vector<AstNode const*> edges;
   paths.addPathVertex(vertices, start);
-  paths.appendTraversalPath(vertices, edges, path);
+  paths.appendTraversalPath(vertices, edges, path, start, target);
 
-  ASSERT_EQ(1U, vertices.size());
+  // projected start + intermediate splice + target destination
+  ASSERT_EQ(3U, vertices.size());
   ASSERT_EQ(1U, edges.size());
-  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices.front()->type);
-  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges.front()->type);
-}
-
-TEST_F(PathConstructionTest, consecutiveTraversalPathsKeepEarlierVertices) {
-  Variable const* start = ast.variables()->createTemporaryVariable();
-  Variable const* first = ast.variables()->createTemporaryVariable();
-  Variable const* second = ast.variables()->createTemporaryVariable();
-  std::vector<AstNode const*> vertices;
-  std::vector<AstNode const*> edges;
-  paths.addPathVertex(vertices, start);
-  paths.appendTraversalPath(vertices, edges, first);
-  paths.appendTraversalPath(vertices, edges, second);
-
-  ASSERT_EQ(2U, vertices.size());
-  ASSERT_EQ(2U, edges.size());
-  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[0]->type);
-  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS, vertices[0]->getMember(0)->type);
-  EXPECT_EQ("vertices", vertices[0]->getMember(0)->getStringView());
-
-  ASSERT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[1]->type);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[0]->type);
+  EXPECT_EQ(start, static_cast<Variable const*>(vertices[0]->getData()));
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[1]->type);
   AstNode const* slice = vertices[1]->getMember(0);
   ASSERT_EQ(NODE_TYPE_FCALL, slice->type);
   auto const* func = static_cast<Function const*>(slice->getData());
   ASSERT_NE(nullptr, func);
   EXPECT_EQ("SLICE", func->name);
   ASSERT_EQ(NODE_TYPE_ARRAY, slice->getMember(0)->type);
-  ASSERT_EQ(2U, slice->getMember(0)->numMembers());
-  EXPECT_EQ(NODE_TYPE_ATTRIBUTE_ACCESS,
-            slice->getMember(0)->getMember(0)->type);
-  EXPECT_EQ("vertices", slice->getMember(0)->getMember(0)->getStringView());
+  ASSERT_EQ(3U, slice->getMember(0)->numMembers());
   EXPECT_EQ(1, slice->getMember(0)->getMember(1)->getIntValue());
+  EXPECT_EQ(-1, slice->getMember(0)->getMember(2)->getIntValue());
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[2]->type);
+  EXPECT_EQ(target, static_cast<Variable const*>(vertices[2]->getData()));
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges.front()->type);
+}
+
+TEST_F(PathConstructionTest,
+       appendTraversalPathWithoutStartProjectionUsesFirst) {
+  Variable const* start = ast.variables()->createTemporaryVariable();
+  Variable const* target = ast.variables()->createTemporaryVariable();
+  Variable const* path = ast.variables()->createTemporaryVariable();
+  std::vector<AstNode const*> vertices;
+  std::vector<AstNode const*> edges;
+  paths.addPathVertex(vertices, start);
+  paths.appendTraversalPath(vertices, edges, path, nullptr, target);
+
+  ASSERT_EQ(3U, vertices.size());
+  ASSERT_EQ(NODE_TYPE_FCALL, vertices[0]->type);
+  auto const* first = static_cast<Function const*>(vertices[0]->getData());
+  ASSERT_NE(nullptr, first);
+  EXPECT_EQ("FIRST", first->name);
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[1]->type);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[2]->type);
+  EXPECT_EQ(target, static_cast<Variable const*>(vertices[2]->getData()));
+}
+
+TEST_F(PathConstructionTest, consecutiveTraversalPathsKeepEarlierVertices) {
+  Variable const* start = ast.variables()->createTemporaryVariable();
+  Variable const* mid = ast.variables()->createTemporaryVariable();
+  Variable const* end = ast.variables()->createTemporaryVariable();
+  Variable const* first = ast.variables()->createTemporaryVariable();
+  Variable const* second = ast.variables()->createTemporaryVariable();
+  std::vector<AstNode const*> vertices;
+  std::vector<AstNode const*> edges;
+  paths.addPathVertex(vertices, start);
+  paths.appendTraversalPath(vertices, edges, first, start, mid);
+  paths.appendTraversalPath(vertices, edges, second, mid, end);
+
+  ASSERT_EQ(5U, vertices.size());
+  ASSERT_EQ(2U, edges.size());
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[0]->type);
+  EXPECT_EQ(start, static_cast<Variable const*>(vertices[0]->getData()));
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[1]->type);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[2]->type);
+  EXPECT_EQ(mid, static_cast<Variable const*>(vertices[2]->getData()));
+  EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, vertices[3]->type);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, vertices[4]->type);
+  EXPECT_EQ(end, static_cast<Variable const*>(vertices[4]->getData()));
+
+  AstNode const* slice = vertices[3]->getMember(0);
+  ASSERT_EQ(NODE_TYPE_FCALL, slice->type);
+  auto const* func = static_cast<Function const*>(slice->getData());
+  ASSERT_NE(nullptr, func);
+  EXPECT_EQ("SLICE", func->name);
+  ASSERT_EQ(3U, slice->getMember(0)->numMembers());
+  EXPECT_EQ(1, slice->getMember(0)->getMember(1)->getIntValue());
+  EXPECT_EQ(-1, slice->getMember(0)->getMember(2)->getIntValue());
 
   EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges[0]->type);
   EXPECT_EQ(NODE_TYPE_ARRAY_SPLICE, edges[1]->type);
