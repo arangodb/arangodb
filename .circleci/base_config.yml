@@ -229,7 +229,7 @@ commands:
         default: workspace.tar.gz
     steps:
       - run:
-          name: Save workspace to S3
+          name: create tarball
           command: |
             set -eo pipefail
             set -x
