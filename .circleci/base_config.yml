@@ -1133,7 +1133,7 @@ jobs:
             - create_tarball:
                 archive: << parameters.prefix >>binaries.tar.gz
                 root: .
-                paths:
+                paths: |
                   - VERSIONS
                   - ARANGO-VERSION
                   - build/bin
