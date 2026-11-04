@@ -14,7 +14,7 @@ parameters:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
-    # we use it, otherwise we fall back to "4.0".
+    # we use it, otherwise we fall back to "devel".
     default: ""
     description: "The branch to use for the enterprise repository."
   without-instrumentation:
@@ -119,7 +119,6 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
-                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -219,7 +218,7 @@ jobs:
         type: string
       default-enterprise-branch:
         type: string
-        default: "4.0"
+        default: "devel"
       config-definitions-branches:
         type: string
         default: ""
