@@ -12,6 +12,10 @@
   the server supports for the requested version.
   For `/_arango/experimental` the header is not allowed.
 
+* COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
+  now fails with a parse error when that variable was not bound earlier. It
+  previously raised internal error 4 ("variable not found").
+
 * COR-1200: Update boost from 1.78.0 to 1.92.0
 
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
@@ -29,6 +33,11 @@
   `--rocksdb.export-read-write-metrics`
 
 * Upgraded OpenSSL to 3.5.9.
+
+* BTS-2511: arangod sets up its temporary directory once, in a thread-safe
+  way. Operations that need it at the same time, such as a hot backup upload
+  and download that start right after server start, all use the same
+  directory.
 
 * COR-1190: AQL traversals only load a subset of the attributes of path edges
   and vertices if the optimizer can determine every attribute the query reads

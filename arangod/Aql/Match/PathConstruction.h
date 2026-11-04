@@ -47,9 +47,17 @@ class PathConstruction {
   void addPathEdge(std::vector<AstNode const*>& pathEdges,
                    Variable const* variable);
 
+  /// @brief Splice a traversal-backed segment into the path accumulator.
+  /// Replaces the provisional start entry with @p startDestinationVariable when
+  /// non-null (projected MATCH start), otherwise FIRST(traversal.vertices) so
+  /// external id/variable starts still materialize as documents. Intermediate
+  /// vertices come from SLICE(traversal.vertices, 1, -1). Appends
+  /// @p targetDestinationVariable for the end endpoint.
   void appendTraversalPath(std::vector<AstNode const*>& pathVertices,
                            std::vector<AstNode const*>& pathEdges,
-                           Variable const* traversalPathVariable);
+                           Variable const* traversalPathVariable,
+                           Variable const* startDestinationVariable,
+                           Variable const* targetDestinationVariable);
 
   CalculationNode* constructPathObject(
       Variable const* outVariable, std::vector<AstNode const*> const& vertices,
