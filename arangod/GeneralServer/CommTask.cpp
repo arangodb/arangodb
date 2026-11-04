@@ -358,6 +358,11 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
+  if (auto version = res.apiVersion(); version.has_value()) {
+    res.setHeaderNC(StaticStrings::XArangoApiVersion,
+                    api_version::formatServedApiVersion(*version));
+  }
+
   if (this->_isUserRequest) {
     // CORS response handling - only needed on user facing coordinators
     // or single servers
@@ -429,6 +434,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
+  response->setApiVersion(request->requestedApiVersion());
 
   // store the message id for error handling
   uint64_t messageId = request->messageId();
