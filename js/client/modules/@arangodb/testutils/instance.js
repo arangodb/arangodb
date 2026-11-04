@@ -1119,6 +1119,7 @@ class instance {
               ))) {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+          this.dumpConnectionTable(true);
           this.shutdownArangod(true);
           this._disconnect();
         } else {
@@ -1148,6 +1149,7 @@ class instance {
                   ))) {
               this.serverCrashedLocal = true;
               print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+              this.dumpConnectionTable(true);
               this.shutdownArangod(true);
               return false;
             }
