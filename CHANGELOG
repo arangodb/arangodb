@@ -19,6 +19,11 @@
 
 * Upgraded OpenSSL to 3.5.9.
 
+* BTS-2511: arangod sets up its temporary directory once, in a thread-safe
+  way. Operations that need it at the same time, such as a hot backup upload
+  and download that start right after server start, all use the same
+  directory.
+
 * COR-1190: AQL traversals only load a subset of the attributes of path edges
   and vertices if the optimizer can determine every attribute the query reads
   from them, including reads inside `[*]` expansions. If it cannot, as for
