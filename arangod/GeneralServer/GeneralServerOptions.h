@@ -36,13 +36,14 @@ struct GeneralServerOptions {
   bool allowEarlyConnections = false;
   bool handleContentEncodingForUnauthenticatedRequests = false;
   bool returnQueueTimeHeader = true;
+  uint64_t numIoThreads;  // initialized in ctor
   uint64_t compressResponseThreshold = 0;
   uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
+  uint64_t decompressedRequestBodyGlobalMemoryLimit = 0;
   std::vector<std::string> accessControlAllowOrigins;
   std::string supportInfoApiPolicy = "admin";
   std::string optionsApiPolicy = "jwt";
-  uint64_t numIoThreads;  // initialized in ctor
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::vector<std::string> failurePoints;

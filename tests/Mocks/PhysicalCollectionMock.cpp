@@ -1003,12 +1003,10 @@ PhysicalCollectionMock::createIndex(
         StorageEngineMock::buildInvertedIndexMock(id, _logicalCollection, info);
   } else if (type == arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
     try {
-      auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
-        auto factory =
-            arangodb::iresearch::IResearchLinkCoordinator::createFactory(
-                server);
-        index = factory->instantiate(_logicalCollection, info, id, false);
+        index = arangodb::iresearch::createLinkCoordinator(
+            arangodb::IndexCreationContext{_logicalCollection, info, id,
+                                           false});
       } else {
         index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }

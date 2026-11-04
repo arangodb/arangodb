@@ -105,7 +105,8 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::DataSourceType, props.type),
       f.field(StaticStrings::KeyOptions, props.keyOptions),
       f.field(StaticStrings::ShadowCollections, props.shadowCollections),
-      f.template embedFields<CollectionInternalProperties>(props));
+      f.template embedFields<CollectionInternalProperties>(props),
+      f.template embedFields<CollectionIdentity>(props));
 }
 
 template<class Inspector>

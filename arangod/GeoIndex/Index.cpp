@@ -54,7 +54,7 @@ Index::Index(velocypack::Slice info,
   // If the legacyPolygons value is not set here, it is from a previous
   // version, so we default to `true` here. Coming from `ensureIndex`,
   // we have always set the value in the definition, and if the user does
-  // not specify it, it defaults to `false` via the IndexTypeFactory.
+  // not specify it, it defaults to `false` via GeoIndexDefinition::normalize.
   _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
       info, StaticStrings::IndexLegacyPolygons, true);
 
