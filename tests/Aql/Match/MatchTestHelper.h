@@ -23,11 +23,14 @@
 #pragma once
 
 #include "gtest/gtest.h"
+
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/BindParameters.h"
+#include "Aql/CalculationQueryContext.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Match/PatternNormalizer.h"
@@ -54,21 +57,17 @@ class MatchTestFixture : public ::testing::Test {
  protected:
   static void createDocumentCollection(std::string_view name) {
     auto& vocbase = server->getSystemDatabase();
-    velocypack::Builder builder;
-    builder.openObject();
-    builder.add("name", velocypack::Value(name));
-    builder.close();
-    vocbase.createCollection(builder.slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(std::string{name});
+    vocbase.createCollection(colDescriptor);
   }
 
   static void createEdgeCollection(std::string_view name) {
     auto& vocbase = server->getSystemDatabase();
-    velocypack::Builder builder;
-    builder.openObject();
-    builder.add("name", velocypack::Value(name));
-    builder.add("type", velocypack::Value(static_cast<int>(TRI_COL_TYPE_EDGE)));
-    builder.close();
-    vocbase.createCollection(builder.slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(std::string{name});
+    colDescriptor.constant.type = TRI_COL_TYPE_EDGE;
+    vocbase.createCollection(colDescriptor);
   }
 
   static void SetUpTestCase() {

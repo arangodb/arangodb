@@ -25,35 +25,28 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
-#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/asio_ns.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchInvertedIndex.h"
-#include "IResearch/IResearchLinkCoordinator.h"
-#include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/IDatabaseProvider.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ticks.h"
 #include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
@@ -68,11 +61,28 @@ namespace {
 
 struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
-                   bool injectClusterIndexes)
-      : IndexFactory(server) {
+                   bool injectClusterIndexes,
+                   arangodb::IndexTypeCatalog const& catalog)
+      : IndexFactory(server, catalog) {
     // there is only a single StorageEngine slot now, and StorageEngineMock
     // always occupies it, so a real ClusterEngine can never be fetched here.
     TRI_ASSERT(!injectClusterIndexes);
+  }
+
+  // there is only ever one StorageEngine slot and StorageEngineMock always
+  // occupies it, so this is not expected to actually be called in tests
+  // that use this mock; it throws the same way the real engines' factories
+  // do for a type they can't create
+  std::shared_ptr<arangodb::Index> invalid(char const* name) const {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string{"invalid index type '"} + name + "'");
+  }
+
+  std::shared_ptr<arangodb::Index> createIndex(
+      arangodb::IndexType type,
+      arangodb::IndexCreationContext const&) const override {
+    return invalid(arangodb::Index::oldtypeName(type));
   }
 
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
@@ -195,12 +205,11 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "Mock",
-                    std::unique_ptr<arangodb::IndexFactory>(
-                        new IndexFactoryMock(server, injectClusterIndexes)),
-                    _dbProvider, _dbProvider),
+    : StorageEngine(server, "Mock", "Mock", _dbProvider, _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
+  setIndexFactory(std::unique_ptr<arangodb::IndexFactory>(
+      new IndexFactoryMock(server, injectClusterIndexes, indexTypeCatalog())));
   initTransactionStatistics(_mockRegistry);
   ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }
@@ -325,13 +334,6 @@ void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase,
   result.close();
 
   // nothing more required, assume info used for PhysicalCollectionMock
-}
-
-ErrorCode StorageEngineMock::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
 }
 
 void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {

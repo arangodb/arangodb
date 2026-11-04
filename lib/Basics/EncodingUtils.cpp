@@ -22,8 +22,10 @@
 
 #include "EncodingUtils.h"
 #include "Basics/Endian.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/voc-errors.h"
 
 #include <velocypack/Buffer.h>
@@ -38,7 +40,8 @@ constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
 
 template<typename T>
 ErrorCode uncompressStream(z_stream& strm, T& uncompressed,
-                           size_t maxUncompressedSize) noexcept {
+                           size_t maxUncompressedSize,
+                           arangodb::ResourceUsageScope* scope) noexcept {
   TRI_ASSERT(strm.opaque == Z_NULL);
 
   char outbuffer[32768];
@@ -65,13 +68,21 @@ ErrorCode uncompressStream(z_stream& strm, T& uncompressed,
       ret = inflate(&strm, Z_NO_FLUSH);
 
       if (uncompressed.size() < strm.total_out) {
-        uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
-      }
-      if (uncompressed.size() > maxUncompressedSize) {
-        uncompressed.clear();
-        return TRI_ERROR_RESOURCE_LIMIT;
+        if (strm.total_out > maxUncompressedSize) {
+          uncompressed.clear();
+          return TRI_ERROR_RESOURCE_LIMIT;
+        }
+        size_t const chunk = strm.total_out - uncompressed.size();
+        if (scope != nullptr) {
+          scope->increase(chunk);  // throws if the budget is exhausted
+        }
+        uncompressed.append(outbuffer, chunk);
       }
     } while (ret == Z_OK);
+  } catch (arangodb::basics::Exception const&) {
+    // global budget exhausted
+    uncompressed.clear();
+    return TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
     // we can get here only if uncompressed.reserve() or uncompressed.append()
     // throw
@@ -139,7 +150,7 @@ int compressStream(z_stream& strm, T& compressed) noexcept {
 template<typename T>
 ErrorCode uncompressWrapper(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
-    size_t maxUncompressedSize,
+    size_t maxUncompressedSize, arangodb::ResourceUsageScope* scope,
     std::function<ErrorCode(z_stream& strm)> const& initCb) {
   uncompressed.clear();
 
@@ -153,7 +164,8 @@ ErrorCode uncompressWrapper(
     return res;
   }
 
-  ErrorCode ret = uncompressStream(strm, uncompressed, maxUncompressedSize);
+  ErrorCode ret =
+      uncompressStream(strm, uncompressed, maxUncompressedSize, scope);
   inflateEnd(&strm);
 
   return ret;
@@ -169,14 +181,15 @@ namespace arangodb {
 template<typename T>
 ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
                                    size_t compressedLength, T& uncompressed,
-                                   size_t maxUncompressedSize) {
+                                   size_t maxUncompressedSize,
+                                   ResourceUsageScope* scope) {
   if (compressedLength == 0) {
     // empty input
     return TRI_ERROR_NO_ERROR;
   }
 
   return ::uncompressWrapper<T>(
-      compressed, compressedLength, uncompressed, maxUncompressedSize,
+      compressed, compressedLength, uncompressed, maxUncompressedSize, scope,
       [](z_stream& strm) -> ErrorCode {
         if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -188,9 +201,10 @@ ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
 template<typename T>
 ErrorCode encoding::zlibInflate(uint8_t const* compressed,
                                 size_t compressedLength, T& uncompressed,
-                                size_t maxUncompressedSize) {
+                                size_t maxUncompressedSize,
+                                ResourceUsageScope* scope) {
   return ::uncompressWrapper<T>(compressed, compressedLength, uncompressed,
-                                maxUncompressedSize,
+                                maxUncompressedSize, scope,
                                 [](z_stream& strm) -> ErrorCode {
                                   if (inflateInit(&strm) != Z_OK) {
                                     return TRI_ERROR_OUT_OF_MEMORY;
@@ -202,7 +216,8 @@ ErrorCode encoding::zlibInflate(uint8_t const* compressed,
 template<typename T>
 ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
                                   size_t compressedLength, T& uncompressed,
-                                  size_t maxUncompressedSize) {
+                                  size_t maxUncompressedSize,
+                                  ResourceUsageScope* scope) {
   if (compressedLength <= ::lz4HeaderLength) {
     // empty/bad input.
     return TRI_ERROR_BAD_PARAMETER;
@@ -222,6 +237,14 @@ ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
   // reject before reserving
   if (uncompressedLength > maxUncompressedSize) {
     return TRI_ERROR_RESOURCE_LIMIT;
+  }
+  if (scope != nullptr) {
+    try {
+      scope->increase(uncompressedLength);
+    } catch (arangodb::basics::Exception const&) {
+      // global budget exhausted
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
   }
 
   if constexpr (std::is_same_v<T, std::string>) {
@@ -403,38 +426,43 @@ template ErrorCode
 encoding::gzipUncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::velocypack::Buffer<uint8_t>& uncompressed,
-    size_t maxUncompressedSize);
+    size_t maxUncompressedSize, ResourceUsageScope* scope);
 
 template ErrorCode encoding::gzipUncompress<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize,
+    ResourceUsageScope* scope);
 
 template ErrorCode encoding::gzipUncompress<std::string>(
     uint8_t const* compressed, size_t compressedLength,
-    std::string& uncompressed, size_t maxUncompressedSize);
+    std::string& uncompressed, size_t maxUncompressedSize,
+    ResourceUsageScope* scope);
 
 template ErrorCode encoding::zlibInflate<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::velocypack::Buffer<uint8_t>& uncompressed,
-    size_t maxUncompressedSize);
+    size_t maxUncompressedSize, ResourceUsageScope* scope);
 
 template ErrorCode encoding::zlibInflate<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize,
+    ResourceUsageScope* scope);
 
 template ErrorCode encoding::zlibInflate<std::string>(
     uint8_t const* compressed, size_t compressedLength,
-    std::string& uncompressed, size_t maxUncompressedSize);
+    std::string& uncompressed, size_t maxUncompressedSize,
+    ResourceUsageScope* scope);
 
 template ErrorCode
 encoding::lz4Uncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::velocypack::Buffer<uint8_t>& uncompressed,
-    size_t maxUncompressedSize);
+    size_t maxUncompressedSize, ResourceUsageScope* scope);
 
 template ErrorCode encoding::lz4Uncompress<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
-    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize);
+    arangodb::basics::StringBuffer& uncompressed, size_t maxUncompressedSize,
+    ResourceUsageScope* scope);
 
 // compression methods
 template ErrorCode

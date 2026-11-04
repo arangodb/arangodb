@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "Aql/RegisterId.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorSearchStrategy.h"
@@ -91,6 +92,7 @@ struct SearchResult {
   // strategy.projection != kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>
       capturedDocuments;
+  aql::EnumerateNearVectorStats stats;
 };
 
 }  // namespace vector

@@ -45,6 +45,7 @@ auto transform(CollectionDescriptor col)
       .schema = std::move(col.mutableProps.schema),
       .cacheEnabled = col.mutableProps.cacheEnabled};
   spec.immutableProperties = {col.internal,
+                              col.identity,
                               col.mutableProps.name,
                               col.constant.isSystem,
                               col.constant.type,
