@@ -556,7 +556,7 @@ commands:
                 at: .
             - run: |
                 tar -xvzf << parameters.prefix >>binaries.tar.gz
-                tar -xvzf << parameters.prefix >>frontend.tar.gz
+                tar -xvzf frontend.tar.gz
       - when:
           condition:
             << parameters.use-s3-workspace >>
@@ -566,7 +566,7 @@ commands:
                 archive: << parameters.prefix >>binaries.tar.gz
             - attach_workspace_from_s3:
                 at: .
-                archive: << parameters.prefix >>frontend.tar.gz
+                archive: frontend.tar.gz
       - run:
           name: Log processes
           command: |
@@ -966,13 +966,13 @@ jobs:
       - create_tarball:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: << parameters.prefix >>frontend.tar.gz
+          archive: frontend.tar.gz
       - persist_to_workspace:
           root: .
-          paths: << parameters.prefix >>frontend.tar.gz
+          paths: frontend.tar.gz
       - persist_workspace_to_s3:
           root: .
-          archive: << parameters.prefix >>frontend.tar.gz
+          archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -1573,7 +1573,7 @@ jobs:
       - run: |
           cd work/ArangoDB
           tar -xvzf << parameters.prefix >>binaries.tar.gz
-          tar -xvzf << parameters.prefix >>frontend.tar.gz
+          tar -xvzf frontend.tar.gz
       - fetch-aux-binaries:
           arch: << parameters.arch >>
           repo-path: work/ArangoDB
