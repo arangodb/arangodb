@@ -1312,6 +1312,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+          prefix: << parameters.prefix >>
 
   run-driver-tests:
     parameters:
@@ -1352,6 +1353,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+          prefix: << parameters.prefix >>
       - when:
           condition: << parameters.maven-cache >>
           steps:
@@ -1459,6 +1461,7 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
+          prefix: << parameters.prefix >>
       - when:
           condition: << parameters.maven-cache >>
           steps:
