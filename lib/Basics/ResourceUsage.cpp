@@ -27,6 +27,7 @@
 #include "Basics/voc-errors.h"
 #include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
+#include "infra/RocksDBMonitors.h"
 #include "Logger/LogMacros.h"
 
 #include <sstream>
@@ -40,9 +41,13 @@ namespace {
 // queries that still have memory charged to them.
 auto describeRegistry() -> std::string {
   std::ostringstream out;
+  out << '[';
+  char const* sep = "";
   infra::globalMonitorRegistry().forEach([&](infra::ResourceMonitorBase& m) {
-    out << &m << ':' << m.actualBytes() << ' ';
+    out << sep << &m << '=' << m.actualBytes();
+    sep = ", ";
   });
+  out << ']';
   return out.str();
 }
 
@@ -63,9 +68,11 @@ ResourceMonitor::~ResourceMonitor() {
 #endif
   auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
-      << "memory: monitor=" << m << " old peak=" << peak()
-      << " new peak=" << m->peakBytes() << " new left=" << m->actualBytes()
-      << " registry=[" << describeRegistry() << "]";
+      << "query memory " << m                                    //
+      << " | old: peak=" << peak()                               //
+      << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
+      << " | rocksdb write: " << infra::rocksdbWriteMonitor().actualBytes()
+      << " | monitors: " << describeRegistry();
 
   m->retire();
   monitorRef.reset();

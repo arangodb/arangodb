@@ -28,6 +28,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "infra/RocksDBMonitors.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
@@ -233,6 +234,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr ||
@@ -257,6 +259,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -277,6 +280,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -295,6 +299,7 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -313,6 +318,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -570,7 +576,11 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
       return rocksutils::convertStatus(ts);
     }
   }
-  rocksdb::Status s = _rocksTransaction->Commit();
+  rocksdb::Status s;
+  {
+    infra::ResourceMonitorScope memoryScope = infra::rocksdbWriteScope();
+    s = _rocksTransaction->Commit();
+  }
   if (!s.ok()) {  // cleanup performed by scope-guard
     return rocksutils::convertStatus(s);
   }
