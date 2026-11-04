@@ -750,6 +750,7 @@ class CircleCIGenerator(OutputGenerator):
             + json.dumps(
                 job.arguments.arangosh_args + self.config.test_execution.arangosh_args
             ),
+            "prefix": "",
         }
 
         extra_args_str = self._build_extra_args_string(
@@ -844,6 +845,7 @@ class CircleCIGenerator(OutputGenerator):
                 "rta-branch": rta_branch,
                 "buckets": bucket_count,
                 "sanitizer": self._get_sanitizer_param(build_config),
+                "prefix": "prod_" if BuildConfig.publish_non_maintainer else "",
             }
             result_jobs.append({"run-rta-tests": job_dict})
 
