@@ -24,7 +24,7 @@ The scripts here also set up the results store and Grafana locally, so the whole
    port 8529, so use another one, e.g.:
 
    ```bash
-   docker run -d -p 8530:8529 -e ARANGO_NO_AUTH=1 arangodb/enterprise-preview:devel-nightly --vector-index=true
+   docker run -d -p 8530:8529 -e ARANGO_NO_AUTH=1 arangodb/core-preview:4.0-nightly --vector-index=true
    ```
 
 2. Start the results store + Grafana (http://localhost:3000, `admin` / `admin`). With
