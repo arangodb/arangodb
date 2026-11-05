@@ -207,8 +207,22 @@ void RelationshipPatternBuilder::emitVariableLength(
 
   state.prevVar = rightVertexVar;
 
-  _paths.appendTraversalPath(state.pathVertices, state.pathEdges,
-                             edge.variable);
+  // Reuse the projected start variable when available; otherwise, retrieve
+  // the actual starting vertex document from traversal.vertices.
+  Variable const* startDestination = nullptr;
+  if (!state.pathVertices.empty() &&
+      state.pathVertices.back()->type == NODE_TYPE_REFERENCE) {
+    auto const* startVar =
+        static_cast<Variable const*>(state.pathVertices.back()->getData());
+    if (state.variableScope.map().find(startVar->id) !=
+        state.variableScope.map().end()) {
+      startDestination = startVar;
+    }
+  }
+
+  _paths.appendTraversalPath(state.pathVertices, state.pathEdges, edge.variable,
+                             startDestination,
+                             targetOutputs.destinationVariable);
 }
 
 std::tuple<ExecutionNode*, ExecutionNode*, Variable const*>
