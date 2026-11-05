@@ -100,10 +100,6 @@ std::string sslPBKDF2(char const* salt, size_t const saltLength,
         return EVP_sha256();
       case Algorithm::SHA1:
         return EVP_sha1();
-      case Algorithm::DEPRECATED_MD5:
-        LOG_TOPIC("8f3a1", WARN, Logger::AUTHENTICATION)
-            << "The use of MD5 in PBKDF2 is deprecated";
-        return nullptr;
       case Algorithm::SHA224:
         return EVP_sha224();
       case Algorithm::SHA384:
@@ -133,10 +129,6 @@ std::string sslHMAC(char const* key, size_t const keyLength,
         return "SHA256";
       case Algorithm::SHA1:
         return "SHA1";
-      case Algorithm::DEPRECATED_MD5:
-        LOG_TOPIC("8f3a1", WARN, Logger::AUTHENTICATION)
-            << "The use of MD5 in HMAC is deprecated";
-        return nullptr;
       case Algorithm::SHA224:
         return "SHA224";
       case Algorithm::SHA384:

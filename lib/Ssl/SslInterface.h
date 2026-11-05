@@ -32,10 +32,9 @@ namespace arangodb::rest::SslInterface {
 enum class Algorithm : uint8_t {
   SHA256 = 0,
   SHA1 = 1,
-  DEPRECATED_MD5 = 2,
-  SHA224 = 3,
-  SHA384 = 4,
-  SHA512 = 5
+  SHA224 = 2,
+  SHA384 = 3,
+  SHA512 = 4
 };
 
 //////////////////////////////////////////////////////////////////////////
