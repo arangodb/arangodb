@@ -1582,6 +1582,7 @@ jobs:
           at: work/ArangoDB
       - run: |
           cd work/ArangoDB
+          ls -l
           tar -xvzf << parameters.prefix >>binaries.tar.gz
           tar -xvzf frontend.tar.gz
       - fetch-aux-binaries:
