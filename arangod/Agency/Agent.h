@@ -26,6 +26,7 @@
 #include "Agency/AgencyStrings.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
+#include "Agency/CommitIndex.h"
 #include "Agency/Compactor.h"
 #include "Agency/Constituent.h"
 #include "Agency/Inception.h"
@@ -374,6 +375,12 @@ class Agent final : public arangodb::ServerThread, public AgentInterface {
   /// Furthermore, we make the member atomic, such that we can occasionally
   /// read it without the locks, for example in sendEmptyAppendEntriesRPC.
   std::atomic<index_t> _commitIndex;
+
+  /// @brief Follower: index up to which our log is known to agree with the
+  /// log of the current leader. Used to advance _commitIndex on empty
+  /// appendEntriesRPC calls, which carry no log consistency check.
+  /// Protected by the write lock of _outputLock.
+  commit_index::FollowerLogVerification _followerLogVerification;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
