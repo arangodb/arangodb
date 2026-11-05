@@ -23,9 +23,11 @@
 #include "EnumeratePathsExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/Variable.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -57,12 +59,17 @@ template<class FinderType>
 EnumeratePathsExecutorInfos<FinderType>::EnumeratePathsExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     std::unique_ptr<FinderType>&& finder, InputVertex&& source,
-    InputVertex&& target)
+    InputVertex&& target,
+    std::vector<std::pair<Variable const*, RegisterId>>
+        filterConditionVariables,
+    FixedVarExpressionContext& expressionContext)
     : _query(query),
       _finder(std::move(finder)),
       _source(std::move(source)),
       _target(std::move(target)),
-      _outputRegister(outputRegister) {}
+      _outputRegister(outputRegister),
+      _filterConditionVariables(std::move(filterConditionVariables)),
+      _expressionContext(expressionContext) {}
 
 template<class FinderType>
 FinderType& EnumeratePathsExecutorInfos<FinderType>::finder() const {
@@ -135,6 +142,22 @@ auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 }
 
 template<class FinderType>
+void EnumeratePathsExecutorInfos<FinderType>::prepareFilterConditionVariables(
+    InputAqlItemRow const& input) {
+  for (auto const& [var, reg] : _filterConditionVariables) {
+    _expressionContext.setVariableValue(var, input.getValue(reg));
+  }
+}
+
+template<class FinderType>
+void EnumeratePathsExecutorInfos<
+    FinderType>::unPrepareFilterConditionVariables() noexcept {
+  if (!_filterConditionVariables.empty()) {
+    _expressionContext.clearVariableValues();
+  }
+}
+
+template<class FinderType>
 EnumeratePathsExecutor<FinderType>::EnumeratePathsExecutor(Fetcher& fetcher,
                                                            Infos& infos)
     : _infos(infos),
@@ -160,6 +183,7 @@ EnumeratePathsExecutor<FinderType>::EnumeratePathsExecutor(Fetcher& fetcher,
 template<class FinderType>
 auto EnumeratePathsExecutor<FinderType>::shutdown(int errorCode)
     -> std::pair<ExecutionState, Result> {
+  _infos.unPrepareFilterConditionVariables();
   _finder.destroyEngines();
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
@@ -221,6 +245,10 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
     AqlItemBlockInputRange& input) -> bool {
   TRI_ASSERT(_finder.isDone());
   _finder.clear();
+  // Drop any previously injected outer filter variables before looking at the
+  // next input row. PathValidator evaluates pushed-down filters in this shared
+  // FixedVarExpressionContext and expects those variables to be present.
+  _infos.unPrepareFilterConditionVariables();
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
@@ -233,6 +261,7 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
+      _infos.prepareFilterConditionVariables(_inputRow);
       _finder.reset(VertexRef{arangodb::velocypack::HashedStringRef(source)},
                     VertexRef{arangodb::velocypack::HashedStringRef(target)});
       return true;

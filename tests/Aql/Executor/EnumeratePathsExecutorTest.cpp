@@ -270,7 +270,8 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
                       std::make_unique<FakeKShortestPathsFinder>(
                           options, parameters._paths),
                       std::move(parameters._source),
-                      std::move(parameters._target)),
+                      std::move(parameters._target), {},
+                      options.getExpressionCtx()),
         finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager,
                                  std::move(parameters._inputMatrix))),

@@ -17,6 +17,12 @@
 
 3.12.13 (2026-10-28)
 --------------------
+* COR-918: Push path filters with an inline FILTER into K_PATHS and friends
+  Improved path filtering performance by improving query optimization for `K_PATHS`, `K_SHORTEST_PATHS`, and `ALL_SHORTEST_PATHS` queries that use inline `FILTER` 
+  conditions on path vertices or edges. These filters can now be applied earlier while 
+  paths are being enumerated, reducing unnecessary path processing and improving query 
+  performance for affected queries.
+  
 
 * BTS-2496: AQL `LENGTH()` and `COUNT()` of a subquery that contains a `COLLECT`
   return the number of rows the subquery produces after the `COLLECT` and any
