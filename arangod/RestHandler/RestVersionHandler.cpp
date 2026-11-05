@@ -24,7 +24,6 @@
 #include "Basics/ApiVersion.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
 #include "RestVersionHandler.h"
 
 #include <velocypack/Builder.h>
@@ -39,14 +38,14 @@ using namespace arangodb::rest;
 
 namespace {
 
-// Emits the version names newest first. The tables are compile-time constants
-// kept in ascending order (see the static_asserts in ApiVersion.h), hence the
-// reverse iteration
+// Emits the full served versions newest first. The tables are compile-time
+// constants kept in ascending order (see the static_asserts in ApiVersion.h),
+// hence the reverse iteration
 void addVersionArray(VPackBuilder& result, std::string_view name,
                      std::span<ApiVersion const> versions) {
   result.add(name, VPackValue(VPackValueType::Array));
   for (auto it = versions.rbegin(); it != versions.rend(); ++it) {
-    result.add(VPackValue(to_string(*it)));
+    result.add(VPackValue(api_version::formatServedApiVersion(*it)));
   }
   result.close();
 }

@@ -61,6 +61,7 @@
     "ERROR_HTTP_GATEWAY_TIMEOUT"   : { "code" : 504, "message" : "gateway timeout" },
     "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" },
     "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" },
+    "ERROR_HTTP_API_VERSION_MISMATCH" : { "code" : 602, "message" : "API version mismatch" },
     "ERROR_ARANGO_ILLEGAL_STATE"   : { "code" : 1000, "message" : "illegal state" },
     "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "read only" },
     "ERROR_ARANGO_DUPLICATE_IDENTIFIER" : { "code" : 1005, "message" : "duplicate identifier" },

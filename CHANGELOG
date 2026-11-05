@@ -1,6 +1,17 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* API versions now have the full form `vMAJOR.MINOR-BRANCH`, e.g. `v1.0-4`,
+  as reported by `GET /_api/version`.
+  Clients can send an `x-arango-api-version` header with the version they
+  expect; the server rejects the request with HTTP 400 and the error
+  `ERROR_HTTP_API_VERSION_MISMATCH` (602) if the requested version is not
+  compatible with the server (i.e., the major version differs with the version
+  from the URL, or the server has a lower minor version or branch).
+  Responses also contain the `x-arango-api-version` header with the full version
+  the server supports for the requested version.
+  For `/_arango/experimental` the header is not allowed.
+
 * COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").
