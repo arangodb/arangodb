@@ -557,6 +557,7 @@ commands:
             - attach_workspace:
                 at: .
             - run: |
+                ls -l
                 tar -xvzf << parameters.prefix >>binaries.tar.gz
                 tar -xvzf frontend.tar.gz
       - when:
