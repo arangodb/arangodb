@@ -195,16 +195,23 @@ void specializeCollectRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
       bool needNewSortNode = true;
       if (sortNode != nullptr) {
-        needNewSortNode = false;
-        // we found a SORT node, now let's check if it covers all our group
-        // variables
-        auto& elems = sortNode->elements();
-        for (auto const& v : groupVariables) {
-          needNewSortNode |= std::find_if(elems.begin(), elems.end(),
-                                          [&v](SortElement const& e) {
-                                            return e.var == v.inVar;
-                                          }) == elems.end();
-        }
+        // The existing SORT groups the rows correctly only if the group
+        // variables are its leading sort keys. A key that is not a group
+        // variable in front of them splits a group into several runs.
+        auto isGroupVariable = [&groupVariables](Variable const* var) {
+          return std::any_of(groupVariables.begin(), groupVariables.end(),
+                             [var](auto const& v) { return v.inVar == var; });
+        };
+        auto const& elems = sortNode->elements();
+        auto const leadingEnd = std::find_if_not(
+            elems.begin(), elems.end(),
+            [&](SortElement const& e) { return isGroupVariable(e.var); });
+        needNewSortNode = std::any_of(
+            groupVariables.begin(), groupVariables.end(), [&](auto const& v) {
+              return std::none_of(
+                  elems.begin(), leadingEnd,
+                  [&v](SortElement const& e) { return e.var == v.inVar; });
+            });
       }
 
       if (needNewSortNode) {
