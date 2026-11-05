@@ -116,6 +116,10 @@ parameters:
     type: string
     default: "source"
     description: semicolon separated list of versions to upgrade to, could as well be <source> for this version
+  run-upgrade-tests:
+    type: bool
+    default: false
+    description: whether to run the upgrade tests or not
 
 
 # our defined job, and its steps
@@ -316,6 +320,7 @@ jobs:
               --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \
+              <<# pipeline.parameters.run-upgrade-tests >> --run-upgrade-tests  <</ pipeline.parameters.run-upgrade-tests >>\
               <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
               <<# pipeline.parameters.with-clang-tidy >> --clang-tidy <</ pipeline.parameters.with-clang-tidy >> \

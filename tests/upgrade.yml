@@ -8,6 +8,7 @@ tests:
       buckets: 1
     requires:
       arch: x64
+      run-upgrade-tests: true
     args:
       checkdata: true
       run-upgrade: true
@@ -18,6 +19,7 @@ tests:
       buckets: 1
     requires:
       arch: aarch64
+      run-upgrade-tests: true
     args:
       checkdata: true
       run-upgrade: true

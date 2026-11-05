@@ -176,6 +176,7 @@ class TestRequirements:
         None  # Include/exclude for instrumented builds (TSAN/ALUBSAN/COVERAGE)
     )
     coverage: Optional[bool] = None  # Include/exclude for coverage builds only
+    run_upgrade_tests: Optional[bool] = None
     v8: Optional[bool] = None  # Include/exclude for v8 builds
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
@@ -204,11 +205,11 @@ class TestRequirements:
             kwargs["coverage"] = data["coverage"]
         if "v8" in data:
             kwargs["v8"] = data["v8"]
-
+        if "run-upgrade-tests" in data:
+            kwargs["run_upgrade_tests"] = data["run-upgrade-tests"]
         # Handle arch field
         if "arch" in data and data["arch"] is not None:
             kwargs["architecture"] = Architecture.from_string(data["arch"])
-
         return cls(**kwargs)
 
     def merge_with(self, override: Optional["TestRequirements"]) -> "TestRequirements":
@@ -237,6 +238,7 @@ class TestRequirements:
             full=merge_field(override.full, self.full),
             instrumentation=merge_field(override.instrumentation, self.instrumentation),
             coverage=merge_field(override.coverage, self.coverage),
+            run_upgrade_tests=merge_field(override.run_upgrade_tests, self.run_upgrade_tests),
             v8=merge_field(override.v8, self.v8),
             architecture=merge_field(override.architecture, self.architecture),
         )

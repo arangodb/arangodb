@@ -149,6 +149,7 @@ def create_generator_config(
     test_image: str,
     arangosh_args: str,
     extra_args: str,
+    run_upgrade_tests: bool,
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
@@ -188,6 +189,7 @@ def create_generator_config(
         gtest=gtest,
         full=full,
         clang_tidy=clang_tidy,
+        run_upgrade_tests=run_upgrade_tests,
         v8=not arangod_without_v8,
         test_suite=test_suite,
     )
@@ -271,6 +273,11 @@ def create_generator_config(
     help="Additional arguments to append to testing.js",
 )
 @click.option(
+    "--run-upgrade-tests",
+    is_flag=True,
+    help="whether to run the upgrade tests or not",
+)
+@click.option(
     "--arangod-without-v8",
     is_flag=True,
     help="Run without JavaScript (V8 disabled)",
@@ -333,6 +340,7 @@ def main(
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
+    run_upgrade_tests: bool,
     arangod_without_v8: bool,
     gtest: bool,
     full: bool,
@@ -369,6 +377,7 @@ def main(
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
+            run_upgrade_tests=run_upgrade_tests,
             arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
