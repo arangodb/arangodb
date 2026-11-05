@@ -974,7 +974,7 @@ jobs:
           archive: frontend.tar.gz
       - persist_to_workspace:
           root: .
-          paths: /tmp/circleci-workspace/frontend.tar.gz
+          paths: frontend.tar.gz
 
   compile-linux:
     parameters:
