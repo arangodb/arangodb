@@ -38,7 +38,7 @@
 //   - isSuperuser / isSuperuserOrDisabled checks do not call can().
 //   - The real extra questions come from RestAdminServerHandler:
 //     PUT mode -> AdminMaintenance, api-calls -> AdminApiCalls,
-//     aql-queries -> AdminAqlQueries.
+//     aql-queries -> AdminMonitorQueries.
 
 if (getOptions === true) {
         return {
@@ -159,7 +159,7 @@ function serverApiAuthzSuite() {
                 },
 
                 // GET /_admin/server/aql-queries - RestAdminServerHandler::handleAqlQueries()
-                // asks canUseAdminAction(AdminAqlQueries) (line 385).
+                // asks canUseAdminAction(AdminMonitorQueries) (line 385).
                 // AUDIT: assumes default admin recording mode (see testApiCalls).
                 testAqlQueries: function () {
                         beginObserve();
@@ -167,7 +167,7 @@ function serverApiAuthzSuite() {
                         assertPermissions([
                                 "UseApiVersion version=v1",
                                 "UseDatabase name=_system level=read",
-                                "AdminAqlQueries"
+                                "AdminMonitorQueries"
                         ], endObserve());
                 },
 
