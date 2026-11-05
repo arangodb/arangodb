@@ -20,7 +20,7 @@ RUN apt-get update --fix-missing && \
       software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
       vim exuberant-ctags gdb fish psmisc sudo jq libdb-dev \
-      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
+      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev libgfortran-${COMPILER_VERSION}-dev \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
       clamav \
@@ -75,7 +75,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch 
+RUN git apply /diff_llvm.patch
 
 WORKDIR build
 
