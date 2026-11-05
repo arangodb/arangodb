@@ -26,9 +26,11 @@
 #include <array>
 #include <cstdint>
 #include <iosfwd>
+#include <string>
 #include <string_view>
 
 namespace arangodb {
+class Result;
 
 // fuerte defines its own ApiVersion so that it does not have to include server
 // headers. The two are kept in lockstep by `toFuerte` in ApiVersionFuerte.h,
@@ -103,6 +105,15 @@ constexpr bool isApiVersionSupported(ApiVersion version) {
 // Deliberately excludes the experimental version: that is reached via
 // /_arango/experimental, never via its version number.
 bool isApiVersionRequestable(ApiVersion version);
+
+// The full identifier vMAJOR.MINOR-BRANCH this server serves for the given
+// major version, e.g. "v1.0-4". The experimental version has no minor version
+// or branch tag and yields its name.
+std::string formatServedApiVersion(ApiVersion version);
+
+// Checks the value of an x-arango-api-version request header against the
+// version this server serves for the major version selected in the URL.
+Result checkRequestedApiVersion(ApiVersion version, std::string_view header);
 
 }  // namespace api_version
 }  // namespace arangodb

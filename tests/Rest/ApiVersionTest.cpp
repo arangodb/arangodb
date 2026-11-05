@@ -24,9 +24,11 @@
 
 #include <sstream>
 #include <string>
+#include <string_view>
 
 #include "Basics/ApiVersion.h"
 #include "Basics/ApiVersionFuerte.h"
+#include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
 
 #include <velocypack/Builder.h>
@@ -78,6 +80,62 @@ TEST(ApiVersionTest, InspectDeserializesTheName) {
         velocypack::deserializeWithStatus(json->slice(), result);
     ASSERT_TRUE(status.ok()) << status.error();
     EXPECT_EQ(version, result);
+  }
+}
+
+// The branch tag is the major product version, so these expectations must be
+// updated together with ARANGODB_VERSION_MAJOR.
+
+TEST(ApiVersionTest, ServedVersionIsTheFullIdentifier) {
+  EXPECT_EQ("v1.0-4", api_version::formatServedApiVersion(ApiVersion::V1));
+  EXPECT_EQ("experimental",
+            api_version::formatServedApiVersion(ApiVersion::Experimental));
+}
+
+TEST(ApiVersionTest, RequestedVersionAcceptsWhatTheServerServes) {
+  auto const header = api_version::formatServedApiVersion(ApiVersion::V1);
+  EXPECT_TRUE(
+      api_version::checkRequestedApiVersion(ApiVersion::V1, header).ok());
+}
+
+// A client written against 3.12 keeps working after the upgrade to 4.
+TEST(ApiVersionTest, RequestedVersionAcceptsALowerBranch) {
+  EXPECT_TRUE(
+      api_version::checkRequestedApiVersion(ApiVersion::V1, "v1.0-3").ok());
+}
+
+TEST(ApiVersionTest, RequestedVersionRejectsIncompatibleVersions) {
+  for (std::string_view header : {
+           "v1.1-4",  // higher minor
+           "v1.0-5",  // higher branch
+           "v0.0-3",  // major differs from the URL
+           "v2.0-4",  // major differs from the URL
+       }) {
+    EXPECT_EQ(TRI_ERROR_HTTP_API_VERSION_MISMATCH,
+              api_version::checkRequestedApiVersion(ApiVersion::V1, header)
+                  .errorNumber())
+        << header;
+  }
+}
+
+TEST(ApiVersionTest, RequestedVersionRejectsMalformedHeaders) {
+  for (std::string_view header :
+       {"", "v1", "v1.0", "1.0-4", "V1.0-4", "v1.0-", "v.0-4", "v1.-4",
+        "v1.0-4x", " v1.0-4", "v1.0-4 ", "v01.0-4", "v1.00-4", "v1.0-04",
+        "v+1.0-4", "v-1.0-4", "v1.0-99999999999999999999", "experimental"}) {
+    EXPECT_EQ(TRI_ERROR_BAD_PARAMETER,
+              api_version::checkRequestedApiVersion(ApiVersion::V1, header)
+                  .errorNumber())
+        << "'" << header << "'";
+  }
+}
+
+TEST(ApiVersionTest, RequestedVersionIsNotAllowedForExperimental) {
+  for (std::string_view header : {"v1.0-4", "experimental"}) {
+    EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, api_version::checkRequestedApiVersion(
+                                           ApiVersion::Experimental, header)
+                                           .errorNumber())
+        << header;
   }
 }
 

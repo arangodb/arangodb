@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
@@ -203,6 +204,22 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
 
+  if (_isUserRequest) {
+    bool found = false;
+    std::string const& headerVersion =
+        req.header(StaticStrings::XArangoApiVersion, found);
+    if (found) {
+      if (auto res = api_version::checkRequestedApiVersion(
+              req.requestedApiVersion(), headerVersion);
+          res.fail()) {
+        sendErrorResponse(GeneralResponse::responseCode(res.errorNumber()),
+                          req.contentTypeResponse(), req.messageId(),
+                          res.errorNumber(), res.errorMessage());
+        return Flow::Abort;
+      }
+    }
+  }
+
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
@@ -341,6 +358,11 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
+  if (auto version = res.apiVersion(); version.has_value()) {
+    res.setHeaderNC(StaticStrings::XArangoApiVersion,
+                    api_version::formatServedApiVersion(*version));
+  }
+
   if (this->_isUserRequest) {
     // CORS response handling - only needed on user facing coordinators
     // or single servers
@@ -412,6 +434,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
+  response->setApiVersion(request->requestedApiVersion());
 
   // store the message id for error handling
   uint64_t messageId = request->messageId();
