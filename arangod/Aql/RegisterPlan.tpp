@@ -37,39 +37,19 @@ template<typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  // TODO There are some difficulties with view nodes to resolve before this
-  // code
-  //      can be activated. Also see the comment on assertNoVariablesMissing()
-  //      below.
-  //
-#if 0
-  /*
-   * SubqueryEnd does indeed access a variable that is not valid. How can that
-   * be? The varsValid stack is already popped for SUBQUERY_END. But
-   * varsUsedHere includes the read of the return value from the subquery level.
-   */
+  // SUBQUERY_END reads the subquery's return value, which is set inside the
+  // subquery. Its varsValid already belongs to the outer level, so that
+  // variable is never in it.
   if (en->getType() != ExecutionNode::SUBQUERY_END) {
     VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
-
     VarSet const& varsValid = en->getVarsValid();
     for (auto&& var : varsUsedHere) {
-      if (varsValid.find(var) == varsValid.end()) {
-        TRI_ASSERT(false);
-        /*
-         * There is a single IResearch tests that _requires_ this exception
-         * to be thrown.
-         */
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       en->getTypeString() + " " +
-                                           std::to_string(en->id().id()) + " " +
-                                           std::string("Variable ") + var->name +
-                                           " (" + std::to_string(var->id) +
-                                           ") is used before it was set.");
+      if (!varsValid.contains(var)) {
+        throw MissingVariablesException(var, en, ADB_HERE);
       }
     }
   }
-#endif
 
   // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
@@ -139,22 +119,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  // TODO This is here to be backwards-compatible with some view tests relying
-  //      on this check. When that is cleaned up, uncomment the check further
-  //      above instead and remove this.
-  auto const assertNoVariablesMissing = [this, &varsUsedLater](T* en) {
-    if (en->getType() != ExecutionNode::RETURN) {
-      VarSet varsUsedHere;
-      en->getVariablesUsedHere(varsUsedHere);
-      for (auto const& v : varsUsedHere) {
-        if (!varsUsedLater.contains(v) && !plan->varInfo.contains(v->id)) {
-          // report an error here to prevent crashing
-          throw MissingVariablesException(v, en, ADB_HERE);
-        }
-      }
-    }
-  };
-
   auto const calculateRegistersToReuse =
       [](VarSet const& varsUsedLater, RegVarMap const& regVarMap) -> RegIdSet {
     RegIdSet regsToReuse;
@@ -172,7 +136,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   RegIdSet regsToClear;
   auto const updateRegistersToClearAndReuse = [&](bool insertIntoRegsToClear) {
     if (en->getType() != ExecutionNode::RETURN) {
-      assertNoVariablesMissing(en);
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
       for (auto const& reg : regsToReuse) {
