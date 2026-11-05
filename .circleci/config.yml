@@ -117,7 +117,7 @@ parameters:
     default: "source"
     description: semicolon separated list of versions to upgrade to, could as well be <source> for this version
   run-upgrade-tests:
-    type: bool
+    type: boolean
     default: false
     description: whether to run the upgrade tests or not
 

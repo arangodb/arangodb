@@ -107,6 +107,10 @@ parameters:
   upgrade_to:
     type: string
     default: "source"
+  run-upgrade-tests:
+    type: boolean
+    default: false
+    description: whether to run the upgrade tests or not
 
 .shared-test-job-parameters: &shared-test-job-parameters
   suiteName:
