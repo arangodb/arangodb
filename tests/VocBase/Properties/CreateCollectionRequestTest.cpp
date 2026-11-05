@@ -143,16 +143,6 @@ class CreateCollectionRequestTest : public ::testing::Test {
     return std::move(request->descriptor);
   }
 
-  // name and type are arguments of the V8 API, not part of the body
-  static ResultT<CollectionDescriptor> parseV8(VPackSlice body) {
-    auto request = CreateCollectionRequest::fromCreateAPIV8(
-        body, "test", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
-    if (request.fail()) {
-      return request.result();
-    }
-    return std::move(request->descriptor);
-  }
-
   static ResultT<CollectionDescriptor> parseRestore(VPackSlice body) {
     auto request =
         CreateCollectionRequest::fromRestoreAPIBody(body, defaultDBConfig());
@@ -1546,85 +1536,11 @@ TEST_F(CreateCollectionRequestTest,
 }
 
 /**********************
- * fromCreateAPIV8
- *********************/
-
-// The V8 API shares the allow list with fromCreateAPIBody, so the same values
-// are accepted and corrected. name and type arrive as arguments.
-
-// name and type are taken from the arguments when the body has neither
-TEST_F(CreateCollectionRequestTest, test_v8_nameAndTypeComeFromArguments) {
-  VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
-  auto testee = parseV8(body.slice());
-  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
-  EXPECT_EQ(testee->mutableProps.name, "test");
-  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
-}
-
-// an empty name argument is rejected before the body is parsed
-TEST_F(CreateCollectionRequestTest, test_v8_nameArgumentCannotBeEmpty) {
-  VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
-  auto testee = CreateCollectionRequest::fromCreateAPIV8(
-      body.slice(), "", TRI_COL_TYPE_DOCUMENT, defaultDBConfig());
-  ASSERT_TRUE(testee.fail());
-  EXPECT_EQ(testee.errorNumber(), TRI_ERROR_ARANGO_ILLEGAL_NAME);
-}
-
-// numberOfShards: null is accepted as absent, 0 is rejected
-TEST_F(CreateCollectionRequestTest, test_v8NumberOfShardsNullIsAccepted) {
-  VPackBuilder empty;
-  { VPackObjectBuilder guard(&empty); }
-  auto missing = parseV8(empty.slice());
-  ASSERT_TRUE(missing.ok()) << missing.errorMessage();
-
-  auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards,
-                                            VPackSlice::nullSlice());
-  auto testee = parseV8(body.slice());
-  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->clusteringConstant.numberOfShards,
-            missing->clusteringConstant.numberOfShards);
-}
-
-TEST_F(CreateCollectionRequestTest, test_v8NumberOfShardsZeroIsRejected) {
-  auto body = createMinimumBodyWithOneValue(StaticStrings::NumberOfShards, 0);
-  EXPECT_TRUE(parseV8(body.slice()).fail()) << " On body " << body.toJson();
-}
-
-// an unknown type becomes document, "edge" becomes edge
-TEST_F(CreateCollectionRequestTest, test_v8TypeUnknownNumberBecomesDocument) {
-  auto body = createMinimumBodyWithOneValue(StaticStrings::DataSourceType, 4);
-  auto testee = parseV8(body.slice());
-  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_DOCUMENT);
-}
-
-TEST_F(CreateCollectionRequestTest, test_v8TypeStringBecomesEdge) {
-  auto body =
-      createMinimumBodyWithOneValue(StaticStrings::DataSourceType, "edge");
-  auto testee = parseV8(body.slice());
-  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
-  EXPECT_EQ(testee->constant.getType(), TRI_COL_TYPE_EDGE);
-}
-
-// the "upgrade" key generator is for the load path only
-TEST_F(CreateCollectionRequestTest, test_v8_keyOptions_upgradeIsNotUserInput) {
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    VPackObjectBuilder keyOptions(&body, StaticStrings::KeyOptions);
-    body.add("type", VPackValue("upgrade"));
-  }
-  EXPECT_TRUE(parseV8(body.slice()).fail()) << " On body " << body.toJson();
-}
-
-/**********************
  * fromRestoreAPIBody
  *********************/
 
 // Restore has its own allow list, which takes precedence over the one the
-// other two APIs use. It is forever backwards compatible.
+// create API uses. It is forever backwards compatible.
 
 // the id in the body is never taken, a fresh one is generated
 TEST_F(CreateCollectionRequestTest, test_restore_generatesFreshId) {

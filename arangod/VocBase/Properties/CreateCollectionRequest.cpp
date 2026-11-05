@@ -718,33 +718,6 @@ ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIBody(
   return res;
 }
 
-ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIV8(
-    VPackSlice properties, std::string const& name, TRI_col_type_e type,
-    DatabaseConfiguration const& config) {
-  if (name.empty()) {
-    // Special handling to be backwards compatible error reporting
-    // on "name"
-    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-  }
-  auto applyDefaults = [&name, &type](CollectionDescriptor& col) {
-    // Inject the default values given by V8 in a separate parameter
-    col.constant.type = type;
-    col.mutableProps.name = name;
-  };
-  auto applyHacks = [](CollectionDescriptor& col) {
-#ifdef USE_ENTERPRISE
-    if (col.constant.isDisjoint) {
-      // We don't support disjoint collection creation for enterprise
-      // over V8API
-      col.constant.isDisjoint = false;
-    }
-#endif
-  };
-
-  return ::parseAndValidate(config, properties, applyDefaults,
-                            ::rewriteStatusErrorMessage, applyHacks);
-}
-
 ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
     VPackSlice input, DatabaseConfiguration const& config) {
   auto res = ::parseAndValidate(
