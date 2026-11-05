@@ -65,7 +65,7 @@ constexpr std::optional<VersionNumber> servedVersion(ApiVersion version) {
   return std::nullopt;
 }
 
-// A decimal number without sign or leading zeros.
+// Parse decimal number without sign or leading zeros.
 std::optional<unsigned> parseNumber(std::string_view s) {
   if (s.empty() || (s.size() > 1 && s.front() == '0')) {
     return std::nullopt;
@@ -78,7 +78,7 @@ std::optional<unsigned> parseNumber(std::string_view s) {
   return value;
 }
 
-// Strictly vMAJOR.MINOR-BRANCH.
+// Parse input strings of the form vMAJOR.MINOR-BRANCH.
 std::optional<VersionNumber> parseVersionNumber(std::string_view s) {
   if (!s.starts_with('v')) {
     return std::nullopt;
