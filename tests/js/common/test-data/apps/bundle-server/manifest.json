@@ -1,0 +1,7 @@
+{
+  "name": "bundle-server",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "serves a zip bundle of itself, so tests can install a service from a URL on the local server",
+  "main": "index.js"
+}
