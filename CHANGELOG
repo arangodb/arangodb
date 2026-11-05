@@ -12,6 +12,9 @@
   the server supports for the requested version.
   For `/_arango/experimental` the header is not allowed.
 
+* Build faiss with SIMD optimizations (AVX2, or AVX-512 for the icelake target
+  architecture) and LTO, speeding up vector index operations.
+
 * COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").
