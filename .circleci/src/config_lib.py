@@ -607,6 +607,7 @@ class TestJob:
     requires: TestRequirements = field(default_factory=TestRequirements)
     repository: Optional[RepositoryConfig] = None
     job_type: str = "run-linux-tests"  # CircleCI job template to use
+    prefix: str = ""
 
     def __post_init__(self):
         """Validate test job configuration."""
@@ -767,6 +768,7 @@ class TestJob:
             requires=TestRequirements.from_dict(data.get("requires")),
             repository=RepositoryConfig.from_dict(data.get("repository")),
             job_type=job_type,
+            prefix=data.get("prefix"),
         )
 
     def is_multi_suite(self) -> bool:
@@ -927,7 +929,7 @@ class TestDefinitionFile:
                         job_data = {}
                     if "repository" not in job_data:
                         job_data["repository"] = repo_config
-
+                job_data['prefix'] = "prod_" if use_non_maintainer_build else ""
                 # Parse job and generate unique key
                 job = TestJob.from_dict(job_name, job_data)
                 unique_key = cls._generate_unique_key(job, jobs.keys())

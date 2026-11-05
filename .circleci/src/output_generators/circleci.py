@@ -737,7 +737,8 @@ class CircleCIGenerator(OutputGenerator):
         size_override = self._get_size_override(job.name, build_config, is_cluster)
         size = size_override or job.options.size or ResourceSize.SMALL
         resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
-
+        if job.prefix is None:
+            job.prefix = ""
         job_dict = {
             "name": job_name,
             "suiteName": suite_name,
@@ -750,7 +751,7 @@ class CircleCIGenerator(OutputGenerator):
             + json.dumps(
                 job.arguments.arangosh_args + self.config.test_execution.arangosh_args
             ),
-            "prefix": "",
+            "prefix": job.prefix,
         }
 
         extra_args_str = self._build_extra_args_string(
@@ -845,7 +846,7 @@ class CircleCIGenerator(OutputGenerator):
                 "rta-branch": rta_branch,
                 "buckets": bucket_count,
                 "sanitizer": self._get_sanitizer_param(build_config),
-                "prefix": "prod_" if BuildConfig.publish_non_maintainer else "",
+                "prefix": job.prefix,
             }
             result_jobs.append({"run-rta-tests": job_dict})
 
