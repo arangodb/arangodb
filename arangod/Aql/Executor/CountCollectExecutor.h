@@ -108,6 +108,9 @@ class CountCollectExecutor {
 
  private:
   Infos const& _infos;
+  // COLLECT WITH COUNT produces exactly one row. After it was produced or
+  // skipped, fullCount must not count that same row again.
+  bool _rowAccounted{false};
 };
 
 }  // namespace aql

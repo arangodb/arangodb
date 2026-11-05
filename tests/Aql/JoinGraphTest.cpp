@@ -27,13 +27,14 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
+#include "Async/async.h"
 #include "Transaction/StandaloneContext.h"
 
 #include "velocypack/Parser.h"
 
-#include "../IResearch/common.h"
-#include "../Mocks/Servers.h"
-#include "Async/async.h"
+#include "IResearch/common.h"
+#include "Mocks/Servers.h"
+#include "Mocks/CollectionDescriptors.h"
 
 #include <algorithm>
 #include <memory>
@@ -52,9 +53,8 @@ class JoinGraphTest : public testing::Test {
   JoinGraphTest() {
     auto& vocbase = server.getSystemDatabase();
     for (auto const& name : {"c1", "c2", "c3"}) {
-      auto json = velocypack::Parser::fromJson(std::string{R"({"name":")"} +
-                                               name + "\"}");
-      vocbase.createCollection(json->slice());
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(name);
+      vocbase.createCollection(colDescriptor);
     }
   }
 

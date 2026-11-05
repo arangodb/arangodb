@@ -124,6 +124,24 @@ struct ExecutionStats {
   /// @brief number of commits that happened for the query
   uint64_t intermediateCommits = 0;
 
+  /// @brief number of IVF vector index searches (one per query point)
+  uint64_t vectorSearches = 0;
+
+  /// @brief number of IVF inverted lists scanned
+  uint64_t vectorListsScanned = 0;
+
+  /// @brief number of distances computed against list entries
+  uint64_t vectorDistancesComputed = 0;
+
+  /// @brief number of top-k heap updates during list scans
+  uint64_t vectorHeapUpdates = 0;
+
+  /// @brief time spent comparing query points against centroids (seconds)
+  double vectorCoarseSearchTime = 0.0;
+
+  /// @brief time spent scanning the probed lists (seconds)
+  double vectorListScanTime = 0.0;
+
  private:
   /// @brief Node aliases, source => target.
   ///        Every source node in the this aliases list

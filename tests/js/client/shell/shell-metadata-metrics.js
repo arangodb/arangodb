@@ -39,7 +39,9 @@ function metadataMetricsSuite() {
   const numberOfShardsMetric = "arangodb_metadata_number_of_shards";
 
   let assertMetrics = function (endpoints, expectedDatabases, expectedCollections, expectedShards) {
-    const retries = isCluster() ? 3 : 1;
+    // coordinators update their metrics when they load the new Plan, which
+    // can take a while on slow (e.g. sanitizer) builds
+    const retries = isCluster() ? 30 : 1;
 
     endpoints.forEach((ep) => {
       let numDatabases = ep.getMetric(numberOfDatabasesMetric);

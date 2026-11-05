@@ -33,6 +33,7 @@
 #include "utils/file_utils.hpp"
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -1401,8 +1402,8 @@ TEST_F(IResearchFeatureTest, test_start) {
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // test single-server (no directory)
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -1444,7 +1445,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
   // logicalView0->guid();
@@ -1512,8 +1513,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   // test single-server (with directory)
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -1554,7 +1555,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView0);
@@ -2042,12 +2043,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>()
       .enableUpgrade();  // skip IResearchView validation
 
-  auto factory = arangodb::iresearch::IResearchLinkCoordinator::createFactory(
-      server.server());
   const_cast<arangodb::IndexFactory&>(_engine.indexFactory())
-      .emplace(
-          std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
-          *factory);
+      .setLinkCreator(&arangodb::iresearch::createLinkCoordinator);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -2235,8 +2232,8 @@ class IResearchFeatureTestDBServer
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   // test db-server (no directory)
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -2280,7 +2277,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       .applyTestTransaction(bogus.slice());
 
   TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);
@@ -2330,8 +2327,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   // test db-server (with directory)
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -2377,7 +2374,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       .applyTestTransaction(bogus.slice());
 
   TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(colDescriptor);
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);
@@ -2483,12 +2480,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   // we need corresponding collection in vocbase with the same id!
   // FIXME: remove this as soon as proper DBServer mock will be ready
   // and  createTestDatabase will actually fill collections in vocbase
-  std::string collectionJson =
-      "{ \"isSystem\":true, \"name\": \"_analyzers\", \"id\":";
-  collectionJson.append(std::to_string(logicalCollectionCluster->id().id()))
-      .append("}");
-  auto logicalCollection =
-      vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "_analyzers", logicalCollectionCluster->id());
+  colDescriptor.constant.isSystem = true;
+  auto logicalCollection = vocbase->createCollection(colDescriptor);
 
   auto logicalView = vocbase->createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);

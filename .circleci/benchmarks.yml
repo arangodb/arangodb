@@ -14,7 +14,7 @@ parameters:
     description: "Benchmark to run; each has its scripts in scripts/benchmark/<benchmark>/."
   arango-image:
     type: string
-    default: "arangodb/enterprise-preview:3.12-nightly"
+    default: "arangodb/core-preview:4.0-nightly"
     description: "arangod image the benchmark runs against, e.g. arangodb/core-preview:4.0-nightly for the 4.0 nightly. Ignored with build-arango set to true."
   build-arango:
     type: boolean
@@ -22,7 +22,7 @@ parameters:
     description: "Use compiled local arangod instead of arango-image. The 'nightly-package-x64' CMake preset is used."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-b6c8a8886"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-07ab72a0"
     description: "Only with build-arango: Ubuntu build image the compile job runs in."
 
 commands:

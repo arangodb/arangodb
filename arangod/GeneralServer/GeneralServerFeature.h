@@ -24,6 +24,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerOptions.h"
@@ -116,6 +118,10 @@ class GeneralServerFeature final
 
   double httpConnections() const noexcept { return _connectionHttp.load(); }
 
+  ResourceMonitor& decompressionMemory() noexcept {
+    return _decompressionMemory;
+  }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -169,6 +175,9 @@ class GeneralServerFeature final
 
   metrics::Gauge<std::uint64_t>& _globalHttp2BodyBytes;
   metrics::MetricsFeature& _metricsFeature;
+
+  GlobalResourceMonitor _decompressionGlobal;
+  ResourceMonitor _decompressionMemory{_decompressionGlobal};
 };
 
 }  // namespace arangodb

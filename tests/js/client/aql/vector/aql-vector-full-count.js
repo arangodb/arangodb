@@ -40,6 +40,14 @@ const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
 const numberOfShards = 3;
+const vectorStatsAttributes = [
+    "vectorSearches",
+    "vectorListsScanned",
+    "vectorDistancesComputed",
+    "vectorHeapUpdates",
+    "vectorCoarseSearchTime",
+    "vectorListScanTime",
+];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -53,6 +61,35 @@ function VectorIndexFullCountTestSuite() {
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = generateSeed();
     const nLists = 10;
+
+    // Every list is probed, so each query point is compared against every
+    // document, once per shard.
+    const assertVectorStats = function(stats, numberOfQueryPoints) {
+        const searches = numberOfQueryPoints * (isCluster ? numberOfShards : 1);
+        const distances = numberOfQueryPoints * numberOfDocs;
+        const diag = `queryPoints=${numberOfQueryPoints}, ` +
+            `stats=${JSON.stringify(stats)}`;
+
+        assertEqual(searches, stats.vectorSearches,
+            `Expected vectorSearches=${searches}. ${diag}`);
+        assertEqual(distances, stats.vectorDistancesComputed,
+            `Expected vectorDistancesComputed=${distances}. ${diag}`);
+
+        // we could assert stats.vectorListsScanned === searches * nLists
+        // iff we know that every list is nonempty, but that might not be always
+        assertTrue(stats.vectorListsScanned >= searches,
+            `Expected vectorListsScanned >= ${searches}. ${diag}`);
+        assertTrue(stats.vectorListsScanned <= searches * nLists,
+            `Expected vectorListsScanned <= ${searches * nLists}. ${diag}`);
+
+        assertTrue(stats.vectorHeapUpdates > 0,
+            `Expected vectorHeapUpdates > 0. ${diag}`);
+        assertTrue(stats.vectorHeapUpdates <= stats.vectorDistancesComputed,
+            `Expected vectorHeapUpdates <= vectorDistancesComputed. ${diag}`);
+        ["vectorCoarseSearchTime", "vectorListScanTime"].forEach(attribute =>
+            assertTrue(Number.isFinite(stats[attribute]) && stats[attribute] >= 0,
+                `Expected ${attribute} to be finite and >= 0. ${diag}`));
+    };
 
     return {
         setUpAll: function() {
@@ -98,6 +135,47 @@ function VectorIndexFullCountTestSuite() {
         tearDownAll: function() {
             db._useDatabase("_system");
             db._dropDatabase(dbName);
+        },
+
+        testVectorStatsForSingleSearch: function() {
+            const query = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(d.vector, ${randomPoint})
+              LIMIT 3 RETURN d._key`;
+
+            const stats = db._query(query).getExtra().stats;
+            assertVectorStats(stats, 1);
+        },
+
+        testVectorStatsForMultipleQueryPoints: function() {
+            const query = aql`
+              FOR qp IN ${collection}
+              LIMIT 5
+              LET neighbours = (FOR d IN ${collection}
+                SORT APPROX_NEAR_L2(d.vector, qp.vector)
+                LIMIT 3 RETURN d._key)
+              RETURN neighbours`;
+
+            const queryResults = db._query(query);
+            const results = queryResults.toArray();
+            assertEqual(5, results.length);
+            results.forEach(neighbours => assertEqual(3, neighbours.length));
+
+            assertVectorStats(queryResults.getExtra().stats, 5);
+        },
+
+        testVectorStatsAreNotDoubleCountedAcrossBatchesWithOffset: function() {
+            const offset = 2;
+            const limit = 1200;
+            const query = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(d.vector, ${randomPoint})
+              LIMIT ${offset}, ${limit} RETURN d._key`;
+
+            const queryResults = db._query(query, {}, {batchSize: 100});
+            assertEqual(limit, queryResults.toArray().length);
+
+            assertVectorStats(queryResults.getExtra().stats, 1);
         },
 
         testApproxL2WithFullCount: function() {
