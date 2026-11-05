@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneCalculation.h"
+#include "CalculationQueryContext.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -40,226 +41,19 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
+#include "Aql/Timing.h"
 
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-
-/// @brief Dummy transaction state which does nothing but provides valid
-/// statuses to keep ASSERT happy
-class CalculationTransactionState final : public arangodb::TransactionState {
- public:
-  explicit CalculationTransactionState(TRI_vocbase_t& vocbase,
-                                       transaction::OperationOrigin trxType)
-      : TransactionState(vocbase, arangodb::TransactionId(0),
-                         arangodb::transaction::Options(), trxType) {
-    updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
-                                                           // make ASSERTS happy
-  }
-
-  ~CalculationTransactionState() override {
-    if (status() == arangodb::transaction::Status::RUNNING) {
-      updateStatus(
-          arangodb::transaction::Status::ABORTED);  // simulate state changes to
-                                                    // make ASSERTS happy
-    }
-  }
-
-  [[nodiscard]] bool ensureSnapshot() override { return false; }
-
-  /// @brief begin a transaction
-  [[nodiscard]] futures::Future<Result> beginTransaction(
-      arangodb::transaction::Hints) override {
-    return Result{};
-  }
-
-  /// @brief commit a transaction
-  [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
-      arangodb::transaction::Methods*) override {
-    applyBeforeCommitCallbacks();
-    updateStatus(
-        arangodb::transaction::Status::COMMITTED);  // simulate state changes to
-                                                    // make ASSERTS happy
-    applyAfterCommitCallbacks();
-    return Result{};
-  }
-
-  /// @brief abort a transaction
-  [[nodiscard]] arangodb::Result abortTransaction(
-      arangodb::transaction::Methods*) override {
-    updateStatus(
-        arangodb::transaction::Status::ABORTED);  // simulate state changes to
-                                                  // make ASSERTS happy
-    return {};
-  }
-
-  Result triggerIntermediateCommit() override {
-    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
-                              "CalculationTransactionState";
-    return Result{TRI_ERROR_INTERNAL};
-  }
-
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
-      arangodb::DataSourceId collectionId) override {
-    // Analyzers do not write. so do nothing
-    return Result{};
-  }
-
-  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
-    return 0;
-  }
-
-  [[nodiscard]] bool hasFailedOperations() const noexcept override {
-    return false;
-  }
-
-  /// @brief number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const noexcept override { return 0; }
-
-  /// @brief number of intermediate commits
-  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override {
-    return 0;
-  }
-
-  void addIntermediateCommits(uint64_t /*value*/) override {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
-    return 0;
-  }
-
-  std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
-      arangodb::DataSourceId cid,
-      arangodb::AccessMode::Type accessType) override {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-};
-
-/// @brief Dummy transaction context which just gives dummy state
-struct CalculationTransactionContext final
-    : public arangodb::transaction::SmartContext {
-  explicit CalculationTransactionContext(
-      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin)
-      : SmartContext(vocbase,
-                     arangodb::transaction::Context::makeTransactionId(),
-                     nullptr, operationOrigin),
-        _calculationTransactionState(vocbase, operationOrigin) {}
-
-  /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<arangodb::TransactionState> acquireState(
-      arangodb::transaction::Options const& options,
-      bool& responsibleForCommit) override {
-    return {std::shared_ptr<arangodb::TransactionState>(),
-            &_calculationTransactionState};
-  }
-
-  /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override {}
-
-  std::shared_ptr<Context> clone() const override {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "CalculationTransactionContext cloning is not implemented");
-  }
-
- private:
-  CalculationTransactionState _calculationTransactionState;
-};
-
-class CalculationQueryContext final : public arangodb::aql::QueryContext {
- public:
-  explicit CalculationQueryContext(TRI_vocbase_t& vocbase,
-                                   transaction::OperationOrigin operationOrigin)
-      : QueryContext(vocbase, operationOrigin),
-        _resolver(vocbase),
-        _transactionContext(vocbase, operationOrigin) {
-    _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-    _trx = AqlTransaction::create(newTrxContext(), _collections,
-                                  _queryOptions.transactionOptions,
-                                  std::unordered_set<std::string>{});
-    _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-    _trx->addHint(arangodb::transaction::Hints::Hint::
-                      SINGLE_OPERATION);  // to avoid taking db snapshot
-    auto res = _trx->begin();
-    if (res.fail()) {
-      throw basics::Exception(std::move(res));
-    }
-  }
-
-  arangodb::aql::QueryOptions const& queryOptions() const override {
-    return _queryOptions;
-  }
-
-  arangodb::aql::QueryOptions& queryOptions() noexcept override {
-    return _queryOptions;
-  }
-
-  double getLockTimeout() const noexcept override {
-    return _queryOptions.transactionOptions.lockTimeout;
-  }
-
-  void setLockTimeout(double timeout) noexcept override {
-    _queryOptions.transactionOptions.lockTimeout = timeout;
-  }
-
-  /// @brief pass-thru a resolver object from the transaction context
-  arangodb::CollectionNameResolver const& resolver() const override {
-    return _resolver;
-  }
-
-  arangodb::velocypack::Options const& vpackOptions() const override {
-    return arangodb::velocypack::Options::Defaults;
-  }
-
-  /// @brief create a transaction::Context
-  std::shared_ptr<arangodb::transaction::Context> newTrxContext()
-      const override {
-    return std::shared_ptr<arangodb::transaction::Context>(
-        std::shared_ptr<arangodb::transaction::Context>(),
-        &_transactionContext);
-  }
-
-  arangodb::transaction::Methods& trxForOptimization() override {
-    return *_trx;
-  }
-
-  bool killed() const override { return false; }
-
-  void debugKillQuery() override {}
-
-  /// @brief whether or not a query is a modification query
-  bool isModificationQuery() const noexcept override { return false; }
-
-  bool isAsyncQuery() const noexcept override { return false; }
-
-  void enterV8Executor() override {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "CalculationQueryContext: entering V8 executor is not implemented");
-  }
-
- private:
-  arangodb::aql::QueryOptions _queryOptions;
-  arangodb::CollectionNameResolver _resolver;
-  mutable CalculationTransactionContext _transactionContext;
-  std::unique_ptr<arangodb::transaction::Methods> _trx;
-};
-
-}  // namespace
-
 namespace arangodb::aql {
 
-std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
+std::unique_ptr<CalculationQueryContext>
+StandaloneCalculation::buildQueryContext(
     TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
-  return std::make_unique<::CalculationQueryContext>(vocbase, operationOrigin);
+  return std::make_unique<CalculationQueryContext>(vocbase, operationOrigin);
 }
 
 Result StandaloneCalculation::validateQuery(

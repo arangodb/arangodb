@@ -46,6 +46,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/vocbase.h"
+#include "Aql/Timing.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -512,6 +513,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
     _engine.reset();
 
+    _query->resetRuntimeClock();
     _resetImpl(this);
     return true;
 
