@@ -741,27 +741,8 @@ ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIV8(
 #endif
   };
 
-  auto res = ::parseAndValidate(config, properties, applyDefaults,
-                                ::rewriteStatusErrorMessage, applyHacks);
-  if (res.fail()) {
-    auto newBody =
-        transformFromBackwardsCompatibleBody(properties, config, res.result());
-    if (newBody.fail()) {
-      return newBody.result();
-    }
-    auto compatibleRes =
-        ::parseAndValidate(config, newBody->slice(), applyDefaults,
-                           ::rewriteStatusErrorMessage, applyHacks);
-    if (compatibleRes.ok()) {
-      logDeprecationMessage(res.result());
-    }
-    return compatibleRes;
-  }
-  if (res.ok() && ::hasDeprecatedNullAttribute(properties)) {
-    logDeprecationMessage(
-        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
-  }
-  return res;
+  return ::parseAndValidate(config, properties, applyDefaults,
+                            ::rewriteStatusErrorMessage, applyHacks);
 }
 
 ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
