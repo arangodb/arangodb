@@ -209,15 +209,24 @@ template<SocketType T>
       // lets tests trigger the limit without sending a 1GB body
       maxBodySize = 16;
     }
+    auto resetStream = [&] {
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    };
     bool const overLimit = strm->bodySize + len > maxBodySize ||
                            me->_bufferedBodyBytes + len > maxBodySize;
     if (overLimit) {
       LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
           << "<http2> request body on stream " << stream_id
           << " exceeds the allowed size, resetting the stream";
-      strm->bodyLimitExceeded = true;
-      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
-                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+      return resetStream();
+    }
+    if (!me->_generalServerFeature.reserveHttp2BodyBytes(len)) {
+      LOG_TOPIC("2823e", WARN, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the global process-wide limit, resetting the stream";
+      return resetStream();
     }
     strm->bodySize += len;
     me->_bufferedBodyBytes += len;
@@ -236,6 +245,7 @@ void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
   if (strm.bodySize != 0) {
     TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
     _bufferedBodyBytes -= strm.bodySize;
+    this->_generalServerFeature.releaseHttp2BodyBytes(strm.bodySize);
     strm.bodySize = 0;
   }
 }
