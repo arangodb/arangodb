@@ -1144,6 +1144,8 @@ jobs:
                   scripts/
                   js/
                   enterprise/js
+                  tests/api/rbac
+                  arangod/Auth/Rbac/ServiceImpl.cpp
                   etc/
                   tests/js
                   enterprise/tests/js
