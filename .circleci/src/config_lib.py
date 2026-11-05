@@ -768,7 +768,7 @@ class TestJob:
             requires=TestRequirements.from_dict(data.get("requires")),
             repository=RepositoryConfig.from_dict(data.get("repository")),
             job_type=job_type,
-            prefix=data.get("prefix"),
+            prefix=data.get("prefix", ""),
         )
 
     def is_multi_suite(self) -> bool:

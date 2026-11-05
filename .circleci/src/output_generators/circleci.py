@@ -737,8 +737,6 @@ class CircleCIGenerator(OutputGenerator):
         size_override = self._get_size_override(job.name, build_config, is_cluster)
         size = size_override or job.options.size or ResourceSize.SMALL
         resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
-        if job.prefix is None:
-            job.prefix = ""
         job_dict = {
             "name": job_name,
             "suiteName": suite_name,
