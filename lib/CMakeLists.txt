@@ -379,7 +379,6 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango STATIC
-  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp

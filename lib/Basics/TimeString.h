@@ -23,12 +23,11 @@
 #pragma once
 
 #include <chrono>
-#include "date/date.h"
 
 inline std::string timepointToString(
     std::chrono::system_clock::time_point const& t) {
-  return date::format("%Y-%m-%dT%H:%M:%SZ",
-                      std::chrono::floor<std::chrono::seconds>(t));
+  return std::format("%Y-%m-%dT%H:%M:%SZ",
+                     std::chrono::floor<std::chrono::seconds>(t));
 }
 
 inline std::string timepointToString(
@@ -41,7 +40,7 @@ inline std::chrono::system_clock::time_point stringToTimepoint(
   // FIXME: now copy :(
   auto in = std::istringstream{std::string{s}};
   auto target = std::chrono::system_clock::time_point{};
-  in >> date::parse("%Y-%m-%dT%H:%M:%SZ", target);
+  in >> std::chrono::parse("%Y-%m-%dT%H:%M:%SZ", target);
 
   // FIXME: error handling would be nice.
   if (!in.fail()) {
