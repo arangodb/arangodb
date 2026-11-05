@@ -267,6 +267,16 @@ function optimizerFullcountTestSuite () {
 
       assertEqual([null], result.toArray());
       assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+    // If the empty row is skipped first, fullCount must still count it only once.
+    testCollectAggregateEmptyInputOffsetFullCount : function () {
+      let result = executeQuery(
+        "FOR doc IN UnitTestsCollection FILTER false COLLECT AGGREGATE m = MAX(doc.values) LIMIT 1, 1 RETURN m",
+        null, { fullCount: true });
+
+      assertEqual([], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
     }
 
   };

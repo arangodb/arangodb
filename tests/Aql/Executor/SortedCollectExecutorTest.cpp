@@ -1111,4 +1111,50 @@ TEST(SortedCollectExecutorEmptyAggregate,
   EXPECT_EQ(0, skipped);
 }
 
+// The empty input row may be skipped before being produced, for example
+// due to a LIMIT offset. The subsequent fullCount fast-forward must not
+// count it again.
+TEST(SortedCollectExecutorEmptyAggregate, skipThenFullCountDoesNotDoubleCount) {
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor};
+
+  mocks::MockAqlServer server{};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+  std::vector<std::string> aggregateTypes{"MAX"};
+  std::vector<std::pair<std::string, RegisterId>> variables;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+
+  auto registerInfos = RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, RegIdSet{},
+                                     RegIdSetStack{{}});
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister, nullptr,
+      std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
+
+  auto input = VPackParser::fromJson("[]");
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
+  SortedCollectExecutor testee(fetcher, executorInfos);
+
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
+
+  AqlCall offsetSkip{1};
+  auto [skipState, skipStats, skipped, skipCall] =
+      testee.skipRowsRange(inputRange, offsetSkip);
+  EXPECT_EQ(ExecutorState::DONE, skipState);
+  EXPECT_EQ(1, skipped);
+
+  AqlCall fullCountSkip{0, true, 0, AqlCall::LimitType::HARD};
+  auto [fullCountState, fullCountStats, fullCountSkipped, fullCountCall] =
+      testee.skipRowsRange(inputRange, fullCountSkip);
+  EXPECT_EQ(ExecutorState::DONE, fullCountState);
+  EXPECT_EQ(0, fullCountSkipped);
+}
+
 }  // namespace arangodb::tests::aql
