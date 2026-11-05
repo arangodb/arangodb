@@ -893,11 +893,14 @@ futures::Future<futures::Unit> Query::execute(
         }
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
-        queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
-
-        // reserve some space in Builder to avoid frequent reallocs
-        queryResult.data->reserve(16 * 1024);
-        queryResult.data->openArray(/*unindexed*/ true);
+        {
+          infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
+          queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
+          // reserve some space in Builder to avoid frequent reallocs
+          queryResult.data->reserve(16 * 1024);
+          queryResult.data->openArray(/*unindexed*/ true);
+        }
+        
 
         _executionPhase = ExecutionPhase::EXECUTE;
         trackExecutionStart();
@@ -956,6 +959,7 @@ futures::Future<futures::Unit> Query::execute(
           }
 
           if (!_queryOptions.silent && resultRegister.isValid()) {
+            infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;

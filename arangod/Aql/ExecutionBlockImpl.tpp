@@ -1014,9 +1014,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
              monitor =
                  _engine->getQuery().resourceMonitor().monitorRef]() mutable {
               infra::ResourceMonitorScope memoryScope(std::move(monitor));
-              LOG_TOPIC("19ed6", INFO, Logger::QUERIES)
-                  << "prefetch task: monitor="
-                  << infra::detail::currentResourceMonitor();
               TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
                 // We need to simulate that we are not picking up this task.
                 // So we simply continue sleeping until the failure point is

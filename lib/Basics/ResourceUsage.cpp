@@ -56,6 +56,7 @@ auto describeRegistry() -> std::string {
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
     : _current(0), _peak(0), _limit(0), _global(global) {
   monitorRef = infra::ResourceMonitorRef::create();
+  infra::rocksdbMonitor().resetPeak(); // test only
 }
 
 ResourceMonitor::~ResourceMonitor() {
@@ -68,10 +69,11 @@ ResourceMonitor::~ResourceMonitor() {
 #endif
   auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
-      << "query memory " << m                                    //
-      << " | old: peak=" << peak()                               //
+      << "query memory " << m
+      << " | old: peak=" << peak()
       << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
-      << " | rocksdb: " << infra::rocksdbMonitor().actualBytes()
+      << " | rocksdb: peak=" << infra::rocksdbMonitor().peakBytes()
+      << " now=" << infra::rocksdbMonitor().actualBytes()
       << " | monitors: " << describeRegistry();
 
   m->retire();

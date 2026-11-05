@@ -52,12 +52,21 @@ struct ResourceMonitorBase {
     _next.store(next, std::memory_order_relaxed);
   }
 
+  [[nodiscard]] uint64_t peakBytes() const noexcept {
+    return _peakBytes.load(std::memory_order_relaxed);
+  }
+
+  void resetPeak() noexcept {
+    _peakBytes.store(actualBytes(), std::memory_order_relaxed);
+  }
+
  protected:
   struct StaticTag {};
   ResourceMonitorBase() = default;
   explicit ResourceMonitorBase(StaticTag) : _static(true) {}
 
   [[nodiscard]] bool increase(uint64_t requested, uint64_t actual) noexcept {
+    uint64_t now;
     if (_limit != 0) {
       auto current = _actualBytes.load(std::memory_order_relaxed);
       do {
@@ -66,10 +75,12 @@ struct ResourceMonitorBase {
         }
       } while (!_actualBytes.compare_exchange_weak(current, current + actual,
                                                    std::memory_order_relaxed));
+      now = current + actual;
     } else {
-      _actualBytes.fetch_add(actual, std::memory_order_relaxed);
+      now = _actualBytes.fetch_add(actual, std::memory_order_relaxed);
     }
     _requestedBytes.fetch_add(requested, std::memory_order_relaxed);
+    updatePeak(now);
     return true;
   }
 
@@ -79,11 +90,19 @@ struct ResourceMonitorBase {
   }
 
  private:
+  void updatePeak(uint64_t now) noexcept {
+    auto peak = _peakBytes.load(std::memory_order_relaxed);
+    while (now > peak && !_peakBytes.compare_exchange_weak(
+                             peak, now, std::memory_order_relaxed)) {
+    }
+  }
+
   std::atomic<uint64_t> _requestedBytes{0};
   std::atomic<uint64_t> _actualBytes{0};
   uint64_t _limit{0};
   std::atomic<ResourceMonitorBase*> _next{nullptr};
   bool _static{false};
+  std::atomic<uint64_t> _peakBytes{0};
 };
 
 }  // namespace arangodb::infra

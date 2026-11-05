@@ -87,20 +87,7 @@ class ResourceMonitor : public ResourceMonitorBase {
     return _parent;
   }
 
-  [[nodiscard]] auto peakBytes() const noexcept -> uint64_t {
-    return _peakBytes.load(std::memory_order_relaxed);
-  }
-
  private:
-  void updatePeak() noexcept {
-    auto now = actualBytes();
-    auto peak = _peakBytes.load(std::memory_order_relaxed);
-    while (now > peak && !_peakBytes.compare_exchange_weak(
-                             peak, now, std::memory_order_relaxed)) {
-    }
-  }
-
-  std::atomic<uint64_t> _peakBytes{0};
   std::atomic<uint32_t> _externalRefs{0};
   std::atomic<bool> _retired{false};
   StaticResourceMonitor* const _parent;
