@@ -2,10 +2,11 @@ jobProperties:
     second_repo: git@github.com:arangodb/release-test-automation.git
     branch: main
 tests:
-- ui:
+- UI:
     job: run-rta-tests
     options:
       buckets: auto
+      browser: Remote_CHROME
     requires:
       arch: x64
       v8: true
@@ -22,3 +23,7 @@ tests:
       - DashboardTestSuite
       - SupportTestSuite
       - ServiceTestSuite
+    args:
+      checkdata: false
+      run-upgrade: false
+      selenium: Remote_CHROME
