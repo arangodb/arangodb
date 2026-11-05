@@ -267,11 +267,9 @@ commands:
               exit 1
             fi
 
-            TAR="/tmp/circleci-workspace/${ARCHIVE}"
-
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
-              "$TAR" \
+              "$ARCHIVE" \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}"
 
   attach_workspace_from_s3:
