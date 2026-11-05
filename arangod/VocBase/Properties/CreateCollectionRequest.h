@@ -40,8 +40,7 @@ struct CreateCollectionRequest {
   CollectionCreateOptions options;
 
   static ResultT<CreateCollectionRequest> fromCreateAPIBody(
-      velocypack::Slice input, DatabaseConfiguration const& config,
-      bool activateBackwardsCompatibility = true);
+      velocypack::Slice input, DatabaseConfiguration const& config);
 
   static ResultT<CreateCollectionRequest> fromRestoreAPIBody(
       velocypack::Slice input, DatabaseConfiguration const& config);

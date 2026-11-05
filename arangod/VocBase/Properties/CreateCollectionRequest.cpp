@@ -464,25 +464,6 @@ auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
   // Just ignore on SingleServer
 }
 
-auto logDeprecationMessage(Result const& res) -> void {
-  LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
-      << "The createCollection request contains an illegal combination "
-         "and "
-         "will be rejected in the future: "
-      << res;
-}
-
-/// @brief Attributes that parse as "unset" when null, because stored data
-/// predates the typed parse. A user sending null still gets the deprecation
-/// warning, since the parse no longer fails and triggers it on its own.
-auto hasDeprecatedNullAttribute(VPackSlice body) -> bool {
-  if (!body.isObject()) {
-    return false;
-  }
-  return body.get(StaticStrings::NumberOfShards).isNull() ||
-         body.get(StaticStrings::DistributeShardsLike).isNull();
-}
-
 auto makeRestoreAllowList() -> std::unordered_map<
     std::string_view,
     std::function<void(std::string_view key, VPackSlice value,
@@ -557,37 +538,6 @@ auto makeAllowList() -> std::unordered_map<
           // Collection Create Options
           {"avoidServers", justKeep}};
   return allowListInstance;
-}
-
-/**
- * Transform an illegal inbound body into a legal one, honoring the exact
- * behaviour of 3.11 version.
- *
- * @param body The original body
- * @param parsingResult The error result returned by
- * @return
- */
-auto transformFromBackwardsCompatibleBody(VPackSlice body,
-                                          DatabaseConfiguration const& config,
-                                          Result parsingResult)
-    -> ResultT<VPackBuilder> {
-  TRI_ASSERT(parsingResult.fail());
-  VPackBuilder result;
-  {
-    VPackObjectBuilder objectGuard(&result);
-    auto keyAllowList = makeAllowList();
-    for (auto const& [key, value] : VPackObjectIterator(body)) {
-      auto handler = keyAllowList.find(key.stringView());
-      if (handler == keyAllowList.end()) {
-        // We ignore all keys we are not aware of
-        continue;
-      } else {
-        // All others have implemented a handler
-        handler->second(key.stringView(), value, body, config, result);
-      }
-    }
-  }
-  return result;
 }
 
 /**
@@ -687,35 +637,15 @@ ResultT<CreateCollectionRequest> parseAndValidate(
 }  // namespace
 
 ResultT<CreateCollectionRequest> CreateCollectionRequest::fromCreateAPIBody(
-    VPackSlice input, DatabaseConfiguration const& config,
-    bool activateBackwardsCompatibility) {
+    VPackSlice input, DatabaseConfiguration const& config) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  auto res = ::parseAndValidate(
+  return ::parseAndValidate(
       config, input, [](CollectionDescriptor& col) {},
       ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
-  if (activateBackwardsCompatibility && res.fail()) {
-    auto newBody =
-        transformFromBackwardsCompatibleBody(input, config, res.result());
-    if (newBody.fail()) {
-      return newBody.result();
-    }
-    auto compatibleRes = ::parseAndValidate(
-        config, newBody->slice(), [](CollectionDescriptor& col) {},
-        ::rewriteStatusErrorMessage, [](CollectionDescriptor& col) {});
-    if (compatibleRes.ok()) {
-      logDeprecationMessage(res.result());
-    }
-    return compatibleRes;
-  }
-  if (res.ok() && ::hasDeprecatedNullAttribute(input)) {
-    logDeprecationMessage(
-        Result{TRI_ERROR_BAD_PARAMETER, "null is not a valid attribute value"});
-  }
-  return res;
 }
 
 ResultT<CreateCollectionRequest> CreateCollectionRequest::fromRestoreAPIBody(
