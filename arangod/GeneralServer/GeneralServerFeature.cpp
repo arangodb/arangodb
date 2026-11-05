@@ -397,14 +397,21 @@ bool GeneralServerFeature::reserveHttp2BodyBytes(std::uint64_t len) noexcept {
     // lets tests trigger the limit without sending gigabytes of data
     maxGlobalSize = 16;
   }
-  if (_globalHttp2BodyBytes.fetch_add(len) + len > maxGlobalSize) {
-    _globalHttp2BodyBytes.fetch_sub(len);
-    return false;
-  }
+  // CAS retry so the gauge never transiently exceeds the limit under
+  // concurrent reservations, unlike a fetch_add-then-rollback-on-reject
+  std::uint64_t cur = _globalHttp2BodyBytes.load(std::memory_order_relaxed);
+  std::uint64_t next;
+  do {
+    next = cur + len;
+    if (next > maxGlobalSize) {
+      return false;
+    }
+  } while (!_globalHttp2BodyBytes.compare_exchange_weak(cur, next));
   return true;
 }
 
 void GeneralServerFeature::releaseHttp2BodyBytes(std::uint64_t len) noexcept {
+  TRI_ASSERT(_globalHttp2BodyBytes.load(std::memory_order_relaxed) >= len);
   _globalHttp2BodyBytes.fetch_sub(len);
 }
 
