@@ -77,7 +77,6 @@
 #include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/common.h"
-#include "Indexes/IndexTypeCatalog.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -572,7 +571,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 MockClusterServer::~MockClusterServer() {
   // must unregister before _iresearchLinkDefinition is destroyed
   if (_iresearchLinkDefinition != nullptr) {
-    _engine->indexTypeCatalog().remove(
+    _engine->unregisterIndexDefinition(
         iresearch::StaticStrings::ViewArangoSearchType);
   }
   _server.getFeature<ClusterFeature>().shutdown();
@@ -612,11 +611,10 @@ void MockClusterServer::startFeatures() {
 
   // register the arangosearch link, same as
   // IResearchFeature::registerIndexFactory does for a real ClusterEngine
-  auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
-  indexFactory.setLinkCreator(&iresearch::createLinkCoordinator);
+  _engine->setLinkCreator(&iresearch::createLinkCoordinator);
   _iresearchLinkDefinition =
       std::make_unique<iresearch::IResearchLinkDefinition>(server());
-  auto r = _engine->indexTypeCatalog().add(
+  auto r = _engine->registerIndexDefinition(
       iresearch::StaticStrings::ViewArangoSearchType,
       *_iresearchLinkDefinition);
   TRI_ASSERT(r.ok());

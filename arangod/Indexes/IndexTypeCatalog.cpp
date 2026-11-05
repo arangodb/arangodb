@@ -66,8 +66,8 @@ IndexTypeCatalog::IndexTypeCatalog(
 }
 
 IndexType IndexTypeCatalog::resolve(std::string_view name) const noexcept {
-  auto it = _byName.find(name);
-  return it == _byName.end() ? IndexType::Unknown : it->second->type();
+  auto const* def = definitionFor(name);
+  return def ? def->type() : IndexType::Unknown;
 }
 
 IndexDefinition const* IndexTypeCatalog::definitionFor(
@@ -81,12 +81,12 @@ Result IndexTypeCatalog::normalizeType(std::string_view name,
                                        velocypack::Slice definition,
                                        bool isCreation,
                                        Database const& vocbase) const {
-  auto it = _byName.find(name);
-  if (it == _byName.end()) {
+  auto const* def = definitionFor(name);
+  if (!def) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   absl::StrCat("invalid index type '", name, "'"));
   }
-  return it->second->normalize(normalized, definition, isCreation, vocbase);
+  return def->normalize(normalized, definition, isCreation, vocbase);
 }
 
 bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -111,8 +111,8 @@ bool IndexTypeCatalog::equal(velocypack::Slice lhs, velocypack::Slice rhs,
     return false;
   }
 
-  auto it = _byName.find(lhsType);
-  return it != _byName.end() && it->second->equal(lhs, rhs, dbname);
+  auto const* def = definitionFor(lhsType);
+  return def != nullptr && def->equal(lhs, rhs, dbname);
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
@@ -131,5 +131,5 @@ Result IndexTypeCatalog::add(std::string_view name,
 }
 
 void IndexTypeCatalog::remove(std::string_view name) noexcept {
-  _byName.erase(std::string{name});
+  _byName.erase(_byName.find(name));
 }

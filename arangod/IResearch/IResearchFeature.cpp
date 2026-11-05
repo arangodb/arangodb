@@ -48,7 +48,6 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
-#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -924,14 +923,13 @@ void IResearchFeature::unprepare() {
   if (!server().hasFeature<StorageEngine>()) {
     return;
   }
-  // catalog holds non-owning pointers, so we must unregister them before
-  // they're destroyed
-  auto& catalog = server().getFeature<StorageEngine>().indexTypeCatalog();
+  // catalog holds non-owning pointers, so unregister before destroying these
+  auto& engine = server().getFeature<StorageEngine>();
   if (_linkDefinition) {
-    catalog.remove(StaticStrings::ViewArangoSearchType);
+    engine.unregisterIndexDefinition(StaticStrings::ViewArangoSearchType);
   }
   if (_invertedDefinition) {
-    catalog.remove(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
+    engine.unregisterIndexDefinition(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
   }
 }
 
@@ -1046,8 +1044,8 @@ void IResearchFeature::registerIndexFactory() {
   auto addDefinition = [&]() {
     // register before replacing, so a failed add() can't leave a dangling ptr
     auto newDefinition = std::make_unique<IResearchLinkDefinition>(server());
-    auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
-                                           *newDefinition);
+    auto r = engine.registerIndexDefinition(StaticStrings::ViewArangoSearchType,
+                                            *newDefinition);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1062,7 +1060,7 @@ void IResearchFeature::registerIndexFactory() {
     // register before replacing, so a failed add() can't leave a dangling ptr
     auto newDefinition =
         std::make_unique<IResearchInvertedIndexDefinition>(server());
-    auto r = engine.indexTypeCatalog().add(
+    auto r = engine.registerIndexDefinition(
         iresearch::IRESEARCH_INVERTED_INDEX_TYPE, *newDefinition);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1075,11 +1073,11 @@ void IResearchFeature::registerIndexFactory() {
   };
 
   if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
-    engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
+    engine.setLinkCreator(&createLinkCoordinator);
     addDefinition();
     addInvertedDefinition();
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
-    engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
+    engine.setLinkCreator(&createRocksDBLink);
     addDefinition();
     addInvertedDefinition();
   }

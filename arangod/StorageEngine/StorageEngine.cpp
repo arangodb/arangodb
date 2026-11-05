@@ -49,11 +49,13 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
                              IDatabaseProvider& databaseProvider,
-                             IDatabaseBootstrap& databaseBootstrap)
+                             IDatabaseBootstrap& databaseBootstrap,
+                             IndexFactoryCreator createIndexFactory)
     : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
       _databaseBootstrap(databaseBootstrap),
       _indexTypeCatalog(std::make_unique<IndexTypeCatalog>(server)),
+      _indexFactory(createIndexFactory(*_indexTypeCatalog)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
@@ -98,12 +100,6 @@ void StorageEngine::syncIndexCaches() {}
 
 StorageEngine::~StorageEngine() = default;
 
-void StorageEngine::setIndexFactory(
-    std::unique_ptr<IndexFactory>&& indexFactory) {
-  TRI_ASSERT(_indexFactory == nullptr);
-  _indexFactory = std::move(indexFactory);
-}
-
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
@@ -111,17 +107,22 @@ IndexFactory const& StorageEngine::indexFactory() const {
   return *_indexFactory;
 }
 
-IndexFactory& StorageEngine::mutableIndexFactory() noexcept {
-  TRI_ASSERT(_indexFactory != nullptr);
-  return *_indexFactory;
+void StorageEngine::setLinkCreator(IndexFactory::LinkCreator creator) {
+  TRI_ASSERT(_indexFactory.get() != nullptr);
+  _indexFactory->setLinkCreator(std::move(creator));
 }
 
 IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
   return *_indexTypeCatalog;
 }
 
-IndexTypeCatalog& StorageEngine::indexTypeCatalog() noexcept {
-  return *_indexTypeCatalog;
+Result StorageEngine::registerIndexDefinition(
+    std::string_view name, IndexDefinition const& definition) {
+  return _indexTypeCatalog->add(name, definition);
+}
+
+void StorageEngine::unregisterIndexDefinition(std::string_view name) noexcept {
+  _indexTypeCatalog->remove(name);
 }
 
 void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
