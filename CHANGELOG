@@ -10,6 +10,10 @@
   The single result row was counted twice: once when produced and again during
   the fullCount phase.
 
+* Add `--http.decompressed-request-body-global-memory-limit` startup option,
+  which limits the combined size of all decompressed request bodies. Requests that 
+  would exceed it are rejected with 503. The default is 10% of the physical memory.
+
 3.12.13 (2026-10-28)
 --------------------
 
@@ -57,10 +61,6 @@
 * The `--server.jwt-secret-folder` startup option now skips everything in the
   folder that is not a regular file (e.g. subfolders, sockets, devices, named
   pipes) instead of trying to load it as a JWT secret.
-
-* Add `--http.decompressed-request-body-global-memory-limit` startup option,
-  which limits the combined size of all decompressed request bodies. Requests that 
-  would exceed it are rejected with 503. The default is 10% of the physical memory.
 
 * Add `--http.max-decompressed-request-body-size` startup option, which limits
   how large a compressed HTTP request body may be after decompression. The
@@ -197,10 +197,6 @@
 
 * AQL `REGEX_MATCHES()` matches empty strings like any other input.
   This fixes issue #23362.
-
-* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
-  reversing a string, and reverses strings containing U+FFFF completely.
-  This fixes issue #23360.
 
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.

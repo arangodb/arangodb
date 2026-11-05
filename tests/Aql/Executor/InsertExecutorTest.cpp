@@ -22,6 +22,7 @@
 
 #include "Aql/QueryHelper.h"
 #include "IResearch/IResearchQueryCommon.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "gtest/gtest.h"
 
@@ -56,8 +57,9 @@ class InsertExecutorTest : public ::testing::Test {
 
   void SetUp() override {
     SCOPED_TRACE("SetUp");
-    auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
-    auto collection = vocbase.createCollection(info->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(collectionName);
+    auto collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
   }
 };

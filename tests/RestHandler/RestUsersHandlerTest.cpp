@@ -26,6 +26,7 @@
 
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -322,15 +323,15 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   // test auth collection (grant)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     EXPECT_TRUE(testUserExists());
 
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -361,8 +362,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   // test auth collection (revoke)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
@@ -380,7 +381,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_TRUE(res.ok()) << res.errorMessage();
 
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -522,15 +523,15 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   // test auth wildcard (grant)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
     EXPECT_TRUE(testUserExists());
 
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -562,8 +563,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   // test auth wildcard (revoke)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testDataSource\" }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testDataSource");
     userManager->removeAllUsers();
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
@@ -581,7 +582,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_TRUE(res.ok()) << res.errorMessage();
 
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase->createCollection(collectionJson->slice()).get(),
+        vocbase->createCollection(colDescriptor).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });

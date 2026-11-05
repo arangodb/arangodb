@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
@@ -56,9 +57,9 @@ class TransactionContextTest : public ::testing::Test {
 
 TEST_F(TransactionContextTest, StandaloneSmartContext) {
   auto const cname = "testCollection";
-  auto params = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
-  vocbase.createCollection(params->slice());
+  auto colDescriptor =
+      arangodb::tests::testCollectionDescriptor("testCollection");
+  vocbase.createCollection(colDescriptor);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(
       vocbase, transaction::OperationOriginTestCase{});

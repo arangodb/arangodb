@@ -64,13 +64,13 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              DatabaseFeature& database,
                              metrics::IRegistry& metrics,
                              IVectorIndexProvider const& vectorIndexProvider)
-    : StorageEngine(server, EngineName, name(),
-                    std::make_unique<ClusterIndexFactory>(server, *this,
-                                                          vectorIndexProvider),
-                    database, database),
+    : StorageEngine(server, EngineName, name(), vectorIndexProvider, database,
+                    database),
       _clusterFeature(clusterFeature),
       _metrics(metrics) {
   setOptional(true);
+  setIndexFactory(
+      std::make_unique<ClusterIndexFactory>(server, *this, indexTypeCatalog()));
 }
 
 ClusterEngine::~ClusterEngine() = default;
@@ -123,16 +123,6 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
       vocbase, tid, options, operationOrigin, transactionManager());
 }
 
-void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
-                                                  VPackSlice info) {
-  if (engineType() == ClusterEngineType::RocksDBEngine) {
-    // deliberately not add objectId
-    if (!info.get(StaticStrings::CacheEnabled).isBool()) {
-      builder.add(StaticStrings::CacheEnabled, VPackValue(false));
-    }
-  }
-}
-
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
     LogicalCollection& collection, LocalStorageProperties const& storage) {
@@ -164,12 +154,6 @@ void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {}
-
-ErrorCode ClusterEngine::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
-  return TRI_ERROR_NO_ERROR;
-}
 
 ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Builder& result) {

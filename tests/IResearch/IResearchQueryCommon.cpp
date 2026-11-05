@@ -28,6 +28,7 @@
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchView.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -180,8 +181,9 @@ namespace arangodb::tests {
 void QueryTest::createCollections() {
   // testCollection0
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 
     std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -216,8 +218,9 @@ void QueryTest::createCollections() {
   }
   // testCollection1
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection1");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 
     std::filesystem::path resource;

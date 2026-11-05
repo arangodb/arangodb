@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -189,10 +190,10 @@ struct MockGraphDatabase {
 
   auto generateEdgeCollection(std::string name)
       -> std::shared_ptr<arangodb::LogicalCollection> {
-    auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
-                                                   "\", \"type\": 3 }");
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        std::move(name), arangodb::DataSourceId::none(), TRI_COL_TYPE_EDGE);
     std::shared_ptr<arangodb::LogicalCollection> edges =
-        vocbase.createCollection(createJson->slice());
+        vocbase.createCollection(colDescriptor);
     TRI_ASSERT(nullptr != edges);
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
@@ -205,10 +206,10 @@ struct MockGraphDatabase {
 
   auto generateVertexCollection(std::string name)
       -> std::shared_ptr<arangodb::LogicalCollection> {
-    auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
-                                                   "\", \"type\": 2 }");
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(std::move(name));
     std::shared_ptr<arangodb::LogicalCollection> vertices =
-        vocbase.createCollection(createJson->slice());
+        vocbase.createCollection(colDescriptor);
     TRI_ASSERT(nullptr != vertices);
     return vertices;
   }

@@ -26,7 +26,6 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VectorIndex/IVectorIndexProvider.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -86,11 +85,6 @@ class ClusterEngine final : public StorageEngine {
   void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
-
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Builder& result,
-                                     bool wasCleanShutdown,
-                                     bool isUpgrade) override;
 
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
@@ -178,9 +172,6 @@ class ClusterEngine final : public StorageEngine {
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 #endif
-
-  void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
-                                     arangodb::velocypack::Slice info) override;
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override { return 0; }

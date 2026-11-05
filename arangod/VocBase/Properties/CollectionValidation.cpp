@@ -203,7 +203,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
     return res;
   }
 
-  auto res = d.internal.applyDefaultsAndValidateDatabaseConfiguration(config);
+  auto res = d.identity.applyDefaultsAndValidateDatabaseConfiguration(config);
   if (res.fail()) {
     return res;
   }
@@ -244,7 +244,7 @@ Result arangodb::applyDefaultsAndValidate(CollectionDescriptor& d,
 
     // From here on the field holds the leader's id, not the name the caller
     // gave us.
-    dsl = std::to_string(leader.internal.id.id());
+    dsl = std::to_string(leader.identity.id.id());
 
     TRI_ASSERT(leader.clusteringConstant.numberOfShards.has_value());
     if (d.clusteringConstant.numberOfShards.has_value()) {

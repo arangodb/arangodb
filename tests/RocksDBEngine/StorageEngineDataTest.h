@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Metrics/CounterBuilder.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Transaction/Manager.h"
@@ -122,11 +123,9 @@ class StorageEngineDataTest : public StorageEngineFixture {
   // inventory API reports.
   std::shared_ptr<LogicalCollection> makeCollection(Database& database,
                                                     std::string_view name) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add(StaticStrings::DataSourceName, VPackValue(name));
-    builder.close();
-    auto collection = database.createCollection(builder.slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(std::string{name});
+    auto collection = database.createCollection(colDescriptor);
     engine().createCollection(database, *collection);
     return collection;
   }

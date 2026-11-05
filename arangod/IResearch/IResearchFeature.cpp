@@ -44,17 +44,19 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/ClusterIndexFactory.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
@@ -68,7 +70,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -840,6 +841,8 @@ IResearchFeature::IResearchFeature(
 #endif
 }
 
+IResearchFeature::~IResearchFeature() = default;
+
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
 
@@ -921,7 +924,21 @@ void IResearchFeature::stop() {
   _searchExecutionPool.stop();
 }
 
-void IResearchFeature::unprepare() { TRI_ASSERT(isEnabled()); }
+void IResearchFeature::unprepare() {
+  TRI_ASSERT(isEnabled());
+  if (!server().hasFeature<StorageEngine>()) {
+    return;
+  }
+  // catalog holds non-owning pointers, so we must unregister them before
+  // they're destroyed
+  auto& catalog = server().getFeature<StorageEngine>().indexTypeCatalog();
+  if (_linkDefinition) {
+    catalog.remove(StaticStrings::ViewArangoSearchType);
+  }
+  if (_invertedDefinition) {
+    catalog.remove(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
+  }
+}
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
@@ -1031,25 +1048,45 @@ void IResearchFeature::registerIndexFactory() {
   }
   auto& engine = server().getFeature<StorageEngine>();
 
-  auto emplace = [&](IndexFactory const& target) {
-    auto r = const_cast<IndexFactory&>(target).emplace(
-        std::string{StaticStrings::ViewArangoSearchType}, *_factory);
+  auto addDefinition = [&]() {
+    // register before replacing, so a failed add() can't leave a dangling ptr
+    auto newDefinition = std::make_unique<IResearchLinkDefinition>(server());
+    auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
+                                           *newDefinition);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
-          absl::StrCat("failure registering IResearch link factory with "
-                       "index factory from feature '",
+          absl::StrCat("failure registering IResearch link definition with "
+                       "index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
+    _linkDefinition = std::move(newDefinition);
   };
 
-  if (auto* clusterEngine = dynamic_cast<ClusterEngine*>(&engine)) {
-    _factory = IResearchLinkCoordinator::createFactory(server());
-    emplace(clusterEngine->indexFactory());
-    emplace(clusterEngine->indexFactory().rocksDBIndexFactory());
-  } else if (auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&engine)) {
-    _factory = IResearchRocksDBLink::createFactory(server());
-    emplace(rocksDBEngine->indexFactory());
+  auto addInvertedDefinition = [&]() {
+    // register before replacing, so a failed add() can't leave a dangling ptr
+    auto newDefinition =
+        std::make_unique<IResearchInvertedIndexDefinition>(server());
+    auto r = engine.indexTypeCatalog().add(
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE, *newDefinition);
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch inverted index "
+                       "definition with index type catalog from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+    _invertedDefinition = std::move(newDefinition);
+  };
+
+  if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
+    engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
+    addDefinition();
+    addInvertedDefinition();
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
+    engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
+    addDefinition();
+    addInvertedDefinition();
   }
 }
 
