@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
+  (previously g++-13).
+  
 * API versions now have the full form `vMAJOR.MINOR-BRANCH`, e.g. `v1.0-4`,
   as reported by `GET /_api/version`.
   Clients can send an `x-arango-api-version` header with the version they
