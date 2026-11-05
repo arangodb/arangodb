@@ -6,6 +6,11 @@
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
 
+* Fixed an issue where AQL COLLECT AGGREGATE without group keys reported an
+  incorrect fullCount for empty input when used with LIMIT and {fullCount: true}.
+  The single result row was counted twice: once when produced and again during
+  the fullCount phase.
+
 * Add `--http.decompressed-request-body-global-memory-limit` startup option,
   which limits the combined size of all decompressed request bodies. Requests that 
   would exceed it are rejected with 503. The default is 10% of the physical memory.
