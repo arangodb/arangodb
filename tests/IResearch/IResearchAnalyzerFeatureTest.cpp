@@ -67,7 +67,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/Indexes.h"
 #include "velocypack/Slice.h"
 
 namespace {

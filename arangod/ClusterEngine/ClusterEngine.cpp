@@ -61,9 +61,10 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              DatabaseFeature& database,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), database, database,
-                    [this, &server](IndexTypeCatalog const& catalog) {
+                    [this](IndexTypeCatalog const& catalog) {
+                      // *this unbuilt; factory only stores the ref
                       return std::make_unique<ClusterIndexFactory>(
-                          server, *this, catalog);
+                          this->server(), *this, catalog);
                     }),
       _clusterFeature(clusterFeature),
       _metrics(metrics) {

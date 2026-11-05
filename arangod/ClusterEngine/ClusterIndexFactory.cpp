@@ -95,7 +95,7 @@ std::shared_ptr<Index> ClusterIndexFactory::createIndex(
     case IndexType::Unknown:
     case IndexType::NoAccess:
     case IndexType::IResearchLink:
-      // unreachable: prepareIndexFromSlice routes this to createIResearchLink()
+      // unreachable: IResearchLink is redirected, others are never registered
       TRI_ASSERT(false) << "ClusterIndexFactory::createIndex called for "
                         << int(type);
       return nullptr;

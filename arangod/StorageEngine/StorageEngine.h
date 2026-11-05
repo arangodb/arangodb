@@ -100,7 +100,7 @@ class StorageSnapshot {
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
-  // passed in since the engine may need a ref only its own ctor has yet
+  // passed in since the engine may need a ref that only its own ctor has
   using IndexFactoryCreator =
       std::function<std::unique_ptr<IndexFactory>(IndexTypeCatalog const&)>;
 

@@ -77,7 +77,6 @@
 #include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/common.h"
-#include "Indexes/IndexTypeCatalog.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"

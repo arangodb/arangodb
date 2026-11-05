@@ -108,6 +108,7 @@ IndexFactory const& StorageEngine::indexFactory() const {
 }
 
 void StorageEngine::setLinkCreator(IndexFactory::LinkCreator creator) {
+  TRI_ASSERT(_indexFactory.get() != nullptr);
   _indexFactory->setLinkCreator(std::move(creator));
 }
 
