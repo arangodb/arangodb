@@ -728,15 +728,6 @@ async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
     co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  auto const& ci = request()->connectionInfo();
-  if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !auth->authenticationUnixSockets()) {
-    // no authentication required for unix domain socket connections
-    co_return AuthenticationGrant::GRANTED_EARLY;
-  }
-#endif
-
   if (request()->authenticated()) {
     if (auth->rbacEnabled() && request()->authenticationMethod() ==
                                    rest::AuthenticationMethod::BASIC) {
