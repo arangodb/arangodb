@@ -112,6 +112,7 @@ class CircleCIGenerator(OutputGenerator):
                     architecture=architecture,
                     build_variant=build_variant,
                     nightly=self.config.filter_criteria.is_full_run,
+                    publish_non_maintainer=self.config.use_non_maintainer_build
                 )
                 self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
@@ -185,22 +186,24 @@ class CircleCIGenerator(OutputGenerator):
         Returns:
             List of build job names that tests depend on
         """
-        build_job = self._create_build_job(build_config)
-        frontend_job = self._create_frontend_build_job(build_config)
 
+        build_job = self._create_build_job(build_config)
         workflow["jobs"].append(build_job)
+        # Extract job names from the dicts
+        build_job_dependencies = [build_job["compile-linux"]["name"]]
+
+        frontend_job = self._create_frontend_build_job(build_config)
         workflow["jobs"].append(frontend_job)
 
         # Add non-maintainer smoke build (non-instrumented builds only)
         if not build_config.build_variant.is_instrumented:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
+            if build_config.publish_non_maintainer:
+                build_job_dependencies.append(non_maintainer_job["compile-linux"]["name"])
 
-        # Extract job names from the dicts
-        build_job_name = build_job["compile-linux"]["name"]
-        frontend_job_name = frontend_job["build-frontend"]["name"]
-
-        return [build_job_name, frontend_job_name]
+        build_job_dependencies.append(frontend_job["build-frontend"]["name"])
+        return build_job_dependencies
 
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
@@ -235,6 +238,7 @@ class CircleCIGenerator(OutputGenerator):
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
+            "prefix": "",
         }
 
         if build_config.architecture == Architecture.AARCH64:
@@ -267,8 +271,9 @@ class CircleCIGenerator(OutputGenerator):
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
-            "publish-artifacts": False,
+            "publish-artifacts": build_config.publish_non_maintainer,
             "build-tests": False,
+            "prefix": "prod_",
         }
 
         if build_config.architecture == Architecture.AARCH64:
@@ -726,7 +731,6 @@ class CircleCIGenerator(OutputGenerator):
         size_override = self._get_size_override(job.name, build_config, is_cluster)
         size = size_override or job.options.size or ResourceSize.SMALL
         resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
-
         job_dict = {
             "name": job_name,
             "suiteName": suite_name,
@@ -739,6 +743,7 @@ class CircleCIGenerator(OutputGenerator):
             + json.dumps(
                 job.arguments.arangosh_args + self.config.test_execution.arangosh_args
             ),
+            "prefix": job.prefix,
         }
 
         extra_args_str = self._build_extra_args_string(
@@ -833,6 +838,7 @@ class CircleCIGenerator(OutputGenerator):
                 "rta-branch": rta_branch,
                 "buckets": bucket_count,
                 "sanitizer": self._get_sanitizer_param(build_config),
+                "prefix": job.prefix,
             }
             result_jobs.append({"run-rta-tests": job_dict})
 
