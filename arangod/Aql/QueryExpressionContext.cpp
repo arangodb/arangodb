@@ -40,26 +40,8 @@ void QueryExpressionContext::registerError(ErrorCode errorCode,
   _query.warnings().registerError(errorCode, msg);
 }
 
-icu_64_64::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
-    std::string_view expr, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
-}
-
-icu_64_64::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts,
-    bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                      isEmptyExpression);
-}
-
-arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
-    arangodb::velocypack::Slice params) {
-  return _aqlFunctionsInternalCache.buildValidator(params);
+AqlFunctionsInternalCache& QueryExpressionContext::functionsCache() {
+  return _aqlFunctionsInternalCache;
 }
 
 Database& QueryExpressionContext::vocbase() const { return _trx.vocbase(); }

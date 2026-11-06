@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
@@ -91,7 +92,8 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
+      expressionContext->functionsCache().buildRegexMatcher(*buffer,
+                                                            caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -186,7 +188,8 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
+      expressionContext->functionsCache().buildRegexMatcher(*buffer,
+                                                            caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -291,7 +294,8 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
+      expressionContext->functionsCache().buildRegexMatcher(*buffer,
+                                                            caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -339,7 +343,8 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
+      expressionContext->functionsCache().buildRegexMatcher(*buffer,
+                                                            caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed

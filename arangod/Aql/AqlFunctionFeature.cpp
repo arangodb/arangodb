@@ -23,6 +23,7 @@
 #include "AqlFunctionFeature.h"
 
 #include "Aql/Function.h"
+#include "Aql/Function/StringFunctions.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -64,6 +65,13 @@ void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   _functionNames.doUnderLock(
       [&](auto& functions) { functions.try_emplace(func.name, func); });
+}
+
+template<auto Fn>
+void AqlFunctionFeature::addStringFunction(
+    char const* arguments, std::underlying_type_t<Function::Flags> flags) {
+  add({std::string{functions::kStringFunctionName<Fn>}, arguments, flags,
+       &functions::adapt<Fn>});
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias,
@@ -159,7 +167,7 @@ void AqlFunctionFeature::addTypeCastFunctions() {
 
   // type cast functions
   add({"TO_NUMBER", ".", flags, &functions::ToNumber});
-  add({"TO_STRING", ".", flags, &functions::ToString});
+  addStringFunction<functions::toString>(".", flags);
   add({"TO_BOOL", ".", flags, &functions::ToBool});
   add({"TO_ARRAY", ".", flags, &functions::ToArray});
   // TO_LIST is an alias for TO_ARRAY
@@ -173,28 +181,28 @@ void AqlFunctionFeature::addStringFunctions() {
       FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
 
   // string functions
-  add({"CONCAT", ".|+", flags, &functions::Concat});
-  add({"CONCAT_SEPARATOR", ".,.|+", flags, &functions::ConcatSeparator});
-  add({"CHAR_LENGTH", ".", flags, &functions::CharLength});
-  add({"LOWER", ".", flags, &functions::Lower});
-  add({"UPPER", ".", flags, &functions::Upper});
-  add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
-  add({"SUBSTRING_BYTES", ".,.|.,.,.", flags, &functions::SubstringBytes});
-  add({"CONTAINS", ".,.|.", flags, &functions::Contains});
-  add({"LIKE", ".,.|.", flags, &functions::Like});
+  addStringFunction<functions::concat>(".|+", flags);
+  addStringFunction<functions::concatSeparator>(".,.|+", flags);
+  addStringFunction<functions::charLength>(".", flags);
+  addStringFunction<functions::lower>(".", flags);
+  addStringFunction<functions::upper>(".", flags);
+  addStringFunction<functions::substring>(".,.|.", flags);
+  addStringFunction<functions::substringBytes>(".,.|.,.,.", flags);
+  addStringFunction<functions::contains>(".,.|.", flags);
+  addStringFunction<functions::like>(".,.|.", flags);
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
   add({"REGEX_SPLIT", ".,.|.,.", flags, &functions::RegexSplit});
   add({"REGEX_TEST", ".,.|.", flags, &functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", flags, &functions::RegexReplace});
-  add({"LEFT", ".,.", flags, &functions::Left});
-  add({"RIGHT", ".,.", flags, &functions::Right});
-  add({"TRIM", ".|.", flags, &functions::Trim});
-  add({"LTRIM", ".|.", flags, &functions::LTrim});
-  add({"RTRIM", ".|.", flags, &functions::RTrim});
-  add({"FIND_FIRST", ".,.|.,.", flags, &functions::FindFirst});
-  add({"FIND_LAST", ".,.|.,.", flags, &functions::FindLast});
-  add({"SPLIT", ".|.,.", flags, &functions::Split});
-  add({"SUBSTITUTE", ".,.|.,.", flags, &functions::Substitute});
+  addStringFunction<functions::left>(".,.", flags);
+  addStringFunction<functions::right>(".,.", flags);
+  addStringFunction<functions::trim>(".|.", flags);
+  addStringFunction<functions::ltrim>(".|.", flags);
+  addStringFunction<functions::rtrim>(".|.", flags);
+  addStringFunction<functions::findFirst>(".,.|.,.", flags);
+  addStringFunction<functions::findLast>(".,.|.,.", flags);
+  addStringFunction<functions::split>(".|.,.", flags);
+  addStringFunction<functions::substitute>(".,.|.,.", flags);
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
@@ -206,8 +214,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &functions::Hash});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
-  add({"TO_CHAR", ".", flags, &functions::ToChar});
-  add({"REPEAT", ".,.|.", flags, &functions::Repeat});
+  addStringFunction<functions::toChar>(".", flags);
+  addStringFunction<functions::repeat>(".,.|.", flags);
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &functions::LevenshteinDistance});
