@@ -597,7 +597,61 @@ function optimizerCollectMethodsTestSuite () {
       const res = db._query(query).toArray();
       assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
     },
-  
+
+    // A sorted COLLECT reuses a preceding SORT on its group variables,
+    // independent of the sort direction, so it does not need a SORT of its own.
+    testSortedCollectReusesPrecedingSort : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] });
+
+      const queries = [
+        { query: "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", results: 10, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " SORT j.group DESC COLLECT value = j.group RETURN value", results: 10, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", results: 1500, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " SORT j.group DESC, j.value DESC COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", results: 1500, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " SORT j.group DESC, j.value ASC COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", results: 1500, sortNodes: 1 },
+        { query: "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", results: 10, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " SORT j.group DESC, j.value DESC COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", results: 10, sortNodes: 0 },
+        { query: "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", results: 1500, sortNodes: 0 },
+      ];
+
+      queries.forEach(function(q) {
+        const nodes = AQL_EXPLAIN(q.query).plan.nodes;
+        assertEqual(isCluster ? 2 : 1, nodes.filter((n) => n.type === "CollectNode").length, q.query);
+        assertEqual(q.sortNodes, nodes.filter((n) => n.type === "SortNode").length, q.query);
+        assertEqual(q.results, AQL_EXECUTE(q.query).json.length, q.query);
+      });
+    },
+
+    // A sorted COLLECT can only reuse a preceding SORT if the group
+    // variables are its leading sort keys. Otherwise rows with the same
+    // group values are not adjacent and the optimizer must add its own SORT.
+    testSortedCollectWithPrecedingSortOnOtherAttributes : function () {
+      const queries = [
+        // group variable is not the first sort key
+        { collect: "SORT j.value, j.group COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: true },
+        { collect: "SORT j.haxe DESC, j.group COLLECT g = j.group", ret: "g", newSort: true },
+        // group variables are not the leading sort keys
+        { collect: "SORT j.haxe, j.group, j.value COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: true },
+        // group variables are the leading sort keys, in any order and direction
+        { collect: "SORT j.group DESC, j.value COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: false },
+        { collect: "SORT j.value DESC, j.group COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: false },
+      ];
+
+      const normalize = (rows) => rows.map((r) => JSON.stringify(r)).sort();
+
+      queries.forEach(function(q) {
+        const expected = AQL_EXECUTE(`FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "hash" } RETURN ${q.ret}`).json;
+        const query = `FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "sorted" } RETURN ${q.ret}`;
+
+        if (!isCluster) {
+          const sortNodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === "SortNode");
+          assertEqual(q.newSort ? 2 : 1, sortNodes.length, query);
+        }
+
+        assertEqual(normalize(expected), normalize(AQL_EXECUTE(query).json), query);
+      });
+    },
+
   };
 }
 
