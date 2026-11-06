@@ -22,6 +22,7 @@
 
 #include "RocksDBSingleOperationReadOnlyMethods.h"
 
+#include "infra/RocksDBMonitors.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 #include <rocksdb/db.h>
@@ -45,6 +46,7 @@ RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions() const {
 rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val, ReadOwnWrites) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
 }

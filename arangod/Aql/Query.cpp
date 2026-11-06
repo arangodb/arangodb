@@ -64,6 +64,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -616,6 +617,7 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(!_queryString.empty());
+  infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
       << " this: " << (uintptr_t)this;
@@ -891,11 +893,14 @@ futures::Future<futures::Unit> Query::execute(
         }
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
-        queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
-
-        // reserve some space in Builder to avoid frequent reallocs
-        queryResult.data->reserve(16 * 1024);
-        queryResult.data->openArray(/*unindexed*/ true);
+        {
+          infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
+          queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
+          // reserve some space in Builder to avoid frequent reallocs
+          queryResult.data->reserve(16 * 1024);
+          queryResult.data->openArray(/*unindexed*/ true);
+        }
+        
 
         _executionPhase = ExecutionPhase::EXECUTE;
         trackExecutionStart();
@@ -954,6 +959,7 @@ futures::Future<futures::Unit> Query::execute(
           }
 
           if (!_queryOptions.silent && resultRegister.isValid()) {
+            infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;

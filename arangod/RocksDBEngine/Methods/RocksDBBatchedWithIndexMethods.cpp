@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBatchedWithIndexMethods.h"
+
+#include "infra/RocksDBMonitors.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 using namespace arangodb;
@@ -36,6 +38,7 @@ RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val, ReadOwnWrites readOwnWrites) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   if (readOwnWrites == ReadOwnWrites::yes) {
@@ -48,6 +51,7 @@ void RocksDBBatchedWithIndexMethods::MultiGet(
     rocksdb::ColumnFamilyHandle& family, size_t count,
     rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
     rocksdb::Status* statuses, ReadOwnWrites readOwnWrites) {
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   rocksdb::ReadOptions ro;
   if (readOwnWrites == ReadOwnWrites::yes) {
     _wb->MultiGetFromBatchAndDB(_db, ro, &family, count, keys, values, statuses,

@@ -25,11 +25,39 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/MonitorRegistry.h"
+#include "infra/ResourceMonitor.h"
+#include "infra/RocksDBMonitors.h"
+#include "Logger/LogMacros.h"
+
+#include <sstream>
+#include <string>
 
 using namespace arangodb;
 
+namespace {
+
+// Every monitor in the registry with its bytes, including those of finished
+// queries that still have memory charged to them.
+auto describeRegistry() -> std::string {
+  std::ostringstream out;
+  out << '[';
+  char const* sep = "";
+  infra::globalMonitorRegistry().forEach([&](infra::ResourceMonitorBase& m) {
+    out << sep << &m << '=' << m.actualBytes();
+    sep = ", ";
+  });
+  out << ']';
+  return out.str();
+}
+
+}  // namespace
+
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
-    : _current(0), _peak(0), _limit(0), _global(global) {}
+    : _current(0), _peak(0), _limit(0), _global(global) {
+  monitorRef = infra::ResourceMonitorRef::create();
+  infra::rocksdbMonitor().resetPeak(); // test only
+}
 
 ResourceMonitor::~ResourceMonitor() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -39,6 +67,17 @@ ResourceMonitor::~ResourceMonitor() {
   [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
+  auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
+  LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
+      << "query memory " << m
+      << " | old: peak=" << peak()
+      << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
+      << " | rocksdb: peak=" << infra::rocksdbMonitor().peakBytes()
+      << " now=" << infra::rocksdbMonitor().actualBytes()
+      << " | monitors: " << describeRegistry();
+
+  m->retire();
+  monitorRef.reset();
 }
 
 /// @brief sets a memory limit

@@ -33,6 +33,7 @@
 #include "Aql/Stats.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/ScopeGuard.h"
+#include "infra/ResourceMonitorScope.h"
 
 #include <algorithm>
 #include <utility>
@@ -106,8 +107,10 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
   _internalState = AsyncState::InProgress;
 
-  bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) -> bool {
+  bool queued = _sharedState->asyncExecuteAndWakeup(
+      [this, stack, monitor = _engine->getQuery().resourceMonitor().monitorRef](
+          bool isAsync) -> bool {
+        infra::ResourceMonitorScope memoryScope(monitor);
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

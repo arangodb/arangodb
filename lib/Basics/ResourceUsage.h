@@ -28,6 +28,7 @@
 
 #include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
+#include "infra/ResourceMonitorRef.h"
 
 namespace arangodb {
 class GlobalResourceMonitor;
@@ -86,6 +87,8 @@ struct alignas(64) ResourceMonitor final {
     static_assert(NumberUtils::isPowerOfTwo(chunkSize));
     return static_cast<std::int64_t>(value / chunkSize);
   }
+
+  infra::ResourceMonitorRef monitorRef;
 
  private:
   std::atomic<std::uint64_t> _current;
