@@ -1,6 +1,11 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* A sorted AQL COLLECT reuses a preceding SORT if the group variables are the
+  leading keys of that SORT, in any order and direction, and does not add a
+  SORT of its own. For example, `SORT d.value DESC COLLECT v = d.value` runs as
+  a sorted COLLECT with a single SORT, which an index on `value` can serve.
+
 * Updated ArangoDB Starter to v0.18.34.
 
 * Updated node modules:

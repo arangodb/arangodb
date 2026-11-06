@@ -2264,24 +2264,75 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // later
     collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
 
-    // insert a SortNode IN FRONT OF the CollectNode
+    // insert a SortNode IN FRONT OF the CollectNode, if we don't already have
+    // one that can be used instead
     if (!groupVariables.empty()) {
-      SortElementVector sortElements;
-      for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.inVar, true);
+      // check if our input is already sorted
+      SortNode* sortNode = nullptr;
+      auto* d = n->getFirstDependency();
+      while (d) {
+        switch (d->getType()) {
+          case ExecutionNode::SORT:
+            sortNode = ExecutionNode::castTo<SortNode*>(d);
+            d = nullptr;  // stop the loop
+            break;
+
+          case ExecutionNode::FILTER:
+          case ExecutionNode::LIMIT:
+          case ExecutionNode::CALCULATION:
+          case ExecutionNode::SUBQUERY:
+          case ExecutionNode::INSERT:
+          case ExecutionNode::REMOVE:
+          case ExecutionNode::REPLACE:
+          case ExecutionNode::UPDATE:
+          case ExecutionNode::UPSERT:
+            // these nodes do not affect our sort order,
+            // so we can safely ignore them
+            d = d->getFirstDependency();  // continue search
+            break;
+
+          default:
+            d = nullptr;  // stop the loop
+            break;
+        }
       }
 
-      auto sortNode =
-          new SortNode(plan.get(), plan->nextId(), sortElements, true);
-      plan->registerNode(sortNode);
+      bool needNewSortNode = true;
+      if (sortNode != nullptr) {
+        // The existing SORT groups the rows correctly only if the group
+        // variables are its leading sort keys. A key that is not a group
+        // variable in front of them splits a group into several runs.
+        containers::FlatHashSet<Variable const*> groupVars;
+        for (auto const& v : groupVariables) {
+          groupVars.emplace(v.inVar);
+        }
+        containers::FlatHashSet<Variable const*> leadingGroupVars;
+        for (auto const& e : sortNode->elements()) {
+          if (!groupVars.contains(e.var)) {
+            break;
+          }
+          leadingGroupVars.emplace(e.var);
+        }
+        needNewSortNode = leadingGroupVars.size() != groupVars.size();
+      }
 
-      TRI_ASSERT(collectNode->hasDependency());
-      auto dep = collectNode->getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      sortNode->addDependency(dep);
-      collectNode->replaceDependency(dep, sortNode);
+      if (needNewSortNode) {
+        SortElementVector sortElements;
+        for (auto const& v : groupVariables) {
+          sortElements.emplace_back(v.inVar, true);
+        }
 
-      modified = true;
+        sortNode = new SortNode(plan.get(), plan->nextId(), sortElements, true);
+        plan->registerNode(sortNode);
+
+        TRI_ASSERT(collectNode->hasDependency());
+        auto dep = collectNode->getFirstDependency();
+        TRI_ASSERT(dep != nullptr);
+        sortNode->addDependency(dep);
+        collectNode->replaceDependency(dep, sortNode);
+
+        modified = true;
+      }
     }
   }
 
