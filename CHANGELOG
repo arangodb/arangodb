@@ -11,6 +11,11 @@
   The single result row was counted twice: once when produced and again during
   the fullCount phase.
 
+* The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
+  group variables are the leading keys of that SORT. Otherwise it adds a SORT
+  on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
+  returns each group once.
+
 * Add `--http.decompressed-request-body-global-memory-limit` startup option,
   which limits the combined size of all decompressed request bodies. Requests that 
   would exceed it are rejected with 503. The default is 10% of the physical memory.
