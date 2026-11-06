@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <ranges>
 
 #include "Graph/SimplifiedTraversal/IGraphView.h"
 #include "Graph/SimplifiedTraversal/InMemoryGraph.h"
@@ -15,9 +16,32 @@ struct Path {
   bool operator==(Path const& other) const = default;
 };
 
+template<typename Inspector>
+auto inspect(Inspector& f, Path& p) {
+  return f.object(p).fields(f.field("vertices", p.vertices),
+                            f.field("edges", p.edges));
+}
+
 auto materializePaths(std::shared_ptr<IGraphView> view, Interior interior)
     -> std::vector<Path> {
-  return {};
+  std::vector<Path> result;
+
+  for (auto [prev, edgeId] : interior._screamer | std::views::reverse) {
+    auto path = Path{};
+
+    while (prev != -1) {
+      path.edges.emplace_back(view->queryEdgeLabel(edgeId));
+
+      auto toV = view->ensureEdgeToVertex(edgeId);
+
+      path.vertices.emplace_back(*view->retrieveDocument(toV));
+
+      std::tie(prev, edgeId) = interior._screamer[prev];
+    }
+    result.emplace_back(path);
+  }
+
+  return result;
 }
 }  // namespace
 
@@ -46,7 +70,8 @@ TEST(GraphViewBFSTest, two_vertices_no_edge) {
   auto materialisedPaths = materializePaths(graphView, paths);
 
   ASSERT_EQ(materialisedPaths,
-            (std::vector<Path>{Path{{VertexIdLabel("v/0")}, {}}}));
+            (std::vector<Path>{Path{{VertexIdLabel("v/0")}, {}}}))
+      << inspection::json(materialisedPaths);
 }
 
 TEST(GraphViewBFSTest, single_edge) {
@@ -115,7 +140,8 @@ TEST(GraphViewBFSTest, two_edges_between_two_vertices) {
   ASSERT_EQ(materialisedPaths,
             (std::vector<Path>{Path{{v0}, {}},                //
                                Path{{v0, v1, v2}, {e0, e2}},  //
-                               Path{{v0, v1, v2}, {e1, e2}}}));
+                               Path{{v0, v1, v2}, {e1, e2}}}))
+      << inspection::json(materialisedPaths);
 }
 
 }  // namespace arangodb::graph::experimental
