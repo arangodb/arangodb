@@ -9,6 +9,15 @@
   cluster attributes that were ignored before, such as `numberOfShards` together
   with `distributeShardsLike`, or `writeConcern` on a single server.
 
+* Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
+  when used with LIMIT and {fullCount: true}. The single result row was counted
+  twice: once when produced and again during the fullCount skip phase.
+
+* Fixed an issue where AQL COLLECT AGGREGATE without group keys reported an
+  incorrect fullCount for empty input when used with LIMIT and {fullCount: true}.
+  The single result row was counted twice: once when produced and again during
+  the fullCount phase.
+
 * API versions now have the full form `vMAJOR.MINOR-BRANCH`, e.g. `v1.0-4`,
   as reported by `GET /_api/version`.
   Clients can send an `x-arango-api-version` header with the version they
@@ -34,6 +43,11 @@
   dependencies.
 
 * Updated ArangoDB Starter to v0.20.0-preview-20.
+
+* The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
+  group variables are the leading keys of that SORT. Otherwise it adds a SORT
+  on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
+  returns each group once.
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
@@ -580,47 +594,6 @@
 * Let's note the removals we do in 4.0 here.
 
 * Remove FoxxMaster code.
-
-
-3.12.14 (XXXX-XX-XX)
---------------------
-
-* Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
-  when used with LIMIT and {fullCount: true}. The single result row was counted
-  twice: once when produced and again during the fullCount skip phase.
-
-3.12.13 (2026-10-28)
---------------------
-
-* BTS-2496: AQL `LENGTH()` and `COUNT()` of a subquery that contains a `COLLECT`
-  return the number of rows the subquery produces after the `COLLECT` and any
-  `FILTER` following it. For example,
-  `LENGTH(FOR d IN coll COLLECT WITH COUNT INTO c FILTER c > 0 RETURN true)`
-  returns `1` for a non-empty collection. The `optimize-count` optimizer rule is
-  not applied to such subqueries. Before, such expressions could return `null`
-  or `0`.
-
-* BTS-2502: When an AQL `FILTER` with `OR` is answered by several index lookups
-  in one `IndexNode`, for example `FILTER d.a == 1 OR d.b == 2` with an index on
-  each attribute, the query returns the rows of every lookup, no matter how many
-  rows each lookup produces. Affected versions skipped the remaining lookups
-  when the rows found so far added up to an exact multiple of 1000, and the
-  query silently returned too few results.
-
-* COR-1209: Fixed a crash that occurs when a license is being activated.
-
-* BTS-2497: Fixed AQL wrong result: ALL_SHORTEST_PATHS inside a loop returns no
-  paths for every row after one whose search is empty or starts at the target.
-
-* COR-1045: Fixed a server crash when SEARCH on a search-alias view referenced a
-  field not covered by the inverted index and the query ran with
-  `failOnWarning: true`.
-
-* COR-1031: Adapt permissions for `PUT /_api/query/properties`: the endpoint now
-  asks the new permission `UpdateQueryProperties`, which is scoped to the
-  database of the request, instead of the admin permission `AdminAqlQueries`.
-  With classic authentication it requires read-write access to that database and
-  not read-write access to `_system`. Returns TRI_ERROR_FORBIDDEN on failure.
 
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
