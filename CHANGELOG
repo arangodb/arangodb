@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Removed support for Unix domain sockets. `unix://` endpoints are no longer
+  accepted by arangod or the client tools. The startup option
+  `--server.authentication-unix-sockets` is now obsolete and has no effect.
+
 * API versions now have the full form `vMAJOR.MINOR-BRANCH`, e.g. `v1.0-4`,
   as reported by `GET /_api/version`.
   Clients can send an `x-arango-api-version` header with the version they
