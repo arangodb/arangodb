@@ -1,6 +1,14 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Creating a collection via `POST /_api/collection` no longer silently corrects
+  invalid request bodies. Such requests are now rejected with HTTP 400 instead
+  of being accepted with a deprecation warning. This affects, for example,
+  unknown attributes, `null` attribute values, `type` given as a string or as an unknown number,
+  attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
+  cluster attributes that were ignored before, such as `numberOfShards` together
+  with `distributeShardsLike`, or `writeConcern` on a single server.
+
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
