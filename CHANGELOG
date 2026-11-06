@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
+  instead of value content, causing equal values to be serialized multiple
+  times instead of reusing their position in the AqlItemBlock raw array.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
