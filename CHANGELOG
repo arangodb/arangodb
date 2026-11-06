@@ -36,6 +36,11 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-20.
 
+* The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
+  group variables are the leading keys of that SORT. Otherwise it adds a SORT
+  on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
+  returns each group once.
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
