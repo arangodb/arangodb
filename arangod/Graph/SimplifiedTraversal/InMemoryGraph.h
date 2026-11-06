@@ -175,6 +175,10 @@ struct InMemoryGraphView : IGraphView {
     return _graph.includesVertex(vertex);
   }
 
+  auto queryEdgeLabel(EdgeId const& edge) -> EdgeIdLabel override {
+    return _edgeIdLabels.at(edge.id);
+  };
+
   // noted down labels (not necessarily part of the graph)
   // VertexId is the position in this vector
   std::vector<VertexIdLabel> _vertexIdLabels;
