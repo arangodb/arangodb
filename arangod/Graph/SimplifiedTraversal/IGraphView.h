@@ -12,6 +12,11 @@ struct VertexIdLabel {
   std::string label;
   bool operator==(VertexIdLabel const&) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, VertexIdLabel& x) {
+  return f.object(x).fields(f.field("label", x.label));
+}
+
 /**
    Internal handler of an vertex
  */
@@ -43,6 +48,10 @@ struct EdgeIdLabel {
   std::string label;
   bool operator==(EdgeIdLabel const&) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, EdgeIdLabel& x) {
+  return f.object(x).fields(f.field("label", x.label));
+}
 
 /**
    Internal handler of an edge
@@ -109,6 +118,8 @@ struct IGraphView {
   virtual auto ensureEdgeToVertex(EdgeId const& edge) -> VertexId = 0;
   virtual auto retrieveDocument(VertexId const& id)
       -> std::optional<VertexIdLabel> = 0;
+
+  virtual auto queryEdgeLabel(EdgeId const& edge) -> EdgeIdLabel = 0;
 
   // -----------------------------
   // // Hausmeisterschrott
