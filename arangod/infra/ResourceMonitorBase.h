@@ -77,7 +77,7 @@ struct ResourceMonitorBase {
                                                    std::memory_order_relaxed));
       now = current + actual;
     } else {
-      now = _actualBytes.fetch_add(actual, std::memory_order_relaxed);
+      now = _actualBytes.fetch_add(actual, std::memory_order_relaxed) + actual;
     }
     _requestedBytes.fetch_add(requested, std::memory_order_relaxed);
     updatePeak(now);

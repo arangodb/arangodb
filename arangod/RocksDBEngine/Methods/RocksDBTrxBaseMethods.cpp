@@ -235,7 +235,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr ||
@@ -260,7 +259,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -281,7 +279,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -300,7 +297,6 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();
@@ -319,7 +315,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
-  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   std::uint64_t beforeSize = currentWriteBatchSize();

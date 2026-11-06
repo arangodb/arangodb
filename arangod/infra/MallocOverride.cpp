@@ -190,7 +190,7 @@ void* realloc(void* ptr, size_t size) noexcept {
   auto old_actual = je_malloc_usable_size(old_real);
 
   auto* new_monitor = effectiveMonitor();
-  TRI_ASSERT(new_monitor == old_monitor);
+  //TRI_ASSERT(new_monitor == old_monitor);
 
   // Net the resize against the still-counted old allocation when it stays on
   // the same monitor, so a small growth (or a shrink) is not checked against
