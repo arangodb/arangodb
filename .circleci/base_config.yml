@@ -446,9 +446,10 @@ commands:
             fi
             curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/arangodb
-
+            file <<parameters.repo-path>>/build/bin/arangodb
             curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
+            file <<parameters.repo-path>>/build/bin/rclone-arangodb
   provision-rbac-sidecar:
     description: >
       Downloads the `arangodb_operator` binary when it exists or builds it
