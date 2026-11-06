@@ -57,6 +57,8 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <boost/hash2/md5.hpp>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -683,17 +685,18 @@ arangodb::Result processInputDirectory(
                                directory.pathToFile(file),
                                "': file has wrong internal format")};
         }
-        std::string cname = VelocyPackHelper::getStringValue(
+        std::string const cname = VelocyPackHelper::getStringValue(
             parameters, StaticStrings::DataSourceName, "");
 
         // problem: collection name may contain arbitrary characters
         std::string escapedName = escapedCollectionName(cname, parameters);
         bool overwriteName = false;
+        boost::hash2::md5_128 hash;
+        hash.update(cname.c_str(), cname.size());
+        std::string const hashedCname{boost::hash2::to_string(hash.result())};
         if (cname != name && name != escapedName &&
-            name != absl::StrCat(cname, "_",
-                                 arangodb::rest::SslInterface::sslMD5(cname)) &&
-            name != absl::StrCat(escapedName, "_",
-                                 arangodb::rest::SslInterface::sslMD5(cname))) {
+            name != absl::StrCat(cname, "_", hashedCname) &&
+            name != absl::StrCat(escapedName, "_", hashedCname)) {
           // file has a different name than found in structure file
           if (options.importStructure) {
             // we cannot go on if there is a mismatch
@@ -1445,8 +1448,9 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   //  ... there are 6 possible names
   std::string escapedName =
       escapedCollectionName(collectionName, parameters.get("parameters"));
-  std::string const nameHash =
-      arangodb::rest::SslInterface::sslMD5(collectionName);
+  boost::hash2::md5_128 hash;
+  hash.update(collectionName.c_str(), collectionName.size());
+  std::string const nameHash{boost::hash2::to_string(hash.result())};
 
   auto datafile = directory.readableFile(absl::StrCat(
       escapedName, "_", nameHash, ".data.", ::getSuffix(useVPack)));
