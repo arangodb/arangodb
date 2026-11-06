@@ -1157,6 +1157,22 @@ set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
 
+# Match the faiss SIMD kernels to the baseline flags from
+# OptimizeForArchitecture; otherwise dispatch at runtime.
+if(ARCH_AMD64 AND ARCHITECTURE_OPTIMIZATIONS MATCHES "-mavx512f")
+  set(FAISS_OPT_LEVEL "avx512" CACHE STRING "FAISS SIMD level" FORCE)
+  set(FAISS_LIBRARY faiss_avx512)
+elseif(ARCH_AMD64 AND ARCHITECTURE_OPTIMIZATIONS MATCHES "-mavx2")
+  set(FAISS_OPT_LEVEL "avx2" CACHE STRING "FAISS SIMD level" FORCE)
+  set(FAISS_LIBRARY faiss_avx2)
+elseif(ARCH_AARCH64 AND ARCHITECTURE_OPTIMIZATIONS MATCHES "\\+sve")
+  set(FAISS_OPT_LEVEL "sve" CACHE STRING "FAISS SIMD level" FORCE)
+  set(FAISS_LIBRARY faiss_sve)
+else()
+  set(FAISS_OPT_LEVEL "dd" CACHE STRING "FAISS SIMD level" FORCE)
+  set(FAISS_LIBRARY faiss)
+endif()
+
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 add_library(faiss_interface INTERFACE)
