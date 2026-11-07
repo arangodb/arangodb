@@ -96,9 +96,11 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         vocbase(_server->getSystemDatabase()),
         colDescriptor(
             arangodb::tests::testCollectionDescriptor("UnitTestCollection")),
-        collection(vocbase.lookupCollection("UnitTestCollection")
-                       ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(colDescriptor)),
+        collection([&]() -> std::shared_ptr<arangodb::LogicalCollection> {
+          auto result = vocbase.lookupCollection("UnitTestCollection");
+          return result.ok() ? result.get()
+                             : vocbase.createCollection(colDescriptor);
+        }()),
         outVariable("name", 1, false, resourceMonitor),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
@@ -280,9 +282,11 @@ class EnumerateCollectionExecutorTestProduce
         vocbase(_server->getSystemDatabase()),
         colDescriptor(
             arangodb::tests::testCollectionDescriptor("UnitTestCollection")),
-        collection(vocbase.lookupCollection("UnitTestCollection")
-                       ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(colDescriptor)),
+        collection([&]() -> std::shared_ptr<arangodb::LogicalCollection> {
+          auto result = vocbase.lookupCollection("UnitTestCollection");
+          return result.ok() ? result.get()
+                             : vocbase.createCollection(colDescriptor);
+        }()),
         outVariable("name", 1, false, monitor),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),

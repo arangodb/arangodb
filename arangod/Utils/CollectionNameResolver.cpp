@@ -166,7 +166,8 @@ std::shared_ptr<LogicalCollection>
 CollectionNameResolver::getCollectionStructCluster(
     std::string_view name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
-    return _vocbase.lookupCollection(name);
+    auto collectionResult = _vocbase.lookupCollection(name);
+    return collectionResult.ok() ? collectionResult.get() : nullptr;
   }
 
   // We have to look up the collection info:
@@ -396,15 +397,22 @@ bool CollectionNameResolver::visitCollections(
 
 /// PRIVATE ---------------
 std::string CollectionNameResolver::lookupName(DataSourceId cid) const {
-  auto collection = _vocbase.lookupCollection(cid);
+  auto collectionResult = _vocbase.lookupCollection(cid);
 
   // exactly as in the non-cluster case
   if (!ServerState::isDBServer(_serverRole)) {
-    return collection ? collection->name() : std::string{kUnknown};
+    return collectionResult.ok() ? collectionResult.get()->name()
+                                 : std::string{kUnknown};
   }
 
   // DBserver case of a shard:
-  if (collection && collection->planId() != collection->id()) {
+  if (not collectionResult.ok()) {
+    return std::string{kUnknown};
+  }
+
+  auto collection = collectionResult.get();
+  if (collection->planId() != collection->id()) {
+    // getCollectionNT may return nullptr if the collection is unknown
     collection =
         _vocbase.server()
             .getFeature<ClusterFeature>()

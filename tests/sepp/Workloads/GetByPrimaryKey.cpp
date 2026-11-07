@@ -86,11 +86,14 @@ GetByPrimaryKey::Thread::~Thread() = default;
 void GetByPrimaryKey::Thread::run() {
   // TODO - make more configurable
 
-  auto collection = _server.vocbase()->lookupCollection(_options.collection);
-  if (!collection) {
+  auto collectionResult =
+      _server.vocbase()->lookupCollection(_options.collection);
+  if (collectionResult.fail()) {
     throw std::runtime_error("Could not find collection " +
-                             _options.collection);
+                             _options.collection + ": " +
+                             std::string(collectionResult.errorMessage()));
   }
+  auto collection = collectionResult.get();
 
   RocksDBPrimaryIndex* primaryIndex = nullptr;
   for (auto const& idx : collection->getIndexes()) {

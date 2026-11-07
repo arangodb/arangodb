@@ -266,14 +266,16 @@ static Result addShardFollower(network::ConnectionPool* pool,
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(shard);
-    if (collection == nullptr) {
+    auto collectionResult = vocbase->lookupCollection(shard);
+    if (collectionResult.fail()) {
       auto errorMsg =
           absl::StrCat("SynchronizeShard::addShardFollower: Failed to lookup ",
-                       shardNameForLogging(database, shard));
+                       shardNameForLogging(database, shard), ": ",
+                       collectionResult.errorMessage());
       LOG_TOPIC("4a8db", ERR, Logger::MAINTENANCE) << errorMsg;
-      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::move(errorMsg)};
+      return {collectionResult.errorNumber(), std::move(errorMsg)};
     }
+    auto collection = collectionResult.get();
 
     uint64_t docCount;
     Result res = arangodb::maintenance::collectionCount(*collection, docCount);
@@ -765,9 +767,9 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(std::string{shard});
-    if (collection != nullptr && syncByRevision &&
-        collection->useSyncByRevision()) {
+    auto collectionResult = vocbase->lookupCollection(std::string{shard});
+    if (collectionResult.ok() && syncByRevision &&
+        collectionResult.get()->useSyncByRevision()) {
       LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
           << "SynchronizeShard: synchronizing " << shardNameForLogging()
           << " for central " << ::shardNameForLogging(database, planId)
@@ -778,9 +780,10 @@ bool SynchronizeShard::first() {
       // increase a metric for rebuilt revisions trees on this server
       ++_feature.server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
 
-      Result res = static_cast<RocksDBCollection*>(collection->getPhysical())
-                       ->rebuildRevisionTree()
-                       .waitAndGet();
+      Result res =
+          static_cast<RocksDBCollection*>(collectionResult.get()->getPhysical())
+              ->rebuildRevisionTree()
+              .waitAndGet();
 
       if (res.ok()) {
         LOG_TOPIC("02969", INFO, Logger::MAINTENANCE)
@@ -821,9 +824,9 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(std::string{shard});
-    if (collection != nullptr && syncByRevision &&
-        collection->useSyncByRevision()) {
+    auto collectionResult = vocbase->lookupCollection(std::string{shard});
+    if (collectionResult.ok() && syncByRevision &&
+        collectionResult.get()->useSyncByRevision()) {
       LOG_TOPIC("614fa", WARN, Logger::MAINTENANCE)
           << "SynchronizeShard: synchronizing " << shardNameForLogging()
           << " for central " << ::shardNameForLogging(database, planId)
@@ -1031,15 +1034,17 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(std::string{shard});
-    if (collection == nullptr) {
+    auto collectionResult = vocbase->lookupCollection(std::string{shard});
+    if (collectionResult.fail()) {
       auto error =
-          absl::StrCat("failed to lookup local ", shardNameForLogging());
+          absl::StrCat("failed to lookup local ", shardNameForLogging(), ": ",
+                       collectionResult.errorMessage());
       LOG_TOPIC("06489", ERR, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error;
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error);
+      result(collectionResult.errorNumber(), error);
       return false;
     }
+    auto collection = collectionResult.get();
 
     auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCountOnLeader = 0;

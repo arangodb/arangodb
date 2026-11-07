@@ -1870,8 +1870,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
   {
     {
       arangodb::OperationOptions options;
-      auto collection =
+      auto collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
+      auto collection = collectionResult.get();
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
@@ -2799,17 +2800,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure no configuration collection
     {
-      auto collection =
+      auto collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-
-      if (collection) {
-        auto res = vocbase->dropCollection(collection->id(), true);
+      if (collectionResult.ok()) {
+        auto res = vocbase->dropCollection(collectionResult.get()->id(), true);
         EXPECT_TRUE(res.ok());
       }
 
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_EQ(nullptr, collection);
+      EXPECT_TRUE(collectionResult.fail());
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
@@ -2820,8 +2820,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto feature = createAnalyzerFeature();
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
-    EXPECT_EQ(nullptr, vocbase->lookupCollection(
-                           arangodb::tests::AnalyzerCollectionName));
+    EXPECT_FALSE(
+        vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)
+            .ok());
 
     auto expected = staticAnalyzers();
 
@@ -2858,16 +2859,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure there is an empty configuration collection
     {
-      auto collection =
+      auto collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true);
+      if (collectionResult.ok()) {
+        vocbase->dropCollection(collectionResult.get()->id(), true);
       }
 
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_EQ(nullptr, collection);
+      EXPECT_TRUE(collectionResult.fail());
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
@@ -2884,9 +2884,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
                                arangodb::transaction::OperationOriginTestCase{})
                       .ok());
       EXPECT_FALSE(!result.first);
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_NE(nullptr, collection);
+      EXPECT_TRUE(collectionResult.ok());
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
@@ -2897,8 +2897,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto feature = createAnalyzerFeature();
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers
-    EXPECT_NE(nullptr, vocbase->lookupCollection(
-                           arangodb::tests::AnalyzerCollectionName));
+    EXPECT_TRUE(
+        vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)
+            .ok());
 
     auto expected = staticAnalyzers();
 
@@ -2935,22 +2936,22 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure no configuration collection
     {
-      auto collection =
+      auto collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true);
+      if (collectionResult.ok()) {
+        vocbase->dropCollection(collectionResult.get()->id(), true);
       }
 
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_EQ(nullptr, collection);
+      EXPECT_TRUE(collectionResult.fail());
     }
     auto feature = createAnalyzerFeature();
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers
-    EXPECT_EQ(nullptr, vocbase->lookupCollection(
-                           arangodb::tests::AnalyzerCollectionName));
+    EXPECT_FALSE(
+        vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)
+            .ok());
 
     auto expected = staticAnalyzers();
 
@@ -2987,16 +2988,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure there is an empty configuration collection
     {
-      auto collection =
+      auto collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-
-      if (collection) {
-        vocbase->dropCollection(collection->id(), true);
+      if (collectionResult.ok()) {
+        vocbase->dropCollection(collectionResult.get()->id(), true);
       }
 
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_EQ(nullptr, collection);
+      EXPECT_TRUE(collectionResult.fail());
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
@@ -3014,16 +3014,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
                    arangodb::transaction::OperationOriginTestCase{})
                .ok()));
       EXPECT_FALSE(!result.first);
-      collection =
+      collectionResult =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-      EXPECT_NE(nullptr, collection);
+      EXPECT_TRUE(collectionResult.ok());
     }
 
     auto feature = createAnalyzerFeature();
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers
-    EXPECT_NE(nullptr, vocbase->lookupCollection(
-                           arangodb::tests::AnalyzerCollectionName));
+    EXPECT_TRUE(
+        vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)
+            .ok());
 
     auto expected = staticAnalyzers();
 
@@ -3102,16 +3103,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto vocbase = systemdb.use();
   // ensure there is no configuration collection
   {
-    auto collection =
+    auto collectionResult =
         vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-
-    if (collection) {
-      vocbase->dropCollection(collection->id(), true);
+    if (collectionResult.ok()) {
+      vocbase->dropCollection(collectionResult.get()->id(), true);
     }
 
-    collection =
+    collectionResult =
         vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-    EXPECT_EQ(nullptr, collection);
+    EXPECT_TRUE(collectionResult.fail());
   }
 
   std::shared_ptr<arangodb::LogicalCollection> unused;

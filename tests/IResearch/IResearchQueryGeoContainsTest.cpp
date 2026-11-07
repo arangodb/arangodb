@@ -81,8 +81,9 @@ class QueryGeoContains : public QueryTest {
   void queryTests() {
     // populate collection
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
-      ASSERT_TRUE(collection);
+      auto collectionResult = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       std::array<std::shared_ptr<VPackBuilder>, 3> allDocs = {
           VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
@@ -608,8 +609,9 @@ class QueryGeoContains : public QueryTest {
   void queryTestsMulti(bool isVPack) {
     // ensure presence of special a column for geo indices
     {
-      auto collection = _vocbase.lookupCollection("testCollection0");
-      ASSERT_TRUE(collection);
+      auto collectionResult = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
@@ -743,8 +745,9 @@ class QueryGeoContainsSearch : public QueryGeoContains {
                  "analyzer": "$1" }
              ] })",
         version(), analyzer));
-    auto collection = _vocbase.lookupCollection("testCollection0");
-    EXPECT_TRUE(collection);
+    auto collectionResult = _vocbase.lookupCollection("testCollection0");
+    EXPECT_TRUE(collectionResult.ok());
+    auto collection = collectionResult.get();
     collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }
