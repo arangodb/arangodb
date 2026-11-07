@@ -553,7 +553,7 @@ Result ExecContext::canMonitorQuery(std::string_view queryUser) const {
   if (!_authMode.isUnauthenticated() && queryUser == user()) {
     return {};
   }
-  return can(auth::perms::AdminMonitorAqlQueries{});
+  return can(auth::perms::AdminMonitorQueries{});
 }
 
 /// @brief returns true if the AQL query of the given user may be killed
@@ -561,7 +561,7 @@ Result ExecContext::canKillQuery(std::string_view queryUser) const {
   if (!_authMode.isUnauthenticated() && queryUser == user()) {
     return {};
   }
-  return can(auth::perms::AdminKillAqlQueries{});
+  return can(auth::perms::AdminKillQueries{});
 }
 
 /// @brief returns true if the query properties of the given database
