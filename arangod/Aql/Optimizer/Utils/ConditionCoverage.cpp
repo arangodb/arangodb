@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ConditionCoverage.h"
+#include "Aql/Optimizer/Utils/ConditionCoverage.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"

@@ -24,7 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
-#include "Aql/ConditionCoverage.h"
+#include "Aql/Optimizer/Utils/ConditionCoverage.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
