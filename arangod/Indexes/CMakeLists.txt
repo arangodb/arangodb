@@ -27,7 +27,7 @@ target_link_libraries(arango_indexes
     arango_replication2
     arango_geo
     arango::validation
-    ${FAISS_LIBRARY}
+    faiss
   PRIVATE
     date_interface)
   
