@@ -25,6 +25,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Ast/ParseModificationOptions.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
@@ -1153,94 +1154,14 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::parseModificationOptions(
-    QueryContext& query, std::string_view operationName, AstNode const* node,
-    bool addWarnings) {
-  TRI_ASSERT(operationName == "INSERT" || operationName == "UPDATE" ||
-             operationName == "REPLACE" || operationName == "REMOVE" ||
-             operationName == "UPSERT");
-
-  ModificationOptions options;
-
-  // parse the modification options we got
-  if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
-    size_t n = node->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-
-      if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringView();
-        ast::ObjectElementNode objElem(member);
-        auto value = objElem.getValue();
-
-        TRI_ASSERT(value->isConstant());
-
-        if (name == StaticStrings::WaitForSyncString) {
-          options.waitForSync = value->isTrue();
-        } else if (name == StaticStrings::SkipDocumentValidation) {
-          options.validate = !value->isTrue();
-        } else if (name == StaticStrings::KeepNullString) {
-          options.keepNull = value->isTrue();
-        } else if (name == StaticStrings::RefillIndexCachesString) {
-          options.refillIndexCaches = value->isTrue()
-                                          ? RefillIndexCaches::kRefill
-                                          : RefillIndexCaches::kDontRefill;
-        } else if (name == StaticStrings::MergeObjectsString) {
-          options.mergeObjects = value->isTrue();
-        } else if (name == "overwrite" && value->isTrue()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "the 'overwrite' option has been removed, use "
-              "'overwriteMode' instead");
-        } else if (name == StaticStrings::OverwriteMode &&
-                   value->isStringValue()) {
-          auto overwriteMode =
-              OperationOptions::determineOverwriteMode(value->getStringView());
-
-          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-            options.overwriteMode = overwriteMode;
-            // Set useOldSmartGraphVariable to true when overwriteMode is
-            // "ignore"
-            if (overwriteMode == OperationOptions::OverwriteMode::Ignore) {
-              options.useOldSmartGraphVariable = true;
-            }
-          }
-        } else if (name == StaticStrings::IgnoreRevsString) {
-          options.ignoreRevs = value->isTrue();
-        } else if (name == StaticStrings::VersionAttributeString &&
-                   value->isStringValue() &&
-                   (operationName == "INSERT" || operationName == "UPDATE" ||
-                    operationName == "REPLACE")) {
-          options.versionAttribute = value->getString();
-        } else if (name == "exclusive") {
-          options.exclusive = value->isTrue();
-        } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
-        } else if (name == StaticStrings::ReadOwnWrites &&
-                   operationName == "UPSERT") {
-          // UPSERT supports "readOwnWrites" attribute, but other
-          // modification options don't.
-          // the value of readOwnWrites is already picked up during AST creation
-          // and does not need to be handled here anymore.
-        } else {
-          if (addWarnings) {
-            invalidOptionAttribute(query, "unknown", operationName, name);
-          }
-        }
-      }
-    }
-  }
-
-  return options;
-}
-
-/// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
     std::string_view operationName, AstNode const* node) {
-  ModificationOptions options = parseModificationOptions(
-      _ast->query(), operationName, node, /*addWarnings*/ true);
-  return options;
+  auto parseResult = ast::parseModificationOptions(operationName, node);
+
+  for (auto&& [errorReason, operationName, name] : parseResult.warnings) {
+    invalidOptionAttribute(_ast->query(), errorReason, operationName, name);
+  }
+  return parseResult.options;
 }
 
 /// @brief create COLLECT options from an AST node

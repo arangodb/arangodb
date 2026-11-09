@@ -142,6 +142,7 @@ FLEX_TARGET(AqlTokens
 )
 ADD_FLEX_BISON_DEPENDENCY(AqlTokens AqlGrammar)
 
+add_subdirectory(Ast)
 add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
