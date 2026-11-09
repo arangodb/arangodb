@@ -510,8 +510,51 @@ function optimizerIndexesInOrTestSuite () {
 
       let results = db._query(query);
       assertEqual(5, results.toArray().length);
+    },
+
+    testArrayIndexArrayValueInAttributeOr : function() {
+      const cn = "UnitTestsArrayIndex";
+      db._drop(cn);
+      try {
+        let ac = db._create(cn);
+        ac.ensureIndex({ type: "persistent", fields: ["l[*]"] });
+        ac.insert([
+          { _key: "e1", l: [[]], a: true },
+          { _key: "e2", l: [[], 1], b: 1 },
+          { _key: "e3", l: [1], a: true },
+          { _key: "e4", l: [[]] },
+          { _key: "e5", l: [["x", "y"], "p", "q"] },
+          { _key: "e6", l: [["z"]] },
+          { _key: "e7", l: ["x", "y", "z"] },
+        ]);
+
+        const queries = [
+          [`FOR x IN ${cn} FILTER [] IN x.l && (x.a || x.b) SORT x._key RETURN x._key`, {}, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER ([] IN x.l && x.a) || ([] IN x.l && x.b) SORT x._key RETURN x._key`, {}, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER @v IN x.l && (x.a || x.b) SORT x._key RETURN x._key`, { v: [] }, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER [] IN x.l && (x.a || x.b) RETURN x._key`, {}, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER @v IN x.l && (x.a || x.b) RETURN x._key`, { v: [] }, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER [] IN x.l || 1 IN x.l RETURN x._key`, {}, ["e1", "e2", "e3", "e4"]],
+          [`FOR x IN ${cn} FILTER ["x", "y"] IN x.l || ["z"] IN x.l RETURN x._key`, {}, ["e5", "e6"]],
+          [`FOR x IN ${cn} FILTER ["x", "y"] IN x.l || ["z"] IN x.l COLLECT WITH COUNT INTO n RETURN n`, {}, [2]],
+        ];
+
+        queries.forEach(([query, bindVars, expected]) => {
+          const plan = db._createStatement({ query, bindVars }).explain().plan;
+          assertNotEqual(-1, plan.nodes.map((n) => n.type).indexOf("IndexNode"), query);
+
+          const sortResult = (r) => r.slice().sort();
+          let result = db._query(query, bindVars).toArray();
+          assertEqual(expected, sortResult(result), query);
+
+          result = db._query(query, bindVars, { optimizer: { rules: ["-all"] } }).toArray();
+          assertEqual(expected, sortResult(result), query);
+        });
+      } finally {
+        db._drop(cn);
+      }
     }
-        
+
   };
 }
 

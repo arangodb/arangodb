@@ -28,6 +28,15 @@
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").
 
+* BTS-2518: AQL queries that combine `value IN doc.attr` conditions with OR
+  on an attribute with an array index, such as
+  `FILTER [] IN doc.list || 1 IN doc.list`, look up each OR branch in the
+  index separately and return each matching document once. An array on the
+  left-hand side of `IN` matches documents whose `doc.attr` contains that
+  array as an element. Such queries with an array on the left-hand side
+  could crash the server, fail with an internal error, or return missing or
+  duplicate documents.
+
 * COR-1200: Update boost from 1.78.0 to 1.92.0
 
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
