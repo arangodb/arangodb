@@ -26,10 +26,13 @@
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <cstring>
 
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
@@ -57,6 +60,72 @@ faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
       return new Iter<WithStoredValuesV2Strategy>(std::forward<Args>(args)...);
   }
   ADB_UNREACHABLE;
+}
+
+std::string makePackedListValue(std::span<std::uint64_t const> docIds,
+                                std::span<std::uint8_t const> codes) {
+  std::uint64_t const count = docIds.size();
+  std::string value;
+  value.reserve(sizeof(count) + docIds.size_bytes() + codes.size_bytes());
+  value.append(reinterpret_cast<char const*>(&count), sizeof(count));
+  value.append(reinterpret_cast<char const*>(docIds.data()),
+               docIds.size_bytes());
+  value.append(reinterpret_cast<char const*>(codes.data()), codes.size_bytes());
+  return value;
+}
+
+/// RocksDBPackedListIterator
+RocksDBPackedListIterator::RocksDBPackedListIterator(
+    RocksDBVectorIndex* index, LogicalCollection* collection,
+    IteratorContext const& ctx, std::size_t listNumber, std::size_t codeSize)
+    : _codeSize(codeSize), _visitedIds(ctx.visitedIds) {
+  RocksDBTransactionMethods* mthds =
+      RocksDBTransactionState::toMethods(ctx.trx, collection->id());
+  RocksDBKey key;
+  key.constructVectorIndexValue(index->objectId(), listNumber | kPackedListBit);
+  auto const status = mthds->Get(index->columnFamily(), key.string(), &_value,
+                                 ReadOwnWrites::no);
+  if (status.IsNotFound()) {
+    return;
+  }
+  if (!status.ok()) {
+    THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+  }
+  std::memcpy(&_count, _value.data(), sizeof(_count));
+  _ids = _value.data() + sizeof(_count);
+  _codes = reinterpret_cast<uint8_t const*>(_ids + _count * sizeof(_count));
+  TRI_ASSERT(_value.size() ==
+             sizeof(_count) + _count * (sizeof(_count) + _codeSize));
+  skipVisitedEntries();
+}
+
+bool RocksDBPackedListIterator::is_available() const { return _pos < _count; }
+
+void RocksDBPackedListIterator::next() {
+  ++_pos;
+  skipVisitedEntries();
+}
+
+std::pair<faiss::idx_t, uint8_t const*>
+RocksDBPackedListIterator::get_id_and_codes() {
+  auto const id = idAt(_pos);
+  if (_visitedIds != nullptr) {
+    _visitedIds->emplace(id);
+  }
+  return {static_cast<faiss::idx_t>(id.id()), _codes + _pos * _codeSize};
+}
+
+LocalDocumentId RocksDBPackedListIterator::idAt(std::size_t pos) const {
+  std::uint64_t id;
+  std::memcpy(&id, _ids + pos * sizeof(id), sizeof(id));
+  return LocalDocumentId{id};
+}
+
+void RocksDBPackedListIterator::skipVisitedEntries() {
+  while (_visitedIds != nullptr && _pos < _count &&
+         _visitedIds->contains(idAt(_pos))) {
+    ++_pos;
+  }
 }
 
 /// RocksDBInvertedListsIteratorBase
@@ -502,8 +571,8 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
                                                 simpleCtx, listNumber,
                                                 this->code_size);
             }
-            return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
-                _index, _collection, simpleCtx, listNumber, this->code_size);
+            return new RocksDBPackedListIterator(_index, _collection, simpleCtx,
+                                                 listNumber, this->code_size);
           },
       },
       *iteratorContext);

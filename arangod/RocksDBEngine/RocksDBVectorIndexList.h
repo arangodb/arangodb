@@ -36,10 +36,15 @@
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <rocksdb/slice.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/SliceContainer.h>
+
+#include <cstdint>
+#include <span>
+#include <string>
 
 namespace arangodb {
 
@@ -334,6 +339,36 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
       std::conditional_t<Strategy::hasStoredValues,
                          RocksDBVectorIndexEntryValue, std::vector<uint8_t>>>
       _currentEntry;
+};
+
+// Prototype packed layout: one value per list under listNumber |
+// kPackedListBit, holding [count][count docIds][count codes].
+inline constexpr std::uint64_t kPackedListBit = std::uint64_t{1} << 62;
+
+std::string makePackedListValue(std::span<std::uint64_t const> docIds,
+                                std::span<std::uint8_t const> codes);
+
+struct RocksDBPackedListIterator final : faiss::InvertedListsIterator {
+  RocksDBPackedListIterator(RocksDBVectorIndex* index,
+                            LogicalCollection* collection,
+                            IteratorContext const& ctx, std::size_t listNumber,
+                            std::size_t codeSize);
+
+  [[nodiscard]] bool is_available() const override;
+  void next() override;
+  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+
+ private:
+  LocalDocumentId idAt(std::size_t pos) const;
+  void skipVisitedEntries();
+
+  rocksdb::PinnableSlice _value;
+  std::size_t _codeSize;
+  std::uint64_t _count{0};
+  std::size_t _pos{0};
+  char const* _ids{nullptr};
+  uint8_t const* _codes{nullptr};
+  containers::FlatHashSet<LocalDocumentId>* _visitedIds{nullptr};
 };
 
 using RocksDBFaissIteratorContext =
