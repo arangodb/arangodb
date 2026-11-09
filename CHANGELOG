@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1016: Added query time budgeting to NFA to DFA pattern determinization.
+
 * COR-1234: Reject a MATCH variable-length relationship whose lower bound is
   zero, for example `* 0..0` or `* 0..2`. A zero-hop path has no edge, and its
   endpoint projection is not defined.
