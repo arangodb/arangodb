@@ -38,8 +38,10 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include "Assertions/Assert.h"
 #include "Basics/debugging.h"
@@ -677,6 +679,44 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     }
   });
 
+  struct PackedList {
+    std::vector<std::uint64_t> docIds;
+    std::vector<std::uint8_t> codes;
+  };
+  std::mutex packedListsMutex;
+  std::unordered_map<std::uint64_t, PackedList> packedLists;
+
+  auto collectPackedLists = [&](EncodedVectors const& item,
+                                std::size_t codeSize) {
+    std::lock_guard guard(packedListsMutex);
+    auto const& assignments = item.assignments;
+    for (std::size_t k = 0; k < assignments.listIds.size(); ++k) {
+      auto& list = packedLists[assignments.listIds[k]];
+      list.docIds.push_back(item.docIds[assignments.vectorIndices[k]].id());
+      auto const* code = item.codes.get() + k * codeSize;
+      list.codes.insert(list.codes.end(), code, code + codeSize);
+    }
+  };
+
+  auto writePackedLists = [&] {
+    rocksdb::WriteBatch batch;
+    RocksDBKey key;
+    for (auto const& [listId, list] : packedLists) {
+      key.constructVectorIndexValue(oid, listId | vector::kPackedListBit);
+      auto const value = vector::makePackedListValue(list.docIds, list.codes);
+      if (auto status = batch.Put(cf, key.string(), value); !status.ok()) {
+        return rocksutils::convertStatus(status);
+      }
+      if (batch.GetDataSize() > (std::size_t{64} << 20)) {
+        if (auto status = rootDB->Write({}, &batch); !status.ok()) {
+          return rocksutils::convertStatus(status);
+        }
+        batch.Clear();
+      }
+    }
+    return rocksutils::convertStatus(rootDB->Write({}, &batch));
+  };
+
   auto writeDocuments = [&, codeSize = faissIndex->code_size] {
     rocksdb::WriteBatch batch;
     while (true) {
@@ -712,6 +752,9 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         if (not status.ok()) {
           THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
         }
+        if (!hasStored) {
+          collectPackedLists(*item, codeSize);
+        }
       });
     }
   };
@@ -735,6 +778,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   startNThreads(writeDocuments, numWriters);
 
   threads.clear();
+
+  if (firstError.ok() && !hasStored) {
+    firstError = writePackedLists();
+  }
 
   if (firstError.ok()) {
     LOG_TOPIC("41658", INFO, Logger::ENGINES)
