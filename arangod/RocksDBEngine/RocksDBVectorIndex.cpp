@@ -23,6 +23,7 @@
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -31,6 +32,7 @@
 #include <cstring>
 #include <optional>
 #include <span>
+#include <tuple>
 #include <vector>
 
 #include "Aql/AstNode.h"
@@ -141,6 +143,11 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
           ? CaptureShape::kFullDocument
           : CaptureShape::kStoredValues;
   return searchCtx;
+}
+
+// ceil(topK * 1.2) quantized candidates are fetched for exact reranking
+std::size_t rerankCandidates(std::size_t topK) noexcept {
+  return topK * 10;
 }
 
 RocksDBValue makeVectorIndexValue(
@@ -512,8 +519,10 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
-  result.distances.resize(config.topK);
-  result.labels.resize(config.topK);
+  bool const rerank = config.searchParameters.rerank;
+  auto const candidates = rerank ? rerankCandidates(config.topK) : config.topK;
+  result.distances.resize(candidates);
+  result.labels.resize(candidates);
 
   containers::FlatHashSet<LocalDocumentId> visitedIds;
   auto faissSearchContext =
@@ -523,8 +532,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  result.stats = searchIvf(inputs.data(), config.topK, searchParametersIvf,
+  result.stats = searchIvf(inputs.data(), candidates, searchParametersIvf,
                            result.distances.data(), result.labels.data());
+
+  if (rerank) {
+    std::tie(result.labels, result.distances) =
+        rerankExact(inputs, result.labels, config.topK, ctx.trx);
+  }
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -534,6 +548,65 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   return result;
+}
+
+std::pair<vector::Labels, vector::Distances> RocksDBVectorIndex::rerankExact(
+    vector::Vector const& query, std::span<vector::LabelId const> candidates,
+    std::size_t topK, transaction::Methods* trx) const {
+  bool const isDescending =
+      _definition.metric == vector::SimilarityMetric::kCosine ||
+      _definition.metric == vector::SimilarityMetric::kInnerProduct;
+
+  std::vector<LocalDocumentId> docIds;
+  docIds.reserve(candidates.size());
+  for (auto const label : candidates) {
+    if (label >= 0) {
+      docIds.emplace_back(static_cast<LocalDocumentId::BaseType>(label));
+    }
+  }
+
+  std::vector<std::pair<vector::Distance, vector::LabelId>> scored;
+  scored.reserve(docIds.size());
+  vector::Vector docVector;
+  docVector.reserve(_definition.dimension);
+
+  auto const res = _collection.getPhysical()->lookup(
+      trx, docIds,
+      [&](Result result, LocalDocumentId docId, aql::DocumentData&&,
+          velocypack::Slice doc) {
+        if (result.fail()) {
+          THROW_ARANGO_EXCEPTION(result);
+        }
+        docVector.clear();
+        if (auto const readRes = readDocumentVectorData(doc, docVector);
+            readRes.fail()) {
+          THROW_ARANGO_EXCEPTION(readRes);
+        }
+        if (_definition.metric == vector::SimilarityMetric::kCosine) {
+          faiss::fvec_renorm_L2(_definition.dimension, 1, docVector.data());
+        }
+        scored.emplace_back(computeDistance(docVector, query, isDescending),
+                            static_cast<vector::LabelId>(docId.id()));
+        return true;
+      },
+      {});
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto const resultSize = std::min(topK, scored.size());
+  std::ranges::partial_sort(
+      scored, scored.begin() + resultSize, [&](auto const& a, auto const& b) {
+        return isDescending ? a.first > b.first : a.first < b.first;
+      });
+
+  vector::Labels labels(resultSize);
+  vector::Distances distances(resultSize);
+  for (std::size_t i = 0; i < resultSize; ++i) {
+    distances[i] = scored[i].first;
+    labels[i] = scored[i].second;
+  }
+  return {std::move(labels), std::move(distances)};
 }
 
 // Same steps as faiss::IndexIVF::search for a single query, but with local

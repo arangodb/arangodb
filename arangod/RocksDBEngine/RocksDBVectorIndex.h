@@ -24,6 +24,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <string>
 #include <type_traits>
 
@@ -185,6 +186,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       float const* query, std::size_t topK,
       faiss::SearchParametersIVF const& params, float* distances,
       faiss::idx_t* labels) const;
+
+  std::pair<vector::Labels, vector::Distances> rerankExact(
+      vector::Vector const& query, std::span<vector::LabelId const> candidates,
+      std::size_t topK, transaction::Methods* trx) const;
 
   vector::Metadata loadVectorIndexMetadata(velocypack::Slice info) const;
 
