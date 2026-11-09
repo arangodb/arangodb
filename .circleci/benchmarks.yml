@@ -6,7 +6,7 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
-    description: "Only with build-arango: enterprise repo branch to build. Defaults to the same branch as arangodb, falling back to devel."
+    description: "Only with build-arango: enterprise repo branch to build. Defaults to the same branch as arangodb, falling back to 3.12."
   benchmark:
     type: enum
     enum: ["ann"]
@@ -183,7 +183,7 @@ jobs:
               if git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"; then
                 ENTERPRISE_BRANCH="$CIRCLE_BRANCH"
               else
-                ENTERPRISE_BRANCH=devel
+                ENTERPRISE_BRANCH=3.12
               fi
             fi
             echo "Using enterprise branch $ENTERPRISE_BRANCH"
