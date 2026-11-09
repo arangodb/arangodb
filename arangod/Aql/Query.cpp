@@ -621,7 +621,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
       << " this: " << (uintptr_t)this;
 
   TRI_ASSERT(_ast != nullptr);
-  Parser parser(*this, &_warnings, *_ast, _queryString);
+  Parser parser(&_warnings, *_ast, _queryString);
   parser.parse();
 
   // any usage of one of the following features make the query ineligible
@@ -638,11 +638,11 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // put in collection and attribute name bind parameters (e.g. @@collection
   // or doc.@attr).
-  _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
+  _ast->injectBindParametersFirstStage(_bindParameters);
 
   _ast->injectBindParametersSecondStage(_bindParameters);
 
-  _ast->addGraphNodeImplicitVertexCollections(this->resolver());
+  _ast->addGraphNodeImplicitVertexCollections();
 
   if (_ast->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because
@@ -1180,7 +1180,7 @@ QueryResult Query::parse() {
 
   try {
     init(/*createProfile*/ false);
-    Parser parser(*this, &_warnings, *_ast, _queryString);
+    Parser parser(&_warnings, *_ast, _queryString);
     return parser.parseWithDetails();
 
   } catch (Exception const& ex) {
@@ -1234,7 +1234,7 @@ QueryResult Query::explain() {
     init(/*createProfile*/ false);
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    Parser parser(*this, &_warnings, *_ast, _queryString);
+    Parser parser(&_warnings, *_ast, _queryString);
     parser.parse();
 
     // any usage of one of the following features make the query ineligible
@@ -1251,12 +1251,11 @@ QueryResult Query::explain() {
     }
 
     // put in bind parameters
-    parser.ast()->injectBindParametersFirstStage(_bindParameters,
-                                                 this->resolver());
+    parser.ast()->injectBindParametersFirstStage(_bindParameters);
     _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
-    _ast->addGraphNodeImplicitVertexCollections(this->resolver());
+    _ast->addGraphNodeImplicitVertexCollections();
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);

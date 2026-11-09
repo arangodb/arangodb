@@ -69,8 +69,8 @@ AstNode* CollectionAccessBuilder::buildEdgeCollectionList(
 
   for (auto const& ds : edge.collections) {
     auto name = requireCollectionName(ds);
-    edgeCollectionList->addMember(_ast->createNodeCollection(
-        _ast->query().resolver(), name, AccessMode::Type::READ));
+    edgeCollectionList->addMember(
+        _ast->createNodeCollection(name, AccessMode::Type::READ));
   }
   return edgeCollectionList;
 }

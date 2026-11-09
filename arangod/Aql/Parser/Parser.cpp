@@ -38,10 +38,8 @@
 namespace arangodb::aql {
 
 /// @brief create the parser
-Parser::Parser(QueryContext& query, QueryWarnings* warnings, Ast& ast,
-               QueryString& qs)
-    : _query(query),
-      _ast(ast),
+Parser::Parser(QueryWarnings* warnings, Ast& ast, QueryString& qs)
+    : _ast(ast),
       _queryString(qs),
       _scanner(nullptr),
       _queryStringStart(nullptr),
@@ -136,7 +134,7 @@ QueryResult Parser::parseWithDetails() {
   parse();
 
   QueryResult result;
-  result.collectionNames = _query.collections().collectionNames();
+  //  result.collectionNames = _query.collections().collectionNames();
   result.bindParameters = _ast.bindParameterNames();
   auto builder = std::make_shared<VPackBuilder>();
   _ast.toVelocyPack(*builder, false);

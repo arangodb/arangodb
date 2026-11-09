@@ -196,8 +196,7 @@ void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
                                      AstNode const* src) {
   auto addCollection = [&collections, typeName, ast](std::string&& name) {
     // throws if data source cannot be found
-    ast->createNodeDataSource(ast->query().resolver(), name,
-                              AccessMode::Type::READ, true, true);
+    ast->createNodeDataSource(name, AccessMode::Type::READ, true, true);
 
     // now get the collection and inspect its type
     Collection const* collection = ast->query().collections().get(name);

@@ -252,8 +252,7 @@ RelationshipPatternBuilder::createTraversalForPattern(
 
   auto* startNode = _ast->createNodeReference(startNodeVar);
   auto* edgeCollectionList = _collections.buildEdgeCollectionList(edge);
-  auto* graphNode = _ast->createNodeCollectionList(edgeCollectionList,
-                                                   _ast->query().resolver());
+  auto* graphNode = _ast->createNodeCollectionList(edgeCollectionList);
 
   auto* traversal = _plan.createNode<TraversalNode>(
       &_plan, _plan.nextId(), &_ast->query().vocbase(), dirNode, startNode,

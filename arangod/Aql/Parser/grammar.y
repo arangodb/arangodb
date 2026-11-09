@@ -796,8 +796,7 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query().resolver();
-      auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
+      auto withNode = parser->ast()->createNodeWithCollections(node);
       parser->ast()->addOperation(withNode);
      }
    ;
@@ -1258,8 +1257,7 @@ pattern_maybe_projection:
 %type <node> pattern_label;
 pattern_label:
     T_COLON T_STRING {
-        auto const& resolver = parser->query().resolver();
-        $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
+        $$ = parser->ast()->createNodeDataSource({$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
     }
   | T_COLON T_DATA_SOURCE_PARAMETER {
         // a collection bind parameter (@@name) injects the collection name used
@@ -1381,8 +1379,7 @@ pattern_edge_collection_list:
 %type <node> pattern_edge_collection_name;
 pattern_edge_collection_name:
     T_STRING {
-        auto const& resolver = parser->query().resolver();
-        $$ = parser->ast()->createNodeDataSource(resolver, {$1.value, $1.length}, arangodb::AccessMode::Type::READ, true, false);
+        $$ = parser->ast()->createNodeDataSource({$1.value, $1.length}, arangodb::AccessMode::Type::READ, true, false);
     }
   | T_DATA_SOURCE_PARAMETER {
         std::string_view name($1.value, $1.length);
@@ -2875,8 +2872,7 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      auto const& resolver = parser->query().resolver();
-      $$ = parser->ast()->createNodeCollectionList(node, resolver);
+      $$ = parser->ast()->createNodeCollectionList(node);
     }
   | graph_collection T_COMMA {
       auto node = parser->ast()->createNodeArray();
@@ -2884,8 +2880,7 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query().resolver();
-      $$ = parser->ast()->createNodeCollectionList(node, resolver);
+      $$ = parser->ast()->createNodeCollectionList(node);
     }
   | T_GRAPH bind_parameter {
       // graph name
@@ -2952,8 +2947,7 @@ reference:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
-        auto const& resolver = parser->query().resolver();
-        node = ast->createNodeDataSource(resolver, variableName, arangodb::AccessMode::Type::READ, true, false);
+        node = ast->createNodeDataSource(variableName, arangodb::AccessMode::Type::READ, true, false);
       }
 
       TRI_ASSERT(node != nullptr);
@@ -3181,13 +3175,11 @@ value_literal:
 in_or_into_collection_name:
     T_STRING {
       std::string_view name($1.value, $1.length);
-      auto const& resolver = parser->query().resolver();
-      $$ = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
+      $$ = parser->ast()->createNodeCollection(name, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
       std::string_view name($1.value, $1.length);
-      auto const& resolver = parser->query().resolver();
-      $$ = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
+      $$ = parser->ast()->createNodeCollection(name, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {
       std::string_view name($1.value, $1.length);
