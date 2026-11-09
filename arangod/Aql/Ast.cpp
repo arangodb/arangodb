@@ -439,11 +439,12 @@ Ast::SpecialNodes::SpecialNodes()
 }
 
 /// @brief create the AST
-Ast::Ast(QueryContext& query,
+Ast::Ast(QueryContext& query, ResourceMonitor& resourceMonitor,
          AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
-      _resources(query.resourceMonitor()),
-      _variables(query.resourceMonitor()),
+      _resourceMonitor(resourceMonitor),
+      _resources(resourceMonitor),
+      _variables(resourceMonitor),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
@@ -1591,8 +1592,8 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
       cache(nl, basics::VelocyPackHelper::VPackHash(),
             basics::VelocyPackHelper::VPackEqual());
 
-  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
-      query().resourceMonitor()));
+  VPackBuilder temp(
+      std::make_shared<velocypack::SupervisedBuffer>(_resourceMonitor));
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
@@ -1637,8 +1638,8 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
       cache(nl + nr, basics::VelocyPackHelper::VPackHash(),
             basics::VelocyPackHelper::VPackEqual());
 
-  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
-      query().resourceMonitor()));
+  VPackBuilder temp(
+      std::make_shared<velocypack::SupervisedBuffer>(_resourceMonitor));
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -3440,8 +3441,8 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     return node;
   }
 
-  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
-      query().resourceMonitor()));
+  VPackBuilder temp(
+      std::make_shared<velocypack::SupervisedBuffer>(_resourceMonitor));
 
   if (node->isSorted()) {
     bool unique = true;
