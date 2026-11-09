@@ -1,3 +1,14 @@
 {
-  "waivers": []
+  "waivers": [
+    {
+      "id": "CVE-2026-118764",
+      "package": "minimatch",
+      "severity": "MEDIUM",
+      "class": "design-acceptance",
+      "detected": "2026-11-09",
+      "expires": "2027-11-09",
+      "reason": "Not affected: the globParts amplification (GHSA-g3hv-75wg-m249) is only reachable with optimizationLevel >= 2, the default is 1, and ArangoDB's only call sites (js/common/modules/jsunity.js, js/server/modules/@arangodb/foxx/mocha.js) pass no options. The fix exists only in minimatch 11, which drops the makeRe/AST exports of a module bundled for Foxx services, so the bump is deferred to a major release.",
+      "approved-by": "Vadim Kondratev"
+    }
+  ]
 }
