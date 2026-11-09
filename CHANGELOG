@@ -1,6 +1,8 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* COR-1016: Added query time budgeting to NFA to DFA pattern determinization.
+
 * Updated ArangoDB Starter to v0.19.34.
 
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
