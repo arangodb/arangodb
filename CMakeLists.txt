@@ -1137,7 +1137,6 @@ set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
-set(FAISS_USE_LTO ON CACHE BOOL "Enable LTO optimization")
 
 # Match the faiss SIMD kernels to the baseline flags from
 # OptimizeForArchitecture; otherwise dispatch at runtime.
