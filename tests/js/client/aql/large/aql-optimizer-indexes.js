@@ -1811,11 +1811,9 @@ function optimizerIndexesModifyTestSuite () {
         });
         let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
         assertEqual("n-ary or", indexNode.condition.type);
-        assertEqual(2, indexNode.condition.subNodes.length);
+        assertEqual(1, indexNode.condition.subNodes.length);
         assertEqual("n-ary and", indexNode.condition.subNodes[0].type);
         assertEqual("compare ==", indexNode.condition.subNodes[0].subNodes[0].type);
-        assertEqual("n-ary and", indexNode.condition.subNodes[1].type);
-        assertEqual("compare ==", indexNode.condition.subNodes[1].subNodes[0].type);
       });
     },
 ////////////////////////////////////////////////////////////////////////////////

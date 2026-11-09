@@ -37,6 +37,11 @@
   could crash the server, fail with an internal error, or return missing or
   duplicate documents.
 
+* The AQL optimizer looks up an index condition only once when several OR
+  branches of a filter share it. For example, with an index on `value`,
+  `FILTER doc.value == 1 && (doc.a || doc.b)` uses a single index lookup
+  for `doc.value == 1`.
+
 * COR-1200: Update boost from 1.78.0 to 1.92.0
 
 * COR-1208: Expose vector index search statistics (searches, lists scanned,

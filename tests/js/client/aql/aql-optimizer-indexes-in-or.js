@@ -512,6 +512,23 @@ function optimizerIndexesInOrTestSuite () {
       assertEqual(5, results.toArray().length);
     },
 
+    testPersistentIndexSameConditionInAllOrBranches : function() {
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+
+      const queries = [
+        [`FOR i IN ${c.name()} FILTER i.value1 == 35 && (i.value2 < 100 || i.value2 > 1900) RETURN i.value2`, [35, 1935]],
+        [`FOR i IN ${c.name()} FILTER i.value1 == 35 && (i.value2 < 100 || i.value2 > 1900 || i.value2 == 535) RETURN i.value2`, [35, 535, 1935]],
+      ];
+
+      queries.forEach(([query, expected]) => {
+        const indexNode = db._createStatement(query).explain().plan.nodes.filter((n) => n.type === "IndexNode")[0];
+        assertEqual(1, indexNode.indexes.length, query);
+
+        const result = db._query(query).toArray();
+        assertEqual(expected, result.sort((a, b) => a - b), query);
+      });
+    },
+
     testArrayIndexArrayValueInAttributeOr : function() {
       const cn = "UnitTestsArrayIndex";
       db._drop(cn);
@@ -534,6 +551,7 @@ function optimizerIndexesInOrTestSuite () {
           [`FOR x IN ${cn} FILTER @v IN x.l && (x.a || x.b) SORT x._key RETURN x._key`, { v: [] }, ["e1", "e2"]],
           [`FOR x IN ${cn} FILTER [] IN x.l && (x.a || x.b) RETURN x._key`, {}, ["e1", "e2"]],
           [`FOR x IN ${cn} FILTER @v IN x.l && (x.a || x.b) RETURN x._key`, { v: [] }, ["e1", "e2"]],
+          [`FOR x IN ${cn} FILTER 1 IN x.l && (x.a || x.b) RETURN x._key`, {}, ["e2", "e3"]],
           [`FOR x IN ${cn} FILTER [] IN x.l || 1 IN x.l RETURN x._key`, {}, ["e1", "e2", "e3", "e4"]],
           [`FOR x IN ${cn} FILTER ["x", "y"] IN x.l || ["z"] IN x.l RETURN x._key`, {}, ["e5", "e6"]],
           [`FOR x IN ${cn} FILTER ["x", "y"] IN x.l || ["z"] IN x.l COLLECT WITH COUNT INTO n RETURN n`, {}, [2]],
@@ -549,6 +567,12 @@ function optimizerIndexesInOrTestSuite () {
 
           result = db._query(query, bindVars, { optimizer: { rules: ["-all"] } }).toArray();
           assertEqual(expected, sortResult(result), query);
+        });
+
+        [`FOR x IN ${cn} FILTER 1 IN x.l && (x.a || x.b) RETURN x._key`,
+         `FOR x IN ${cn} FILTER [] IN x.l && (x.a || x.b) RETURN x._key`].forEach((query) => {
+          const indexNode = db._createStatement(query).explain().plan.nodes.filter((n) => n.type === "IndexNode")[0];
+          assertEqual(1, indexNode.indexes.length, query);
         });
       } finally {
         db._drop(cn);

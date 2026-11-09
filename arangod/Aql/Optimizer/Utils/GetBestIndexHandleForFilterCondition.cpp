@@ -284,21 +284,18 @@ bool sortOrs(Ast* ast, AstNode* root, Variable const* variable,
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
     bool isUnique = true;
 
-    if (!usedIndexes.empty()) {
-      // try to find duplicate condition parts, and only return each
-      // unique condition part once
-      try {
-        auto conditionString =
-            absl::StrCat(conditionData->first->toString(), " - ",
-                         conditionData->second->id().id());
-        isUnique =
-            seenIndexConditions.emplace(std::move(conditionString)).second;
-        // we already saw the same combination of index & condition
-        // don't add it again
-      } catch (...) {
-        // condition stringification may fail. in this case, we simply carry own
-        // without simplifying the condition
-      }
+    // try to find duplicate condition parts, and only return each
+    // unique condition part once
+    try {
+      auto conditionString =
+          absl::StrCat(conditionData->first->toString(), " - ",
+                       conditionData->second->id().id());
+      isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+      // we already saw the same combination of index & condition
+      // don't add it again
+    } catch (...) {
+      // condition stringification may fail. in this case, we simply carry own
+      // without simplifying the condition
     }
 
     if (isUnique) {
