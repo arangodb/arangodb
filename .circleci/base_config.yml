@@ -1182,7 +1182,7 @@ jobs:
             cd docker-context-<< parameters.build-arch >>
             mkdir install
             tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/<< parameters.image-name >>:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/<< parameters.image-name >>:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
             docker save -o /tmp/<< parameters.output >> arangodb/<< parameters.image-name >>:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp
