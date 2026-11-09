@@ -77,7 +77,8 @@ auto ExecuteWildcard(bstring& buf, bytes_view term, Term&& t, Prefix&& p,
 
 }  // namespace
 
-field_visitor by_wildcard::visitor(bytes_view term) {
+field_visitor by_wildcard::visitor(bytes_view term,
+                                   const std::function<bool(void)>& isQueryKilled) {
   bstring buf;
   return ExecuteWildcard(
     buf, term,
@@ -97,17 +98,18 @@ field_visitor by_wildcard::visitor(bytes_view term) {
         by_prefix::visit(segment, field, term, visitor);
       };
     },
-    [](bytes_view term) -> field_visitor {
+    [isQueryKilled](bytes_view term) -> field_visitor {
       struct AutomatonContext : util::noncopyable {
-        explicit AutomatonContext(bytes_view term)
-          : acceptor{FromWildcard(term)},
-            matcher{MakeAutomatonMatcher(acceptor)} {}
+        explicit AutomatonContext(bytes_view term,
+                                  const std::function<bool(void)>& isQueryKilled)
+            : acceptor{FromWildcard(term, isQueryKilled)},
+              matcher{MakeAutomatonMatcher(acceptor)} {}
 
         automaton acceptor;
         automaton_table_matcher matcher;
       };
 
-      auto ctx = std::make_shared<AutomatonContext>(term);
+    auto ctx = std::make_shared<AutomatonContext>(term, isQueryKilled);
 
       if (!Validate(ctx->acceptor)) {
         return [](const SubReader&, const term_reader&, filter_visitor&) {};
@@ -124,7 +126,8 @@ field_visitor by_wildcard::visitor(bytes_view term) {
 filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
                                            std::string_view field,
                                            bytes_view term,
-                                           size_t scored_terms_limit) {
+                                           size_t scored_terms_limit,
+                                           const std::function<bool(void)>& isQueryKilled) {
   bstring buf;
   return ExecuteWildcard(
     buf, term,
@@ -135,7 +138,7 @@ filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
       return by_prefix::prepare(ctx, field, term, scored_terms_limit);
     },
     [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
-      return PrepareAutomatonFilter(ctx, field, FromWildcard(term),
+      return PrepareAutomatonFilter(ctx, field, FromWildcard(term, isQueryKilled),
                                     scored_terms_limit);
     });
 }

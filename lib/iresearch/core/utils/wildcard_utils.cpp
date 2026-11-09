@@ -40,6 +40,7 @@
 #endif
 
 #include "automaton_utils.hpp"
+#include "error/error.hpp"
 
 namespace irs {
 
@@ -87,7 +88,18 @@ WildcardType ComputeWildcardType(bytes_view pattern) noexcept {
   return WildcardType::kWildcard;
 }
 
-automaton FromWildcard(bytes_view expr) {
+std::pair<bool/* timedOut */, bool/* isPartial */>
+DeterminizeStarWrapper(automaton& ifst, automaton *ofst,
+                     float delta, bool *debug_ptr, int max_states,
+                     bool allow_partial, const std::function<bool(void)>& isQueryKilled) {
+
+  bool timedOut { false };
+  auto isPartial = fst::DeterminizeStar(ifst, ofst, fst::kDelta, nullptr,
+    -1, true, isQueryKilled, &timedOut);
+  return { timedOut, isPartial };
+}
+
+automaton FromWildcard(bytes_view expr, const std::function<bool(void)>& isQueryKilled) {
   bool escaped = false;
   std::vector<automaton> parts;
   parts.reserve(expr.size());
@@ -140,7 +152,8 @@ automaton FromWildcard(bytes_view expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
   static constexpr auto kExpectedNfaProperties =
-    fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
+      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor |
+      fst::kUnweighted;
 
   IRS_ASSERT(kExpectedNfaProperties ==
              nfa.Properties(kExpectedNfaProperties, true));
@@ -150,7 +163,15 @@ automaton FromWildcard(bytes_view expr) {
   nfa.SetProperties(fst::kILabelSorted, fst::kILabelSorted);
 
   automaton dfa;
-  if (fst::DeterminizeStar(nfa, &dfa)) {
+  auto [timedOut, isPartial] = DeterminizeStarWrapper(nfa, &dfa,
+    fst::kDelta, nullptr, -1, true, isQueryKilled);
+
+  if (timedOut) {
+    throw irs::query_killed{
+        "wildcard pattern determinization exceeded the time budget"};
+  }
+
+  if (isPartial) {
     // nfa isn't fully determinized
     return {};
   }
@@ -158,7 +179,7 @@ automaton FromWildcard(bytes_view expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto kExpectedDfaProperties =
-    kExpectedNfaProperties | fst::kIDeterministic;
+      kExpectedNfaProperties | fst::kIDeterministic;
 
   IRS_ASSERT(kExpectedDfaProperties ==
              dfa.Properties(kExpectedDfaProperties, true));
