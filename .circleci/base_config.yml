@@ -775,7 +775,7 @@ jobs:
             LIST=.circleci/required-checks.txt
             # PR pipelines run on the head branch, so the protected branch
             # cannot be derived from CIRCLE_BRANCH.
-            PROTECTED=4.0
+            PROTECTED=devel
             DRIFT=0
             if [ ! -s "${LIST}" ]; then
               echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
