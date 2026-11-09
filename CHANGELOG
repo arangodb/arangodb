@@ -11,8 +11,8 @@
 
 * COR-966 Improve foxx installer url matching.
 
-* Build faiss with SIMD optimizations (AVX2 or AVX-512, selected at runtime on
-  the default target architecture), speeding up vector index operations.
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted

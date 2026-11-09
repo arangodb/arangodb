@@ -82,7 +82,7 @@ target_link_libraries(arango_rocksdb
     arango_zkd
     rocksdb
     rocksdb_interface
-    ${FAISS_LIBRARY}
+    faiss
   PRIVATE
     arango_health
     arango_v8server

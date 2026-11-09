@@ -166,7 +166,7 @@ get_all_transitive_deps(${TARGET_TO_CHECK})
 list(REMOVE_DUPLICATES collected_deps)
 
 # Perform the check for the unwanted dependency.
-list(FIND collected_deps "${FAISS_LIBRARY}" FAISS_FOUND_INDEX)
+list(FIND collected_deps "faiss" FAISS_FOUND_INDEX)
 
 if (FAISS_FOUND_INDEX GREATER_EQUAL 0)
   message(FATAL_ERROR
