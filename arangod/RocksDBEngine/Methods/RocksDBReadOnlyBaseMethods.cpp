@@ -113,6 +113,7 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
 rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::SingleGet(
     rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
     rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup recharge = [&value]() { rechargeIfCopied(&value); };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {
     _readOptions.snapshot = was;
@@ -128,6 +129,11 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                           rocksdb::Slice const* keys,
                                           rocksdb::PinnableSlice* values,
                                           rocksdb::Status* statuses) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   // make a copy of the ReadOptions, as we are going to modify the snapshot
   ReadOptions ro = _readOptions;
@@ -143,6 +149,11 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                           rocksdb::PinnableSlice* values,
                                           rocksdb::Status* statuses,
                                           ReadOwnWrites) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }

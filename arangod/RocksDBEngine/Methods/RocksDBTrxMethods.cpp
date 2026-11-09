@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/ScopedRocksDBIterator.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -111,6 +112,7 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& key,
                                        rocksdb::PinnableSlice* val,
                                        ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
@@ -129,6 +131,11 @@ void RocksDBTrxMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                  rocksdb::PinnableSlice* values,
                                  rocksdb::Status* statuses,
                                  ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   if (readOwnWrites == ReadOwnWrites::no) {
     if (_readWriteBatch) {

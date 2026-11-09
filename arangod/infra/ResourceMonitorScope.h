@@ -38,6 +38,10 @@ auto currentResourceMonitor() noexcept -> ResourceMonitorBase*;
 
 }  // namespace detail
 
+// Moves an allocation's charge to the calling thread's current monitor (the
+// global one if there is none). No-op in binaries without the malloc override.
+bool rechargeAllocation(void* user) noexcept;
+
 // Installs a monitor as the calling thread's current monitor for the lifetime of
 // the guard. The only way to change it: the thread-local has internal linkage,
 // so a stray write cannot leave a thread charging allocations to a retired

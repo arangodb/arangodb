@@ -26,6 +26,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/ScopedRocksDBIterator.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/db.h>
 
 using namespace arangodb;
@@ -55,6 +56,7 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val,
                                             ReadOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_readOptions.snapshot != nullptr);

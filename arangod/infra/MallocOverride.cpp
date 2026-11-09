@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
+#include <stdio.h>
 
 #define JEMALLOC_NO_DEMANGLE
 #include <jemalloc/jemalloc.h>
@@ -99,6 +100,25 @@ namespace arangodb::infra {
 
 auto getGlobalResourceMonitor() noexcept -> StaticResourceMonitor& {
   return g_global_monitor;
+}
+
+bool rechargeAllocation(void* user) noexcept {
+  auto* header = headerPtr(user);
+  auto* from = getMonitor(header);
+  auto* to = effectiveMonitor();
+  if (from == to) {
+    return true;
+  }
+  auto requested = header->requested_size;
+  auto actual = je_malloc_usable_size(getRealPtr(header));
+  if (!tryIncrease(to, requested, actual)) {
+    return false;
+  }
+  doDecrease(from, requested, actual);
+  dprintf(STDERR_FILENO, "RECHARGE %zu\n", actual);
+  header->monitor_tagged =
+      reinterpret_cast<uintptr_t>(to) | (header->monitor_tagged & uintptr_t{1});
+  return true;
 }
 
 }  // namespace arangodb::infra
@@ -190,7 +210,7 @@ void* realloc(void* ptr, size_t size) noexcept {
   auto old_actual = je_malloc_usable_size(old_real);
 
   auto* new_monitor = effectiveMonitor();
-  //TRI_ASSERT(new_monitor == old_monitor);
+  // TRI_ASSERT(new_monitor == old_monitor);
 
   // Net the resize against the still-counted old allocation when it stays on
   // the same monitor, so a small growth (or a shrink) is not checked against
@@ -301,9 +321,9 @@ void* aligned_alloc(size_t alignment, size_t size) noexcept {
   return result;
 }
 
-// glibc defines these and prefixed jemalloc exports none of them, so without our
-// definitions the call reaches glibc's arena while the matching free() reaches
-// us. Each reduces to an entry point above; only the contracts differ.
+// glibc defines these and prefixed jemalloc exports none of them, so without
+// our definitions the call reaches glibc's arena while the matching free()
+// reaches us. Each reduces to an entry point above; only the contracts differ.
 
 void* memalign(size_t alignment, size_t size) noexcept {
   if (!isPowerOfTwo(alignment)) [[unlikely]] {

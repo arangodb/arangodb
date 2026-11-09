@@ -25,6 +25,8 @@
 #include "infra/RocksDBMonitors.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
+#include <absl/cleanup/cleanup.h>
+
 using namespace arangodb;
 
 RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(
@@ -38,6 +40,7 @@ RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val, ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
@@ -51,6 +54,11 @@ void RocksDBBatchedWithIndexMethods::MultiGet(
     rocksdb::ColumnFamilyHandle& family, size_t count,
     rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
     rocksdb::Status* statuses, ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   rocksdb::ReadOptions ro;
   if (readOwnWrites == ReadOwnWrites::yes) {
