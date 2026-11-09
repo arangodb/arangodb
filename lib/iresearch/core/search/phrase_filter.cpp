@@ -81,7 +81,7 @@ struct GetVisitor {
   }
 
   field_visitor operator()(const by_wildcard_options& part) const {
-    return by_wildcard::visitor(part.term);
+    return by_wildcard::visitor(part.term, part.stop);
   }
 
   field_visitor operator()(const by_edit_distance_options& part) const {
@@ -92,19 +92,19 @@ struct GetVisitor {
   }
 
   field_visitor operator()(const by_terms_options& part) const {
-    return
-      [terms = &part.terms](const SubReader& segment, const term_reader& field,
-                            filter_visitor& visitor) {
-        return by_terms::visit(segment, field, *terms, visitor);
-      };
+    return [terms = &part.terms](const SubReader& segment,
+                                 const term_reader& field,
+                                 filter_visitor& visitor) {
+      return by_terms::visit(segment, field, *terms, visitor);
+    };
   }
 
   field_visitor operator()(const by_range_options& part) const {
-    return
-      [range = &part.range](const SubReader& segment, const term_reader& field,
-                            filter_visitor& visitor) {
-        return by_range::visit(segment, field, *range, visitor);
-      };
+    return [range = &part.range](const SubReader& segment,
+                                 const term_reader& field,
+                                 filter_visitor& visitor) {
+      return by_range::visit(segment, field, *range, visitor);
+    };
   }
 };
 
@@ -118,7 +118,8 @@ struct PrepareVisitor : util::noncopyable {
   }
 
   auto operator()(const by_wildcard_options& part) const {
-    return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit);
+    return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit,
+                                part.stop);
   }
 
   auto operator()(const by_edit_distance_options& part) const {
@@ -134,7 +135,7 @@ struct PrepareVisitor : util::noncopyable {
   }
 
   PrepareVisitor(const PrepareContext& ctx, std::string_view field) noexcept
-    : ctx{ctx}, field{field} {}
+      : ctx{ctx}, field{field} {}
 
   const PrepareContext& ctx;
   const std::string_view field;
@@ -146,7 +147,7 @@ class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
  public:
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
-    : phrase_states_(phrase_states) {}
+      : phrase_states_(phrase_states) {}
 
   void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept final {
@@ -206,7 +207,7 @@ bool Valid(const term_reader* reader) noexcept {
   // check field reader exists with required features
   return reader != nullptr && (reader->meta().index_features &
                                FixedPhraseQuery::kRequiredFeatures) ==
-                                FixedPhraseQuery::kRequiredFeatures;
+                                  FixedPhraseQuery::kRequiredFeatures;
 }
 
 filter::prepared::ptr FixedPrepareCollect(const PrepareContext& ctx,
@@ -288,8 +289,8 @@ filter::prepared::ptr FixedPrepareCollect(const PrepareContext& ctx,
   }
 
   return memory::make_tracked<FixedPhraseQuery>(
-    ctx.memory, std::move(phrase_states), std::move(positions),
-    std::move(stats), ctx.boost);
+      ctx.memory, std::move(phrase_states), std::move(positions),
+      std::move(stats), ctx.boost);
 }
 
 filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
@@ -310,8 +311,8 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
 
   for (const auto& word : options) {
     phrase_part_stats.emplace_back(ctx.scorers, 0);
-    auto& visitor =
-      phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
+    auto& visitor = phrase_part_visitors.emplace_back(
+        std::visit(GetVisitor{}, word.second));
     if (!visitor) {
       auto& opts = std::get<by_edit_distance_options>(word.second);
       visitor = irs::by_edit_distance::visitor(opts);
@@ -425,8 +426,8 @@ filter::prepared::ptr VariadicPrepareCollect(const PrepareContext& ctx,
   }
 
   return memory::make_tracked<VariadicPhraseQuery>(
-    ctx.memory, std::move(phrase_states), std::move(positions),
-    std::move(stats), ctx.boost);
+      ctx.memory, std::move(phrase_states), std::move(positions),
+      std::move(stats), ctx.boost);
 }
 
 }  // namespace
@@ -441,7 +442,7 @@ filter::prepared::ptr by_phrase::Prepare(const PrepareContext& ctx,
 
   if (1 == options.size()) {
     auto query =
-      std::visit(PrepareVisitor{ctx, field}, options.begin()->second);
+        std::visit(PrepareVisitor{ctx, field}, options.begin()->second);
     if (query) {
       return query;
     }

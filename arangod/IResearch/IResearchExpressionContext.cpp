@@ -70,7 +70,9 @@ Database& ViewExpressionContextBase::vocbase() const { return _trx->vocbase(); }
 
 transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }
 
-bool ViewExpressionContextBase::killed() const { return _query->killed(); }
+bool ViewExpressionContextBase::killed() const {
+  return _query != nullptr && _query->killed();
+}
 
 void ViewExpressionContext::setVariable(arangodb::aql::Variable const* variable,
                                         arangodb::velocypack::Slice value) {

@@ -43,7 +43,8 @@ enum class ErrorCode : uint32_t {
   not_impl_error,
   illegal_argument,
   illegal_state,
-  undefined_error
+  undefined_error,
+  query_killed = 1500U  //  ERROR_QUERY_KILLED
 };
 
 #define DECLARE_ERROR_CODE(class_name)                          \
@@ -68,7 +69,7 @@ class detailed_error_base : public error_base {
   explicit detailed_error_base(const char* error) : error_(error) {}
 
   explicit detailed_error_base(std::string&& error) noexcept
-    : error_(std::move(error)) {}
+      : error_(std::move(error)) {}
 
   const char* what() const noexcept override { return error_.c_str(); }
 
@@ -142,7 +143,7 @@ struct index_error : detailed_error_base {
 
   template<typename T>
   explicit index_error(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {}
+      : detailed_error_base(std::forward<T>(error)) {}
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -162,7 +163,7 @@ struct illegal_argument : detailed_error_base {
 
   template<typename T>
   explicit illegal_argument(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {}
+      : detailed_error_base(std::forward<T>(error)) {}
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -173,7 +174,18 @@ struct illegal_state : detailed_error_base {
 
   template<typename T>
   explicit illegal_state(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {}
+      : detailed_error_base(std::forward<T>(error)) {}
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct query_killed
+//////////////////////////////////////////////////////////////////////////////
+struct query_killed : detailed_error_base {
+  DECLARE_ERROR_CODE(query_killed);
+
+  template<typename T>
+  explicit query_killed(T&& error)
+      : detailed_error_base(std::forward<T>(error)) {}
 };
 
 }  // namespace irs
