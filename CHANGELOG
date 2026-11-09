@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
@@ -30,9 +33,6 @@
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
   distances computed, heap updates, coarse search and list scan time) in query
   statistics and in the profile output.
-
-* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.20.0-preview-20.
 
@@ -586,9 +586,6 @@
 * Let's note the removals we do in 4.0 here.
 
 * Remove FoxxMaster code.
-
-* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.19.30.
 
