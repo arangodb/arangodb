@@ -1,6 +1,14 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated node modules:
+ - fast-uri to 3.1.9 to resolve CVE-2026-110180, CVE-2026-110306,
+   CVE-2026-110095 and CVE-2026-110725
+ - joi and joi-to-json-schema removed (unused since the Foxx removal) to
+   resolve CVE-2026-48038 and CVE-2026-90771
+ - minimatch to 11.0.5 to resolve CVE-2026-118764
+ - qs to 6.16.1 to resolve CVE-2026-110816
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
