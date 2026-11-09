@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,13 +22,17 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
+#include "Indexes/IndexDefinition.h"
 
 namespace arangodb {
 
-struct CollectionCreationInfo {
-  std::string const name;
-  TRI_col_type_e collectionType;
-  velocypack::Slice const properties;
+// Hash/Persistent/Skiplist share the same normalize() rules
+struct SecondaryIndexDefinition : public IndexDefinition {
+  explicit SecondaryIndexDefinition(IndexType type) : IndexDefinition(type) {}
+
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   Database const& vocbase) const override;
 };
+
 }  // namespace arangodb

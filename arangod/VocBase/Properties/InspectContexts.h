@@ -24,7 +24,9 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/InspectorBase.h"
+#include "Inspection/Types.h"
 
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -60,6 +62,30 @@ template<class Inspector>
 inline constexpr bool isAgencyContext =
     std::is_same_v<typename detail::ContextOf<Inspector>::type,
                    InspectAgencyContext>;
+
+// Both helpers carry a field the server assigns and only the load path parses.
+// They differ in what a user sending the key gets back.
+
+// The key is accepted and its value dropped, so the request still succeeds.
+template<class Inspector, class T>
+auto internalFieldDroppingUserInput(Inspector& f, std::string_view name,
+                                    T& value) {
+  return f.field(name, value).fallback(f.keep()).when([]() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Ignore;
+  });
+}
+
+// The key is not declared for users, so the request fails with an
+// unexpected-attribute error.
+template<class Inspector, class T>
+auto internalFieldRejectingUserInput(Inspector& f, std::string_view name,
+                                     T& value) {
+  return f.field(name, value).fallback(f.keep()).when([]() {
+    return isInternalContext<Inspector> ? inspection::FieldCondition::Process
+                                        : inspection::FieldCondition::Reject;
+  });
+}
 
 // Extend inspection::NonNullOptional to allow `null` for internal context;
 // but, `null` is still rejected for user input like NonNullOptional.

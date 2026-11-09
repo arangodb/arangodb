@@ -231,6 +231,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ShardAutoRebalancerTest.cpp
   Cluster/ShardIDTest.cpp
   Cluster/ServerStateTest.cpp
+  ClusterEngine/ClusterIndexFactoryTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -241,6 +242,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Indexes/IndexTypeCatalogTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   Maintenance/MaintenanceFeatureTest.cpp
@@ -274,6 +276,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
+  RocksDBEngine/RocksDBIndexFactoryTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Scheduler/ThreadPoolTest.cpp
   Scheduler/SchedulerExecContextTest.cpp
@@ -294,6 +297,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/QuickGen.cpp
   VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
+  VocBase/CreateShardTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp

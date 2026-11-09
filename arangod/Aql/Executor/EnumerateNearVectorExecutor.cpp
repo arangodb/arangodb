@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 // Activate logging
 #define LOG_ENABLED false
@@ -52,8 +53,6 @@ class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class RegisterInfos;
 struct Collection;
-
-using Stats = NoStats;
 
 namespace {
 
@@ -196,6 +195,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
   _documents = std::move(result.capturedDocuments);
+  _stats += result.stats;
 
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
@@ -280,7 +280,7 @@ std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
   return skipped;
 }
 
-std::tuple<ExecutorState, NoStats, AqlCall>
+std::tuple<ExecutorState, EnumerateNearVectorsExecutor::Stats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
   LOG_INTERNAL << "hasDataRow: " << inputRange.hasDataRow();
@@ -294,10 +294,11 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   }
 
   if (inputRange.hasDataRow() || hasResults()) {
-    return {ExecutorState::HASMORE, {}, {}};
+    return {ExecutorState::HASMORE, std::exchange(_stats, {}), {}};
   }
 
-  return {inputRange.upstreamState(), {}, /*output.getClientCall()*/ {}};
+  return {inputRange.upstreamState(), std::exchange(_stats, {}),
+          /*output.getClientCall()*/ {}};
 }
 
 // The fullCount will not behave as expected when there is less data produced
@@ -307,7 +308,8 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 // produced can be 1, but the fullCount  returned will not be valid since we
 // cannot produce more documents then the limit, and we will not enter
 // skipRowsRange
-[[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
+[[nodiscard]] std::tuple<ExecutorState, EnumerateNearVectorsExecutor::Stats,
+                         size_t, AqlCall>
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
   auto state = [&] {
@@ -329,7 +331,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       }
     }
 
-    return {state(), {}, skipped, {}};
+    return {state(), std::exchange(_stats, {}), skipped, {}};
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
     auto skipped = skipOutput(AqlCall::Infinity{});

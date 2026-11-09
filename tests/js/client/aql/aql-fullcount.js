@@ -245,6 +245,38 @@ function optimizerFullcountTestSuite () {
 
       assertEqual(3, result.getExtra().stats.fullCount);
       assertEqual(1, result.toArray().length);
+    },
+
+    // COLLECT WITH COUNT always yields one row, fullCount must not count that
+    // row twice when LIMIT consumes it and then fast-forwards for fullCount.
+    testCollectWithCountLimitFullCount : function () {
+      let result = executeQuery(
+        "FOR doc IN UnitTestsCollection COLLECT WITH COUNT INTO n LIMIT 0, 1 RETURN n",
+        null, { fullCount: true });
+
+      assertEqual([3], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+   // COLLECT AGGREGATE without group keys returns one row even for empty input.
+   // Ensure fullCount does not count this row twice.
+    testCollectAggregateEmptyInputLimitFullCount : function () {
+      let result = executeQuery(
+        "FOR doc IN UnitTestsCollection FILTER false COLLECT AGGREGATE m = MAX(doc.values) LIMIT 0, 1 RETURN m",
+        null, { fullCount: true });
+
+      assertEqual([null], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+    // If the empty row is skipped first, fullCount must still count it only once.
+    testCollectAggregateEmptyInputOffsetFullCount : function () {
+      let result = executeQuery(
+        "FOR doc IN UnitTestsCollection FILTER false COLLECT AGGREGATE m = MAX(doc.values) LIMIT 1, 1 RETURN m",
+        null, { fullCount: true });
+
+      assertEqual([], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
     }
 
   };

@@ -86,11 +86,6 @@ class ClusterEngine final : public StorageEngine {
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Builder& result,
-                                     bool wasCleanShutdown,
-                                     bool isUpgrade) override;
-
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
 
@@ -171,9 +166,6 @@ class ClusterEngine final : public StorageEngine {
       const replication2::storage::PersistedStateInfo& info)
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
-
-  void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
-                                     arangodb::velocypack::Slice info) override;
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override { return 0; }

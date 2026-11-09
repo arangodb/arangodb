@@ -1526,6 +1526,16 @@ function aqlMatchStatementTestSuite() {
             assertEqual(result, ["v1"]);
         },
 
+        testRejectUnboundVertexWithoutLabel: function () {
+            const message = "MATCH vertex variable 'v' needs a label or has to be bound earlier";
+            assertRejected("MATCH (v) RETURN v", {}, errors.ERROR_QUERY_PARSE, message);
+            assertRejected(
+                "MATCH (a :vc) -[e :ec]-> (v) RETURN v",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                message);
+        },
+
         testAllowNormalVertexWithAttributeConstraint: function () {
             const result = db._query(
                 "MATCH (x :vc {i: 1}) RETURN x._key",
