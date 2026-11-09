@@ -1,6 +1,12 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Updated node modules:
+ - fast-uri to 3.1.9 to resolve CVE-2026-86472, CVE-2026-110180,
+   CVE-2026-110306, CVE-2026-110095 and CVE-2026-110725
+ - lodash to 4.18.1 to resolve CVE-2026-2950
+ - qs to 6.16.1 to resolve CVE-2026-110816
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
@@ -10,10 +16,8 @@ v3.11.14.7 (XXXX-XX-XX)
 
 * Upgraded OpenSSL to 3.5.9 and OpenLDAP to 2.6.15.
 
-* Updated node modules:
- - brace-expansion to 1.1.21 to resolve CVE-2026-102276, CVE-2026-102277
-   and CVE-2026-102278
- - fast-uri to 3.1.8 to resolve CVE-2026-86472
+* Updated node module brace-expansion to 1.1.21 to resolve CVE-2026-102276,
+  CVE-2026-102277 and CVE-2026-102278.
 
 
 v3.11.14.6 (2026-09-29)

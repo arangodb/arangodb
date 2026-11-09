@@ -1456,7 +1456,7 @@ License Id: MIT
 #### fast-uri
 
 Name: fast-uri
-Version: 3.1.8
+Version: 3.1.9
 Project Home: https://github.com/fastify/fast-uri
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/fast-uri/LICENSE
 License Name: BSD-style 3-Clause License
@@ -1816,7 +1816,7 @@ License Id: MIT
 #### lodash
 
 Name: lodash
-Version: 4.17.13
+Version: 4.18.1
 Project Home: https://github.com/lodash/lodash
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/lodash/LICENSE
 License Name: MIT License
@@ -2069,7 +2069,7 @@ License Id: MIT
 #### qs
 
 Name: qs
-Version: 6.16.0
+Version: 6.16.1
 Project Home: https://github.com/ljharb/qs
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/qs/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
