@@ -5,7 +5,7 @@ orbs:
   aws-ecr: circleci/aws-ecr@9.0.1
   # Exact pin: a floating orb range silently changes what runs. Keep in
   # sync with base_nightly_packages.yml.
-  trivy-scan: arangodb/trivy-scan@1.2.0
+  trivy-scan: arangodb/trivy-scan@1
 
 parameters:
   enterprise-commit:
@@ -775,7 +775,7 @@ jobs:
             LIST=.circleci/required-checks.txt
             # PR pipelines run on the head branch, so the protected branch
             # cannot be derived from CIRCLE_BRANCH.
-            PROTECTED=4.0
+            PROTECTED=devel
             DRIFT=0
             if [ ! -s "${LIST}" ]; then
               echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
