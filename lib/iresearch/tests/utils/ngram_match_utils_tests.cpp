@@ -431,6 +431,33 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
   }
 }
 
+TEST(ngram_match_utils_test, test_similarity_repeated_ngram) {
+  // A single source n-gram must not be counted once per repeated target
+  // n-gram. The longest common sequence is 1.
+  const std::string_view one = "a";
+  const std::string_view three = "aaa";
+  ASSERT_DOUBLE_EQ(
+    1.f / 3.f, (irs::ngram_similarity<char, true>(three.data(), three.size(),
+                                                  one.data(), one.size(), 1)));
+  ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
+                        one.data(), one.size(), three.data(), three.size(),
+                        1)));
+
+  const std::string_view abc = "abc";
+  ASSERT_DOUBLE_EQ(
+    1.f / 3.f,
+    (irs::ngram_similarity<char, false>(three.data(), three.size(), abc.data(),
+                                        abc.size(), 1)));
+  ASSERT_DOUBLE_EQ(
+    1.f / 3.f,
+    (irs::ngram_similarity<char, false>(abc.data(), abc.size(), three.data(),
+                                        three.size(), 1)));
+  ASSERT_DOUBLE_EQ(
+    1.f / 3.f,
+    (irs::ngram_similarity<char, true>(three.data(), three.size(), abc.data(),
+                                       abc.size(), 1)));
+}
+
 TEST(ngram_match_utils_test, test_similarity_all_empty) {
   // strings are shorter than ngram length.
   const std::string_view lhs = "";
