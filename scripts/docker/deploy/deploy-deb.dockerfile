@@ -3,7 +3,7 @@ LABEL org.opencontainers.image.authors="hackers@arangodb.com"
 
 ARG arch
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl jq pwgen numactl elfutils sysstat ca-certificates vim lsof && apt-get autoremove -y && apt-get clean
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends curl jq pwgen numactl elfutils sysstat ca-certificates vim lsof && apt-get autoremove -y && apt-get clean
 
 ENV GLIBCXX_FORCE_NEW=1
 
