@@ -1157,6 +1157,9 @@ set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
 
+# Select faiss SIMD kernels at runtime based on the CPU.
+set(FAISS_OPT_LEVEL "dd" CACHE STRING "FAISS SIMD level" FORCE)
+
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 add_library(faiss_interface INTERFACE)
