@@ -1,6 +1,9 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
+
 * Updated node modules:
  - fast-uri to 3.1.9 to resolve CVE-2026-110180, CVE-2026-110306,
    CVE-2026-110095 and CVE-2026-110725
@@ -10,9 +13,6 @@
   dependencies.
 
 * COR-966 Improve foxx installer url matching.
-
-* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
-  NEON/SVE on aarch64), speeding up vector index operations.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
