@@ -121,7 +121,44 @@ NormalizedPattern PatternNormalizer::normalizePattern(
                                    "match expression without start node");
   }
 
+  rejectPathVariableSelfReferences(pattern);
+
   return pattern;
+}
+
+void PatternNormalizer::rejectPathVariableSelfReferences(
+    NormalizedPattern const& pattern) const {
+  if (pattern.pathVariable == nullptr) {
+    return;
+  }
+
+  auto const rejectIfReferencesPath =
+      [&](std::optional<ExpressionRef> const& filter) {
+        if (!filter.has_value() || filter->node == nullptr) {
+          return;
+        }
+        if (Ast::countReferences(filter->node, pattern.pathVariable) > 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_PARSE,
+              absl::StrCat("MATCH path variable '", pattern.pathVariable->name,
+                           "' cannot be referenced in its own pattern WHERE "
+                           "expression"));
+        }
+      };
+
+  auto const rejectElementFilters = [&](PatternElement const& element) {
+    if (element.kind != PatternElement::Kind::kVertex ||
+        !element.vertex.has_value()) {
+      return;
+    }
+    rejectIfReferencesPath(element.vertex->filter);
+  };
+
+  rejectElementFilters(pattern.start);
+  for (auto const& segment : pattern.segments) {
+    rejectIfReferencesPath(segment.edge.filter);
+    rejectElementFilters(segment.target);
+  }
 }
 
 PatternElement PatternNormalizer::normalizeStartElement(
