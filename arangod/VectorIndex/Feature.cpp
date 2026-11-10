@@ -54,6 +54,14 @@ VectorIndexFeature::VectorIndexFeature(
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
+std::map<std::string, std::string> VectorIndexFeature::versionDetails() {
+  return {
+      {"faiss-simd-dynamic-dispatch",
+       faiss::SIMDConfig::has_dynamic_dispatch() ? "true" : "false"},
+      {"faiss-simd-level", faiss::SIMDConfig::get_level_name()},
+  };
+}
+
 bool VectorIndexFeature::shouldRunBuildManager() const {
   if (!isVectorIndexEnabled()) {
     return false;
