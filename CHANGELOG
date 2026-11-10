@@ -1,6 +1,8 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to v0.19.31.
+
 * Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
   NEON/SVE on aarch64), speeding up vector index operations.
 
