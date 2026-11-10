@@ -255,7 +255,6 @@ bool isSimpleExpansion(ast::ExpansionNode const& expansionNode) {
  * higher accessType. Will upgrade the accessType if datasource is used with
  * lower one before.
  *
- * @param resolver CollectionNameResolver to identify category
  * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
  * @param failIfDoesNotExist If true => throws error if SourceNotFound. False =>
  * Treat non-existing like a collection
@@ -265,9 +264,8 @@ bool isSimpleExpansion(ast::ExpansionNode const& expansionNode) {
  * to the translated name (cid => name if required).
  */
 std::pair<LogicalDataSource::Category, std::string_view>
-injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
-                        AccessMode::Type accessType, bool failIfDoesNotExist,
-                        std::string_view name) {
+injectDataSourceInQuery(Ast& ast, AccessMode::Type accessType,
+                        bool failIfDoesNotExist, std::string_view name) {
   // NOTE name may contain a numeric collection ID; in this case the string_view
   // returned by this function will contain the resolved datasource name
   if (name.empty()) {
@@ -276,7 +274,7 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
   }
 
   std::string_view resolved_name{name};
-  auto const dataSource = resolver.getDataSource(name);
+  auto const dataSource = ast.query().resolver().getDataSource(name);
 
   if (dataSource == nullptr) {
     // datasource not found...
@@ -333,7 +331,7 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
     ast.query().addDataSource(*dataSource);
 
     // Make sure to add all collections from the view now:
-    resolver.visitCollections(
+    ast.query().resolver().visitCollections(
         [&ast, accessType](LogicalCollection& col) -> bool {
           ast.query().collections().add(col.name(), accessType,
                                         aql::Collection::Hint::Collection);
@@ -348,11 +346,9 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
   return {dataSource->category(), resolved_name};
 }
 
-LogicalDataSource::Category addDataSource(
-    Ast& ast, CollectionNameResolver const& resolver,
-    std::string_view nameRef) {
-  auto [category, resolved_name] = injectDataSourceInQuery(
-      ast, resolver, AccessMode::Type::READ, false, nameRef);
+LogicalDataSource::Category addDataSource(Ast& ast, std::string_view nameRef) {
+  auto [category, resolved_name] =
+      injectDataSourceInQuery(ast, AccessMode::Type::READ, false, nameRef);
 
   if (category == LogicalDataSource::Category::kCollection) {
     if (ServerState::instance()->isCoordinator()) {
@@ -369,7 +365,7 @@ LogicalDataSource::Category addDataSource(
           std::string_view shardsNameRef(n);
 
           auto [shardsCategory, _] = injectDataSourceInQuery(
-              ast, resolver, AccessMode::Type::READ, false, shardsNameRef);
+              ast, AccessMode::Type::READ, false, shardsNameRef);
 
           TRI_ASSERT(shardsCategory ==
                      LogicalDataSource::Category::kCollection);
@@ -975,15 +971,14 @@ AstNode* Ast::createNodeVariable(std::string_view name, bool isUserDefined) {
 
 /// @brief create an AST datasource
 /// this function will return either an AST collection or an AST view node
-AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
-                                   std::string_view name,
+AstNode* Ast::createNodeDataSource(std::string_view name,
                                    AccessMode::Type accessType,
                                    bool validateName, bool failIfDoesNotExist) {
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
-  auto [category, resolved_name] = injectDataSourceInQuery(
-      *this, resolver, accessType, failIfDoesNotExist, name);
+  auto [category, resolved_name] =
+      injectDataSourceInQuery(*this, accessType, failIfDoesNotExist, name);
 
   if (category == LogicalDataSource::Category::kCollection) {
     return createNodeCollectionNoValidation(name, accessType);
@@ -1001,14 +996,13 @@ AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
 }
 
 /// @brief create an AST collection node
-AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
-                                   std::string_view name,
+AstNode* Ast::createNodeCollection(std::string_view name,
                                    AccessMode::Type accessType) {
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
   auto [category, resolved_name] =
-      injectDataSourceInQuery(*this, resolver, accessType, false, name);
+      injectDataSourceInQuery(*this, accessType, false, name);
 
   if (category == LogicalDataSource::Category::kCollection) {
     // add collection to query
@@ -1694,15 +1688,14 @@ AstNode* Ast::createNodeDestructuring(AstNode const* value, bool isObject) {
 }
 
 /// @brief create an AST with collections node
-AstNode* Ast::createNodeWithCollections(
-    AstNode const* collections, CollectionNameResolver const& resolver) {
+AstNode* Ast::createNodeWithCollections(AstNode const* collections) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   ast::ArrayNode collectionsNode(collections);
   for (auto c : collectionsNode.getElements()) {
     if (c->isStringValue()) {
       auto nameRef = c->getStringView();
-      addDataSource(*this, resolver, nameRef);
+      addDataSource(*this, nameRef);
     }  // else bindParameter use default for collection bindVar
 
     // We do not need to propagate these members
@@ -1716,8 +1709,7 @@ AstNode* Ast::createNodeWithCollections(
 }
 
 /// @brief create an AST collection list node
-AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
-                                       CollectionNameResolver const& resolver) {
+AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   ast::ArrayNode edgeCollectionsNode(edgeCollections);
@@ -1726,7 +1718,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
     if (edgeCollectionName.has_value()) {
       auto edgeCollectionNameRef = std::string_view{*edgeCollectionName};
-      auto category = addDataSource(*this, resolver, edgeCollectionNameRef);
+      auto category = addDataSource(*this, edgeCollectionNameRef);
 
       if (category != LogicalDataSource::Category::kCollection) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2245,8 +2237,7 @@ AstNode* Ast::createNodeObjectSplice(AstNode const* in) {
 /// @brief injects first-stage bind parameter values into the AST
 /// (i.e. collection bind parameters and bound attribute names,
 /// e.g. @@foo and `doc.@attr`).
-void Ast::injectBindParametersFirstStage(
-    BindParameters& parameters, CollectionNameResolver const& resolver) {
+void Ast::injectBindParametersFirstStage(BindParameters& parameters) {
   TRI_ASSERT(!_containsAttributeNameValueBindParameters ||
              _containsBindParameters);
 
@@ -2305,7 +2296,7 @@ void Ast::injectBindParametersFirstStage(
 
         if (newNode == nullptr) {
           newNode =
-              createNodeDataSource(resolver, name,
+              createNodeDataSource(name,
                                    isWriteCollection ? AccessMode::Type::WRITE
                                                      : AccessMode::Type::READ,
                                    false, true);
@@ -4936,8 +4927,7 @@ Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
   return edgeCollections;
 }
 
-void Ast::addGraphNodeImplicitVertexCollections(
-    CollectionNameResolver const& resolver) {
+void Ast::addGraphNodeImplicitVertexCollections() {
   // Collect all edge collection names used in graph operations using
   // edge collection syntax.
   auto edgeCollections =
@@ -4962,7 +4952,7 @@ void Ast::addGraphNodeImplicitVertexCollections(
 
   if (maybeImplicitVertexCollections.ok()) {
     for (auto&& vertexCollectionName : maybeImplicitVertexCollections.get()) {
-      addDataSource(*this, resolver, std::string_view{vertexCollectionName});
+      addDataSource(*this, std::string_view{vertexCollectionName});
     }
   } else {
     THROW_ARANGO_EXCEPTION(maybeImplicitVertexCollections.result());
