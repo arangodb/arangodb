@@ -1,6 +1,8 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Updated ArangoDB Starter to v0.18.34.
+
 * Updated node modules:
  - fast-uri to 3.1.9 to resolve CVE-2026-86472, CVE-2026-110180,
    CVE-2026-110306, CVE-2026-110095 and CVE-2026-110725
@@ -9,8 +11,6 @@ v3.11.14.7 (XXXX-XX-XX)
 
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.18.33.
 
 * Update timezone database as of 05.10.2026.
 
