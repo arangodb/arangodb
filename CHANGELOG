@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-21.
+
 * Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
   NEON/SVE on aarch64), speeding up vector index operations.
 
@@ -46,8 +48,6 @@
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
   distances computed, heap updates, coarse search and list scan time) in query
   statistics and in the profile output.
-
-* Updated ArangoDB Starter to v0.20.0-preview-20.
 
 * The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
   group variables are the leading keys of that SORT. Otherwise it adds a SORT
