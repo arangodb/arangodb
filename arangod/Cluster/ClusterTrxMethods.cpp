@@ -324,14 +324,32 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     TRI_ASSERT(state->isDBServer());
     TRI_ASSERT(state->id().isLeaderTransactionId());
 
-    // Drop all followers that were not successful:
+    // A follower decides on its own when to do intermediate commits (IC),
+    // independently of the leader. We can have different cases:
+    //   1. leader has IC; follower has IC
+    //   2. leader has no IC; follower has IC
+    //   3. leader has IC; follower has no IC
+    // E.g., case 3. can happen if the leader leads two shards that replicate to
+    // different followers. Case 2. can happen if two leaders replicate to the
+    // same follower. In all these cases we don't know what data has been
+    // committed where, so if the trx is aborted, we have to drop the follower
+    // to maintain consistency.
+    // Cases 1. and 2. are detected because the follower responds with
+    // TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED (which maps to
+    // 409 Conflict). As a result, we attempt to drop that follower. However, to
+    // cover 3. we have to check if the leader has performed intermediate
+    // commits.
+    bool const mustDropFollowers =
+        status == transaction::Status::ABORTED && state->numCommits() > 0;
+
+    // Drop all followers that were not successful, or all of them in that case:
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& resp =
           tryRes.get();  // throws exceptions upwards
 
       Result res = ::checkTransactionResult(tidPlus, status, resp);
-      if (res.fail()) {  // remove followers for all participating
-                         // collections
+      if (res.fail() || mustDropFollowers) {  // remove followers for all
+                                              // participating collections
         ServerID follower = resp.serverId();
         LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
             << "synchronous replication of transaction " << stateString
@@ -341,7 +359,10 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
             << " transaction " << state->id().id() << " (status "
             << arangodb::transaction::statusString(status)
             << "), status code: " << static_cast<int>(resp.statusCode())
-            << ", message: " << resp.combinedResult().errorMessage();
+            << ", message: " << resp.combinedResult().errorMessage()
+            << (mustDropFollowers
+                    ? ", leader has performed intermediate commits"
+                    : "");
         state->allCollections([&](TransactionCollection& tc) {
           auto cc = tc.collection();
           if (cc) {
