@@ -168,6 +168,10 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 
   // set memory limit for query
   _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
+  // Temporary test hook: the new monitor's limit has no option yet.
+  TRI_IF_FAILURE("Query::smallNewMonitorLimit") {
+    _resourceMonitor->newMemoryLimit(64 * 1024);
+  }
   _warnings.updateFromOptions(_queryOptions);
 
   // store name of user that started the query, plus the full ExecContext
@@ -554,7 +558,7 @@ async<void> Query::prepareQuery() {
     setResult({ex.code(), ex.what()});
     throw;
   } catch (std::bad_alloc const&) {
-    setResult({TRI_ERROR_OUT_OF_MEMORY});
+    setResult(allocationFailure({}));
     throw;
   } catch (std::exception const& ex) {
     setResult({TRI_ERROR_INTERNAL, ex.what()});
@@ -1070,9 +1074,7 @@ futures::Future<futures::Unit> Query::execute(
     queryResult.reset(result());
   } catch (std::bad_alloc const&) {
     setResult(
-        {TRI_ERROR_OUT_OF_MEMORY,
-         absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                      QueryExecutionState::toStringWithPrefix(_execState))});
+        allocationFailure(QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(/*sync*/ true);
     queryResult.reset(result());
   } catch (std::exception const& ex) {
@@ -1192,7 +1194,7 @@ QueryResult Query::parse() {
   } catch (Exception const& ex) {
     result.reset(Result(ex.code(), ex.message()));
   } catch (std::bad_alloc const&) {
-    result.reset(Result(TRI_ERROR_OUT_OF_MEMORY));
+    result.reset(allocationFailure({}));
   } catch (std::exception const& ex) {
     result.reset(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
@@ -1420,10 +1422,8 @@ QueryResult Query::explain() {
         absl::StrCat(ex.message(),
                      QueryExecutionState::toStringWithPrefix(_execState))));
   } catch (std::bad_alloc const&) {
-    result.reset(Result(
-        TRI_ERROR_OUT_OF_MEMORY,
-        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
+    result.reset(
+        allocationFailure(QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::exception const& ex) {
     result.reset(Result(
         TRI_ERROR_INTERNAL,

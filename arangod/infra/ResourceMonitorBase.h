@@ -60,6 +60,14 @@ struct ResourceMonitorBase {
     _peakBytes.store(actualBytes(), std::memory_order_relaxed);
   }
 
+  void setLimitHit() noexcept {
+    _limitHit.store(true, std::memory_order_relaxed);
+  }
+
+  [[nodiscard]] bool limitHit() const noexcept {
+    return _limitHit.load(std::memory_order_relaxed);
+  }
+
  protected:
   struct StaticTag {};
   ResourceMonitorBase() = default;
@@ -71,6 +79,7 @@ struct ResourceMonitorBase {
       auto current = _actualBytes.load(std::memory_order_relaxed);
       do {
         if (current + actual > _limit) {
+          setLimitHit();
           return false;
         }
       } while (!_actualBytes.compare_exchange_weak(current, current + actual,
@@ -103,6 +112,7 @@ struct ResourceMonitorBase {
   std::atomic<ResourceMonitorBase*> _next{nullptr};
   bool _static{false};
   std::atomic<uint64_t> _peakBytes{0};
+  std::atomic<bool> _limitHit{false};
 };
 
 }  // namespace arangodb::infra

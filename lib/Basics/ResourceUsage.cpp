@@ -87,6 +87,14 @@ void ResourceMonitor::memoryLimit(std::uint64_t value) noexcept {
   _limit = value;
 }
 
+void ResourceMonitor::newMemoryLimit(std::uint64_t value) noexcept {
+  monitorRef.get()->setLimit(value);
+}
+
+bool ResourceMonitor::newMemoryLimitHit() const noexcept {
+  return monitorRef.get()->limitHit();
+}
+
 /// @brief returns the current memory limit
 std::uint64_t ResourceMonitor::memoryLimit() const noexcept { return _limit; }
 

@@ -42,6 +42,7 @@ class ResourceMonitor : public ResourceMonitorBase {
     if (_parent != nullptr) {
       // TODO - count in chunks
       if (!_parent->increase(requested, actual)) {
+        setLimitHit();
         ResourceMonitorBase::decrease(requested, actual);
         return false;
       }

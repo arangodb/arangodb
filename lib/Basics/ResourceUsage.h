@@ -57,6 +57,13 @@ struct alignas(64) ResourceMonitor final {
   /// @brief sets a memory limit
   void memoryLimit(std::uint64_t value) noexcept;
 
+  /// @brief sets the new monitor's limit only; temporary until the startup
+  /// option is connected
+  void newMemoryLimit(std::uint64_t value) noexcept;
+
+  /// @brief whether the new monitor refused an allocation because of a limit
+  bool newMemoryLimitHit() const noexcept;
+
   /// @brief returns the current memory limit
   std::uint64_t memoryLimit() const noexcept;
 

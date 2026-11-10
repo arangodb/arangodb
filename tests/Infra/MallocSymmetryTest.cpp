@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <malloc.h>
+#include <new>
 #include <optional>
 #include <unistd.h>
 
@@ -278,4 +279,45 @@ TEST_F(MallocSymmetryTest, recharge_into_a_full_monitor_leaves_the_charge) {
   EXPECT_EQ(sourceBefore, sourceAfter);
   EXPECT_EQ(0u, target.actualBytes());
   EXPECT_EQ(sourceBefore - actual, sourceAfterFree);
+}
+
+// Callers can tell a limit hit from real out-of-memory by this flag
+TEST_F(MallocSymmetryTest, only_a_limit_refusal_sets_the_limit_flag) {
+  StaticResourceMonitor viaMalloc;
+  StaticResourceMonitor viaNew;
+  StaticResourceMonitor viaOverflow;
+  viaMalloc.setLimit(1024);
+  viaNew.setLimit(1024);
+  viaOverflow.setLimit(1024);
+
+  void* refused = nullptr;
+  {
+    ResourceMonitorScope scope{ResourceMonitorRef{viaMalloc}};
+    refused = malloc(4096);
+  }
+  bool threw = false;
+  {
+    ResourceMonitorScope scope{ResourceMonitorRef{viaNew}};
+    try {
+      auto* p = new char[4096];
+      mustEscape(p);
+      delete[] p;
+    } catch (std::bad_alloc const&) {
+      threw = true;
+    }
+  }
+  void* overflowed = nullptr;
+  {
+    // volatile: a constant SIZE_MAX would be rejected at compile time.
+    volatile size_t huge = SIZE_MAX;
+    ResourceMonitorScope scope{ResourceMonitorRef{viaOverflow}};
+    overflowed = malloc(huge);
+  }
+
+  EXPECT_EQ(nullptr, refused);
+  EXPECT_TRUE(viaMalloc.limitHit());
+  EXPECT_TRUE(threw);
+  EXPECT_TRUE(viaNew.limitHit());
+  EXPECT_EQ(nullptr, overflowed);
+  EXPECT_FALSE(viaOverflow.limitHit());
 }

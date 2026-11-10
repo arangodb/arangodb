@@ -521,6 +521,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  auto settlePrefetchTask = [this]() {
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
+    }
+  };
+
   try {
     initOnce();
     auto res = executeWithoutTrace(stack);
@@ -554,13 +564,17 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      if (!_prefetchTask->tryClaim()) {
-        _prefetchTask->waitFor();
-      } else {
-        _prefetchTask->discard(/*isFinished*/ false);
-      }
-    }
+    settlePrefetchTask();
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  } catch (std::bad_alloc const&) {
+    TRI_ASSERT(_firstFailure.ok());
+    // Before the generic branch: a limit hit must not become an internal error.
+    setFailure(_engine->getQuery().allocationFailure(
+        absl::StrCat(" [node #", getPlanNode()->id().id(), ": ",
+                     getPlanNode()->getTypeString(), "]")));
+    LOG_QUERY("5c0e1", DEBUG) << printBlockInfo()
+                              << " local statemachine failed: out of memory";
+    settlePrefetchTask();
     THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
@@ -571,13 +585,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      if (!_prefetchTask->tryClaim()) {
-        _prefetchTask->waitFor();
-      } else {
-        _prefetchTask->discard(/*isFinished*/ false);
-      }
-    }
+    settlePrefetchTask();
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }

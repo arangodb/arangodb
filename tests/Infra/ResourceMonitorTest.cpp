@@ -112,11 +112,12 @@ TEST(ResourceMonitorTest, reclaimable_depends_on_actual_bytes_not_requested) {
   EXPECT_TRUE(monitor.isReclaimable());
 }
 
-TEST(ResourceMonitorTest, reclaimable_ignores_refcount) {
+TEST(ResourceMonitorTest, held_reference_blocks_reclaim) {
   ResourceMonitor monitor;
   monitor.acquireRef();
   monitor.retire();
-  EXPECT_EQ(1u, monitor.refCount());
+  EXPECT_FALSE(monitor.isReclaimable());
+  monitor.releaseRef();
   EXPECT_TRUE(monitor.isReclaimable());
 }
 
@@ -156,6 +157,9 @@ TEST(ResourceMonitorTest, parent_limit_rejects_increase) {
   EXPECT_EQ(400u, monitor.actualBytes());
   EXPECT_EQ(300u, parent.requestedBytes());
   EXPECT_EQ(400u, parent.actualBytes());
+  // The query reads its own monitor, so the parent's refusal must show there.
+  EXPECT_TRUE(monitor.limitHit());
+  EXPECT_TRUE(parent.limitHit());
 }
 
 TEST(ResourceMonitorTest, child_limit_rejects_before_parent_is_touched) {
@@ -166,6 +170,8 @@ TEST(ResourceMonitorTest, child_limit_rejects_before_parent_is_touched) {
   EXPECT_FALSE(monitor.increase(100, 100));
   EXPECT_EQ(100u, parent.requestedBytes());
   EXPECT_EQ(150u, parent.actualBytes());
+  EXPECT_TRUE(monitor.limitHit());
+  EXPECT_FALSE(parent.limitHit());
 }
 
 TEST(ResourceMonitorTest, multiple_children_share_parent) {
