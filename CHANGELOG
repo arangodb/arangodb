@@ -1,6 +1,9 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
+  extending left from the end, which could return extra characters.
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
