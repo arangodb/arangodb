@@ -41,6 +41,15 @@
 namespace arangodb::aql::optimizer {
 
 namespace {
+/// @brief whether the part has the form `doc.attr IN [values]`. for
+/// `value IN doc.attr`, valueNode is the left operand, a single value to look
+/// up in an array index, so it must not be merged or dropped as an IN list
+bool isInList(ConditionPart const& part) {
+  return part.operatorType == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
+         part.valueNode->isArray() &&
+         part.valueNode != part.operatorNode->getMember(0);
+}
+
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
@@ -166,8 +175,7 @@ bool sortOrs(Ast* ast, AstNode* root, Variable const* variable,
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
 
-    if (p.operatorType == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
-        p.valueNode->isArray()) {
+    if (isInList(p)) {
       TRI_ASSERT(p.valueNode->isConstant());
 
       if (previousIn != SIZE_MAX) {
@@ -268,9 +276,7 @@ bool sortOrs(Ast* ast, AstNode* root, Variable const* variable,
 
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
-    if (parts[i].operatorType == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
-        parts[i].valueNode->isArray() &&
-        parts[i].valueNode->numMembers() == 0) {
+    if (isInList(parts[i]) && parts[i].valueNode->numMembers() == 0) {
       // can optimize away empty IN array
       continue;
     }
@@ -278,21 +284,18 @@ bool sortOrs(Ast* ast, AstNode* root, Variable const* variable,
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
     bool isUnique = true;
 
-    if (!usedIndexes.empty()) {
-      // try to find duplicate condition parts, and only return each
-      // unique condition part once
-      try {
-        auto conditionString =
-            absl::StrCat(conditionData->first->toString(), " - ",
-                         conditionData->second->id().id());
-        isUnique =
-            seenIndexConditions.emplace(std::move(conditionString)).second;
-        // we already saw the same combination of index & condition
-        // don't add it again
-      } catch (...) {
-        // condition stringification may fail. in this case, we simply carry own
-        // without simplifying the condition
-      }
+    // try to find duplicate condition parts, and only return each
+    // unique condition part once
+    try {
+      auto conditionString =
+          absl::StrCat(conditionData->first->toString(), " - ",
+                       conditionData->second->id().id());
+      isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+      // we already saw the same combination of index & condition
+      // don't add it again
+    } catch (...) {
+      // condition stringification may fail. in this case, we simply carry own
+      // without simplifying the condition
     }
 
     if (isUnique) {
