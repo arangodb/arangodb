@@ -1,6 +1,10 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* COR-1263 / github issue #23383:
+  - Fixed the extra counting issue in NGRAM_MATCH
+  - Added unit tests
+
 * COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
   extending left from the end, which could return extra characters.
 
