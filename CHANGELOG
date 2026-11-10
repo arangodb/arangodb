@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
+
 * Updated node modules:
  - fast-uri to 3.1.9 to resolve CVE-2026-75899, CVE-2026-75931,
    CVE-2026-75975, CVE-2026-76172, CVE-2026-86472, CVE-2026-110180,
@@ -33,9 +36,6 @@
   Responses also contain the `x-arango-api-version` header with the full version
   the server supports for the requested version.
   For `/_arango/experimental` the header is not allowed.
-
-* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
-  NEON/SVE on aarch64), speeding up vector index operations.
 
 * COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
   now fails with a parse error when that variable was not bound earlier. It
