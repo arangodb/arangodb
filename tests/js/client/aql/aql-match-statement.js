@@ -1536,6 +1536,37 @@ function aqlMatchStatementTestSuite() {
                 message);
         },
 
+        // COR-1219: a constant LET is folded into the pattern, so a
+        // non-document binding must be a parse error rather than internal
+        // error 4.
+        testRejectNonDocumentVertexReference: function () {
+            const message = "MATCH vertex reference must be a document";
+            const queries = [
+                "LET x = null MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 1 MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 'abc' MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = true MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = { _key: 'v0' } MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = [1] MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = null MATCH (y :vc) -[e :ec]-> (x) RETURN y",
+                "LET x = null MATCH (y :vc), (x) RETURN y",
+            ];
+            for (const query of queries) {
+                assertRejected(query, {}, errors.ERROR_QUERY_PARSE, message);
+            }
+        },
+
+        testAllowDocumentVertexReference: function () {
+            const result = db._query(
+                `LET x = DOCUMENT("vc/v0")
+                 MATCH (x) -[e :ec]-> (y :vc)
+                 RETURN y._key`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
         testAllowNormalVertexWithAttributeConstraint: function () {
             const result = db._query(
                 "MATCH (x :vc {i: 1}) RETURN x._key",

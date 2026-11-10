@@ -16,6 +16,9 @@
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").
 
+* COR-1219: MATCH vertices bound to non-document values (e.g. LET x = null MATCH (x))
+  now raise a parse error instead of internal error 4 ("unexpected match expression member").
+
 * COR-1200: Update boost from 1.78.0 to 1.92.0
 
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
