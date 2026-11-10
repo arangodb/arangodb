@@ -25,6 +25,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/CacheMonitors.h"
 #include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
 #include "infra/RocksDBMonitors.h"
@@ -74,6 +75,7 @@ ResourceMonitor::~ResourceMonitor() {
       << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
       << " | rocksdb: peak=" << infra::rocksdbMonitor().peakBytes()
       << " now=" << infra::rocksdbMonitor().actualBytes()
+      << " | cache: now= " << infra::cacheMonitor().actualBytes()
       << " | monitors: " << describeRegistry();
 
   m->retire();

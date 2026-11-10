@@ -412,6 +412,7 @@ bool Cache::reportInsert(Table* table, bool hadEviction) {
 
 void Cache::ensureFindStats() {
   absl::call_once(_findStatsOnceFlag, [this]() {
+    auto memoryScope = infra::cacheScope();
     TRI_ASSERT(!_findStatsCreated.load(std::memory_order_relaxed));
     TRI_ASSERT(_findStats == nullptr);
 
@@ -431,6 +432,7 @@ void Cache::ensureFindStats() {
 
 void Cache::ensureEvictionStats() {
   absl::call_once(_evictionStatsOnceFlag, [this]() {
+    auto memoryScope = infra::cacheScope();
     TRI_ASSERT(!_evictionStatsCreated.load(std::memory_order_relaxed));
     TRI_ASSERT(_evictionStats == nullptr);
 
