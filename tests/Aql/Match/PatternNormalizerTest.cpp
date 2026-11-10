@@ -594,6 +594,20 @@ TEST_F(PatternNormalizerTest, pathVariable) {
   EXPECT_EQ("p", statement.patterns.front().pathVariable->name);
 }
 
+TEST_F(PatternNormalizerTest, rejectsPathVariableSelfReferenceInWhere) {
+  auto parsed =
+      parseMatch("MATCH p = (v :vc WHERE p.vertices[0]._key == 'v0') RETURN v");
+  try {
+    (void)normalize(parsed);
+    FAIL() << "expected an exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_QUERY_PARSE, ex.code());
+    EXPECT_NE(std::string::npos,
+              std::string(ex.what()).find(
+                  "cannot be referenced in its own pattern WHERE"));
+  }
+}
+
 TEST_F(PatternNormalizerTest, vertexPropertiesAndWhereFilter) {
   auto parsed = parseMatch(
       "MATCH (v :vc {j: 0, k: 1} WHERE v.i > 0) -[ e :ec {j: 2} WHERE e.i > 1 "
