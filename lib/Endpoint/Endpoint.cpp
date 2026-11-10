@@ -42,10 +42,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#if ARANGODB_HAVE_DOMAIN_SOCKETS
-#include "Endpoint/EndpointUnixDomain.h"
-#endif
-
 namespace arangodb {
 
 using namespace arangodb::basics;
@@ -71,10 +67,6 @@ std::string Endpoint::uriForm(std::string const& endpoint) {
     return "http://" + endpoint.substr(6);
   } else if (endpoint.starts_with("ssl://")) {
     return "https://" + endpoint.substr(6);
-  } else if (endpoint.starts_with("unix://")) {
-    return endpoint;
-  } else if (endpoint.starts_with("http+unix://")) {
-    return "unix://" + endpoint.substr(12);
   } else {
     return StaticStrings::Empty;
   }
@@ -117,15 +109,6 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     prefix = "http+";
     copy = copy.substr(5);
     schema = schema.substr(5);
-  }
-
-  if (schema.starts_with("unix://")) {
-#if ARANGODB_HAVE_DOMAIN_SOCKETS
-    return prefix + schema + copy.substr(7);
-#else
-    // no unix socket for windows
-    return StaticStrings::Empty;
-#endif
   }
 
   if (schema.starts_with("srv://")) {
@@ -227,15 +210,6 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
   }
 
   EncryptionType encryption = EncryptionType::NONE;
-
-  if (copy.starts_with("unix://")) {
-#if ARANGODB_HAVE_DOMAIN_SOCKETS
-    return new EndpointUnixDomain(type, listenBacklog, copy.substr(7));
-#else
-    // no unix socket for windows
-    return nullptr;
-#endif
-  }
 
   if (copy.starts_with("srv://")) {
     if (type != EndpointType::CLIENT) {
@@ -404,9 +378,6 @@ std::ostream& operator<<(std::ostream& stream, Endpoint::EncryptionType type) {
 
 std::ostream& operator<<(std::ostream& stream, Endpoint::DomainType type) {
   switch (type) {
-    case Endpoint::DomainType::UNIX:
-      stream << "unix";
-      break;
     case Endpoint::DomainType::IPV4:
       stream << "ipv4";
       break;

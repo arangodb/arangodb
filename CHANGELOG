@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Removed support for Unix domain sockets. `unix://` endpoints are no longer
+  accepted by arangod or the client tools. The startup option
+  `--server.authentication-unix-sockets` is now obsolete and has no effect.
+
 * Updated ArangoDB Starter to v0.20.0-preview-21.
 
 * Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,

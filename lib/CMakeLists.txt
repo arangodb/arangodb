@@ -293,7 +293,6 @@ add_library(arango_basic_http_client STATIC
         Endpoint/EndpointIpV6.cpp
         Endpoint/EndpointList.cpp
         Endpoint/EndpointSrv.cpp
-        Endpoint/EndpointUnixDomain.cpp
 )
 target_link_libraries(arango_basic_http_client
   PUBLIC velocypack
