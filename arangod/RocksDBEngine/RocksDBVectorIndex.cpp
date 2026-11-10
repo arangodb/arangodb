@@ -145,9 +145,12 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
   return searchCtx;
 }
 
-// ceil(topK * 1.2) quantized candidates are fetched for exact reranking
+constexpr std::size_t kRerankOversamplingFactor = 2;
+constexpr std::size_t kRerankMinCandidates = 100;
+
+// Small topK gets a fixed floor, large topK oversamples linearly
 std::size_t rerankCandidates(std::size_t topK) noexcept {
-  return topK * 10;
+  return std::max(topK * kRerankOversamplingFactor, kRerankMinCandidates);
 }
 
 RocksDBValue makeVectorIndexValue(
