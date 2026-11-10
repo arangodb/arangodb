@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
+
 * Updated node modules:
  - fast-uri to 3.1.9 to resolve CVE-2026-75899, CVE-2026-75931,
    CVE-2026-75975, CVE-2026-76172, CVE-2026-86472, CVE-2026-110180,

@@ -21,7 +21,9 @@
 
 #pragma once
 
+#include <map>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -45,6 +47,8 @@ class VectorIndexFeature final
                      VectorIndexFeatureOptions options);
 
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }
+
+  static std::map<std::string, std::string> versionDetails();
 
   void start() override final;
 
