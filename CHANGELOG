@@ -10,6 +10,11 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-21.
 
+* BTS-2523: AQL range filters on `_key` and `_id` treat floating-point numbers
+  like any other number. Numbers sort before strings, so `doc._key < 1.5`
+  matches no document and `doc._key > 1.5` matches every document. Both
+  queries use the primary index.
+
 * Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
   NEON/SVE on aarch64), speeding up vector index operations.
 
