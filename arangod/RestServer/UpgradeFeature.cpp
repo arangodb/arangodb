@@ -25,6 +25,7 @@
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/UserManager.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Basics/StaticStrings.h"
@@ -227,6 +228,15 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeLocalDatabase() {
   LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME)
       << "starting database init/upgrade";
+
+  // BTS-2494 test hook - DO NOT MERGE
+  // Always crash a dbserver while it runs --database.auto-upgrade, so the
+  // starter's handling of a crashed auto-upgrade can be validated.
+  // Normal (non-upgrade) startups, agents and coordinators are not affected.
+  if (_options.upgrade && ServerState::instance()->isDBServer()) {
+    ADB_PROD_ASSERT(false)
+        << "BTS-2494 test hook: forced crash during auto-upgrade";
+  }
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
