@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Basics/ApiVersion.h"
 
+#include <optional>
 #include <variant>
 
 namespace arangodb::auth {
@@ -70,6 +71,15 @@ struct AuthMode {
     // TODO Make this async
     [[nodiscard]] virtual auto check(auth::Permission permission) const
         -> Result = 0;
+
+    // The API version requested by the current request.
+    // Version-gated permission checks consult this. Modes without a
+    // request (Superuser, Disabled, Unauthenticated) have no version and
+    // report std::nullopt.
+    [[nodiscard]] virtual auto requestedApiVersion() const noexcept
+        -> std::optional<ApiVersion> {
+      return std::nullopt;
+    }
   };
 
   // Superuser; may do anything, without further checks.
@@ -93,6 +103,11 @@ struct AuthMode {
 
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
+
+    [[nodiscard]] auto requestedApiVersion() const noexcept
+        -> std::optional<ApiVersion> override {
+      return _requestedApiVersion;
+    }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     // Only used in tests.
@@ -128,6 +143,11 @@ struct AuthMode {
 
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
+
+    [[nodiscard]] auto requestedApiVersion() const noexcept
+        -> std::optional<ApiVersion> override {
+      return _requestedApiVersion;
+    }
   };
 
   // Authentication is on, but the current user is without authentication.

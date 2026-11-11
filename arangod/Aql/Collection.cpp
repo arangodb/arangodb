@@ -62,7 +62,8 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
           _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
-      _collection = _vocbase->lookupCollection(_name);
+      auto collectionResult = _vocbase->lookupCollection(_name);
+      _collection = collectionResult.ok() ? collectionResult.get() : nullptr;
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
@@ -70,7 +71,8 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
           _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
-      _collection = _vocbase->lookupCollection(_name);
+      auto collectionResult = _vocbase->lookupCollection(_name);
+      _collection = collectionResult.ok() ? collectionResult.get() : nullptr;
     }
   } else if (hint == Hint::None) {
     // nothing special to do here

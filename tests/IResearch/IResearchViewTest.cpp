@@ -4937,7 +4937,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
 
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
@@ -4949,7 +4949,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
     EXPECT_TRUE(
         (false == persisted));  // link removal does not persist view meta
-    EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").fail());
 
     {
       arangodb::transaction::Methods trx(
@@ -5057,12 +5057,12 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
     persisted = false;
     EXPECT_TRUE(
         (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
     EXPECT_TRUE((true == persisted));  // collection removal persists view meta
-    EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").fail());
 
     {
       arangodb::transaction::Methods trx(
@@ -5124,10 +5124,10 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((false == !vocbase.lookupView("testView")));
     EXPECT_TRUE((true == view->drop().ok()));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").ok());
     EXPECT_TRUE(
         (true == vocbase.dropCollection(logicalCollection->id(), true).ok()));
-    EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
+    EXPECT_TRUE(vocbase.lookupCollection("testCollection").fail());
   }
 
   // view deallocated before link removed

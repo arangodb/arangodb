@@ -132,13 +132,13 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     bool found = false;
     std::string const& value2 = _request->value("collection", found);
     if (found) {
-      auto c = _vocbase.lookupCollection(value2);
-
-      if (c == nullptr) {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      auto cResult = _vocbase.lookupCollection(value2);
+      if (cResult.fail()) {
+        generateError(rest::ResponseCode::NOT_FOUND, cResult.errorNumber(),
+                      cResult.errorMessage());
         return false;
       }
+      auto c = cResult.get();
 
       // filter for collection
       filter.collection = c->id();

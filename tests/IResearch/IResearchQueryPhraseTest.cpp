@@ -6494,9 +6494,10 @@ class QueryPhraseSearch : public QueryPhrase {
                    "analyzer": "$3",
                    "includeAllFields": true })",
           name, version(), (name == 0 ? "true" : "false"), toString(analyzer)));
-      auto collection =
+      auto collectionResult =
           vocbase.lookupCollection(absl::Substitute("testCollection$0", name));
-      ASSERT_TRUE(collection);
+      ASSERT_TRUE(collectionResult.ok());
+      auto collection = collectionResult.get();
       collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };

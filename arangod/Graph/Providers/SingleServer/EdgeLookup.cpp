@@ -14,15 +14,16 @@ namespace arangodb::graph {
 auto EdgeLookup::doAppendEdge(EdgeDocumentToken const& idToken,
                               IndexIterator::DocumentCallback const& cb) const
     -> bool {
-  auto col = _trx->vocbase().lookupCollection(idToken.cid());
-
-  if (ADB_UNLIKELY(col == nullptr)) {
+  auto colResult = _trx->vocbase().lookupCollection(idToken.cid());
+  if (ADB_UNLIKELY(colResult.fail())) {
     // collection gone... should not happen
     LOG_TOPIC("c4d78", ERR, arangodb::Logger::GRAPHS)
-        << "Could not extract indexed edge document. collection not found";
-    TRI_ASSERT(col != nullptr);  // for maintainer mode
+        << "Could not extract indexed edge document. collection not found: "
+        << colResult.errorMessage();
+    TRI_ASSERT(false);  // for maintainer mode
     return false;
   }
+  auto col = colResult.get();
 
   auto res =
       col->getPhysical()->lookup(_trx, idToken.localDocumentId(), cb, {}).ok();
