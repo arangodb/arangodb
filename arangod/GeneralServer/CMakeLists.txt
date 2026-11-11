@@ -1,7 +1,6 @@
 add_library(arango_general_server STATIC
   Acceptor.cpp
   AcceptorTcp.cpp
-  AcceptorUnixDomain.cpp
   AsyncJobManager.cpp
   AuthenticationFeature.cpp
   AuthenticationOptionsProvider.cpp

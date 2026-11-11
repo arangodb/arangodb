@@ -13,7 +13,6 @@ directory = @LOCALSTATEDIR@/lib/arangodb4
 #  tcp://[ipv6-address]:port
 #  ssl://ipv4-address:port
 #  ssl://[ipv6-address]:port
-#  unix:///path/to/socket
 #
 # Examples:
 #   endpoint = tcp://0.0.0.0:8529
