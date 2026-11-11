@@ -59,7 +59,7 @@ const filterNotExposedAttributes = (attributes) => {
     // 2) DistributeShardsLike is exposed to simulate SmartGraphs on SingleServer in Enterprise
     // 3) shardingStrategy: is erased later, because the following are only optionally erased on single server
 
-    const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
+    const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys"];
     for (const key of enterpriseSimulationAttributes) {
       delete attributes[key];
     }
@@ -100,6 +100,7 @@ const getDefaultProps = () => {
         "lastValue": 0
       },
       "writeConcern": 1,
+      "replicationFactor": 1,
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,
@@ -1058,7 +1059,9 @@ function IllegalTypesSuite() {
                   // but more than there are DB-Servers
                   isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
                 } else {
-                  isAllowed(res, collname, testParam);
+                  // SingleServer keeps the value, even though it has no meaning there
+                  assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                  validateProperties({replicationFactor: Math.floor(ignoredValue)}, collname, 2);
                 }
               } else {
                 isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
@@ -1099,6 +1102,11 @@ function CreateCollectionsInOneShardSuite() {
     const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
     return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
   };
+  // OneShard has no meaning in single server, but the collections still get the
+  // replicationFactor of the leader.
+  const getSingleServerOneShardValues = () => {
+    return _.pick(db[oneShardLeader].properties(), ["replicationFactor"]);
+  };
   return {
     setUpAll: function () {
       db._createDatabase("UnitTestOneShard", {sharding: "single"});
@@ -1123,8 +1131,7 @@ function CreateCollectionsInOneShardSuite() {
         if (isCluster) {
           validateProperties(getOneShardShardingValues(), collname, 2);
         } else {
-          // OneShard has no meaning in single server, just assert values are taken
-          validateProperties({}, collname, 2);
+          validateProperties(getSingleServerOneShardValues(), collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -1149,7 +1156,7 @@ function CreateCollectionsInOneShardSuite() {
                 writeConcern: value,
               }, collname, 2);
             } else {
-              validateProperties({ writeConcern: value }, collname, 2);
+              validateProperties({...getSingleServerOneShardValues(), writeConcern: value}, collname, 2);
             }
           } else {
             isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { [v]: value });
