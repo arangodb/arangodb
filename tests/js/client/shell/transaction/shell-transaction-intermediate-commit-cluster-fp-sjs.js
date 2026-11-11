@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual */
+/* global fail, assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -183,7 +183,81 @@ function transactionIntermediateCommitsSingleSuite() {
 
       assertInSync(leader, follower, shardId);
     },
-    
+
+    // make leader execute intermediate commits (but not the follower), and let the
+    // transaction fail
+    testSingleAqlIntermediateCommitsOnLeaderWithRollback: function () {
+      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let shards = db._collection(cn).shards(true);
+      let shardId = Object.keys(shards)[0];
+      let leader = IM.getInstanceByID(shards[shardId][0]);
+      let follower = IM.getInstanceByID(shards[shardId][1]);
+      leader.debugClearFailAt("noIntermediateCommits");
+      follower.debugSetFailAt("noIntermediateCommits");
+
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
+      let intermediateCommitsBefore = leader.getMetric("arangodb_intermediate_commits_total");
+      let didWork = false;
+      try {
+        db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i), value: ASSERT(i < 10000, "peng!") } IN ' + cn, {}, { intermediateCommitCount: 1000 });
+        didWork = true;
+      } catch (err) {
+      }
+      assertEqual(didWork, false);
+
+      let intermediateCommitsAfter = leader.getMetric("arangodb_intermediate_commits_total");
+      assertEqual(intermediateCommitsBefore + 8, intermediateCommitsAfter);
+
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
+      if (isReplication2) {
+        // This metric is not used in replication2.
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // follower must have been dropped
+        assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      }
+
+      assertInSync(leader, follower, shardId);
+    },
+
+    // the leader performs an intermediate commit right before an operation that
+    // fails as a whole and is therefore not replicated. the follower only checks
+    // for an intermediate commit when it receives the next operation, so it never
+    // commits, and the rollback removes all its documents.
+    testSingleAqlIntermediateCommitOnLeaderBeforeUnreplicatedFailure: function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let shards = db._collection(cn).shards(true);
+      let shardId = Object.keys(shards)[0];
+      let leader = IM.getInstanceByID(shards[shardId][0]);
+      let follower = IM.getInstanceByID(shards[shardId][1]);
+      // AQL inserts in batches of 1000 documents, so the conflicting document
+      // is the only one in the second batch
+      c.insert({ _key: "test1001" });
+
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
+      let intermediateCommitsBefore = leader.getMetric("arangodb_intermediate_commits_total");
+      try {
+        db._query('FOR i IN 1..1001 INSERT { _key: CONCAT("test", i) } IN ' + cn, {}, { intermediateCommitCount: 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      let intermediateCommitsAfter = leader.getMetric("arangodb_intermediate_commits_total");
+      assertEqual(intermediateCommitsBefore + 1, intermediateCommitsAfter);
+
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
+      if (isReplication2) {
+        // This metric is not used in replication2.
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // follower must have been dropped
+        assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      }
+
+      assertInSync(leader, follower, shardId);
+    },
+
     // make follower execute intermediate commits (before the leader), but make the
     // transaction succeed
     testSingleTransactionIntermediateCommitsOnFollower: function () {
@@ -394,6 +468,40 @@ function transactionIntermediateCommitsMultiSuite() {
     };
   };
 
+  const createCollectionsSameLeaderDifferentFollower = () => {
+    const c1 = db._create(cn + "1", { numberOfShards: 1, replicationFactor: 2 });
+    const shards1 = db._collection(cn + "1").shards(true);
+    const shardId1 = Object.keys(shards1)[0];
+    const follower1Name = shards1[shardId1][1];
+    const leader1 = IM.getInstanceByID(shards1[shardId1][0]);
+    const follower1 = IM.getInstanceByID(follower1Name);
+
+    let shards2, shardId2, leader2, follower2, c2;
+
+    let tries = 0;
+    // try to set up 2 collections with the same leader but different follower
+    // DB servers
+    while (tries++ < 250) {
+      c2 = db._create(cn + "2", { numberOfShards: 1, replicationFactor: 2, avoidServers: [follower1Name] });
+
+      shards2 = db._collection(cn + "2").shards(true);
+      shardId2 = Object.keys(shards2)[0];
+      leader2 = IM.getInstanceByID(shards2[shardId2][0]);
+      follower2 = IM.getInstanceByID(shards2[shardId2][1]);
+
+      if (leader1 === leader2 && follower1 !== follower2) {
+        break;
+      }
+
+      db._drop(cn + "2");
+    }
+    assertEqual(leader1, leader2);
+    assertNotEqual(follower1, follower2);
+    return {
+      leader: leader1, follower1, follower2, shardId1, shardId2, c1, c2
+    };
+  };
+
   return {
 
     setUp: function () {
@@ -408,7 +516,51 @@ function transactionIntermediateCommitsMultiSuite() {
       db._drop(cn + "1");
       db._drop(cn + "2");
     },
-    
+
+    // the leader counts the operations of both shards, but each follower only
+    // sees the operations of its own shard. so leader and followers all execute
+    // intermediate commits, but at different points and thus for different data.
+    // let the transaction fail
+    testMultiAqlIntermediateCommitsOnLeaderAndFollowersAtDifferentPointsWithRollback: function () {
+      const {
+        leader, follower1, follower2, shardId1, shardId2
+      } = createCollectionsSameLeaderDifferentFollower();
+
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
+      let leaderCommitsBefore = leader.getMetric("arangodb_intermediate_commits_total");
+      let follower1CommitsBefore = follower1.getMetric("arangodb_intermediate_commits_total");
+      let follower2CommitsBefore = follower2.getMetric("arangodb_intermediate_commits_total");
+      let didWork = false;
+      try {
+        db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i), value: ASSERT(i < 10000, "peng!") } IN ' + cn + '1 INSERT { _key: CONCAT("test", i) } IN ' + cn + '2', {}, { intermediateCommitCount: 1000 });
+        didWork = true;
+      } catch (err) {
+      }
+      assertEqual(didWork, false);
+
+      let leaderCommits = leader.getMetric("arangodb_intermediate_commits_total") - leaderCommitsBefore;
+      let follower1Commits = follower1.getMetric("arangodb_intermediate_commits_total") - follower1CommitsBefore;
+      let follower2Commits = follower2.getMetric("arangodb_intermediate_commits_total") - follower2CommitsBefore;
+      if (!isReplication2) {
+        assertTrue(follower1Commits > 0, follower1Commits);
+        assertTrue(follower2Commits > 0, follower2Commits);
+        assertTrue(leaderCommits > follower1Commits, { leaderCommits, follower1Commits });
+        assertTrue(leaderCommits > follower2Commits, { leaderCommits, follower2Commits });
+      }
+
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
+      if (isReplication2) {
+        // This metric is not used in replication2.
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // both followers must have been dropped
+        assertEqual(droppedFollowersBefore + 2, droppedFollowersAfter);
+      }
+
+      assertInSync(leader, follower1, shardId1);
+      assertInSync(leader, follower2, shardId2);
+    },
+
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testMultiAqlIntermediateCommitsOnFollower: function () {
