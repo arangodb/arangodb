@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
 * COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
   extending left from the end, which could return extra characters.
 

@@ -239,21 +239,35 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
     separator = {sepBuffer->data(), sepBuffer->size()};
   }
 
+  constexpr static std::size_t kMaxOutputLength = 16 * 1024 * 1024;
+  auto const outputLimitExceeded = [&] {
+    registerWarning(
+        ctx, AFN,
+        Result{TRI_ERROR_RESOURCE_LIMIT,
+               "Output string of AQL REPEAT function was limited to 16MB."});
+    return AqlValue(AqlValueHintNull());
+  };
+
+  auto text = ThreadLocalStringLeaser::lease();
+  velocypack::SizeConstrainedStringSink textSink(text.get(), kMaxOutputLength);
+  appendAsString(trx.vpackOptions(), textSink, value);
+  if (textSink.overflowed()) {
+    return outputLimitExceeded();
+  }
+  if (text->empty() && separator.empty()) {
+    return AqlValue(std::string_view("", 0));
+  }
+
   auto buffer = ThreadLocalStringLeaser::lease();
-  velocypack::SizeConstrainedStringSink adapter(buffer.get(),
-                                                /*maxLength*/ 16 * 1024 * 1024);
+  velocypack::SizeConstrainedStringSink adapter(buffer.get(), kMaxOutputLength);
 
   for (int64_t i = 0; i < r; ++i) {
-    if (i > 0 && !separator.empty()) {
-      buffer->append(separator);
+    if (i > 0) {
+      adapter.append(separator);
     }
-    appendAsString(trx.vpackOptions(), adapter, value);
+    adapter.append(*text);
     if (adapter.overflowed()) {
-      registerWarning(
-          ctx, AFN,
-          Result{TRI_ERROR_RESOURCE_LIMIT,
-                 "Output string of AQL REPEAT function was limited to 16MB."});
-      return AqlValue(AqlValueHintNull());
+      return outputLimitExceeded();
     }
   }
 

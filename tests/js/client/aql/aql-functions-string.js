@@ -78,6 +78,18 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testRepeatSeparatorsCountTowardsOutputLimit: function () {
+      ['null', '""'].forEach((v) => {
+        const query = `RETURN REPEAT(${v}, 20000, REPEAT("x", 1024))`;
+        assertQueryWarningAndNull(errors.ERROR_RESOURCE_LIMIT.code, query);
+      });
+    },
+
+    testRepeatEmptyValueWithoutSeparatorIsEmpty: function () {
+      assertEqual([""], getQueryResults('RETURN REPEAT("", 1000000000000)'));
+      assertEqual([""], getQueryResults('RETURN REPEAT(null, 1000000000000, "")'));
+    },
+
     testRepeatInvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT(1)');
