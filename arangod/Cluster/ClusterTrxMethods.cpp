@@ -339,17 +339,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     // 409 Conflict). As a result, we attempt to drop that follower. However, to
     // cover 3. we have to check if the leader has performed intermediate
     // commits.
-    bool const mustDropFollowers =
+    bool const mustDropAllFollowers =
         status == transaction::Status::ABORTED && state->numCommits() > 0;
 
-    // Drop all followers that were not successful, or all of them in that case:
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& resp =
           tryRes.get();  // throws exceptions upwards
 
       Result res = ::checkTransactionResult(tidPlus, status, resp);
-      if (res.fail() || mustDropFollowers) {  // remove followers for all
-                                              // participating collections
+      if (res.fail() || mustDropAllFollowers) {  // remove followers for all
+                                                 // participating collections
         ServerID follower = resp.serverId();
         LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
             << "synchronous replication of transaction " << stateString
@@ -360,7 +359,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
             << arangodb::transaction::statusString(status)
             << "), status code: " << static_cast<int>(resp.statusCode())
             << ", message: " << resp.combinedResult().errorMessage()
-            << (mustDropFollowers
+            << (mustDropAllFollowers
                     ? ", leader has performed intermediate commits"
                     : "");
         state->allCollections([&](TransactionCollection& tc) {
