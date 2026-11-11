@@ -252,7 +252,7 @@ function transactionIntermediateCommitsSingleSuite() {
         assertEqual(droppedFollowersBefore, droppedFollowersAfter);
       } else {
         // follower must have been dropped
-        //assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+        assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
 
       assertInSync(leader, follower, shardId);
