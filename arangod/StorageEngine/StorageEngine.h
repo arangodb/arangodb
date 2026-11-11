@@ -325,10 +325,9 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   IndexTypeCatalog const& indexTypeCatalog() const noexcept;
 
-  // non-owning: callers register their own instead of a mutable catalog handle
+  // catalog takes ownership of definition
   Result registerIndexDefinition(std::string_view name,
-                                 IndexDefinition const& definition);
-  void unregisterIndexDefinition(std::string_view name) noexcept;
+                                 std::unique_ptr<IndexDefinition> definition);
 
   // AQL functions
   // -------------

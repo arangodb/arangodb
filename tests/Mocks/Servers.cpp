@@ -569,11 +569,6 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 }
 
 MockClusterServer::~MockClusterServer() {
-  // must unregister before _iresearchLinkDefinition is destroyed
-  if (_iresearchLinkDefinition != nullptr) {
-    _engine->unregisterIndexDefinition(
-        iresearch::StaticStrings::ViewArangoSearchType);
-  }
   _server.getFeature<ClusterFeature>().shutdown();
 }
 
@@ -612,11 +607,9 @@ void MockClusterServer::startFeatures() {
   // register the arangosearch link, same as
   // IResearchFeature::registerIndexFactory does for a real ClusterEngine
   _engine->setLinkCreator(&iresearch::createLinkCoordinator);
-  _iresearchLinkDefinition =
-      std::make_unique<iresearch::IResearchLinkDefinition>(server());
   auto r = _engine->registerIndexDefinition(
       iresearch::StaticStrings::ViewArangoSearchType,
-      *_iresearchLinkDefinition);
+      std::make_unique<iresearch::IResearchLinkDefinition>(server()));
   TRI_ASSERT(r.ok());
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }

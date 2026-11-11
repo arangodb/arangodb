@@ -117,12 +117,8 @@ IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
 }
 
 Result StorageEngine::registerIndexDefinition(
-    std::string_view name, IndexDefinition const& definition) {
-  return _indexTypeCatalog->add(name, definition);
-}
-
-void StorageEngine::unregisterIndexDefinition(std::string_view name) noexcept {
-  _indexTypeCatalog->remove(name);
+    std::string_view name, std::unique_ptr<IndexDefinition> definition) {
+  return _indexTypeCatalog->add(name, std::move(definition));
 }
 
 void StorageEngine::getCapabilities(velocypack::Builder& builder) const {

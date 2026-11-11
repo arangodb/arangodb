@@ -918,21 +918,6 @@ void IResearchFeature::stop() {
   _searchExecutionPool.stop();
 }
 
-void IResearchFeature::unprepare() {
-  TRI_ASSERT(isEnabled());
-  if (!server().hasFeature<StorageEngine>()) {
-    return;
-  }
-  // catalog holds non-owning pointers, so unregister before destroying these
-  auto& engine = server().getFeature<StorageEngine>();
-  if (_linkDefinition) {
-    engine.unregisterIndexDefinition(StaticStrings::ViewArangoSearchType);
-  }
-  if (_invertedDefinition) {
-    engine.unregisterIndexDefinition(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
-  }
-}
-
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
   std::filesystem::path path{dbPathFeature.directory()};
@@ -1042,10 +1027,9 @@ void IResearchFeature::registerIndexFactory() {
   auto& engine = server().getFeature<StorageEngine>();
 
   auto addDefinition = [&]() {
-    // register before replacing, so a failed add() can't leave a dangling ptr
-    auto newDefinition = std::make_unique<IResearchLinkDefinition>(server());
-    auto r = engine.registerIndexDefinition(StaticStrings::ViewArangoSearchType,
-                                            *newDefinition);
+    auto r = engine.registerIndexDefinition(
+        StaticStrings::ViewArangoSearchType,
+        std::make_unique<IResearchLinkDefinition>(server()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1053,15 +1037,12 @@ void IResearchFeature::registerIndexFactory() {
                        "index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
-    _linkDefinition = std::move(newDefinition);
   };
 
   auto addInvertedDefinition = [&]() {
-    // register before replacing, so a failed add() can't leave a dangling ptr
-    auto newDefinition =
-        std::make_unique<IResearchInvertedIndexDefinition>(server());
     auto r = engine.registerIndexDefinition(
-        iresearch::IRESEARCH_INVERTED_INDEX_TYPE, *newDefinition);
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+        std::make_unique<IResearchInvertedIndexDefinition>(server()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1069,7 +1050,6 @@ void IResearchFeature::registerIndexFactory() {
                        "definition with index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
-    _invertedDefinition = std::move(newDefinition);
   };
 
   if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
