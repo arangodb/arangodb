@@ -70,7 +70,8 @@ class Arango:
                                      headers=self.headers)
         if self.trx_id:
             req.add_header("x-arango-trx-id", self.trx_id)
-        try: with urllib.request.urlopen(req, context=self.ssl_context) as resp:
+        try:
+            with urllib.request.urlopen(req, context=self.ssl_context) as resp:
                 return json.loads(resp.read() or b"{}")
         except urllib.error.HTTPError as e:
             try:
