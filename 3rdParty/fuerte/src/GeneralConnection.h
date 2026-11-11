@@ -37,9 +37,9 @@
 ///
 /// The class template GeneralConnection<ST, RT> implements code which
 /// is the same for all three cases HTTP/1 and HTTP/2. Here, ST
-/// stands for the socket type (which can be Tcp (unencrypted), Ssl (TLS
-/// encryption with openssl) and Unix (unix domain socket, no encryption).
-/// Note that all 9 combination between protocol version and socket type
+/// stands for the socket type (which can be Tcp (unencrypted) or Ssl (TLS
+/// encryption with openssl).
+/// Note that all 4 combination between protocol version and socket type
 /// are possible. RT is a type which represents a request which is run
 /// on the connection. For HTTP/1, this will be a `RequestItem`, for
 /// HTTP/2 it will be a `Stream`.

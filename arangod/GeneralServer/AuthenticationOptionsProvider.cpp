@@ -149,18 +149,10 @@ use RBAC if you run ArangoDB standalone.
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  opts->addOption(
-          "--server.authentication-unix-sockets",
-          "Whether to use authentication for requests via UNIX domain sockets.",
-          new BooleanParameter(&options.authenticationUnixSockets),
-          arangodb::options::makeFlags())
-      .setLongDescription(R"(If you set this option to `false`, authentication
-for requests coming in via UNIX domain sockets is turned off on the server-side.
-Clients located on the same host as the ArangoDB server can use UNIX domain
-sockets to connect to the server without authentication. Requests coming in by
-other means (e.g. TCP/IP) are not affected by this option.)");
-#endif
+  opts->addObsoleteOption(
+      "--server.authentication-unix-sockets",
+      "Whether to use authentication for requests via UNIX domain sockets.",
+      true);
 
   opts->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "

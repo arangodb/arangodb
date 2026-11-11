@@ -1,6 +1,35 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
+  the leader had intermediate commits while the follower didn't.
+
+* COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
+* COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
+  extending left from the end, which could return extra characters.
+
+* Removed support for Unix domain sockets. `unix://` endpoints are no longer
+  accepted by arangod or the client tools. The startup option
+  `--server.authentication-unix-sockets` is now obsolete and has no effect.
+
+* Updated ArangoDB Starter to v0.20.0-preview-21.
+
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
+
+* Updated node modules:
+ - fast-uri to 3.1.9 to resolve CVE-2026-75899, CVE-2026-75931,
+   CVE-2026-75975, CVE-2026-76172, CVE-2026-86472, CVE-2026-110180,
+   CVE-2026-110306, CVE-2026-110095 and CVE-2026-110725
+ - joi and joi-to-json-schema removed (unused since the Foxx removal) to
+   resolve CVE-2026-48038 and CVE-2026-90771
+ - minimatch to 11.0.5 to resolve CVE-2026-118764
+ - qs to 6.16.1 to resolve CVE-2026-82417, CVE-2026-82562 and
+   CVE-2026-110816
+
 * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
 
@@ -28,13 +57,14 @@
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").
 
+* COR-1219: MATCH vertices bound to non-document values (e.g. LET x = null MATCH (x))
+  now raise a parse error instead of internal error 4 ("unexpected match expression member").
+
 * COR-1200: Update boost from 1.78.0 to 1.92.0
 
 * COR-1208: Expose vector index search statistics (searches, lists scanned,
   distances computed, heap updates, coarse search and list scan time) in query
   statistics and in the profile output.
-
-* Updated ArangoDB Starter to v0.20.0-preview-20.
 
 * The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
   group variables are the leading keys of that SORT. Otherwise it adds a SORT
@@ -60,10 +90,8 @@
   `p.edges[*].a[p.edges[0].x]` or `p.edges[* LIMIT p.edges[0].n]._key`, the
   traversal loads the full documents.
 
-* Updated node modules:
- - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
-   and CVE-2026-102278
- - fast-uri to 3.1.8 to resolve CVE-2026-86472
+* Updated node module brace-expansion to 5.0.12 to resolve CVE-2026-102276,
+  CVE-2026-102277 and CVE-2026-102278.
 
 * COR-1049: Disallow filters on references
   MATCH now rejects filters and attribute constraints applied to variables
@@ -78,11 +106,6 @@
   (`matchStatement: "experimental"`).
 
 * Updated node module js-yaml to 4.3.2 to resolve CVE-2026-84375.
-
-* Updated node modules:
- - fast-uri to 3.1.7 to resolve CVE-2026-75899, CVE-2026-75931,
-   CVE-2026-75975 and CVE-2026-76172
- - qs to 6.16.0 to resolve CVE-2026-82417 and CVE-2026-82562
 
 * COR-959: Fixed AQL `MATCH` silently dropping a target vertex's property
   constraints and `WHERE` expression when a pattern segment was lowered to a
@@ -179,10 +202,6 @@
 
 * COR-675: Constant-Folding for Object splice, enhanced AQL constant folding 
   for object literals. Object literals with constant object splices and constant computed attribute names are now precomputed during query optimization, reducing runtime overhead and improving query performance
-
-* Updated node modules:
- - brace-expansion to 5.0.9
- - fast-uri to 3.1.5
 
 * Removed the deprecated `hash` and `skiplist` index types from the index
   aliases reported by the `GET /_api/engine` endpoint, as they can no longer
@@ -715,11 +734,6 @@
 * Upgraded OpenSSL to 3.5.9.
 
 * COR-1019: Security issue fix to enable interrupting unbounded AQL analyzers.
-
-* Updated node modules:
- - brace-expansion to 5.0.12 to resolve CVE-2026-102276, CVE-2026-102277
-   and CVE-2026-102278
- - fast-uri to 3.1.8 to resolve CVE-2026-86472
 
 * COR-1012 The client tools started with `--server.username`/`--server.password`
   now obtain a JWT via `POST /_open/auth` like arangosh and renew it before it

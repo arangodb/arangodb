@@ -1536,6 +1536,37 @@ function aqlMatchStatementTestSuite() {
                 message);
         },
 
+        // COR-1219: a constant LET is folded into the pattern, so a
+        // non-document binding must be a parse error rather than internal
+        // error 4.
+        testRejectNonDocumentVertexReference: function () {
+            const message = "MATCH vertex reference must be a document";
+            const queries = [
+                "LET x = null MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 1 MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 'abc' MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = true MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = { _key: 'v0' } MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = [1] MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = null MATCH (y :vc) -[e :ec]-> (x) RETURN y",
+                "LET x = null MATCH (y :vc), (x) RETURN y",
+            ];
+            for (const query of queries) {
+                assertRejected(query, {}, errors.ERROR_QUERY_PARSE, message);
+            }
+        },
+
+        testAllowDocumentVertexReference: function () {
+            const result = db._query(
+                `LET x = DOCUMENT("vc/v0")
+                 MATCH (x) -[e :ec]-> (y :vc)
+                 RETURN y._key`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
         testAllowNormalVertexWithAttributeConstraint: function () {
             const result = db._query(
                 "MATCH (x :vc {i: 1}) RETURN x._key",
@@ -1732,6 +1763,78 @@ function aqlMatchStatementTestSuite() {
             assertRejected(`MATCH (v :vc) -[ec :ec]-> (w :vc) RETURN ec`, {},
                 errors.ERROR_QUERY_PARSE,
                 "MATCH label 'ec' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        // The path variable is produced only after all pattern-level WHERE
+        // conditions have been evaluated. Referencing it from its own pattern
+        // therefore creates an invalid variable dependency. Reject such
+        // references independently of optimizer rules.
+        testRejectPathVariableSelfReferenceInWhere: function () {
+            const query =
+                "MATCH p = (a:vc WHERE p.vertices[0]._key == 'v0') RETURN a._key";
+            const message =
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression";
+            const assertRejectedWith = function (queryOptions) {
+                try {
+                    db._query(query, {}, queryOptions);
+                    fail();
+                } catch (err) {
+                    assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code, err.errorMessage);
+                    assertEqual(err.errorMessage, message);
+                }
+            };
+            assertRejectedWith(options);
+            assertRejectedWith({
+                matchStatement: "experimental",
+                optimizer: { rules: ["-all"] }
+            });
+        },
+
+        testRejectPathVariableSelfReferenceOnTargetWhere: function () {
+            assertRejected(
+                "MATCH p = (a:vc) -[e:ec]-> (b:vc WHERE p.vertices[1]._key == 'v1') RETURN b._key",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression");
+        },
+
+        testRejectPathVariableSelfReferenceOnEdgeWhere: function () {
+            assertRejected(
+                "MATCH p = (a:vc) -[e:ec WHERE p.edges[0]._key == 'e0']-> (b:vc) RETURN a._key",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression");
+        },
+
+        testAllowPathVariableReferenceAfterPattern: function () {
+            const result = db._query(
+                "MATCH p = (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc) " +
+                "FILTER p.vertices[0]._key == 'v0' RETURN a._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
+        },
+
+        testAllowWhereWithoutPathVariable: function () {
+            const result = db._query(
+                "MATCH (a:vc WHERE a._key == 'v0') RETURN a._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
+        },
+
+        testAllowPriorPathVariableInLaterPatternWhere: function () {
+            // p is constructed by the first comma-separated pattern before the
+            // second pattern's WHERE runs, so referencing p there is valid.
+            const result = db._query(
+                "MATCH p = (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc), " +
+                "(c:vc WHERE c._key == p.vertices[0]._key) RETURN c._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
         },
 
     };

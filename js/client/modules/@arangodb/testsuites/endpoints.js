@@ -30,7 +30,6 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipEndpoints`: if set to true endpoints tests are skipped',
   '   - `skipEndpointsIpv6`: if set to true endpoints tests using IPv6 are skipped',
-  '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped',
 ];
 
 const _ = require('lodash');
@@ -234,24 +233,6 @@ class endpointRunner extends trs.runInArangoshRunner {
           },
         ],
       },
-
-      unix: {
-        skip: function () { return obj.options.skipEndpointsUnix; },
-        protocol: 'unix',
-        serverArgs: function () {
-          // use a random filename
-          return {
-            'server.endpoint': 'unix://' + obj.dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8)
-          };
-        },
-        shellTests: [
-          {
-            name: 'unix',
-            endpoint: function (endpoint) { return endpoint; },
-            success: true
-          },
-        ]
-      },
     };
     obj.orgArgs = _.clone(obj.instance.args);
     let fatalError = false;
@@ -385,7 +366,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipEndpointsIpv6'] = false;
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
-  opts['skipEndpointsUnix'] = false;
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
