@@ -525,9 +525,16 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
+        // An empty appendEntriesRPC carries no log consistency check
+        // (prevIndex and prevTerm are 0), so we must not use our own last
+        // index here, our log might contain stale entries from an earlier
+        // term. We only advance up to what a previous non-empty
+        // appendEntriesRPC of this term has verified to agree with the
+        // leader's log.
         auto ci = _commitIndex.load(std::memory_order_relaxed);
-        index_t const tmp =
-            std::max(ci, std::min(leaderCommitIndex, lastIndex));
+        index_t const tmp = commit_index::followerCommitIndex(
+            ci, leaderCommitIndex,
+            _followerLogVerification.verifiedIndex(term));
         if (tmp > ci) {
           logsForTrigger();
         }
@@ -556,8 +563,17 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
   {
     WRITE_LOCKER(oLocker, _outputLock);
     std::lock_guard guard{_waitForCV.mutex};
+    // Raft: commitIndex = min(leaderCommit, index of last new entry). Our
+    // log might extend beyond the entries in this request with stale
+    // entries from an earlier term, therefore we must not simply use our
+    // own last index. Everything up to the last entry of this request
+    // which we have actually got in our log agrees with the leader's log.
+    index_t const lastVerified =
+        std::min(lastIndex, payload[nqs - 1].get("index").getNumber<index_t>());
+    _followerLogVerification.noteVerified(term, lastVerified);
     auto ci = _commitIndex.load(std::memory_order_relaxed);
-    index_t const tmp = std::max(ci, std::min(leaderCommitIndex, lastIndex));
+    index_t const tmp =
+        commit_index::followerCommitIndex(ci, leaderCommitIndex, lastVerified);
     if (tmp > ci) {
       logsForTrigger();
     }
@@ -880,12 +896,18 @@ void Agent::advanceCommitIndex() {
         << "_confirmed not populated, quorum: " << quorum << ".";
     return;
   }
-  std::sort(temp.begin(), temp.end());
-  index_t index = temp[temp.size() - quorum];
 
   term_t t = _constituent.term();
 
+  // Only entries of the current term may be committed by counting
+  // replicas, see section 5.4.2 of the Raft paper:
   auto ci = _commitIndex.load(std::memory_order_relaxed);
+  index_t index = commit_index::leaderCommitIndex(
+      std::move(temp), quorum, ci, t,
+      [this](index_t idx, term_t term) { return _state.has(idx, term); });
+  if (index <= ci) {
+    return;
+  }
   auto slices = _state.slices(ci + 1, index);
   {
     WRITE_LOCKER(oLocker, _outputLock);
