@@ -164,15 +164,16 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildEmptySearchValues(velocypack::Builder& result) const;
 
   // build new search values. this can also be called from the
-  // VPackIndexIterator
-  void buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
+  // VPackIndexIterator. returns false if the lookup cannot produce any
+  // results, e.g. for an IN lookup with a non-array value
+  bool buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
                          aql::AstNode const* node,
                          aql::Variable const* reference,
                          IndexIteratorOptions const& opts,
                          velocypack::Builder& searchValues,
                          RocksDBVPackIndexSearchValueFormat& format) const;
 
-  void buildSearchValuesInner(ResourceMonitor& monitor,
+  bool buildSearchValuesInner(ResourceMonitor& monitor,
                               transaction::Methods* trx,
                               aql::AstNode const* node,
                               aql::Variable const* reference,

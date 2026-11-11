@@ -226,10 +226,12 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kDetect;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, _searchValues, format);
+    bool canProduceResults =
+        _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                  _indexIteratorOptions, _searchValues, format);
 
-    if (_format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
+    if (canProduceResults &&
+        _format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
         format == RocksDBVPackIndexSearchValueFormat::kIn) {
       reformatLookupCondition();
     }
@@ -240,6 +242,10 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     size_t newMemoryUsage = _searchValues.size();
     _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsage += newMemoryUsage;
+
+    if (!canProduceResults) {
+      return false;
+    }
 
     adjustIterator();
     return true;
@@ -357,8 +363,11 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kValuesOnly;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      return false;
+    }
     // note: we only support the simplified format when building index search
     // values! format must not have changed!
     TRI_ASSERT(format == RocksDBVPackIndexSearchValueFormat::kValuesOnly);
@@ -610,8 +619,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format = _format;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      return false;
+    }
     // note: we support two formats when building index search values:
     // - a generic format that supports < > <= >= and ==
     // - a simplified format that only supports ==
@@ -2481,17 +2493,18 @@ void RocksDBVPackIndex::buildEmptySearchValues(
   result.close();
 }
 
-void RocksDBVPackIndex::buildSearchValues(
+bool RocksDBVPackIndex::buildSearchValues(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
     RocksDBVPackIndexSearchValueFormat& format) const {
+  bool canProduceResults = true;
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
     buildEmptySearchValues(searchValues);
   } else {
-    buildSearchValuesInner(monitor, trx, node, reference, opts, searchValues,
-                           format);
+    canProduceResults = buildSearchValuesInner(monitor, trx, node, reference,
+                                               opts, searchValues, format);
   }
 
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
@@ -2509,9 +2522,10 @@ void RocksDBVPackIndex::buildSearchValues(
     // simple (values only) format!
     format = RocksDBVPackIndexSearchValueFormat::kValuesOnly;
   }
+  return canProduceResults;
 }
 
-void RocksDBVPackIndex::buildSearchValuesInner(
+bool RocksDBVPackIndex::buildSearchValuesInner(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
@@ -2615,7 +2629,7 @@ void RocksDBVPackIndex::buildSearchValuesInner(
           // produce any result then
           format = RocksDBVPackIndexSearchValueFormat::kIn;
           buildEmptySearchValues(searchValues);
-          return;
+          return false;
         }
 
         needNormalize = true;
@@ -2718,6 +2732,7 @@ void RocksDBVPackIndex::buildSearchValuesInner(
                RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues);
     format = RocksDBVPackIndexSearchValueFormat::kIn;
   }
+  return true;
 }
 
 /// @brief Transform the list of search slices to search values.

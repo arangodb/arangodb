@@ -19,6 +19,12 @@
 
 * COR-966 Improve foxx installer url matching.
 
+* BTS-2530: An AQL `IN` filter that uses a persistent index matches no
+  documents if the right-hand side of `IN` is not an array or is an empty
+  array, including when the filter is evaluated once per iteration of an outer
+  loop, as in `FOR v IN [[1], "x"] FOR d IN c FILTER d.a IN v RETURN d`.
+  Before, such an iteration could return the documents of the previous one.
+
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
   twice: once when produced and again during the fullCount skip phase.
