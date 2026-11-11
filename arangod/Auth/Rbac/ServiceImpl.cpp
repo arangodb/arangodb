@@ -68,12 +68,10 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminCrashHandler";
     case Action::AdminApiCalls:
       return "db:AdminApiCalls";
-    case Action::AdminAqlQueries:
-      return "db:AdminAqlQueries";
-    case Action::AdminMonitorAqlQueries:
-      return "db:AdminMonitorAqlQueries";
-    case Action::AdminKillAqlQueries:
-      return "db:AdminKillAqlQueries";
+    case Action::AdminMonitorQueries:
+      return "db:AdminMonitorQueries";
+    case Action::AdminKillQueries:
+      return "db:AdminKillQueries";
     case Action::AdminMonitorTransactions:
       return "db:AdminMonitorTransactions";
     case Action::AdminKillTransactions:
@@ -191,11 +189,9 @@ auto describe(Action action) -> std::string_view {
       return "access the crash handler (as admin)";
     case Action::AdminApiCalls:
       return "access API call statistics (as admin)";
-    case Action::AdminAqlQueries:
-      return "manage AQL queries (as admin)";
-    case Action::AdminMonitorAqlQueries:
+    case Action::AdminMonitorQueries:
       return "see the AQL queries of other users (as admin)";
-    case Action::AdminKillAqlQueries:
+    case Action::AdminKillQueries:
       return "kill the AQL queries of other users (as admin)";
     case Action::AdminMonitorTransactions:
       return "see the transactions of other users (as admin)";

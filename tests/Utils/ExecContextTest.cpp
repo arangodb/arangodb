@@ -404,9 +404,9 @@ INSTANTIATE_TEST_SUITE_P(
     ExecContextTest, OwnerScopedCheckTest,
     ::testing::Values(
         OwnerScopedCheck{"canMonitorQuery", &ExecContext::canMonitorQuery,
-                         rbac::Action::AdminMonitorAqlQueries},
+                         rbac::Action::AdminMonitorQueries},
         OwnerScopedCheck{"canKillQuery", &ExecContext::canKillQuery,
-                         rbac::Action::AdminKillAqlQueries},
+                         rbac::Action::AdminKillQueries},
         OwnerScopedCheck{"canMonitorTransaction",
                          &ExecContext::canMonitorTransaction,
                          rbac::Action::AdminMonitorTransactions},

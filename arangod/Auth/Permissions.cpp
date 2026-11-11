@@ -108,11 +108,8 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
           [&](AdminAuthReload const&) { os << "AdminAuthReload"; },
           [&](AdminCrashHandler const&) { os << "AdminCrashHandler"; },
           [&](AdminApiCalls const&) { os << "AdminApiCalls"; },
-          [&](AdminAqlQueries const&) { os << "AdminAqlQueries"; },
-          [&](AdminMonitorAqlQueries const&) {
-            os << "AdminMonitorAqlQueries";
-          },
-          [&](AdminKillAqlQueries const&) { os << "AdminKillAqlQueries"; },
+          [&](AdminMonitorQueries const&) { os << "AdminMonitorQueries"; },
+          [&](AdminKillQueries const&) { os << "AdminKillQueries"; },
           [&](AdminMonitorTransactions const&) {
             os << "AdminMonitorTransactions";
           },
