@@ -392,14 +392,17 @@ TEST_F(PatternNormalizerTest, boundedRange) {
   EXPECT_EQ(5U, range.maxDepth());
 }
 
-TEST_F(PatternNormalizerTest, explicitFixedRangeIsNotDefault) {
+TEST_F(PatternNormalizerTest, explicitOneToOneIsDefaultFixedOne) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 1..1 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
   auto const& range = statement.patterns.front().segments.front().edge.range;
-  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_TRUE(range.isDefaultFixedOne());
   EXPECT_TRUE(range.isFixedOne());
-  EXPECT_EQ(PathRange::Kind::kBounded, range.kind());
+  EXPECT_EQ(PathRange::Kind::kDefaultFixedOne, range.kind());
+  EXPECT_EQ(1U, range.minDepth());
+  ASSERT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(1U, range.maxDepth());
 }
 
 TEST_F(PatternNormalizerTest, unboundedRangeSemanticType) {

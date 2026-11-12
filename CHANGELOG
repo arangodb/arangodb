@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* A MATCH edge with * 1..1 (e.g. -[e:knows * 1..1]-) is now treated as a single edge 
+ The edge variable holds the edge document, path variables contain one edge and one vertex, and undirected self-loops are matched only once. Previously, it was treated as a variable-length traversal, causing the edge variable to hold a path object and undirected self-loops to be matched twice.
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
