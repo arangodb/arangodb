@@ -23,6 +23,8 @@
 
 #include "Metrics/Metric.h"
 
+#include "Basics/StringUtils.h"
+
 #include <atomic>
 #include <format>
 #include <functional>
@@ -160,15 +162,9 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
     if (ensureWhitespace) {
       result.push_back(' ');
     }
-    constexpr auto formatString = std::invoke([]() {
-      if constexpr (std::is_same_v<double, ValueType>) {
-        return "{0:.5f}\n";
-      } else {
-        return "{}\n";
-      }
-    });
     result.append(
-        std::format(formatString, _sum.load(std::memory_order_relaxed)));
+        basics::StringUtils::concatT("", _sum.load(std::memory_order_relaxed)));
+    result.append("\n");
   }
 
   void toVPack(velocypack::Builder& builder) const override {}
@@ -176,7 +172,9 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
   std::ostream& print(std::ostream& o) const {
     o << this->name() << " scale: " << _scale;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    o << std::format(" extremes: [{}, {}]", _lowr, _highr);
+    o << basics::StringUtils::concatT(
+        " extremes: [", _lowr.load(std::memory_order_relaxed), " ,",
+        _highr.load(std::memory_order_relaxed), "]");
 #endif
     return o;
   }
