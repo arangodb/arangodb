@@ -142,6 +142,18 @@
   in front of `e2` into a DistributeNode when the shard key value comes from
   `sat`.
 
+* COR-1148: In a cluster, optimizing an AQL query with several FOR loops
+  stays fast no matter how many OR conditions its filters contain. SmartJoins
+  are also used when the query filters with OR conditions in addition to the
+  join condition. Before, a query with several OR-ed join conditions could
+  keep the Coordinator busy for a long time or crash it.
+  A SmartJoin is only used if nothing but deterministic FOR, FILTER, LET and
+  SORT operations without data modifications come between the joined FOR
+  loops and their join condition, and nothing but FILTER and LET operations
+  between the two FOR loops. Queries with a LIMIT, COLLECT, WINDOW or data
+  modification in these places return the same results as without
+  SmartJoins.
+
 * The AQL optimizer rule `upgrade-scatter-to-distribute` turns a ScatterNode
   into a DistributeNode only if the snippet behind it starts with a
   collection access, with nothing but calculations and filters in front of
