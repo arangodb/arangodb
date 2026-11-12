@@ -582,8 +582,8 @@ class CircleCIGenerator(OutputGenerator):
             if key == "moreArgv":
                 # Special case: moreArgv value is appended directly
                 parts.append(str(value))
-            # Always append value (boolean values become "true"/"false" strings)
-            if isinstance(value, bool):
+            elif isinstance(value, bool):
+                # Booleans become python-style flags: --key / --no-key
                 if value:
                     parts.append(f"--{key}")
                 else:

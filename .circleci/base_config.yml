@@ -1576,7 +1576,7 @@ jobs:
             pwd
             export SRC_VER=$(sed -e "s;-devel;;" "$(pwd)/../ArangoDB/ARANGO-VERSION")-src
             export FROM_VERSION='<< parameters.upgrade_from >>'
-            export TO_VERSION='<< parameters.upgrade_from >>'
+            export TO_VERSION='<< parameters.upgrade_to >>'
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             if [ "<< parameters.sanitizer >>" = "alubsan" ]; then

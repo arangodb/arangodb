@@ -227,6 +227,7 @@ class TestRequirements:
                 full=self.full,
                 instrumentation=self.instrumentation,
                 coverage=self.coverage,
+                run_upgrade_tests=self.run_upgrade_tests,
                 v8=self.v8,
                 architecture=self.architecture,
             )

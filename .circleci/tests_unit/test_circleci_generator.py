@@ -1259,6 +1259,119 @@ class TestSanitizerSuffixInJobNames:
         )
 
 
+class TestRtaTestJobs:
+    """Test RTA (release-test-automation) job generation for UI and upgrade tests."""
+
+    def create_generator(self):
+        """Helper to create generator."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria())
+        return CircleCIGenerator(config, base_config={})
+
+    def create_upgrade_job(self, extra_args):
+        """Helper to create an RTA upgrade job like tests/upgrade.yml."""
+        from src.config_lib import TestArguments
+
+        return TestJob(
+            name="rta_upgrade",
+            suites=[SuiteConfig(name="rta_upgrade")],
+            options=TestOptions(buckets=1),
+            job_type="run-rta-tests",
+            requires=TestRequirements(run_upgrade_tests=True),
+            arguments=TestArguments(extra_args=extra_args),
+        )
+
+    @pytest.mark.parametrize(
+        "args_dict,expected",
+        [
+            ({}, ""),
+            ({"checkdata": True}, "--checkdata"),
+            ({"run-upgrade": False}, "--no-run-upgrade"),
+            ({"selenium": "Remote_CHROME"}, "--selenium Remote_CHROME"),
+            ({"buckets": 3}, "--buckets 3"),
+            ({"moreArgv": "--foo bar"}, "--foo bar"),
+            (
+                {"checkdata": False, "run-upgrade": False, "selenium": "Remote_CHROME"},
+                "--no-checkdata --no-run-upgrade --selenium Remote_CHROME",
+            ),
+        ],
+    )
+    def test_dict_to_python_args_string(self, args_dict, expected):
+        """Args are rendered as python-style flags for the RTA scripts."""
+        assert CircleCIGenerator._dict_to_python_args_string(args_dict) == expected
+
+    @pytest.mark.parametrize(
+        "architecture,resource_class",
+        [(Architecture.X64, "large"), (Architecture.AARCH64, "arm.large")],
+    )
+    def test_upgrade_job_parameters(self, architecture, resource_class):
+        """Upgrade jobs pass arch, resource class and RTA args per deployment."""
+        gen = self.create_generator()
+        job = self.create_upgrade_job({"checkdata": True, "run-upgrade": True})
+        build_config = BuildConfig(
+            architecture=architecture, build_variant=BuildVariant.NORMAL
+        )
+
+        result = gen._create_rta_test_jobs(job, build_config, ["build-job"])
+
+        assert len(result) == 2
+        single = result[0]["run-rta-tests"]
+        cluster = result[1]["run-rta-tests"]
+        arch = architecture.value
+        assert single["name"] == f"test-single-rta_upgrade-{arch}"
+        assert cluster["name"] == f"test-cluster-rta_upgrade-{arch}"
+        assert single["suiteName"] == "single-rta"
+        assert cluster["suiteName"] == "cluster-rta"
+        assert single["deployment"] == "SG"
+        assert cluster["deployment"] == "CL"
+        for params in (single, cluster):
+            assert params["arch"] == arch
+            assert params["resource-class"] == resource_class
+            assert params["arangosh_args"] == "--checkdata --run-upgrade"
+            assert params["buckets"] == 1
+            assert params["requires"] == ["build-job"]
+            # browser is now passed via args (selenium), not a job parameter
+            assert "browser" not in params
+
+    def test_ui_job_passes_selenium_via_args(self):
+        """UI jobs pass the browser via the selenium arg and disable upgrade."""
+        from src.config_lib import TestArguments
+
+        gen = self.create_generator()
+        job = TestJob(
+            name="UI",
+            suites=[
+                SuiteConfig(name="UserPageTestSuite"),
+                SuiteConfig(name="LogInTestSuite"),
+            ],
+            options=TestOptions(buckets="auto"),
+            job_type="run-rta-tests",
+            arguments=TestArguments(
+                extra_args={
+                    "checkdata": False,
+                    "run-upgrade": False,
+                    "selenium": "Remote_CHROME",
+                }
+            ),
+        )
+        build_config = BuildConfig(
+            architecture=Architecture.X64, build_variant=BuildVariant.NORMAL
+        )
+
+        result = gen._create_rta_test_jobs(job, build_config, ["build-job"])
+
+        params = result[0]["run-rta-tests"]
+        assert params["name"] == "test-single-UI-x64"
+        assert (
+            params["arangosh_args"]
+            == "--no-checkdata --no-run-upgrade --selenium Remote_CHROME"
+        )
+        assert params["buckets"] == 2
+        assert params["filterStatement"] == (
+            "--ui-include-test-suite UserPageTestSuite "
+            "--ui-include-test-suite LogInTestSuite "
+        )
+
+
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""
 
