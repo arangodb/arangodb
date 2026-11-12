@@ -647,6 +647,49 @@ function VectorIndexL2FilterTestSuite() {
             );
         },
 
+        testApproxL2WithFilterOnVectorFieldWithoutStoredValues: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER LENGTH(d.vector) == ${dimension}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            verifyDistancesAscending(results);
+
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual("document", indexNodes[0].filterMode,
+                        "Index without storedValues cannot cover the filter");
+        },
+
+        testApproxL2ReturnOnlyVectorFieldWithoutStoredValues: function() {
+            const searchQuery = `FOR d IN ${collection.name()}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5`;
+            const query = `${searchQuery} RETURN d.vector`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const results = db._query(query, bindVars).toArray();
+            const expected = db._query(`${searchQuery} RETURN d`, bindVars)
+                .toArray().map(d => d.vector);
+            assertEqual(expected, results);
+
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertEqual("pass-through-id", indexNodes[0].projectionMode,
+                        "Index without storedValues cannot cover the projection");
+            assertTrue(plan.nodes.some(n => n.type === "MaterializeNode"),
+                       "MaterializeNode needed to load the vector");
+        },
+
     };
 }
 
