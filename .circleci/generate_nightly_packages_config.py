@@ -14,15 +14,21 @@ With --pr-run true the workflow is emitted as "nightly-packages-pr" instead
 of "nightly-packages": same job graph, but the run is recognizable as a PR
 test everywhere the workflow name shows up, and the publish job (which reads
 the pr-run pipeline parameter itself) degrades to a dry run.
+
+trigger-benchmarks (start the benchmarks pipeline after a successful
+publish) is kept only with --run-benchmarks-on-success true, outside
+pr-run and with the Alpine image built: a dry run publishes nothing, and
+without that image there is nothing to benchmark.
 """
 
 import argparse
 import sys
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import yaml
 
 WORKFLOW_NAME = "nightly-packages"
+TRIGGER_BENCHMARKS = "trigger-benchmarks"
 PR_WORKFLOW_NAME = "nightly-packages-pr"
 ARCHES = ("amd64", "arm64")
 PACKAGE_FORMATS = ("deb", "rpm", "tar")
@@ -77,6 +83,19 @@ def disabled_jobs(
         drop.add("sign-packages")
 
     return drop
+
+
+def benchmarks_skip_reason(
+    run_benchmarks: bool, pr_run: bool, alpine_images: bool
+) -> Optional[str]:
+    """Why trigger-benchmarks is dropped, or None when it stays."""
+    if not run_benchmarks:
+        return "run-benchmarks-on-success is false"
+    if pr_run:
+        return "pr-run publishes nothing"
+    if not alpine_images:
+        return "build-alpine-images is false, no image to benchmark"
+    return None
 
 
 def entry_name(entry: JobEntry) -> str:
@@ -174,6 +193,21 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
                 )
     if "publish-nightly" not in known:
         raise ValueError("publish-nightly is missing from the workflow")
+
+    # The benchmarks run against what this nightly published, so their
+    # trigger must wait for a successful publish and nothing else.
+    for entry in workflow["jobs"]:
+        if entry_name(entry) != TRIGGER_BENCHMARKS:
+            continue
+        deps: List[JobEntry] = []
+        if isinstance(entry, dict):
+            [(_, job_config)] = entry.items()
+            deps = (job_config or {}).get("requires", [])
+        if len(deps) != 1 or dep_name(deps[0]) != "publish-nightly" or not blocks_on(deps[0]):
+            raise ValueError(
+                f"{TRIGGER_BENCHMARKS} must require exactly publish-nightly "
+                f"(success), got {deps}"
+            )
 
     # publish-nightly must gate on every artifact-producing job that is
     # still in the workflow — DIRECTLY, not only transitively through the
@@ -294,6 +328,10 @@ def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
         scan=args.scan_viruses,
         security=args.security_check,
     )
+    if benchmarks_skip_reason(
+        args.run_benchmarks_on_success, args.pr_run, args.build_alpine_images
+    ):
+        drop.add(TRIGGER_BENCHMARKS)
     name = workflow_name(args.pr_run)
     if args.pr_run:
         base["workflows"][name] = base["workflows"].pop(WORKFLOW_NAME)
@@ -316,6 +354,7 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
         "scan-viruses",
         "security-check",
         "pr-run",
+        "run-benchmarks-on-success",
     ):
         parser.add_argument(
             f"--{option}",
@@ -342,6 +381,11 @@ def main(argv: List[str]) -> int:
         entry_name(entry) for entry in config["workflows"][name]["jobs"]
     )
     print(f"Generated {args.output} with workflow {name} and jobs: {workflow_jobs}")
+    reason = benchmarks_skip_reason(
+        args.run_benchmarks_on_success, args.pr_run, args.build_alpine_images
+    )
+    if reason:
+        print(f"Not triggering benchmarks: {reason}")
     return 0
 
 
