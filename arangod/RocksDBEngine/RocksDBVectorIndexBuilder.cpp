@@ -76,7 +76,7 @@
 #include <velocypack/Slice.h>
 
 #include "faiss/IndexFlat.h"
-#include "faiss/IndexIVFFlat.h"
+#include "faiss/IndexIVFRaBitQ.h"
 #include "faiss/impl/io.h"
 #include "faiss/index_io.h"
 #include "faiss/utils/distances.h"
@@ -204,10 +204,11 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::createFaissIndex(
     }
   });
 
+  constexpr std::uint8_t kDefaultRaBitQBits = 4;
   std::shared_ptr<faiss::IndexIVF> ivfIndex =
-      std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
-                                            resolvedNLists,
-                                            metricToFaissMetric(def.metric));
+      std::make_unique<faiss::IndexIVFRaBitQ>(
+          quantizer.get(), def.dimension, resolvedNLists,
+          metricToFaissMetric(def.metric), true, kDefaultRaBitQBits);
   ivfIndex->own_fields = nullptr != quantizer.release();
   return ivfIndex;
 }

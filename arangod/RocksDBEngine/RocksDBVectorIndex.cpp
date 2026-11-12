@@ -522,7 +522,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
-  bool const rerank = config.searchParameters.rerank;
+  bool const isQuantized =
+      _faissIndex->code_size < _definition.dimension * sizeof(float);
+  bool const rerank = config.searchParameters.rerank.value_or(isQuantized);
   auto const candidates = rerank ? rerankCandidates(config.topK) : config.topK;
   result.distances.resize(candidates);
   result.labels.resize(candidates);
