@@ -128,6 +128,7 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Ssl/FipsFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "VectorIndex/Feature.h"

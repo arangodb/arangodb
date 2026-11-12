@@ -24,7 +24,7 @@ RUN echo "UTC" > /etc/timezone
 RUN chgrp 0 /var/lib/arangodb4 && \
     chmod 775 /var/lib/arangodb4
 
-COPY entrypoint-alpine.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN ["chmod", "+x", "/entrypoint.sh"]
 ENTRYPOINT [ "/entrypoint.sh" ]
 

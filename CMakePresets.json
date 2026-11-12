@@ -88,6 +88,13 @@
     },
     {
       "hidden": true,
+      "name": "fips",
+      "cacheVariables": {
+        "USE_FIPS": "On"
+      }
+    },
+    {
+      "hidden": true,
       "name": "pr-base",
       "binaryDir": "${sourceDir}/build",
       "inherits": [
@@ -184,6 +191,22 @@
         "pr-arm64"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (Coverage Build) - ARM64"
+    },
+    {
+      "name": "pr-x64-fips",
+      "inherits": [
+        "fips",
+        "pr-x64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (FIPS) - x64"
+    },
+    {
+      "name": "pr-arm64-fips",
+      "inherits": [
+        "fips",
+        "pr-arm64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (FIPS) - ARM64"
     },
     {
       "name": "test-docker-image-x64",

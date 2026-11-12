@@ -392,6 +392,8 @@ void ArangodServer::addFeatures() {
                  BlackHoleStateMachineFeature>();
   addFeature<
       replication2::replicated_state::document::DocumentStateMachineFeature>();
+
+  addFeature<FipsFeature>(getOptions<FipsFeatureOptionsProvider>());
 }
 
 }  // namespace arangodb
