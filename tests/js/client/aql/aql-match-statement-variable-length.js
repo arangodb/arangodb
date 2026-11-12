@@ -288,17 +288,23 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
         testMatchVariableLengthCollectionBindParameters: function() {
+          // * 1..1 is a single edge, so e is the edge document.
           const query = "MATCH (v :@@vc) -[ e : @@ec * 1..1 ]-> (w :@@vc) RETURN [v, e, w]";
           const expected = [
-            "(vcbp/v0) -[]-> (vcbp/v1)",
-            "(vcbp/v1) -[]-> (vcbp/v2)",
-            "(vcbp/v2) -[]-> (vcbp/v3)"
+            "vcbp/v0 vcbp/v0->vcbp/v1 vcbp/v1",
+            "vcbp/v1 vcbp/v1->vcbp/v2 vcbp/v2",
+            "vcbp/v2 vcbp/v2->vcbp/v3 vcbp/v3"
           ];
           expected.sort();
 
           const result = db._query(query, { "@vc": "vcbp", "@ec": "ecbp" }, options)
             .toArray()
-            .map((x) => pathToString(x[1]));
+            .map((row) => {
+              const [v, e, w] = row;
+              assertFalse(e.hasOwnProperty("vertices"), JSON.stringify(e));
+              assertTrue(e.hasOwnProperty("_id"), JSON.stringify(e));
+              return `${v._id} ${e._from}->${e._to} ${w._id}`;
+            });
           result.sort();
           assertEqual(result, expected);
         },
@@ -429,17 +435,25 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
 
-        testMatchVarLenMultiTypeSeamIsPath: function() {
-          // explicit *1..1 still binds e to a PATH object (not an edge doc)
+        testMatchVarLenMultiTypeOneToOneIsEdge: function() {
+          // * 1..1 is a single edge, same as a plain multi-collection hop.
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH (v) -[ e:mec1|mec2 * 1..1 ]-> (w:mvc)
                                 RETURN e`;
           const result = db._query(query, {}, options).toArray();
-          assertEqual(result.length, 4); // v0->v1, v1->v2, v2->v3 (mec1) + v0->v2 (mec2)
+          const hops = result.map((e) => `${e._from}->${e._to}`);
+          hops.sort();
+          assertEqual(hops, [
+            "mvc/v0->mvc/v1",
+            "mvc/v0->mvc/v2",
+            "mvc/v1->mvc/v2",
+            "mvc/v2->mvc/v3"
+          ]);
           for (const e of result) {
-            assertTrue(e.hasOwnProperty("edges") && e.hasOwnProperty("vertices"),
-                       JSON.stringify(e));
+            assertTrue(e.hasOwnProperty("_id"), JSON.stringify(e));
+            assertFalse(e.hasOwnProperty("vertices"), JSON.stringify(e));
+            assertFalse(e.hasOwnProperty("edges"), JSON.stringify(e));
           }
         },
 
@@ -704,17 +718,59 @@ function aqlMatchStatementVariableLengthTestSuite() {
             MATCH p = (x:people {_key: "a"} RETURN name)
                       -[:knows * 1..1]->
                       (y:people RETURN name)
-            RETURN {path: p.vertices, x, y}
+            RETURN {vertices: p.vertices, edges: p.edges, x, y}
           `, {}, options).toArray();
           assertEqual(1, result.length);
           const row = result[0];
-          assertEqual(2, row.path.length);
-          assertEqual(row.x, row.path[0]);
-          assertEqual(row.y, row.path[1]);
-          assertEqual("A", row.path[0].name);
-          assertEqual("B", row.path[1].name);
-          assertFalse(row.path[0].hasOwnProperty("age"));
-          assertFalse(row.path[1].hasOwnProperty("age"));
+          assertEqual(2, row.vertices.length);
+          assertEqual(row.x, row.vertices[0]);
+          assertEqual(row.y, row.vertices[1]);
+          assertEqual("A", row.vertices[0].name);
+          assertEqual("B", row.vertices[1].name);
+          assertFalse(row.vertices[0].hasOwnProperty("age"));
+          assertFalse(row.vertices[1].hasOwnProperty("age"));
+          assertEqual(1, row.edges.length);
+          assertEqual("people/a", row.edges[0]._from);
+          assertEqual("people/b", row.edges[0]._to);
+          assertFalse(row.edges[0].hasOwnProperty("vertices"));
+        },
+
+        testMatchStarOneToOneUndirectedSelfLoopIsSingleEdge: function () {
+          db._create("loop_people");
+          db._createEdgeCollection("loop_knows");
+          try {
+            db.loop_people.insert({_key: "a"});
+            db.loop_knows.insert({
+              _key: "loop", _from: "loop_people/a", _to: "loop_people/a"
+            });
+            const plain = db._query(
+              "MATCH (x:loop_people) -[e:loop_knows]- (y:loop_people) RETURN e._key",
+              {}, options).toArray();
+            const ranged = db._query(
+              "MATCH (x:loop_people) -[e:loop_knows * 1..1]- (y:loop_people) RETURN e._key",
+              {}, options).toArray();
+            const directed = db._query(
+              "MATCH (x:loop_people) -[e:loop_knows * 1..1]-> (y:loop_people) RETURN e._key",
+              {}, options).toArray();
+            assertEqual(["loop"], plain);
+            assertEqual(plain, ranged);
+            assertEqual(plain, directed);
+
+            const path = db._query(`
+              MATCH p = (x:loop_people) -[e:loop_knows * 1..1]- (y:loop_people)
+              RETURN {edges: p.edges, vertices: p.vertices, key: e._key}
+            `, {}, options).toArray();
+            assertEqual(1, path.length);
+            assertEqual("loop", path[0].key);
+            assertEqual(1, path[0].edges.length);
+            assertEqual("loop", path[0].edges[0]._key);
+            assertEqual(2, path[0].vertices.length);
+            assertEqual("loop_people/a", path[0].vertices[0]._id);
+            assertEqual("loop_people/a", path[0].vertices[1]._id);
+          } finally {
+            db._drop("loop_knows");
+            db._drop("loop_people");
+          }
         },
     };
 }

@@ -65,10 +65,11 @@ struct DataSource {
 
 enum class EdgeDirection : uint8_t { kOutbound, kInbound, kAny };
 
-/// @brief path depth for a MATCH edge pattern.
-/// Distinguishes the default single-hop form (no `*`) from an explicit
-/// `* min..max` range, including `* 1..1`, because planning treats them
-/// differently (enumerate vs path-producing traversal).
+/// @brief Path depth of a MATCH edge pattern.
+/// An omitted range represents a single hop. Normalization also converts
+/// explicit `* 1..1` to this form, allowing planning to enumerate a single
+/// edge. Other `* min..max` ranges remain path-producing traversals.
+/// `PathRange::bounded(1, 1)` itself remains a bounded range.
 struct PathRange {
   enum class Kind : uint8_t { kDefaultFixedOne, kBounded, kUnboundedMin };
 
@@ -80,7 +81,8 @@ struct PathRange {
   static PathRange unboundedMin(uint64_t minDepth);
 
   Kind kind() const noexcept { return _kind; }
-  /// @brief true when the pattern had no `*` (default one-hop)
+  /// @brief Whether to use fixed one-hop edge access during planning.
+  /// Applies to omitted ranges and explicit `* 1..1` after normalization.
   bool isDefaultFixedOne() const noexcept {
     return _kind == Kind::kDefaultFixedOne;
   }

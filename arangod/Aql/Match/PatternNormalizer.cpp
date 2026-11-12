@@ -415,6 +415,13 @@ PathRange PatternNormalizer::normalizeRange(AstNode const* node) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
+  // `* 1..1` represents a single edge. The default one-hop form binds the edge
+  // variable to the edge document, adds one edge and one vertex to the path,
+  // and matches an undirected self-loop only once. Other ranges remain
+  // variable-length traversals.
+  if (minDepth == 1 && maxDepth == 1) {
+    return PathRange::defaultFixedOne();
+  }
   return PathRange::bounded(minDepth, maxDepth);
 }
 
