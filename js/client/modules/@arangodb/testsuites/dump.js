@@ -103,6 +103,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
           !PTK.restoreSrc() ||
           !PTK.restoreTo('_system', { separate: true }) ||
           !PTK.restoreRta() ||
+          !PTK.runRtaWaitData() ||
           !PTK.runTests(testFile,'UnitTestsDumpDst') ||
           !PTK.runRtaCheckData() ||
           !PTK.tearDown(tearDownFile)) {
@@ -123,6 +124,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
           !PTK.restoreSrc() ||
           !PTK.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
           !PTK.restoreRta() ||
+          !PTK.runRtaWaitData() ||
           !PTK.runRtaCheckData() ||
           !PTK.runTests(testFile,'UnitTestsDumpDst') ||
           !PTK.tearDown(tearDownFile)) {
