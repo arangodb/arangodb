@@ -31,7 +31,7 @@ namespace arangodb::vector {
 
 struct SearchParameters {
   std::optional<std::int64_t> nProbe;
-  bool rerank{false};
+  std::optional<bool> rerank;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, SearchParameters& x) {
@@ -43,7 +43,7 @@ struct SearchParameters {
               }
               return inspection::Status::Success{};
             }),
-        f.field("rerank", x.rerank).fallback(false));
+        f.field("rerank", x.rerank));
   }
 };
 
