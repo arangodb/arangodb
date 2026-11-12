@@ -1012,7 +1012,7 @@ Invoke it like this:
 
 (you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
 
-### Invoking MakeData, CheckData, WaitData, WaitData against your local build
+### Invoking MakeData, CheckData, WaitData against your local build
 
 The wrapper scripts in [scripts](scripts/)
 run the [makedata framework](#makedata--checkdata-suite) against a server you
