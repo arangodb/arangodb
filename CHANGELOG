@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1276: Fix a cluster crash for vector search queries that filter on or return only
+  the vector attribute of a vector index without `storedValues`.
+
 * COR-1263 / github issue #23383:
   - Fixed the extra counting issue in NGRAM_MATCH
   - Added unit tests
