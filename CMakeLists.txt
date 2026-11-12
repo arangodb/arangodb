@@ -1191,6 +1191,9 @@ set(ERROR_FILES
   lib/Basics/voc-errors.h
   lib/Basics/error-registry.h
   js/common/bootstrap/errors.js
+  errors.ts
+  errno.py
+  error.go
 )
 
 set(ERROR_FILES_GEN)
