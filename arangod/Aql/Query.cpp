@@ -167,11 +167,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
   // set memory limit for query
-  _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
-  // Temporary test hook: the new monitor's limit has no option yet.
-  TRI_IF_FAILURE("Query::smallNewMonitorLimit") {
-    _resourceMonitor->newMemoryLimit(64 * 1024);
-  }
+  // Temporary: the query's memoryLimit drives the new monitor instead of the old one.
+  _resourceMonitor->newMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateFromOptions(_queryOptions);
 
   // store name of user that started the query, plus the full ExecContext

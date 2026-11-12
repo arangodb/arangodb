@@ -5,6 +5,7 @@
 %option bison-bridge
 %option yylineno
 %option noyywrap nounput batch
+%option noyyalloc noyyrealloc noyyfree
 %x BACKTICK
 %x FORWARDTICK
 %x SINGLE_QUOTE
@@ -17,6 +18,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
+#include <new>
 
 }
 
@@ -834,3 +837,23 @@ class Parser;
 
 
 %%
+
+// flex calls exit() when an allocation fails. A query's memory limit can make
+// malloc return nullptr, so throw instead and let the query fail.
+void* Aqlalloc(yy_size_t size, yyscan_t /*yyscanner*/) {
+  void* p = std::malloc(size);
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  return p;
+}
+
+void* Aqlrealloc(void* ptr, yy_size_t size, yyscan_t /*yyscanner*/) {
+  void* p = std::realloc(ptr, size);
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  return p;
+}
+
+void Aqlfree(void* ptr, yyscan_t /*yyscanner*/) { std::free(ptr); }

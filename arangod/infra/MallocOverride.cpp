@@ -115,7 +115,6 @@ bool rechargeAllocation(void* user) noexcept {
     return false;
   }
   doDecrease(from, requested, actual);
-  dprintf(STDERR_FILENO, "RECHARGE %zu\n", actual);
   header->monitor_tagged =
       reinterpret_cast<uintptr_t>(to) | (header->monitor_tagged & uintptr_t{1});
   return true;

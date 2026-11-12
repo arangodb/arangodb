@@ -73,9 +73,12 @@ ResourceMonitor::~ResourceMonitor() {
       << "query memory " << m
       << " | old: peak=" << peak()
       << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
+      << " (req=" << m->requestedBytes() << ")"
       << " | rocksdb: peak=" << infra::rocksdbMonitor().peakBytes()
       << " now=" << infra::rocksdbMonitor().actualBytes()
+      << " (req=" << infra::rocksdbMonitor().requestedBytes() << ")"
       << " | cache: now= " << infra::cacheMonitor().actualBytes()
+      << " (req=" << infra::cacheMonitor().requestedBytes() << ")"
       << " | monitors: " << describeRegistry();
 
   m->retire();
