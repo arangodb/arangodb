@@ -58,7 +58,8 @@ if (LINUX)
     BUILD_BYPRODUCTS
       ${LIBUNWIND_LIB}
     INSTALL_COMMAND
-      ${MAKE} install
+      # override DESTDIR from the environment (e.g. packaging builds)
+      ${MAKE} install DESTDIR=
   )
 
   set(LIBUNWIND_HOME "${LIBUNWIND_INSTALL_DIR}" PARENT_SCOPE)
