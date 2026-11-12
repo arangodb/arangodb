@@ -176,7 +176,7 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
   std::ostream& print(std::ostream& o) const {
     o << this->name() << " scale: " << _scale;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    o << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << std::format(" extremes: [{}, {}]", _lowr, _highr);
 #endif
     return o;
   }
