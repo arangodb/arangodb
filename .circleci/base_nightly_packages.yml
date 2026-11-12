@@ -2446,6 +2446,11 @@ jobs:
     # drops it otherwise), and it requires publish-nightly, so it runs only
     # after a successful real publish.
     #
+    # The version comes from prepare-nightly's sourceInfo.json artifact
+    # (a few bytes via the API) rather than attach_workspace, which would
+    # restore every upstream layer (object files, Docker image tarballs,
+    # packages) onto this small executor just to read one line.
+    #
     # Needs the circleci-token context (CIRCLECI_TOKEN).
     parameters:
       benchmarks-definition-id:
@@ -2456,8 +2461,6 @@ jobs:
       - image: cimg/base:current
     resource_class: small
     steps:
-      - attach_workspace:
-          at: /tmp/nightly
       - run:
           name: Trigger the benchmarks pipeline
           command: |
@@ -2467,7 +2470,36 @@ jobs:
               echo "ERROR: pr-run published nothing; not triggering benchmarks" >&2
               exit 1
             fi
-            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            API="https://circleci.com/api/v2"
+            auth_get() {
+              curl -sS --fail --retry 3 -H "Circle-Token: ${CIRCLECI_TOKEN}" "$@"
+            }
+            # prepare-nightly's job number in this workflow (paginated list).
+            JOB_NUMBER=""
+            PAGE=""
+            while :; do
+              RESP="$(auth_get "${API}/workflow/${CIRCLE_WORKFLOW_ID}/job${PAGE:+?page-token=${PAGE}}")"
+              JOB_NUMBER="$(printf '%s' "${RESP}" | jq -r '.items[] | select(.name == "prepare-nightly") | .job_number // empty')"
+              PAGE="$(printf '%s' "${RESP}" | jq -r '.next_page_token // empty')"
+              if [ -n "${JOB_NUMBER}" ] || [ -z "${PAGE}" ]; then
+                break
+              fi
+            done
+            if [ -z "${JOB_NUMBER}" ]; then
+              echo "ERROR: prepare-nightly not found in workflow ${CIRCLE_WORKFLOW_ID}" >&2
+              exit 1
+            fi
+            SOURCE_INFO_URL="$(auth_get "${API}/project/gh/arangodb/arangodb/${JOB_NUMBER}/artifacts" \
+              | jq -r '.items[] | select(.path == "sourceInfo.json") | .url' | head -n1)"
+            if [ -z "${SOURCE_INFO_URL}" ]; then
+              echo "ERROR: prepare-nightly (job ${JOB_NUMBER}) has no sourceInfo.json artifact" >&2
+              exit 1
+            fi
+            VERSION="$(auth_get -L "${SOURCE_INFO_URL}" | jq -r '.VERSION // empty')"
+            if [ -z "${VERSION}" ] || [ "${VERSION}" = "N/A" ]; then
+              echo "ERROR: no VERSION in sourceInfo.json of prepare-nightly (job ${JOB_NUMBER})" >&2
+              exit 1
+            fi
             BRANCH="<< pipeline.git.branch >>"
             IMAGE="arangodb/core-preview:${VERSION}"
             BODY="$(jq -n \
