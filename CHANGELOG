@@ -1,6 +1,10 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
 * COR-1263 / github issue #23383:
   - Fixed the extra counting issue in NGRAM_MATCH
   - Added unit tests
