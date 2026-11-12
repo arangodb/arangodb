@@ -232,6 +232,15 @@ TEST_F(NgramSimilarityFunctionTest, test) {
         assertNgramSimilarity(__LINE__, 0, &Target, &ValidString, &ValidInt);
       }
     }
+    // repeated target character: one source char matches once, so 1/3
+    {
+      AqlValue const Attribute{"a"};
+      AqlValue const Target{"aaa"};
+      AqlValue const ValidInt{AqlValueHintInt{1}};
+      assertNgramSimilarity(__LINE__, 1.f / 3.f, &Attribute, &Target,
+                            &ValidInt);
+      assertNgramSimilarity(__LINE__, 1, &Target, &Attribute, &ValidInt);
+    }
     // less than ngram size
     {
       AqlValue const Attribute{"a"};
