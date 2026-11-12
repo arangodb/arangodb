@@ -4,7 +4,19 @@
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).
 
-* Update libunwind from 1.7.2 to 1.8.3
+* Update libunwind from 1.7.2 to 1.8.3.
+
+* COR-1263 / github issue #23383:
+  - Fixed the extra counting issue in NGRAM_MATCH
+  - Added unit tests
+
+* Creating a collection via `POST /_api/collection` no longer silently corrects
+  invalid request bodies. Such requests are now rejected with HTTP 400 instead
+  of being accepted with a deprecation warning. This affects, for example,
+  unknown attributes, `null` attribute values, `type` given as a string or as an unknown number,
+  attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
+  cluster attributes that were ignored before, such as `numberOfShards` together
+  with `distributeShardsLike`, or `writeConcern` on a single server.
 
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.

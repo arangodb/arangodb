@@ -26,7 +26,6 @@
 const jsunity = require("jsunity");
 const {arango, db, ArangoError} = require("@arangodb");
 const isCluster = require('internal').isCluster();
-const isEnterprise = require("internal").isEnterprise();
 const _ = require("lodash");
 
 const {
@@ -40,6 +39,8 @@ const {
   ERROR_HTTP_CONFLICT,
   ERROR_ARANGO_DUPLICATE_NAME,
   ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+  ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,
+  ERROR_ARANGO_INVALID_KEY_GENERATOR,
   ERROR_INTERNAL,
   ERROR_ARANGO_ILLEGAL_NAME,
   ERROR_HTTP_CORRUPTED_JSON
@@ -58,7 +59,7 @@ const filterNotExposedAttributes = (attributes) => {
     // 2) DistributeShardsLike is exposed to simulate SmartGraphs on SingleServer in Enterprise
     // 3) shardingStrategy: is erased later, because the following are only optionally erased on single server
 
-    const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
+    const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys"];
     for (const key of enterpriseSimulationAttributes) {
       delete attributes[key];
     }
@@ -99,6 +100,7 @@ const getDefaultProps = () => {
         "lastValue": 0
       },
       "writeConcern": 1,
+      "replicationFactor": 1,
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,
@@ -172,15 +174,10 @@ const isDisallowed = (code, errorNum, res, input) => {
   assertEqual(res.errorNum, errorNum, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
 };
 
-const isAllowed = (res, collname, input, expectLogEntry = true) => {
+const isAllowed = (res, collname, input) => {
   assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(input)}`);
   validateProperties({}, collname, 2);
   validatePropertiesAreNotEqual(input, collname);
-  if (expectLogEntry) {
-    validateDeprecationLogEntryWritten();
-  } else {
-    validateNoLogsLeftBehind();
-  }
 };
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
@@ -193,22 +190,6 @@ const validatePropertiesDoNotExist = (colName, illegalProperties) => {
 
 const clearLogs = () => {
   arango.DELETE("/_admin/log/entries");
-};
-
-const validateDeprecationLogEntryWritten = () => {
-  try {
-    const expectedTopic = "deprecation";
-    const expectedLogId = "ee638";
-    // Note we ask for 2 entries here.
-    // This way we can assert that we produce exactly one line per error (which we discard after we asserted it)
-    let res = arango.GET("/_admin/log/entries?upto=warning&size=2");
-    assertEqual(res.total, 1, `Expecting exactly one message, instead found ${JSON.stringify(res)}.`);
-    assertEqual(res.messages[0].topic, expectedTopic, `Expecting specific log topic, instead found ${JSON.stringify(res)}.`);
-    assertTrue(res.messages[0].message.startsWith(`[${expectedLogId}]`), `Expected specific logID, instead found ${JSON.stringify(res)}.`);
-  } finally {
-    // Erase the log we have just read, so the next test is clean.
-    clearLogs();
-  }
 };
 
 const validateNoLogsLeftBehind = () => {
@@ -224,6 +205,58 @@ function CreateCollectionsSuite() {
 
   const collname = "UnitTestRestore";
   const leaderName = "UnitTestLeader";
+
+  const smartVertexName = "UnitTestSmartVertex";
+  const smartEdgeName = "UnitTestSmartEdge";
+
+  const createAndValidateSmartGraph = (vertex, isDisjoint) => {
+    const edge = {
+      numberOfShards: 3,
+      replicationFactor: 2,
+      isSmart: true,
+      shardingStrategy: "enterprise-hash-smart-edge",
+      shardKeys: [
+        "_key:"
+      ],
+      isDisjoint: isDisjoint,
+      distributeShardsLike: smartVertexName
+    };
+
+    const res = tryCreate({ ...vertex, type: 2, name: smartVertexName });
+    try {
+      assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+      validateProperties(vertex, smartVertexName, 2, true);
+      const resEdge = tryCreate({ ...edge, type: 3, name: smartEdgeName });
+      try {
+        // Should work, everything required for smartGraphs is there.
+        assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
+        if (isCluster) {
+          // Check special creation path
+          const makeSmartEdgeAttributes = (isTo) => {
+            const tmp = { ...edge, isSystem: true, isSmart: false, shardingStrategy: "hash" };
+            if (isTo) {
+              tmp.shardKeys = [":_key"];
+            }
+            return tmp;
+          };
+          validateProperties({ ...edge, numberOfShards: 0 }, smartEdgeName, 3, true);
+          validateProperties(makeSmartEdgeAttributes(false), `_local_${smartEdgeName}`, 3, true);
+          if (!isDisjoint) {
+            validateProperties(makeSmartEdgeAttributes(false), `_from_${smartEdgeName}`, 3, true);
+            validateProperties(makeSmartEdgeAttributes(true), `_to_${smartEdgeName}`, 3, true);
+          } else {
+            assertEqual(db._collections().filter(c => c.name() === `_from_${smartEdgeName}` || c.name() === `_to_${smartEdgeName}`).length, 0, "Created incorrect hidden collections");
+          }
+        } else {
+          validateProperties(edge, smartEdgeName, 3, true);
+        }
+      } finally {
+        db._drop(smartEdgeName, true);
+      }
+    } finally {
+      db._drop(smartVertexName, true);
+    }
+  };
 
   return {
 
@@ -300,28 +333,24 @@ function CreateCollectionsSuite() {
       ];
 
       for (const type of illegalType) {
+        const res = tryCreate({ name: collname, type });
         try {
-          // Illegal numeric types are allowed and default to document.
-          const res = tryCreate({name: collname, type});
-          validateDeprecationLogEntryWritten();
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties({}, collname, 2);
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, res, { type });
         } finally {
           db._drop(collname);
         }
       }
 
-      const ignoredType = [
+      // arangosh translates "document" and "edge", and does not send
+      // non-numeric types or objects at all, so the server uses the default.
+      const typeHandledByClient = [
         "test",
         "document",
         "edge",
         {},
-        [],
-        true
+        []
       ];
-
-      // ill-formatted types are ignored, and fall back to document
-      for (const type of ignoredType) {
+      for (const type of typeHandledByClient) {
         const res = tryCreate({name: collname, type});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
@@ -330,19 +359,17 @@ function CreateCollectionsSuite() {
           } else {
             validateProperties({}, collname, 2);
           }
-          // TODO: Investigate why this is te behavior right now.
-          if (type === true) {
-            // Only this one writes a deprecation message
-            validateDeprecationLogEntryWritten();
-          } else {
-            // For the others validate they are not written
-            validateNoLogsLeftBehind();
-          }
         } finally {
           db._drop(collname);
         }
       }
 
+      const res = tryCreate({ name: collname, type: true });
+      try {
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { type: true });
+      } finally {
+        db._drop(collname);
+      }
     },
 
     testCreateEdgeCollectionFlooredInput: function () {
@@ -399,12 +426,10 @@ function CreateCollectionsSuite() {
     },
 
     testCreateListOfShards: function () {
-      const res = tryCreate({name: collname, shards: {"s01": ["server1", "server2"], "s02": ["server3"]}});
+      const shards = { "s01": ["server1", "server2"], "s02": ["server3"] };
+      const res = tryCreate({ name: collname, shards });
       try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        // The list of Shards is just ignored
-        validateProperties({}, collname, 2);
-        validateDeprecationLogEntryWritten();
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { shards });
       } finally {
         db._drop(collname);
       }
@@ -421,47 +446,35 @@ function CreateCollectionsSuite() {
     },
 
     testCreateReplicationFactorSatellite: function () {
-      // For this API "satellite" and 0 should be identical
-      for (const replicationFactor of ["satellite", 0]) {
-        const res = tryCreate({name: collname, replicationFactor: replicationFactor});
-        try {
-          if (!isEnterprise) {
-            if (!isCluster) {
-              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-              // SingleServer just ignores satellite.
-              validateProperties({}, collname, 2);
-              validateDeprecationLogEntryWritten();
-            } else {
-              assertFalse(res.result, `Created a collection with replicationFactor 0`);
-            }
-          } else {
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            if (replicationFactor === 0) {
-              // 0 is actually not allowed anymore in the future
-              validateDeprecationLogEntryWritten();
-            }
-            // WriteConcern is forced to 0 on satellites
-            // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
-            if (!isCluster) {
-              if (replicationFactor === 0) {
-                validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
-              } else {
-                validateProperties({
-                  replicationFactor: "satellite",
-                  writeConcern: 0,
-                  isSmart: false,
-                  shardKeys: ["_key"],
-                  numberOfShards: 1,
-                  isDisjoint: false
-                }, collname, 2, true);
-              }
-            } else {
-              validateProperties({replicationFactor: "satellite", writeConcern: 0}, collname, 2);
-            }
-          }
-        } finally {
-          db._drop(collname);
+      const res = tryCreate({ name: collname, replicationFactor: "satellite" });
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        // WriteConcern is forced to 0 on satellites
+        // NOTE: SingleServer for some reason this create returns MORE properties, then the others.
+        if (!isCluster) {
+          validateProperties({
+            replicationFactor: "satellite",
+            writeConcern: 0,
+            isSmart: false,
+            shardKeys: ["_key"],
+            numberOfShards: 1,
+            isDisjoint: false
+          }, collname, 2, true);
+        } else {
+          validateProperties({ replicationFactor: "satellite", writeConcern: 0 }, collname, 2);
         }
+      } finally {
+        db._drop(collname);
+      }
+    },
+
+    testCreateReplicationFactorZero: function () {
+      // 0 does not stand for "satellite"
+      const res = tryCreate({ name: collname, replicationFactor: 0 });
+      try {
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { replicationFactor: 0 });
+      } finally {
+        db._drop(collname);
       }
     },
 
@@ -535,58 +548,27 @@ function CreateCollectionsSuite() {
     testIsSmartStandAlone: function () {
       const res = tryCreate({name: collname, isSmart: true});
       try {
-        if (!isEnterprise) {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // isSmart is just ignored, we keep default: false
-          validateProperties({}, collname, 2);
-          validateDeprecationLogEntryWritten();
-          if (!isCluster) {
-            // SingleSever does not expose is Smart at all
-            validatePropertiesDoNotExist(collname, ["isSmart"]);
-          }
-        } else {
-          assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { isSmart: true });
       } finally {
         db._drop(collname);
       }
     },
     testSmartGraphAttribute: function () {
-      const res = tryCreate({name: collname, smartGraphAttribute: "test"});
+      const input = { smartGraphAttribute: "test" };
+      const res = tryCreate({ name: collname, ...input });
 
       try {
-        if (isEnterprise) {
-          assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
-        } else {
-          // Community ignores this, go to defaults
-          assertFalse(res.error, `Result: ${JSON.stringify(res)}`);
-          validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["smartGraphAttribute"]);
-          validateDeprecationLogEntryWritten();
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, input);
       } finally {
         db._drop(collname);
       }
     },
 
     testSmartGraphAttributeIsSmart: function () {
-      const res = tryCreate({name: collname, smartGraphAttribute: "test", isSmart: true});
+      const input = { smartGraphAttribute: "test", isSmart: true };
+      const res = tryCreate({ name: collname, ...input });
       try {
-        if (isEnterprise) {
-          assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
-        } else {
-          // Community ignores this, go to defaults
-          assertFalse(res.error, `Result: ${JSON.stringify(res)}`);
-          validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["smartGraphAttribute"]);
-          validateDeprecationLogEntryWritten();
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, input);
       } finally {
         db._drop(collname);
       }
@@ -595,23 +577,7 @@ function CreateCollectionsSuite() {
     testSmartJoin: function () {
       const res = tryCreate({name: collname, smartJoinAttribute: "test"});
       try {
-        if (!isEnterprise) {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-          validateDeprecationLogEntryWritten();
-        } else {
-          if (!isCluster) {
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            validateProperties({}, collname, 2);
-            validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-            validateDeprecationLogEntryWritten();
-          } else {
-            assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-            assertEqual(res.errorNum, ERROR_INVALID_SMART_JOIN_ATTRIBUTE.code);
-          }
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_INVALID_SMART_JOIN_ATTRIBUTE.code, res, { smartJoinAttribute: "test" });
       } finally {
         db._drop(collname);
       }
@@ -620,16 +586,7 @@ function CreateCollectionsSuite() {
     testSmartJoinIsSmart: function () {
       const res = tryCreate({name: collname, smartJoinAttribute: "test", isSmart: true});
       try {
-        if (!isEnterprise) {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-          validateDeprecationLogEntryWritten();
-        } else {
-          assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { smartJoinAttribute: "test", isSmart: true });
       } finally {
         db._drop(collname);
       }
@@ -638,20 +595,12 @@ function CreateCollectionsSuite() {
     testSmartJoinPrefixShardKey: function () {
       const res = tryCreate({name: collname, smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"]});
       try {
-        if (!isEnterprise) {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties({shardKeys: ["_key:"], numberOfShards: 3}, collname, 2);
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        if (!isCluster) {
+          validateProperties({}, collname, 2);
           validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-          validateDeprecationLogEntryWritten();
         } else {
-          if (!isCluster) {
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            validateProperties({}, collname, 2);
-            validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-          } else {
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            validateProperties({smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"]}, collname, 2);
-          }
+          validateProperties({ smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"] }, collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -671,28 +620,13 @@ function CreateCollectionsSuite() {
           ...props
         });
         try {
-          if (!isEnterprise) {
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            if (!isCluster) {
-              validateProperties({}, collname, 2);
-            } else {
-              // SmartJoinAttribute not supported on Community
-              delete props.smartJoinAttribute;
-              // Number of Shards inherited from Leader
-              validateProperties({...props, numberOfShards: 3}, collname, 2);
-            }
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          if (!isCluster) {
+            validateProperties({}, collname, 2);
             validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-            validateDeprecationLogEntryWritten();
           } else {
-            if (!isCluster) {
-              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-              validateProperties({}, collname, 2);
-              validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
-            } else {
-              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-              // Number of Shards inherited from Leader
-              validateProperties({...props, numberOfShards: 3}, collname, 2);
-            }
+            // Number of Shards inherited from Leader
+            validateProperties({ ...props, numberOfShards: 3 }, collname, 2);
           }
         } finally {
           db._drop(collname);
@@ -759,12 +693,9 @@ function CreateCollectionsSuite() {
     },
 
     testObjectIDPollution: function () {
-      // ObjectId needs to be ignored
       const res = tryCreate({name: collname, type: 2, objectId: "deleteMe"});
       try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({}, collname, 2);
-        validateDeprecationLogEntryWritten();
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {objectId: "deleteMe"});
       } finally {
         db._drop(collname);
       }
@@ -794,8 +725,6 @@ function CreateCollectionsSuite() {
 
     testCreateSmartGraph: function () {
       for (const isDisjoint of [true, false]) {
-        const vertexName = "UnitTestSmartVertex";
-        const edgeName = "UnitTestSmartEdge";
         const vertex = {
           numberOfShards: 3,
           replicationFactor: 2,
@@ -807,114 +736,13 @@ function CreateCollectionsSuite() {
           smartGraphAttribute: "test",
           isDisjoint: isDisjoint
         };
-
-        const edge = {
-          numberOfShards: 3,
-          replicationFactor: 2,
-          isSmart: true,
-          shardingStrategy: "enterprise-hash-smart-edge",
-          shardKeys: [
-            "_key:"
-          ],
-          isDisjoint: isDisjoint,
-          distributeShardsLike: vertexName
-        };
-
-        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
-
-        const res = tryCreate({...vertex, type: 2, name: vertexName});
-        try {
-          // Should work, is a simple combination of other tests
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (!isCluster) {
-            // The following are not available in single server
-            // NOTE: If at one point they are exposed we will have the validate clash on
-            // non set properties.
-            if (!isEnterprise) {
-              // Well unless we are in enterprise.
-              delete vertex.isSmart;
-              delete vertex.smartGraphAttribute;
-              delete vertex.isDisjoint;
-            }
-          } else {
-            if (!isEnterprise) {
-              // smart features cannot be set
-              vertex.isSmart = false;
-              delete vertex.smartGraphAttribute;
-              vertex.isDisjoint = false;
-            }
-          }
-          if (!isEnterprise && !isCluster) {
-            validateDeprecationLogEntryWritten();
-          }
-          validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
-          const resEdge = tryCreate({...edge, type: 3, name: edgeName});
-          try {
-            if (isCluster && !isEnterprise) {
-              // Sharding strategy cannot match on Community Cluster
-              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, resEdge, edge);
-              validateDeprecationLogEntryWritten();
-            } else {
-              // Should work, everything required for smartGraphs is there.
-              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
-              if (!isCluster) {
-                // The following are not available in single server
-                if (!isEnterprise) {
-                  // Well unless we are in enterprise.
-                  delete edge.isSmart;
-                  delete edge.isDisjoint;
-                }
-                if (!isEnterprise) {
-                  // And also erases distributeShardsLike
-                  delete edge.distributeShardsLike;
-                }
-              } else {
-                if (!isEnterprise) {
-                  // smartFeatures cannot be set
-                  edge.isSmart = false;
-                  edge.shardingStrategy = "hash";
-                  edge.isDisjoint = false;
-                }
-              }
-              if (isEnterprise && isCluster) {
-                // Check special creation path
-                const makeSmartEdgeAttributes = (isTo, isLocal) => {
-                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isTo) {
-                    tmp.shardKeys = [":_key"];
-                  }
-                  return tmp;
-                };
-                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
-                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint) {
-                  // If we are not disjoint we get all collections, as server test cannot let isDisjoint pass, we will also end up here
-                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                } else {
-                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
-                }
-              } else {
-                validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
-              }
-              if (!isEnterprise && !isCluster) {
-                validateDeprecationLogEntryWritten();
-              }
-            }
-          } finally {
-            db._drop(edgeName, true);
-          }
-        } finally {
-          db._drop(vertexName, true);
-        }
+        createAndValidateSmartGraph(vertex, isDisjoint);
       }
     },
 
     testCreateSmartAndEnterpriseGraph: function () {
       // This is actually a broken result:
       for (const isDisjoint of [true, false]) {
-        const vertexName = "UnitTestSmartVertex";
-        const edgeName = "UnitTestSmartEdge";
         const vertex = {
           numberOfShards: 3,
           replicationFactor: 2,
@@ -926,116 +754,12 @@ function CreateCollectionsSuite() {
           smartGraphAttribute: "test",
           isDisjoint: isDisjoint
         };
-
-        const edge = {
-          numberOfShards: 3,
-          replicationFactor: 2,
-          isSmart: true,
-          shardingStrategy: "enterprise-hash-smart-edge",
-          shardKeys: [
-            "_key:"
-          ],
-          isDisjoint: isDisjoint,
-          distributeShardsLike: vertexName
-        };
-
-        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
-
-        const res = tryCreate({...vertex, type: 2, name: vertexName});
-        try {
-          if (!isEnterprise && isCluster) {
-            // We are using a shardingStrategy not allowed in Community version.
-            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {...vertex, type: 2, name: vertexName});
-          } else {
-            // Should work, is a simple combination of other tests
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            if (!isCluster) {
-              // The following are not available in single server
-              // NOTE: If at one point they are exposed we will have the validate clash on
-              // non set properties.
-              if (!isEnterprise) {
-                // Well unless we are in enterprise.
-                delete vertex.isSmart;
-                delete vertex.smartGraphAttribute;
-                delete vertex.isDisjoint;
-              }
-            } else {
-              if (!isEnterprise) {
-                // smart features cannot be set
-                vertex.isSmart = false;
-                delete vertex.smartGraphAttribute;
-                vertex.isDisjoint = false;
-                // Enterprise ShardingStrategy is forbidden
-                vertex.shardingStrategy = "hash";
-              }
-            }
-            validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
-            if (!isEnterprise && !isCluster) {
-              validateDeprecationLogEntryWritten();
-            }
-            const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
-            try {
-              // Should work, everything required for smartGraphs is there.
-              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
-              if (!isCluster) {
-                // The following are not available in single server
-                if (!isEnterprise) {
-                  // Well unless we are in enterprise.
-                  delete edge.isSmart;
-                  delete edge.isDisjoint;
-                }
-
-                if (!isEnterprise) {
-                  // The initial request is disallowed.
-                  // Which will trigger removal of distributeShardsLike
-                  delete edge.distributeShardsLike;
-                }
-              } else {
-                if (!isEnterprise) {
-                  // smartFeatures cannot be set
-                  edge.isSmart = false;
-                  edge.isDisjoint = false;
-                  edge.shardingStrategy = "hash";
-                }
-              }
-              if (isEnterprise && isCluster) {
-                // Check special creation path
-                const makeSmartEdgeAttributes = (isTo, isLocal) => {
-                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isTo) {
-                    tmp.shardKeys = [":_key"];
-                  }
-                  return tmp;
-                };
-                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
-                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint) {
-                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                } else {
-                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
-                }
-              } else {
-                validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
-              }
-              if (!isEnterprise && !isCluster) {
-                validateDeprecationLogEntryWritten();
-              }
-            } finally {
-              db._drop(edgeName, true);
-            }
-          }
-        } finally {
-          db._drop(vertexName, true);
-        }
+        createAndValidateSmartGraph(vertex, isDisjoint);
       }
     },
 
-
     testCreateEnterpriseGraph: function () {
       for (const isDisjoint of [true, false]) {
-        const vertexName = "UnitTestSmartVertex";
-        const edgeName = "UnitTestSmartEdge";
         const vertex = {
           numberOfShards: 3,
           replicationFactor: 2,
@@ -1046,112 +770,12 @@ function CreateCollectionsSuite() {
           ],
           isDisjoint: isDisjoint
         };
-
-        const edge = {
-          numberOfShards: 3,
-          replicationFactor: 2,
-          isSmart: true,
-          shardingStrategy: "enterprise-hash-smart-edge",
-          shardKeys: [
-            "_key:"
-          ],
-          isDisjoint: isDisjoint,
-          distributeShardsLike: vertexName
-        };
-
-        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
-
-        const res = tryCreate({...vertex, type: 2, name: vertexName});
-        try {
-          if (!isEnterprise && isCluster) {
-            // We are using a shardingStrategy not allowed in Community version.
-            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {...vertex, type: 2, name: vertexName});
-          } else {
-            // Should work, is a simple combination of other tests
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            if (!isCluster) {
-              // The following are not available in single server
-              // NOTE: If at one point they are exposed we will have the validate clash on
-              // non set properties.
-              if (!isEnterprise) {
-                // Well unless we are in enterprise.
-                delete vertex.isSmart;
-                delete vertex.smartGraphAttribute;
-                delete vertex.isDisjoint;
-              }
-            } else {
-              if (!isEnterprise) {
-                // smart features cannot be set
-                vertex.isSmart = false;
-                delete vertex.smartGraphAttribute;
-                vertex.isDisjoint = false;
-                // Enterprise ShardingStrategy is forbidden
-                vertex.shardingStrategy = "hash";
-              }
-            }
-            validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
-            if (!isEnterprise && !isCluster) {
-              validateDeprecationLogEntryWritten();
-            }
-            const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
-            try {
-              // Should work, everything required for smartGraphs is there.
-              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
-              if (!isCluster) {
-                // The following are not available in single server
-                if (!isEnterprise) {
-                  // Well unless we are in enterprise.
-                  delete edge.isSmart;
-                  delete edge.isDisjoint;
-                }
-                if (!isEnterprise) {
-                  // Community does not support it and on
-                  // This will trigger removal of distributeShardsLike
-                  delete edge.distributeShardsLike;
-                }
-              } else {
-                if (!isEnterprise) {
-                  // smartFeatures cannot be set
-                  edge.isSmart = false;
-                  edge.isDisjoint = false;
-                  edge.shardingStrategy = "hash";
-                }
-              }
-              if (isEnterprise && isCluster) {
-                // Check special creation path
-                const makeSmartEdgeAttributes = (isTo, isLocal) => {
-                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isTo) {
-                    tmp.shardKeys = [":_key"];
-                  }
-                  return tmp;
-                };
-                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
-                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint) {
-                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                } else {
-                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
-                }
-              } else {
-                validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
-              }
-              if (!isEnterprise && !isCluster) {
-                validateDeprecationLogEntryWritten();
-              }
-            } finally {
-              db._drop(edgeName, true);
-            }
-          }
-        } finally {
-          db._drop(vertexName, true);
-        }
+        createAndValidateSmartGraph(vertex, isDisjoint);
       }
     },
 
     testCreateSmartEdgeWithoutDistributeShardsLike: function () {
-      if (!isEnterprise || !isCluster) {
+      if (!isCluster) {
         return;
       }
 
@@ -1213,19 +837,21 @@ function CreateCollectionsSuite() {
     },
 
     testUnknownParameters: function () {
-      const unknownParameters = ["test", "foo", "", "doCompact", "isVolatile"];
+      for (const p of ["test", "foo", ""]) {
+        const res = tryCreate({name: collname, [p]: "rejectMe"});
+        try {
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[p]: "rejectMe"});
+        } finally {
+          db._drop(collname, true);
+        }
+      }
 
-      for (const p of unknownParameters) {
+      // doCompact and isVolatile are old, and have been ignored ever since.
+      for (const p of ["doCompact", "isVolatile"]) {
         const res = tryCreate({name: collname, [p]: "justIgnoreMe"});
         try {
-          // Unknown parameters are always ignored.
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
-          if (p !== "doCompact" && p !== "isVolatile") {
-            // doCompact and isVolatile are old, and have been ignored ever since.
-            // They are ignored by new API.
-            validateDeprecationLogEntryWritten();
-          }
         } finally {
           db._drop(collname, true);
         }
@@ -1274,17 +900,10 @@ function CreateCollectionsSuite() {
     testIllegalReplicationWriteConcern: function () {
       const res = tryCreate({name: collname, writeConcern: 3, replicationFactor: 2});
       try {
-        if (isCluster) {
-          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {
-            writeConcern: 3,
-            replicationFactor: 2
-          });
-        } else {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // On single servers those values are just ignored
-          validateProperties({}, collname, 2);
-          validateDeprecationLogEntryWritten();
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {
+          writeConcern: 3,
+          replicationFactor: 2
+        });
       } finally {
         // Should be noop
         db._drop(collname);
@@ -1332,7 +951,7 @@ function CreateCollectionsSuite() {
 }
 
 
-function IgnoreIllegalTypesSuite() {
+function IllegalTypesSuite() {
   // Lists of illegal type values, for each test to iterate over.
   const testValues = {
     string: [1, -3.6, true, false, [], {foo: "bar"}, null],
@@ -1353,7 +972,7 @@ function IgnoreIllegalTypesSuite() {
     computedValues: "array",
     syncByRevision: "bool",
     schema: "object",
-    /* Cluster Properties, should also be ignored on single server */
+    /* Cluster Properties, also checked on single server */
     isSmart: "bool",
     shardKeys: "array",
     numberOfShards: "integer",
@@ -1386,9 +1005,15 @@ function IgnoreIllegalTypesSuite() {
         try {
           switch (prop) {
             case "type": {
-              // But well we can create all others, obviously defaulting to 2 (document)
-              // TODO Investigate why we only print on number and booleans
-              isAllowed(res, collname, testParam, typeof(ignoredValue) === 'number' ||  typeof(ignoredValue) === 'boolean');
+              if (typeof ignoredValue === "number" && ignoredValue >= 0) {
+                // A non-negative number parses, but is not a known collection type
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, res, testParam);
+              } else if (typeof ignoredValue === "number" || typeof ignoredValue === "boolean") {
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+              } else {
+                // arangosh does not send other types, so the server uses the default
+                isAllowed(res, collname, testParam);
+              }
               break;
             }
             case "computedValues": {
@@ -1405,37 +1030,15 @@ function IgnoreIllegalTypesSuite() {
               break;
             }
             case "numberOfShards": {
-              if (isCluster) {
-                if (typeof ignoredValue === "number") {
-                  if (ignoredValue < 0) {
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  } else {
-                    assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
-                    validateProperties({numberOfShards: Math.floor(ignoredValue)}, collname, 2);
-                  }
+              if (typeof ignoredValue === "number" && ignoredValue >= 0) {
+                if (isCluster) {
+                  assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                  validateProperties({numberOfShards: Math.floor(ignoredValue)}, collname, 2);
                 } else {
-                  if (ignoredValue === null) {
-                    // Allowed default to one shard
-                    isAllowed(res, collname, testParam);
-                  } else {
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  }
+                  isAllowed(res, collname, testParam);
                 }
               } else {
-                if (typeof ignoredValue === "number") {
-                  if (ignoredValue < 0) {
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  } else {
-                    isAllowed(res, collname, testParam, false);
-                  }
-                } else {
-                  if (ignoredValue === null) {
-                    // Allowed default to one shard
-                    isAllowed(res, collname, testParam);
-                  } else {
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  }
-                }
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
               }
               break;
             }
@@ -1450,61 +1053,35 @@ function IgnoreIllegalTypesSuite() {
             }
             case "replicationFactor":
             case "writeConcern": {
-              if (isCluster) {
-                if (typeof ignoredValue === "number") {
-                  // We take doubles for integers
-                  if (prop === "replicationFactor" && ignoredValue > 2) {
-                    // but they are too large to be allowed
-                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
-                  } else {
-                    // or too low
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  }
+              // Doubles are floored, so a non-negative number is a valid replicationFactor
+              if (prop === "replicationFactor" && typeof ignoredValue === "number" && ignoredValue >= 0) {
+                if (isCluster) {
+                  // but more than there are DB-Servers
+                  isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
                 } else {
-                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  // SingleServer keeps the value, even though it has no meaning there
+                  assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                  validateProperties({replicationFactor: Math.floor(ignoredValue)}, collname, 2);
                 }
               } else {
-                // Just ignore if we are not in cluster.
-                // Double values will still be floored, making it valid for replicationFactor
-                const expectDeprecationMessage = (() => {
-                  if (prop === "replicationFactor") {
-                    if (typeof(ignoredValue) === "number") {
-                      return ignoredValue < 0;
-                    }
-                    return true;
-                  }
-                  return true;
-                })();
-                isAllowed(res, collname, testParam, expectDeprecationMessage);
-              }
-              break;
-            }
-            case "syncByRevision": {
-              isAllowed(res, collname, testParam);
-              break;
-            }
-            case "distributeShardsLike": {
-              if (isCluster) {
-                // Can only be strings
-                if (ignoredValue === null) {
-                  // Allowed default to no distributeShardsLike
-                  isAllowed(res, collname, testParam);
-                } else {
-                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                }
-              } else {
-                isAllowed(res, collname, testParam);
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
               }
               break;
             }
             case "shardingStrategy": {
-              // Do not expect deprecation messages for null
-              isAllowed(res, collname, testParam, ignoredValue !== null);
+              if (ignoredValue === null) {
+                isAllowed(res, collname, testParam);
+              } else {
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+              }
+              break;
+            }
+            case "keyOptions": {
+              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_ARANGO_INVALID_KEY_GENERATOR.code, res, testParam);
               break;
             }
             default: {
-              // Most unknown parameter types are ignored.
-              isAllowed(res, collname, testParam);
+              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
               break;
             }
           }
@@ -1524,6 +1101,11 @@ function CreateCollectionsInOneShardSuite() {
   const getOneShardShardingValues = () => {
     const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
     return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
+  };
+  // OneShard has no meaning in single server, but the collections still get the
+  // replicationFactor of the leader.
+  const getSingleServerOneShardValues = () => {
+    return _.pick(db[oneShardLeader].properties(), ["replicationFactor"]);
   };
   return {
     setUpAll: function () {
@@ -1549,8 +1131,7 @@ function CreateCollectionsInOneShardSuite() {
         if (isCluster) {
           validateProperties(getOneShardShardingValues(), collname, 2);
         } else {
-          // OneShard has no meaning in single server, just assert values are taken
-          validateProperties({}, collname, 2);
+          validateProperties(getSingleServerOneShardValues(), collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -1565,30 +1146,20 @@ function CreateCollectionsInOneShardSuite() {
         try {
           if (isCluster && db._properties().replicationVersion === "2" && v === "writeConcern") {
             // For Replication2 the writeConcern is per CollectionGroup. We cannot create a follower with a different one.
-            assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
             isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: value});
-          } else {
+          } else if (v === "writeConcern") {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             if (isCluster) {
-              if (v === "writeConcern") {
-                // On Replication1 writeConcern is allowed to differ per Collection.
-                validateProperties({
-                  ...getOneShardShardingValues(),
-                  writeConcern: value,
-                }, collname, 2);
-              } else {
-                validateProperties(getOneShardShardingValues(), collname, 2);
-                validateDeprecationLogEntryWritten();
-              }
+              // On Replication1 writeConcern is allowed to differ per Collection.
+              validateProperties({
+                ...getOneShardShardingValues(),
+                writeConcern: value,
+              }, collname, 2);
             } else {
-              // OneShard has no meaning in single server, just assert values are taken
-              if (v === "writeConcern") {
-                validateProperties({writeConcern: value}, collname, 2);
-              } else {
-                validateProperties({}, collname, 2);
-                validateDeprecationLogEntryWritten();
-              }
+              validateProperties({...getSingleServerOneShardValues(), writeConcern: value}, collname, 2);
             }
+          } else {
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, { [v]: value });
           }
         } finally {
           db._drop(collname);
@@ -1604,17 +1175,7 @@ function CreateCollectionsInOneShardSuite() {
         assertTrue(leaderRes.result, `Result: ${JSON.stringify(leaderRes)}`);
         const res = tryCreate({name: collname, distributeShardsLike: otherLeaderName});
         try {
-          // Well we just ignore that something is off here...
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isCluster) {
-            validateProperties(getOneShardShardingValues(), collname, 2);
-            validateDeprecationLogEntryWritten();
-          } else {
-            // OneShard has no meaning in single server, just assert default values are hold
-            validateProperties({}, collname, 2);
-            validatePropertiesDoNotExist(collname, ["distributeShardsLike"]);
-            validateDeprecationLogEntryWritten();
-          }
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE.code, res, { distributeShardsLike: otherLeaderName });
         } finally {
           db._drop(collname);
         }
@@ -1626,13 +1187,7 @@ function CreateCollectionsInOneShardSuite() {
     testCreateMultipleShardKeysOneShard: function () {
       const res = tryCreate({name: collname, shardKeys: ["foo", "bar"]});
       try {
-        if (isCluster) {
-          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
-        } else {
-          // In single servers shardKeys have no effect. They are ignored, hence the create works here
-          isAllowed(res, collname, {shardKeys: ["foo", "bar"]});
-          validatePropertiesDoNotExist(collname, ["shardKeys"]);
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
       } finally {
         // Should be a noop.
         db._drop(collname);
@@ -1642,7 +1197,7 @@ function CreateCollectionsInOneShardSuite() {
 }
 
 jsunity.run(CreateCollectionsSuite);
-jsunity.run(IgnoreIllegalTypesSuite);
+jsunity.run(IllegalTypesSuite);
 jsunity.run(CreateCollectionsInOneShardSuite);
 
 return jsunity.done();

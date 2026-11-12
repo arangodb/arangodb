@@ -245,6 +245,17 @@ TEST_F(NgramPosSimilarityFunctionTest, test) {
         assertNgramSimilarity(__LINE__, 0, &Target, &ValidString, &ValidInt);
       }
     }
+    // repeated character against a different string of the same length.
+    // Only the shared "a" counts, so positional similarity is 1/3.
+    {
+      AqlValue const Attribute{"abc"};
+      AqlValue const Target{"aaa"};
+      AqlValue const ValidInt{AqlValueHintInt{1}};
+      assertNgramSimilarity(__LINE__, 1.f / 3.f, &Attribute, &Target,
+                            &ValidInt);
+      assertNgramSimilarity(__LINE__, 1.f / 3.f, &Target, &Attribute,
+                            &ValidInt);
+    }
     // less than ngram size
     {
       AqlValue const Attribute{"a"};
