@@ -122,7 +122,7 @@ jobs:
           condition:
             not:
               or:
-                - equal: [devel, << pipeline.git.branch >>]
+                - equal: ["3.12", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -181,7 +181,7 @@ jobs:
           command: |
             if [ "<< pipeline.parameters.dont-cancel-pipelines >>" == "true" ]; then
               echo "Cancelling of redundant pipelines is disabled, not cancelling any pipelines"
-            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+            elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
               ## Get the name of the workflow and the related pipeline number
@@ -329,7 +329,7 @@ workflows:
   setup:
     jobs:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
-      # or runs on the devel branch (see condition in check-build-trigger)
+      # or runs on the 3.12 branch (see condition in check-build-trigger)
       - check-build-trigger
       - cancel-stale-infrastructure:
           context: [ circleci-token ]
