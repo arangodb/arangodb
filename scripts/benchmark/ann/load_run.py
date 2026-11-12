@@ -10,14 +10,6 @@ qps, build time) using ann-benchmarks' own metric functions. Each CSV row is one
 (dataset, algorithm, parameters) configuration; we fan it out into the three
 measurement collections.
 
-Each run is written in a single stream transaction = one `run`; on any error the
-transaction is aborted and nothing is left behind. A run whose version and
-started_at are already stored is skipped; datasets and index setups are shared
-across runs (UPSERT). Build time is stored once per distinct (dataset, value)
-within a run, because ann-benchmarks repeats it on every query-parameter row.
-
-Standard library only; talks to ArangoDB over its HTTP API.
-
 Usage:
   ./load_run.py ~/Downloads/run1 --url http://localhost:8529
 
@@ -206,11 +198,6 @@ def validate(fieldnames, rows):
 def load(db, meta, rows):
     run = {"arangodb_version": meta["arangodb_version_full"],
            "started_at": meta["started_at"]}
-    existing = db.aql("FOR r IN run FILTER r.arangodb_version == @arangodb_version "
-                      "AND r.started_at == @started_at RETURN r._key", run)
-    if existing:
-        print(f"run _key={existing[0]}: already loaded, skipped")
-        return
     run_id = db.one(
         "INSERT MERGE(@run, {major_version: @major, docker_image_version: @image, "
         "ended_at: @ended, machine: @machine}) INTO run RETURN NEW._key",

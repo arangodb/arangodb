@@ -683,9 +683,9 @@ futures::Future<Result> Collections::properties(Context& ctxt,
     // graph collections.
     ignoreKeys.insert(
         {StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
-         StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
-         StaticStrings::MinReplicationFactor, StaticStrings::ShardKeys,
-         StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
+         StaticStrings::NumberOfShards, StaticStrings::MinReplicationFactor,
+         StaticStrings::ShardKeys, StaticStrings::ShardingStrategy,
+         StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
     auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);

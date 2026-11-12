@@ -576,8 +576,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
-                 std::string const& lastEndpoint)
+auto getEndpoint(std::string& url, std::string const& lastEndpoint)
     -> std::tuple<std::string, std::string, std::string> {
   // returns endpoint, relative, error
   std::string relative;
@@ -622,13 +621,6 @@ auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
       endpoint = url.substr(6);
     }
     endpoint = "srv://" + endpoint;
-  } else if (url.starts_with("unix://")) {
-    // Can only have arrived here if endpoints is non empty
-    if (endpoints.empty()) {
-      return {"", "", std::move("unsupported URL specified")};
-    }
-    endpoint = endpoints.front();
-    relative = url.substr(endpoint.size());
   } else if (!url.empty() && url[0] == '/') {
     size_t found;
     // relative URL. prefix it with last endpoint
@@ -961,8 +953,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int numRedirects = 0;
 
   while (numRedirects < maxRedirects) {
-    auto [endpoint, relative, error] =
-        getEndpoint(endpoints, url, lastEndpoint);
+    auto [endpoint, relative, error] = getEndpoint(url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }

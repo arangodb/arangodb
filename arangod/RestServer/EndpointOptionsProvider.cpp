@@ -52,7 +52,6 @@ of endpoints:
 - `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
 - `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
 - `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
-- `unix:///path/to/socket` - Unix domain socket endpoint
 
 You can use `http://` as an alias for `tcp://`, and `https://` as an alias for
 `ssl://`.

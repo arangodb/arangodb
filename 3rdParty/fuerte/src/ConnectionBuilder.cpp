@@ -44,12 +44,6 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result =
           std::make_shared<http::H1Connection<SocketType::Ssl>>(loop, _conf);
     }
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-    else if (_conf._socketType == SocketType::Unix) {
-      result =
-          std::make_shared<http::H1Connection<SocketType::Unix>>(loop, _conf);
-    }
-#endif
   } else if (_conf._protocolType == ProtocolType::Http2) {
     FUERTE_LOG_DEBUG << "fuerte - creating http 2 connection\n";
     if (_conf._socketType == SocketType::Tcp) {
@@ -59,12 +53,6 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result =
           std::make_shared<http::H2Connection<SocketType::Ssl>>(loop, _conf);
     }
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-    else if (_conf._socketType == SocketType::Unix) {
-      result =
-          std::make_shared<http::H2Connection<SocketType::Unix>>(loop, _conf);
-    }
-#endif
   }
   if (!result) {
     throw std::logic_error("unsupported socket or protocol type");
@@ -76,7 +64,7 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
 void parseSchema(std::string const& schema,
                  detail::ConnectionConfiguration& conf) {
   // non exthausive list of supported url schemas
-  // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
+  // "http+tcp://", "http+ssl://", "tcp://", "ssl://"
   // "http://", "https://"
   std::string_view proto(schema.data(), schema.length());
   std::string::size_type pos = schema.find('+');
@@ -88,8 +76,6 @@ void parseSchema(std::string const& schema,
       conf._socketType = SocketType::Tcp;
     } else if (socket == "ssl") {
       conf._socketType = SocketType::Ssl;
-    } else if (socket == "unix") {
-      conf._socketType = SocketType::Unix;
     } else if (conf._socketType == SocketType::Undefined) {
       throw std::runtime_error(std::string("invalid socket type: ") +
                                std::string(proto));
@@ -107,9 +93,6 @@ void parseSchema(std::string const& schema,
       conf._protocolType = ProtocolType::Http;
     } else if (proto == "https" || proto == "ssl") {
       conf._socketType = SocketType::Ssl;
-      conf._protocolType = ProtocolType::Http;
-    } else if (proto == "unix") {
-      conf._socketType = SocketType::Unix;
       conf._protocolType = ProtocolType::Http;
     } else if (proto == "h2" || proto == "http2") {
       conf._socketType = SocketType::Tcp;
@@ -143,20 +126,11 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
     throw std::runtime_error("invalid empty endpoint spec");
   }
 
-  // we need to handle unix:// urls seperately
   std::string::size_type pos = spec.find("://");
   if (std::string::npos != pos) {
     std::string schema = spec.substr(0, pos);
     toLowerInPlace(schema);  // in-place
     parseSchema(schema, _conf);
-  }
-
-  if (_conf._socketType == SocketType::Unix) {
-    if (std::string::npos != pos) {
-      // unix:///a/b/c does not contain a port
-      _conf._host = spec.substr(pos + 3);
-    }
-    return *this;
   }
 
   pos = (pos != std::string::npos) ? pos + 3 : 0;
@@ -214,8 +188,6 @@ std::string ConnectionBuilder::normalizedEndpoint() const {
     endpoint.append("tcp://");
   } else if (SocketType::Ssl == _conf._socketType) {
     endpoint.append("ssl://");
-  } else if (SocketType::Unix == _conf._socketType) {
-    endpoint.append("unix://");
   }
 
   endpoint.append(_conf._host);

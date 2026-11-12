@@ -278,13 +278,13 @@ jobs:
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/install-x64.tar.gz" \
               - | sudo tar -xzf - -C /
             sudo useradd --system --no-create-home arangodb
-            sudo mkdir -p /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
-            sudo chown arangodb /var/lib/arangodb3 /var/lib/arangodb3-apps /var/log/arangodb3
+            sudo mkdir -p /var/lib/arangodb4 /var/log/arangodb4
+            sudo chown arangodb /var/lib/arangodb4 /var/log/arangodb4
       - run:
           name: Start arangod
           background: true
           command: |
-            sudo /usr/sbin/arangod --config /etc/arangodb3/arangod.conf \
+            sudo /usr/sbin/arangod --config /etc/arangodb4/arangod.conf \
               --server.authentication false --vector-index true
       - ann-benchmark-harness
       - run:
@@ -292,7 +292,7 @@ jobs:
           when: always
           command: |
             mkdir -p /tmp/ann-output
-            sudo cp /var/log/arangodb3/arangod.log /tmp/ann-output/arangod-server.log || true
+            sudo cp /var/log/arangodb4/arangod.log /tmp/ann-output/arangod-server.log || true
             sudo chmod a+r /tmp/ann-output/arangod-server.log || true
       - store_artifacts:
           when: always
