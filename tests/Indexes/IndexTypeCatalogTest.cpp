@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
+#include <memory>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -41,16 +42,15 @@ class IndexTypeCatalogTest : public ::testing::Test {
  protected:
   // mirrors what IResearchFeature::registerIndexFactory does at startup
   void SetUp() override {
-    auto res = catalog.add(iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
-                           invertedDefinition);
+    auto res = catalog.add(
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+        std::make_unique<iresearch::IResearchInvertedIndexDefinition>(
+            mockServer.server()));
     ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 
   // needs IResearchAnalyzerFeature, which MockRestServer lacks
   tests::mocks::MockAqlServer mockServer;
-  // must outlive catalog
-  iresearch::IResearchInvertedIndexDefinition invertedDefinition{
-      mockServer.server()};
   IndexTypeCatalog catalog{mockServer.server()};
 };
 

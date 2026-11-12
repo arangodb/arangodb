@@ -775,7 +775,7 @@ jobs:
             LIST=.circleci/required-checks.txt
             # PR pipelines run on the head branch, so the protected branch
             # cannot be derived from CIRCLE_BRANCH.
-            PROTECTED=4.0
+            PROTECTED=devel
             DRIFT=0
             if [ ! -s "${LIST}" ]; then
               echo "ERROR: ${LIST} is missing or empty. Commit the required-check inventory." >&2
@@ -1164,9 +1164,9 @@ jobs:
             rm -rf install/usr/share/man/man1 \
                    install/usr/share/arangodb4/js
 
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
             docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >>
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
             docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp

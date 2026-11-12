@@ -58,7 +58,7 @@ let optionsDocumentation = [
   '',
   '   - `forceJson`: don\'t use vpack - for better debugability',
   '   - `forceNoCompress`: don\'t zip encoding - for better debugability',
-  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
+  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl]',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
