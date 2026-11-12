@@ -664,14 +664,14 @@ License Id: -
 
 ### Bundled NPM modules
 
-#### @hapi/hoek
+#### @isaacs/nonrecursive-glob-match
 
-* Name: @hapi/hoek
-* Version: 8.5.1
-* Project Home: <https://github.com/hapijs/hoek>
-* License: <https://raw.githubusercontent.com/hapijs/hoek/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
+* Name: @isaacs/nonrecursive-glob-match
+* Version: 1.1.0
+* Project Home: <https://github.com/isaacs/nonrecursive-glob-match>
+* License: <https://raw.githubusercontent.com/isaacs/nonrecursive-glob-match/main/LICENSE.md>
+* License Name: BlueOak-1.0.0
+* License Id: BlueOak-1.0.0
 
 #### @sinonjs/commons
 
@@ -990,7 +990,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.8
+* Version: 3.1.9
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1131,15 +1131,6 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-#### isemail
-
-* Name: isemail
-* Version: 3.2.0
-* Project Home: <https://github.com/hapijs/isemail>
-* License: <https://raw.githubusercontent.com/hapijs/isemail/master/LICENSE>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
-
 #### iterall
 
 * Name: iterall
@@ -1148,24 +1139,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/leebyron/iterall/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
-
-#### joi
-
-* Name: joi
-* Version: 14.3.1
-* Project Home: <https://github.com/hapijs/joi>
-* License: <https://raw.githubusercontent.com/hapijs/joi/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
-
-#### joi-to-json-schema
-
-* Name: joi-to-json-schema
-* Version: 4.0.1
-* Project Home: <https://github.com/lightsofapollo/joi-to-json-schema>
-* License: <https://github.com/lightsofapollo/joi-to-json-schema#license>
-* License Name: Apache 2 License
-* License Id: Apache2
 
 #### js-tokens
 
@@ -1242,7 +1215,7 @@ License Id: -
 #### minimatch
 
 * Name: minimatch
-* Version: 10.2.5
+* Version: 11.0.5
 * Project Home: <https://github.com/isaacs/minimatch>
 * License: <https://raw.githubusercontent.com/isaacs/minimatch/main/LICENSE.md>
 * License Name: BlueOak-1.0.0
@@ -1302,19 +1275,10 @@ License Id: -
 * License Name: Apache 2 License
 * License Id: Apache-2.0
 
-#### punycode
-
-* Name: punycode
-* Version: 2.3.0
-* Project Home: <https://mths.be/punycode>
-* License: <https://raw.githubusercontent.com/mathiasbynens/punycode.js/refs/heads/main/LICENSE-MIT.txt>
-* License Name: MIT License
-* License Id: MIT
-
 #### qs
 
 * Name: qs
-* Version: 6.16.0
+* Version: 6.16.1
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License
@@ -1481,15 +1445,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/component/toidentifier/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
-
-#### topo
-
-* Name: topo
-* Version: 3.0.3
-* Project Home: <https://github.com/hapijs/topo>
-* License: <https://raw.githubusercontent.com/hapijs/topo/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
 
 #### type-detect
 

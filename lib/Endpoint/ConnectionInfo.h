@@ -40,8 +40,6 @@ struct ConnectionInfo {
  public:
   std::string portType() const {
     switch (endpointType) {
-      case Endpoint::DomainType::UNIX:
-        return "unix";
       case Endpoint::DomainType::IPV4:
       case Endpoint::DomainType::IPV6:
         return "tcp/ip";

@@ -22,15 +22,10 @@
 
 #include "GeneralServer/Acceptor.h"
 
-#include "Basics/operating-system.h"
 #include "GeneralServer/AcceptorTcp.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-#include "GeneralServer/AcceptorUnixDomain.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -46,11 +41,6 @@ Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context,
 std::shared_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
                                             rest::IoContext& context,
                                             Endpoint* endpoint) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return AcceptorUnixDomain::make(server, context, endpoint);
-  }
-#endif
   if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return AcceptorTcp<rest::SocketType::Ssl>::make(server, context, endpoint);
   } else {

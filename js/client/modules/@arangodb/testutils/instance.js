@@ -168,7 +168,7 @@ function endpointToURL (endpoint) {
 class instance {
   #pid = null;
 
-  // / protocol must be one of ["tcp", "ssl", "unix"]
+  // / protocol must be one of ["tcp", "ssl"]
   // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
   // point --server.external-rbac-service at the locally launched dummy. The
   // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
@@ -380,7 +380,7 @@ class instance {
             table[handle]['localPort'],
             table[handle]['username'],
             table[handle]['password'],
-            table[handle]['jwToken']
+            table[handle]['jwtToken']
           ]);
         });
       } catch (ex) {
@@ -1097,39 +1097,6 @@ class instance {
         this._disconnect();
         this.pid = null;
         print(sockStat);
-      } else if (this.protocol === 'unix') {
-        let sockStat = this.getSockStat("Sock stat for: ");
-        let reply = {code: 555};
-        let oldTimeout = arango.timeout();
-        try {
-          print(this.connect());
-          arango.timeout(5);
-          reply = arango.DELETE_RAW('/_admin/shutdown');
-          arango.timeout(oldTimeout);
-        } catch(ex) {
-          print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
-        } finally {
-          arango.timeout(oldTimeout);
-        }
-        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
-            !((reply.code === 500) &&
-              (
-                (reply.parsedBody === "Connection closed by remote") || // http connection
-                  reply.parsedBody.includes('failed with #111')           // https connection
-              ))) {
-          this.serverCrashedLocal = true;
-          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
-          this.shutdownArangod(true);
-          this._disconnect();
-        } else {
-          this.processSanitizerReports();
-          if (!this.options.noStartStopLogs) {
-            print(sockStat);
-          }
-        }
-        if (this.options.extremeVerbosity) {
-          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
-        }
       } else {
         let oldTimeout = arango.timeout();
         let sockStat = this.getSockStat("Sock stat for: ");
@@ -1143,11 +1110,12 @@ class instance {
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
                 !((reply.code === 500) &&
                   (
-                    (reply.message === "Connection closed by remote") || // http connection
+                    (reply.message === "Connection closed") || // http connection
                       reply.message.includes('failed with #111')           // https connection
                   ))) {
               this.serverCrashedLocal = true;
               print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+              this.dumpConnectionTable(true);
               this.shutdownArangod(true);
               return false;
             }

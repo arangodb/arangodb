@@ -125,7 +125,7 @@ class ConnectionBuilder {
   std::string port() const { return _conf._port; }
 
   /// @brief takes url in the form (http)[s]://(ip|hostname):port
-  /// also supports the syntax "http+tcp://", "http+unix://" etc
+  /// also supports the syntax "http+tcp://", "http+ssl://" etc
   ConnectionBuilder& endpoint(std::string const& spec);
 
   /// @brief get the normalized endpoint
@@ -214,7 +214,7 @@ class ConnectionBuilder {
     return *this;
   }
 
-  /// @brief tcp, ssl or unix
+  /// @brief tcp or ssl
   SocketType socketType() const { return _conf._socketType; }
   /// @brief protocol type
   ProtocolType protocolType() const { return _conf._protocolType; }

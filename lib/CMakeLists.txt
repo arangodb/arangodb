@@ -293,7 +293,6 @@ add_library(arango_basic_http_client STATIC
         Endpoint/EndpointIpV6.cpp
         Endpoint/EndpointList.cpp
         Endpoint/EndpointSrv.cpp
-        Endpoint/EndpointUnixDomain.cpp
 )
 target_link_libraries(arango_basic_http_client
   PUBLIC velocypack
@@ -306,6 +305,9 @@ target_link_libraries(arango_basic_http_client
   PRIVATE Boost::container
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# The served API versions carry the major product version as their branch tag.
+set_source_files_properties(Basics/ApiVersion.cpp PROPERTIES
+  COMPILE_DEFINITIONS ARANGODB_VERSION_MAJOR=${ARANGODB_VERSION_MAJOR})
 if (USE_ENTERPRISE)
   target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
