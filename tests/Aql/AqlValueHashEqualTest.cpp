@@ -308,6 +308,27 @@ TEST_F(AqlValueHashEqualTest, cross_type_range_vs_number) {
   rangeVal.destroy();
 }
 
+TEST_F(AqlValueHashEqualTest, slice_pointer_vs_managed_same_content) {
+  VPackBuilder b1, b2;
+  b1.openObject();
+  b1.add("key1", VPackValue("value1"));
+  b1.add("key2", VPackValue(42));
+  b1.close();
+  b2.openObject();
+  b2.add("key1", VPackValue("value1"));
+  b2.add("key2", VPackValue(42));
+  b2.close();
+  AqlValue managed(b1.slice());
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_MANAGED_SLICE, managed.type());
+  // non-owning view into b2, deliberately a different AqlValueType
+  AqlValue pointer(b2.slice().start());
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_SLICE_POINTER, pointer.type());
+  EXPECT_TRUE(equal(managed, pointer));
+  EXPECT_TRUE(equal(pointer, managed));
+  EXPECT_EQ(hasher(managed), hasher(pointer));
+  managed.destroy();
+}
+
 TEST_F(AqlValueHashEqualTest, unordered_set_deduplication) {
   std::unordered_set<AqlValue> set;
   AqlValue val1 = makeAQLValue(int64_t{42});

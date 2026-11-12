@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -522,6 +523,113 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     compareWithDummy(testee, 0, 1, 1);
     assertShadowRowIndexes(testee, {});
   }
+}
+
+// By design, not a bug: Scatter steals (not clones) the shadow row per
+// client, so exactly one client gets the real value and the rest get an
+// already-emptied cell - matching Gather's own "only one will contain the
+// data" contract (MultiAqlItemBlockInputRange::nextShadowRow).
+TEST_F(AqlItemBlockTest,
+       test_scatter_clone_shadow_row_only_one_client_gets_data) {
+  auto const json =
+      R"({"thisField": "is too large to be inlined, deliberately so"})";
+  auto const expected = Parser::fromJson(json);
+
+  auto block = itemBlockManager.requestBlock(2, 1);
+  block->setValue(
+      0, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+  block->setValue(
+      1, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+  block->makeShadowRow(1, 0);
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  result.close();
+
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
+
+  SharedAqlItemBlockPtr client1 = testee->cloneDataAndMoveShadow();
+  SharedAqlItemBlockPtr client2 = testee->cloneDataAndMoveShadow();
+
+  ASSERT_FALSE(client1->getValueReference(1, 0).isEmpty());
+  EXPECT_EQ(VelocyPackHelper::compare(client1->getValueReference(1, 0).slice(),
+                                      expected->slice(), false),
+            0);
+
+  EXPECT_TRUE(client2->getValueReference(1, 0).isEmpty());
+}
+
+// Contrasting case: two NORMAL rows (no shadow row involved) that collapse to
+// the same aliased pointer after the same round-trip. copyValueOver's cache
+// still dedups/clones correctly here, so both clients must see real data.
+TEST_F(AqlItemBlockTest, test_scatter_clone_normal_row_collision_stays_safe) {
+  auto const json =
+      R"({"thisField": "is too large to be inlined, deliberately so"})";
+  auto const expected = Parser::fromJson(json);
+
+  auto block = itemBlockManager.requestBlock(2, 1);
+  block->setValue(
+      0, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+  block->setValue(
+      1, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  ASSERT_TRUE(result.isOpenObject());
+  result.close();
+
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
+  ASSERT_FALSE(testee->isShadowRow(1));
+  ASSERT_FALSE(testee->getValueReference(0, 0).isEmpty());
+  ASSERT_FALSE(testee->getValueReference(1, 0).isEmpty());
+
+  SharedAqlItemBlockPtr client1 = testee->cloneDataAndMoveShadow();
+  SharedAqlItemBlockPtr client2 = testee->cloneDataAndMoveShadow();
+
+  for (auto const* client : {&client1, &client2}) {
+    for (size_t row : {size_t{0}, size_t{1}}) {
+      ASSERT_FALSE((*client)->getValueReference(row, 0).isEmpty());
+      EXPECT_EQ(VelocyPackHelper::compare(
+                    (*client)->getValueReference(row, 0).slice(),
+                    expected->slice(), false),
+                0);
+    }
+  }
+}
+
+// Regression test: round-trip content-aliasing merges row0 and the shadow
+// row's cell into one allocation. steal() must clone instead of handing
+// client1 sole ownership, or testee's row0 dangles once client1 is gone.
+TEST_F(AqlItemBlockTest, test_scatter_clone_shadow_row_use_after_free) {
+  auto const json =
+      R"({"thisField": "is too large to be inlined, deliberately so"})";
+  auto const expected = Parser::fromJson(json);
+
+  auto block = itemBlockManager.requestBlock(2, 1);
+  block->setValue(
+      0, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+  block->setValue(
+      1, 0, AqlValue{AqlValueHintSliceCopy{Parser::fromJson(json)->slice()}});
+  block->makeShadowRow(1, 0);
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  result.close();
+
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
+
+  SharedAqlItemBlockPtr client1 = testee->cloneDataAndMoveShadow();
+  client1.reset(nullptr);
+
+  EXPECT_EQ(VelocyPackHelper::compare(testee->getValueReference(0, 0).slice(),
+                                      expected->slice(), false),
+            0);
 }
 
 }  // namespace aql

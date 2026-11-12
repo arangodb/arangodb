@@ -513,10 +513,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            // shadow rows are always clones of data, no referencing is
-            // possible, therefore no cache/dedup step is needed here
-            // a shared pointer across columns is still safe since setValue's
-            // _valueCount refcounts it
+            // stealAndEraseValue clones if the pointer is shared elsewhere
             res->setValue(row, col, a);
             guard.steal();
           } else {
@@ -1090,14 +1087,21 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
   copySubqueryDepth(currentRow, fromRow);
 }
 
-void AqlItemBlock::steal(AqlValue const& value) {
+bool AqlItemBlock::steal(AqlValue const& value) {
   if (value.requiresDestruction()) {
     auto it = _valueCount.find(value.data());
     if (it != _valueCount.end()) {
-      decreaseMemoryUsage((*it).second.memoryUsage);
-      _valueCount.erase(it);
+      auto& valueInfo = (*it).second;
+      TRI_ASSERT(valueInfo.refCount > 0);
+      if (--valueInfo.refCount == 0) {
+        decreaseMemoryUsage(valueInfo.memoryUsage);
+        _valueCount.erase(it);
+        return true;
+      }
+      return false;
     }
   }
+  return true;
 }
 
 AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
@@ -1105,12 +1109,11 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   auto& element = _data[getAddress(index, varNr.value())];
 
   auto value = element;
-
-  steal(element);
+  bool const soleOwner = steal(element);
 
   element.erase();
 
-  return value;
+  return soleOwner ? value : value.clone();
 }
 
 RegisterCount AqlItemBlock::numRegisters() const noexcept {

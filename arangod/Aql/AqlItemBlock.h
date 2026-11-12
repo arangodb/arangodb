@@ -192,11 +192,9 @@ class AqlItemBlock {
   void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs,
                               size_t fromRow);
 
-  /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
-  /// the same value again. Note that once you do this for a single AqlValue
-  /// you should delete the AqlItemBlock soon, because the stolen AqlValues
-  /// might be deleted at any time!
-  void steal(AqlValue const& value);
+  /// @brief steal an AqlValue; false means another cell still holds the
+  /// same pointer, caller must clone instead.
+  bool steal(AqlValue const& value);
 
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
