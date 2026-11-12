@@ -647,6 +647,27 @@ function VectorIndexL2FilterTestSuite() {
             );
         },
 
+        // COR-1276
+        testApproxL2WithFilterOnVectorFieldWithoutStoredValues: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER LENGTH(d.vector) == ${dimension}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            verifyDistancesAscending(results);
+
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual("document", indexNodes[0].filterMode,
+                        "Index without storedValues cannot cover the filter");
+        },
+
     };
 }
 
