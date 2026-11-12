@@ -2429,6 +2429,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", { })`));
     },
 
+    testSubstringBytesLeftExtensionFromTheEndStaysInsideTheString: function () {
+      // the 64-byte string's head byte 0x80 looks like a UTF-8 continuation byte
+      const query = `FOR a IN [["abc", "${'x'.repeat(64)}"]] RETURN SUBSTRING_BYTES(a[0], 3, 0, 1)`;
+      assertEqual([ 'c' ], getQueryResults(query));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('a🤡', 5, 0, 1)`));
+    },
+
     testSubstringBytes: function () {
       assertEqual([ '🤡a'  ], getQueryResults(`RETURN SUBSTRING_BYTES('aa🤡aa', 6, 1, 1, 0)`));
       assertEqual([ 'a🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('aa🤡aa', 1, 1, 0, 1)`));
