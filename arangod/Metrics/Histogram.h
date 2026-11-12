@@ -24,7 +24,8 @@
 #include "Metrics/Metric.h"
 
 #include <atomic>
-#include <ostream>  // TODO(MBkkt) replace to iosfwd, compile error now
+#include <functional>
+#include <iosfwd>
 #include <vector>
 
 namespace arangodb::metrics {
@@ -158,7 +159,15 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
     if (ensureWhitespace) {
       result.push_back(' ');
     }
-    result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
+    constexpr auto formatString = std::invoke([]() {
+      if constexpr (std::is_same_v<double, ValueType>) {
+        return "{0:.5f}\n";
+      } else {
+        return "{}\n";
+      }
+    });
+    result.append(
+        std::format(formatString, _sum.load(std::memory_order_relaxed)));
   }
 
   void toVPack(velocypack::Builder& builder) const override {}
