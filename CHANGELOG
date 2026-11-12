@@ -1,6 +1,14 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Creating a collection via `POST /_api/collection` no longer silently corrects
+  invalid request bodies. Such requests are now rejected with HTTP 400 instead
+  of being accepted with a deprecation warning. This affects, for example,
+  unknown attributes, `null` attribute values, `type` given as a string or as an unknown number,
+  attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
+  cluster attributes that were ignored before, such as `numberOfShards` together
+  with `distributeShardsLike`, or `writeConcern` on a single server.
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
