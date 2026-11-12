@@ -668,6 +668,29 @@ function VectorIndexL2FilterTestSuite() {
                         "Index without storedValues cannot cover the filter");
         },
 
+        testApproxL2ReturnOnlyVectorFieldWithoutStoredValues: function() {
+            const searchQuery = `FOR d IN ${collection.name()}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5`;
+            const query = `${searchQuery} RETURN d.vector`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const results = db._query(query, bindVars).toArray();
+            const expected = db._query(`${searchQuery} RETURN d`, bindVars)
+                .toArray().map(d => d.vector);
+            assertEqual(expected, results);
+
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertEqual("pass-through-id", indexNodes[0].projectionMode,
+                        "Index without storedValues cannot cover the projection");
+            assertTrue(plan.nodes.some(n => n.type === "MaterializeNode"),
+                       "MaterializeNode needed to load the vector");
+        },
+
     };
 }
 
