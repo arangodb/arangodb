@@ -92,7 +92,7 @@ class TransactionManager {
   std::atomic<State> _state;
 
   // note: can be a null pointer in unit tests
-  Manager* _manager;
+  [[maybe_unused]] Manager* _manager;
 };
 
 };  // end namespace arangodb::cache

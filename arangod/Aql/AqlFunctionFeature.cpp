@@ -23,6 +23,8 @@
 #include "AqlFunctionFeature.h"
 
 #include "Aql/Function.h"
+#include "Aql/Function/AqlFunction.h"
+#include "Aql/Function/StringFunctions.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -59,6 +61,11 @@ void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   _functionNames.doUnderLock(
       [&](auto& functions) { functions.try_emplace(func.name, func); });
+}
+
+template<typename F>
+void AqlFunctionFeature::add(std::underlying_type_t<Function::Flags> flags) {
+  add({std::string{F::kName}, F::kSignature, flags, &functions::adapt<F>});
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias,
@@ -190,7 +197,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_LAST", ".,.|.,.", flags, &functions::FindLast});
   add({"SPLIT", ".|.,.", flags, &functions::Split});
   add({"PARTITION", ".,.|.", flags, &functions::Partition});
-  add({"SUBSTITUTE", ".,.|.,.", flags, &functions::Substitute});
+  add<functions::Substitute>(flags);
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});

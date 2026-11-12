@@ -1,4 +1,5 @@
 target_sources(arango_aql PRIVATE
+  AqlFunction.cpp
   ArrayFunctions.cpp
   BitFunctions.cpp
   CallApplyFunctions.cpp
@@ -9,6 +10,7 @@ target_sources(arango_aql PRIVATE
   DistributeFunctions.cpp
   DocumentFunctions.cpp
   EncodingFunctions.cpp
+  FunctionContext.cpp
   GeoFunctions.cpp
   HashFunctions.cpp
   InformationFunctions.cpp

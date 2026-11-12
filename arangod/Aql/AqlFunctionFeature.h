@@ -54,6 +54,9 @@ class AqlFunctionFeature final
   bool exists(std::string const& name) const;
 
  private:
+  template<typename F>
+  void add(std::underlying_type_t<Function::Flags> flags);
+
   // Internal functions
   void addTypeCheckFunctions();
   void addTypeCastFunctions();
