@@ -24,6 +24,7 @@
 #include "Metrics/Metric.h"
 
 #include <atomic>
+#include <format>
 #include <functional>
 #include <iosfwd>
 #include <vector>

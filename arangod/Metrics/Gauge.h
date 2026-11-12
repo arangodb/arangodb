@@ -29,6 +29,7 @@
 #include <velocypack/Builder.h>
 
 #include <atomic>
+#include <format>
 
 namespace arangodb::metrics {
 
