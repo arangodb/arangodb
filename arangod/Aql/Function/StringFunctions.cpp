@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
+#include "Aql/Function/StringFunctions.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
@@ -43,8 +44,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 
-#include <absl/strings/str_cat.h>
-
 #include <utils/utf8_utils.hpp>
 
 #include <unicode/schriter.h>
@@ -56,7 +55,9 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <span>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 using namespace arangodb;
@@ -64,12 +65,15 @@ using namespace arangodb;
 namespace arangodb::aql {
 namespace {
 
+auto icuError(UErrorCode status) -> Result {
+  return Result{TRI_ERROR_ARANGO_ICU_ERROR,
+                basics::Exception::FillExceptionString(
+                    TRI_ERROR_ARANGO_ICU_ERROR, u_errorName_64_64(status))};
+}
+
 void registerICUWarning(ExpressionContext* expressionContext,
                         std::string_view functionName, UErrorCode status) {
-  std::string msg = absl::StrCat("in function '", functionName, "()': ");
-  msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
-                                                    u_errorName_64_64(status)));
-  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
+  functions::registerWarning(expressionContext, functionName, icuError(status));
 }
 
 icu_64_64::UnicodeString toUnicodeString(velocypack::Options const& vopts,
@@ -640,141 +644,134 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
                                    reinterpret_cast<char const*>(rhsIt)}};
 }
 
-AqlValue functions::Substitute(ExpressionContext* expressionContext,
-                               AstNode const&,
-                               VPackFunctionParametersView parameters) {
-  static char const* AFN = "SUBSTITUTE";
+namespace {
 
-  transaction::Methods* trx = &expressionContext->trx();
-  auto const& vopts = trx->vpackOptions();
-  AqlValue const& search =
-      aql::functions::extractFunctionParameterValue(parameters, 1);
-  int64_t limit = -1;
+using functions::FunctionContext;
+using Patterns = functions::Substitute::Patterns;
+using Arguments = functions::Substitute::Arguments;
+
+auto unicodeFromSlice(VPackSlice slice) -> icu_64_64::UnicodeString {
+  velocypack::ValueLength length;
+  char const* str = slice.getStringUnchecked(length);
+  return icu_64_64::UnicodeString(str, static_cast<int32_t>(length));
+}
+
+// null replacement value => replace with an empty string
+auto replacementFromSlice(VPackSlice slice)
+    -> ResultT<icu_64_64::UnicodeString> {
+  if (slice.isNull()) {
+    return icu_64_64::UnicodeString{};
+  }
+  if (slice.isString()) {
+    return unicodeFromSlice(slice);
+  }
+  return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+}
+
+auto parseLimit(std::span<AqlValue const> args, size_t position) -> int64_t {
+  if (args.size() <= position) {
+    return -1;
+  }
+  return functions::extractFunctionParameterValue(args, position).toInt64();
+}
+
+auto parseMapping(velocypack::Options const& vopts,
+                  std::span<AqlValue const> args, AqlValue const& value,
+                  AqlValue const& search) -> ResultT<Arguments> {
+  if (args.size() > 3) {
+    return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH};
+  }
   AqlValueMaterializer materializer(&vopts);
-  std::vector<icu_64_64::UnicodeString> matchPatterns;
-  std::vector<icu_64_64::UnicodeString> replacePatterns;
-  bool replaceWasPlainString = false;
+  VPackSlice slice = materializer.slice(search);
+  Patterns matchPatterns;
+  Patterns replacePatterns;
+  matchPatterns.reserve(slice.length());
+  replacePatterns.reserve(slice.length());
+  for (auto it : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    matchPatterns.push_back(unicodeFromSlice(it.key));
+    auto replacement = replacementFromSlice(it.value);
+    if (replacement.fail()) {
+      return std::move(replacement).result();
+    }
+    replacePatterns.push_back(std::move(*replacement));
+  }
+  return Arguments{std::in_place_index<0>, value, std::move(matchPatterns),
+                   std::move(replacePatterns), parseLimit(args, 2)};
+}
 
-  if (search.isObject()) {
-    if (parameters.size() > 3) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-      return AqlValue(AqlValueHintNull());
-    }
-    if (parameters.size() == 3) {
-      limit = aql::functions::extractFunctionParameterValue(parameters, 2)
-                  .toInt64();
-    }
-    VPackSlice slice = materializer.slice(search);
-    matchPatterns.reserve(slice.length());
-    replacePatterns.reserve(slice.length());
-    for (auto it :
-         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
-      velocypack::ValueLength length;
-      char const* str = it.key.getString(length);
-      matchPatterns.push_back(
-          icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-      if (it.value.isNull()) {
-        // null replacement value => replace with an empty string
-        replacePatterns.push_back(icu_64_64::UnicodeString("", int32_t(0)));
-      } else if (it.value.isString()) {
-        // string case
-        str = it.value.getStringUnchecked(length);
-        replacePatterns.push_back(
-            icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-      } else {
-        // non strings
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
+auto parseSearchPatterns(velocypack::Options const& vopts,
+                         AqlValue const& search) -> ResultT<Patterns> {
+  AqlValueMaterializer materializer(&vopts);
+  VPackSlice slice = materializer.slice(search);
+  Patterns matchPatterns;
+  if (search.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
+      if (!it.isString()) {
+        return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
       }
+      matchPatterns.push_back(unicodeFromSlice(it));
     }
   } else {
-    if (parameters.size() < 2) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+    if (!search.isString()) {
+      return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
     }
-    if (parameters.size() == 4) {
-      limit = aql::functions::extractFunctionParameterValue(parameters, 3)
-                  .toInt64();
-    }
-
-    VPackSlice slice = materializer.slice(search);
-    if (search.isArray()) {
-      for (VPackSlice it : VPackArrayIterator(slice)) {
-        if (it.isString()) {
-          velocypack::ValueLength length;
-          char const* str = it.getStringUnchecked(length);
-          matchPatterns.push_back(
-              icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-        } else {
-          registerInvalidArgumentWarning(expressionContext, AFN);
-          return AqlValue(AqlValueHintNull());
-        }
-      }
-    } else {
-      if (!search.isString()) {
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
-      }
-      velocypack::ValueLength length;
-
-      char const* str = slice.getStringUnchecked(length);
-      matchPatterns.push_back(
-          icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-    }
-    if (parameters.size() > 2) {
-      AqlValue const& replace =
-          aql::functions::extractFunctionParameterValue(parameters, 2);
-      AqlValueMaterializer materializer2(&vopts);
-      VPackSlice rslice = materializer2.slice(replace);
-      if (replace.isArray()) {
-        for (VPackSlice it : VPackArrayIterator(rslice)) {
-          if (it.isNull()) {
-            // null replacement value => replace with an empty string
-            replacePatterns.push_back(icu_64_64::UnicodeString("", int32_t(0)));
-          } else if (it.isString()) {
-            velocypack::ValueLength length;
-            char const* str = it.getStringUnchecked(length);
-            replacePatterns.push_back(
-                icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-          } else {
-            registerInvalidArgumentWarning(expressionContext, AFN);
-            return AqlValue(AqlValueHintNull());
-          }
-        }
-      } else if (replace.isString()) {
-        // If we have a string as replacement,
-        // it counts in for all found values.
-        replaceWasPlainString = true;
-        velocypack::ValueLength length;
-        char const* str = rslice.getString(length);
-        replacePatterns.push_back(
-            icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
-      } else {
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
+    matchPatterns.push_back(unicodeFromSlice(slice));
   }
+  return matchPatterns;
+}
 
-  AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-
-  auto buffer = ThreadLocalStringLeaser::lease();
-  velocypack::StringSink adapter(buffer.get());
-
-  appendAsString(vopts, adapter, value);
-  if ((limit == 0) || (matchPatterns.size() == 0)) {
-    // if the limit is 0, or we don't have any match pattern, return the source
-    // string.
-    return AqlValue(std::string_view{buffer->data(), buffer->length()});
+auto parseReplacementList(VPackSlice slice) -> ResultT<Patterns> {
+  Patterns replacePatterns;
+  for (VPackSlice it : VPackArrayIterator(slice)) {
+    auto replacement = replacementFromSlice(it);
+    if (replacement.fail()) {
+      return std::move(replacement).result();
+    }
+    replacePatterns.push_back(std::move(*replacement));
   }
-  icu_64_64::UnicodeString unicodeStr(buffer->data(),
-                                      static_cast<int32_t>(buffer->length()));
+  return replacePatterns;
+}
 
-  auto& server = trx->vocbase().server();
-  auto locale = server.getFeature<LanguageFeature>().getLocale();
+auto parseSearchAndReplace(velocypack::Options const& vopts,
+                           std::span<AqlValue const> args,
+                           AqlValue const& value, AqlValue const& search)
+    -> ResultT<Arguments> {
+  if (args.size() < 2) {
+    return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH};
+  }
+  auto const limit = parseLimit(args, 3);
+  auto matchPatterns = parseSearchPatterns(vopts, search);
+  if (matchPatterns.fail()) {
+    return std::move(matchPatterns).result();
+  }
+  if (args.size() <= 2) {
+    return Arguments{std::in_place_index<0>, value, std::move(*matchPatterns),
+                     Patterns{}, limit};
+  }
+  AqlValue const& replace = functions::extractFunctionParameterValue(args, 2);
+  AqlValueMaterializer materializer(&vopts);
+  VPackSlice slice = materializer.slice(replace);
+  if (replace.isArray()) {
+    auto replacePatterns = parseReplacementList(slice);
+    if (replacePatterns.fail()) {
+      return std::move(replacePatterns).result();
+    }
+    return Arguments{std::in_place_index<0>, value, std::move(*matchPatterns),
+                     std::move(*replacePatterns), limit};
+  }
+  if (replace.isString()) {
+    return Arguments{std::in_place_index<1>, value, std::move(*matchPatterns),
+                     functions::Substitute::ReplaceAllWith{
+                         .replacement = unicodeFromSlice(slice)},
+                     limit};
+  }
+  return Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+}
+
+auto buildSearches(Patterns const& matchPatterns,
+                   icu_64_64::UnicodeString const& unicodeStr,
+                   icu_64_64::Locale const& locale)
+    -> ResultT<std::vector<std::unique_ptr<icu_64_64::StringSearch>>> {
   // we can't copy the search instances, thus use pointers.
   // ICU's StringSearch rejects empty patterns and texts
   std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
@@ -788,10 +785,23 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
         searchStr, unicodeStr, locale, nullptr, status));
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
+  return searchVec;
+}
+
+template<typename ReplacementFor>
+auto replaceMatches(icu_64_64::UnicodeString const& unicodeStr,
+                    Patterns const& matchPatterns,
+                    ReplacementFor const& replacementFor, int64_t limit,
+                    icu_64_64::Locale const& locale) -> ResultT<std::string> {
+  auto searches = buildSearches(matchPatterns, unicodeStr, locale);
+  if (searches.fail()) {
+    return std::move(searches).result();
+  }
+  auto& searchVec = *searches;
+  UErrorCode status = U_ZERO_ERROR;
 
   // pair of the position and length of the found match
   using Match = std::pair<int32_t, int32_t>;
@@ -826,14 +836,12 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   };
 
   std::vector<Match> srchResultPtrs;
-  std::string utf8;
   srchResultPtrs.reserve(matchPatterns.size());
   for (size_t i = 0; i < matchPatterns.size(); ++i) {
     // We now find the first hit for each search string.
     srchResultPtrs.push_back(firstMatch(i));
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
 
@@ -852,10 +860,8 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     auto const [pos, len] = *best;
 
     result.append(unicodeStr, lastStart, pos - lastStart);
-    if (which < replacePatterns.size()) {
-      result.append(replacePatterns[which]);
-    } else if (replaceWasPlainString) {
-      result.append(replacePatterns[0]);
+    if (auto const* replacement = replacementFor(which)) {
+      result.append(*replacement);
     }
     lastStart = pos + len;
 
@@ -867,18 +873,76 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       }
     }
     if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
-      return AqlValue(AqlValueHintNull());
+      return icuError(status);
     }
   }
   // Append from the last found:
   result.append(unicodeStr, lastStart, unicodeStr.length() - lastStart);
 
+  std::string utf8;
   result.toUTF8String(utf8);
-  return AqlValue(utf8);
+  return utf8;
 }
 
-/// @brief function LEFT str, length
+template<typename ReplacementFor>
+auto substitute(FunctionContext const& ctx, AqlValue const& value,
+                Patterns const& matchPatterns,
+                ReplacementFor const& replacementFor, int64_t limit)
+    -> ResultT<AqlValue> {
+  auto buffer = ThreadLocalStringLeaser::lease();
+  velocypack::StringSink adapter(buffer.get());
+
+  functions::appendAsString(ctx.vpackOptions, adapter, value);
+  if ((limit == 0) || (matchPatterns.size() == 0)) {
+    // if the limit is 0, or we don't have any match pattern, return the source
+    // string.
+    return AqlValue(std::string_view{buffer->data(), buffer->length()});
+  }
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
+
+  auto result = replaceMatches(unicodeStr, matchPatterns, replacementFor, limit,
+                               ctx.locale);
+  if (result.fail()) {
+    return std::move(result).result();
+  }
+  return AqlValue(*result);
+}
+
+}  // namespace
+
+auto functions::Substitute::parseArguments(FunctionContext const& ctx,
+                                           std::span<AqlValue const> args)
+    -> ResultT<Arguments> {
+  AqlValue const& value = extractFunctionParameterValue(args, 0);
+  AqlValue const& search = extractFunctionParameterValue(args, 1);
+  if (search.isObject()) {
+    return parseMapping(ctx.vpackOptions, args, value, search);
+  }
+  return parseSearchAndReplace(ctx.vpackOptions, args, value, search);
+}
+
+auto functions::Substitute::run(FunctionContext const& ctx,
+                                AqlValue const& value, Patterns const& search,
+                                Patterns const& replacements, int64_t limit)
+    -> ResultT<AqlValue> {
+  auto const replacementFor =
+      [&](size_t which) -> icu_64_64::UnicodeString const* {
+    return which < replacements.size() ? &replacements[which] : nullptr;
+  };
+  return substitute(ctx, value, search, replacementFor, limit);
+}
+
+auto functions::Substitute::run(FunctionContext const& ctx,
+                                AqlValue const& value, Patterns const& search,
+                                ReplaceAllWith const& replaceAllWith,
+                                int64_t limit) -> ResultT<AqlValue> {
+  auto const replacementFor = [&](size_t) {
+    return &replaceAllWith.replacement;
+  };
+  return substitute(ctx, value, search, replacementFor, limit);
+}
+
 AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
                          VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
