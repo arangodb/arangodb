@@ -1004,13 +1004,73 @@ The `rta_makedata` testsuite can be invoked with:
 - `--cluster false` - to be ran on a single server setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
-These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
+These combinations are also engaged via [tests.yml](tests/tests.yml).
 
 Invoke it like this:
 
     ./scripts/unittest rta_makedata --cluster true
 
 (you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
+
+### Invoking MakeData, CheckData, WaitData, WaitData against your local build
+
+The wrapper scripts in [scripts](scripts/)
+run the [makedata framework](#makedata--checkdata-suite) against a server you
+started yourself, e.g. a debug build you are working on or running in `gdb`.
+They pass the same arguments as the `rta_makedata` testsuite does, without
+letting `scripts/unittest` start and stop its own instances:
+
+- `scripts/makedata` - create the test data
+- `scripts/checkdata` - verify the test data is (still) there
+- `scripts/waitdata` - wait for the test data to become available, i.e. after a failover
+- `scripts/cleardata` - remove the test data again, so makedata can be run once more
+
+They pick up `build/bin/arangosh` and the `js/` directory of the source tree
+they live in (or the one a symlink to them lives in); use `--build <dir>` for a
+different build directory.
+
+Start a local debug single server without authentication:
+
+    ./build/bin/arangod --server.endpoint tcp://127.0.0.1:8529 \
+                        --server.authentication false \
+                        ../arangodb-data-makedata
+
+Then run a full create / check / clear cycle against it:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529
+
+To work on a single hook, filter the suites in `3rdParty/rta-makedata/test_data/makedata_suites`
+with a comma separated list; `--skip` filters the other way round:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+
+Use a database of its own instead of `_system` by passing its name as the first
+argument; its name should start with `system_`:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+
+Against a local cluster started with `scripts/startLocalCluster`, point them at the Coordinator:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 --minReplicationFactor 2
+    ./scripts/waitdata  --server.endpoint tcp://127.0.0.1:8530
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530
+
+`--one-shard` creates and checks a OneShard database, just like `--forceOneShard` in the testsuite;
+pass it to every script of the cycle:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+
+Options with a `.` in their name (`--server.endpoint`, `--server.password`, `--log.level`, ...)
+go to arangosh, all others to the javascript file; `--server.password` is also passed on as `--passvoid`.
+Unless `--oldVersion` is given, the version of the server is used for it.
+
+- `--help` lists the wrapper options and all options of the respective javascript file, without contacting a server
+- `--dry-run` prints the arangosh command line instead of running it
 
 ### Driver tests
 
