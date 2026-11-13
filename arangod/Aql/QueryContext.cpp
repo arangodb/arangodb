@@ -36,6 +36,8 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -133,6 +135,104 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
 void QueryContext::addDataSource(LogicalDataSource const& ds) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   _queryDataSources.try_emplace(ds.guid(), ds.name());
+}
+
+std::pair<LogicalDataSource::Category, std::string>
+QueryContext::addDataSourceByName(std::string_view name,
+                                  AccessMode::Type accessType,
+                                  bool failIfDoesNotExist) {
+  // NOTE name may contain a numeric collection ID; in this case the string_view
+  // returned by this function will contain the resolved datasource name
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                                   "empty name collections are not supported");
+  }
+
+  std::string resolved_name{name};
+  auto const dataSource = resolver().getDataSource(name);
+
+  if (dataSource == nullptr) {
+    // datasource not found...
+    if (failIfDoesNotExist) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                       ": name: ", name));
+    }
+
+    // still add datasource to query, simply because the AST will also be built
+    // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
+    // case it is ok that the datasource does not exist, but we need to track
+    // the names of datasources used in the query
+    collections().add(std::string{name}, accessType,
+                      aql::Collection::Hint::None);
+
+    return {LogicalDataSource::Category::kCollection, resolved_name};
+  }
+
+  // query actual name from datasource... this may be different to the
+  // name passed into this function, because the user may have accessed
+  // the collection by its numeric id
+  auto const& dataSourceName = dataSource->name();
+
+  if (name != dataSourceName) {
+    TRI_ASSERT(name.front() >= '0' && name.front() <= '9');
+    resolved_name = dataSourceName;
+  }
+
+  if (dataSource->category() == LogicalDataSource::Category::kCollection) {
+    // it's a collection!
+    // add datasource to query
+    aql::Collection::Hint hint = aql::Collection::Hint::Collection;
+    if (ServerState::instance()->isDBServer()) {
+      hint = aql::Collection::Hint::Shard;
+    }
+    collections().add(std::string(resolved_name), accessType, hint);
+    if (resolved_name != name) {
+      collections().add(std::string{name}, accessType,
+                        hint);  // Add collection by ID as well
+    }
+
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto c = ci.getCollectionNT(vocbase().name(), resolved_name);
+      if (c != nullptr) {
+        auto const& names = c->realNames();
+
+        for (auto const& n : names) {
+          std::string_view shardsNameRef(n);
+
+          auto [shardsCategory, _] = addDataSourceByName(
+              shardsNameRef, accessType, failIfDoesNotExist);
+
+          TRI_ASSERT(shardsCategory ==
+                     LogicalDataSource::Category::kCollection);
+        }
+      }  // else { TODO Should we really not react? }
+    }
+
+  } else if (dataSource->category() == LogicalDataSource::Category::kView) {
+    // it's a view!
+    // add views to the collection list
+    // to register them with transaction as well
+    collections().add(std::string(name), accessType,
+                      aql::Collection::Hint::None);
+    addDataSource(*dataSource);
+
+    // Make sure to add all collections from the view now:
+    resolver().visitCollections(
+        [this, accessType](LogicalCollection& col) -> bool {
+          collections().add(col.name(), accessType,
+                            aql::Collection::Hint::Collection);
+          return true;
+        },
+        dataSource->id());
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unexpected datasource type");
+  }
+
+  return {dataSource->category(), resolved_name};
 }
 
 aql::Ast* QueryContext::ast() const { return _ast.get(); }
