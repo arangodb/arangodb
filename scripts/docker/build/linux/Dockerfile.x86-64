@@ -3,7 +3,7 @@ ARG COMPILER_VERSION=14
 ARG CLANG_VERSION=22
 
 # First rebuild glibc with a special option and provide some .deb files:
-FROM ubuntu:24.04 AS glibcdebs
+FROM ubuntu:26.04 AS glibcdebs
 
 COPY ./static /static
 RUN /static/prepare.sh
@@ -12,7 +12,7 @@ RUN /static/rebuild_glibc.sh
 # Now prepare a standard Ubuntu image and install the provided .deb files
 # for glibc as a preparation:
 
-FROM ubuntu:24.04 AS prepare
+FROM ubuntu:26.04 AS prepare
 
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
@@ -31,7 +31,7 @@ RUN dpkg -i /debs/*.deb
 
 # Now build V8:
 
-#FROM ubuntu:24.04 AS v81
+#FROM ubuntu:26.04 AS v81
 #
 #COPY ./tools/build_v8.sh /tools/build_v8.sh
 #RUN /tools/build_v8.sh
@@ -42,7 +42,7 @@ RUN dpkg -i /debs/*.deb
 #RUN /tools/install_v8.sh
 
 # Build OpenMP static library
-FROM ubuntu:24.04 AS openmp
+FROM ubuntu:26.04 AS openmp
 
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
