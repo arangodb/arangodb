@@ -23,12 +23,18 @@
 #include "GeneralServerOptions.h"
 
 #include "Basics/PhysicalMemory.h"
+#include "GeneralServer/CommTask.h"
 #include "Network/NetworkFeature.h"
+
+#include <algorithm>
 
 namespace arangodb {
 
 GeneralServerOptions::GeneralServerOptions()
     : numIoThreads(NetworkFeature::defaultIOThreads()),
+      // must fit at least one maximum-size request body
+      maxGlobalBodySize(std::max<uint64_t>(PhysicalMemory::getValue() / 10,
+                                           rest::CommTask::MaximalBodySize)),
       decompressedRequestBodyGlobalMemoryLimit(PhysicalMemory::getValue() /
                                                10) {}
 

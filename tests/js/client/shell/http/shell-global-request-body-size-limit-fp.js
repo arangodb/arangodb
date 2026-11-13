@@ -27,17 +27,32 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 let IM = global.instanceManager;
 
-// must match the hardcoded limit in GeneralServerFeature::lowerGlobalHttp2BodySizeLimit
+// must match the hardcoded limit in GeneralServerFeature::lowerGlobalBodySizeLimit
 const FAILPOINT_LIMIT_BYTES = 16;
 
 function globalBodyBytes() {
   const res = arango.GET_RAW("/_admin/metrics");
   assertEqual(200, res.code);
   const body = typeof res.body === 'string' ? res.body : String(res.body);
-  return internal.parsePrometheusMetric(body, "arangodb_http2_global_body_bytes") || 0;
+  return internal.parsePrometheusMetric(body, "arangodb_http_global_body_bytes") || 0;
 }
 
-function H2GlobalRequestBodySizeLimitSuite() {
+function canRun() {
+  const protocol = arango.protocol();
+  return (protocol === "http" || protocol === "http2") && IM.debugCanUseFailAt();
+}
+
+// h2 resets the stream, http1 sends a real 503
+function assertRejected(res) {
+  assertTrue(res.error, `expected the body to be rejected, got: ${JSON.stringify(res)}`);
+  if (arango.protocol() === "http2") {
+    assertEqual(503, res.errorNum);
+  } else {
+    assertEqual(503, res.code);
+  }
+}
+
+function GlobalRequestBodySizeLimitSuite() {
   'use strict';
   let compressTransfer;
   return {
@@ -54,33 +69,30 @@ function H2GlobalRequestBodySizeLimitSuite() {
       IM.debugClearFailAt();
     },
 
-    // only the global failure point is set, so the real per-connection 1GB cap stays untouched
-
-    testOversizedBodyExceedsGlobalLimitButConnectionSurvives: function () {
-      if (arango.protocol() !== "http2" || !IM.debugCanUseFailAt()) {
+    testOversizedBodyExceedsGlobalLimitButServerStillServes: function () {
+      if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalHttp2BodySizeLimit");
+      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
       const before = globalBodyBytes();
 
       const body = new Array(FAILPOINT_LIMIT_BYTES * 4 + 1).join("a");
       const res = arango.POST_RAW("/_admin/auth/reload", body);
-      assertTrue(res.error, `expected the oversized body to be rejected, got: ${JSON.stringify(res)}`);
-      assertEqual(503, res.errorNum);
+      assertRejected(res);
 
-      // connection must still work after the one reset stream
+      // http1 reconnects here
       const res2 = arango.GET_RAW("/_admin/auth/reload");
       assertEqual(200, res2.code);
 
-      // a rejected/reset stream must not leak its reservation
+      // a rejected request must not leak its reservation
       assertEqual(before, globalBodyBytes());
     },
 
     testBodyAtExactGlobalLimitSucceeds: function () {
-      if (arango.protocol() !== "http2" || !IM.debugCanUseFailAt()) {
+      if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalHttp2BodySizeLimit");
+      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
       const before = globalBodyBytes();
 
       const body = new Array(FAILPOINT_LIMIT_BYTES + 1).join("a");
@@ -92,21 +104,20 @@ function H2GlobalRequestBodySizeLimitSuite() {
     },
 
     testBodyOneByteOverGlobalLimitFails: function () {
-      if (arango.protocol() !== "http2" || !IM.debugCanUseFailAt()) {
+      if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalHttp2BodySizeLimit");
+      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
       const before = globalBodyBytes();
 
       const body = new Array(FAILPOINT_LIMIT_BYTES + 2).join("a");
       const res = arango.POST_RAW("/_admin/auth/reload", body);
-      assertTrue(res.error, `expected a one-byte-over body to be rejected, got: ${JSON.stringify(res)}`);
-      assertEqual(503, res.errorNum);
+      assertRejected(res);
 
       assertEqual(before, globalBodyBytes());
     },
   };
 }
 
-jsunity.run(H2GlobalRequestBodySizeLimitSuite);
+jsunity.run(GlobalRequestBodySizeLimitSuite);
 return jsunity.done();

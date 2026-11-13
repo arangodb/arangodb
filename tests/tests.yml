@@ -115,16 +115,16 @@
             http: true
             suffix: http
 
-- shell_client_http2:
+- shell_client_http:
     options:
       priority: 250
       type: single
     suites:
-      - shell_client_http2:
+      - shell_client_http:
           args:
             http2: true
             suffix: http2
-      - shell_client_http2:
+      - shell_client_http:
           args:
             http: true
             suffix: http

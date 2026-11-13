@@ -1,9 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-1007: Added `--http.max-http2-global-body-size` startup option, which
-  limits the total size of all HTTP/2 request bodies being buffered across
-  the whole process at once, before authentication. The default is 16 GiB.
+* COR-1007: Added `--http.max-global-body-size` startup option, which
+  limits the total size of all HTTP/1.1 and HTTP/2 request bodies being
+  buffered across the whole process at once, before authentication. The
+  default is 10% of the physical memory, but at least 1 GiB. Requests
+  exceeding it are rejected with HTTP 503 (HTTP/1.1) or a stream reset
+  (HTTP/2). The new `arangodb_http_global_body_bytes` metric reports the
+  current total.
 
 * COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
   now fails with a parse error when that variable was not bound earlier. It

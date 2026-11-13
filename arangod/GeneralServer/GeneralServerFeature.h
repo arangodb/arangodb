@@ -99,8 +99,8 @@ class GeneralServerFeature final
 
   void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
 
-  bool reserveHttp2BodyBytes(std::uint64_t len) noexcept;
-  void releaseHttp2BodyBytes(std::uint64_t len) noexcept;
+  bool reserveRequestBodyBytes(std::uint64_t len) noexcept;
+  void releaseRequestBodyBytes(std::uint64_t len) noexcept;
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
@@ -173,7 +173,7 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
   metrics::Gauge<double>& _connectionHttp;
 
-  metrics::Gauge<std::uint64_t>& _globalHttp2BodyBytes;
+  metrics::Gauge<std::uint64_t>& _globalBodyBytes;
   metrics::MetricsFeature& _metricsFeature;
 
   GlobalResourceMonitor _decompressionGlobal;

@@ -40,8 +40,7 @@ struct GeneralServerOptions {
   uint64_t compressResponseThreshold = 0;
   uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
-  // tolerates ~16 connections related to the 1GB limit per connection
-  uint64_t maxGlobalHttp2BodySize = 16ULL * 1024 * 1024 * 1024;  // 16 GiB
+  uint64_t maxGlobalBodySize;  // initialized in ctor
   uint64_t decompressedRequestBodyGlobalMemoryLimit = 0;
   std::vector<std::string> accessControlAllowOrigins;
   std::string supportInfoApiPolicy = "admin";
