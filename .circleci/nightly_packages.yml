@@ -138,13 +138,15 @@ jobs:
     resource_class: small
     steps:
       - run:
-          name: Checkout .circleci
+          name: Checkout .circleci and CMakePresets.json
           command: |
             git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
             cd arangodb
-            git sparse-checkout set --no-cone .circleci
+            # CMakePresets.json: the generator unit tests check the nightly
+            # compile presets against it.
+            git sparse-checkout set --no-cone .circleci /CMakePresets.json
             git checkout $CIRCLE_SHA1
-            mv .circleci ..
+            mv .circleci CMakePresets.json ..
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"

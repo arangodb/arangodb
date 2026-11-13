@@ -250,10 +250,13 @@ jobs:
           command: |
             git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
             cd arangodb
-            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci
+            # CMakePresets.json: the config script unit tests check the nightly
+            # compile presets against it.
+            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci /CMakePresets.json
             git checkout $CIRCLE_SHA1
             mv tests ..
             mv .circleci ..
+            mv CMakePresets.json ..
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
