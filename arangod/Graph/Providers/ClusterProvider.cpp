@@ -133,6 +133,7 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
+  _neighbourCursors.clear();
   return Step{VertexRef{_opts.getCache()->persistString(vertex)}, depth,
               weight};
 }
