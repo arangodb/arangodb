@@ -61,6 +61,9 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   size_t cryptedLength;
 
   if (hashMethod == "sha1") {
+    LOG_TOPIC("4c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA1 should be retired, it will be deprecated in one of the future "
+           "releases";
     arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
     cryptedLength = 20;
   } else if (hashMethod == "sha512") {
@@ -73,11 +76,15 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
     arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
     cryptedLength = 32;
   } else if (hashMethod == "sha224") {
+    LOG_TOPIC("5c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA224 should be retired, it will be deprecated in one of the "
+           "future releases";
     arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
     cryptedLength = 28;
   } else if (hashMethod == "md5") {
-    arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 16;
+    LOG_TOPIC("6c13c", ERR, arangodb::Logger::AUTHENTICATION)
+        << "MD5 is deprecated and cannot not be used anymore!";
+    return TRI_ERROR_BAD_PARAMETER;
   } else {
     // invalid algorithm...
     LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)

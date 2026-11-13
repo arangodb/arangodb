@@ -11,6 +11,7 @@ set(BOOST_INCLUDE_LIBRARIES
   container_hash
   core
   crc
+  hash2
   lockfree
   predef
   property_tree

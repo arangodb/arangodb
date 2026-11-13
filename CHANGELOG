@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
+  SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
+
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).
 
