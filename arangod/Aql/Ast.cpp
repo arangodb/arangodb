@@ -2151,14 +2151,11 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  // A pattern out variable must not exist before. Otherwise it is supposed to
-  // be a reference. References must not be restricted within the pattern.
+  // A labeled vertex pattern `(name :collection ...)` declares a new variable.
+  // If the name is already in use, report it as a redeclaration, just like a
+  // duplicate variable declaration in LET
   if (_scopes.existsVariable(name)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
-                     "reference '",
-                     name, "'"));
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
 
   return createNodeVariable(name, true);
@@ -2179,7 +2176,10 @@ AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
   return createNodeVariable(name, true);
 }
 
-AstNode* Ast::createPatternVertexReference(std::string_view name) {
+AstNode* Ast::createPatternVertexReference(std::string_view name,
+                                           AstNode const* properties,
+                                           AstNode const* filterExpression,
+                                           AstNode const* projections) {
   if (name.empty()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -2192,6 +2192,18 @@ AstNode* Ast::createPatternVertexReference(std::string_view name) {
         TRI_ERROR_QUERY_PARSE,
         absl::StrCat("MATCH vertex variable '", name,
                      "' needs a label or has to be bound earlier"));
+  }
+
+  // COR-1049: Bare vertex references cannot have property predicates, WHERE
+  // filters, or projections. These are supported only on labeled vertex
+  // declarations.
+  if (properties != nullptr || filterExpression != nullptr ||
+      projections != nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
+                     "reference '",
+                     name, "'"));
   }
 
   return createNodeReference(name);
