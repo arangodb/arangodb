@@ -78,6 +78,27 @@ function ClusterDBServerShardMetricsTestSuite() {
     return count;
   };
 
+  // Helper to count shards led by one of the given servers which have no
+  // in-sync follower left according to Current in the agency. This is the
+  // same information the leaders use to compute shardsNotReplicatedNumMetric.
+  const getNotReplicatedCountFromCurrent = function(servers) {
+    const serverIds = servers.map(server => server.id);
+    const current = IM.agencyMgr.get("Current/Collections").arango.Current.Collections;
+    let count = 0;
+    [ "_system", dbName ].forEach(database => {
+      Object.values(current[database] || {}).forEach(collection => {
+        Object.values(collection).forEach(shard => {
+          if (Array.isArray(shard.servers) &&
+              shard.servers.length === 1 &&
+              serverIds.includes(shard.servers[0])) {
+            ++count;
+          }
+        });
+      });
+    });
+    return count;
+  };
+
   // Helper function to generate documents that cover all shards
   const generateDocsForAllShards = function(collection, numberOfShards, docsPerShard) {
     let shardMap = {};
@@ -297,7 +318,14 @@ function ClusterDBServerShardMetricsTestSuite() {
         "Expected at least 2 shards out of sync", 2000 * waitFactor);
       // One server is down, so we lose testCollShards shards (one replica per shard)
       const onlineShardCount = totalShardCount - testCollShards;
-      getMetricsAndAssert(onlineServers, onlineShardCount, totalLeaderCount, null, 0);
+      getMetricsAndAssert(onlineServers, onlineShardCount, totalLeaderCount, null, null);
+      // Our collection still has one in-sync follower per shard, but system
+      // shards whose only follower was on the suspended server become not
+      // replicated once a write hits them. Whether this happens depends on
+      // background writes, so compare against what Current says.
+      eventuallyAssertMetricSum(onlineServers, shardsNotReplicatedNumMetric,
+        (value) => value === getNotReplicatedCountFromCurrent(onlineServers),
+        "Expected not replicated shards to match Current", 2000 * waitFactor);
 
       dbServerWithoutLeader.resume();
 
