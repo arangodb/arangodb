@@ -249,138 +249,6 @@ bool isSimpleExpansion(ast::ExpansionNode const& expansionNode) {
                                            limit->getMember(1)->isConstant()));
 }
 
-/**
- * @brief Register the given datasource with the given accesstype in the query.
- *        Will be noop if the datasource is already used and has the same or
- * higher accessType. Will upgrade the accessType if datasource is used with
- * lower one before.
- *
- * @param resolver CollectionNameResolver to identify category
- * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
- * @param failIfDoesNotExist If true => throws error if SourceNotFound. False =>
- * Treat non-existing like a collection
- * @param nameRef Name of the datasource (in/out parameter)
- *
- * @return The Category of this datasource (Collection or View), and a reference
- * to the translated name (cid => name if required).
- */
-std::pair<LogicalDataSource::Category, std::string_view>
-injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
-                        AccessMode::Type accessType, bool failIfDoesNotExist,
-                        std::string_view name) {
-  // NOTE name may contain a numeric collection ID; in this case the string_view
-  // returned by this function will contain the resolved datasource name
-  if (name.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                                   "empty name collections are not supported");
-  }
-
-  std::string_view resolved_name{name};
-  auto const dataSource = resolver.getDataSource(name);
-
-  if (dataSource == nullptr) {
-    // datasource not found...
-    if (failIfDoesNotExist) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
-                       ": name: ", name));
-    }
-
-    // still add datasource to query, simply because the AST will also be built
-    // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
-    // case it is ok that the datasource does not exist, but we need to track
-    // the names of datasources used in the query
-    ast.query().collections().add(std::string{name}, accessType,
-                                  aql::Collection::Hint::None);
-
-    return {LogicalDataSource::Category::kCollection, resolved_name};
-  }
-
-  // query actual name from datasource... this may be different to the
-  // name passed into this function, because the user may have accessed
-  // the collection by its numeric id
-  auto const& dataSourceName = dataSource->name();
-
-  if (name != dataSourceName) {
-    TRI_ASSERT(name.front() >= '0' && name.front() <= '9');
-    // name was a numeric collection id, so we need to store the collection
-    // name on the heap and update our std::string_view to point to it
-    char* p = ast.resources().registerString(dataSourceName.data(),
-                                             dataSourceName.size());
-    resolved_name = std::string_view(p, dataSourceName.size());
-  }
-
-  if (dataSource->category() == LogicalDataSource::Category::kCollection) {
-    // it's a collection!
-    // add datasource to query
-    aql::Collection::Hint hint = aql::Collection::Hint::Collection;
-    if (ServerState::instance()->isDBServer()) {
-      hint = aql::Collection::Hint::Shard;
-    }
-    ast.query().collections().add(std::string(resolved_name), accessType, hint);
-    if (resolved_name != name) {
-      ast.query().collections().add(std::string{name}, accessType,
-                                    hint);  // Add collection by ID as well
-    }
-  } else if (dataSource->category() == LogicalDataSource::Category::kView) {
-    // it's a view!
-    // add views to the collection list
-    // to register them with transaction as well
-    ast.query().collections().add(std::string(name), accessType,
-                                  aql::Collection::Hint::None);
-
-    ast.query().addDataSource(*dataSource);
-
-    // Make sure to add all collections from the view now:
-    resolver.visitCollections(
-        [&ast, accessType](LogicalCollection& col) -> bool {
-          ast.query().collections().add(col.name(), accessType,
-                                        aql::Collection::Hint::Collection);
-          return true;
-        },
-        dataSource->id());
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unexpected datasource type");
-  }
-
-  return {dataSource->category(), resolved_name};
-}
-
-LogicalDataSource::Category addDataSource(
-    Ast& ast, CollectionNameResolver const& resolver,
-    std::string_view nameRef) {
-  auto [category, resolved_name] = injectDataSourceInQuery(
-      ast, resolver, AccessMode::Type::READ, false, nameRef);
-
-  if (category == LogicalDataSource::Category::kCollection) {
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ci = ast.query()
-                     .vocbase()
-                     .server()
-                     .getFeature<ClusterFeature>()
-                     .clusterInfo();
-      auto c = ci.getCollectionNT(ast.query().vocbase().name(), resolved_name);
-      if (c != nullptr) {
-        auto const& names = c->realNames();
-
-        for (auto const& n : names) {
-          std::string_view shardsNameRef(n);
-
-          auto [shardsCategory, _] = injectDataSourceInQuery(
-              ast, resolver, AccessMode::Type::READ, false, shardsNameRef);
-
-          TRI_ASSERT(shardsCategory ==
-                     LogicalDataSource::Category::kCollection);
-        }
-      }  // else { TODO Should we really not react? }
-    }
-  }
-
-  return category;
-}
-
 std::optional<std::string> edgeCollectionNodeGetName(
     AstNode const* edgeCollection) {
   if (edgeCollection->type == NODE_TYPE_DIRECTION) {
@@ -982,8 +850,8 @@ AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
-  auto [category, resolved_name] = injectDataSourceInQuery(
-      *this, resolver, accessType, failIfDoesNotExist, name);
+  auto [category, resolved_name] =
+      query().addDataSourceByName(name, accessType, failIfDoesNotExist);
 
   if (category == LogicalDataSource::Category::kCollection) {
     return createNodeCollectionNoValidation(name, accessType);
@@ -1008,7 +876,7 @@ AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
   validateDataSourceName(name, true);
   // this call may update name
   auto [category, resolved_name] =
-      injectDataSourceInQuery(*this, resolver, accessType, false, name);
+      query().addDataSourceByName(name, accessType, false);
 
   if (category == LogicalDataSource::Category::kCollection) {
     // add collection to query
@@ -1702,7 +1570,7 @@ AstNode* Ast::createNodeWithCollections(
   for (auto c : collectionsNode.getElements()) {
     if (c->isStringValue()) {
       auto nameRef = c->getStringView();
-      addDataSource(*this, resolver, nameRef);
+      query().addDataSourceByName(nameRef, AccessMode::Type::READ, false);
     }  // else bindParameter use default for collection bindVar
 
     // We do not need to propagate these members
@@ -1726,7 +1594,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
     if (edgeCollectionName.has_value()) {
       auto edgeCollectionNameRef = std::string_view{*edgeCollectionName};
-      auto category = addDataSource(*this, resolver, edgeCollectionNameRef);
+      auto [category, _] = query().addDataSourceByName(
+          edgeCollectionNameRef, AccessMode::Type::READ, false);
 
       if (category != LogicalDataSource::Category::kCollection) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -4962,7 +4831,8 @@ void Ast::addGraphNodeImplicitVertexCollections(
 
   if (maybeImplicitVertexCollections.ok()) {
     for (auto&& vertexCollectionName : maybeImplicitVertexCollections.get()) {
-      addDataSource(*this, resolver, std::string_view{vertexCollectionName});
+      query().addDataSourceByName(std::string_view{vertexCollectionName},
+                                  AccessMode::Type::READ, false);
     }
   } else {
     THROW_ARANGO_EXCEPTION(maybeImplicitVertexCollections.result());

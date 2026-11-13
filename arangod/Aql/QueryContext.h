@@ -31,6 +31,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
@@ -110,6 +111,11 @@ class QueryContext : public arangodb::ICancellationToken {
 
   /// @brief note that the query uses the DataSource
   void addDataSource(LogicalDataSource const& ds);
+
+  ///
+  std::pair<LogicalDataSource::Category, std::string> addDataSourceByName(
+      std::string_view name, AccessMode::Type accessType,
+      bool failIfDoesNotExist);
 
   QueryExecutionState::ValueType state() const noexcept { return _execState; }
 
