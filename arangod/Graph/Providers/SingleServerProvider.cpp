@@ -106,6 +106,7 @@ auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
+  _neighbourCursors.clear();
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be
   // removed.
