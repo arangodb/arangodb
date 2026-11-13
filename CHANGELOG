@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
+  (previously g++-13).
+
+* Update libunwind from 1.7.2 to 1.8.3.
+
 * COR-1263 / github issue #23383:
   - Fixed the extra counting issue in NGRAM_MATCH
   - Added unit tests

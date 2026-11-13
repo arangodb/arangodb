@@ -34,7 +34,13 @@ namespace arangodb::cache {
 
 // note: manager can be a null pointer in unit tests
 TransactionManager::TransactionManager(Manager* manager)
-    : _state({{0, 0, 0}, 0}), _manager(manager) {}
+    : _state({{0, 0, 0}, 0})
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+      ,
+      _manager(manager)
+#endif
+{
+}
 
 void TransactionManager::begin(Transaction& tx, bool readOnly) {
   tx = Transaction{readOnly};
