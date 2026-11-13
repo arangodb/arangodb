@@ -22,7 +22,6 @@
 
 #include "Helpers.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -39,6 +38,8 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -83,7 +84,7 @@ bool isTimeTravelAttribute(std::string_view key) noexcept {
 // version that gets expired, and the storage engine does that.
 Result addTimeTravelAttributes(velocypack::Slice value,
                                velocypack::Builder& b) {
-  auto created = timeTravelWriteTimestamp(value);
+  auto created = timeTravelTimestamp(value, StaticStrings::Created);
   if (created.fail()) {
     return created.result();
   }
@@ -94,14 +95,19 @@ Result addTimeTravelAttributes(velocypack::Slice value,
 
 }  // namespace
 
-ResultT<std::uint64_t> timeTravelWriteTimestamp(velocypack::Slice value) {
-  VPackSlice created = value.get(StaticStrings::Created);
+ResultT<std::uint64_t> timeTravelTimestamp(velocypack::Slice value,
+                                           std::string_view attribute) {
   std::optional<std::uint64_t> ts;
-  if (created.isUInt()) {
-    ts = created.getUIntUnchecked();
-  } else if (created.isInt() || created.isSmallInt()) {
-    if (auto v = created.getIntUnchecked(); v > 0) {
-      ts = static_cast<std::uint64_t>(v);
+  // a remove may be addressed by a bare key rather than an object, which
+  // leaves nowhere for the timestamp to be
+  if (value.isObject()) {
+    VPackSlice slice = value.get(attribute);
+    if (slice.isUInt()) {
+      ts = slice.getUIntUnchecked();
+    } else if (slice.isInt() || slice.isSmallInt()) {
+      if (auto v = slice.getIntUnchecked(); v > 0) {
+        ts = static_cast<std::uint64_t>(v);
+      }
     }
   }
   // Both ends of the range are reserved, so they are rejected alongside
