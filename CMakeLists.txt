@@ -1125,8 +1125,10 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_pthread_LIBRARY "pthread")
 
   if(USE_FIPS)
+    # Ask the compiler that links (it knows its GCC installation's libgfortran)
+    # rather than a gfortran driver, which the build image does not ship.
     execute_process(
-      COMMAND gfortran -print-file-name=libgfortran.a
+      COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libgfortran.a
       OUTPUT_VARIABLE GFORTRAN_STATIC
       OUTPUT_STRIP_TRAILING_WHITESPACE
       RESULT_VARIABLE GFORTRAN_RESULT

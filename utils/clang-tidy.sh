@@ -195,6 +195,19 @@ echo "About to run clang-tidy on the following files:"
 printf '%s\n' "${present[@]}" | cat -n
 echo
 
+# clang-tidy reads none of clang's config files, which is where the build
+# image pins clang to its GCC installation (libstdc++, libgfortran). Hand
+# clang-tidy the installation clang itself selects, so both parse the same
+# standard library headers.
+extra_args=()
+gcc_install_dir="$(clang++-22 -v -x c++ /dev/null -fsyntax-only 2>&1 \
+  | sed -n 's/^Selected GCC installation: //p' || true)"
+if [[ -n "$gcc_install_dir" ]]; then
+  echo "Using the GCC installation clang++-22 selects: $gcc_install_dir"
+  extra_args+=("-extra-arg-before=--gcc-install-dir=$gcc_install_dir")
+fi
+
 # run-clang-tidy matches its positional args as regexes against DB paths.
 # Passing the exact relative paths is specific enough in practice.
-run-clang-tidy-22 -p "$build_dir" -j "$jobs" -quiet $fix "${present[@]}"
+run-clang-tidy-22 -p "$build_dir" -j "$jobs" -quiet $fix \
+  ${extra_args[@]+"${extra_args[@]}"} "${present[@]}"

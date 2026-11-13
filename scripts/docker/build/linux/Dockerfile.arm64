@@ -96,7 +96,7 @@ LABEL org.opencontainers.image.authors="Max Neunhoeffer <max@arango.ai>"
 ARG ARCH="aarch64"
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
-ARG SCCACHE_VERSION="0.10.0"
+ARG SCCACHE_VERSION="0.19.0"
 
 # We provide gcc 14.2.0 as well as clang 22 (latest) from LLVM
 
@@ -117,6 +117,18 @@ RUN apt-get update --fix-missing && \
     libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
     libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
+
+# 26.04's default GCC (pulled in by build-essential) is 15, and clang uses the
+# newest GCC installation it finds for libstdc++, libgcc and libgfortran. Pin it
+# to GCC ${COMPILER_VERSION}, the one this image installs libgfortran for, via
+# clang's default config files next to the clang binary; fail if it doesn't take.
+RUN GCC_DIR="$(dirname "$(gcc-${COMPILER_VERSION} -print-libgcc-file-name)")" && \
+    CLANG_DIR="$(dirname "$(readlink -f "$(command -v clang-${CLANG_VERSION})")")" && \
+    for driver in clang clang++; do \
+      echo "--gcc-install-dir=${GCC_DIR}" > "${CLANG_DIR}/${driver}.cfg"; \
+    done && \
+    clang++-${CLANG_VERSION} -v -x c++ /dev/null -fsyntax-only 2>&1 | \
+      grep -q "Selected GCC installation: ${GCC_DIR}$"
 
 # sccache for cloud compiler cache:
 
