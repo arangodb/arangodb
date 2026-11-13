@@ -18,22 +18,14 @@ clang-format --version
 find $PATHS -iname \*.h \
   \! -wholename "lib/Basics/sdt.h" \
   \! -wholename "lib/iresearch.build/external/snowball/libstemmer/modules.h" \
-  > $HEADERNAMES
-
-for file in $(cat $HEADERNAMES) ;
-do
-  mv $file $(dirname $file)/"$RANDOM_PREFIX"_"$(basename $file .h)".hpp
-done
+  -type f \
+  -exec clang-format --assume-filename foo.hpp -i {} \+
 
 # excluding sdt.h fixes the clang-format job; sdt is
 # imported as a 3rd party include as far as I can tell
 # and maybe should be moved otherplace
 find $PATHS \
-  \( -name '*.cpp' -o -name '*.hpp' -o -name '*.tpp' \) \
+  \( -name '*.cpp' -o -name '*.tpp' \) \
   -type f \
   -exec clang-format -i {} \+
 
-for file in $(cat $HEADERNAMES) ;
-do
-  mv "$(dirname $file)"/"${RANDOM_PREFIX}"_"$(basename $file .h)".hpp $file
-done
