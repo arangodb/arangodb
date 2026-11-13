@@ -64,7 +64,7 @@ class FifoQueue {
   }
 
   template<NeighbourCursor<Step> Cursor>
-  void append(Cursor& expansion) {
+  void append(std::unique_ptr<Cursor>&& expansion) {
     TRI_ASSERT(false);
   }
 

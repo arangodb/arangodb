@@ -106,7 +106,6 @@ auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
-  _neighbourCursors.clear();
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be
   // removed.
@@ -176,14 +175,10 @@ auto SingleServerProvider<Step>::expand(
 template<class Step>
 auto SingleServerProvider<Step>::createNeighbourCursor(Step const& step,
                                                        size_t position)
-    -> SingleServerNeighbourCursor<Step>& {
-  _neighbourCursors.remove_if(
-      [](SingleServerNeighbourCursor<Step> const& cursor) {
-        return cursor._deletable;
-      });
-  return _neighbourCursors.emplace_back(SingleServerNeighbourCursor<Step>{
+    -> std::unique_ptr<NeighbourCursor> {
+  return std::make_unique<NeighbourCursor>(
       step, position, _ast, *this, _opts, _trx.get(), _monitor, _stats, _cache,
-      aql::ExecutionBlock::DefaultBatchSize});
+      aql::ExecutionBlock::DefaultBatchSize);
 }
 
 template<class Step>

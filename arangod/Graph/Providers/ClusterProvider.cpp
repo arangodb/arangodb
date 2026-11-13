@@ -133,7 +133,6 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  _neighbourCursors.clear();
   return Step{VertexRef{_opts.getCache()->persistString(vertex)}, depth,
               weight};
 }
@@ -610,14 +609,9 @@ auto ClusterProvider<StepImpl>::expand(
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::createNeighbourCursor(Step const& step,
                                                       size_t position)
-    -> ClusterNeighbourCursor<Step>& {
-  _neighbourCursors.remove_if([](ClusterNeighbourCursor<Step> const& cursor) {
-    return cursor._deletable;
-  });
-
-  _neighbourCursors.emplace_back(
-      ClusterNeighbourCursor<Step>{step, position, _trx.get(), _opts, _stats});
-  return _neighbourCursors.back();
+    -> std::unique_ptr<NeighbourCursor> {
+  return std::make_unique<NeighbourCursor>(step, position, _trx.get(), _opts,
+                                           _stats);
 }
 
 template<class StepImpl>

@@ -80,9 +80,9 @@ class CursorFifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
-  void append(Cursor& cursor) {
+  void append(std::unique_ptr<Cursor>&& cursor) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(CursorRef));
-    _continuationQueue.push_back(CursorRef{cursor});
+    _continuationQueue.emplace_back(std::move(cursor));
     guard.steal();  // now we are responsible for tracking the memory
   }
 
@@ -154,14 +154,13 @@ class CursorFifoQueue {
       // if _queue is empty, pop next iterator
       LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
           << "<BatchedFifoQueue> Pop: next batch";
-      auto& cursor = _continuationQueue.front().get();
-      if (not cursor.hasMore()) {
+      auto& cursor = _continuationQueue.front();
+      if (not cursor->hasMore()) {
         _resourceMonitor.decreaseMemoryUsage(sizeof(CursorRef));
         _continuationQueue.pop_front();
-        cursor.markForDeletion();
         continue;
       }
-      for (auto&& step : cursor.next()) {
+      for (auto&& step : cursor->next()) {
         append(step);
       }
     }
@@ -189,7 +188,7 @@ class CursorFifoQueue {
 
  private:
   /// @brief queue datastore
-  using CursorRef = std::reference_wrapper<Cursor>;
+  using CursorRef = std::unique_ptr<Cursor>;
   std::deque<Step> _queue;
   std::deque<CursorRef> _continuationQueue;
 

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 #include <list>
 #include "Graph/Cache/RefactoredTraverserCache.h"
@@ -89,7 +90,7 @@ class SingleServerProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
   auto createNeighbourCursor(Step const& step, size_t position)
-      -> SingleServerNeighbourCursor<Step>&;
+      -> std::unique_ptr<NeighbourCursor>;
   auto clear() -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge,
@@ -156,7 +157,6 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
-  std::list<SingleServerNeighbourCursor<Step>> _neighbourCursors;
   aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph
