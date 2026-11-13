@@ -263,7 +263,7 @@ jobs:
 
   # ── Test Docker images ──────────────────────────────────────────────────────
   # Builds the images used for running ArangoDB tests and driver tests.
-  # Sources: scripts/docker/{test,go-test,js-test,...} + release-test-automation repo.
+  # Sources: scripts/docker/{test,go-test,js-test,...,cp-schema-registry} + release-test-automation repo.
   build-test-docker-image:
     docker:
       - image: cimg/base:current
@@ -348,6 +348,18 @@ jobs:
               docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
               record_push $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
             done
+      - run:
+          name: Build schema registry Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            # Not derived from the test image (its base is confluent's UBI image),
+            # so determine-tag.sh would yield a different OS version prefix; reuse
+            # the base test image's tag so the whole image set shares one tag.
+            image=<< parameters.image >>-cp-schema-registry
+            /bin/sh build-image.sh $image << parameters.arch >> cp-schema-registry
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
@@ -426,6 +438,7 @@ jobs:
             for suite in go js python java spark tinkerpop spring; do
               record_manifest << parameters.image >>-${suite} "$(cat amd64-tag-${suite}.txt)"
             done
+            record_manifest << parameters.image >>-cp-schema-registry "$(cat amd64-tag.txt)"
       - run:
           name: Build RTA container manifest
           command: |
@@ -605,34 +618,58 @@ jobs:
           command: |
             set -eu
             cd /home/circleci/project
+            # Every pipeline file pinning the image is updated, found by content
+            # rather than a fixed list, so a newly added pipeline cannot be missed.
+            # Afterwards no other tag of that image may remain anywhere in .circleci.
+            update_refs() {
+              local ref="$2" re files
+              re="$(printf '%s' "$1" | sed 's/[.]/[.]/g'):[^ \"]+"
+              files="$(git grep -lE "${re}" -- .circleci ':!.circleci/infrastructure.yml')"
+              test -n "${files}" || { echo "ERROR: no pipeline pins $1"; exit 1; }
+              sed -i -E "s|${re}|${ref}|g" ${files}
+              if git grep -nE "${re}" -- .circleci ':!.circleci/infrastructure.yml' | grep -vF "${ref}"; then
+                echo "ERROR: stale $1 references left (above)"; exit 1
+              fi
+              git add ${files}
+              echo "Staged ${ref} in:" ${files}
+            }
+            # Pipelines pin the bare tag and run on both amd64 and arm64 executors,
+            # so only a multi-arch manifest with both platforms may be committed.
+            require_multiarch() {
+              local repo="${1#public.ecr.aws/b0b8h2r4/}" tag="$2" token platforms
+              token="$(curl -fsS "https://public.ecr.aws/token/?scope=repository:b0b8h2r4/${repo}:pull" | jq -r .token)"
+              platforms="$(curl -fsS -H "Authorization: Bearer ${token}" \
+                -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+                "https://public.ecr.aws/v2/b0b8h2r4/${repo}/manifests/${tag}" \
+                | jq -r '[.manifests[]?.platform | "\(.os)/\(.architecture)"] | join(" ")')"
+              for p in linux/amd64 linux/arm64; do
+                case " ${platforms} " in
+                  *" ${p} "*) ;;
+                  *) echo "ERROR: ${1}:${tag} has no ${p} image (platforms: ${platforms:-none})"; exit 1 ;;
+                esac
+              done
+              echo "${1}:${tag}: ${platforms}"
+            }
             if [ -f /tmp/workspace/tag-updates/test-tag.txt ]; then
               TAG="$(cat /tmp/workspace/tag-updates/test-tag.txt)"
-              TEST_IMAGE="public.ecr.aws/b0b8h2r4/test-ubuntu"
+              for repo in test-ubuntu test-ubuntu-go test-ubuntu-js test-ubuntu-python test-ubuntu-java \
+                          test-ubuntu-spark test-ubuntu-tinkerpop test-ubuntu-spring \
+                          test-ubuntu-cp-schema-registry \
+                          release-test-automation-tar-oskarnew; do
+                require_multiarch "${repo}" "${TAG}"
+              done
               echo "${TAG}" > scripts/docker/amd64-tag.txt
-              sed -i "s|${TEST_IMAGE}:[^ \"]*|${TEST_IMAGE}:${TAG}|g" \
-                .circleci/config.yml \
-                .circleci/base_config.yml
-              git add scripts/docker/amd64-tag.txt \
-                      .circleci/config.yml \
-                      .circleci/base_config.yml
-              echo "Staged test image tag: ${TAG}"
+              git add scripts/docker/amd64-tag.txt
+              update_refs public.ecr.aws/b0b8h2r4/test-ubuntu "public.ecr.aws/b0b8h2r4/test-ubuntu:${TAG}"
+              update_refs public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry \
+                "public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry:${TAG}"
             fi
             if [ -f /tmp/workspace/tag-updates/build-tag.txt ]; then
               IMAGE_REF="$(cat /tmp/workspace/tag-updates/build-tag.txt)"
+              require_multiarch "${IMAGE_REF%:*}" "${IMAGE_REF##*:}"
               echo "${IMAGE_REF}" > scripts/docker/build/linux/amd64-build-tag.txt
-              sed -i "s|public\.ecr\.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-[^\"]*|${IMAGE_REF}|g" \
-                .circleci/config.yml \
-                .circleci/base_config.yml \
-                .circleci/nightly_packages.yml \
-                .circleci/base_nightly_packages.yml \
-                .circleci/benchmarks.yml
-              git add scripts/docker/build/linux/amd64-build-tag.txt \
-                      .circleci/config.yml \
-                      .circleci/base_config.yml \
-                      .circleci/nightly_packages.yml \
-                      .circleci/base_nightly_packages.yml \
-                      .circleci/benchmarks.yml
-              echo "Staged build image tag: ${IMAGE_REF}"
+              git add scripts/docker/build/linux/amd64-build-tag.txt
+              update_refs "${IMAGE_REF%:*}" "${IMAGE_REF}"
             fi
       - commit-and-push:
           message: "chore: update Docker image tags"

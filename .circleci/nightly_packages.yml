@@ -36,7 +36,7 @@ parameters:
     description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-07ab72a0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-28214ffe"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
   build-tarballs:
     type: boolean
@@ -71,6 +71,10 @@ parameters:
     type: boolean
     default: false
     description: "TEST run for a GitHub PR — NOT a real nightly. The pipeline runs under the names setup-nightly-packages-pr/nightly-packages-pr and executes every job selected by the other parameters, including publish-nightly, but the publish degrades to a dry run: packages are staged to GCS and verified, then discarded; nothing is promoted to the live nightly tree, no Docker tags or manifests are pushed, no download index is uploaded. Redundant-pipeline cancellation only targets other pr-run pipelines on the branch, never a real nightly-packages run."
+  run-benchmarks-on-success:
+    type: boolean
+    default: false
+    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-alpine-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
 
 jobs:
   cancel-redundant-pipelines:
@@ -190,6 +194,7 @@ jobs:
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \
               --pr-run "<< pipeline.parameters.pr-run >>" \
+              --run-benchmarks-on-success "<< pipeline.parameters.run-benchmarks-on-success >>" \
               -o nightly_packages_continuation_config.yml
       # Only the SETUP-COMPUTED parameters (enterprise-commit and
       # nightly-date, declared solely in the base config) are passed to the
