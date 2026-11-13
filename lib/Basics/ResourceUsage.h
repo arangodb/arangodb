@@ -22,12 +22,14 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
 
 #include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
+#include "infra/ResourceMonitorRef.h"
 
 namespace arangodb {
 class GlobalResourceMonitor;
@@ -55,6 +57,13 @@ struct alignas(64) ResourceMonitor final {
 
   /// @brief sets a memory limit
   void memoryLimit(std::uint64_t value) noexcept;
+
+  /// @brief sets the new monitor's limit only; temporary until the startup
+  /// option is connected
+  void newMemoryLimit(std::uint64_t value) noexcept;
+
+  /// @brief whether the new monitor refused an allocation because of a limit
+  bool newMemoryLimitHit() const noexcept;
 
   /// @brief returns the current memory limit
   std::uint64_t memoryLimit() const noexcept;
@@ -87,11 +96,25 @@ struct alignas(64) ResourceMonitor final {
     return static_cast<std::int64_t>(value / chunkSize);
   }
 
+  infra::ResourceMonitorRef monitorRef;
+
+  /// @brief diagnostics: query phases whose end is logged with the new
+  /// monitor's peak and current bytes
+  enum class Phase : std::uint8_t { kPlan, kInstantiate, kExecute };
+  void recordPhase(Phase phase) noexcept;
+
  private:
+  struct PhaseBytes {
+    std::uint64_t peak = 0;
+    std::uint64_t now = 0;
+    bool recorded = false;
+  };
+
   std::atomic<std::uint64_t> _current;
   std::atomic<std::uint64_t> _peak;
   std::uint64_t _limit;
   GlobalResourceMonitor& _global;
+  std::array<PhaseBytes, 3> _phases{};
 };
 
 /// @brief RAII object for temporary resource tracking

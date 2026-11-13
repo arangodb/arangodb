@@ -23,6 +23,7 @@
 #include "RocksDBTrxMethods.h"
 
 #include "Aql/QueryCache.h"
+#include "infra/RocksDBMonitors.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -30,7 +31,9 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/ScopedRocksDBIterator.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -109,6 +112,8 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& key,
                                        rocksdb::PinnableSlice* val,
                                        ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions ro = withUdtReadTimestamp(_readOptions, cf);
@@ -126,6 +131,12 @@ void RocksDBTrxMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                  rocksdb::PinnableSlice* values,
                                  rocksdb::Status* statuses,
                                  ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   if (readOwnWrites == ReadOwnWrites::no) {
     if (_readWriteBatch) {
       _readWriteBatch->MultiGetFromBatchAndDB(_db, _readOptions, &family, count,
@@ -154,6 +165,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     readOptionsCallback(opts);
   }
 
+  auto memoryScope = infra::rocksdbScope();
   std::unique_ptr<rocksdb::Iterator> iterator;
   if (opts.readOwnWrites) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -181,7 +193,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid iterator in RocksDBTrxMethods");
   }
-  return iterator;
+  return std::make_unique<ScopedRocksDBIterator>(std::move(iterator));
 }
 
 void RocksDBTrxMethods::cleanupTransaction() {

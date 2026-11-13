@@ -174,6 +174,7 @@ target_link_libraries(arango_basic_utils
          snappy
          lz4_static
          arango_activities_global
+         arango_infra # temporary; needs to be included in a proper lib
 )
 
 # Enterprise
@@ -302,6 +303,7 @@ target_link_libraries(arango_basic_http_client
          rocksdb
          fuerte
          faiss_interface
+         arango_infra # temporary; needs to be included in a proper lib
   PRIVATE Boost::container
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

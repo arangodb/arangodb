@@ -28,6 +28,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "infra/RocksDBMonitors.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
@@ -221,6 +222,8 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
                                            ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro = withUdtReadTimestamp(_readOptions, cf);
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
@@ -237,6 +240,8 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(_rocksTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr ||
              _state->options().avoidSnapshot);
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   // Locks the document key and validates that nothing has modified it since
   // this transaction's snapshot, which is what stops two concurrent modifiers
   // from losing each other's update.
@@ -570,7 +575,11 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
       return rocksutils::convertStatus(ts);
     }
   }
-  rocksdb::Status s = _rocksTransaction->Commit();
+  rocksdb::Status s;
+  {
+    infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
+    s = _rocksTransaction->Commit();
+  }
   if (!s.ok()) {  // cleanup performed by scope-guard
     return rocksutils::convertStatus(s);
   }
@@ -624,6 +633,8 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 rocksdb::Status RocksDBTrxBaseMethods::SingleGet(
     rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
     rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup recharge = [&value]() { rechargeIfCopied(&value); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {
     _readOptions.snapshot = was;
   };
@@ -637,6 +648,12 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                      size_t count, rocksdb::Slice const* keys,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   // make a copy of the ReadOptions, as we are going to modify the snapshot
   ReadOptions ro = _readOptions;
   ro.snapshot = snapshot;
@@ -650,6 +667,12 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses,
                                      ReadOwnWrites readOwnWrites) {
+  absl::Cleanup recharge = [values, count] {
+    for (size_t i = 0; i < count; ++i) {
+      rechargeIfCopied(&values[i]);
+    }
+  };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   if (readOwnWrites == ReadOwnWrites::yes) {
     _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
                                 statuses, false);

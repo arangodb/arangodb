@@ -40,6 +40,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -140,4 +142,14 @@ aql::Ast* QueryContext::ast() const { return _ast.get(); }
 QueryContext::QueryApiSynchronicity QueryContext::queryApiSynchronicity()
     const noexcept {
   return _queryApiSynchronicity;
+}
+
+Result QueryContext::allocationFailure(std::string_view suffix) const {
+  if (resourceMonitor().newMemoryLimitHit()) {
+    // ResourceMonitorBase::increase() sets `_limitHit` when the limit refuses
+    return {TRI_ERROR_RESOURCE_LIMIT,
+            absl::StrCat("query would use more memory than allowed", suffix)};
+  }
+  return {TRI_ERROR_OUT_OF_MEMORY,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY), suffix)};
 }

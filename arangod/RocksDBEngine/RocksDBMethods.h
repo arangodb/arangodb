@@ -133,4 +133,8 @@ class RocksDBMethods {
   static constexpr size_t memoryAllocationOverhead = 8;
 };
 
+// Moves a value copied by RocksDB (not pinned in the block cache) off the
+// RocksDB monitor and onto the current one. Call after the RocksDB scope closes.
+void rechargeIfCopied(rocksdb::PinnableSlice* slice) noexcept;
+
 }  // namespace arangodb

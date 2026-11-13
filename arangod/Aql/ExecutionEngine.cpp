@@ -57,6 +57,7 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
 #include "ExecutionNode/IndexNode.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -694,6 +695,7 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
 
   TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
     _query.debugKillQuery();
@@ -722,6 +724,7 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
 
   auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
   if (rootBlock == nullptr) {
@@ -747,6 +750,8 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 async<void> ExecutionEngine::instantiateFromPlan(Query& query,
                                                  ExecutionPlan& plan,
                                                  bool planRegisters) {
+  std::optional<infra::ResourceMonitorScope> scopeOptional(
+      std::in_place, query.resourceMonitor().monitorRef);
   auto const role = ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -793,7 +798,15 @@ async<void> ExecutionEngine::instantiateFromPlan(Query& query,
     // plan.show();
     plan.root()->flatWalk(inst, ExecutionNode::FlattenType::INLINE_ALL);
 
+    // we need to destroy the scope here otherwise the thread ran the code above
+    // will use the same monitor for other tasks while waiting for co_await.
+    scopeOptional.reset();
+
     Result res = co_await inst.buildEngines();
+
+    // we have to make sure whatever thread resumes the code after the co_await
+    // uses the same monitor
+    scopeOptional.emplace(query.resourceMonitor().monitorRef);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }

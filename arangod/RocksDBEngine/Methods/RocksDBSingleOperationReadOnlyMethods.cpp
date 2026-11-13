@@ -22,8 +22,10 @@
 
 #include "RocksDBSingleOperationReadOnlyMethods.h"
 
+#include "infra/RocksDBMonitors.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/db.h>
 
 using namespace arangodb;
@@ -45,6 +47,8 @@ RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions() const {
 rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val, ReadOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
 }

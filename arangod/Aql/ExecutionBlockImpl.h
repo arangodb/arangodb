@@ -30,6 +30,7 @@
 #include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
 #include "Logger/LogContext.h"
+#include "infra/ResourceMonitorRef.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -489,7 +490,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       LogContext logContext;
     };
 
-    void run(std::shared_ptr<ExecContext const> execContext);
+    void run(std::shared_ptr<ExecContext const> execContext,
+             infra::ResourceMonitorRef monitor);
     std::atomic<State> _state{State::Waiting};
     Params* _params;
     ExecutionBlockImpl& _block;

@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -138,6 +139,7 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
     QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
   LOG_TOPIC("4bbe6", DEBUG, Logger::AQL)
       << "Building Engine Info for " << server;
 
@@ -207,6 +209,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
     network::ConnectionPool* pool, network::RequestOptions const& options,
     bool fastPath) const {
+  infra::ResourceMonitorScope memoryScope(_query.resourceMonitor().monitorRef);
   TRI_ASSERT(!server.starts_with("server:"));
 
   auto byteSize = infoSlice.byteSize();
@@ -227,8 +230,10 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId,
-       fastPath](futures::Try<network::Response> const& response) -> Result {
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId, fastPath,
+       monitor = _query.resourceMonitor().monitorRef](
+          futures::Try<network::Response> const& response) -> Result {
+    infra::ResourceMonitorScope memoryScope(monitor);
     auto const& resolvedResponse = response.get();
     auto queryId = globalId;
     RebootId rebootId{0};

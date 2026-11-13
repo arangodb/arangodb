@@ -22,8 +22,11 @@
 
 #include "RocksDBReadOnlyMethods.h"
 
+#include "infra/RocksDBMonitors.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/ScopedRocksDBIterator.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/db.h>
 
 using namespace arangodb;
@@ -53,6 +56,8 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val,
                                             ReadOwnWrites) {
+  absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
+  infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
   return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
@@ -67,10 +72,11 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     readOptionsCallback(opts);
   }
 
+  auto memoryScope = infra::rocksdbScope();
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "invalid iterator in RocksDBReadOnlyMethods");
   }
-  return iterator;
+  return std::make_unique<ScopedRocksDBIterator>(std::move(iterator));
 }
