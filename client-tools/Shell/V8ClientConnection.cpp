@@ -64,6 +64,7 @@
 #include <stdexcept>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/hash2/md5.hpp>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -77,26 +78,22 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  std::string raw =
+  std::string const raw =
       absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
                    builder.password(), "/", builder.jwtToken(), "/",
                    to_string(builder.authenticationType()), "/",
                    to_string(builder.protocolType()));
   // create md5
-  char hash[16];
-  arangodb::rest::SslInterface::sslMD5(raw.c_str(), raw.length(), &hash[0]);
-
-  // as hex
-  char hex[32];
-  arangodb::rest::SslInterface::sslHEX(hash, 16, &hex[0]);
+  boost::hash2::md5_128 hash;
+  hash.update(raw.c_str(), raw.size());
+  std::string hexString{boost::hash2::to_string(hash.result())};
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-      << "Connection identifier " << std::string(hex, 32)
-      << " calculated from: " << raw;
+      << "Connection identifier " << hexString << " calculated from: " << raw;
 #endif
   // and return
-  return std::string(hex, 32);
+  return hexString;
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
