@@ -197,10 +197,10 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
  * @param call Call from client
  * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
  */
+// TODO(COR-1279): rows are not consumed, counted or aggregated when skipped.
 auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                        AqlCall& call)
     -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
-  // we do not keep any state
   AqlCall upstreamCall{};
   return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
           upstreamCall};
@@ -419,13 +419,10 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
 std::tuple<ExecutorState, NoStats, size_t, AqlCall>
 WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                               AqlCall& call) {
-  TRI_ASSERT(_currentIdx < _rows.size());
-
   std::ignore = consumeInputRange(inputRange);
 
   if (!_rows.empty()) {
-    // TODO a bit loopy
-    while (call.needSkipMore() && _currentIdx < _windowRows.size()) {
+    while (call.needSkipMore() && _currentIdx < _rows.size()) {
       _currentIdx++;
       call.didSkip(1);
     }
