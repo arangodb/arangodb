@@ -113,6 +113,10 @@
 
 #include <absl/strings/escaping.h>
 
+#include <boost/hash2/md5.hpp>
+#include <boost/hash2/sha1.hpp>
+#include <boost/hash2/sha2.hpp>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -157,6 +161,28 @@ Result doSleep(double n,
     std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }
 }
+
+template<typename T>
+void JS_Hash(std::string_view const usage,
+             v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+  // extract arguments
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(usage);
+  }
+  std::string key = TRI_ObjectToString(isolate, args[0]);
+  T hash;
+  hash.update(key.c_str(), key.size());
+  std::string const hex{boost::hash2::to_string(hash.result())};
+  // and return
+  v8::Handle<v8::String> hashStr =
+      TRI_V8_PAIR_STRING(isolate, hex.c_str(), hex.size());
+
+  TRI_V8_RETURN(hashStr);
+  TRI_V8_TRY_CATCH_END
+}
+
 }  // namespace
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
@@ -576,8 +602,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
-                 std::string const& lastEndpoint)
+auto getEndpoint(std::string& url, std::string const& lastEndpoint)
     -> std::tuple<std::string, std::string, std::string> {
   // returns endpoint, relative, error
   std::string relative;
@@ -622,13 +647,6 @@ auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
       endpoint = url.substr(6);
     }
     endpoint = "srv://" + endpoint;
-  } else if (url.starts_with("unix://")) {
-    // Can only have arrived here if endpoints is non empty
-    if (endpoints.empty()) {
-      return {"", "", std::move("unsupported URL specified")};
-    }
-    endpoint = endpoints.front();
-    relative = url.substr(endpoint.size());
   } else if (!url.empty() && url[0] == '/') {
     size_t found;
     // relative URL. prefix it with last endpoint
@@ -961,8 +979,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int numRedirects = 0;
 
   while (numRedirects < maxRedirects) {
-    auto [endpoint, relative, error] =
-        getEndpoint(endpoints, url, lastEndpoint);
+    auto [endpoint, relative, error] = getEndpoint(url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
@@ -2288,33 +2305,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Md5(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("md5(<text>)");
-  }
-
-  v8::String::Utf8Value str(isolate, args[0]);
-
-  if (*str == nullptr) {
-    TRI_V8_RETURN_UNDEFINED();
-  }
-
-  // create md5
-  char hash[16];
-  SslInterface::sslMD5(*str, str.length(), &hash[0]);
-
-  // as hex
-  char hex[32];
-  SslInterface::sslHEX(hash, 16, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 32);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::md5_128>("md5(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3748,29 +3739,7 @@ static void JS_SPrintF(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sha512(<text>)");
-  }
-
-  std::string key = TRI_ObjectToString(isolate, args[0]);
-
-  // create sha512
-  char hash[64];
-  SslInterface::sslSHA512(key.c_str(), key.size(), &hash[0]);
-
-  // as hex
-  char hex[128];
-  SslInterface::sslHEX(hash, 64, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 128);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::sha2_512>("sha512(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3782,29 +3751,7 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sha384(<text>)");
-  }
-
-  std::string key = TRI_ObjectToString(isolate, args[0]);
-
-  // create sha384
-  char hash[48];
-  SslInterface::sslSHA384(key.c_str(), key.size(), &hash[0]);
-
-  // as hex
-  char hex[96];
-  SslInterface::sslHEX(hash, 48, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 96);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::sha2_384>("sha384(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3816,29 +3763,7 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sha256(<text>)");
-  }
-
-  std::string key = TRI_ObjectToString(isolate, args[0]);
-
-  // create sha256
-  char hash[32];
-  SslInterface::sslSHA256(key.c_str(), key.size(), &hash[0]);
-
-  // as hex
-  char hex[64];
-  SslInterface::sslHEX(hash, 32, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 64);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::sha2_256>("sha256(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3850,29 +3775,7 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sha224(<text>)");
-  }
-
-  std::string key = TRI_ObjectToString(isolate, args[0]);
-
-  // create sha224
-  char hash[28];
-  SslInterface::sslSHA224(key.c_str(), key.size(), &hash[0]);
-
-  // as hex
-  char hex[56];
-  SslInterface::sslHEX(hash, 28, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 56);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::sha2_224>("sha224(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3884,29 +3787,7 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sha1(<text>)");
-  }
-
-  std::string key = TRI_ObjectToString(isolate, args[0]);
-
-  // create sha1
-  char hash[20];
-  SslInterface::sslSHA1(key.c_str(), key.size(), &hash[0]);
-
-  // as hex
-  char hex[40];
-  SslInterface::sslHEX(hash, 20, &hex[0]);
-
-  // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 40);
-
-  TRI_V8_RETURN(hashStr);
-  TRI_V8_TRY_CATCH_END
+  JS_Hash<boost::hash2::sha1_160>("sha1(<text>)", args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4202,7 +4083,8 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else if (algorithm == "sha224") {
       al = SslInterface::Algorithm::SHA224;
     } else if (algorithm == "md5") {
-      al = SslInterface::Algorithm::MD5;
+      TRI_V8_THROW_EXCEPTION_PARAMETER(
+          "Invalid value for <algorithm>: MD5 is deprecated.");
     } else {
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <algorithm>");
     }
@@ -4256,7 +4138,8 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else if (algorithm == "sha224") {
       al = SslInterface::Algorithm::SHA224;
     } else if (algorithm == "md5") {
-      al = SslInterface::Algorithm::MD5;
+      TRI_V8_THROW_EXCEPTION_PARAMETER(
+          "Invalid value for <algorithm>: MD5 is deprecated.");
     } else {
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <algorithm>");
     }

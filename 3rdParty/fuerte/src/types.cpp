@@ -180,9 +180,6 @@ std::string to_string(SocketType type) {
 
     case SocketType::Ssl:
       return "ssl";
-
-    case SocketType::Unix:
-      return "unix";
   }
 
   return "undefined";
