@@ -3,19 +3,19 @@
 # they live in the client-tools image (deploy-ubuntu-client.dockerfile).
 # The CI job that builds this image prunes them from the install tree.
 
-# Required: image providing opt/lib/ossl-modules/fips.so. Docker expands
-# every stage's FROM, so it must be set even with USE_FIPS=0; it is only
-# pulled with USE_FIPS=1.
-ARG ARANGO_BUILD_IMAGE
-# 1: ship the OpenSSL FIPS provider and its config (arangodb/coredb-fips).
+# 1: ship the OpenSSL FIPS provider and its config (arangodb/coredb-fips-preview).
 ARG USE_FIPS=0
+# USE_FIPS=1 only: the image providing /opt/lib/ossl-modules/fips.so (the
+# build image). Not needed otherwise; a FIPS build without it fails at the
+# COPY of fips.so below.
+ARG ARANGO_BUILD_IMAGE
 
 # USE_FIPS=0: empty payload
 FROM scratch AS fips-0
 WORKDIR /fips-files
 
 # USE_FIPS=1: fips provider + config
-FROM ${ARANGO_BUILD_IMAGE:?ARANGO_BUILD_IMAGE_must_be_set} AS fips-1-build
+FROM ${ARANGO_BUILD_IMAGE:-scratch} AS fips-1-build
 FROM scratch AS fips-1
 COPY --from=fips-1-build /opt/lib/ossl-modules/fips.so /fips-files/lib/ossl-modules/fips.so
 COPY fips-only.cnf /fips-files/ssl/fips-only.cnf

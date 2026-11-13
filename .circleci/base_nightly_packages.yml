@@ -15,7 +15,7 @@ version: 2.1
 #     (Ubuntu 26.04 based, always TWO images: arangodb/core-preview —
 #     the server only, no client tools — and arangodb/client-tools-preview
 #     — the client tools only)
-#   - FIPS server image arangodb/coredb-fips      [build-fips-image]
+#   - FIPS image arangodb/coredb-fips-preview     [build-fips-image]
 #     (off by default; built from its own USE_FIPS compile, tagged and
 #     published like the two above)
 #
@@ -38,7 +38,7 @@ version: 2.1
 #                       (core-preview and client-tools-preview) and exports
 #                       them via "docker save" into the workspace (no push
 #                       here); [build-fips-image] adds one more job per arch
-#                       for arangodb/coredb-fips, from the FIPS compile
+#                       for arangodb/coredb-fips-preview, from the FIPS compile
 #   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
 #                       database is cached in ${CLAMAV_BUCKET} (S3, from the
 #                       clamav-aws-bucket context); one <file>.clamav report
@@ -117,7 +117,7 @@ version: 2.1
 #                       Afterwards <major.minor>/Docker/ gets one
 #                       arangodb_<image>_<VERSION>.txt publish report per
 #                       image name (core-preview and client-tools-preview,
-#                       plus coredb-fips with [build-fips-image]; pushed
+#                       plus coredb-fips-preview with [build-fips-image]; pushed
 #                       refs + digests) with the per-arch Trivy reports
 #                       next to it.
 #                       [pr-run] degrades this job to a dry run: staging is
@@ -133,7 +133,7 @@ version: 2.1
 # Docker tag scheme (scripts/ci/helpers.bash: set_nightly_version → find_arangodb_version):
 #   (identical for every image name: arangodb/core-preview,
 #   arangodb/client-tools-preview and, with [build-fips-image],
-#   arangodb/coredb-fips; <IMAGE> below stands for any of them)
+#   arangodb/coredb-fips-preview; <IMAGE> below stands for any of them)
 #   per-arch:  arangodb/<IMAGE>:<VERSION>-<ARCH>              e.g. 4.0.0-nightly.20260727-amd64
 #   manifests: arangodb/<IMAGE>:<VERSION>                     e.g. 4.0.0-nightly.20260727
 #              arangodb/<IMAGE>:<MAJOR_MINOR>-nightly         e.g. 4.0-nightly
@@ -228,7 +228,7 @@ parameters:
   build-fips-image:
     type: boolean
     default: false
-    description: "Also build the FIPS server image arangodb/coredb-fips (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
+    description: "Also build the FIPS server image arangodb/coredb-fips-preview (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -930,7 +930,7 @@ jobs:
     # happens later, during packaging (client tools only).
     # All build options live in the "nightly-package-{x64,arm64}" CMake presets;
     # only toolchain/image specific paths are passed on the command line.
-    # With fips, the FIPS build for arangodb/coredb-fips instead
+    # With fips, the FIPS build for arangodb/coredb-fips-preview instead
     # ("nightly-package-{x64,arm64}-fips": USE_FIPS, glibc linked
     # dynamically): no object-files archive (that one belongs to the static
     # packages), and the install tree is published as enterprise-fips.
@@ -1061,9 +1061,20 @@ jobs:
           name: Create install.tar.gz
           command: |
             tar -czf install.tar.gz -C build/install ./
-      - upload-build-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise<<# parameters.fips >>-fips<</ parameters.fips >>
+      # The FIPS install tree gets its own name, so it can never replace
+      # the regular one the packages and the other images are built from.
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - upload-build-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise
+      - when:
+          condition: << parameters.fips >>
+          steps:
+            - upload-build-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise-fips
 
   # ── Packages (DEB / RPM / TAR.GZ) ────────────────────────────────────────────
   build-package:
@@ -1115,7 +1126,7 @@ jobs:
     # same install tree the way build-targz.sh builds the client bundle) —
     # and exports them via "docker save" into the workspace. Nothing is
     # pushed here; publish-nightly pushes.
-    # With fips, builds only the FIPS server image arangodb/coredb-fips
+    # With fips, builds only the FIPS server image arangodb/coredb-fips-preview
     # (USE_FIPS=1) from the FIPS compile's install tree.
     parameters:
       arch:
@@ -1140,9 +1151,18 @@ jobs:
       # self-hosted runners (attach_workspace_from_s3) is not available;
       # install.tar.gz is taken from the compile job's CircleCI artifact
       # instead (CIRCLECI_TOKEN from the circleci-token context).
-      - download-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise<<# parameters.fips >>-fips<</ parameters.fips >>
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - download-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise
+      - when:
+          condition: << parameters.fips >>
+          steps:
+            - download-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise-fips
       - run:
           name: Prepare install directory for Docker build
           command: |
@@ -1213,22 +1233,20 @@ jobs:
             mkdir -p /tmp/nightly/docker
 
             if [ "<< parameters.fips >>" = "true" ]; then
-              IMAGE_NAMES=(coredb-fips)
+              IMAGE_NAMES=(coredb-fips-preview)
             else
               IMAGE_NAMES=(core-preview client-tools-preview)
             fi
             for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
               if [ "${IMAGE_NAME}" = "client-tools-preview" ]; then
                 DOCKERFILE=deploy-ubuntu-client.dockerfile
-                EXTRA_ARGS=()
               else
                 DOCKERFILE=deploy-ubuntu.dockerfile
-                # Named by the dockerfile's FIPS stage; pulled only for the
-                # FIPS image, which copies the FIPS provider out of it.
-                EXTRA_ARGS=(--build-arg "ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >>")
-                if [ "${IMAGE_NAME}" = "coredb-fips" ]; then
-                  EXTRA_ARGS+=(--build-arg USE_FIPS=1)
-                fi
+              fi
+              EXTRA_ARGS=()
+              if [ "${IMAGE_NAME}" = "coredb-fips-preview" ]; then
+                # The FIPS provider is copied out of the build image.
+                EXTRA_ARGS=(--build-arg USE_FIPS=1 --build-arg "ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >>")
               fi
               VERSION_TAG="arangodb/${IMAGE_NAME}:${VERSION}-${TAG_ARCH}"
 
@@ -1241,7 +1259,7 @@ jobs:
                 -t "${VERSION_TAG}" \
                 --file "${DOCKERFILE}" .
 
-              if [ "${IMAGE_NAME}" = "coredb-fips" ]; then
+              if [ "${IMAGE_NAME}" = "coredb-fips-preview" ]; then
                 # USE_FIPS links glibc dynamically, so every shared library
                 # arangod needs has to be in the image.
                 if docker run --rm --platform "linux/<< parameters.arch >>" --entrypoint ldd \
@@ -1264,7 +1282,7 @@ jobs:
             fi
             mkdir -p /tmp/reports
             if [ "<< parameters.fips >>" = "true" ]; then
-              IMAGE_NAMES=(coredb-fips)
+              IMAGE_NAMES=(coredb-fips-preview)
             else
               IMAGE_NAMES=(core-preview client-tools-preview)
             fi
@@ -1276,7 +1294,7 @@ jobs:
                 echo "=========================================="
                 echo "Image:     ${VERSION_TAG}"
                 echo "Base:      ubuntu:26.04"
-                if [ "${IMAGE_NAME}" = "coredb-fips" ]; then
+                if [ "${IMAGE_NAME}" = "coredb-fips-preview" ]; then
                   echo "FIPS:      arangod built with USE_FIPS, OpenSSL FIPS provider in /opt/lib/ossl-modules"
                 fi
                 echo "Platform:  linux/<< parameters.arch >>"
@@ -1316,7 +1334,7 @@ jobs:
             - persist_to_workspace:
                 root: /tmp/nightly
                 paths:
-                  - docker/coredb-fips-<< parameters.arch >>.tar
+                  - docker/coredb-fips-preview-<< parameters.arch >>.tar
 
   # ── ClamAV scan ──────────────────────────────────────────────────────────────
   scan-packages:
@@ -1641,7 +1659,7 @@ jobs:
         type: string
       image:
         type: enum
-        enum: ["core-preview", "client-tools-preview", "coredb-fips"]
+        enum: ["core-preview", "client-tools-preview", "coredb-fips-preview"]
       gate-item-image:
         # The image part of the gate verdict item, matching the job's
         # workflow name (security-check-docker-<gate-item-image>-<arch>):
@@ -2134,14 +2152,14 @@ jobs:
             # Both Ubuntu-based images (core-preview: server only;
             # client-tools-preview: client tools only) share one
             # pipeline parameter and one tag scheme (suffix-less); the
-            # FIPS server image (coredb-fips) has its own parameter and
+            # FIPS server image (coredb-fips-preview) has its own parameter and
             # the same tag scheme.
             IMAGES=()
             if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
               IMAGES=("core-preview" "client-tools-preview")
             fi
             if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
-              IMAGES+=("coredb-fips")
+              IMAGES+=("coredb-fips-preview")
             fi
             if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, nothing was pushed." > "${REPORT}"
@@ -2154,7 +2172,7 @@ jobs:
             # the multi-arch manifests.
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             # The image names are always arangodb/core-preview and
-            # arangodb/client-tools-preview (plus arangodb/coredb-fips with
+            # arangodb/client-tools-preview (plus arangodb/coredb-fips-preview with
             # build-fips-image); the registry prefix selects
             # where they are pushed (docker.io always, GCR when
             # push-images-to-gcr-also is set).
@@ -2300,7 +2318,7 @@ jobs:
               IMAGES=("core-preview" "client-tools-preview")
             fi
             if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
-              IMAGES+=("coredb-fips")
+              IMAGES+=("coredb-fips-preview")
             fi
             if [ "${PR_RUN}" = "true" ] && [ ${#IMAGES[@]} -gt 0 ]; then
               # dry run: the dated per-arch tags were never pushed, so there
@@ -2366,8 +2384,8 @@ jobs:
           name: Publish per-image Docker reports (Docker/ directory)
           command: |
             # One <image>.txt per published image name — arangodb/
-            # {core,client-tools}-preview:<VERSION> and, with
-            # build-fips-image, arangodb/coredb-fips:<VERSION> — with / and : mapped to
+            # {core,client-tools,coredb-fips}-preview:<VERSION> (the FIPS
+            # one with build-fips-image) with / and : mapped to
             # _ — carrying that image's slice of nightly-publish-report.txt:
             # the dated per-arch pushes and the multi-arch manifest tags,
             # each with digests. The per-arch Trivy scan reports and SBOMs
@@ -2388,7 +2406,7 @@ jobs:
               IMAGES=("core-preview" "client-tools-preview")
             fi
             if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
-              IMAGES+=("coredb-fips")
+              IMAGES+=("coredb-fips-preview")
             fi
             if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, skipping Docker reports"
@@ -2406,7 +2424,7 @@ jobs:
                 echo "============================================"
                 echo "Image:     arangodb/${IMG}:${VERSION}"
                 echo "Base:      ubuntu:26.04"
-                if [ "${IMG}" = "coredb-fips" ]; then
+                if [ "${IMG}" = "coredb-fips-preview" ]; then
                   echo "FIPS:      arangod built with USE_FIPS, OpenSSL FIPS provider in /opt/lib/ossl-modules"
                 fi
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
@@ -2764,7 +2782,7 @@ workflows:
       - security-check-docker-image:
           name: security-check-docker-coredb-fips-amd64
           arch: amd64
-          image: coredb-fips
+          image: coredb-fips-preview
           gate-item-image: coredb-fips
           expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
           min-targets: 3
@@ -2773,7 +2791,7 @@ workflows:
       - security-check-docker-image:
           name: security-check-docker-coredb-fips-arm64
           arch: arm64
-          image: coredb-fips
+          image: coredb-fips-preview
           gate-item-image: coredb-fips
           expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
           min-targets: 3

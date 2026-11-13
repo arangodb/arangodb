@@ -514,6 +514,10 @@ def test_fips_image_is_built_from_its_own_fips_compile(base_config):
         compile_job = job_config_of(config, f"compile-enterprise-fips-{arch}")
         assert compile_job["fips"] is True
         assert compile_job["preset"].endswith("-fips")
+        assert (
+            job_config_of(config, f"security-check-docker-coredb-fips-{arch}")["image"]
+            == "coredb-fips-preview"
+        )
         docker_job = job_config_of(config, f"docker-enterprise-fips-{arch}")
         assert docker_job["fips"] is True
         assert docker_job["requires"] == [f"compile-enterprise-fips-{arch}"]
@@ -556,3 +560,35 @@ def test_compile_presets_exist_in_cmake_presets(base_config):
         assert ("fips" in configure[preset].get("inherits", [])) == preset.endswith(
             "-fips"
         )
+
+
+def effective_steps(steps, fips):
+    """Steps as CircleCI runs them: when/unless blocks on
+    << parameters.fips >> resolved, any other block kept as is."""
+    for step in steps:
+        if isinstance(step, dict) and ("when" in step or "unless" in step):
+            [(kind, block)] = step.items()
+            if block["condition"] != "<< parameters.fips >>":
+                yield from effective_steps(block["steps"], fips)
+            elif (kind == "when") == fips:
+                yield from effective_steps(block["steps"], fips)
+        else:
+            yield step
+
+
+def editions(base_config, job_type, command, fips):
+    return [
+        step[command]["edition"]
+        for step in effective_steps(base_config["jobs"][job_type]["steps"], fips)
+        if isinstance(step, dict) and command in step
+    ]
+
+
+@pytest.mark.parametrize("fips, edition", [(False, "enterprise"), (True, "enterprise-fips")])
+def test_fips_and_regular_install_trees_never_mix(base_config, fips, edition):
+    """The FIPS compile publishes its install tree under its own name and
+    only the FIPS docker job reads it, so neither the packages nor the
+    regular images can pick up USE_FIPS binaries (and vice versa)."""
+    assert editions(base_config, "compile-nightly", "upload-build-artifact", fips) == [edition]
+    assert editions(base_config, "build-nightly-docker-image", "download-artifact", fips) == [edition]
+    assert editions(base_config, "build-package", "attach_workspace_from_s3", fips) == ["enterprise"]

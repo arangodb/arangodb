@@ -1005,9 +1005,7 @@ jobs:
             rm -rf install/usr/share/man/man1 \
                    install/usr/share/arangodb4/js
 
-            # ARANGO_BUILD_IMAGE is named by the dockerfile's FIPS stage; it
-            # is only pulled for a FIPS build (USE_FIPS=1), never here.
-            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> --build-arg ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu.dockerfile .
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu.dockerfile .
             docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >>
             docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu-client.dockerfile .
             docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >>
