@@ -5,6 +5,7 @@
 #include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <unordered_set>
 #include <unordered_map>
@@ -121,12 +122,19 @@ TEST_F(AqlValueHashEqualTest, inline_double_different_values) {
 }
 
 TEST_F(AqlValueHashEqualTest, inline_double_zero_variants) {
-  // -0.0 and +0.0 must be equal and hash identically — both are normalized
-  // to 0.0 before hashing so the hash contract holds.
+  // distinct bytes; AQL's hash() still treats them as equal
   AqlValue pos = makeAQLValue(0.0);
   AqlValue neg = makeAQLValue(-0.0);
-  EXPECT_TRUE(equal(pos, neg));
-  EXPECT_EQ(hasher(pos), hasher(neg));
+  EXPECT_FALSE(equal(pos, neg));
+  EXPECT_EQ(pos.hash(), neg.hash());
+}
+
+TEST_F(AqlValueHashEqualTest, inline_double_nan_equals_itself) {
+  AqlValue nan1 = makeAQLValue(std::numeric_limits<double>::quiet_NaN());
+  AqlValue nan2 = makeAQLValue(std::numeric_limits<double>::quiet_NaN());
+  EXPECT_TRUE(equal(nan1, nan1));
+  EXPECT_TRUE(equal(nan1, nan2));
+  EXPECT_EQ(hasher(nan1), hasher(nan2));
 }
 
 TEST_F(AqlValueHashEqualTest, range_same_value) {
@@ -288,14 +296,31 @@ TEST_F(AqlValueHashEqualTest, number_semantic_equality_double_vs_vpack) {
   EXPECT_EQ(hasher(val1), hasher(val2));
 }
 
-TEST_F(AqlValueHashEqualTest, number_semantic_equality_int_vs_double) {
-  // Integer 42 and double 42.0 are equal under normalizedHash.
+TEST_F(AqlValueHashEqualTest, int_vs_double_stay_distinct) {
+  // merging would turn the double into an int on the wire
   AqlValue val1 = makeAQLValue(int64_t{42});
   VPackBuilder b;
   b.add(VPackValue(42.0));
   AqlValue val2(b.slice());
-  EXPECT_TRUE(equal(val1, val2));
-  EXPECT_EQ(hasher(val1), hasher(val2));
+  EXPECT_FALSE(equal(val1, val2));
+  EXPECT_FALSE(equal(val2, val1));
+}
+
+TEST_F(AqlValueHashEqualTest, aql_equal_but_different_values_stay_distinct) {
+  // AQL comparison pads missing elements/attributes with null
+  auto check = [&](char const* left, char const* right) {
+    auto l = VPackParser::fromJson(left);
+    auto r = VPackParser::fromJson(right);
+    AqlValue a(l->slice());
+    AqlValue b(r->slice());
+    EXPECT_FALSE(equal(a, b)) << left << " vs " << right;
+    EXPECT_FALSE(equal(b, a)) << right << " vs " << left;
+    a.destroy();
+    b.destroy();
+  };
+  check("[]", "[null]");
+  check("{}", R"({"a":null})");
+  check(R"({"a":1,"b":2})", R"({"b":2,"a":1})");
 }
 
 TEST_F(AqlValueHashEqualTest, cross_type_range_vs_number) {
@@ -338,13 +363,13 @@ TEST_F(AqlValueHashEqualTest, unordered_set_deduplication) {
   EXPECT_FALSE(set.insert(val2).second);
   EXPECT_EQ(1U, set.size());
 
-  // 42.0 as VPACK_INLINE_DOUBLE — different storage type, same numeric value.
+  // different bytes, separate entry
   VPackBuilder b;
   b.add(VPackValue(42.0));
   AqlValue val3(b.slice());
   ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_DOUBLE, val3.type());
-  EXPECT_FALSE(set.insert(val3).second);
-  EXPECT_EQ(1U, set.size());
+  EXPECT_TRUE(set.insert(val3).second);
+  EXPECT_EQ(2U, set.size());
 }
 
 TEST_F(AqlValueHashEqualTest, unordered_map_key_lookup) {
@@ -357,9 +382,9 @@ TEST_F(AqlValueHashEqualTest, unordered_map_key_lookup) {
 
   VPackBuilder b;
   b.add(VPackValue(42.0));
-  AqlValue key3(b.slice());  // VPACK_INLINE_DOUBLE, same numeric value as key1
+  AqlValue key3(b.slice());  // VPACK_INLINE_DOUBLE, different bytes than key1
   ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_DOUBLE, key3.type());
-  EXPECT_EQ(100, map[key3]);
+  EXPECT_EQ(map.end(), map.find(key3));
 }
 
 TEST_F(AqlValueHashEqualTest, edge_case_large_numbers) {

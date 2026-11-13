@@ -632,6 +632,29 @@ TEST_F(AqlItemBlockTest, test_scatter_clone_shadow_row_use_after_free) {
             0);
 }
 
+// shared pointer: stealValue must not drop the refcount, row 1 still reads it
+TEST_F(AqlItemBlockTest, test_steal_value_shared_pointer_keeps_refcount) {
+  auto const json =
+      R"({"thisField": "is too large to be inlined, deliberately so"})";
+  auto const expected = Parser::fromJson(json);
+
+  auto block = itemBlockManager.requestBlock(2, 1);
+  AqlValue shared{AqlValueHintSliceCopy{expected->slice()}};
+  block->setValue(0, 0, shared);
+  block->setValue(1, 0, shared);
+
+  InputAqlItemRow row{block, 0};
+  AqlValue stolen = row.stealValue(RegisterId{0});
+  AqlValueGuard guard{stolen, true};
+  EXPECT_NE(stolen.data(), shared.data());
+
+  block->destroyValue(0, 0);
+
+  EXPECT_EQ(VelocyPackHelper::compare(block->getValueReference(1, 0).slice(),
+                                      expected->slice(), false),
+            0);
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

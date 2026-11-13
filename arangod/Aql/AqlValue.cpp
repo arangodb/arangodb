@@ -37,7 +37,6 @@
 #include <velocypack/Slice.h>
 
 #include <bit>
-#include <cmath>
 #include <type_traits>
 
 #ifndef velocypack_malloc
@@ -54,7 +53,6 @@ void AqlValue::setPointer(uint8_t const* pointer) noexcept {
 uint64_t AqlValue::hash(uint64_t seed) const {
   auto t = type();
   if (ADB_UNLIKELY(t == RANGE)) {
-    TRI_ASSERT(_data.rangeMeta.range != nullptr);
     uint64_t const n = _data.rangeMeta.range->size();
 
     // simon: copied from VPackSlice::normalizedHash()
@@ -71,17 +69,9 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 
     return value;
   }
-  if (t == VPACK_INLINE_DOUBLE) {
-    double v = asDouble();
-    if (std::signbit(v) && v == 0.0) {
-      v = 0.0;
-    }
-    return VELOCYPACK_HASH(&v, sizeof(v), seed);
-  }
   // we must use the slow hash function here, because a value may have
   // different representations in case it's an array/object/number
-  auto s = slice(t);
-  return s.normalizedHash(seed);
+  return slice(t).normalizedHash(seed);
 }
 
 bool AqlValue::isNone() const noexcept {
@@ -1358,7 +1348,8 @@ void const* AqlValue::data() const noexcept {
     case RANGE:
       return _data.rangeMeta.range;
     default:
-      ADB_UNREACHABLE;
+      TRI_ASSERT(false);
+      return nullptr;
   }
 }
 }  // namespace arangodb::aql
@@ -1366,47 +1357,27 @@ void const* AqlValue::data() const noexcept {
 namespace std {
 using arangodb::aql::AqlValue;
 
+// bytes, not AQL equality: [] and [null] must not merge
 size_t hash<AqlValue>::operator()(AqlValue const& x) const {
-  return static_cast<size_t>(x.hash(AqlValue::kDefaultSeed));
+  auto t = x.type();
+  if (t == AqlValue::RANGE) {
+    auto const* r = x._data.rangeMeta.range;
+    int64_t const bounds[2] = {r->_low, r->_high};
+    return static_cast<size_t>(
+        VELOCYPACK_HASH(bounds, sizeof(bounds), AqlValue::kDefaultSeed));
+  }
+  return static_cast<size_t>(x.slice(t).volatileHash());
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
                                     AqlValue const& b) const {
-  using T = AqlValue::AqlValueType;
   auto ta = a.type();
   auto tb = b.type();
-
-  if (ta == tb) {
-    switch (ta) {
-      case T::VPACK_INLINE_INT64:
-      case T::VPACK_INLINE_UINT64:
-        return a._data.longNumberMeta.data.intLittleEndian.val ==
-               b._data.longNumberMeta.data.intLittleEndian.val;
-
-      case T::VPACK_INLINE_DOUBLE:
-        return a.asDouble() == b.asDouble();
-
-      case T::RANGE:
-        return a.range()->_low == b.range()->_low &&
-               a.range()->_high == b.range()->_high;
-
-      default:
-        break;
-    }
+  if (ta == AqlValue::RANGE || tb == AqlValue::RANGE) {
+    return ta == tb && a.range()->_low == b.range()->_low &&
+           a.range()->_high == b.range()->_high;
   }
-
-  if (ta == T::RANGE || tb == T::RANGE) {
-    return false;
-  }
-
-  auto sa = a.slice(ta);
-  auto sb = b.slice(tb);
-  // handles Custom types and normalized comparison for different storage types
-  TRI_ASSERT(arangodb::velocypack::Options::Defaults.customTypeHandler !=
-             nullptr)
-      << "VelocyPackHelper must be initialized before AqlValue comparison";
-  return arangodb::basics::VelocyPackHelper::equal(
-      sa, sb, false, &arangodb::velocypack::Options::Defaults, &sa, &sb);
+  return a.slice(ta).binaryEquals(b.slice(tb));
 }
 
 }  // namespace std

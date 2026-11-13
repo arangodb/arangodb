@@ -10,8 +10,9 @@
 #include <boost/container/flat_set.hpp>
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -71,9 +72,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 }
 
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
-       toVelocyPack_DeduplicatesSameContent_DifferentStorageTypes) {
-  // VPACK_INLINE_INT64 (42) and VPACK_INLINE_DOUBLE (42.0) are semantically
-  // equal and must deduplicate to the same raw slot.
+       toVelocyPack_KeepsIntAndDoubleDistinct) {
+  // sharing a slot would turn 42.0 into 42
   auto block = itemBlockManager.requestBlock(3, 1);
 
   AqlValue v1 = makeAQLValue(42);
@@ -97,7 +97,27 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   VPackSlice raw = result.slice().get("raw");
   ASSERT_TRUE(raw.isArray());
   // raw has 2 header entries before the value entries
-  EXPECT_EQ(2U, raw.length() - 2);
+  EXPECT_EQ(3U, raw.length() - 2);
+}
+
+TEST_F(AqlValueHashAlgorithmCorrectnessTest,
+       toVelocyPackFromVelocyPack_RoundTrip_KeepsAqlEqualValuesDistinct) {
+  // merging [] and [null] would change LENGTH() after the round trip
+  auto block = itemBlockManager.requestBlock(2, 1);
+  auto empty = VPackParser::fromJson("[]");
+  auto withNull = VPackParser::fromJson("[null]");
+  block->setValue(0, 0, AqlValue(empty->slice()));
+  block->setValue(1, 0, AqlValue(withNull->slice()));
+
+  velocypack::Builder serialized;
+  serialized.openObject();
+  block->toVelocyPack(0, 2, options, serialized);
+  serialized.close();
+
+  auto deserialized = itemBlockManager.requestBlock(2, 1);
+  deserialized->initFromSlice(serialized.slice());
+  EXPECT_EQ(0U, deserialized->getValueReference(0, 0).length());
+  EXPECT_EQ(1U, deserialized->getValueReference(1, 0).length());
 }
 
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
@@ -155,9 +175,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 }
 
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
-       toVelocyPack_NegativeZeroAndPositiveZero_Deduplicate) {
-  // -0.0 and +0.0 are IEEE-754-equal but have different byte representations.
-  // The hash must normalize both to +0.0 so they map to the same raw slot.
+       toVelocyPack_NegativeZeroAndPositiveZero_StayDistinct) {
+  // different bytes, so each keeps its own raw slot
   auto block = itemBlockManager.requestBlock(3, 1);
 
   VPackBuilder bPos, bNeg;
@@ -181,9 +200,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   result.close();
 
   VPackSlice raw = result.slice().get("raw");
-  // +0.0 and -0.0 deduplicate → only 2 unique values (zero + 1.0);
   // raw has 2 header entries before the value entries
-  EXPECT_EQ(2U, raw.length() - 2);
+  EXPECT_EQ(3U, raw.length() - 2);
 }
 
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,

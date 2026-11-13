@@ -1,8 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
 * [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
-  instead of value content, causing equal values to be serialized multiple
-  times instead of reusing their position in the AqlItemBlock raw array.
+  instead of value content, causing byte-identical values to be serialized
+  multiple times instead of reusing their position in the AqlItemBlock raw
+  array.
 
 * COR-1263 / github issue #23383:
   - Fixed the extra counting issue in NGRAM_MATCH

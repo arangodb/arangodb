@@ -66,8 +66,7 @@ inline void copyValueOver(ValueCopyCache& cache, AqlValue const& a,
         b.destroy();
         throw;
       }
-      cache.emplace(a.data(),
-                    b.data());  // so later cells sharing the same pointer reuse
+      cache.emplace(a.data(), b.data());
     } else {
       res->setValue(rowNumber, col, AqlValue(a, (*it).second));
     }
@@ -1093,12 +1092,11 @@ bool AqlItemBlock::steal(AqlValue const& value) {
     if (it != _valueCount.end()) {
       auto& valueInfo = (*it).second;
       TRI_ASSERT(valueInfo.refCount > 0);
-      if (--valueInfo.refCount == 0) {
-        decreaseMemoryUsage(valueInfo.memoryUsage);
-        _valueCount.erase(it);
-        return true;
+      if (valueInfo.refCount > 1) {
+        return false;
       }
-      return false;
+      decreaseMemoryUsage(valueInfo.memoryUsage);
+      _valueCount.erase(it);
     }
   }
   return true;
@@ -1108,12 +1106,16 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   TRI_ASSERT(varNr.isRegularRegister());
   auto& element = _data[getAddress(index, varNr.value())];
 
+  if (!steal(element)) {
+    // clone first so a throw leaves the block intact
+    AqlValue copy = element.clone();
+    destroyValue(index, varNr);
+    return copy;
+  }
+
   auto value = element;
-  bool const soleOwner = steal(element);
-
   element.erase();
-
-  return soleOwner ? value : value.clone();
+  return value;
 }
 
 RegisterCount AqlItemBlock::numRegisters() const noexcept {
