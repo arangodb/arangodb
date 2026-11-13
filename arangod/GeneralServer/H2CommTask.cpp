@@ -1086,6 +1086,5 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-template class arangodb::rest::H2CommTask<SocketType::Unix>;
 
 }  // namespace arangodb::rest

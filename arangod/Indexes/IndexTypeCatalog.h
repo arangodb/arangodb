@@ -23,21 +23,11 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Indexes/DeprecatedSecondaryIndexDefinition.h"
-#include "Indexes/EdgeIndexDefinition.h"
-#include "Indexes/FulltextIndexDefinition.h"
-#include "Indexes/Geo1IndexDefinition.h"
-#include "Indexes/Geo2IndexDefinition.h"
-#include "Indexes/GeoIndexDefinition.h"
+#include "Indexes/IndexDefinition.h"
 #include "Indexes/IndexType.h"
-#include "Indexes/MdiIndexDefinition.h"
-#include "Indexes/MdiPrefixedIndexDefinition.h"
-#include "Indexes/PrimaryIndexDefinition.h"
-#include "Indexes/SecondaryIndexDefinition.h"
-#include "Indexes/TtlIndexDefinition.h"
-#include "Indexes/VectorIndexDefinition.h"
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -90,29 +80,16 @@ class IndexTypeCatalog final {
   [[nodiscard]] std::vector<std::pair<std::string_view, std::string_view>>
   aliases() const;
 
-  // definition must outlive the catalog
+  // the catalog takes ownership of definition
   [[nodiscard]] Result add(std::string_view name,
-                           IndexDefinition const& definition);
-
-  // undoes add()
-  void remove(std::string_view name) noexcept;
+                           std::unique_ptr<IndexDefinition> definition);
 
  private:
-  EdgeIndexDefinition _edge;
-  FulltextIndexDefinition _fulltext;
-  GeoIndexDefinition _geo;
-  Geo1IndexDefinition _geo1;
-  Geo2IndexDefinition _geo2;
-  SecondaryIndexDefinition _persistent;
-  DeprecatedSecondaryIndexDefinition _hash;
-  DeprecatedSecondaryIndexDefinition _skiplist;
-  PrimaryIndexDefinition _primary;
-  TtlIndexDefinition _ttl;
-  MdiIndexDefinition _zkd;
-  MdiIndexDefinition _mdi;
-  MdiPrefixedIndexDefinition _mdiPrefixed;
-  VectorIndexDefinition _vector;
+  // owns the built-ins plus anything registered via add()
+  std::unordered_map<std::string, std::unique_ptr<IndexDefinition>>
+      _definitions;
 
+  // includes aliases (e.g. "rocksdb" for persistent)
   std::unordered_map<std::string, IndexDefinition const*, TransparentStringHash,
                      std::equal_to<>>
       _byName;

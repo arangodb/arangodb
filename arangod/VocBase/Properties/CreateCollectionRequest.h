@@ -24,9 +24,6 @@
 
 #include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/Properties/CollectionDescriptor.h"
-#include "VocBase/voc-types.h"
-
-#include <string>
 
 namespace arangodb {
 
@@ -43,12 +40,7 @@ struct CreateCollectionRequest {
   CollectionCreateOptions options;
 
   static ResultT<CreateCollectionRequest> fromCreateAPIBody(
-      velocypack::Slice input, DatabaseConfiguration const& config,
-      bool activateBackwardsCompatibility = true);
-
-  static ResultT<CreateCollectionRequest> fromCreateAPIV8(
-      velocypack::Slice properties, std::string const& name,
-      TRI_col_type_e type, DatabaseConfiguration const& config);
+      velocypack::Slice input, DatabaseConfiguration const& config);
 
   static ResultT<CreateCollectionRequest> fromRestoreAPIBody(
       velocypack::Slice input, DatabaseConfiguration const& config);

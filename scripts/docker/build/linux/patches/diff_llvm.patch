@@ -1,5 +1,5 @@
 diff --git a/openmp/runtime/src/ompd-specific.cpp b/openmp/runtime/src/ompd-specific.cpp
-index c4018789e..07da27023 100644
+index c401878..07da270 100644
 --- a/openmp/runtime/src/ompd-specific.cpp
 +++ b/openmp/runtime/src/ompd-specific.cpp
 @@ -82,6 +82,7 @@ void ompd_init() {
@@ -19,10 +19,10 @@ index c4018789e..07da27023 100644
  
    const char *ompd_env_var = getenv("OMP_DEBUG");
 diff --git a/openmp/runtime/src/ompt-general.cpp b/openmp/runtime/src/ompt-general.cpp
-index 55a936575..a71c1aef3 100644
+index 1a778e4..196b73b 100644
 --- a/openmp/runtime/src/ompt-general.cpp
 +++ b/openmp/runtime/src/ompt-general.cpp
-@@ -164,8 +164,7 @@ ompt_start_tool(unsigned int omp_version, const char *runtime_version) {
+@@ -167,8 +167,7 @@ ompt_start_tool(unsigned int omp_version, const char *runtime_version) {
    // runtime library is linked before the tool. Since glibc 2.2 strong symbols
    // don't override weak symbols that have been found before unless the user
    // sets the environment variable LD_DYNAMIC_WEAK.
@@ -32,7 +32,7 @@ index 55a936575..a71c1aef3 100644
    if (next_tool) {
      ret = next_tool(omp_version, runtime_version);
    }
-@@ -245,14 +244,14 @@ ompt_tool_windows(unsigned int omp_version, const char *runtime_version) {
+@@ -248,14 +247,14 @@ ompt_tool_windows(unsigned int omp_version, const char *runtime_version) {
  #endif
  
  static ompt_start_tool_result_t *
@@ -50,7 +50,7 @@ index 55a936575..a71c1aef3 100644
  #endif
  
    OMPT_VERBOSE_INIT_PRINT("----- START LOGGING OF TOOL REGISTRATION -----\n");
-@@ -275,7 +274,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
+@@ -278,7 +277,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
      OMPT_VERBOSE_INIT_PRINT("----- END LOGGING OF TOOL REGISTRATION -----\n");
      return ret;
    }
@@ -59,7 +59,7 @@ index 55a936575..a71c1aef3 100644
    // Try tool-libraries-var ICV
    OMPT_VERBOSE_INIT_CONTINUED_PRINT("Failed.\n");
    const char *tool_libs = getenv("OMP_TOOL_LIBRARIES");
-@@ -348,6 +347,8 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
+@@ -351,6 +350,8 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
    } else {
      OMPT_VERBOSE_INIT_PRINT("No OMP_TOOL_LIBRARIES defined.\n");
    }
@@ -68,7 +68,7 @@ index 55a936575..a71c1aef3 100644
  
    // usable tool found in tool-libraries
    if (ret) {
-@@ -355,6 +356,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
+@@ -358,6 +359,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
      return ret;
    }
  
@@ -76,8 +76,8 @@ index 55a936575..a71c1aef3 100644
  #if KMP_OS_UNIX
    { // Non-standard: load archer tool if application is built with TSan
      const char *fname = "libarcher.so";
-@@ -383,6 +385,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
-       }
+@@ -388,6 +390,7 @@ ompt_try_start_tool(unsigned int omp_version, const char *runtime_version) {
+       OMPT_DLCLOSE(h);
      }
    }
 +#endif

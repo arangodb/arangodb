@@ -488,19 +488,19 @@ set(BASE_LIBS "$ENV{LIBS}" CACHE STRING "base libraries")
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  19.0 # Clang
+  22.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
   list(APPEND BASE_LIBS atomic)
 endif()
 
-# need c++20
+# need c++26
 # XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 26)
 
-# turn off compiler language extensions(e.g. don't use -std=gnu++20, but
-# -std=c++20).
+# turn off compiler language extensions(e.g. don't use -std=gnu++26, but
+# -std=c++26).
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")
@@ -1137,6 +1137,9 @@ set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
+
+# Select faiss SIMD kernels at runtime based on the CPU.
+set(FAISS_OPT_LEVEL "dd" CACHE STRING "FAISS SIMD level" FORCE)
 
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 

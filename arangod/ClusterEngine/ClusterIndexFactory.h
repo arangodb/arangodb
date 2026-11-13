@@ -54,6 +54,10 @@ class ClusterIndexFactory final : public IndexFactory {
                                        velocypack::Slice definition,
                                        IndexId id) const;
 
+  std::shared_ptr<Index> createInverted(LogicalCollection& collection,
+                                        velocypack::Slice definition,
+                                        IndexId id) const;
+
   ClusterEngine& _engine;
 };
 
