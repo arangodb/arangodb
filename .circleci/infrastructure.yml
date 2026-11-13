@@ -263,7 +263,7 @@ jobs:
 
   # ── Test Docker images ──────────────────────────────────────────────────────
   # Builds the images used for running ArangoDB tests and driver tests.
-  # Sources: scripts/docker/{test,go-test,js-test,...} + release-test-automation repo.
+  # Sources: scripts/docker/{test,go-test,js-test,...,cp-schema-registry} + release-test-automation repo.
   build-test-docker-image:
     docker:
       - image: cimg/base:current
@@ -348,6 +348,18 @@ jobs:
               docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
               record_push $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
             done
+      - run:
+          name: Build schema registry Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            # Not derived from the test image (its base is confluent's UBI image),
+            # so determine-tag.sh would yield a different OS version prefix; reuse
+            # the base test image's tag so the whole image set shares one tag.
+            image=<< parameters.image >>-cp-schema-registry
+            /bin/sh build-image.sh $image << parameters.arch >> cp-schema-registry
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
@@ -426,6 +438,7 @@ jobs:
             for suite in go js python java spark tinkerpop spring; do
               record_manifest << parameters.image >>-${suite} "$(cat amd64-tag-${suite}.txt)"
             done
+            record_manifest << parameters.image >>-cp-schema-registry "$(cat amd64-tag.txt)"
       - run:
           name: Build RTA container manifest
           command: |
@@ -641,12 +654,15 @@ jobs:
               TAG="$(cat /tmp/workspace/tag-updates/test-tag.txt)"
               for repo in test-ubuntu test-ubuntu-go test-ubuntu-js test-ubuntu-python test-ubuntu-java \
                           test-ubuntu-spark test-ubuntu-tinkerpop test-ubuntu-spring \
+                          test-ubuntu-cp-schema-registry \
                           release-test-automation-tar-oskarnew; do
                 require_multiarch "${repo}" "${TAG}"
               done
               echo "${TAG}" > scripts/docker/amd64-tag.txt
               git add scripts/docker/amd64-tag.txt
               update_refs public.ecr.aws/b0b8h2r4/test-ubuntu "public.ecr.aws/b0b8h2r4/test-ubuntu:${TAG}"
+              update_refs public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry \
+                "public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry:${TAG}"
             fi
             if [ -f /tmp/workspace/tag-updates/build-tag.txt ]; then
               IMAGE_REF="$(cat /tmp/workspace/tag-updates/build-tag.txt)"
