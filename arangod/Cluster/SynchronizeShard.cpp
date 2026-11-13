@@ -56,6 +56,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -1170,6 +1171,12 @@ bool SynchronizeShard::first() {
       // because it was scheduled earlier:
       collection->followers()->setTheLeader(leader);
 
+      // Any follower transaction still here belongs to a previous follower.
+      // Could be either I was dropped or because the leader failed.
+      // There is no valid reason why follower transactions should still be
+      // executed.
+      transaction::cluster::abortFollowerTransactionsOnShard(collection->id());
+
       // If we fail to get in sync with this task, then we want to make
       // sure that the leader is reset to a known value, such that the
       // Maintenance will trigger another SynchronizeShard job eventually:
@@ -1437,6 +1444,11 @@ Result SynchronizeShard::catchupWithExclusiveLock(
                  collection.name()) {
     TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
   }
+  // Abort left follower transactions on this shard once more before we
+  // block writes on the leader: one of them may have been in use during the
+  // first attempt that we raced against.
+  transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+
   Result res = establishExclusiveLockOnLeader(ep, collection.name(), clientId,
                                               lockJobId);
   if (!res.ok()) {
