@@ -1058,12 +1058,14 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
-            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist.
+            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist,
+            # and the headers of dependencies fetched into build/_deps (boost). Boost's
+            # header-only code includes its implementation from .ipp files.
             - run:
                 name: Stage generated headers for clang-tidy
                 command: |
                   cd /root/project
-                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
+                  find build \( -name '*.h' -o -name '*.hpp' -o -name '*.ipp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
                     | tar --null -cf - -T - \
                     | (mkdir -p tidy-headers && tar -xf - -C tidy-headers)
             - persist_workspace_to_s3:
