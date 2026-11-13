@@ -29,6 +29,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Graph/Graph.h"
