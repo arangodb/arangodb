@@ -17,8 +17,8 @@ the pr-run pipeline parameter itself) degrades to a dry run.
 
 trigger-benchmarks (start the benchmarks pipeline after a successful
 publish) is kept only with --run-benchmarks-on-success true, outside
-pr-run and with the Alpine image built: a dry run publishes nothing, and
-without that image there is nothing to benchmark.
+pr-run and with the Ubuntu images built: a dry run publishes nothing, and
+without those images there is nothing to benchmark.
 """
 
 import argparse
@@ -33,6 +33,7 @@ PR_WORKFLOW_NAME = "nightly-packages-pr"
 ARCHES = ("amd64", "arm64")
 PACKAGE_FORMATS = ("tar",)
 DOCKER_IMAGES = ("core", "client-tools")
+FIPS_IMAGE = "coredb-fips"
 
 JobEntry = Union[str, Dict[str, Any]]
 
@@ -45,7 +46,8 @@ def parse_bool(value: str) -> bool:
 
 def disabled_jobs(
     tar: bool,
-    alpine_images: bool,
+    ubuntu_images: bool,
+    fips_image: bool,
     sign: bool,
     scan: bool,
     security: bool,
@@ -61,13 +63,27 @@ def disabled_jobs(
     # One docker job per architecture builds BOTH Ubuntu-based images
     # (core-preview and client-tools-preview); each built image gets its
     # own Trivy job.
-    if not alpine_images:
+    if not ubuntu_images:
         drop.update(f"docker-enterprise-{arch}" for arch in ARCHES)
     for image in DOCKER_IMAGES:
-        if not alpine_images or not security:
+        if not ubuntu_images or not security:
             drop.update(
                 f"security-check-docker-{image}-{arch}" for arch in ARCHES
             )
+
+    # The regular compiles feed the tarballs and the Ubuntu images; a
+    # FIPS-only run needs neither.
+    if not tar and not ubuntu_images:
+        drop.update(f"compile-enterprise-{arch}" for arch in ARCHES)
+
+    # The FIPS server image never reuses the regular build (FipsFeature is
+    # only compiled in with USE_FIPS): it has its own compile, docker job
+    # and Trivy job per architecture.
+    if not fips_image:
+        drop.update(f"compile-enterprise-fips-{arch}" for arch in ARCHES)
+        drop.update(f"docker-enterprise-fips-{arch}" for arch in ARCHES)
+    if not fips_image or not security:
+        drop.update(f"security-check-docker-{FIPS_IMAGE}-{arch}" for arch in ARCHES)
 
     # scan/sign cover packages only; without the tarballs they would find
     # nothing to work on.
@@ -80,15 +96,15 @@ def disabled_jobs(
 
 
 def benchmarks_skip_reason(
-    run_benchmarks: bool, pr_run: bool, alpine_images: bool
+    run_benchmarks: bool, pr_run: bool, ubuntu_images: bool
 ) -> Optional[str]:
     """Why trigger-benchmarks is dropped, or None when it stays."""
     if not run_benchmarks:
         return "run-benchmarks-on-success is false"
     if pr_run:
         return "pr-run publishes nothing"
-    if not alpine_images:
-        return "build-alpine-images is false, no image to benchmark"
+    if not ubuntu_images:
+        return "build-ubuntu-images is false, no image to benchmark"
     return None
 
 
@@ -319,20 +335,23 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
 
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
-    if not any((args.build_tarballs, args.build_alpine_images)):
+    if not any(
+        (args.build_tarballs, args.build_ubuntu_images, args.build_fips_image)
+    ):
         raise ValueError(
             "nothing selected: enable at least one of build-tarballs, "
-            "build-alpine-images"
+            "build-ubuntu-images, build-fips-image"
         )
     drop = disabled_jobs(
         tar=args.build_tarballs,
-        alpine_images=args.build_alpine_images,
+        ubuntu_images=args.build_ubuntu_images,
+        fips_image=args.build_fips_image,
         sign=args.sign_packages,
         scan=args.scan_viruses,
         security=args.security_check,
     )
     if benchmarks_skip_reason(
-        args.run_benchmarks_on_success, args.pr_run, args.build_alpine_images
+        args.run_benchmarks_on_success, args.pr_run, args.build_ubuntu_images
     ):
         drop.add(TRIGGER_BENCHMARKS)
     name = workflow_name(args.pr_run)
@@ -349,7 +368,8 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
     parser.add_argument("-o", "--output", required=True, help="continuation config to write")
     for option in (
         "build-tarballs",
-        "build-alpine-images",
+        "build-ubuntu-images",
+        "build-fips-image",
         "sign-packages",
         "scan-viruses",
         "security-check",
@@ -382,7 +402,7 @@ def main(argv: List[str]) -> int:
     )
     print(f"Generated {args.output} with workflow {name} and jobs: {workflow_jobs}")
     reason = benchmarks_skip_reason(
-        args.run_benchmarks_on_success, args.pr_run, args.build_alpine_images
+        args.run_benchmarks_on_success, args.pr_run, args.build_ubuntu_images
     )
     if reason:
         print(f"Not triggering benchmarks: {reason}")

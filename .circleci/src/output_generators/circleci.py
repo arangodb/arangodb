@@ -282,7 +282,7 @@ class CircleCIGenerator(OutputGenerator):
         """
         Add a dedicated workflow that builds and publishes the multi-arch
         arangodb/core-<flavor> and arangodb/client-tools-<flavor> Docker
-        images (Alpine 3.24 based) to public ECR. Flavor "test" is the
+        images (Ubuntu 26.04 based) to public ECR. Flavor "test" is the
         maintainer-mode pair (create-test-docker-images), "preview" the
         non-maintainer, release-like pair (create-preview-docker-images);
         both may run in the same pipeline as independent workflows, and one

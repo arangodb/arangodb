@@ -5,6 +5,7 @@ Run from the .circleci directory: python -m pytest tests_unit/test_generate_nigh
 """
 
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,8 @@ BASE_PATH = Path(__file__).parent.parent / "base_nightly_packages.yml"
 
 ALL_TRUE = {
     "build-tarballs": "true",
-    "build-alpine-images": "true",
+    "build-ubuntu-images": "true",
+    "build-fips-image": "true",
     "sign-packages": "true",
     "scan-viruses": "true",
     "security-check": "true",
@@ -114,26 +116,33 @@ def test_docker_only_drops_package_pipeline(base_config):
     # docker builds, their security checks, and both compiles remain
     assert "compile-enterprise-amd64" in names
     assert required_names(config, "publish-nightly") == {
-        f"docker-enterprise-{arch}" for arch in ("amd64", "arm64")
+        f"docker-enterprise{variant}-{arch}"
+        for variant in ("", "-fips")
+        for arch in ("amd64", "arm64")
     } | {
         f"security-check-docker-{image}-{arch}"
-        for image in ("core", "client-tools")
+        for image in ("core", "client-tools", "coredb-fips")
         for arch in ("amd64", "arm64")
     }
 
 
 def test_packages_only_drops_docker_jobs(base_config):
-    config = run_generate(base_config, **{"build-alpine-images": "false"})
+    config = run_generate(
+        base_config,
+        **{"build-ubuntu-images": "false", "build-fips-image": "false"},
+    )
     names = workflow_names(config)
     for arch in ("amd64", "arm64"):
-        assert f"docker-enterprise-{arch}" not in names
-        for image in ("core", "client-tools"):
+        assert f"compile-enterprise-{arch}" in names
+        for job in ("docker-enterprise", "docker-enterprise-fips", "compile-enterprise-fips"):
+            assert f"{job}-{arch}" not in names
+        for image in ("core", "client-tools", "coredb-fips"):
             assert f"security-check-docker-{image}-{arch}" not in names
     assert "scan-packages" in names
     assert "sign-packages" in names
 
 
-def test_alpine_images_always_come_in_pairs(base_config):
+def test_ubuntu_images_always_come_in_pairs(base_config):
     """One flag, two images: each per-arch docker job feeds one Trivy gate
     per image name (core and client-tools)."""
     config = run_generate(base_config)
@@ -152,7 +161,8 @@ def test_nothing_selected_is_an_error(base_config):
             base_config,
             **{
                 "build-tarballs": "false",
-                "build-alpine-images": "false",
+                "build-ubuntu-images": "false",
+                "build-fips-image": "false",
             },
         )
 
@@ -177,7 +187,7 @@ def test_every_generated_graph_is_consistent(base_config):
         assert (gen.TRIGGER_BENCHMARKS in names) == (
             values["run-benchmarks-on-success"] == "true"
             and values["pr-run"] == "false"
-            and values["build-alpine-images"] == "true"
+            and values["build-ubuntu-images"] == "true"
         )
         # The tolerated-failure exemption must hold whatever is pruned:
         # exactly the security-check jobs when the scans run, nothing
@@ -249,7 +259,7 @@ def test_publish_tolerates_exactly_the_security_checks(base_config):
     config = run_generate(base_config)
     deps = requires_of(config, "publish-nightly")
     checks = [d for d in deps if gen.dep_name(d).startswith("security-check-")]
-    assert len(checks) == 6
+    assert len(checks) == 8
     for dep in checks:
         assert gen.dep_statuses(dep) == ["success", "failed"]
     for dep in deps:
@@ -257,7 +267,7 @@ def test_publish_tolerates_exactly_the_security_checks(base_config):
             assert dep == gen.dep_name(dep), f"{dep} must be a success-only requires"
     # the scan jobs are still waited for, just not tolerated
     names = required_names(config, "publish-nightly")
-    assert len([n for n in names if n.startswith("security-check-")]) == 6
+    assert len([n for n in names if n.startswith("security-check-")]) == 8
 
 
 def test_expected_gate_items_track_the_scan_jobs(base_config):
@@ -451,7 +461,7 @@ def test_benchmarks_trigger_waits_for_publish(base_config):
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"pr-run": "true"}, {"build-alpine-images": "false"}],
+    [{"pr-run": "true"}, {"build-ubuntu-images": "false"}],
 )
 def test_benchmarks_trigger_needs_a_real_publish_of_the_image(base_config, overrides):
     config = run_generate(base_config, **overrides)
@@ -468,3 +478,81 @@ def test_check_workflow_rejects_benchmarks_not_gated_on_publish(base_config):
     with pytest.raises(ValueError, match="trigger-benchmarks must require"):
         gen.check_workflow(config)
 
+
+def job_config_of(config, name):
+    _, workflow = only_workflow(config)
+    for entry in workflow["jobs"]:
+        if gen.entry_name(entry) == name:
+            [(_, job_config)] = entry.items()
+            return job_config or {}
+    raise AssertionError(f"job {name} not in workflow")
+
+
+def test_fips_image_is_opt_in():
+    """build-fips-image is off unless a trigger sets it, in the setup config
+    (where triggers set it) and in the base config (which the publish steps
+    read) alike."""
+    for path in (BASE_PATH, BASE_PATH.parent / "nightly_packages.yml"):
+        with open(path, encoding="utf-8") as f:
+            params = yaml.safe_load(f)["parameters"]
+        assert params["build-fips-image"]["default"] is False
+        assert params["build-ubuntu-images"]["default"] is True
+
+
+def test_fips_off_leaves_no_fips_job_or_gate_item(base_config):
+    config = run_generate(base_config, **{"build-fips-image": "false"})
+    assert not any("fips" in name for name in workflow_names(config))
+    items = publish_job_config(config)["expected-gate-items"].split()
+    assert not any("fips" in item for item in items)
+
+
+def test_fips_image_is_built_from_its_own_fips_compile(base_config):
+    """FipsFeature is only compiled in with USE_FIPS, so the FIPS image must
+    never be built from the regular (static) compile."""
+    config = run_generate(base_config)
+    for arch in ("amd64", "arm64"):
+        compile_job = job_config_of(config, f"compile-enterprise-fips-{arch}")
+        assert compile_job["fips"] is True
+        assert compile_job["preset"].endswith("-fips")
+        docker_job = job_config_of(config, f"docker-enterprise-fips-{arch}")
+        assert docker_job["fips"] is True
+        assert docker_job["requires"] == [f"compile-enterprise-fips-{arch}"]
+        assert requires_of(config, f"security-check-docker-coredb-fips-{arch}") == [
+            f"docker-enterprise-fips-{arch}"
+        ]
+        assert f"docker-enterprise-fips-{arch}" in required_names(
+            config, "publish-nightly"
+        )
+
+
+def test_fips_only_run_skips_the_regular_compiles(base_config):
+    config = run_generate(
+        base_config, **{"build-tarballs": "false", "build-ubuntu-images": "false"}
+    )
+    names = workflow_names(config)
+    for arch in ("amd64", "arm64"):
+        assert f"compile-enterprise-{arch}" not in names
+        assert f"compile-enterprise-fips-{arch}" in names
+    assert gen.TRIGGER_BENCHMARKS not in names
+
+
+def test_compile_presets_exist_in_cmake_presets(base_config):
+    """Every preset a nightly compile names must exist as a configure and a
+    build preset (the job runs cmake --preset and cmake --build --preset),
+    and exactly the -fips ones inherit the fips preset (USE_FIPS)."""
+    with open(BASE_PATH.parent.parent / "CMakePresets.json", encoding="utf-8") as f:
+        presets = json.load(f)
+    configure = {p["name"]: p for p in presets["configurePresets"]}
+    build = {p["name"] for p in presets["buildPresets"]}
+    _, workflow = only_workflow(run_generate(base_config))
+    used = [
+        entry["compile-nightly"]["preset"]
+        for entry in workflow["jobs"]
+        if isinstance(entry, dict) and "compile-nightly" in entry
+    ]
+    assert len(used) == 4
+    for preset in used:
+        assert preset in configure and preset in build, preset
+        assert ("fips" in configure[preset].get("inherits", [])) == preset.endswith(
+            "-fips"
+        )

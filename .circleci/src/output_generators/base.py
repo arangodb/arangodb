@@ -27,10 +27,10 @@ class CircleCIConfig:
     """CircleCI-specific configuration."""
 
     # Test Docker images (maintainer mode) to build and publish: "none" or
-    # "alpine"
+    # "ubuntu"
     create_test_docker_images: str = "none"
     # Preview Docker images (non-maintainer, release-like) to build and
-    # publish: "none" or "alpine"
+    # publish: "none" or "ubuntu"
     create_preview_docker_images: str = "none"
     test_image: str = ""
 

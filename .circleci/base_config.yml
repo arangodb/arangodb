@@ -33,11 +33,11 @@ parameters:
     default: false
   create-test-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
   create-preview-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
   rebuild-test-docker-images:
     type: boolean
@@ -844,8 +844,8 @@ jobs:
             # Everything persisted here must be arch-specific: the x64 and
             # aarch64 compile jobs run concurrently, and concurrent jobs
             # persisting the same workspace path cause a workspace layer
-            # conflict on attach. The docker build context (dockerfile,
-            # setup.sh, entrypoint.sh) is copied per arch for the same
+            # conflict on attach. The docker build context (dockerfiles,
+            # setup.sh, entrypoint-ubuntu.sh) is copied per arch for the same
             # reason - each build-docker-image job requires only its own
             # arch's compile job, so it cannot rely on the other arch's
             # workspace layer being present.
@@ -936,8 +936,8 @@ jobs:
                   ubsan_arangodb_suppressions.txt
                   lsan_arangodb_suppressions.txt
 
-  # Builds one architecture's Alpine-based image locally and saves it to a
-  # workspace tarball. No registry auth here - pushing (and the ECR login)
+  # Builds one architecture's Ubuntu-based images locally and saves them to
+  # workspace tarballs. No registry auth here - pushing (and the ECR login)
   # happens once both architectures are available together, in
   # push-docker-manifest. CircleCI workflows can't depend on jobs in
   # another workflow, so both architectures live in the same
@@ -974,7 +974,7 @@ jobs:
       - run:
           name: Build Docker Images
           command: |
-            # Two Alpine-based (3.24) images per architecture:
+            # Two Ubuntu-based (26.04) images per architecture:
             # core-<name-suffix> (server only, no client tools) and
             # client-tools-<name-suffix> (client tools only, pruned from the
             # same install tree the way build-targz.sh builds the client
@@ -1005,9 +1005,11 @@ jobs:
             rm -rf install/usr/share/man/man1 \
                    install/usr/share/arangodb4/js
 
-            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            # ARANGO_BUILD_IMAGE is named by the dockerfile's FIPS stage; it
+            # is only pulled for a FIPS build (USE_FIPS=1), never here.
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> --build-arg ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu.dockerfile .
             docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >>
-            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-alpine-client.dockerfile .
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu-client.dockerfile .
             docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp

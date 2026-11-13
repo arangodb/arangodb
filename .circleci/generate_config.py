@@ -288,19 +288,19 @@ def create_generator_config(
 )
 @click.option(
     "--create-test-docker-images",
-    type=click.Choice(["none", "alpine"]),
+    type=click.Choice(["none", "ubuntu"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-test and "
-    "arangodb/client-tools-test Docker images (maintainer mode, Alpine "
-    "3.24 based) to public ECR from the build results",
+    "arangodb/client-tools-test Docker images (maintainer mode, Ubuntu "
+    "26.04 based) to public ECR from the build results",
 )
 @click.option(
     "--create-preview-docker-images",
-    type=click.Choice(["none", "alpine"]),
+    type=click.Choice(["none", "ubuntu"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-preview and "
     "arangodb/client-tools-preview Docker images (non-maintainer, "
-    "release-like; Alpine 3.24 based) to public ECR from the build results",
+    "release-like; Ubuntu 26.04 based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",

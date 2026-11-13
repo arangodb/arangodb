@@ -42,10 +42,14 @@ parameters:
     type: boolean
     default: true
     description: "Build the TAR.GZ server and client bundles for amd64 and arm64 (the only package format of 4.0)."
-  build-alpine-images:
+  build-ubuntu-images:
     type: boolean
     default: true
-    description: "Build the Alpine-based Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server only, no client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
+    description: "Build the Ubuntu-based (26.04) Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server only, no client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
+  build-fips-image:
+    type: boolean
+    default: false
+    description: "Also build the FIPS server image arangodb/coredb-fips (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -74,7 +78,7 @@ parameters:
   run-benchmarks-on-success:
     type: boolean
     default: false
-    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-alpine-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
+    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-ubuntu-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
 
 jobs:
   cancel-redundant-pipelines:
@@ -189,7 +193,8 @@ jobs:
             python3 .circleci/generate_nightly_packages_config.py \
               --base .circleci/base_nightly_packages.yml \
               --build-tarballs "<< pipeline.parameters.build-tarballs >>" \
-              --build-alpine-images "<< pipeline.parameters.build-alpine-images >>" \
+              --build-ubuntu-images "<< pipeline.parameters.build-ubuntu-images >>" \
+              --build-fips-image "<< pipeline.parameters.build-fips-image >>" \
               --sign-packages "<< pipeline.parameters.sign-packages >>" \
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \

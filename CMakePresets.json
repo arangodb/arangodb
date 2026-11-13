@@ -298,6 +298,28 @@
       "displayName": "Nightly package build (static release, Enterprise, ARM64)"
     },
     {
+      "name": "nightly-package-x64-fips",
+      "inherits": [
+        "fips",
+        "nightly-package-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Nightly FIPS build (dynamic glibc, Enterprise, x64)"
+    },
+    {
+      "name": "nightly-package-arm64-fips",
+      "inherits": [
+        "fips",
+        "nightly-package-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Nightly FIPS build (dynamic glibc, Enterprise, ARM64)"
+    },
+    {
       "hidden": true,
       "name": "developer-base",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
@@ -425,6 +447,14 @@
     {
       "name": "nightly-package-arm64",
       "configurePreset": "nightly-package-arm64"
+    },
+    {
+      "name": "nightly-package-x64-fips",
+      "configurePreset": "nightly-package-x64-fips"
+    },
+    {
+      "name": "nightly-package-arm64-fips",
+      "configurePreset": "nightly-package-arm64-fips"
     },
     {
       "name": "developer-x64",

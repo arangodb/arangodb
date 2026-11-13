@@ -52,23 +52,23 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
     description: "Build and publish multi-arch (amd64 + arm64) test Docker images
-      of the Enterprise Edition from this commit's build results; 'alpine' builds
-      TWO Alpine-3.24-based images: arangodb/core-test (server only, no client
+      of the Enterprise Edition from this commit's build results; 'ubuntu' builds
+      TWO Ubuntu-26.04-based images: arangodb/core-test (server only, no client
       tools) and arangodb/client-tools-test (client tools only); 'none'
       disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
       tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
       -amd64 / -arm64v8 per-arch tags."
   create-preview-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
     description: "Build and publish multi-arch (amd64 + arm64) preview Docker
       images of the Enterprise Edition from this commit's build results: a
       non-maintainer, release-like build (no assertions, failure points or
-      test-only JS; x64 keeps IPO on like nightly packages); 'alpine' builds
+      test-only JS; x64 keeps IPO on like nightly packages); 'ubuntu' builds
       arangodb/core-preview and arangodb/client-tools-preview; 'none' disables.
       Pushed to public ECR under public.ecr.aws/b0b8h2r4/ with the same tagging
       scheme as the test images. Independent of create-test-docker-images;
