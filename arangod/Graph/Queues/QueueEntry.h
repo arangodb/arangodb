@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <memory>
 #include <variant>
 #include <vector>
 #include "Inspection/Types.h"
@@ -31,16 +32,16 @@ template<typename T, typename Step>
 concept NeighbourCursor = requires(T t) {
   { t.next() } -> std::convertible_to<std::vector<Step>>;
   { t.hasMore() } -> std::convertible_to<bool>;
-  { t.markForDeletion() };
 };
 
 template<typename Step, NeighbourCursor<Step> Cursor>
-struct QueueEntry : std::variant<Step, std::reference_wrapper<Cursor>> {};
+struct QueueEntry : std::variant<Step, std::unique_ptr<Cursor>> {};
 
 template<typename Step, NeighbourCursor<Step> Cursor, typename Inspector>
 auto inspect(Inspector& f, QueueEntry<Step, Cursor>& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<Step>(), inspection::type<Cursor>("cursor"));
+      inspection::inlineType<Step>(),
+      inspection::type<std::unique_ptr<Cursor>>("cursor"));
 }
 
 }  // namespace arangodb::graph

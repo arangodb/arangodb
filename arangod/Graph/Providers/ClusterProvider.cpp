@@ -609,14 +609,9 @@ auto ClusterProvider<StepImpl>::expand(
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::createNeighbourCursor(Step const& step,
                                                       size_t position)
-    -> ClusterNeighbourCursor<Step>& {
-  _neighbourCursors.remove_if([](ClusterNeighbourCursor<Step> const& cursor) {
-    return cursor._deletable;
-  });
-
-  _neighbourCursors.emplace_back(
-      ClusterNeighbourCursor<Step>{step, position, _trx.get(), _opts, _stats});
-  return _neighbourCursors.back();
+    -> std::unique_ptr<NeighbourCursor> {
+  return std::make_unique<NeighbourCursor>(step, position, _trx.get(), _opts,
+                                           _stats);
 }
 
 template<class StepImpl>

@@ -254,9 +254,7 @@ class MockGraphProvider {
   struct MockGraphNeighbourCursor {
     auto next() -> std::vector<Step>;
     auto hasMore() -> bool { return _hasMore; };
-    auto markForDeletion() -> void { deletable = true; };
 
-    bool deletable = false;
     Step _step;
     size_t _previous;
     std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>>&
@@ -285,7 +283,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
   MockGraphProvider& operator=(MockGraphProvider&&) = delete;
 
-  void destroyEngines(){};
+  void destroyEngines() {};
   auto startVertex(arangodb::graph::VertexRef vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;
   auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
@@ -297,20 +295,10 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> callback) -> void;
   auto createNeighbourCursor(Step const& step, size_t position)
-      -> MockGraphNeighbourCursor<Step>& {
-    _neighbourCursors.remove_if(
-        [](MockGraphNeighbourCursor<Step> const& cursor) {
-          return cursor.deletable;
-        });
-    return _neighbourCursors.emplace_back(
-        MockGraphNeighbourCursor<Step>{._step = step,
-                                       ._previous = position,
-                                       ._fromIndex = _fromIndex,
-                                       ._toIndex = _toIndex,
-                                       ._weightCallback = _weightCallback,
-                                       ._processable = decideProcessable(),
-                                       ._reverse = _reverse,
-                                       ._stats = _stats});
+      -> std::unique_ptr<MockGraphNeighbourCursor<Step>> {
+    return std::make_unique<MockGraphNeighbourCursor<Step>>(
+        step, position, _fromIndex, _toIndex, _weightCallback,
+        decideProcessable(), _reverse, _stats);
   }
   auto clear() -> void;
 

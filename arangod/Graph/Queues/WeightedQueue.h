@@ -71,7 +71,7 @@ class WeightedQueue {
   }
 
   template<NeighbourCursor<Step> Cursor>
-  void append(Cursor& cursor) {
+  void append(std::unique_ptr<Cursor>&& cursor) {
     TRI_ASSERT(false);
   }
 
