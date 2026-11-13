@@ -1005,20 +1005,25 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_MANAGED_STRING:
       return basics::VelocyPackHelper::compare(
           left.slice(leftType), right.slice(rightType), compareUtf8, options);
-    case RANGE:
-      if (left.range()->_low < right.range()->_low) {
+    case RANGE: {
+      auto const* rl = left.range();
+      auto const* rr = right.range();
+      TRI_ASSERT(rl != nullptr);
+      TRI_ASSERT(rr != nullptr);
+      if (rl->_low < rr->_low) {
         return -1;
       }
-      if (left.range()->_low > right.range()->_low) {
+      if (rl->_low > rr->_low) {
         return 1;
       }
-      if (left.range()->_high < right.range()->_high) {
+      if (rl->_high < rr->_high) {
         return -1;
       }
-      if (left.range()->_high > right.range()->_high) {
+      if (rl->_high > rr->_high) {
         return 1;
       }
       return 0;
+    }
   }
   return 0;
 }
@@ -1352,60 +1357,27 @@ void const* AqlValue::data() const noexcept {
 namespace std {
 using arangodb::aql::AqlValue;
 
-size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
+// bytes, not AQL equality: [] and [null] must not merge
+size_t hash<AqlValue>::operator()(AqlValue const& x) const {
   auto t = x.type();
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.inlineSliceMeta.slice).volatileHash());
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.longNumberMeta.data.slice.slice).volatileHash());
-      // TODO(MBkkt) these hashes have bad distribution
-    case AqlValue::VPACK_SLICE_POINTER:
-      return std::hash<void const*>()(x._data.slicePointerMeta.pointer);
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return std::hash<void const*>()(x._data.managedSliceMeta.pointer);
-    case AqlValue::VPACK_MANAGED_STRING:
-      return std::hash<void const*>()(x._data.managedStringMeta.pointer);
-    case AqlValue::RANGE:
-      return std::hash<void const*>()(x._data.rangeMeta.range);
+  if (t == AqlValue::RANGE) {
+    auto const* r = x._data.rangeMeta.range;
+    int64_t const bounds[2] = {r->_low, r->_high};
+    return static_cast<size_t>(
+        VELOCYPACK_HASH(bounds, sizeof(bounds), AqlValue::kDefaultSeed));
   }
-  return 0;
+  return static_cast<size_t>(x.slice(t).volatileHash());
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
-                                    AqlValue const& b) const noexcept {
-  // TODO(MBkkt) can be just compare two uint64_t?
-  auto t = a.type();
-  if (t != b.type()) {
-    return false;
+                                    AqlValue const& b) const {
+  auto ta = a.type();
+  auto tb = b.type();
+  if (ta == AqlValue::RANGE || tb == AqlValue::RANGE) {
+    return ta == tb && a.range()->_low == b.range()->_low &&
+           a.range()->_high == b.range()->_high;
   }
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return VPackSlice(a._data.inlineSliceMeta.slice)
-          .binaryEquals(VPackSlice(b._data.inlineSliceMeta.slice));
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      // equal is equal. sign/endianess does not matter
-      return a._data.longNumberMeta.data.intLittleEndian.val ==
-             b._data.longNumberMeta.data.intLittleEndian.val;
-    case AqlValue::VPACK_SLICE_POINTER:
-      return a._data.slicePointerMeta.pointer ==
-             b._data.slicePointerMeta.pointer;
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return a._data.managedSliceMeta.pointer ==
-             b._data.managedSliceMeta.pointer;
-    case AqlValue::VPACK_MANAGED_STRING:
-      return a._data.managedStringMeta.pointer ==
-             b._data.managedStringMeta.pointer;
-    case AqlValue::RANGE:
-      return a._data.rangeMeta.range == b._data.rangeMeta.range;
-  }
-  return false;
+  return a.slice(ta).binaryEquals(b.slice(tb));
 }
 
 }  // namespace std

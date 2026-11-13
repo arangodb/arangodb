@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
+  instead of value content, causing byte-identical values to be serialized
+  multiple times instead of reusing their position in the AqlItemBlock raw
+  array.
+
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 

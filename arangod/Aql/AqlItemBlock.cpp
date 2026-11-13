@@ -512,14 +512,9 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            // the stolen value moves into `res` as-is, so the target payload
-            // is the source payload
-            auto [it, inserted] = cache.emplace(a.data(), a.data());
-            res->setValue(row, col, AqlValue(a, (*it).second));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            // stealAndEraseValue clones if the pointer is shared elsewhere
+            res->setValue(row, col, a);
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }
@@ -1091,26 +1086,35 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
   copySubqueryDepth(currentRow, fromRow);
 }
 
-void AqlItemBlock::steal(AqlValue const& value) {
+bool AqlItemBlock::steal(AqlValue const& value) {
   if (value.requiresDestruction()) {
     auto it = _valueCount.find(value.data());
     if (it != _valueCount.end()) {
-      decreaseMemoryUsage((*it).second.memoryUsage);
+      auto& valueInfo = (*it).second;
+      TRI_ASSERT(valueInfo.refCount > 0);
+      if (valueInfo.refCount > 1) {
+        return false;
+      }
+      decreaseMemoryUsage(valueInfo.memoryUsage);
       _valueCount.erase(it);
     }
   }
+  return true;
 }
 
 AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   TRI_ASSERT(varNr.isRegularRegister());
   auto& element = _data[getAddress(index, varNr.value())];
 
+  if (!steal(element)) {
+    // clone first so a throw leaves the block intact
+    AqlValue copy = element.clone();
+    destroyValue(index, varNr);
+    return copy;
+  }
+
   auto value = element;
-
-  steal(element);
-
   element.erase();
-
   return value;
 }
 

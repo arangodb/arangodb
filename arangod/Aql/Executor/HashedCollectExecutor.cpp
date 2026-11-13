@@ -344,9 +344,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   //  If new group
   if (_infos.getGroupRegisters().size() == 1) {
     auto const& reg = _infos.getGroupRegisters().back();
-    // On a single register there can be no duplicate value
-    // inside the groupValues, so we cannot get into a situation
-    // where it is unclear who is responsible for the data
+    // single value: no intra-row ambiguity; stealValue clones if shared
     AqlValue a = input.stealValue(reg.second);
     AqlValueGuard guard{a, true};
     _nextGroup.values.emplace_back(a);
