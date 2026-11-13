@@ -220,9 +220,15 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   if (!targetNgrams.empty() && !attrNgrams.empty()) {
     size_t thresholdMatches =
         (size_t)std::ceil((float_t)targetNgrams.size() * threshold);
-    size_t d = 0;  // will store upper-left cell value for current cache row
+    // cache[j] is the longest match using the first j attribute n-grams.
+    // cache[0] stays 0: a match cannot start before the first attribute n-gram.
     std::vector<size_t> cache(attrNgrams.size() + 1, 0);
     for (auto const& targetNgram : targetNgrams) {
+      // Diagonal of column 1 is cache[0] from the previous row. Reusing the
+      // value left in `d` would apply the previous row's last cell (saved
+      // before that cell was overwritten, so two rows back) and over-count
+      // a repeated token, e.g. ["quick"] vs ["quick","quick","quick"].
+      size_t d = 0;
       size_t s_ngram_idx = 1;
       for (; s_ngram_idx <= attrNgrams.size(); ++s_ngram_idx) {
         size_t curMatches =

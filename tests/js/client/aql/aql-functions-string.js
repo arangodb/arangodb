@@ -78,6 +78,18 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testRepeatSeparatorsCountTowardsOutputLimit: function () {
+      ['null', '""'].forEach((v) => {
+        const query = `RETURN REPEAT(${v}, 20000, REPEAT("x", 1024))`;
+        assertQueryWarningAndNull(errors.ERROR_RESOURCE_LIMIT.code, query);
+      });
+    },
+
+    testRepeatEmptyValueWithoutSeparatorIsEmpty: function () {
+      assertEqual([""], getQueryResults('RETURN REPEAT("", 1000000000000)'));
+      assertEqual([""], getQueryResults('RETURN REPEAT(null, 1000000000000, "")'));
+    },
+
     testRepeatInvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT(1)');
@@ -2427,6 +2439,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "y" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", true)`));
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", [ ])`));
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", { })`));
+    },
+
+    testSubstringBytesLeftExtensionFromTheEndStaysInsideTheString: function () {
+      // the 64-byte string's head byte 0x80 looks like a UTF-8 continuation byte
+      const query = `FOR a IN [["abc", "${'x'.repeat(64)}"]] RETURN SUBSTRING_BYTES(a[0], 3, 0, 1)`;
+      assertEqual([ 'c' ], getQueryResults(query));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('a🤡', 5, 0, 1)`));
     },
 
     testSubstringBytes: function () {
