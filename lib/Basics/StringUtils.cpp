@@ -1687,6 +1687,7 @@ std::string escapeRegexParams(std::string_view in) {
 }
 
 std::string formatSize(uint64_t value) {
+  auto constexpr fmt = "{0:.5f}";
   std::string out, label;
   if (value < 1000) {
     if (value == 1) {
@@ -1697,16 +1698,16 @@ std::string formatSize(uint64_t value) {
       label = "bytes";
     }
   } else if (value < 1000'000ULL) {
-    out = std::to_string((double)value / double(1000));
+    out = std::format(fmt, (double)value / double(1000));
     label = "KB";
   } else if (value < 1'000'000'000ULL) {
-    out = std::to_string((double)value / 1e6);
+    out = std::format(fmt, (double)value / 1e6);
     label = "MB";
   } else if (value < 1'000'000'000'000ULL) {
-    out = std::to_string((double)value / 1e9);
+    out = std::format(fmt, (double)value / 1e9);
     label = "GB";
   } else if (value < 1'000'000'000'000'000ULL) {
-    out = std::to_string((double)value / 1e12);
+    out = std::format(fmt, (double)value / 1e12);
     label = "TB";
   }
   out = arangodb::basics::StringUtils::replace(out, ",", ".");

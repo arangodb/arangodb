@@ -1,6 +1,30 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
+  (previously g++-13).
+
+* Update libunwind from 1.7.2 to 1.8.3.
+
+* COR-1263 / github issue #23383:
+  - Fixed the extra counting issue in NGRAM_MATCH
+  - Added unit tests
+
+* Creating a collection via `POST /_api/collection` no longer silently corrects
+  invalid request bodies. Such requests are now rejected with HTTP 400 instead
+  of being accepted with a deprecation warning. This affects, for example,
+  unknown attributes, `null` attribute values, `type` given as a string or as an unknown number,
+  attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
+  cluster attributes that were ignored before, such as `numberOfShards` together
+  with `distributeShardsLike`, or `writeConcern` on a single server.
+
+* COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
+  the leader had intermediate commits while the follower didn't.
+
+* COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
 * COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
   extending left from the end, which could return extra characters.
 
@@ -127,6 +151,18 @@
   The rule `upgrade-scatter-to-distribute` can now also turn the ScatterNode
   in front of `e2` into a DistributeNode when the shard key value comes from
   `sat`.
+
+* COR-1148: In a cluster, optimizing an AQL query with several FOR loops
+  stays fast no matter how many OR conditions its filters contain. SmartJoins
+  are also used when the query filters with OR conditions in addition to the
+  join condition. Before, a query with several OR-ed join conditions could
+  keep the Coordinator busy for a long time or crash it.
+  A SmartJoin is only used if nothing but deterministic FOR, FILTER, LET and
+  SORT operations without data modifications come between the joined FOR
+  loops and their join condition, and nothing but FILTER and LET operations
+  between the two FOR loops. Queries with a LIMIT, COLLECT, WINDOW or data
+  modification in these places return the same results as without
+  SmartJoins.
 
 * The AQL optimizer rule `upgrade-scatter-to-distribute` turns a ScatterNode
   into a DistributeNode only if the snippet behind it starts with a
