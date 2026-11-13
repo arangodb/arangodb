@@ -46,6 +46,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexFactory.h"
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -71,6 +72,7 @@
 #include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -1122,6 +1124,17 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
     if (!indexes.isArray()) {
       co_return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                        "collection indexes declaration is invalid");
+    }
+
+    // The indexes are restored later via restore-indexes, possibly after
+    // arangosearch views were restored and their links got ids generated
+    // locally. Reserve the dumped index ids now, so that locally generated
+    // ids cannot collide with them.
+    for (VPackSlice idx : VPackArrayIterator(indexes)) {
+      auto id = helpers::extractId(idx);
+      if (id.isSet()) {
+        TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
+      }
     }
   }
 
