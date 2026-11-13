@@ -56,8 +56,25 @@ struct ResourceMonitorBase {
     return _peakBytes.load(std::memory_order_relaxed);
   }
 
+  // Requested bytes at the moment the actual peak was reached.
+  [[nodiscard]] uint64_t peakRequestedBytes() const noexcept {
+    return _peakRequestedBytes.load(std::memory_order_relaxed);
+  }
+
+  // Number of live allocations; each carries one allocation header.
+  [[nodiscard]] uint64_t liveAllocations() const noexcept {
+    return _liveAllocations.load(std::memory_order_relaxed);
+  }
+
+  // Live allocations at the moment the actual peak was reached.
+  [[nodiscard]] uint64_t peakLiveAllocations() const noexcept {
+    return _peakLiveAllocations.load(std::memory_order_relaxed);
+  }
+
   void resetPeak() noexcept {
     _peakBytes.store(actualBytes(), std::memory_order_relaxed);
+    _peakRequestedBytes.store(requestedBytes(), std::memory_order_relaxed);
+    _peakLiveAllocations.store(liveAllocations(), std::memory_order_relaxed);
   }
 
   void setLimitHit() noexcept {
@@ -88,21 +105,34 @@ struct ResourceMonitorBase {
     } else {
       now = _actualBytes.fetch_add(actual, std::memory_order_relaxed) + actual;
     }
-    _requestedBytes.fetch_add(requested, std::memory_order_relaxed);
-    updatePeak(now);
+    auto requestedNow =
+        _requestedBytes.fetch_add(requested, std::memory_order_relaxed) +
+        requested;
+    // Every increase is paired with one decrease (also for realloc/recharge),
+    // so this counts live allocations.
+    auto liveNow = _liveAllocations.fetch_add(1, std::memory_order_relaxed) + 1;
+    updatePeak(now, requestedNow, liveNow);
     return true;
   }
 
   void decrease(uint64_t requested, uint64_t actual) noexcept {
     _requestedBytes.fetch_sub(requested, std::memory_order_relaxed);
     _actualBytes.fetch_sub(actual, std::memory_order_relaxed);
+    _liveAllocations.fetch_sub(1, std::memory_order_relaxed);
   }
 
  private:
-  void updatePeak(uint64_t now) noexcept {
+  void updatePeak(uint64_t now, uint64_t requestedNow,
+                  uint64_t liveNow) noexcept {
     auto peak = _peakBytes.load(std::memory_order_relaxed);
-    while (now > peak && !_peakBytes.compare_exchange_weak(
-                             peak, now, std::memory_order_relaxed)) {
+    while (now > peak) {
+      if (_peakBytes.compare_exchange_weak(peak, now,
+                                           std::memory_order_relaxed)) {
+        // Diagnostics only: may race with a concurrent peak update.
+        _peakRequestedBytes.store(requestedNow, std::memory_order_relaxed);
+        _peakLiveAllocations.store(liveNow, std::memory_order_relaxed);
+        break;
+      }
     }
   }
 
@@ -112,6 +142,9 @@ struct ResourceMonitorBase {
   std::atomic<ResourceMonitorBase*> _next{nullptr};
   bool _static{false};
   std::atomic<uint64_t> _peakBytes{0};
+  std::atomic<uint64_t> _peakRequestedBytes{0};
+  std::atomic<uint64_t> _liveAllocations{0};
+  std::atomic<uint64_t> _peakLiveAllocations{0};
   std::atomic<bool> _limitHit{false};
 };
 

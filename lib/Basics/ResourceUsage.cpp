@@ -25,9 +25,11 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/AllocHeader.h"
 #include "infra/CacheMonitors.h"
 #include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
+#include "infra/ResourceMonitorScope.h"
 #include "infra/RocksDBMonitors.h"
 #include "Logger/LogMacros.h"
 
@@ -52,12 +54,27 @@ auto describeRegistry() -> std::string {
   return out.str();
 }
 
+// Header bytes of `allocations` live allocations.
+auto headerBytes(std::uint64_t allocations) -> std::uint64_t {
+  return allocations * sizeof(infra::AllocHeader);
+}
+
 }  // namespace
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
     : _current(0), _peak(0), _limit(0), _global(global) {
   monitorRef = infra::ResourceMonitorRef::create();
-  infra::rocksdbMonitor().resetPeak(); // test only
+  // Test only. Monitors created inside a running query (sub-queries,
+  // per-value dummies) must not reset the peak of the outer query.
+  if (infra::detail::currentResourceMonitor() == nullptr) {
+    infra::rocksdbMonitor().resetPeak();
+  }
+}
+
+void ResourceMonitor::recordPhase(Phase phase) noexcept {
+  auto* m = monitorRef.get();
+  _phases[static_cast<std::size_t>(phase)] = {
+      .peak = m->peakBytes(), .now = m->actualBytes(), .recorded = true};
 }
 
 ResourceMonitor::~ResourceMonitor() {
@@ -69,16 +86,35 @@ ResourceMonitor::~ResourceMonitor() {
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
   auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
+  auto& rocksdb = infra::rocksdbMonitor();
+  auto& cache = infra::cacheMonitor();
+  std::ostringstream phases;
+  char const* names[] = {"plan", "inst", "exec"};
+  for (std::size_t i = 0; i < _phases.size(); ++i) {
+    phases << ' ' << names[i] << '=';
+    if (_phases[i].recorded) {
+      phases << _phases[i].peak << '/' << _phases[i].now;
+    } else {
+      phases << '-';
+    }
+  }
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
       << "query memory " << m
       << " | old: peak=" << peak()
-      << " | new: peak=" << m->peakBytes() << " left=" << m->actualBytes()
-      << " (req=" << m->requestedBytes() << ")"
-      << " | rocksdb: peak=" << infra::rocksdbMonitor().peakBytes()
-      << " now=" << infra::rocksdbMonitor().actualBytes()
-      << " (req=" << infra::rocksdbMonitor().requestedBytes() << ")"
-      << " | cache: now= " << infra::cacheMonitor().actualBytes()
-      << " (req=" << infra::cacheMonitor().requestedBytes() << ")"
+      << " | new: peak=" << m->peakBytes()
+      << " (req=" << m->peakRequestedBytes()
+      << " hdr=" << headerBytes(m->peakLiveAllocations()) << ")"
+      << " left=" << m->actualBytes()
+      << " (req=" << m->requestedBytes()
+      << " hdr=" << headerBytes(m->liveAllocations()) << ")"
+      << " | rocksdb: peak=" << rocksdb.peakBytes()
+      << " now=" << rocksdb.actualBytes()
+      << " (req=" << rocksdb.requestedBytes()
+      << " hdr=" << headerBytes(rocksdb.liveAllocations()) << ")"
+      << " | cache: now= " << cache.actualBytes()
+      << " (req=" << cache.requestedBytes()
+      << " hdr=" << headerBytes(cache.liveAllocations()) << ")"
+      << " | phases:" << phases.str()
       << " | monitors: " << describeRegistry();
 
   m->retire();

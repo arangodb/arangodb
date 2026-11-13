@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -97,11 +98,23 @@ struct alignas(64) ResourceMonitor final {
 
   infra::ResourceMonitorRef monitorRef;
 
+  /// @brief diagnostics: query phases whose end is logged with the new
+  /// monitor's peak and current bytes
+  enum class Phase : std::uint8_t { kPlan, kInstantiate, kExecute };
+  void recordPhase(Phase phase) noexcept;
+
  private:
+  struct PhaseBytes {
+    std::uint64_t peak = 0;
+    std::uint64_t now = 0;
+    bool recorded = false;
+  };
+
   std::atomic<std::uint64_t> _current;
   std::atomic<std::uint64_t> _peak;
   std::uint64_t _limit;
   GlobalResourceMonitor& _global;
+  std::array<PhaseBytes, 3> _phases{};
 };
 
 /// @brief RAII object for temporary resource tracking

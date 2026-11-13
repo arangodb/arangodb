@@ -424,7 +424,9 @@ async<void> Query::prepareQuery() {
       auto const views = querySlice.get("views");
       prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
                                               variables);
+      _resourceMonitor->recordPhase(ResourceMonitor::Phase::kPlan);
       co_await instantiatePlan(querySlice);
+      _resourceMonitor->recordPhase(ResourceMonitor::Phase::kInstantiate);
 
       TRI_ASSERT(!_plans.empty());
 
@@ -443,6 +445,7 @@ async<void> Query::prepareQuery() {
     enterState(QueryExecutionState::ValueType::PARSING);
 
     plan = preparePlan();
+    _resourceMonitor->recordPhase(ResourceMonitor::Phase::kPlan);
 
     TRI_ASSERT(plan != nullptr);
 
@@ -505,6 +508,7 @@ async<void> Query::prepareQuery() {
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
     co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    _resourceMonitor->recordPhase(ResourceMonitor::Phase::kInstantiate);
 
     _plans.push_back(std::move(plan));
 
@@ -1022,6 +1026,7 @@ futures::Future<futures::Unit> Query::execute(
         }
 
         queryResult.context = _trx->transactionContext();
+        _resourceMonitor->recordPhase(ResourceMonitor::Phase::kExecute);
         _executionPhase = ExecutionPhase::FINALIZE;
       }
 
