@@ -26,7 +26,6 @@
 #include "Ssl/SslInterface.h"
 
 #include <absl/strings/escaping.h>
-#include <absl/strings/internal/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -107,21 +106,10 @@ std::string generateRawJwt(std::string_view secret,
   }
 
   // https://tools.ietf.org/html/rfc7515#section-2 requires
-  // JWT to use base64-encoding without trailing padding `=` chars
-
-  auto header = headerBuilder.toJson();
-  auto body = bodySlice.toJson();
-  std::string headerBase64;
-  std::string bodyBase64;
-
-  absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<unsigned char const*>(header.data()), header.size(),
-      &headerBase64, false, absl::strings_internal::kBase64Chars);
-  absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<unsigned char const*>(body.data()), body.size(),
-      &bodyBase64, false, absl::strings_internal::kBase64Chars);
-
-  auto fullMessage = absl::StrCat(headerBase64, ".", bodyBase64);
+  // JWT to use base64url-encoding without trailing padding `=` chars
+  auto fullMessage =
+      absl::StrCat(absl::WebSafeBase64Escape(headerBuilder.toJson()), ".",
+                   absl::WebSafeBase64Escape(bodySlice.toJson()));
 
   std::string signature;
 
@@ -151,8 +139,8 @@ std::shared_ptr<velocypack::Builder> decodeClaims(std::string_view token) {
     return nullptr;
   }
 
-  // JWTs are specified as base64url, but generateRawJwt encodes the body
-  // with the standard alphabet, so both have to be accepted
+  // JWTs are specified as base64url, but older versions of generateRawJwt
+  // encoded the body with the standard alphabet, so both have to be accepted
   std::string body;
   if (!absl::WebSafeBase64Unescape(parts[1], &body) &&
       !absl::Base64Unescape(parts[1], &body)) {
