@@ -18,6 +18,8 @@
   cluster attributes that were ignored before, such as `numberOfShards` together
   with `distributeShardsLike`, or `writeConcern` on a single server.
 
+* Updated FAISS to v1.16.0.
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
