@@ -26,6 +26,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Basics/IsoWeek.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/datetime.h"
 #include "Basics/voc-errors.h"
@@ -827,12 +828,8 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  //  iso_week::year_weeknum_weekday yww{floor<std::chrono::days>(tp)};
-  // The (unsigned) operator is overloaded...
-  //
-  // uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
-  TRI_ASSERT(false);  // TODO
-  auto isoWeek = 0;
+  auto iw = iso_week_date(floor<std::chrono::days>(tp));
+  auto isoWeek = iw.weeknum;
   return AqlValue(AqlValueHintUInt(isoWeek));
 }
 
@@ -865,9 +862,9 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
   //  The (unsigned) operator is overloaded...
   // uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   // int isoYear = (int)(yww.year());
-  auto isoWeek = 0;
-  auto isoYear = 0;
-  TRI_ASSERT(false);  // TODO
+  auto iw = iso_week_date(floor<std::chrono::days>(tp));
+  auto isoWeek = iw.weeknum;
+  auto isoYear = iw.year;
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("week", VPackValue(isoWeek));
