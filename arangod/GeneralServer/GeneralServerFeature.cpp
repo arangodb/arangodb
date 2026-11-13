@@ -146,6 +146,9 @@ DECLARE_COUNTER(arangodb_http_response_code_total,
                 "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
+DECLARE_GAUGE(arangodb_http_global_body_bytes, std::uint64_t,
+              "Bytes currently buffered across all HTTP/1.1 and HTTP/2 "
+              "request bodies, process-wide");
 
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
@@ -228,6 +231,7 @@ GeneralServerFeature::GeneralServerFeature(
           metrics.add(arangodb_client_connection_statistics_connection_time{})),
       _connectionHttp(metrics.add(
           arangodb_client_connection_statistics_client_connections{})),
+      _globalBodyBytes(metrics.add(arangodb_http_global_body_bytes{})),
       _metricsFeature(metrics) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -385,6 +389,30 @@ void GeneralServerFeature::countHttpResponseCode(
   } catch (...) {
     // must not throw from this noexcept function
   }
+}
+
+bool GeneralServerFeature::reserveRequestBodyBytes(std::uint64_t len) noexcept {
+  std::uint64_t maxGlobalSize = _options.maxGlobalBodySize;
+  TRI_IF_FAILURE("GeneralServerFeature::lowerGlobalBodySizeLimit") {
+    // lets tests trigger the limit without sending gigabytes of data
+    maxGlobalSize = 16;
+  }
+  // CAS retry so the gauge never transiently exceeds the limit under
+  // concurrent reservations, unlike a fetch_add-then-rollback-on-reject
+  std::uint64_t cur = _globalBodyBytes.load(std::memory_order_relaxed);
+  std::uint64_t next;
+  do {
+    next = cur + len;
+    if (maxGlobalSize != 0 && next > maxGlobalSize) {
+      return false;
+    }
+  } while (!_globalBodyBytes.compare_exchange_weak(cur, next));
+  return true;
+}
+
+void GeneralServerFeature::releaseRequestBodyBytes(std::uint64_t len) noexcept {
+  TRI_ASSERT(_globalBodyBytes.load(std::memory_order_relaxed) >= len);
+  _globalBodyBytes.fetch_sub(len);
 }
 
 void GeneralServerFeature::prepare() {

@@ -40,6 +40,7 @@ struct GeneralServerOptions {
   uint64_t compressResponseThreshold = 0;
   uint64_t maxDecompressedRequestBodySize =
       arangodb::encoding::defaultMaxUncompressedSize;
+  uint64_t maxGlobalBodySize;  // initialized in ctor
   uint64_t decompressedRequestBodyGlobalMemoryLimit = 0;
   std::vector<std::string> accessControlAllowOrigins;
   std::string supportInfoApiPolicy = "admin";

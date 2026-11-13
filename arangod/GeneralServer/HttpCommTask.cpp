@@ -93,6 +93,7 @@ bool HttpCommTask<T>::transferEncodingContainsChunked(
 template<SocketType T>
 int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  TRI_ASSERT(me->_bufferedBodyBytes == 0);
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
   me->_origin.clear();
@@ -242,6 +243,19 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  // per chunk, so a slow client can't hold budget for bytes it hasn't sent
+  if (!me->_generalServerFeature.reserveRequestBodyBytes(len)) {
+    LOG_TOPIC("2823f", WARN, Logger::REQUESTS)
+        << "<http> request body exceeds the global process-wide limit, "
+           "closing the connection";
+    me->releaseBufferedBody();
+    // rest of the body stays unread, connection can't be reused
+    me->_shouldKeepAlive = false;
+    me->sendSimpleResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    return HPE_USER;
+  }
+  me->_bufferedBodyBytes += len;
   me->_request->appendBody(at, len);
   return HPE_OK;
 } catch (...) {
@@ -297,7 +311,18 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
 }
 
 template<SocketType T>
-HttpCommTask<T>::~HttpCommTask() noexcept = default;
+HttpCommTask<T>::~HttpCommTask() noexcept {
+  // dropped mid-body
+  releaseBufferedBody();
+}
+
+template<SocketType T>
+void HttpCommTask<T>::releaseBufferedBody() noexcept {
+  if (_bufferedBodyBytes != 0) {
+    this->_generalServerFeature.releaseRequestBodyBytes(_bufferedBodyBytes);
+    _bufferedBodyBytes = 0;
+  }
+}
 
 template<SocketType T>
 void HttpCommTask<T>::start() {
@@ -367,6 +392,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
+      // same release point as H2CommTask::processStream
+      releaseBufferedBody();
       if (_urlCorrupt) {
         LOG_TOPIC("33323", WARN, Logger::REQUESTS)
             << "request failed because of a corrupt URL";

@@ -125,6 +125,27 @@ Requests exceeding the limit are rejected with HTTP 413.
 Note that this limits the body size *after* decompression. The size of the
 request as it arrives on the wire is limited separately.)");
 
+  opts->addOption("--http.max-global-body-size",
+                  "The maximum total size of all HTTP/1.1 and HTTP/2 request "
+                  "bodies currently being buffered process-wide, before "
+                  "authentication (in bytes).",
+                  new UInt64Parameter(&options.maxGlobalBodySize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(31214)
+      .setLongDescription(R"(Request bodies are buffered before
+authentication, so the size of a single request body is already capped. This
+option additionally caps the sum of all such buffered bytes across every
+HTTP/1.1 and HTTP/2 connection in the process at once, so that many connections
+opened concurrently cannot together exhaust memory even while each individually
+respects its own limit.
+
+Requests exceeding the limit are rejected with HTTP 503 and the connection is
+closed (HTTP/1.1), or the stream is reset (HTTP/2).
+
+The default is 10% of the physical memory, but at least 1 GiB, the maximum size
+of a single request body. A value of `0` disables the limit.)");
+
   opts->addOption(
           "--http.decompressed-request-body-global-memory-limit",
           "The maximum combined size of all decompressed request bodies held "

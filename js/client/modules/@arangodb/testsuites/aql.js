@@ -37,6 +37,7 @@ const functionsDocumentation = {
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
   'shell_client_traffic': 'traffic metrics tests',
+  'shell_client_http': 'HTTP/1.1 and HTTP/2 shell client tests',
   'legacy': 'legacy tests',
 };
 const optionsDocumentation = [
@@ -65,6 +66,7 @@ const testPaths = {
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
   'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
+  'shell_client_http': [ tu.pathForTesting('client/shell/http') ],
   'legacy': [ tu.pathForTesting('client/legacy') ],
 };
 
@@ -311,6 +313,23 @@ function shellClientTraffic(options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_http
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientHttp(options) {
+  const name = 'shell_client_http';
+  let testCases = tu.scanTestPaths(testPaths[name], options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_transaction
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -393,6 +412,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
+  testFns['shell_client_http'] = shellClientHttp;
   testFns['legacy'] = legacy;
 
   opts['skipAql'] = false;

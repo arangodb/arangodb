@@ -1,0 +1,20 @@
+name: arangodb_http_global_body_bytes
+introducedIn: "3.12.14"
+help: |
+  Bytes currently buffered across all HTTP/1.1 and HTTP/2 request bodies,
+  process-wide.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Measures the total number of bytes currently buffered across all HTTP/1.1
+  and HTTP/2 request bodies, summed across every connection in the process at
+  once. Request bodies are buffered before authentication, so this tracks
+  memory that is not yet attributable to any authenticated user. Bounded by
+  the `--http.max-global-body-size` startup option.
