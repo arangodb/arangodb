@@ -59,7 +59,7 @@ as an **Enterprise Edition** for commercial use and without a dataset size limit
 - **Horizontal scalability**: Seamlessly shard your data across multiple machines.
 - **High availability** and **resilience**: Replicate data to multiple cluster
   nodes, with automatic failover.
-- **Flexible data modeling**: Model your data as combination of key-value pairs,
+- **Flexible data modeling**: Model your data as a combination of key-value pairs,
   documents, and graphs as you see fit for your application.
 - Work **schema-free** or use **schema validation** for data consistency.
   Store any type of data - date/time, geo-spatial, text, nested.
