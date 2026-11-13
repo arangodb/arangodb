@@ -19,11 +19,11 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-e581191a"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-df5ebc07"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:26.04-e581191a
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:26.04-df5ebc07
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -1212,7 +1212,7 @@ jobs:
           - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
           - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       # waits for the kafka brokers before starting, see scripts/docker/cp-schema-registry
-      - image: public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry:24.04-fb495166
+      - image: public.ecr.aws/b0b8h2r4/test-ubuntu-cp-schema-registry:26.04-df5ebc07
         name: kafka-schema-registry
         environment:
           - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
