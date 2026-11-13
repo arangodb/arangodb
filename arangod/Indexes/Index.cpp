@@ -43,7 +43,6 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
-#include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Utf8Helper.h>
 
@@ -51,7 +50,6 @@
 #include <limits>
 
 using namespace std::chrono;
-using namespace date;
 
 namespace {
 

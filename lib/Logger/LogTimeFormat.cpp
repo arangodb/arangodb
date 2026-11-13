@@ -115,7 +115,6 @@ TimeFormat formatFromName(std::string const& name) {
 void writeTime(std::string& out, TimeFormat format,
                std::chrono::system_clock::time_point tp,
                std::chrono::system_clock::time_point startTp) {
-  using namespace date;
   using namespace std::chrono;
 
   if (format == TimeFormat::Uptime || format == TimeFormat::UptimeMillis ||
@@ -170,15 +169,15 @@ void writeTime(std::string& out, TimeFormat format,
       // UTC datestring with milliseconds
       arangodb::tp_sys_clock_us secs(
           duration_cast<microseconds>(tp.time_since_epoch()));
-      auto days = floor<date::days>(secs);
-      auto ymd = date::year_month_day(days);
+      auto days = floor<std::chrono::days>(secs);
+      auto ymd = std::chrono::year_month_day(days);
       appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);
       out.push_back('-');
       appendNumber(uint64_t(static_cast<unsigned>(ymd.month())), out, 2);
       out.push_back('-');
       appendNumber(uint64_t(static_cast<unsigned>(ymd.day())), out, 2);
       out.push_back('T');
-      auto day_time = make_time(secs - days);
+      auto day_time = std::chrono::hh_mm_ss(secs - days);
       appendNumber(uint64_t(day_time.hours().count()), out, 2);
       out.push_back(':');
       appendNumber(uint64_t(day_time.minutes().count()), out, 2);

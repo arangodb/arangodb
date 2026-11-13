@@ -195,40 +195,41 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
 tp_sys_clock_ms addOrSubtractDate(
     tp_sys_clock_ms tp, arangodb::basics::ParsedDuration const& parsed,
     bool isSubtract) {
-  date::year_month_day ymd{date::floor<date::days>(tp)};
-  auto day_time = date::make_time(tp - date::sys_days(ymd));
+  std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(tp)};
+  auto day_time = std::chrono::hh_mm_ss(tp - std::chrono::sys_days(ymd));
 
   if (isSubtract) {
-    ymd -= date::years{parsed.years};
+    ymd -= std::chrono::years{parsed.years};
   } else {
-    ymd += date::years{parsed.years};
+    ymd += std::chrono::years{parsed.years};
   }
 
   if (isSubtract) {
-    ymd -= date::months{parsed.months};
+    ymd -= std::chrono::months{parsed.months};
   } else {
-    ymd += date::months{parsed.months};
+    ymd += std::chrono::months{parsed.months};
   }
 
   std::chrono::milliseconds ms{0};
-  ms += date::weeks{parsed.weeks};
-  ms += date::days{parsed.days};
+  ms += std::chrono::weeks{parsed.weeks};
+  ms += std::chrono::days{parsed.days};
   ms += std::chrono::hours{parsed.hours};
   ms += std::chrono::minutes{parsed.minutes};
   ms += std::chrono::seconds{parsed.seconds};
   ms += std::chrono::milliseconds{parsed.milliseconds};
 
   if (isSubtract) {
-    return tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() - ms};
+    return tp_sys_clock_ms{std::chrono::sys_days(ymd) + day_time.to_duration() -
+                           ms};
   } else {
-    return tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() + ms};
+    return tp_sys_clock_ms{std::chrono::sys_days(ymd) + day_time.to_duration() +
+                           ms};
   }
 }
 }  // namespace
 
 WindowBounds::Row WindowBounds::calcRow(AqlValue const& input,
                                         QueryWarnings& w) const {
-  using namespace date;
   TRI_ASSERT(_type == Type::Range);
 
   if (_rangeType == RangeType::Date) {

@@ -23,7 +23,6 @@
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
-#include <date/date.h>
 #include "gtest/gtest.h"
 
 using namespace arangodb;
