@@ -23,6 +23,7 @@
 #include "FipsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Ssl/SslFeature.h"
 
 #ifdef USE_FIPS
 #include "Basics/application-exit.h"
@@ -53,6 +54,8 @@ FipsFeature::FipsFeature(application_features::ApplicationServer& server,
       _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
+  // Switch to FIPS before any OpenSSL context is created.
+  startsBefore<SslFeature>();
 }
 
 void FipsFeature::prepare() {
