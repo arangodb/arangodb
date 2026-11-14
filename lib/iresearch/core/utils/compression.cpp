@@ -135,9 +135,7 @@ compressor::ptr get_compressor(std::string_view name, const options& opts,
 
     return factory != nullptr ? factory(opts) : nullptr;
   } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught exception while getting an analyzer instance");  // cppcheck-suppress
-                                                               // syntaxError
+    IRS_LOG_ERROR("Caught exception while getting an analyzer instance");
   }
 
   return nullptr;

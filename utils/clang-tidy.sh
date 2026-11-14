@@ -14,9 +14,8 @@ usage() {
   cat <<'EOF'
 Run clang-tidy over ArangoDB source files.
 
-pre-requisite: Bash 4, Git 2.9+, jq, clang-tidy and run-clang-tidy in PATH. The
-               clang-tidy executable should preferably be from the same
-               toolchain as the clang compiler.
+pre-requisite: Bash 4, Git 2.9+, jq, clang-tidy-22 and run-clang-tidy-22 in
+               PATH, from the same LLVM version as the clang compiler.
 pre-requisite: a configured and built build directory containing
                compile_commands.json (we read the exact compile flags from
                there).
@@ -208,6 +207,7 @@ if [[ -n "$gcc_install_dir" ]]; then
 fi
 
 # run-clang-tidy matches its positional args as regexes against DB paths.
-# Passing the exact relative paths is specific enough in practice.
-run-clang-tidy-22 -p "$build_dir" -j "$jobs" -quiet $fix \
-  ${extra_args[@]+"${extra_args[@]}"} "${present[@]}"
+# Passing the exact relative paths is specific enough in practice. Without
+# -clang-tidy-binary it runs whichever "clang-tidy" comes first in PATH.
+run-clang-tidy-22 -clang-tidy-binary clang-tidy-22 -p "$build_dir" -j "$jobs" \
+  -quiet $fix ${extra_args[@]+"${extra_args[@]}"} "${present[@]}"

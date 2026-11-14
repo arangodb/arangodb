@@ -97,7 +97,7 @@ ARG COMPILER_VERSION
 ARG CLANG_VERSION
 ARG SCCACHE_VERSION="0.19.0"
 
-# We provide gcc 14.2.0 as well as clang 22 (latest) from LLVM
+# We provide gcc 14.3.0 as well as clang 22 (latest) from LLVM
 
 ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}

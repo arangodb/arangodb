@@ -60,7 +60,7 @@ void FipsFeature::prepare() {
   if (_options.enableFips) {
     if (OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1 ||
         OPENSSL_init_ssl(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1) {
-      LOG_TOPIC("a1b2c", FATAL, Logger::SSL) << "Failed to initialize OpenSSL";
+      LOG_TOPIC("19f8c", FATAL, Logger::SSL) << "Failed to initialize OpenSSL";
       FATAL_ERROR_EXIT();
     }
 

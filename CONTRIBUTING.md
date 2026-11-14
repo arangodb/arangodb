@@ -144,9 +144,11 @@ or along with a build by setting `USE_CLANG_TIDY=On`:
 
 #### On demand
 
-This requires `clang-tidy`, `run-clang-tidy` and `jq` in PATH. It also needs an
-existing build directory; defaulting to `./build/`, which can be overridden with
-`--build` or `-B`.
+This requires `clang-tidy-22`, `run-clang-tidy-22` and `jq` in PATH. It also
+needs an existing build directory; defaulting to `./build/`, which can be
+overridden with `--build` or `-B`. The script passes clang-tidy the GCC
+installation that `clang++-22` selects, so that both parse the same C++ standard
+library headers (see [Building Locally](#building-locally)).
 
     ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
     ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
@@ -346,6 +348,28 @@ configuration files in `usr/etc/arangodb4/`, and so on.
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
+### Building with FIPS support
+
+The `USE_FIPS` CMake option, set by the `pr-x64-fips` and `pr-arm64-fips`
+presets, builds an `arangod` that can use the OpenSSL FIPS provider. Such a
+build links glibc dynamically instead of statically, because OpenSSL loads the
+provider (`fips.so`) at runtime. The build container provides the provider of
+OpenSSL 3.1.2 at `/opt/lib/ossl-modules/fips.so`.
+
+The startup option `--server.fips-enable true` makes the server load the
+provider from `/opt/lib/ossl-modules/`, with the configuration
+`/opt/ssl/fips-only.cnf`, which includes `/opt/ssl/fipsmodule.cnf`. To set
+these up in the build container:
+
+    mkdir -p /opt/ssl
+    cp scripts/docker/deploy/fips-only.cnf /opt/ssl/
+    openssl fipsinstall -module /opt/lib/ossl-modules/fips.so -out /opt/ssl/fipsmodule.cnf
+
+Builds without `USE_FIPS` refuse to start with `--server.fips-enable`. The
+`arangodb/coredb-fips-preview` Docker image, which the nightly pipeline builds
+when its `build-fips-image` parameter is set, does this setup in its entrypoint
+and enables the option.
+
 ### Building Locally
 
 Debian-based Linux is recommended. Dependencies:
@@ -361,6 +385,19 @@ Debian-based Linux is recommended. Dependencies:
 
 The code is compiled as C++26 (`CXX_STANDARD` in [`VERSIONS`](VERSIONS)), which
 is why a recent C++ standard library such as `libstdc++-14-dev` is required.
+
+Clang uses the C++ standard library of the newest GCC installation it finds.
+The build image pins it to GCC 14 (`GCC_LINUX` in [`VERSIONS`](VERSIONS)), as
+Ubuntu 26.04 defaults to GCC 15, with `--gcc-install-dir` in the `clang.cfg` and
+`clang++.cfg` files next to the clang binary. To do the same on a system with a
+newer GCC:
+
+    GCC_DIR=/usr/lib/gcc/$(uname -m)-linux-gnu/14
+    CLANG_DIR=$(dirname "$(readlink -f "$(command -v clang-22)")")
+    echo "--gcc-install-dir=$GCC_DIR" | sudo tee "$CLANG_DIR/clang.cfg" "$CLANG_DIR/clang++.cfg"
+
+`clang++-22 -v -x c++ /dev/null -fsyntax-only` shows which installation clang
+selects.
 
 Dependencies for a Fedora-based distribution:
 ```
