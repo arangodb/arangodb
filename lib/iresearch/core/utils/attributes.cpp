@@ -47,9 +47,7 @@ type_info attributes::get(std::string_view name,
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught exception while getting an attribute instance");  // cppcheck-suppress
-                                                                // syntaxError
+    IRS_LOG_ERROR("Caught exception while getting an attribute instance");
   }
 
   return {};  // invalid type id

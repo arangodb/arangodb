@@ -88,6 +88,13 @@
     },
     {
       "hidden": true,
+      "name": "fips",
+      "cacheVariables": {
+        "USE_FIPS": "On"
+      }
+    },
+    {
+      "hidden": true,
       "name": "pr-base",
       "binaryDir": "${sourceDir}/build",
       "inherits": [
@@ -186,6 +193,22 @@
       "displayName": "Build ArangoDB Enterprise Edition (Coverage Build) - ARM64"
     },
     {
+      "name": "pr-x64-fips",
+      "inherits": [
+        "fips",
+        "pr-x64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (FIPS) - x64"
+    },
+    {
+      "name": "pr-arm64-fips",
+      "inherits": [
+        "fips",
+        "pr-arm64"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (FIPS) - ARM64"
+    },
+    {
       "name": "test-docker-image-x64",
       "inherits": [
         "pr-x64"
@@ -240,6 +263,50 @@
       "displayName": "Preview Docker image build (Enterprise, non-maintainer) - ARM64"
     },
     {
+      "name": "test-docker-image-x64-fips",
+      "inherits": [
+        "fips",
+        "test-docker-image-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Test Docker image FIPS build (dynamic glibc, Enterprise, Maintainer Mode) - x64"
+    },
+    {
+      "name": "test-docker-image-arm64-fips",
+      "inherits": [
+        "fips",
+        "test-docker-image-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Test Docker image FIPS build (dynamic glibc, Enterprise, Maintainer Mode) - ARM64"
+    },
+    {
+      "name": "preview-docker-image-x64-fips",
+      "inherits": [
+        "fips",
+        "preview-docker-image-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Preview Docker image FIPS build (dynamic glibc, Enterprise, non-maintainer, IPO) - x64"
+    },
+    {
+      "name": "preview-docker-image-arm64-fips",
+      "inherits": [
+        "fips",
+        "preview-docker-image-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Preview Docker image FIPS build (dynamic glibc, Enterprise, non-maintainer) - ARM64"
+    },
+    {
       "hidden": true,
       "name": "nightly-package-base",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
@@ -273,6 +340,28 @@
         "arm64"
       ],
       "displayName": "Nightly package build (static release, Enterprise, ARM64)"
+    },
+    {
+      "name": "nightly-package-x64-fips",
+      "inherits": [
+        "fips",
+        "nightly-package-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Nightly FIPS build (dynamic glibc, Enterprise, x64)"
+    },
+    {
+      "name": "nightly-package-arm64-fips",
+      "inherits": [
+        "fips",
+        "nightly-package-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Nightly FIPS build (dynamic glibc, Enterprise, ARM64)"
     },
     {
       "hidden": true,
@@ -396,12 +485,36 @@
       "configurePreset": "preview-docker-image-arm64"
     },
     {
+      "name": "test-docker-image-x64-fips",
+      "configurePreset": "test-docker-image-x64-fips"
+    },
+    {
+      "name": "test-docker-image-arm64-fips",
+      "configurePreset": "test-docker-image-arm64-fips"
+    },
+    {
+      "name": "preview-docker-image-x64-fips",
+      "configurePreset": "preview-docker-image-x64-fips"
+    },
+    {
+      "name": "preview-docker-image-arm64-fips",
+      "configurePreset": "preview-docker-image-arm64-fips"
+    },
+    {
       "name": "nightly-package-x64",
       "configurePreset": "nightly-package-x64"
     },
     {
       "name": "nightly-package-arm64",
       "configurePreset": "nightly-package-arm64"
+    },
+    {
+      "name": "nightly-package-x64-fips",
+      "configurePreset": "nightly-package-x64-fips"
+    },
+    {
+      "name": "nightly-package-arm64-fips",
+      "configurePreset": "nightly-package-arm64-fips"
     },
     {
       "name": "developer-x64",

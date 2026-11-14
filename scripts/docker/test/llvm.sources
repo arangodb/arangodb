@@ -1,7 +1,7 @@
 
 # llvm-22 (https://apt.llvm.org/)
 Types: deb deb-src
-URIs: http://apt.llvm.org/noble/
-Suites: llvm-toolchain-noble-22
+URIs: http://apt.llvm.org/resolute/
+Suites: llvm-toolchain-resolute-22
 Components: main
 Signed-By: /etc/apt/trusted.gpg.d/apt.llvm.org.asc 

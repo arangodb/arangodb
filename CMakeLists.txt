@@ -146,9 +146,26 @@ endif()
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 
+# FIPS mode: dynamic glibc so OpenSSL can dlopen fips.so.
+option(USE_FIPS "Enable OpenSSL FIPS provider support" OFF)
+
 if(STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  if(USE_FIPS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+    execute_process(
+      COMMAND gcc -print-file-name=libatomic.a
+      OUTPUT_VARIABLE _libatomic_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(EXISTS "${_libatomic_path}")
+      add_library(atomic STATIC IMPORTED GLOBAL)
+      set_target_properties(atomic PROPERTIES IMPORTED_LOCATION "${_libatomic_path}")
+      message(STATUS "FIPS: forcing static libatomic from ${_libatomic_path}")
+    endif()
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  endif()
 endif()
 
 # If enterprise add USE_ENTERPRISE flag to all targets
@@ -1043,6 +1060,11 @@ if(USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif()
 
+if(USE_FIPS)
+  add_definitions(-DUSE_FIPS=1)
+  message(STATUS "FIPS provider support enabled")
+endif()
+
 # ###############################################################################
 # # 3RD PARTY
 # ###############################################################################
@@ -1102,7 +1124,23 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_omp_LIBRARY "${LIBOMP}")
   set(OpenMP_pthread_LIBRARY "pthread")
 
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  if(USE_FIPS)
+    # Ask the compiler that links (it knows its GCC installation's libgfortran)
+    # rather than a gfortran driver, which the build image does not ship.
+    execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libgfortran.a
+      OUTPUT_VARIABLE GFORTRAN_STATIC
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE GFORTRAN_RESULT
+    )
+    if(GFORTRAN_RESULT OR NOT EXISTS "${GFORTRAN_STATIC}")
+      message(FATAL_ERROR "Static libgfortran not found (required for USE_FIPS).")
+    endif()
+    message(STATUS "Using static libgfortran: ${GFORTRAN_STATIC}")
+    set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp ${LAPACK_LIBRARIES} ${GFORTRAN_STATIC}")
+  else()
+    set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  endif()
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)

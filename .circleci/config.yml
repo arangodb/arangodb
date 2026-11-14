@@ -29,6 +29,16 @@ parameters:
     type: boolean
     default: false
     description: "Whether to create workflows for ALUBSan builds"
+  use-fips:
+    type: boolean
+    default: false
+    description: "Run every generated workflow in FIPS mode: compile with
+      USE_FIPS (sanitizer builds included), run the tests with
+      --server.fips-enable against the OpenSSL FIPS provider in the test image,
+      and suffix the workflow names with -fips (x64-fips-pr, x64-fips-pr-tsan, ...).
+      With create-test-docker-images / create-preview-docker-images, the server
+      image becomes arangodb/core-fips-test / arangodb/core-fips-preview; the
+      client-tools image still comes from a regular, fully static build."
   full:
     type: boolean
     default: false
@@ -52,23 +62,23 @@ parameters:
     description: "filter to be executed testuite names for containing this string"
   create-test-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
     description: "Build and publish multi-arch (amd64 + arm64) test Docker images
-      of the Enterprise Edition from this commit's build results; 'alpine' builds
-      TWO Alpine-3.24-based images: arangodb/core-test (server only, no client
+      of the Enterprise Edition from this commit's build results; 'ubuntu' builds
+      TWO Ubuntu-26.04-based images: arangodb/core-test (server only, no client
       tools) and arangodb/client-tools-test (client tools only); 'none'
       disables. Both are pushed to public ECR under public.ecr.aws/b0b8h2r4/,
       tagged <community sha7>_<enterprise sha7> (multi-arch manifest) with
       -amd64 / -arm64v8 per-arch tags."
   create-preview-docker-images:
     type: enum
-    enum: [none, alpine]
+    enum: [none, ubuntu]
     default: none
     description: "Build and publish multi-arch (amd64 + arm64) preview Docker
       images of the Enterprise Edition from this commit's build results: a
       non-maintainer, release-like build (no assertions, failure points or
-      test-only JS; x64 keeps IPO on like nightly packages); 'alpine' builds
+      test-only JS; x64 keeps IPO on like nightly packages); 'ubuntu' builds
       arangodb/core-preview and arangodb/client-tools-preview; 'none' disables.
       Pushed to public ECR under public.ecr.aws/b0b8h2r4/ with the same tagging
       scheme as the test images. Independent of create-test-docker-images;
@@ -83,11 +93,11 @@ parameters:
     description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-fb495166
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:26.04-bd1aaa7b
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-28214ffe"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-df5ebc07"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -231,6 +241,7 @@ jobs:
             echo "without-instrumentation: << pipeline.parameters.without-instrumentation >>"
             echo "with-tsan: << pipeline.parameters.with-tsan >>"
             echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
+            echo "use-fips: << pipeline.parameters.use-fips >>"
             echo "full: << pipeline.parameters.full >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
@@ -250,10 +261,13 @@ jobs:
           command: |
             git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
             cd arangodb
-            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci
+            # CMakePresets.json: the config script unit tests check the nightly
+            # compile presets against it.
+            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci /CMakePresets.json
             git checkout $CIRCLE_SHA1
             mv tests ..
             mv .circleci ..
+            mv CMakePresets.json ..
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
@@ -300,6 +314,7 @@ jobs:
               <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
               <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
               <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
+              <<# pipeline.parameters.use-fips >> --fips <</ pipeline.parameters.use-fips >> \
               --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \
