@@ -48,6 +48,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "analysis/token_attributes.hpp"
+#include "error/error.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "index/heap_iterator.hpp"
@@ -426,12 +427,16 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare({
-        .index = _snapshot,
-        .memory = _memory,
-        // Is it necessary? It can be null
-        .ctx = &kEmptyAttributeProvider,
-    });
+    try {
+      _filter = root.prepare({
+          .index = _snapshot,
+          .memory = _memory,
+          // Is it necessary? It can be null
+          .ctx = &kEmptyAttributeProvider,
+      });
+    } catch (irs::illegal_argument const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, ex.what());
+    }
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {

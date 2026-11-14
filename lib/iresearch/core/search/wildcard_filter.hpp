@@ -45,6 +45,10 @@ struct by_wildcard_options : by_wildcard_filter_options {
   // The maximum number of most frequent terms to consider for scoring
   size_t scored_terms_limit{1024};
 
+  // Polled during determinization. Used to honor query cancellation and
+  // maxRuntime. Not part of filter equality.
+  std::function<bool(void)> stop;
+
   bool operator==(const by_wildcard_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
            scored_terms_limit == rhs.scored_terms_limit;
@@ -56,13 +60,15 @@ class by_wildcard final : public FilterWithField<by_wildcard_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
-                               size_t scored_terms_limit);
+                               size_t scored_terms_limit,
+                               const std::function<bool(void)>& stop = {});
 
-  static field_visitor visitor(bytes_view term);
+  static field_visitor visitor(bytes_view term,
+                               const std::function<bool(void)>& stop = {});
 
   prepared::ptr prepare(const PrepareContext& ctx) const final {
     return prepare(ctx.Boost(boost()), field(), options().term,
-                   options().scored_terms_limit);
+                   options().scored_terms_limit, options().stop);
   }
 };
 
