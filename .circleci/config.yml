@@ -29,6 +29,16 @@ parameters:
     type: boolean
     default: false
     description: "Whether to create workflows for ALUBSan builds"
+  use-fips:
+    type: boolean
+    default: false
+    description: "Run every generated workflow in FIPS mode: compile with
+      USE_FIPS (sanitizer builds included), run the tests with
+      --server.fips-enable against the OpenSSL FIPS provider in the test image,
+      and suffix the workflow names with -fips (x64-fips-pr, x64-fips-pr-tsan, ...).
+      With create-test-docker-images / create-preview-docker-images, the server
+      image becomes arangodb/core-fips-test / arangodb/core-fips-preview; the
+      client-tools image still comes from a regular, fully static build."
   full:
     type: boolean
     default: false
@@ -231,6 +241,7 @@ jobs:
             echo "without-instrumentation: << pipeline.parameters.without-instrumentation >>"
             echo "with-tsan: << pipeline.parameters.with-tsan >>"
             echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
+            echo "use-fips: << pipeline.parameters.use-fips >>"
             echo "full: << pipeline.parameters.full >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
@@ -303,6 +314,7 @@ jobs:
               <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
               <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
               <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
+              <<# pipeline.parameters.use-fips >> --fips <</ pipeline.parameters.use-fips >> \
               --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
               --extra-args "A<< pipeline.parameters.extra_args >>" \
               --test-image "<< pipeline.parameters.test-docker-image >>" \

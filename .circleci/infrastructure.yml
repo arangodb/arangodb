@@ -318,6 +318,8 @@ jobs:
             image=<< parameters.image >>
             cp ../../../VERSIONS .
             cp ../../../ARANGO-VERSION .
+            # FIPS provider config of the server images, for use-fips test runs
+            cp ../deploy/fips-only.cnf .
             cd ..
             /bin/sh build-image.sh $image << parameters.arch >> test
             /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag.txt

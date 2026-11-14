@@ -263,6 +263,50 @@
       "displayName": "Preview Docker image build (Enterprise, non-maintainer) - ARM64"
     },
     {
+      "name": "test-docker-image-x64-fips",
+      "inherits": [
+        "fips",
+        "test-docker-image-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Test Docker image FIPS build (dynamic glibc, Enterprise, Maintainer Mode) - x64"
+    },
+    {
+      "name": "test-docker-image-arm64-fips",
+      "inherits": [
+        "fips",
+        "test-docker-image-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Test Docker image FIPS build (dynamic glibc, Enterprise, Maintainer Mode) - ARM64"
+    },
+    {
+      "name": "preview-docker-image-x64-fips",
+      "inherits": [
+        "fips",
+        "preview-docker-image-x64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Preview Docker image FIPS build (dynamic glibc, Enterprise, non-maintainer, IPO) - x64"
+    },
+    {
+      "name": "preview-docker-image-arm64-fips",
+      "inherits": [
+        "fips",
+        "preview-docker-image-arm64"
+      ],
+      "cacheVariables": {
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fno-stack-protector -fuse-ld=lld"
+      },
+      "displayName": "Preview Docker image FIPS build (dynamic glibc, Enterprise, non-maintainer) - ARM64"
+    },
+    {
       "hidden": true,
       "name": "nightly-package-base",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
@@ -439,6 +483,22 @@
     {
       "name": "preview-docker-image-arm64",
       "configurePreset": "preview-docker-image-arm64"
+    },
+    {
+      "name": "test-docker-image-x64-fips",
+      "configurePreset": "test-docker-image-x64-fips"
+    },
+    {
+      "name": "test-docker-image-arm64-fips",
+      "configurePreset": "test-docker-image-arm64-fips"
+    },
+    {
+      "name": "preview-docker-image-x64-fips",
+      "configurePreset": "preview-docker-image-x64-fips"
+    },
+    {
+      "name": "preview-docker-image-arm64-fips",
+      "configurePreset": "preview-docker-image-arm64-fips"
     },
     {
       "name": "nightly-package-x64",

@@ -157,6 +157,7 @@ def create_generator_config(
     create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
+    fips: bool = False,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -213,6 +214,7 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        fips=fips,
     )
 
 
@@ -245,6 +247,12 @@ def create_generator_config(
     "--coverage",
     is_flag=True,
     help="Enable coverage build",
+)
+@click.option(
+    "--fips",
+    is_flag=True,
+    help="FIPS mode for all workflows: USE_FIPS builds, tests with "
+    "--server.fips-enable, -fips workflow names, FIPS server Docker images",
 )
 @click.option(
     "-t",
@@ -319,6 +327,7 @@ def main(
     alubsan: bool,
     no_sanitizer: bool,
     coverage: bool,
+    fips: bool,
     test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
@@ -366,6 +375,7 @@ def main(
             create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
+            fips=fips,
         )
 
         # If validate-only, we're done

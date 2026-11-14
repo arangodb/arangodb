@@ -366,9 +366,17 @@ these up in the build container:
     openssl fipsinstall -module /opt/lib/ossl-modules/fips.so -out /opt/ssl/fipsmodule.cnf
 
 Builds without `USE_FIPS` refuse to start with `--server.fips-enable`. The
-`arangodb/coredb-fips-preview` Docker image, which the nightly pipeline builds
+`arangodb/core-fips-preview` Docker image, which the nightly pipeline builds
 when its `build-fips-image` parameter is set, does this setup in its entrypoint
 and enables the option.
+
+To run a CircleCI test pipeline in FIPS mode, trigger it with `use-fips: true`:
+every workflow (including sanitizer builds) is then compiled with `USE_FIPS`,
+the tests start the servers with `--server.fips-enable`, and the workflow names
+carry `-fips` (e.g. `x64-fips-pr-tsan`). The test image always contains the
+provider and its configuration. Docker images requested in such a pipeline are
+`arangodb/core-fips-test` / `arangodb/core-fips-preview`, while the client-tools
+image still comes from a regular, fully static build.
 
 ### Building Locally
 

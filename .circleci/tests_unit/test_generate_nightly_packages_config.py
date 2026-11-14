@@ -121,7 +121,7 @@ def test_docker_only_drops_package_pipeline(base_config):
         for arch in ("amd64", "arm64")
     } | {
         f"security-check-docker-{image}-{arch}"
-        for image in ("core", "client-tools", "coredb-fips")
+        for image in ("core", "client-tools", "core-fips")
         for arch in ("amd64", "arm64")
     }
 
@@ -136,7 +136,7 @@ def test_packages_only_drops_docker_jobs(base_config):
         assert f"compile-enterprise-{arch}" in names
         for job in ("docker-enterprise", "docker-enterprise-fips", "compile-enterprise-fips"):
             assert f"{job}-{arch}" not in names
-        for image in ("core", "client-tools", "coredb-fips"):
+        for image in ("core", "client-tools", "core-fips"):
             assert f"security-check-docker-{image}-{arch}" not in names
     assert "scan-packages" in names
     assert "sign-packages" in names
@@ -515,13 +515,13 @@ def test_fips_image_is_built_from_its_own_fips_compile(base_config):
         assert compile_job["fips"] is True
         assert compile_job["preset"].endswith("-fips")
         assert (
-            job_config_of(config, f"security-check-docker-coredb-fips-{arch}")["image"]
-            == "coredb-fips-preview"
+            job_config_of(config, f"security-check-docker-core-fips-{arch}")["image"]
+            == "core-fips-preview"
         )
         docker_job = job_config_of(config, f"docker-enterprise-fips-{arch}")
         assert docker_job["fips"] is True
         assert docker_job["requires"] == [f"compile-enterprise-fips-{arch}"]
-        assert requires_of(config, f"security-check-docker-coredb-fips-{arch}") == [
+        assert requires_of(config, f"security-check-docker-core-fips-{arch}") == [
             f"docker-enterprise-fips-{arch}"
         ]
         assert f"docker-enterprise-fips-{arch}" in required_names(

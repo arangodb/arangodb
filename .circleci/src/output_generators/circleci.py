@@ -157,8 +157,13 @@ class CircleCIGenerator(OutputGenerator):
         # Add test jobs
         self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
+    # testing.js option that makes every arangod a test starts load the
+    # OpenSSL FIPS provider (use-fips pipelines).
+    FIPS_TEST_ARGS = "--extraArgs:server.fips-enable true"
+
     def _generate_workflow_name(self, build_config: BuildConfig) -> str:
-        """Generate workflow name from build configuration."""
+        """Generate workflow name from build configuration, e.g. x64-pr-tsan,
+        or x64-fips-pr-tsan in FIPS mode."""
         suffix = "nightly" if build_config.nightly else "pr"
 
         suffix += build_config.build_variant.get_suffix()
@@ -166,7 +171,11 @@ class CircleCIGenerator(OutputGenerator):
         if self.config.test_execution.replication_two:
             suffix += "-repl2"
 
-        return f"{build_config.architecture.value}-{suffix}"
+        prefix = build_config.architecture.value
+        if self.config.fips:
+            prefix += "-fips"
+
+        return f"{prefix}-{suffix}"
 
     def _add_build_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig
@@ -216,6 +225,9 @@ class CircleCIGenerator(OutputGenerator):
             "arch": build_config.architecture.value,
         }
 
+        if self.config.fips:
+            params["fips"] = True
+
         if build_config.architecture == Architecture.AARCH64:
             params["s3-prefix"] = "aarch64"
 
@@ -242,6 +254,9 @@ class CircleCIGenerator(OutputGenerator):
             "publish-artifacts": False,
             "build-tests": False,
         }
+
+        if self.config.fips:
+            params["fips"] = True
 
         if build_config.architecture == Architecture.AARCH64:
             params["s3-prefix"] = "aarch64"
@@ -299,9 +314,16 @@ class CircleCIGenerator(OutputGenerator):
         workflows cannot depend on jobs in another workflow. Both
         architectures are therefore compiled again here and handed off
         through this workflow's own workspace.
+
+        In FIPS mode the workflow is <flavor>-fips-docker-images and the
+        server image is arangodb/core-fips-<flavor>, from a USE_FIPS compile
+        (<flavor>-docker-image-<arch>-fips presets). The client-tools image
+        stays fully static, so each architecture gets a second, regular
+        compile feeding only that image.
         """
+        fips = self.config.fips
         workflow: Dict[str, Any] = {"jobs": []}
-        workflows[f"{flavor}-docker-images"] = workflow
+        workflows[f"{flavor}{'-fips' if fips else ''}-docker-images"] = workflow
 
         # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
         # enterprise branch" step (config.yml).
@@ -315,12 +337,19 @@ class CircleCIGenerator(OutputGenerator):
                 architecture=architecture, build_variant=BuildVariant.NORMAL
             )
 
-            compile_job = self._create_docker_compile_job(build_config, flavor)
+            compile_job = self._create_docker_compile_job(build_config, flavor, fips)
             workflow["jobs"].append(compile_job)
-            compile_job_name = compile_job["compile-linux"]["name"]
+            compile_job_names = [compile_job["compile-linux"]["name"]]
+
+            if fips:
+                client_job = self._create_docker_compile_job(
+                    build_config, flavor, fips=False, client_tools_only=True
+                )
+                workflow["jobs"].append(client_job)
+                compile_job_names.append(client_job["compile-linux"]["name"])
 
             image_job = self._create_docker_build_job(
-                build_config, flavor, docker_arch, [compile_job_name]
+                build_config, flavor, docker_arch, compile_job_names
             )
             workflow["jobs"].append(image_job)
             image_job_names.append(image_job["build-docker-image"]["name"])
@@ -330,27 +359,39 @@ class CircleCIGenerator(OutputGenerator):
         )
 
     def _create_docker_compile_job(
-        self, build_config: BuildConfig, flavor: str
+        self,
+        build_config: BuildConfig,
+        flavor: str,
+        fips: bool = False,
+        client_tools_only: bool = False,
     ) -> Dict[str, Any]:
         """Create the compile job producing the install package for a Docker
         image. Uses the dedicated <flavor>-docker-image presets: "test" is a
         maintainer build with IPO off, matching the binaries the pr test
         workflows run against; "preview" is a non-maintainer build that keeps
         IPO on x64 like the nightly packages. Both carry the nightly-aligned
-        linkage (static LAPACK/BLAS, OpenMP, lld)."""
+        linkage (static LAPACK/BLAS, OpenMP, lld).
+
+        fips selects the -fips preset (USE_FIPS, glibc linked dynamically).
+        client_tools_only is the regular compile a FIPS workflow adds for the
+        client-tools image: it persists install-client-<arch>.tar.gz and
+        leaves the docker build context to the server compile."""
         preset_arch = (
             "arm64"
             if build_config.architecture == Architecture.AARCH64
             else "x64"
         )
-        preset = f"{flavor}-docker-image-{preset_arch}"
+        preset = f"{flavor}-docker-image-{preset_arch}{'-fips' if fips else ''}"
+        name = f"build-{build_config.architecture.value}-for-{flavor}-image"
+        if client_tools_only:
+            name = f"build-{build_config.architecture.value}-for-{flavor}-client-tools-image"
 
-        params = {
+        params: Dict[str, Any] = {
             "context": ["sccache-aws-bucket"],
             "resource-class": self.sizer.get_resource_class(
                 ResourceSize.XXLARGE, build_config.architecture
             ),
-            "name": f"build-{build_config.architecture.value}-for-{flavor}-image",
+            "name": name,
             "preset": preset,
             "enterprise": True,
             "arch": build_config.architecture.value,
@@ -358,6 +399,9 @@ class CircleCIGenerator(OutputGenerator):
             "build-tests": False,
             "create-install-package": True,
         }
+        if client_tools_only:
+            params["install-package-name"] = "install-client"
+            params["persist-docker-context"] = False
 
         if build_config.architecture == Architecture.AARCH64:
             params["s3-prefix"] = "aarch64"
@@ -372,36 +416,39 @@ class CircleCIGenerator(OutputGenerator):
         requires: List[str],
     ) -> Dict[str, Any]:
         """Create the job that builds and locally saves one architecture's
-        pair of Docker images (core-<flavor> and client-tools-<flavor>)."""
-        return {
-            "build-docker-image": {
-                "name": f"build-{build_config.architecture.value}-{flavor}-image",
-                "resource-class": self.sizer.get_resource_class(
-                    ResourceSize.CIRCLECI_LARGE, build_config.architecture
-                ),
-                "name-suffix": flavor,
-                "arch": docker_arch,
-                "build-arch": build_config.architecture.value,
-                "requires": requires,
-            }
+        pair of Docker images (core-<flavor> or, in FIPS mode,
+        core-fips-<flavor>, and client-tools-<flavor>)."""
+        params: Dict[str, Any] = {
+            "name": f"build-{build_config.architecture.value}-{flavor}-image",
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.CIRCLECI_LARGE, build_config.architecture
+            ),
+            "name-suffix": flavor,
+            "arch": docker_arch,
+            "build-arch": build_config.architecture.value,
+            "requires": requires,
         }
+        if self.config.fips:
+            params["fips"] = True
+        return {"build-docker-image": params}
 
     def _create_docker_manifest_job(
         self, flavor: str, tag: str, requires: List[str]
     ) -> Dict[str, Any]:
-        """Create the job that pushes the multi-arch core-<flavor> and
-        client-tools-<flavor> manifests to ECR."""
-        return {
-            "push-docker-manifest": {
-                "name": f"push-{flavor}-manifest",
-                "resource-class": self.sizer.get_resource_class(
-                    ResourceSize.CIRCLECI_LARGE, Architecture.X64
-                ),
-                "name-suffix": flavor,
-                "tag": tag,
-                "requires": requires,
-            }
+        """Create the job that pushes the multi-arch core-<flavor> (or
+        core-fips-<flavor>) and client-tools-<flavor> manifests to ECR."""
+        params: Dict[str, Any] = {
+            "name": f"push-{flavor}-manifest",
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.CIRCLECI_LARGE, Architecture.X64
+            ),
+            "name-suffix": flavor,
+            "tag": tag,
+            "requires": requires,
         }
+        if self.config.fips:
+            params["fips"] = True
+        return {"push-docker-manifest": params}
 
     def _add_test_jobs(
         self,
@@ -674,12 +721,14 @@ class CircleCIGenerator(OutputGenerator):
         )
 
         # Combine job args with command-line extra args
-        if extra_args_str or self.config.test_execution.extra_args:
-            all_args = []
-            if extra_args_str:
-                all_args.append(extra_args_str)
-            if self.config.test_execution.extra_args:
-                all_args.append(" ".join(self.config.test_execution.extra_args))
+        all_args = []
+        if extra_args_str:
+            all_args.append(extra_args_str)
+        if self.config.test_execution.extra_args:
+            all_args.append(" ".join(self.config.test_execution.extra_args))
+        if self.config.fips:
+            all_args.append(self.FIPS_TEST_ARGS)
+        if all_args:
             job_dict["extraArgs"] = " ".join(all_args)
 
         self._apply_job_overrides(job, job_dict, filtered_suites)

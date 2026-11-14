@@ -1,3 +1,23 @@
+# OpenSSL FIPS provider for use-fips pipelines. Same version and checksum as
+# build_fips in scripts/docker/build/linux/tools/install.sh (the build image,
+# which provides it to the FIPS server images); built here because the
+# infrastructure pipeline builds the test and build images independently.
+FROM ubuntu:26.04 AS fips
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl gcc libc6-dev make perl && \
+    rm -rf /var/lib/apt/lists/*
+RUN cd /tmp && \
+    version=3.1.2 && \
+    sha256=a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539 && \
+    curl -fsSL -o openssl-${version}.tar.gz https://www.openssl.org/source/old/3.1/openssl-${version}.tar.gz && \
+    echo "${sha256}  openssl-${version}.tar.gz" | sha256sum -c - && \
+    tar xzf openssl-${version}.tar.gz && \
+    cd openssl-${version} && \
+    ./config --prefix=/opt enable-fips && \
+    make -j"$(nproc)" && \
+    mkdir -p /opt/lib/ossl-modules && \
+    cp providers/fips.so /opt/lib/ossl-modules/
+
 FROM ubuntu:26.04
 LABEL org.opencontainers.image.authors=hackers@arango.ai
 
@@ -21,10 +41,17 @@ RUN apt-get update && \
     llvm-${CLANG_VERSION} libatomic1 net-tools \
     libc6 libstdc++6 \
     libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget sed \
-    python3 python3-pip && \
+    python3 python3-pip openssl && \
     apt-get autoremove -y --purge && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
+
+# FIPS provider set up the way --server.fips-enable expects it (fixed paths,
+# see lib/Ssl/FipsFeature.cpp). Inert unless a USE_FIPS arangod is started
+# with that option (use-fips pipelines).
+COPY --from=fips /opt/lib/ossl-modules/fips.so /opt/lib/ossl-modules/fips.so
+COPY fips-only.cnf /opt/ssl/fips-only.cnf
+RUN openssl fipsinstall -module /opt/lib/ossl-modules/fips.so -out /opt/ssl/fipsmodule.cnf
 
 RUN pip3 install awscli psutil py7zr --break-system-packages
 

@@ -60,6 +60,11 @@ parameters:
   with-alubsan:
     type: boolean
     default: false
+  # Consumed by the config generator (setup pipeline); declared here because
+  # the continuation receives all pipeline parameters.
+  use-fips:
+    type: boolean
+    default: false
   c-compiler:
     type: string
     default: "clang"
@@ -762,6 +767,23 @@ jobs:
       create-install-package:
         type: boolean
         default: false
+      # With create-install-package: the tarball is <install-package-name>-<arch>.tar.gz.
+      # A FIPS docker-images workflow has two compiles per arch (FIPS server,
+      # regular client tools), which must not persist the same paths.
+      install-package-name:
+        type: string
+        default: install
+      # With create-install-package: also persist docker-context-<arch>
+      # (exactly one compile job per arch may do so).
+      persist-docker-context:
+        type: boolean
+        default: true
+      # Configure with -DUSE_FIPS=On on top of the preset (use-fips
+      # pipelines). Sanitizer presets are dynamic anyway; static presets then
+      # link glibc dynamically so OpenSSL can load its FIPS provider.
+      fips:
+        type: boolean
+        default: false
       resource-class:
         type: string
       s3-prefix:
@@ -798,7 +820,12 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+            FIPS_DEFINITION=()
+            if [ << parameters.fips >> = true ]; then
+              FIPS_DEFINITION=(-DUSE_FIPS=On)
+            fi
             cmake --preset << parameters.preset >> \
+              "${FIPS_DEFINITION[@]}" \
               -G Ninja \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -839,7 +866,7 @@ jobs:
                   # starter and arangod keep their symbols).
                   if [ << parameters.enterprise >> = true ]; then EDITION=enterprise; else EDITION=community; fi
                   EDITION="${EDITION}" scripts/packaging/strip-install-tree.sh ./install
-                  tar -czf install-<< parameters.arch >>.tar.gz -C install ./
+                  tar -czf << parameters.install-package-name >>-<< parameters.arch >>.tar.gz -C install ./
                   cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
             # Everything persisted here must be arch-specific: the x64 and
             # aarch64 compile jobs run concurrently, and concurrent jobs
@@ -852,8 +879,14 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
-                  - install-<< parameters.arch >>.tar.gz
-                  - docker-context-<< parameters.arch >>
+                  - << parameters.install-package-name >>-<< parameters.arch >>.tar.gz
+            - when:
+                condition: << parameters.persist-docker-context >>
+                steps:
+                  - persist_to_workspace:
+                      root: .
+                      paths:
+                        - docker-context-<< parameters.arch >>
       - run:
           name: Size leaderboard
           command: |
@@ -963,6 +996,13 @@ jobs:
       # compile-linux job
       build-arch:
         type: string
+      # FIPS server image core-fips-<name-suffix> (USE_FIPS build plus the
+      # OpenSSL FIPS provider from the build image) instead of
+      # core-<name-suffix>. The client-tools image stays a regular, fully
+      # static build: it comes from the separate install-client-<arch>.tar.gz.
+      fips:
+        type: boolean
+        default: false
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -975,15 +1015,25 @@ jobs:
           name: Build Docker Images
           command: |
             # Two Ubuntu-based (26.04) images per architecture:
-            # core-<name-suffix> (server only, no client tools) and
-            # client-tools-<name-suffix> (client tools only, pruned from the
-            # same install tree the way build-targz.sh builds the client
-            # bundle).
+            # core-<name-suffix> (server only, no client tools; core-fips-<name-suffix>
+            # with fips) and client-tools-<name-suffix> (client tools only,
+            # pruned from an install tree the way build-targz.sh builds the
+            # client bundle).
             set -eu
+            SERVER_IMAGE=core
+            SERVER_ARGS=()
+            CLIENT_PACKAGE=../install-<< parameters.build-arch >>.tar.gz
+            if [ "<< parameters.fips >>" = "true" ]; then
+              SERVER_IMAGE=core-fips
+              # The FIPS provider is copied out of the build image.
+              SERVER_ARGS=(--build-arg USE_FIPS=1 --build-arg "ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >>")
+              CLIENT_PACKAGE=../install-client-<< parameters.build-arch >>.tar.gz
+            fi
+            SERVER_TAG="arangodb/${SERVER_IMAGE}-<< parameters.name-suffix >>:local-<< parameters.arch >>"
             cd docker-context-<< parameters.build-arch >>
-            mkdir install
+            mkdir install install-client
             tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
-            cp -a install install-client
+            tar -xzf "${CLIENT_PACKAGE}" -C install-client
             rm -rf install-client/usr/sbin \
                    install-client/usr/bin/arangodb \
                    install-client/usr/share/arangodb4/js/server \
@@ -1005,8 +1055,19 @@ jobs:
             rm -rf install/usr/share/man/man1 \
                    install/usr/share/arangodb4/js
 
-            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu.dockerfile .
-            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar arangodb/core-<< parameters.name-suffix >>:local-<< parameters.arch >>
+            docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> "${SERVER_ARGS[@]}" -t "${SERVER_TAG}" --file deploy-ubuntu.dockerfile .
+            if [ "<< parameters.fips >>" = "true" ]; then
+              # USE_FIPS links glibc dynamically, so every shared library
+              # arangod needs has to be in the image.
+              if docker run --rm --platform linux/<< parameters.arch >> --entrypoint ldd \
+                   "${SERVER_TAG}" /usr/sbin/arangod | grep 'not found'; then
+                echo "arangod in ${SERVER_TAG} misses the shared libraries listed above" >&2
+                exit 1
+              fi
+            fi
+            # The tarball name stays docker-core-*: push-docker-manifest maps
+            # it to the server image name.
+            docker save -o /tmp/docker-core-<< parameters.build-arch >>.tar "${SERVER_TAG}"
             docker build --pull --no-cache --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >> --file deploy-ubuntu-client.dockerfile .
             docker save -o /tmp/docker-client-tools-<< parameters.build-arch >>.tar arangodb/client-tools-<< parameters.name-suffix >>:local-<< parameters.arch >>
       - persist_to_workspace:
@@ -1033,6 +1094,11 @@ jobs:
         default: test
       tag:
         type: string
+      # Must match the feeding build-docker-image jobs: their server image
+      # is then core-fips-<name-suffix>.
+      fips:
+        type: boolean
+        default: false
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -1062,7 +1128,13 @@ jobs:
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            for NAME in core client-tools; do
+            # The server tarballs are docker-core-*.tar either way; with fips
+            # they hold core-fips-<name-suffix>.
+            SERVER_IMAGE=core
+            if [ "<< parameters.fips >>" = "true" ]; then
+              SERVER_IMAGE=core-fips
+            fi
+            for NAME in "${SERVER_IMAGE}" client-tools; do
               IMAGE="public.ecr.aws/b0b8h2r4/arangodb/${NAME}-<< parameters.name-suffix >>"
               for ARCH in amd64 arm64; do
                 docker tag "arangodb/${NAME}-<< parameters.name-suffix >>:local-${ARCH}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"

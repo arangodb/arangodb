@@ -3,7 +3,7 @@
 # they live in the client-tools image (deploy-ubuntu-client.dockerfile).
 # The CI job that builds this image prunes them from the install tree.
 
-# 1: ship the OpenSSL FIPS provider and its config (arangodb/coredb-fips-preview).
+# 1: ship the OpenSSL FIPS provider and its config (arangodb/core-fips-preview).
 ARG USE_FIPS=0
 # USE_FIPS=1 only: the image providing /opt/lib/ossl-modules/fips.so (the
 # build image). Not needed otherwise; a FIPS build without it fails at the

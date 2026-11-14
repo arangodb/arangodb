@@ -414,7 +414,7 @@ _Enterprise Edition only_
 #### OpenSSL FIPS provider
 
 _Only shipped with FIPS-enabled distributions, such as the
-`arangodb/coredb-fips-preview` Docker image, as the separate module `fips.so`_
+`arangodb/core-fips-preview` Docker image, as the separate module `fips.so`_
 
 * Name: OpenSSL FIPS provider
 * Version: 3.1.2

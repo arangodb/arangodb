@@ -49,6 +49,10 @@ class GeneratorConfig:
     circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
     validate_only: bool = False
     build_variants: List[BuildVariant] = field(default_factory=list)
+    # FIPS mode for every generated workflow (use-fips): USE_FIPS compiles,
+    # tests run with --server.fips-enable, -fips in the workflow names, and
+    # FIPS server images (core-fips-<flavor>) next to regular client tools.
+    fips: bool = False
 
 
 class OutputGenerator(ABC):

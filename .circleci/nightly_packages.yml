@@ -49,7 +49,7 @@ parameters:
   build-fips-image:
     type: boolean
     default: false
-    description: "Also build the FIPS server image arangodb/coredb-fips-preview (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
+    description: "Also build the FIPS server image arangodb/core-fips-preview (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
   push-images-to-gcr-also:
     type: boolean
     default: true

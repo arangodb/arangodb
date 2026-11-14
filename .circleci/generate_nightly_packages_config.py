@@ -33,7 +33,7 @@ PR_WORKFLOW_NAME = "nightly-packages-pr"
 ARCHES = ("amd64", "arm64")
 PACKAGE_FORMATS = ("tar",)
 DOCKER_IMAGES = ("core", "client-tools")
-FIPS_IMAGE = "coredb-fips"
+FIPS_IMAGE = "core-fips"
 
 JobEntry = Union[str, Dict[str, Any]]
 
