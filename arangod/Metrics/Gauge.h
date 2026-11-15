@@ -29,6 +29,7 @@
 #include <velocypack/Builder.h>
 
 #include <atomic>
+#include <format>
 
 namespace arangodb::metrics {
 
@@ -54,7 +55,7 @@ class Gauge : public Metric {
       // does. absl uses scientific notation for numbers that exceed 6
       // digits, and std::to_string() doesn't.
       absl::StrAppend(&result, ensureWhitespace ? " " : "",
-                      std::to_string(load()), "\n");
+                      std::format("{0:.5f}", load()), "\n");
     }
   }
 

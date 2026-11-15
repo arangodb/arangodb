@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 LABEL org.opencontainers.image.authors=hackers@arango.ai
 
 ARG arch
-ARG CLANG_VERSION=19
+ARG CLANG_VERSION=22
 
 RUN apt-get update --fix-missing && \
     apt-get install -y software-properties-common net-tools gnupg2 wget bzip2 && \

@@ -349,8 +349,8 @@ For building the ArangoDB Starter (`arangodb` executable), see the
 ### Building Locally
 
 Debian-based Linux is recommended. Dependencies:
-- `clang-19`
-- `libomp-19-dev`
+- `clang-22`
+- `libomp-22-dev`
 - `liblapack-dev`
 - `libopenblas-dev`
 - `cmake` (at least 3.21)
@@ -359,9 +359,12 @@ Debian-based Linux is recommended. Dependencies:
 - `bison`
 - `flex`
 
+The code is compiled as C++26 (`CXX_STANDARD` in [`VERSIONS`](VERSIONS)), which
+is why a recent C++ standard library such as `libstdc++-14-dev` is required.
+
 Dependencies for a Fedora-based distribution:
 ```
-dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
+dnf install clang-22 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
 ```
 
 After installing, follow the general build steps above.

@@ -43,24 +43,6 @@ namespace arangodb::rest::SslInterface {
 // public methods
 // -----------------------------------------------------------------------------
 
-std::string sslMD5(std::string_view input) {
-  char hash[16];
-  sslMD5(input.data(), input.size(), &hash[0]);
-
-  char hex[32];
-  SslInterface::sslHEX(hash, 16, &hex[0]);
-
-  return std::string(hex, 32);
-}
-
-void sslMD5(char const* inputStr, size_t const length,
-            char* outputStr) noexcept {
-  TRI_ASSERT(inputStr != nullptr);
-  TRI_ASSERT(outputStr != nullptr);
-  EVP_Digest(inputStr, length, reinterpret_cast<unsigned char*>(outputStr),
-             nullptr, EVP_md5(), nullptr);
-}
-
 void sslSHA1(char const* inputStr, size_t const length,
              char* outputStr) noexcept {
   TRI_ASSERT(inputStr != nullptr);
@@ -101,24 +83,6 @@ void sslSHA512(char const* inputStr, size_t const length,
              nullptr, EVP_sha512(), nullptr);
 }
 
-void sslHEX(char const* inputStr, size_t const length,
-            char* outputStr) noexcept {
-  TRI_ASSERT(inputStr != nullptr);
-  TRI_ASSERT(outputStr != nullptr);
-
-  constexpr char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-  char const* e = inputStr + length;
-  char* p = outputStr;
-
-  for (char const* q = inputStr; q < e; ++q) {
-    *p++ = hexval[(*q >> 4) & 0xF];
-    *p++ = hexval[*q & 0x0F];
-  }
-  TRI_ASSERT(static_cast<size_t>(p - outputStr) == 2 * length);
-}
-
 std::string sslPBKDF2(char const* salt, size_t const saltLength,
                       char const* pass, size_t const passLength, int const iter,
                       int const keyLength, Algorithm const algorithm) {
@@ -136,8 +100,6 @@ std::string sslPBKDF2(char const* salt, size_t const saltLength,
         return EVP_sha256();
       case Algorithm::SHA1:
         return EVP_sha1();
-      case Algorithm::MD5:
-        return EVP_md5();
       case Algorithm::SHA224:
         return EVP_sha224();
       case Algorithm::SHA384:
@@ -147,7 +109,9 @@ std::string sslPBKDF2(char const* salt, size_t const saltLength,
     }
     return nullptr;
   }();
-  ADB_PROD_ASSERT(evp_md != nullptr);
+  if (evp_md == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
   unsigned char dk[kMaxKeyLength];
   PKCS5_PBKDF2_HMAC(pass, static_cast<int>(passLength),
                     reinterpret_cast<unsigned char const*>(salt),
@@ -165,8 +129,6 @@ std::string sslHMAC(char const* key, size_t const keyLength,
         return "SHA256";
       case Algorithm::SHA1:
         return "SHA1";
-      case Algorithm::MD5:
-        return "MD5";
       case Algorithm::SHA224:
         return "SHA224";
       case Algorithm::SHA384:
@@ -176,7 +138,9 @@ std::string sslHMAC(char const* key, size_t const keyLength,
     }
     return nullptr;
   }();
-  ADB_PROD_ASSERT(digestName != nullptr);
+  if (digestName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
 
   unsigned char md[EVP_MAX_MD_SIZE];
   size_t mdLen = 0;
