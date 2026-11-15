@@ -244,7 +244,7 @@ parameters:
   run-benchmarks-on-success:
     type: boolean
     default: false
-    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-alpine-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
+    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false) plus run-origin=nightly (workflow ann-benchmark-docker-nightly), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-alpine-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
 
 commands:
   github-auth:
@@ -2440,7 +2440,8 @@ jobs:
   trigger-benchmarks:
     # Starts the benchmarks pipeline (benchmarks.yml) on this branch as an
     # API-triggered pipeline, with the parameters the benchmark schedules
-    # used to pass, against the exact image this nightly just published.
+    # used to pass, against the exact image this nightly just published,
+    # and run-origin=nightly (workflow ann-benchmark-docker-nightly).
     # In the workflow only with run-benchmarks-on-success, outside pr-run
     # and with build-alpine-images (generate_nightly_packages_config.py
     # drops it otherwise), and it requires publish-nightly, so it runs only
@@ -2510,6 +2511,7 @@ jobs:
                 config: {branch: $branch},
                 checkout: {branch: $branch},
                 parameters: {benchmark: "ann", "build-arango": false,
+                             "run-origin": "nightly",
                              "arango-image": $image, "enterprise-branch": $branch}}')"
             echo "Triggering benchmarks on ${BRANCH} against ${IMAGE}:"
             echo "${BODY}"
