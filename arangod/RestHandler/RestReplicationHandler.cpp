@@ -1130,6 +1130,8 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
     // arangosearch views were restored and their links got ids generated
     // locally. Reserve the dumped index ids now, so that locally generated
     // ids cannot collide with them.
+    // TODO (COR-1281): This only solves for a single server restoration; the ID
+    // collision problem persists with a cluster restoration.
     for (VPackSlice idx : VPackArrayIterator(indexes)) {
       auto id = helpers::extractId(idx);
       if (id.isSet()) {
