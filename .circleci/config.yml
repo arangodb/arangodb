@@ -20,7 +20,9 @@ parameters:
   without-instrumentation:
     type: boolean
     default: true
-    description: "Whether to create workflows for non-instrumented builds"
+    description: "Whether to create workflows for non-instrumented builds. With
+      this, with-tsan and with-alubsan all false, only the non-instrumented
+      build is compiled, without tests"
   with-tsan:
     type: boolean
     default: false

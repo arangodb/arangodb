@@ -49,6 +49,8 @@ class GeneratorConfig:
     circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
     validate_only: bool = False
     build_variants: List[BuildVariant] = field(default_factory=list)
+    # Only compile (and cppcheck); no test jobs in the variant workflows.
+    build_only: bool = False
 
 
 class OutputGenerator(ABC):
