@@ -983,15 +983,18 @@ arangodb::Result processInputDirectory(
     jobQueue.waitForIdle();
     jobs.clear();
 
+    // report errors of the restore jobs first: search-alias views reference
+    // the restored indexes, so a failed index creation would otherwise only
+    // show up as a misleading view creation error
+    Result firstError = feature.getFirstError();
+    if (firstError.fail()) {
+      return firstError;
+    }
+
     // Step 7: create search-alias views
     r = createViews("search-alias");
     if (!r.ok()) {
       return r;
-    }
-
-    Result firstError = feature.getFirstError();
-    if (firstError.fail()) {
-      return firstError;
     }
 
     if (didModifyFoxxCollection) {
