@@ -171,8 +171,10 @@ def create_generator_config(
     # Build list of requested build variants
     build_variants = []
 
-    if no_sanitizer or (not tsan and not alubsan and not coverage):
-        # Include non-instrumented build if explicitly requested or no variants specified
+    # No variant requested: compile the non-instrumented build only, without
+    # any tests.
+    build_only = not (no_sanitizer or tsan or alubsan or coverage)
+    if no_sanitizer or build_only:
         build_variants.append(BuildVariant.NORMAL)
     if tsan:
         build_variants.append(BuildVariant.TSAN)
@@ -180,8 +182,6 @@ def create_generator_config(
         build_variants.append(BuildVariant.ALUBSAN)
     if coverage:
         build_variants.append(BuildVariant.COVERAGE)
-
-    assert build_variants, "build_variants must not be empty (logic error)"
 
     # Create filter criteria
     filter_criteria = FilterCriteria(
@@ -218,6 +218,7 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        build_only=build_only,
     )
 
 
@@ -244,7 +245,9 @@ def create_generator_config(
 @click.option(
     "--no-sanitizer",
     is_flag=True,
-    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/"
+    "--coverage); without any of them only the non-instrumented build is "
+    "compiled, without tests",
 )
 @click.option(
     "--coverage",
