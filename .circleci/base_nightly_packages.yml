@@ -186,9 +186,9 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  # Exact pin: a floating orb range silently changes what the nightly
-  # security checks flag. 1.2.0 is the floor: 1.1.2's kev-epss-check fails
-  # closed on a clean report and fails open on an empty threshold.
+  # Floats on 1.x so each orb release reaches the nightly without a bump
+  # PR, which also means a new 1.x can change what the security checks
+  # flag. A breaking orb change ships as 2.0 and needs a change here.
   trivy-scan: arangodb/trivy-scan@1
 
 parameters:
