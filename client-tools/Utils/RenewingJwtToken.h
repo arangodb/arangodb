@@ -24,6 +24,8 @@
 
 #include "Basics/ResultT.h"
 
+#include <velocypack/Slice.h>
+
 #include <chrono>
 #include <functional>
 #include <mutex>
@@ -73,6 +75,11 @@ using TokenOutcome = ResultT<std::optional<JwtToken>>;
 constexpr auto kRenewalRetryInterval = std::chrono::seconds{5};
 
 /**
+ * State of a token obtained at now
+ */
+auto tokenStateFor(JwtToken token, JwtClock::time_point now) -> JwtTokenState;
+
+/**
  * Whether a renewal request should be sent now
  *
  * Due once the token is within renewalThreshold of its expiry, but never
@@ -92,10 +99,31 @@ auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
 
 /**
- * Interprets the complete HTTP reply of a POST to /_open/auth or
- * /_open/auth/renew
+ * The request a token reply answers
  */
-auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
+enum class TokenRequest {
+  /// POST /_open/auth with credentials
+  kLogin,
+  /// POST /_open/auth/renew with the current token
+  kRenew,
+};
+
+/**
+ * Interprets the reply to a POST to /_open/auth or /_open/auth/renew
+ *
+ * body is the parsed reply body, or None if it is empty or no valid JSON. A
+ * server that has authentication disabled issues no token, nor does one that
+ * does not implement /_open/auth (HTTP 404 or 501). /_open/auth/renew answers
+ * HTTP 404 to a token it does not accept, which is an error.
+ */
+auto parseTokenReply(TokenRequest request, int httpStatus,
+                     velocypack::Slice body) -> TokenOutcome;
+
+/**
+ * Interprets the HTTP reply of a POST to /_open/auth or /_open/auth/renew
+ */
+auto parseTokenResponse(TokenRequest request,
+                        httpclient::SimpleHttpResult const& response)
     -> TokenOutcome;
 
 /**

@@ -98,6 +98,23 @@ auto renewedToken() -> TokenOutcome {
 
 }  // namespace
 
+// tokenStateFor
+
+TEST(RenewingJwtTokenTest, tokenStateForTakesExpiryFromToken) {
+  auto const state = tokenStateFor(tokenExpiringAt(1000), at(100));
+
+  EXPECT_EQ(state.token, tokenExpiringAt(1000));
+  EXPECT_EQ(state.obtainedAt, at(100));
+  EXPECT_EQ(state.expiresAt, at(1000));
+  EXPECT_EQ(state.nextAttemptAt, JwtClock::time_point{});
+}
+
+TEST(RenewingJwtTokenTest, tokenStateForTokenWithoutExpiryNeverExpires) {
+  auto const state = tokenStateFor("not-a-jwt", at(100));
+
+  EXPECT_EQ(state.expiresAt, std::nullopt);
+}
+
 // isRenewalDue
 
 TEST(RenewingJwtTokenTest, renewalIsNeverDueWithoutExpiry) {
@@ -182,15 +199,16 @@ TEST(RenewingJwtTokenTest, failedRenewalKeepsTokenAndSchedulesRetry) {
 // parseTokenResponse
 
 TEST(RenewingJwtTokenTest, parsesRenewedTokenFromResponse) {
-  auto const outcome =
-      parseTokenResponse(*completeResponse(200, R"({"jwt":"renewed"})"));
+  auto const outcome = parseTokenResponse(
+      TokenRequest::kRenew, *completeResponse(200, R"({"jwt":"renewed"})"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::optional<JwtToken>{"renewed"});
 }
 
 TEST(RenewingJwtTokenTest, parsesEmptyResponseAsNoTokenIssued) {
-  auto const outcome = parseTokenResponse(*completeResponse(200, "{}"));
+  auto const outcome =
+      parseTokenResponse(TokenRequest::kRenew, *completeResponse(200, "{}"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::nullopt);
@@ -198,17 +216,19 @@ TEST(RenewingJwtTokenTest, parsesEmptyResponseAsNoTokenIssued) {
 
 TEST(RenewingJwtTokenTest, parsesInvalidTokenAsNoTokenIssued) {
   // the server answers with the token "invalid" when authentication is off
-  auto const outcome =
-      parseTokenResponse(*completeResponse(200, R"({"jwt":"invalid"})"));
+  auto const outcome = parseTokenResponse(
+      TokenRequest::kRenew, *completeResponse(200, R"({"jwt":"invalid"})"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::nullopt);
 }
 
 TEST(RenewingJwtTokenTest, parsesHttpErrorIntoErrorNumberAndMessage) {
-  auto const outcome = parseTokenResponse(*completeResponse(
-      401,
-      R"({"error":true,"errorNum":11,"errorMessage":"User not authenticated","code":401})"));
+  auto const outcome = parseTokenResponse(
+      TokenRequest::kRenew,
+      *completeResponse(
+          401,
+          R"({"error":true,"errorNum":11,"errorMessage":"User not authenticated","code":401})"));
 
   ASSERT_TRUE(outcome.fail());
   EXPECT_EQ(outcome.errorNumber(), TRI_ERROR_FORBIDDEN);
@@ -217,16 +237,60 @@ TEST(RenewingJwtTokenTest, parsesHttpErrorIntoErrorNumberAndMessage) {
 }
 
 TEST(RenewingJwtTokenTest, rejectsUnexpectedResponseBodies) {
-  EXPECT_TRUE(parseTokenResponse(*completeResponse(200, "[]")).fail());
   EXPECT_TRUE(
-      parseTokenResponse(*completeResponse(200, R"({"jwt":1})")).fail());
-  EXPECT_TRUE(parseTokenResponse(*completeResponse(200, "not json")).fail());
+      parseTokenResponse(TokenRequest::kRenew, *completeResponse(200, "[]"))
+          .fail());
+  EXPECT_TRUE(parseTokenResponse(TokenRequest::kRenew,
+                                 *completeResponse(200, R"({"jwt":1})"))
+                  .fail());
+  EXPECT_TRUE(parseTokenResponse(TokenRequest::kRenew,
+                                 *completeResponse(200, "not json"))
+                  .fail());
+}
+
+TEST(RenewingJwtTokenTest, parsesUnimplementedLoginEndpointAsNoTokenIssued) {
+  // servers without /_open/auth answer with 404 or 501
+  for (auto const status : {404, 501}) {
+    auto const outcome = parseTokenResponse(
+        TokenRequest::kLogin,
+        *completeResponse(status, R"({"error":true,"errorNum":1,"code":404})"));
+
+    ASSERT_TRUE(outcome.ok()) << status;
+    EXPECT_EQ(outcome.get(), std::nullopt) << status;
+  }
+}
+
+TEST(RenewingJwtTokenTest, parsesRefusedRenewalAsError) {
+  // /_open/auth/renew answers 404 to a token it does not accept, such as an
+  // expired one
+  auto const outcome = parseTokenResponse(
+      TokenRequest::kRenew,
+      *completeResponse(
+          404,
+          R"({"error":true,"errorNum":1703,"errorMessage":"user not found","code":404})"));
+
+  ASSERT_TRUE(outcome.fail());
+  EXPECT_NE(outcome.errorMessage().find("user not found"), std::string::npos);
+}
+
+TEST(RenewingJwtTokenTest, parsesHttpErrorWithoutErrorBodyIntoStatus) {
+  auto const outcome =
+      parseTokenResponse(TokenRequest::kRenew, *completeResponse(503, "busy"));
+
+  ASSERT_TRUE(outcome.fail());
+  EXPECT_EQ(outcome.errorNumber(), ErrorCode{503});
+  EXPECT_NE(outcome.errorMessage().find("HTTP 503"), std::string::npos);
+}
+
+TEST(RenewingJwtTokenTest, parseTokenReplyRejectsMissingBody) {
+  EXPECT_TRUE(
+      parseTokenReply(TokenRequest::kRenew, 200, velocypack::Slice{}).fail());
 }
 
 TEST(RenewingJwtTokenTest, parsesEmptyTokenAsNotTokenIssued) {
   // the server answers with the token "invalid" when authentication is off
-  auto const outcome =
-      parseTokenResponse(*completeResponse(200, R"({"jwt":""})"));
+  auto const outcome = parseTokenResponse(
+      TokenRequest::kRenew, *completeResponse(200, R"({"jwt":""})"));
 
   ASSERT_TRUE(outcome.ok());
   EXPECT_EQ(outcome.get(), std::nullopt);
