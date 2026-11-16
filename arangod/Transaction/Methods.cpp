@@ -870,29 +870,38 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                : std::string_view{StaticStrings::Created};
   }
 
-  // Time travel: the key lock also rejects a write whose timestamp is not
-  // strictly newer than the current version - validation reads at
-  // `timestamp - 1`, so an existing later version trips it - and rocksdb
-  // reports that as a write-write conflict. For a user-supplied timestamp that
-  // is bad input rather than contention: retrying would never help. Turn it
-  // into a precise error, and leave genuine conflicts alone.
-  Result diagnoseTimeTravelConflict(std::string_view key, Result conflict) {
-    TRI_ASSERT(this->_collection.timeTravelEnabled());
-    TRI_ASSERT(conflict.is(TRI_ERROR_ARANGO_CONFLICT));
+  // Time travel: a write must be strictly newer than the latest change to its
+  // key - the current version, or the remove that ended the key's history.
+  // Anything else is bad input rather than contention, so it is reported as
+  // such instead of as a conflict the caller could retry.
+  //
+  // rocksdb's write-write validation, which reads at `timestamp - 1`, cannot
+  // be relied on for this: once the memtable's oldest entry precedes the
+  // snapshot it consults memtables only, so a newer timestamp that has been
+  // flushed goes unseen. Hence the explicit check against the committed state,
+  // SST files included, which the key lock taken by `lookup` keeps stable.
+  // It covers every lookup outcome a backdated write can hide behind: the key
+  // found, not found (removed), and the validation conflict itself.
+  Result checkTimeTravelOrdering(std::string_view key, Result lookup) {
+    if (!this->_collection.timeTravelEnabled() ||
+        !(lookup.ok() || lookup.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
+          lookup.is(TRI_ERROR_ARANGO_CONFLICT))) {
+      return lookup;
+    }
     TRI_ASSERT(_timeTravelWriteTimestamp != 0);
 
-    auto existing =
-        this->_collection.getPhysical()->currentVersionTimestamp(key);
-    if (existing.fail() || !existing.get().has_value() ||
-        existing.get().value() < _timeTravelWriteTimestamp) {
-      // the current version really is older than what we are writing, so the
-      // conflict came from a concurrent writer after all
-      return conflict;
+    auto latest = this->_collection.getPhysical()->latestChangeTimestamp(key);
+    if (latest.fail()) {
+      return latest.result();
+    }
+    if (!latest.get().has_value() ||
+        latest.get().value() < _timeTravelWriteTimestamp) {
+      return lookup;
     }
     return Result{TRI_ERROR_BAD_PARAMETER,
                   absl::StrCat("'", timeTravelTimestampAttribute(),
-                               "' must be newer than the current version of '",
-                               key, "' (", existing.get().value(), "), but is ",
+                               "' must be newer than the latest change to '",
+                               key, "' (", latest.get().value(), "), but is ",
                                _timeTravelWriteTimestamp)};
   }
 
@@ -951,13 +960,10 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     }
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    Result res = _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
-                                                               lookupResult);
+    Result res = this->checkTimeTravelOrdering(
+        key, _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
+                                                          lookupResult));
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
-          _collection.timeTravelEnabled()) {
-        res = this->diagnoseTimeTravelConflict(key, std::move(res));
-      }
       // Error reporting in the babies case is done outside of here.
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
@@ -1320,8 +1326,9 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
     }
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    auto res = _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
-                                                             lookupResult);
+    auto res = this->checkTimeTravelOrdering(
+        key, _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
+                                                          lookupResult));
     if (res.ok()) {
       // primary key already exists!
       if (_overwriteMode == OperationOptions::OverwriteMode::Conflict) {
@@ -1345,10 +1352,6 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
-          _collection.timeTravelEnabled()) {
-        res = this->diagnoseTimeTravelConflict(key, std::move(res));
-      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
@@ -1586,14 +1589,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     }
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    Result res = _collection.getPhysical()->lookupKeyForUpdate(
-        &_methods, key.stringView(), lookupResult);
+    Result res = this->checkTimeTravelOrdering(
+        key.stringView(), _collection.getPhysical()->lookupKeyForUpdate(
+                              &_methods, key.stringView(), lookupResult));
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
-          _collection.timeTravelEnabled()) {
-        res =
-            this->diagnoseTimeTravelConflict(key.stringView(), std::move(res));
-      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting

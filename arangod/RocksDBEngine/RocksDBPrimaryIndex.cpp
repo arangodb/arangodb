@@ -697,7 +697,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 }
 
 ResultT<std::optional<std::uint64_t>>
-RocksDBPrimaryIndex::currentVersionTimestamp(std::string_view key) const {
+RocksDBPrimaryIndex::latestChangeTimestamp(std::string_view key) const {
   TRI_ASSERT(_cf->GetComparator()->timestamp_size() > 0);
 
   RocksDBKey indexKey(ThreadLocalStringLeaser::lease());
@@ -713,20 +713,22 @@ RocksDBPrimaryIndex::currentVersionTimestamp(std::string_view key) const {
   std::string timestamp;
   rocksdb::Status s =
       _engine.db()->Get(ro, _cf, indexKey.string(), &value, &timestamp);
-  if (s.IsNotFound()) {
-    return ResultT<std::optional<std::uint64_t>>::success(std::nullopt);
-  }
-  if (!s.ok()) {
+  if (!s.ok() && !s.IsNotFound()) {
     return rocksutils::convertStatus(s, rocksutils::index);
   }
+  // A key whose latest entry is a tombstone is "not found", but rocksdb still
+  // reports the tombstone's timestamp - the instant the key was removed. Only
+  // a key that was never written comes back without one.
+  if (timestamp.empty()) {
+    return ResultT<std::optional<std::uint64_t>>::success(std::nullopt);
+  }
 
-  // the entry's own timestamp is the _created of the version it points at
-  std::uint64_t created = 0;
-  if (auto d = rocksdb::DecodeU64Ts(rocksdb::Slice(timestamp), &created);
+  std::uint64_t changed = 0;
+  if (auto d = rocksdb::DecodeU64Ts(rocksdb::Slice(timestamp), &changed);
       !d.ok()) {
     return rocksutils::convertStatus(d, rocksutils::index);
   }
-  return ResultT<std::optional<std::uint64_t>>::success(created);
+  return ResultT<std::optional<std::uint64_t>>::success(changed);
 }
 
 /// @brief reads a revision id from the primary index

@@ -272,12 +272,12 @@ class PhysicalCollection {
   // engine supports it; the default is "off" for every other implementation.
   virtual bool timeTravelEnabled() const noexcept { return false; }
 
-  // The timestamp at which the currently committed version of `key` was
-  // created, i.e. what a new version has to be newer than. Read straight from
-  // the primary index, whose entries are keyed by that timestamp. An unset
-  // optional means the key has no current version. Only ever called for
-  // collections with time travel enabled.
-  virtual ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+  // The timestamp of the latest committed change to `key` - the creation of
+  // its current version, or its removal - i.e. what any further write to the
+  // key has to be newer than. Read straight from the primary index, whose
+  // entries are keyed by that timestamp. An unset optional means the key was
+  // never written. Only ever called for collections with time travel enabled.
+  virtual ResultT<std::optional<std::uint64_t>> latestChangeTimestamp(
       std::string_view /*key*/) const {
     TRI_ASSERT(false);
     return ResultT<std::optional<std::uint64_t>>::error(

@@ -1341,9 +1341,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
 }
 
 ResultT<std::optional<std::uint64_t>>
-RocksDBCollection::currentVersionTimestamp(std::string_view key) const {
+RocksDBCollection::latestChangeTimestamp(std::string_view key) const {
   TRI_ASSERT(timeTravelEnabled());
-  return primaryIndex()->currentVersionTimestamp(key);
+  return primaryIndex()->latestChangeTimestamp(key);
 }
 
 bool RocksDBCollection::cacheEnabled() const noexcept {
@@ -1751,9 +1751,9 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
       // timestamps can still resolve it, and is rewritten in place with the
       // timestamp that ended its validity. No new version takes its place -
       // the primary index gets a tombstone instead (see below).
-      VPackBuilder expiredVersion;
-      buildExpiredVersion(doc, writeTimestamp, expiredVersion);
-      VPackSlice expired = expiredVersion.slice();
+      auto expiredVersion = ThreadLocalBuilderLeaser::lease();
+      buildExpiredVersion(doc, writeTimestamp, *expiredVersion);
+      VPackSlice expired = expiredVersion->slice();
       return mthds->PutUntracked(
           documentsCf, key,
           rocksdb::Slice(expired.startAs<char>(), expired.byteSize()));

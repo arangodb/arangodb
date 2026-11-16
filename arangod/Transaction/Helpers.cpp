@@ -112,14 +112,13 @@ ResultT<std::uint64_t> timeTravelTimestamp(velocypack::Slice value,
   }
   // Both ends of the range are reserved, so they are rejected alongside
   // non-integers and negative values: write-write validation reads at
-  // `_created - 1`, which 0 leaves no room for, and the maximum value is the
+  // `timestamp - 1`, which 0 leaves no room for, and the maximum value is the
   // "current state" timestamp, which rocksdb reads back as "no commit
   // timestamp was assigned at all".
   if (!ts.has_value() || *ts == 0 ||
       *ts == std::numeric_limits<std::uint64_t>::max()) {
     return Result{TRI_ERROR_BAD_PARAMETER,
-                  absl::StrCat("time-travel collections require '",
-                               StaticStrings::Created,
+                  absl::StrCat("time-travel collections require '", attribute,
                                "' to be an integer timestamp greater than 0 "
                                "and less than ",
                                std::numeric_limits<std::uint64_t>::max())};

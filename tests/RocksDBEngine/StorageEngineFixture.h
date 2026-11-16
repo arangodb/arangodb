@@ -59,6 +59,12 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
     rocksdb::Options options;
     options.create_if_missing = true;
     options.create_missing_column_families = true;
+    // Configure the memtable history like the production RocksDBOptionFeature
+    // does. With rocksdb's defaults, TransactionDB keeps several memtables'
+    // worth of history, so a write-write check that only reads memtables still
+    // finds versions that production has already flushed out of reach.
+    options.max_write_buffer_number_to_maintain = 1;
+    options.max_write_buffer_size_to_maintain = 0;
     return options;
   }
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override {

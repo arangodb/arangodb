@@ -850,44 +850,6 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
   EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
 }
 
-// A version chain must move forward in time: a new version created at or before
-// the current one would give the superseded version an _expired that precedes
-// its own _created. The user supplies these timestamps, so this is bad input
-// and must be reported as such.
-TEST_F(TimeTravelStorageEngineDocumentTest, UpdateWithOlderCreatedIsRejected) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
-  ASSERT_TRUE(updateR(createdDoc("k1", 2, 3000).slice()).ok());
-
-  auto upd = updateR(createdDoc("k1", 3, 2000).slice());
-  ASSERT_TRUE(upd.fail());
-  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
-  // the message names both timestamps, which also proves the current version's
-  // was read back out of the primary index entry
-  EXPECT_NE(upd.errorMessage().find(StaticStrings::Created), std::string::npos)
-      << upd.errorMessage();
-  EXPECT_NE(upd.errorMessage().find("3000"), std::string::npos)
-      << upd.errorMessage();
-  EXPECT_NE(upd.errorMessage().find("2000"), std::string::npos)
-      << upd.errorMessage();
-}
-
-TEST_F(TimeTravelStorageEngineDocumentTest, UpdateWithEqualCreatedIsRejected) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
-
-  auto upd = updateR(createdDoc("k1", 2, 1000).slice());
-  ASSERT_TRUE(upd.fail());
-  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
-}
-
-TEST_F(TimeTravelStorageEngineDocumentTest,
-       UpdateWithCreatedBeforeFirstVersionIsRejected) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 2000).slice()).ok());
-
-  auto upd = updateR(createdDoc("k1", 2, 1000).slice());
-  ASSERT_TRUE(upd.fail());
-  EXPECT_EQ(upd.errorNumber(), TRI_ERROR_BAD_PARAMETER) << upd.errorMessage();
-}
-
 // The maximum timestamp is the reserved "current state" value: rocksdb reads a
 // commit timestamp of that value back as "none was assigned" and fails the
 // commit, so it has to be rejected up front like 0 is.
@@ -903,25 +865,6 @@ TEST_F(TimeTravelStorageEngineDocumentTest, InsertWithMaxCreatedIsRejected) {
   EXPECT_TRUE(read("k1").fail());
 }
 
-// Inserting over an existing key with a backdated _created trips the same key
-// lock as a backdated update, and must be diagnosed the same way rather than
-// reported as a write-write conflict the caller could retry.
-TEST_F(TimeTravelStorageEngineDocumentTest,
-       InsertOverExistingKeyWithOlderCreatedIsRejected) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
-
-  auto ins = insertR(createdDoc("k1", 2, 500).slice());
-  ASSERT_TRUE(ins.fail());
-  EXPECT_EQ(ins.errorNumber(), TRI_ERROR_BAD_PARAMETER) << ins.errorMessage();
-  EXPECT_NE(ins.errorMessage().find("1000"), std::string::npos)
-      << ins.errorMessage();
-
-  // the existing version is untouched
-  auto current = read("k1");
-  ASSERT_TRUE(current.ok()) << current.errorMessage();
-  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 1);
-}
-
 // A *newer* timestamp on an existing key is still a plain duplicate key: the
 // timestamp is fine, the key is taken.
 TEST_F(TimeTravelStorageEngineDocumentTest,
@@ -934,32 +877,155 @@ TEST_F(TimeTravelStorageEngineDocumentTest,
       << ins.errorMessage();
 }
 
-// A remove has to expire a version at an instant it was still live, so an
-// _expired at or before the current version's _created is the same kind of bad
-// input as a backdated _created on an update.
-TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithOlderExpiredIsRejected) {
-  ASSERT_TRUE(insertR(createdDoc("k1", 1, 3000).slice()).ok());
+// ================ version ordering ================
 
-  auto rem = removeR(expiredSelector("k1", 2000).slice());
-  ASSERT_TRUE(rem.fail());
-  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
-  // the message names the attribute the timestamp came from, and both values
-  EXPECT_NE(rem.errorMessage().find(StaticStrings::Expired), std::string::npos)
-      << rem.errorMessage();
-  EXPECT_NE(rem.errorMessage().find("3000"), std::string::npos)
-      << rem.errorMessage();
-  EXPECT_NE(rem.errorMessage().find("2000"), std::string::npos)
-      << rem.errorMessage();
+// A version chain must move forward in time: a write at or before the latest
+// change to its key would give a version an _expired that precedes its own
+// _created, or slot a version in behind a tombstone. The user supplies these
+// timestamps, so this is bad input and must be reported as such - never as a
+// write-write conflict the caller could retry.
+//
+// Every rule runs twice. With the latest change still in a memtable, rocksdb's
+// own write-write validation already trips over it. After a flush it does not:
+// once the memtable's oldest entry precedes the transaction's snapshot, that
+// validation reads memtables only - enough to find concurrent writers, but not
+// a newer timestamp written before the snapshot.
+class TimeTravelOrderingTest : public TimeTravelStorageEngineDocumentTest,
+                               public ::testing::WithParamInterface<bool> {
+ protected:
+  void flushIfRequested() {
+    if (!GetParam()) {
+      return;
+    }
+    rocksdb::FlushOptions options;
+    options.wait = true;
+    auto s = engine().db()->Flush(
+        options, RocksDBColumnFamilyManager::get(
+                     RocksDBColumnFamilyManager::Family::PrimaryIndex_TT));
+    ASSERT_TRUE(s.ok()) << s.ToString();
+    // any later write to the family - here an unrelated key - makes the fresh
+    // memtable start before the next snapshot; right after the flush the two
+    // coincide and rocksdb still falls back to reading the SST files
+    ASSERT_TRUE(insertR(createdDoc("unrelated", 0, 1).slice()).ok());
+  }
+
+  static void expectRejectedAsBackdated(OperationResult const& res,
+                                        std::string_view attribute,
+                                        std::string_view latest,
+                                        std::string_view requested) {
+    ASSERT_TRUE(res.fail());
+    EXPECT_EQ(res.errorNumber(), TRI_ERROR_BAD_PARAMETER) << res.errorMessage();
+    for (auto part : {attribute, latest, requested}) {
+      EXPECT_NE(res.errorMessage().find(part), std::string::npos)
+          << res.errorMessage();
+    }
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(TimeTravel, TimeTravelOrderingTest, ::testing::Bool(),
+                         [](auto const& info) {
+                           return info.param ? "Flushed" : "InMemtable";
+                         });
+
+TEST_P(TimeTravelOrderingTest, UpdateWithOlderCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_TRUE(updateR(createdDoc("k1", 2, 3000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(updateR(createdDoc("k1", 3, 2000).slice()),
+                            StaticStrings::Created, "3000", "2000");
+
+  // the version it would have superseded keeps its validity interval
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 2);
+  EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
+}
+
+TEST_P(TimeTravelOrderingTest, UpdateWithEqualCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(updateR(createdDoc("k1", 2, 1000).slice()),
+                            StaticStrings::Created, "1000", "1000");
+}
+
+TEST_P(TimeTravelOrderingTest, UpdateWithCreatedBeforeFirstVersionIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 2000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(updateR(createdDoc("k1", 2, 1000).slice()),
+                            StaticStrings::Created, "2000", "1000");
+}
+
+TEST_P(TimeTravelOrderingTest, InsertOverExistingKeyWithOlderCreatedIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(insertR(createdDoc("k1", 2, 500).slice()),
+                            StaticStrings::Created, "1000", "500");
+
+  auto current = read("k1");
+  ASSERT_TRUE(current.ok()) << current.errorMessage();
+  EXPECT_EQ(current.slice().get("value").getNumber<int>(), 1);
+}
+
+TEST_P(TimeTravelOrderingTest, RemoveWithOlderExpiredIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 3000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(removeR(expiredSelector("k1", 2000).slice()),
+                            StaticStrings::Expired, "3000", "2000");
 
   auto current = read("k1");
   ASSERT_TRUE(current.ok()) << current.errorMessage();
   EXPECT_TRUE(current.slice().get(StaticStrings::Expired).isNull());
 }
 
-TEST_F(TimeTravelStorageEngineDocumentTest, RemoveWithEqualExpiredIsRejected) {
+TEST_P(TimeTravelOrderingTest, RemoveWithEqualExpiredIsRejected) {
   ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  flushIfRequested();
 
-  auto rem = removeR(expiredSelector("k1", 1000).slice());
-  ASSERT_TRUE(rem.fail());
-  EXPECT_EQ(rem.errorNumber(), TRI_ERROR_BAD_PARAMETER) << rem.errorMessage();
+  expectRejectedAsBackdated(removeR(expiredSelector("k1", 1000).slice()),
+                            StaticStrings::Expired, "1000", "1000");
+}
+
+// A tombstone is a change like any other: the key does not exist in the
+// current state, but its history ends at the remove, and nothing may be
+// written behind that point.
+TEST_P(TimeTravelOrderingTest, InsertBehindATombstoneIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", 3000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(insertR(createdDoc("k1", 2, 2000).slice()),
+                            StaticStrings::Created, "3000", "2000");
+
+  // the version that was live at 2000 is still the one found there
+  auto past = readAt("k1", 2000);
+  ASSERT_TRUE(past.ok()) << past.errorMessage();
+  EXPECT_EQ(past.slice().get("value").getNumber<int>(), 1);
+  EXPECT_TRUE(read("k1").fail());
+}
+
+TEST_P(TimeTravelOrderingTest, UpdateBehindATombstoneIsRejected) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", 3000).slice()).ok());
+  flushIfRequested();
+
+  expectRejectedAsBackdated(updateR(createdDoc("k1", 2, 2000).slice()),
+                            StaticStrings::Created, "3000", "2000");
+}
+
+// The ordering check must not reject what is legitimately newer - in
+// particular it has to read a tombstone's timestamp correctly, including one
+// that only exists in an SST.
+TEST_P(TimeTravelOrderingTest, InsertAfterATombstoneSucceeds) {
+  ASSERT_TRUE(insertR(createdDoc("k1", 1, 1000).slice()).ok());
+  ASSERT_TRUE(removeR(expiredSelector("k1", 2000).slice()).ok());
+  flushIfRequested();
+
+  auto ins = insertR(createdDoc("k1", 2, 3000).slice());
+  ASSERT_TRUE(ins.ok()) << ins.errorMessage();
+  EXPECT_EQ(read("k1").slice().get("value").getNumber<int>(), 2);
 }

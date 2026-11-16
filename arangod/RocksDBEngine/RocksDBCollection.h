@@ -162,7 +162,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
     return _timeTravelEnabled;
   }
 
-  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+  ResultT<std::optional<std::uint64_t>> latestChangeTimestamp(
       std::string_view key) const override;
 
   bool hasDocuments() override;
