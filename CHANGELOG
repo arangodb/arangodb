@@ -1,6 +1,12 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
+  `name`" when restoring a dump that contains arangosearch views into a single
+  server. The view links could get the same id as an index from the dump.
+  arangorestore now also reports the first failed collection job instead of a
+  follow-up error from creating search-alias views.
+
 * COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
   REPEAT() with an empty value and no separator taking time proportional to
   the repetition count.
