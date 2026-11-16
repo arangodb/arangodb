@@ -515,6 +515,7 @@
     options:
       type: single
       size: medium
+      buckets: 2
     suites:
       - dump_jwt
       - dump_multiple_same
