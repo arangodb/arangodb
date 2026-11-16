@@ -161,14 +161,16 @@ var saveWorldCountryGraphData = function () {
   // This example writes the graph data without using the general graph interface.
   // it expects to find the collections to be already created.
   // It can be called either via createWorldCountryGraph() that will create a managed graph
-  // or via dropWorldCountryUnManaged that will simply generate a set of vertex and edge collections.
+  // or via createWorldCountryGraphUnManaged() that will simply generate a set of vertex and edge collections.
   // instead of using 
   //    var world  = worldCountryGraph.worldVertices.save({ _key: "world", name: "World", type: "root" })
   //    var africa = worldCountryGraph.worldVertices.save({ _key: "continent-africa", name: "Africa", type: "continent" })
-  //    worldCountryGraph.worldEdges.save(world._id, africa._id, { type: "is-in" })
+  //    worldCountryGraph.worldEdges.save(africa._id, world._id, { type: "is-in" })
   //
   // we will directly put the documents into their respective collections
   // and have to ensure graph consistency by ourselves.
+  // The is-in edges point from capitals to countries, from countries to
+  // continents, and from continents to the world.
 
   // vertices: root node 
   var db = require('internal').db;
