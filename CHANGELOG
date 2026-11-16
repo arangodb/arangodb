@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Add a `serviceGraph` example graph of services that call each other, with
+  the protocol and the latency of each call. It can be loaded with
+  `require("@arangodb/graph-examples/example-graph").loadGraph("serviceGraph")`
+  and is used in the documentation to explain graph traversals.
+
 * COR-1218: A MATCH vertex with a variable and no label, such as `MATCH (v)`,
   now fails with a parse error when that variable was not bound earlier. It
   previously raised internal error 4 ("variable not found").

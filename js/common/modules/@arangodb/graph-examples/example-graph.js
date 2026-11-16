@@ -542,6 +542,53 @@ var createConnectedComponentsGraph = function () {
   return graph;
 };
 
+// we create a graph with services of an application as nodes and the calls
+// between them as edges, with the protocol and the latency of each call.
+// It has multiple paths to 'db' and a cycle between 'orders' and 'payments'.
+var createServiceGraph = function () {
+  var graph_module = require('@arangodb/general-graph');
+
+  var graph = graph_module._create('serviceGraph', [
+    graph_module._relation('calls', 'services', 'services')
+  ]);
+
+  var services = [
+    ['web', 'frontend'],
+    ['api', 'backend'],
+    ['auth', 'backend'],
+    ['catalog', 'backend'],
+    ['orders', 'backend'],
+    ['inventory', 'backend'],
+    ['payments', 'backend'],
+    ['cache', 'data'],
+    ['db', 'data'],
+    ['bank', 'external']
+  ];
+  var calls = [
+    ['web', 'api', 'https', 20],
+    ['api', 'auth', 'grpc', 5],
+    ['api', 'catalog', 'grpc', 8],
+    ['api', 'orders', 'grpc', 6],
+    ['auth', 'db', 'http', 25],
+    ['catalog', 'cache', 'tcp', 1],
+    ['catalog', 'db', 'http', 30],
+    ['orders', 'inventory', 'grpc', 4],
+    ['orders', 'payments', 'grpc', 10],
+    ['inventory', 'db', 'http', 3],
+    ['payments', 'bank', 'https', 120],
+    ['payments', 'orders', 'https', 15]
+  ];
+
+  for (var [key, tier] of services) {
+    graph.services.save({ _key: key, tier: tier });
+  }
+  for (var [from, to, protocol, latencyMs] of calls) {
+    graph.calls.save({ _from: `services/${from}`, _to: `services/${to}`, protocol: protocol, latencyMs: latencyMs });
+  }
+
+  return graph;
+};
+
 var knownGraphs = {
   'knows_graph': {create: createTraversalExample, dependencies: [
       'knows', 'persons'
@@ -569,6 +616,9 @@ var knownGraphs = {
   ]},
   'connectedComponentsGraph': {create: createConnectedComponentsGraph, dependencies: [
       'connections', 'components'
+  ]},
+  'serviceGraph': {create: createServiceGraph, dependencies: [
+      'calls', 'services'
   ]},
 };
 

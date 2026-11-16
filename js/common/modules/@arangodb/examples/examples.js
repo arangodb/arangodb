@@ -73,6 +73,14 @@ exports.Examples = {
       examples.dropGraph("connectedComponentsGraph");
     }
   },
+  'serviceGraph': {
+    createDS: function() {
+      examples.loadGraph("serviceGraph");
+    },
+    removeDS: function() {
+      examples.dropGraph("serviceGraph");
+    }
+  },
   'joinSampleDataset': {
     createDS: function() {
       db._create("users");
