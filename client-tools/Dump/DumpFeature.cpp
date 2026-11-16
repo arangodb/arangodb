@@ -48,7 +48,6 @@
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Ssl/SslInterface.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/ManagedDirectory.h"
 
@@ -58,6 +57,7 @@
 #include <unordered_map>
 
 #include <absl/strings/str_cat.h>
+#include <boost/hash2/md5.hpp>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -614,8 +614,9 @@ Result DumpFeature::DumpCollectionJob::run(
   }
 
   // prep hex string of collection name
-  std::string const hexString(
-      arangodb::rest::SslInterface::sslMD5(collectionName));
+  boost::hash2::md5_128 hash;
+  hash.update(collectionName.c_str(), collectionName.size());
+  std::string const hexString{boost::hash2::to_string(hash.result())};
 
   ++stats.totalCollections;
 
@@ -1743,7 +1744,9 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
         // collection name present in dump
         continue;
       }
-      std::string hexString(arangodb::rest::SslInterface::sslMD5(name));
+      boost::hash2::md5_128 hash;
+      hash.update(name.c_str(), name.size());
+      std::string const hexString{boost::hash2::to_string(hash.result())};
       std::string escapedName =
           escapedCollectionName(name, info.get("parameters"));
 
@@ -1765,7 +1768,9 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
 
 std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
     std::string const& name) {
-  std::string hexString(arangodb::rest::SslInterface::sslMD5(name));
+  boost::hash2::md5_128 hash;
+  hash.update(name.c_str(), name.size());
+  std::string const hexString{boost::hash2::to_string(hash.result())};
 
   std::unique_lock guard(_mutex);
 

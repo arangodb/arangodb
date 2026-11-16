@@ -1,8 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* BTS-2505: Fixed an issue where UPDATE, REPLACE, or REMOVE operations on a 
- SmartGraph edge, found through a join condition such as e._from == x._id or e._to == x._id, could fail with error 1202 (document not found) when the smart-join-smart-edge optimizer rule was enabled.
+* BTS-2505: Fixed an issue where UPDATE, REPLACE, or REMOVE operations on a
+  SmartGraph edge, found through a join condition such as e._from == x._id or
+  e._to == x._id, could fail with error 1202 (document not found) when the
+  smart-join-smart-edge optimizer rule was enabled.
+
+* COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
+  SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).

@@ -25,6 +25,7 @@
 #include "Ssl/jwt.h"
 
 #include <absl/strings/escaping.h>
+#include <velocypack/Parser.h>
 
 #include <chrono>
 #include <cmath>
@@ -69,6 +70,32 @@ auto withoutPadding(std::string encoded) -> std::string {
 constexpr auto bodyWithExpiry = R"({"exp":1000,"n":"?"})";
 
 }  // namespace
+
+TEST(JwtTest, generateRawJwtEncodesHeaderAndBodyWithBase64Url) {
+  auto const body = arangodb::velocypack::Parser::fromJson(bodyWithExpiry);
+
+  auto const token = generateRawJwt("secret", body->slice());
+
+  EXPECT_TRUE(token.starts_with(
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjEwMDAsIm4iOiI_In0."))
+      << token;
+}
+
+TEST(JwtTest, generateUserTokenIsBase64UrlForUsernameWithSpecialChars) {
+  // in the body, the leading '~' lands at an offset where standard base64
+  // emits '+', which the server's own token validation rejects
+  auto const token = generateUserToken("secret", "~alice");
+  auto const firstDot = token.find('.');
+  auto const secondDot = token.find('.', firstDot + 1);
+  ASSERT_NE(secondDot, std::string::npos);
+
+  std::string header;
+  std::string body;
+  EXPECT_TRUE(absl::WebSafeBase64Unescape(token.substr(0, firstDot), &header));
+  EXPECT_TRUE(absl::WebSafeBase64Unescape(
+      token.substr(firstDot + 1, secondDot - firstDot - 1), &body));
+  EXPECT_EQ(extractPreferredUsername(token), "~alice");
+}
 
 TEST(JwtTest, extractExpirationReturnsExpClaimOfUserToken) {
   auto const before = nowInSeconds();
