@@ -1,6 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
+  `name`" when restoring a dump that contains arangosearch views into a single
+  server. The view links could get the same id as an index from the dump.
+  arangorestore now also reports the first failed collection job instead of a
+  follow-up error from creating search-alias views.
+
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
   the vector attribute of a vector index without `storedValues`.
 
