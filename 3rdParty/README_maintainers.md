@@ -329,3 +329,58 @@ Compared to the original zlib 1.2.12, we have made changes to the CMakeLists.txt
 as can be found in the patch file
 
     3rdParty/zlib/zlib-1.2.12.patch
+
+## legacy ICU
+we found & fixed a data race in the legacy ICU:
+
+--- a/3rdParty/icu-legacy/icu64/i18n/usearch.cpp
++++ b/3rdParty/icu-legacy/icu64/i18n/usearch.cpp
+@@ -23,6 +23,7 @@
+ #include "ucln_in.h"
+ #include "uassert.h"
+ #include "ustr_imp.h"
++#include "umutex.h"
+ 
+ U_NAMESPACE_USE
+ 
+@@ -37,6 +38,7 @@ U_NAMESPACE_USE
+ #define SUPPLEMENTARY_MIN_VALUE_ 0x10000
+ 
+ static const Normalizer2Impl *g_nfcImpl = NULL;
++static icu::UInitOnce g_nfcImplInitOnce = U_INITONCE_INITIALIZER;
+ 
+ // internal methods -------------------------------------------------
+ 
+@@ -99,10 +101,20 @@ U_CDECL_BEGIN
+ static UBool U_CALLCONV
+ usearch_cleanup(void) {
+     g_nfcImpl = NULL;
++    g_nfcImplInitOnce.reset();
+     return TRUE;
+ }
+ U_CDECL_END
+ 
++// ArangoDB patch: the original lazy initialization of g_nfcImpl was not
++// thread-safe (data race reported by TSan when several threads construct a
++// StringSearch concurrently). Initialize it via umtx_initOnce instead.
++static void U_CALLCONV
++initNFCImpl(UErrorCode &status) {
++    g_nfcImpl = Normalizer2Factory::getNFCImpl(status);
++    ucln_i18n_registerCleanup(UCLN_I18N_USEARCH, usearch_cleanup);
++}
++
+ /**
+ * Initializing the fcd tables.
+ * Internal method, status assumed to be a success.
+@@ -112,10 +124,7 @@ U_CDECL_END
+ static
+ inline void initializeFCD(UErrorCode *status)
+ {
+-    if (g_nfcImpl == NULL) {
+-        g_nfcImpl = Normalizer2Factory::getNFCImpl(*status);
+-        ucln_i18n_registerCleanup(UCLN_I18N_USEARCH, usearch_cleanup);
+-    }
++    umtx_initOnce(g_nfcImplInitOnce, &initNFCImpl, *status);
+ }
+ 
+
