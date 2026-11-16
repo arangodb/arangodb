@@ -36,12 +36,32 @@ using namespace arangodb::options;
 void FipsFeatureOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, FipsFeatureOptions& opts) {
   options->addSection("fips", "Options to control fips behaviour");
-  options->addOption(
-      "--server.fips-enable", "Forces the server to load the fips module.",
-      new BooleanParameter(&opts.enableFips),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnAll, arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--server.fips-enable",
+                  "Whether to restrict the server to FIPS 140-3 approved "
+                  "cryptography by loading the OpenSSL FIPS provider.",
+                  new BooleanParameter(&opts.enableFips),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAll,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(40000)
+      .setLongDescription(R"(If set to `true`, the server loads the OpenSSL
+FIPS provider on startup, before any TLS context is created, and makes it the
+default for all cryptographic operations. Only FIPS-approved algorithms can be
+used afterwards, for incoming TLS connections as well as for the server's own
+outgoing connections, e.g. between cluster nodes.
+
+The provider is loaded from `/opt/lib/ossl-modules/fips.so` with the
+configuration in `/opt/ssl/fips-only.cnf`, which includes the
+`/opt/ssl/fipsmodule.cnf` file generated for the installed module with
+`openssl fipsinstall`. The server refuses to start if any of these files is
+missing or if the provider cannot be loaded. In the FIPS Docker images, setting
+the `USE_FIPS` environment variable generates `fipsmodule.cnf` and sets this
+option.
+
+This option is only available in builds with FIPS support. Other builds refuse
+to start if it is set to `true`.)");
 }
 
 void FipsFeatureOptionsProvider::validateOptionsImpl(
