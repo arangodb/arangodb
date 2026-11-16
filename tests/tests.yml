@@ -478,6 +478,7 @@
       type: cluster
       size: large
       parallelity: 5
+      buckets: 3
     args:
       dumpAgencyOnError: true
     suites:
@@ -515,7 +516,6 @@
     options:
       type: single
       size: medium
-      buckets: 2
     suites:
       - dump_jwt
       - dump_multiple_same

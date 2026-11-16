@@ -414,25 +414,24 @@ function iterateTests(cases, options) {
     }
   }
 
-  let testSuiteStart = 0;
-  let testSuiteEnd = caselist.length;
+  let suiteIndexes = _.range(caselist.length);
   let nTests = optionsList.length;
   if (nTests > 1) {
     if (options.testBuckets !== undefined && options.testBuckets !== "1/0") {
       let n = options.testBuckets.split('/');
       let r = parseInt(n[0]);
       let s = parseInt(n[1]);
-      if (r !== nTests) {
-        throw new Error(`Number of buckets (${r}) must be equal the number of suites to run (${nTests})`);
+      if (r > nTests) {
+        throw new Error(`Number of buckets (${r}) must not exceed the number of suites to run (${nTests})`);
       }
-      testSuiteStart = s;
-      testSuiteEnd = s + 1;
+      // distribute the suites round robin over the buckets, like splitBuckets() does with testcases
+      suiteIndexes = suiteIndexes.filter(i => i % r === s);
       options.testBuckets = undefined;
     }
   }
 
   // running all tests
-  for (let n = testSuiteStart; n < testSuiteEnd; ++n) {
+  for (const n of suiteIndexes) {
     // required, because each different test suite may operate with a different set of servers!
     flushInstanceInfo();
 
