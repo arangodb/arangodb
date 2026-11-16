@@ -80,6 +80,9 @@ struct alignas(64) ResourceMonitor final {
   /// @brief return the peak memory usage of the instance
   std::uint64_t peak() const noexcept;
 
+  /// @brief diagnostics: the peak memory usage, not rounded to chunks
+  std::uint64_t exactPeak() const noexcept;
+
   /// @brief reset counters for the local instance
   void clear() noexcept;
 
@@ -112,6 +115,7 @@ struct alignas(64) ResourceMonitor final {
 
   std::atomic<std::uint64_t> _current;
   std::atomic<std::uint64_t> _peak;
+  std::atomic<std::uint64_t> _exactPeak;
   std::uint64_t _limit;
   GlobalResourceMonitor& _global;
   std::array<PhaseBytes, 3> _phases{};

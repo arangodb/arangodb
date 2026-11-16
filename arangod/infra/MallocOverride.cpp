@@ -88,10 +88,18 @@ void doDecrease(ResourceMonitorBase* base, uint64_t requested,
   }
 }
 
+// Diagnostics: the size class this allocation would get without our header.
+// Alignment is ignored, so add and subtract always agree.
+auto noHeaderSize(size_t requested) -> uint64_t {
+  return je_nallocx(requested == 0 ? 1 : requested, 0);
+}
+
 void trackFree(AllocHeader* header) {
   auto requested = header->requested_size;
   auto actual = je_malloc_usable_size(getRealPtr(header));
-  doDecrease(getMonitor(header), requested, actual);
+  auto* monitor = getMonitor(header);
+  doDecrease(monitor, requested, actual);
+  monitor->subNoHeader(noHeaderSize(requested));
 }
 
 }  // namespace
@@ -115,6 +123,8 @@ bool rechargeAllocation(void* user) noexcept {
     return false;
   }
   doDecrease(from, requested, actual);
+  from->subNoHeader(noHeaderSize(requested));
+  to->addNoHeader(noHeaderSize(requested));
   header->monitor_tagged =
       reinterpret_cast<uintptr_t>(to) | (header->monitor_tagged & uintptr_t{1});
   return true;
@@ -146,6 +156,7 @@ void* malloc(size_t size) noexcept {
   }
   auto* header = static_cast<AllocHeader*>(real);
   initHeader(header, monitor, size);
+  monitor->addNoHeader(noHeaderSize(size));
   return userPtr(header);
 }
 
@@ -182,6 +193,7 @@ void* calloc(size_t nmemb, size_t size) noexcept {
   }
   auto* header = static_cast<AllocHeader*>(real);
   initHeader(header, monitor, total_user);
+  monitor->addNoHeader(noHeaderSize(total_user));
   void* user = userPtr(header);
   std::memset(user, 0, total_user);
   return user;
@@ -236,6 +248,8 @@ void* realloc(void* ptr, size_t size) noexcept {
     void* new_user = userPtr(new_header);
     std::memcpy(new_user, ptr, size < old_requested ? size : old_requested);
     doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
+    old_monitor->subNoHeader(noHeaderSize(old_requested));
+    new_monitor->addNoHeader(noHeaderSize(size));
     je_free(old_real);
     return new_user;
   }
@@ -247,6 +261,8 @@ void* realloc(void* ptr, size_t size) noexcept {
   }
 
   doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
+  old_monitor->subNoHeader(noHeaderSize(old_requested));
+  new_monitor->addNoHeader(noHeaderSize(size));
   auto* new_header = static_cast<AllocHeader*>(new_real);
   initHeader(new_header, new_monitor, size);
   return userPtr(new_header);
@@ -278,6 +294,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
     }
     auto* header = static_cast<AllocHeader*>(real);
     initHeader(header, monitor, size);
+    monitor->addNoHeader(noHeaderSize(size));
     *memptr = userPtr(header);
     return 0;
   }
@@ -308,6 +325,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
   void* user = reinterpret_cast<void*>(addr);
   auto* header = headerPtr(user);
   initAlignedHeader(header, monitor, real, size);
+  monitor->addNoHeader(noHeaderSize(size));
   *memptr = user;
   return 0;
 }

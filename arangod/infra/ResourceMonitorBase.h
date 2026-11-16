@@ -71,10 +71,33 @@ struct ResourceMonitorBase {
     return _peakLiveAllocations.load(std::memory_order_relaxed);
   }
 
+  // Diagnostics: what the live allocations would cost without our header
+  // (the size class of the requested size alone).
+  [[nodiscard]] uint64_t noHeaderBytes() const noexcept {
+    return _noHeaderBytes.load(std::memory_order_relaxed);
+  }
+
+  [[nodiscard]] uint64_t peakNoHeaderBytes() const noexcept {
+    return _peakNoHeaderBytes.load(std::memory_order_relaxed);
+  }
+
+  void addNoHeader(uint64_t bytes) noexcept {
+    auto now = _noHeaderBytes.fetch_add(bytes, std::memory_order_relaxed) + bytes;
+    auto peak = _peakNoHeaderBytes.load(std::memory_order_relaxed);
+    while (now > peak && !_peakNoHeaderBytes.compare_exchange_weak(
+                             peak, now, std::memory_order_relaxed)) {
+    }
+  }
+
+  void subNoHeader(uint64_t bytes) noexcept {
+    _noHeaderBytes.fetch_sub(bytes, std::memory_order_relaxed);
+  }
+
   void resetPeak() noexcept {
     _peakBytes.store(actualBytes(), std::memory_order_relaxed);
     _peakRequestedBytes.store(requestedBytes(), std::memory_order_relaxed);
     _peakLiveAllocations.store(liveAllocations(), std::memory_order_relaxed);
+    _peakNoHeaderBytes.store(noHeaderBytes(), std::memory_order_relaxed);
   }
 
   void setLimitHit() noexcept {
@@ -145,6 +168,8 @@ struct ResourceMonitorBase {
   std::atomic<uint64_t> _peakRequestedBytes{0};
   std::atomic<uint64_t> _liveAllocations{0};
   std::atomic<uint64_t> _peakLiveAllocations{0};
+  std::atomic<uint64_t> _noHeaderBytes{0};
+  std::atomic<uint64_t> _peakNoHeaderBytes{0};
   std::atomic<bool> _limitHit{false};
 };
 

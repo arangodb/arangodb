@@ -62,7 +62,7 @@ auto headerBytes(std::uint64_t allocations) -> std::uint64_t {
 }  // namespace
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
-    : _current(0), _peak(0), _limit(0), _global(global) {
+    : _current(0), _peak(0), _exactPeak(0), _limit(0), _global(global) {
   monitorRef = infra::ResourceMonitorRef::create();
   // Test only. Monitors created inside a running query (sub-queries,
   // per-value dummies) must not reset the peak of the outer query.
@@ -100,13 +100,15 @@ ResourceMonitor::~ResourceMonitor() {
   }
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
       << "query memory " << m
-      << " | old: peak=" << peak()
+      << " | old: peak=" << peak() << " exact=" << exactPeak()
       << " | new: peak=" << m->peakBytes()
       << " (req=" << m->peakRequestedBytes()
       << " hdr=" << headerBytes(m->peakLiveAllocations()) << ")"
       << " left=" << m->actualBytes()
       << " (req=" << m->requestedBytes()
       << " hdr=" << headerBytes(m->liveAllocations()) << ")"
+      << " | nohdr: peak=" << m->peakNoHeaderBytes()
+      << " left=" << m->noHeaderBytes()
       << " | rocksdb: peak=" << rocksdb.peakBytes()
       << " now=" << rocksdb.actualBytes()
       << " (req=" << rocksdb.requestedBytes()
@@ -262,6 +264,13 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       }
     }
   }
+
+  // Diagnostics: the peak without the chunk rounding above.
+  std::uint64_t exact = _exactPeak.load(std::memory_order_relaxed);
+  while (exact < current &&
+         !_exactPeak.compare_exchange_weak(exact, current,
+                                           std::memory_order_relaxed)) {
+  }
 }
 
 void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
@@ -301,9 +310,14 @@ std::uint64_t ResourceMonitor::peak() const noexcept {
   return _peak.load(std::memory_order_relaxed);
 }
 
+std::uint64_t ResourceMonitor::exactPeak() const noexcept {
+  return _exactPeak.load(std::memory_order_relaxed);
+}
+
 void ResourceMonitor::clear() noexcept {
   _current = 0;
   _peak = 0;
+  _exactPeak = 0;
 }
 
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,
