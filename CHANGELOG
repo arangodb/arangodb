@@ -10,6 +10,9 @@
   Docker image is provided. Docker images are now based on Ubuntu 26.04 instead
   of Alpine.
 
+* COR-1276: Fix a cluster crash for vector search queries that filter on or return only
+  the vector attribute of a vector index without `storedValues`.
+
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 
