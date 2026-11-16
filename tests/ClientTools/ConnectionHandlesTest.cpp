@@ -89,7 +89,8 @@ TEST(ConnectionHandlesTest, keepCancelsInsteadOfKeepingClosedConnection) {
   EXPECT_EQ(1, connection->cancelled);
 }
 
-TEST(ConnectionHandlesTest, keepCancelsInsteadOfKeepingConnectionWithoutHandle) {
+TEST(ConnectionHandlesTest,
+     keepCancelsInsteadOfKeepingConnectionWithoutHandle) {
   Handles handles;
   auto const connection = connected();
 
