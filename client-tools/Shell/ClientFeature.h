@@ -155,10 +155,11 @@ class ClientFeature final : public HttpEndpointProvider {
       bool suppressError) const;
 
   /**
-   * POSTs to the given /_open/auth path and interprets the reply
+   * POSTs the request to /_open/auth or /_open/auth/renew and interprets the
+   * reply
    */
   TokenOutcome postForToken(
-      std::string const& path, std::string const& body,
+      TokenRequest request, std::string const& body,
       std::unordered_map<std::string, std::string> const& headers) const;
 
   /**
