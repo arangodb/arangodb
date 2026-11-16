@@ -282,9 +282,6 @@ struct AqlValue final {
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
 
-  // construct from another AqlValue and a new data pointer, not copying!
-  explicit AqlValue(AqlValue const& other, void const* data) noexcept;
-
   explicit AqlValue(AqlValueHintNone) noexcept;
 
   explicit AqlValue(AqlValueHintNull) noexcept;

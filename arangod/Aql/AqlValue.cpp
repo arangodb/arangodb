@@ -1051,29 +1051,6 @@ AqlValue::AqlValue(uint8_t const* pointer) noexcept {
   setPointer(pointer);
 }
 
-AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
-  TRI_ASSERT(data != nullptr);
-  auto t = other.type();
-  setType(t);
-  switch (t) {
-    case VPACK_MANAGED_SLICE:
-      _data.managedSliceMeta.lengthOrigin =
-          other._data.managedSliceMeta.lengthOrigin;
-      _data.managedSliceMeta.pointer =
-          const_cast<uint8_t*>(static_cast<uint8_t const*>(data));
-      break;
-    case VPACK_MANAGED_STRING:
-      _data.managedStringMeta.pointer = static_cast<std::string const*>(data);
-      break;
-    case RANGE:
-      _data.rangeMeta.range = static_cast<Range const*>(data);
-      break;
-    default:
-      TRI_ASSERT(false);
-      break;
-  }
-}
-
 AqlValue::AqlValue(AqlValueHintNone) noexcept {
   setType(AqlValueType::VPACK_INLINE);
   _data.inlineSliceMeta.slice[0] = 0x00;  // none in VPack

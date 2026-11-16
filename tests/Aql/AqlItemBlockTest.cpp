@@ -655,6 +655,34 @@ TEST_F(AqlItemBlockTest, test_steal_value_shared_pointer_keeps_refcount) {
             0);
 }
 
+// the shared cell must get the clone's type, not MANAGED_STRING
+TEST_F(AqlItemBlockTest, test_clone_shared_managed_string) {
+  auto const expected = Parser::fromJson(
+      R"({"thisField": "is too large to be inlined, deliberately so"})");
+  auto bytes = expected->slice();
+
+  for (bool viaScatter : {false, true}) {
+    auto block = itemBlockManager.requestBlock(1, 2);
+    DocumentData doc =
+        std::make_unique<std::string>(bytes.startAs<char>(), bytes.byteSize());
+    AqlValue shared{doc};
+    ASSERT_EQ(shared.type(), AqlValue::VPACK_MANAGED_STRING);
+    block->setValue(0, 0, shared);
+    block->setValue(0, 1, shared);
+
+    SharedAqlItemBlockPtr copy =
+        viaScatter ? block->cloneDataAndMoveShadow() : block->slice(0, 1);
+    block.reset(nullptr);
+
+    for (RegisterId::value_t col : {0, 1}) {
+      EXPECT_EQ(copy->getValueReference(0, col).type(),
+                AqlValue::VPACK_MANAGED_SLICE);
+      EXPECT_TRUE(copy->getValueReference(0, col).slice().binaryEquals(
+          expected->slice()));
+    }
+  }
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

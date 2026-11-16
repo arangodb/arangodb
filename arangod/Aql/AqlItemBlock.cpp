@@ -45,12 +45,9 @@
 namespace arangodb::aql {
 namespace {
 
-// maps a payload pointer in the source block to the corresponding payload
-// pointer in the target block, so that values appearing in more than one cell
-// are copied over once and then aliased. keyed on the source pointer, because
-// that is what the lookups below have in hand.
-using ValueCopyCache =
-    arangodb::containers::FlatHashMap<void const*, void const*>;
+// source pointer -> its clone, whose type can differ (MANAGED_STRING clones
+// into a MANAGED_SLICE)
+using ValueCopyCache = arangodb::containers::FlatHashMap<void const*, AqlValue>;
 
 inline void copyValueOver(ValueCopyCache& cache, AqlValue const& a,
                           size_t rowNumber, RegisterId::value_t col,
@@ -66,9 +63,9 @@ inline void copyValueOver(ValueCopyCache& cache, AqlValue const& a,
         b.destroy();
         throw;
       }
-      cache.emplace(a.data(), b.data());
+      cache.emplace(a.data(), b);
     } else {
-      res->setValue(rowNumber, col, AqlValue(a, (*it).second));
+      res->setValue(rowNumber, col, (*it).second);
     }
   } else {
     res->setValue(rowNumber, col, a);
