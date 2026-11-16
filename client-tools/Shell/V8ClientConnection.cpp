@@ -169,7 +169,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     if (auto cached = _handles.take(id); cached.has_value()) {
       if (cached->config.builder.jwtToken() ==
           _handles.config().builder.jwtToken()) {
-        candidate = std::move(*cached);
+        // reuse the connection, but keep the new configuration: it holds
+        // the endpoint and username as the client gave them this time
+        candidate.connection = std::move(cached->connection);
         wasFromCache = true;
       } else if (cached->connection != nullptr) {
         // same identity, but a newer token. a connection keeps the token it
