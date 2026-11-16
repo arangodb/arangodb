@@ -64,7 +64,8 @@ function connectionHandlesJwtRenewalSuite() {
   const connectAsRoot = () => connectAs('root', '');
   const connectAsOther = () => connectAs(otherUser, otherPassword);
 
-  // root may read the root user, every other user may only read itself
+  // root may read the root user. every other user may only read itself,
+  // unless it has rw access to _system, which makes it an admin
   const readRootUser = () => arango.GET_RAW('/_api/user/root').code;
 
   const handleTable = () => arango.getConnectionHandleTable();
@@ -76,7 +77,7 @@ function connectionHandlesJwtRenewalSuite() {
       IM.rememberConnection();
       connectAsRoot();
       users.save(otherUser, otherPassword);
-      users.grantDatabase(otherUser, '_system', 'rw');
+      users.grantDatabase(otherUser, '_system', 'ro');
     },
 
     tearDownAll: function () {
@@ -283,6 +284,28 @@ function connectionHandlesJwtRenewalSuite() {
       assertEqual(jwtToken, handleTable()[handle].jwtToken);
       assertEqual(localPort, handleTable()[handle].localPort);
       assertEqual(200, readRootUser());
+    },
+
+    // reusing a cached connection must not bring back how it was described
+    // when it was created: getEndpoint() reports the spelling of the latest
+    // reconnect. the superuser token is reused, so the cache always hits
+    testCachedConnectionReportsLatestEndpointSpelling: function () {
+      const otherEndpoint = 'http+' + IM.endpoint;
+      const connectWithSecret = (endpoint) => {
+        arango.reconnect(endpoint, '_system', undefined, undefined, false, jwtSecret);
+        return arango.getConnectionHandle();
+      };
+      const handle = connectWithSecret(IM.endpoint);
+      const { localPort } = handleTable()[handle];
+      connectAsRoot();
+
+      assertEqual(handle, connectWithSecret(otherEndpoint));
+      assertEqual(localPort, handleTable()[handle].localPort);
+      assertEqual(otherEndpoint, arango.getEndpoint());
+
+      connectAsRoot();
+      assertEqual(handle, connectWithSecret(IM.endpoint));
+      assertEqual(IM.endpoint, arango.getEndpoint());
     },
 
     // a failed login neither drops nor retargets the active connection
