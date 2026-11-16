@@ -157,12 +157,14 @@ if(STATIC_EXECUTABLES)
       COMMAND gcc -print-file-name=libatomic.a
       OUTPUT_VARIABLE _libatomic_path
       OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE GCC_LIBATOMIC_RESULT
     )
-    if(EXISTS "${_libatomic_path}")
-      add_library(atomic STATIC IMPORTED GLOBAL)
-      set_target_properties(atomic PROPERTIES IMPORTED_LOCATION "${_libatomic_path}")
-      message(STATUS "FIPS: forcing static libatomic from ${_libatomic_path}")
+    if(GCC_LIBATOMIC_RESULT OR NOT EXISTS "${_libatomic_path}")
+      message(FATAL_ERROR "Static libatomic not found (required for USE_FIPS).")
     endif()
+    message(STATUS "FIPS: forcing static libatomic from ${_libatomic_path}")
+    add_library(atomic STATIC IMPORTED GLOBAL)
+    set_target_properties(atomic PROPERTIES IMPORTED_LOCATION "${_libatomic_path}")
   else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
   endif()

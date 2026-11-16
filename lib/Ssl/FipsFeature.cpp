@@ -47,6 +47,31 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
+#ifdef USE_FIPS
+// We want the base and fips providers to be the only providers that loaded,
+// so before we start we check if there is already something loaded, if yes:
+// something in the order changed, and we need to abort as we do not want to
+// allow any way around fips. Even when the module, that is already loaded, is
+// fips, we want this here be the only source of truth.
+void assertNoProviderYetLoaded() {
+  bool foundLoadedProvider = false;
+  OSSL_PROVIDER_do_all(
+      nullptr,
+      [](OSSL_PROVIDER*, void* arg) -> int {
+        bool& foundLoadedProvider = *static_cast<bool*>(arg);
+        foundLoadedProvider = true;
+        return 0;
+      },
+      &foundLoadedProvider);
+
+  if (foundLoadedProvider) {
+    LOG_TOPIC("20e5d", FATAL, Logger::SSL)
+        << "An OpenSSL provider was found to be loaded before fips and base. "
+        << "This could allow to circumvent fips.";
+    FATAL_ERROR_EXIT();
+  }
+}
+#endif  // USE_FIPS
 
 FipsFeature::FipsFeature(application_features::ApplicationServer& server,
                          FipsFeatureOptions options)
@@ -61,6 +86,8 @@ FipsFeature::FipsFeature(application_features::ApplicationServer& server,
 void FipsFeature::prepare() {
 #ifdef USE_FIPS
   if (_options.enableFips) {
+    assertNoProviderYetLoaded();
+
     if (OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1 ||
         OPENSSL_init_ssl(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1) {
       LOG_TOPIC("19f8c", FATAL, Logger::SSL) << "Failed to initialize OpenSSL";

@@ -25,7 +25,7 @@ build_openssl() (
   curl -L --output "$tarball" "https://www.openssl.org/source/${tarball}" || exit 1
   tar xzf "$tarball" || exit 1
   cd "openssl-${version}" || exit 1
-  ./config --prefix=/opt no-async enable-fips || exit 1
+  ./config --prefix=/opt no-async || exit 1
   make -j"$(nproc)" || exit 1
   make install_dev || exit 1
 

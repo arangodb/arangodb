@@ -35,7 +35,6 @@ using namespace arangodb::options;
 
 void FipsFeatureOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, FipsFeatureOptions& opts) {
-  options->addSection("fips", "Options to control fips behaviour");
   options
       ->addOption("--server.fips-enable",
                   "Whether to restrict the server to FIPS 140-3 approved "
