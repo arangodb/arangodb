@@ -181,6 +181,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink) const;
 
+  aql::EnumerateNearVectorStats searchIvf(
+      float const* query, std::size_t topK,
+      faiss::SearchParametersIVF const& params, float* distances,
+      faiss::idx_t* labels) const;
+
   vector::Metadata loadVectorIndexMetadata(velocypack::Slice info) const;
 
   vector::UserDefinition _definition;

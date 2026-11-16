@@ -350,6 +350,8 @@ void TwoSidedEnumerator<ProviderType, PathValidator>::reset(VertexRef source,
   if (_options.getMinDepth() == 0 && source == target) {
     _left.testDepthZero(_right, _results);
   }
+
+  _baselineDepth = _options.getMaxDepth();
 }
 
 /**

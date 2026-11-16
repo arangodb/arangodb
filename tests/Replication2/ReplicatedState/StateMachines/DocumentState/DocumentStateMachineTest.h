@@ -274,12 +274,10 @@ struct DocumentStateMachineTest : testing::Test {
       -> std::shared_ptr<LogicalCollection> {
     // Note that the collection is only created, not registered within the
     // vocbase.
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("name", std::move(name));
-    builder.close();
-    return std::make_shared<LogicalCollection>(vocbaseMock, builder.slice(),
-                                               true);
+    CollectionDescriptor descriptor;
+    descriptor.mutableProps.name = std::string{name};
+    return std::make_shared<LogicalCollection>(vocbaseMock,
+                                               std::move(descriptor), true);
   }
 };
 }  // namespace arangodb::replication2::tests

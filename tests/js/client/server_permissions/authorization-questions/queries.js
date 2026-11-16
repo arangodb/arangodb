@@ -71,11 +71,13 @@ const {
 } = require('@arangodb/testutils/apitest-fixtures');
 
 const baseQuestions = [
-  'UseApiVersion version=1',
+  'UseApiVersion version=v1',
   `UseDatabase name=${DB} level=read`
 ];
 const monitorQuestions = baseQuestions.concat(['AdminMonitorAqlQueries']);
 const killQuestions = baseQuestions.concat(['AdminKillAqlQueries']);
+const propertiesQuestions =
+  baseQuestions.concat([`UpdateQueryProperties db=${DB}`]);
 
 const password = 'testi';
 const secret = 'alice-secret-4711';
@@ -86,7 +88,7 @@ const cursorApi = `/_db/${DB}/_api/cursor`;
 
 // sends a request as `user` to the connected server without touching the
 // arangosh connection, which has to stay root for the observer
-function sendAs (user, method, path, body, extraHeaders) {
+function sendAs(user, method, path, body, extraHeaders) {
   const url = arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   return request({
     method,
@@ -99,19 +101,19 @@ function sendAs (user, method, path, body, extraHeaders) {
   });
 }
 
-function sleepQueries (list) {
+function sleepQueries(list) {
   return list.filter((query) => /SLEEP/.test(query.query));
 }
 
 // root is an admin and sees every user's queries
-function runningQueriesAsRoot () {
+function runningQueriesAsRoot() {
   return arango.GET(`${queryApi}/current`);
 }
 
 // starts a long running query as `user` and returns its id once it shows up
 // in the list of running queries; this happens before an observation starts,
 // so the questions of the query itself are not observed
-function startQueryAs (user) {
+function startQueryAs(user) {
   const res = sendAs(user, 'POST', cursorApi, {
     query: sleepQuery,
     bindVars: { secs: 300, secret }
@@ -130,7 +132,7 @@ function startQueryAs (user) {
 }
 
 // runs a query as `user` that ends up in the slow query list
-function runSlowQueryAs (user) {
+function runSlowQueryAs(user) {
   const res = sendAs(user, 'POST', cursorApi, {
     query: sleepQuery,
     bindVars: { secs: 0.3, secret }
@@ -138,7 +140,7 @@ function runSlowQueryAs (user) {
   assertEqual(201, res.status, JSON.stringify(res.json));
 }
 
-function killAllSleepQueriesAsRoot () {
+function killAllSleepQueriesAsRoot() {
   sleepQueries(runningQueriesAsRoot()).forEach((query) => {
     arango.DELETE_RAW(`${queryApi}/${query.id}`);
   });
@@ -151,7 +153,7 @@ function killAllSleepQueriesAsRoot () {
   throw new Error('leftover sleep queries');
 }
 
-function queryApiAuthzSuite () {
+function queryApiAuthzSuite() {
 
   return {
     setUpAll: function () {
@@ -167,12 +169,15 @@ function queryApiAuthzSuite () {
       users.save('carol', password);
       users.grantDatabase('carol', '_system', 'rw');
       users.grantDatabase('carol', DB, 'ro');
+      // dave may write the test database and has no access to _system
+      users.save('dave', password);
+      users.grantDatabase('dave', DB, 'rw');
       arango.PUT(`${queryApi}/properties`, { slowQueryThreshold: 0.1 });
     },
 
     tearDownAll: function () {
       killAllSleepQueriesAsRoot();
-      ['alice', 'bob', 'carol'].forEach((user) => {
+      ['alice', 'bob', 'carol', 'dave'].forEach((user) => {
         try {
           users.remove(user);
         } catch (err) {
@@ -364,24 +369,41 @@ function queryApiAuthzSuite () {
 
     // ── PUT /_api/query/properties ───────────────────────────────────────
 
+    // a read-only user is asked for UpdateQueryProperties on the database,
+    // does not have it, and the properties stay as they were
     testSetQueryPropertiesWithoutDatabaseWriteAccess: function () {
       const before = arango.GET(`${queryApi}/properties`);
 
       beginObserve();
       const res = sendAs('bob', 'PUT', `${queryApi}/properties`, { enabled: false });
-      assertPermissions(baseQuestions.concat(['AdminAqlQueries']),
-                        endObserve());
+      assertPermissions(propertiesQuestions, endObserve());
 
       assertEqual(403, res.status, JSON.stringify(res.json));
       assertTrue(res.json.error, JSON.stringify(res.json));
       assertEqual(before.enabled, arango.GET(`${queryApi}/properties`).enabled);
     },
 
-    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccess: function () {
+    // read-write access to _system does not reach into a database the admin
+    // may only read
+    testSetQueryPropertiesAsAdminWithoutDatabaseWriteAccessIsForbidden: function () {
+      const before = arango.GET(`${queryApi}/properties`);
+
       beginObserve();
       const res = sendAs('carol', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
-      assertPermissions(baseQuestions.concat(['AdminAqlQueries', 'IsReadOnly']),
-                        endObserve());
+      assertPermissions(propertiesQuestions, endObserve());
+
+      assertEqual(403, res.status, JSON.stringify(res.json));
+      assertTrue(res.json.error, JSON.stringify(res.json));
+      assertEqual(before.maxSlowQueries,
+        arango.GET(`${queryApi}/properties`).maxSlowQueries);
+    },
+
+    // write access to the database is what the permission asks for; the
+    // read-only gate is asked afterwards
+    testSetQueryPropertiesWithDatabaseWriteAccess: function () {
+      beginObserve();
+      const res = sendAs('dave', 'PUT', `${queryApi}/properties`, { maxSlowQueries: 48 });
+      assertPermissions(propertiesQuestions.concat(['IsReadOnly']), endObserve());
 
       assertEqual(200, res.status, JSON.stringify(res.json));
       assertEqual(48, res.json.maxSlowQueries);

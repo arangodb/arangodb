@@ -27,7 +27,9 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace arangodb::encoding {
+namespace arangodb {
+class ResourceUsageScope;
+namespace encoding {
 
 // ceiling for a decompressed body when the caller does not supply one
 inline constexpr size_t defaultMaxUncompressedSize = 512 * 1024 * 1024;
@@ -37,18 +39,21 @@ inline constexpr size_t defaultMaxUncompressedSize = 512 * 1024 * 1024;
 template<typename T>
 [[nodiscard]] ErrorCode gzipUncompress(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
-    size_t maxUncompressedSize = defaultMaxUncompressedSize);
+    size_t maxUncompressedSize = defaultMaxUncompressedSize,
+    ResourceUsageScope* scope = nullptr);
 
 template<typename T>
 [[nodiscard]] ErrorCode zlibInflate(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
-    size_t maxUncompressedSize = defaultMaxUncompressedSize);
+    size_t maxUncompressedSize = defaultMaxUncompressedSize,
+    ResourceUsageScope* scope = nullptr);
 
 // lz4 rejects before allocating, since the size is declared in the header
 template<typename T>
 [[nodiscard]] ErrorCode lz4Uncompress(
     uint8_t const* compressed, size_t compressedLength, T& uncompressed,
-    size_t maxUncompressedSize = defaultMaxUncompressedSize);
+    size_t maxUncompressedSize = defaultMaxUncompressedSize,
+    ResourceUsageScope* scope = nullptr);
 
 template<typename T>
 [[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,
@@ -62,4 +67,5 @@ template<typename T>
 [[nodiscard]] ErrorCode lz4Compress(uint8_t const* uncompressed,
                                     size_t uncompressedLength, T& compressed);
 
-}  // namespace arangodb::encoding
+}  // namespace encoding
+}  // namespace arangodb

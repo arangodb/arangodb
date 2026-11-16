@@ -28,7 +28,7 @@
 //
 // Handler: arangod/RestHandler/RestDumpHandler.cpp
 //
-// Every request first asks `UseApiVersion version=1` and then
+// Every request first asks `UseApiVersion version=v1` and then
 // `UseDatabase name=d level=read` (the paths carry the /_db/d/ prefix).
 //
 //   POST /_api/dump/start   validateRequest() rejects an empty shard list
@@ -119,7 +119,7 @@ function dumpApiAuthzSuite () {
       // AUDIT: on a coordinator the question carries an empty collection
       // name, and AdminDump is not asked at all
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read",
         ...singleOnly([
           "DumpCollection db=d name=c",
@@ -144,7 +144,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/dump/start`, { shards: [] });
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       assertEqual(400, res.code, res);
@@ -162,7 +162,7 @@ function dumpApiAuthzSuite () {
       arango.POST_RAW(
         `/_db/${DB}/_api/dump/next/${dumpId}?batchId=${batchId}`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);
@@ -177,7 +177,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/dump/${dumpId}`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);

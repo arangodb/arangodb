@@ -23,11 +23,11 @@
 #pragma once
 
 #include "Assertions/Assert.h"
+#include "Basics/ApiVersion.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/Transformers.h"
 #include "Network/types.h"
 
-#include <fuerte/ApiVersion.h>
 #include <fuerte/types.h>
 
 #include <string>
@@ -64,7 +64,7 @@ struct RequestOptions {
   // the "allowDirtyReads" options when we want to read from followers.
   std::string overrideDestination;
 
-  std::optional<fuerte::api_version::ApiVersion> apiVersion;
+  std::optional<ApiVersion> apiVersion;
 
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
@@ -80,7 +80,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, RequestOptions& x) {
   return f.object(x).fields(
       f.field("database", x.database), f.field("contentType", x.contentType),
-      f.field("accentType", x.acceptType), f.field("parameters", x.parameters),
+      f.field("acceptType", x.acceptType), f.field("parameters", x.parameters),
       f.field("timeout", x.timeout)
           .transformWith(
               inspection::DurationTransformer<std::chrono::duration<double>>{}),

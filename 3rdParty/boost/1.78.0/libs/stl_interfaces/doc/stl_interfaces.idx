@@ -1,3 +1,0 @@
-!scan-path "boost/stl_interfaces" ".*\.hpp" true
-
-!scan-path "libs/stl_interfaces/example" ".*\.cpp"

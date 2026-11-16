@@ -22,11 +22,14 @@
 
 #include "GeneralServerOptions.h"
 
+#include "Basics/PhysicalMemory.h"
 #include "Network/NetworkFeature.h"
 
 namespace arangodb {
 
 GeneralServerOptions::GeneralServerOptions()
-    : numIoThreads(NetworkFeature::defaultIOThreads()) {}
+    : numIoThreads(NetworkFeature::defaultIOThreads()),
+      decompressedRequestBodyGlobalMemoryLimit(PhysicalMemory::getValue() /
+                                               10) {}
 
 }  // namespace arangodb

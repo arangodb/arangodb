@@ -36,6 +36,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -53,6 +54,8 @@ class OptimizerRulesFeature;
 }
 
 class DatabaseInitialSyncer;
+class IndexTypeCatalog;
+struct IndexDefinition;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -97,12 +100,17 @@ class StorageSnapshot {
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
+  // passed in since the engine may need a ref that only its own ctor has
+  using IndexFactoryCreator =
+      std::function<std::unique_ptr<IndexFactory>(IndexTypeCatalog const&)>;
+
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::unique_ptr<IndexFactory>&& indexFactory,
                 IDatabaseProvider& databaseProvider,
-                IDatabaseBootstrap& databaseBootstrap);
+                IDatabaseBootstrap& databaseBootstrap,
+                IndexFactoryCreator createIndexFactory);
+  ~StorageEngine() override;
 
   virtual HealthData healthCheck() = 0;
 
@@ -122,10 +130,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // createTransactionManager). Must only be called once the manager exists.
   transaction::Manager& transactionManager() const;
 
-  // when a new collection is created, this method is called to augment the
-  // collection creation data with engine-specific information
-  virtual void addParametersForNewCollection(velocypack::Builder&,
-                                             velocypack::Slice /*info*/);
   // the id the engine uses to address the collection's data; keeps one that
   // was supplied already
   virtual uint64_t resolveObjectId(
@@ -154,13 +158,6 @@ class StorageEngine : public application_features::ApplicationFeature {
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes,
                                  TRI_voc_tick_t maxTick) = 0;
-
-  // fill the Builder object with an array of collections (and their
-  // corresponding indexes) that were detected by the storage engine. called at
-  // server start separately for each database
-  virtual ErrorCode getCollectionsAndIndexes(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-      bool wasCleanShutdown, bool isUpgrade) = 0;
 
   virtual ErrorCode getViews(TRI_vocbase_t& vocbase,
                              arangodb::velocypack::Builder& result) = 0;
@@ -323,6 +320,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   // information about indexes.
   virtual IndexFactory const& indexFactory() const;
 
+  // IResearchFeature injects this in a later feature phase, after construction
+  void setLinkCreator(IndexFactory::LinkCreator creator);
+
+  IndexTypeCatalog const& indexTypeCatalog() const noexcept;
+
+  // catalog takes ownership of definition
+  Result registerIndexDefinition(std::string_view name,
+                                 std::unique_ptr<IndexDefinition> definition);
+
   // AQL functions
   // -------------
 
@@ -336,8 +342,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                    velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  virtual void getCapabilities(velocypack::Builder& builder,
-                               uint32_t apiVersion) const;
+  virtual void getCapabilities(velocypack::Builder& builder) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
@@ -387,6 +392,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   IDatabaseBootstrap& _databaseBootstrap;
 
  private:
+  std::unique_ptr<IndexTypeCatalog> const _indexTypeCatalog;
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;

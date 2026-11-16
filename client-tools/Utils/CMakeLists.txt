@@ -14,8 +14,6 @@ target_link_libraries(clienttools_utils
   arango_basic_logger
   arango_basic_http_client
   arango_scheduler
-  boost_system
-  boost_boost
   fuerte
   v8_interface
 )

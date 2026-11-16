@@ -60,7 +60,7 @@ auto getActivitiesFromServers(R&& servers, std::deque<Agent> agents,
   }
   network::RequestOptions options;
   options.timeout = network::Timeout(30.0);
-  options.apiVersion = arangodb::fuerte::api_version::ApiVersion::Experimental;
+  options.apiVersion = ApiVersion::Experimental;
 
   std::vector<network::FutureRes> requests;
   std::vector<ServerID> serverIds;

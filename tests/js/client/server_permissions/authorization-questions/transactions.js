@@ -39,7 +39,7 @@
 //   via the manager, so they ask no collection question.
 // - The JS transaction (POST /_api/transaction) runs its action inside a
 //   transaction over the declared read collections.
-// Every request additionally asks `UseApiVersion version=1` and
+// Every request additionally asks `UseApiVersion version=v1` and
 // `UseDatabase name=d level=read` first.
 // Transactions used as preconditions are created as root BEFORE beginObserve().
 //
@@ -81,7 +81,7 @@ const request = require('@arangodb/request');
 const users = require('@arangodb/users');
 
 const baseQuestions = [
-  'UseApiVersion version=1',
+  'UseApiVersion version=v1',
   `UseDatabase name=${DB} level=read`
 ];
 const monitorQuestions = baseQuestions.concat(['AdminMonitorTransactions']);
@@ -92,7 +92,7 @@ const transactionApi = `/_db/${DB}/_api/transaction`;
 
 // sends a request as `user` to the connected server without touching the
 // arangosh connection, which has to stay root for the observer
-function sendAs (user, method, path, body) {
+function sendAs(user, method, path, body) {
   const url = arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   return request({
     method,
@@ -105,32 +105,32 @@ function sendAs (user, method, path, body) {
   });
 }
 
-function transactionApiAuthzSuite () {
+function transactionApiAuthzSuite() {
   const c = DOC_COLLECTION;
 
   // begin a stream transaction as root (before observation) and return its id
-  function beginTrx (collections) {
+  function beginTrx(collections) {
     const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
-                                { collections: collections });
+      { collections: collections });
     return res.parsedBody.result.id;
   }
-  function abortTrx (id) {
+  function abortTrx(id) {
     if (id !== undefined && id !== null) {
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/${id}`);
     }
   }
 
   // begins a stream transaction as `user` (before observation) and returns its id
-  function beginTrxAs (user, collections) {
+  function beginTrxAs(user, collections) {
     const res = sendAs(user, 'POST', `${transactionApi}/begin`, { collections });
     assertEqual(201, res.status, JSON.stringify(res.json));
     return res.json.result.id;
   }
   // ids of the transactions root (an admin) can see
-  function transactionIdsAsRoot () {
+  function transactionIdsAsRoot() {
     return arango.GET(transactionApi).transactions.map((trx) => trx.id);
   }
-  function abortAllAsRoot () {
+  function abortAllAsRoot() {
     transactionIdsAsRoot().forEach(abortTrx);
   }
 
@@ -168,7 +168,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -179,7 +179,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortTrx(id);
@@ -189,9 +189,9 @@ function transactionApiAuthzSuite () {
     testBeginReadTransaction: function () {
       beginObserve();
       const res = arango.POST_RAW(`/_db/${DB}/_api/transaction/begin`,
-                                  { collections: { read: [c] } });
+        { collections: { read: [c] } });
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read",
         "UseCollection db=d name=c level=read"
       ], endObserve());
@@ -204,12 +204,12 @@ function transactionApiAuthzSuite () {
     testCommitTransaction: function () {
       const id = beginTrx({ write: [c] });
       arango.POST_RAW(`/_db/${DB}/_api/document/${c}`,
-                      { _key: 'apitester-trx-doc', value: 999 },
-                      { 'x-arango-trx-id': id });
+        { _key: 'apitester-trx-doc', value: 999 },
+        { 'x-arango-trx-id': id });
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/transaction/${id}`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       // committed -> the document now exists; remove it again
@@ -222,7 +222,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/${id}`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -232,7 +232,7 @@ function transactionApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/transaction/write`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
     },
@@ -283,7 +283,7 @@ function transactionApiAuthzSuite () {
       const observed = endObserve();
       assertPermissions(monitorQuestions, observed);
       assertEqual(1, observed.filter((question) => question === 'AdminMonitorTransactions').length,
-                  JSON.stringify(observed));
+        JSON.stringify(observed));
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       const ids = res.parsedBody.transactions.map((trx) => trx.id);
@@ -392,7 +392,7 @@ function transactionApiAuthzSuite () {
       const observed = endObserve();
       assertPermissions(killQuestions, observed);
       assertEqual(1, observed.filter((question) => question === 'AdminKillTransactions').length,
-                  JSON.stringify(observed));
+        JSON.stringify(observed));
 
       assertEqual(200, res.code, JSON.stringify(res.parsedBody));
       const remaining = transactionIdsAsRoot();

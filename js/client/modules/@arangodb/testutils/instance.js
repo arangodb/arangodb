@@ -168,7 +168,7 @@ function endpointToURL (endpoint) {
 class instance {
   #pid = null;
 
-  // / protocol must be one of ["tcp", "ssl", "unix"]
+  // / protocol must be one of ["tcp", "ssl"]
   // devel's signature, plus `rbacPort` appended: the RBAC branch needs it to
   // point --server.external-rbac-service at the locally launched dummy. The
   // authHeaders / JWT / authHeadersJWT parameters this branch used to take are
@@ -380,7 +380,7 @@ class instance {
             table[handle]['localPort'],
             table[handle]['username'],
             table[handle]['password'],
-            table[handle]['jwToken']
+            table[handle]['jwtToken']
           ]);
         });
       } catch (ex) {
@@ -751,10 +751,8 @@ class instance {
     }
     print(`${Date()} upgrade of ${this.name} finished: ${JSON.stringify(this.exitStatus)}`);
     this.processSanitizerReports();
-    if (this.exitStatus.hasOwnProperty('signal') &&
-        ((this.exitStatus === 11) ||
-         (this.exitStatus === 6))) {
-      let msg = 'runUpgrade exited Signal(' + this.exitStatus + ') ';
+    if (this.exitStatus.hasOwnProperty('signal')) {
+      let msg = 'runUpgrade exited Signal(' + this.exitStatus.signal + ') ';
       this.analyzeServerCrash(msg);
       this.serverCrashedLocal = true;
       this.message += msg;
@@ -1050,6 +1048,15 @@ class instance {
     if (this.exitStatus === null) {
       return 'Not yet launched!';
     }
+    // try to find the assert line:
+    let assertLines = this.readImportantLogLines([
+      'a7902', // signal handler line
+      'a7902', // the assert line
+      '308c3'  // crash stack frame
+    ]);
+    assertLines.forEach(line => {
+      crashUtils.GDB_OUTPUT += line + "\n";
+    });
     return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -1090,39 +1097,6 @@ class instance {
         this._disconnect();
         this.pid = null;
         print(sockStat);
-      } else if (this.protocol === 'unix') {
-        let sockStat = this.getSockStat("Sock stat for: ");
-        let reply = {code: 555};
-        let oldTimeout = arango.timeout();
-        try {
-          print(this.connect());
-          arango.timeout(5);
-          reply = arango.DELETE_RAW('/_admin/shutdown');
-          arango.timeout(oldTimeout);
-        } catch(ex) {
-          print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
-        } finally {
-          arango.timeout(oldTimeout);
-        }
-        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
-            !((reply.code === 500) &&
-              (
-                (reply.parsedBody === "Connection closed by remote") || // http connection
-                  reply.parsedBody.includes('failed with #111')           // https connection
-              ))) {
-          this.serverCrashedLocal = true;
-          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
-          this.shutdownArangod(true);
-          this._disconnect();
-        } else {
-          this.processSanitizerReports();
-          if (!this.options.noStartStopLogs) {
-            print(sockStat);
-          }
-        }
-        if (this.options.extremeVerbosity) {
-          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
-        }
       } else {
         let oldTimeout = arango.timeout();
         let sockStat = this.getSockStat("Sock stat for: ");
@@ -1136,11 +1110,12 @@ class instance {
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
                 !((reply.code === 500) &&
                   (
-                    (reply.message === "Connection closed by remote") || // http connection
+                    (reply.message === "Connection closed") || // http connection
                       reply.message.includes('failed with #111')           // https connection
                   ))) {
               this.serverCrashedLocal = true;
               print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+              this.dumpConnectionTable(true);
               this.shutdownArangod(true);
               return false;
             }
@@ -1334,7 +1309,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
-  readImportantLogLines () {
+  readImportantLogLines (findTheseLogIDs) {
     if (!fs.exists(fs.join(this.logFile))) {
       print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
       return [];
@@ -1348,7 +1323,14 @@ class instance {
       if (buf[j] === 10) { // \n
         const line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
-
+        if (findTheseLogIDs.length > 0) {
+          findTheseLogIDs.forEach(logid => {
+            if (line.search(logid) !== -1) {
+              fnLines.push(line);
+            }
+          });
+          continue;
+        }
         // filter out regular INFO lines, and test related messages
         let warn = line.search('WARNING about to execute:') !== -1;
         let info = line.search(' INFO ') !== -1;

@@ -671,6 +671,7 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(
   other._depth = _depth;
   other._varUsageValid = _varUsageValid;
   other._isInSplicedSubquery = _isInSplicedSubquery;
+  other._isCallstackSplitEnabled = _isCallstackSplitEnabled;
 
   // point to current AST -> don't do deep copies.
   other._varsUsedLaterStack = _varsUsedLaterStack;

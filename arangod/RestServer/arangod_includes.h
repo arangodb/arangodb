@@ -76,6 +76,7 @@
 #include "GeneralServer/SslServerFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"

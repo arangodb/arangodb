@@ -14,13 +14,15 @@ parameters:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
-    # we use it, otherwise we fall back to "4.0".
+    # we use it, otherwise we fall back to "devel".
     default: ""
     description: "The branch to use for the enterprise repository."
   without-instrumentation:
     type: boolean
     default: true
-    description: "Whether to create workflows for non-instrumented builds"
+    description: "Whether to create workflows for non-instrumented builds. With
+      this, with-tsan and with-alubsan all false, only the non-instrumented
+      build is compiled, without tests"
   with-tsan:
     type: boolean
     default: false
@@ -83,11 +85,11 @@ parameters:
     description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d6a8996c8
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-fb495166
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-07ab72a0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-28214ffe"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -119,7 +121,6 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
-                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -219,7 +220,7 @@ jobs:
         type: string
       default-enterprise-branch:
         type: string
-        default: "4.0"
+        default: "devel"
       config-definitions-branches:
         type: string
         default: ""

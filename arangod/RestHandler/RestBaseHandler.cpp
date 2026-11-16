@@ -36,7 +36,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
 
-using namespace arangodb;
+namespace arangodb {
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -233,13 +234,11 @@ auto RestBaseHandler::tryForwarding() -> async<bool> {
   options.timeout = network::Timeout(30.0);
   options.database = _request->databaseName();
   options.parameters = _request->parameters();
-  auto apiVersion = fuerte::api_version::from(_request->requestedApiVersion());
-  TRI_ASSERT(apiVersion.has_value()) << std::format(
-      "API version {} is not defined", _request->requestedApiVersion());
-  if (not apiVersion.has_value()) {
+  TRI_ASSERT(_request->hasValidApiVersion());
+  if (not _request->hasValidApiVersion()) {
     co_return false;
   }
-  options.apiVersion = apiVersion;
+  options.apiVersion = _request->requestedApiVersion();
 
   auto f = network::sendRequestRetry(
       pool, "server:" + serverId, fuerte::RestVerb::Get,
@@ -289,3 +288,5 @@ template void RestBaseHandler::writeResult<VPackSlice&>(VPackSlice& payload,
                                                         VPackOptions const&);
 template void RestBaseHandler::writeResult<VPackSlice const&>(
     VPackSlice const& payload, VPackOptions const&);
+
+}  // namespace arangodb

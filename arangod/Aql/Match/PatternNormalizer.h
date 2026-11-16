@@ -50,6 +50,8 @@ class PatternNormalizer {
       AstNode const& nodePattern) const;
   [[nodiscard]] NormalizedEdge normalizeEdge(AstNode const& edge) const;
 
+  void rejectPathVariableSelfReferences(NormalizedPattern const& pattern) const;
+
   [[nodiscard]] DataSource normalizeDataSource(
       AstNode const& node, TRI_col_type_e expectedType) const;
   void requireCollectionType(std::string_view name,

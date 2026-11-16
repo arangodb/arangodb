@@ -32,7 +32,6 @@ namespace arangodb {
 struct AuthenticationOptions {
   static constexpr size_t kMaxSecretLength = 64;
 
-  bool authenticationUnixSockets = true;
   bool active = true;
   std::string externalRbacService;  // empty string means deactivated RBAC
   double authenticationTimeout = static_cast<double>(1 * 3600);  // 1 hour

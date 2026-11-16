@@ -23,11 +23,12 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashMap.h"
 #include "Inspection/Access.h"
 #include "Inspection/Types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Properties/InspectContexts.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 
 #include <optional>
 #include <cstdint>
@@ -39,14 +40,23 @@ class Result;
 struct ClusteringConstantProperties {
   // `null` is rejected for user input while being accepted for load path
   NonNullUserOptional<uint64_t> numberOfShards{std::nullopt};
+  // holds a cid: on the create path once applyDefaultsAndValidate has run,
+  // on the load path always
   inspection::NonNullOptional<std::string> distributeShardsLike{std::nullopt};
-  // internal/agency parse "distributeShardsLike" into this one
-  std::optional<std::string> distributeShardsLikeCid{std::nullopt};
   std::optional<std::string> shardingStrategy = std::nullopt;
   inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
   inspection::NonNullOptional<std::vector<ShardID>> shardsR2{std::nullopt};
   inspection::NonNullOptional<replication2::agency::CollectionGroupId> groupId{
       std::nullopt};
+  // The replicated log backing this shard. Chosen by the DBServer maintenance
+  // when the shard is created, so only the load path ever carries it.
+  inspection::NonNullOptional<replication2::LogId> replicatedStateId{
+      std::nullopt};
+  // The shard-to-server mapping; maintained by the agency at runtime.
+  // CollectionDescriptor only transports a snapshot of it on load path.
+  inspection::NonNullOptional<
+      containers::FlatHashMap<ShardID, std::vector<std::string>>>
+      shards{std::nullopt};
 
   bool operator==(ClusteringConstantProperties const& other) const = default;
 
@@ -58,31 +68,6 @@ struct ClusteringConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringConstantProperties& props) {
-  auto distShardsLikeField = std::invoke([&]() {
-    if constexpr (isAgencyContext<Inspector> || isInternalContext<Inspector>) {
-      // The agency requires the CollectionID
-      return userInvariant(f,
-                           f.field(StaticStrings::DistributeShardsLike,
-                                   props.distributeShardsLikeCid),
-                           UtilityInvariants::isNonEmptyIfPresent);
-    } else {
-      // The user gives the CollectionName
-      return userInvariant(f,
-                           f.field(StaticStrings::DistributeShardsLike,
-                                   props.distributeShardsLike)
-                               .fallback(f.keep()),
-                           UtilityInvariants::isNonEmptyIfPresent);
-    }
-  });
-
-  auto numberOfShardsField = userInvariant(
-      f, f.field(StaticStrings::NumberOfShards, props.numberOfShards),
-      UtilityInvariants::isGreaterZeroIfPresent);
-
-  auto shardingStrategyField = userInvariant(
-      f, f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
-      UtilityInvariants::isValidShardingStrategyIfPresent);
-
   // Written by the server only. Reject keeps the create API answering with an
   // unexpected-attribute error, which is what leaving them undeclared did.
   auto serverOwned = []() {
@@ -92,13 +77,19 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
   };
 
   return f.object(props).fields(
-      std::move(numberOfShardsField), std::move(distShardsLikeField),
-      std::move(shardingStrategyField),
+      f.field(StaticStrings::NumberOfShards, props.numberOfShards),
+      f.field(StaticStrings::DistributeShardsLike, props.distributeShardsLike)
+          .fallback(f.keep()),
+      f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()),
       f.field("shardsR2", props.shardsR2).fallback(f.keep()).when(serverOwned),
       f.field(StaticStrings::GroupId, props.groupId)
           .fallback(f.keep())
-          .when(serverOwned));
+          .when(serverOwned),
+      f.field("replicatedStateId", props.replicatedStateId)
+          .fallback(f.keep())
+          .when(serverOwned),
+      f.field("shards", props.shards).fallback(f.keep()).when(serverOwned));
 }
 
 }  // namespace arangodb

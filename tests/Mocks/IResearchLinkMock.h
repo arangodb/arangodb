@@ -30,8 +30,6 @@
 
 namespace arangodb {
 
-struct IndexTypeFactory;
-
 namespace iresearch {
 
 class IResearchLinkMock final : public Index, public IResearchLink {

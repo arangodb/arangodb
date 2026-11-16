@@ -57,7 +57,6 @@
 #include <array>
 #include <format>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -69,7 +68,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Mocks/Auth/UserManagerTester.h"
-#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 namespace p = arangodb::auth::perms;
@@ -142,7 +140,7 @@ struct ClassicAuthModeTest : ::testing::Test {
   // [[nodiscard]].
   Result check(auth::Permission perm) { return classic.check(std::move(perm)); }
 
-  void useApiVersion(uint32_t version) {
+  void useApiVersion(ApiVersion version) {
     classic.setRequestedApiVersion(version);
   }
 
@@ -206,6 +204,27 @@ TEST_F(ClassicAuthModeTest, SeeDatabaseNeedsReadAccess) {
   EXPECT_TRUE(check(p::SeeDatabase{.name = std::string{kDb}}).ok());
   beUserWith(NONE);
   expectError(check(p::SeeDatabase{.name = std::string{kDb}}),
+              TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest, UpdateQueryPropertiesNeedsWriteAccess) {
+  beUserWith(RW);
+  EXPECT_TRUE(check(p::UpdateQueryProperties{.db = std::string{kDb}}).ok());
+}
+
+TEST_F(ClassicAuthModeTest,
+       UpdateQueryPropertiesWithReadOnlyAccessIsForbidden) {
+  beUserWith(RO);
+  expectError(check(p::UpdateQueryProperties{.db = std::string{kDb}}),
+              TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(ClassicAuthModeTest,
+       UpdateQueryPropertiesAsAdminWithoutDatabaseWriteAccessIsForbidden) {
+  // The permission is scoped to the database whose properties are updated;
+  // read-write access to _system alone does not grant it.
+  beAdminWithoutDb();
+  expectError(check(p::UpdateQueryProperties{.db = std::string{kDb}}),
               TRI_ERROR_FORBIDDEN);
 }
 
@@ -762,7 +781,7 @@ TEST_F(ClassicAuthModeTest, DropGraphWithListedCollections) {
 }
 
 TEST_F(ClassicAuthModeTest,
-       CreateGraphWithReadableChildrenButNoDatabaseWriteIsReadOnly) {
+       CreateGraphWithReadableChildrenButNoDatabaseWriteIsForbidden) {
   // RW on the child collection does not substitute for the database grant.
   beUserWith(RO, {{std::string{kDb}, "cr", RW}});
   std::vector<std::string> none;
@@ -1245,6 +1264,9 @@ std::vector<PermCase> permissionCases() {
        {{{Scope::Db, RO}}}},
       {"UseDatabaseWrite",
        p::UseDatabase{.name = db, .level = DatabaseAccessLevel::Write},
+       {{{Scope::Db, RW}}}},
+      {"UpdateQueryProperties",
+       p::UpdateQueryProperties{.db = db},
        {{{Scope::Db, RW}}}},
       {"CreateDatabase", p::CreateDatabase{.name = "brandnew"}, adminOnly},
       {"DropDatabase", p::DropDatabase{.name = db}, adminOnly},

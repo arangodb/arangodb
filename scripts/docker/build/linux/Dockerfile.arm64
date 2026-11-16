@@ -1,6 +1,6 @@
 # First rebuild glibc with a special option and provide some .deb files:
-ARG COMPILER_VERSION=13
-ARG CLANG_VERSION=19
+ARG COMPILER_VERSION=14
+ARG CLANG_VERSION=22
 
 # First rebuild glibc with a special option and provide some .deb files:
 FROM ubuntu:24.04 AS glibcdebs
@@ -20,7 +20,7 @@ RUN apt-get update --fix-missing && \
       software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
       vim exuberant-ctags gdb fish psmisc sudo jq libdb-dev \
-      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
+      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
       clamav \
@@ -75,7 +75,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch 
+RUN git apply /diff_llvm.patch
 
 WORKDIR build
 
@@ -98,7 +98,7 @@ ARG COMPILER_VERSION
 ARG CLANG_VERSION
 ARG SCCACHE_VERSION="0.10.0"
 
-# We provide gcc 13.2.0 as well as clang 19 (latest) from LLVM
+# We provide gcc 14.2.0 as well as clang 22 (latest) from LLVM
 
 ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
@@ -112,7 +112,7 @@ RUN curl -o- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.g
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update --fix-missing && \
-  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
+  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} libgfortran-${COMPILER_VERSION}-dev \
     clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
     libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
     libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev && \

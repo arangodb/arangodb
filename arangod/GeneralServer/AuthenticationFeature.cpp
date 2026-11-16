@@ -116,11 +116,6 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_options.active ? "on" : "off");
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  out << ", authentication for unix sockets is turned "
-      << (_options.authenticationUnixSockets ? "on" : "off");
-#endif
-
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
@@ -140,10 +135,6 @@ AuthenticationFeature* AuthenticationFeature::instance() noexcept {
 
 bool AuthenticationFeature::isActive() const noexcept {
   return _options.active && isEnabled();
-}
-
-bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
-  return _options.authenticationUnixSockets;
 }
 
 std::string_view AuthenticationFeature::externalRbacService() const noexcept {

@@ -25,6 +25,7 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
+#include "Basics/ApiVersionFuerte.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
@@ -176,8 +177,9 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
 
   req->header.database = options.database;
   req->header.setMeta(std::move(headers));
-  req->header.apiVersion = options.apiVersion;
-
+  if (options.apiVersion) {
+    req->header.apiVersion = toFuerte(*options.apiVersion);
+  }
   if (!options.contentType.empty()) {
     req->header.contentType(options.contentType);
   }

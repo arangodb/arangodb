@@ -24,6 +24,5 @@ if (BUILD_SEPP)
     arango_rocksdb
     arangoserver
     rocksdb
-    snappy
-    boost_boost)
+    snappy)
 endif()

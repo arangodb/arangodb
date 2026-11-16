@@ -154,8 +154,9 @@ class CircleCIGenerator(OutputGenerator):
         # Add optional jobs
         self._add_optional_jobs(workflow, build_config, build_jobs)
 
-        # Add test jobs
-        self._add_test_jobs(workflow, jobs, build_config, build_jobs)
+        # Add test jobs (none for a build-only pipeline)
+        if not self.config.build_only:
+            self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
     def _generate_workflow_name(self, build_config: BuildConfig) -> str:
         """Generate workflow name from build configuration."""

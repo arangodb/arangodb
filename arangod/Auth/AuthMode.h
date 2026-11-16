@@ -24,8 +24,8 @@
 
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
+#include "Basics/ApiVersion.h"
 
-#include <cstdint>
 #include <variant>
 
 namespace arangodb::auth {
@@ -96,7 +96,7 @@ struct AuthMode {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     // Only used in tests.
-    void setRequestedApiVersion(uint32_t apiVersion) {
+    void setRequestedApiVersion(ApiVersion apiVersion) {
       _requestedApiVersion = apiVersion;
     }
 #endif
@@ -107,7 +107,7 @@ struct AuthMode {
 
    private:
     // Recall requested API version:
-    uint32_t _requestedApiVersion;
+    ApiVersion _requestedApiVersion;
   };
 
   // Role-based access control, based on an external authorization service.
@@ -115,10 +115,10 @@ struct AuthMode {
     rbac::Service& _rbacService;
     std::string const _username;
     std::string const _jwtToken;
-    uint32_t _requestedApiVersion;
+    ApiVersion _requestedApiVersion;
 
     Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken,
-         uint32_t requestedApiVersion)
+         ApiVersion requestedApiVersion)
         : _rbacService(rbacService),
           _username(std::move(username)),
           _jwtToken(std::move(jwtToken)),
