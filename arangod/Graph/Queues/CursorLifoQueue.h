@@ -131,7 +131,7 @@ class CursorLifoQueue {
       if (isEmpty()) {
         return std::nullopt;
       }
-      auto& first = _queue.front();
+      auto const& first = _queue.front();
       LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
           << "<BatchedLifoQueue> Pop: "
           << (std::holds_alternative<Step>(first)
@@ -139,8 +139,9 @@ class CursorLifoQueue {
                   : "next batch");
       if (std::holds_alternative<Step>(first)) {
         _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+        auto step = std::get<Step>(first);
         _queue.pop_front();
-        return {std::get<Step>(first)};
+        return {step};
       }
       auto& cursor = std::get<std::unique_ptr<Cursor>>(first);
       if (not cursor->hasMore()) {
