@@ -154,8 +154,9 @@ class CircleCIGenerator(OutputGenerator):
         # Add optional jobs
         self._add_optional_jobs(workflow, build_config, build_jobs)
 
-        # Add test jobs
-        self._add_test_jobs(workflow, jobs, build_config, build_jobs)
+        # Add test jobs (none for a build-only pipeline)
+        if not self.config.build_only:
+            self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
     # testing.js option that makes every arangod a test starts load the
     # OpenSSL FIPS provider (use-fips pipelines).

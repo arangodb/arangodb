@@ -53,6 +53,8 @@ class GeneratorConfig:
     # tests run with --server.fips-enable, -fips in the workflow names, and
     # FIPS server images (core-fips-<flavor>) next to regular client tools.
     fips: bool = False
+    # Only compile (and cppcheck); no test jobs in the variant workflows.
+    build_only: bool = False
 
 
 class OutputGenerator(ABC):

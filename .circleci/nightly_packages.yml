@@ -78,7 +78,7 @@ parameters:
   run-benchmarks-on-success:
     type: boolean
     default: false
-    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-ubuntu-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
+    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false) plus run-origin=nightly (workflow ann-benchmark-docker-nightly), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-ubuntu-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
 
 jobs:
   cancel-redundant-pipelines:
