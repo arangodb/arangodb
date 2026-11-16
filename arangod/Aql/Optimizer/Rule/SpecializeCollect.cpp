@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/SortElement.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb::aql {
@@ -195,16 +196,21 @@ void specializeCollectRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
       bool needNewSortNode = true;
       if (sortNode != nullptr) {
-        needNewSortNode = false;
-        // we found a SORT node, now let's check if it covers all our group
-        // variables
-        auto& elems = sortNode->elements();
+        // The existing SORT groups the rows correctly only if the group
+        // variables are its leading sort keys. A key that is not a group
+        // variable in front of them splits a group into several runs.
+        containers::FlatHashSet<Variable const*> groupVars;
         for (auto const& v : groupVariables) {
-          needNewSortNode |= std::find_if(elems.begin(), elems.end(),
-                                          [&v](SortElement const& e) {
-                                            return e.var == v.inVar;
-                                          }) == elems.end();
+          groupVars.emplace(v.inVar);
         }
+        containers::FlatHashSet<Variable const*> leadingGroupVars;
+        for (auto const& e : sortNode->elements()) {
+          if (!groupVars.contains(e.var)) {
+            break;
+          }
+          leadingGroupVars.emplace(e.var);
+        }
+        needNewSortNode = leadingGroupVars.size() != groupVars.size();
       }
 
       if (needNewSortNode) {

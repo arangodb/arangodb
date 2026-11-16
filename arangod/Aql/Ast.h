@@ -493,6 +493,7 @@ class Ast {
   AstNode* createPatternPathVariable(std::string_view variable);
   AstNode* createPatternOutVariable(std::string_view name);
   AstNode* createPatternEdgeVariable(std::string_view name);
+  AstNode* createPatternVertexReference(std::string_view name);
   AstNode* createNodeMatch();
   AstNode* createNodeMatchExpr();
   AstNode* createNodeVariableOrReference(std::string_view name);

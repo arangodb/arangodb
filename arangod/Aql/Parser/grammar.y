@@ -1319,7 +1319,7 @@ pattern_node_pattern:
     | 
 		T_OPEN variable_name 
 		       T_CLOSE {
-			  $$ = parser->ast()->createNodeReference({$variable_name.value, $variable_name.length});
+			  $$ = parser->ast()->createPatternVertexReference({$variable_name.value, $variable_name.length});
 		}
 
 %type <node> pattern_out_variable;

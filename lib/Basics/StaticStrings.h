@@ -234,6 +234,7 @@ class StaticStrings {
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
+  static std::string const XArangoApiVersion;
   static std::string const ContentSecurityPolicy;
   static std::string const Pragma;
   static std::string const Expires;

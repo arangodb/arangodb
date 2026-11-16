@@ -506,7 +506,37 @@ function optimizerIndexesRangesTestSuite () {
         assertEqual(0, results.getExtra().stats.scannedFull);
       });
     },
-  
+
+    testPrimaryIndexRangesWithDoubleValues : function () {
+      // numbers sort before all strings, so doubles behave like other numbers
+      const all = 2000;
+      const cn = c.name();
+      let queries = [ // query, bind parameters, expected number of results
+        [ `FOR i IN ${cn} FILTER i._key < 1.5 RETURN i._key`, {}, 0 ],
+        [ `FOR i IN ${cn} FILTER i._key <= 1.5 RETURN i._key`, {}, 0 ],
+        [ `FOR i IN ${cn} FILTER i._key == 1.5 RETURN i._key`, {}, 0 ],
+        [ `FOR i IN ${cn} FILTER i._key > 1.5 RETURN i._key`, {}, all ],
+        [ `FOR i IN ${cn} FILTER i._key >= -1.5 RETURN i._key`, {}, all ],
+        [ `FOR i IN ${cn} FILTER i._key > 1.5 && i._key < 'test0002' RETURN i._key`, {}, 2 ],
+        [ `FOR i IN ${cn} FILTER i._id < 1.5 RETURN i._key`, {}, 0 ],
+        [ `FOR i IN ${cn} FILTER i._id > 1.5 RETURN i._key`, {}, all ],
+        [ `FOR i IN ${cn} FILTER i._key < @value RETURN i._key`, { value: 1.5 }, 0 ],
+        [ `FOR i IN ${cn} FILTER i._key > @value RETURN i._key`, { value: 1.5 }, all ],
+        [ `LET v = NOOPT(1.5) FOR i IN ${cn} FILTER i._key < v RETURN i._key`, {}, 0 ],
+        [ `LET v = NOOPT(1.5) FOR i IN ${cn} FILTER i._id > v RETURN i._key`, {}, all ],
+      ];
+
+      queries.forEach(function([query, bindVars, expected]) {
+        let plan = db._createStatement({ query, bindVars }).explain().plan;
+        let nodeTypes = plan.nodes.map((node) => node.type);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+        let results = db._query(query, bindVars);
+        assertEqual(expected, results.toArray().length, query);
+        assertEqual(0, results.getExtra().stats.scannedFull, query);
+      });
+    },
+
   };
 }
 

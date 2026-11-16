@@ -8,7 +8,10 @@ target_include_directories(arango_restore PUBLIC ${PROJECT_SOURCE_DIR}/client-to
 if (USE_ENTERPRISE)
   target_include_directories(arango_restore PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
-target_link_libraries(arango_restore arango_shell)
+target_link_libraries(arango_restore
+  arango_shell
+  Boost::hash2
+)
 
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}

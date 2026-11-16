@@ -107,7 +107,7 @@ const filterClusterOnlyAttributes = (attributes) => {
   // However we support restore cluster -> SingleServer so we need to be able to restore the
   // corresponding collections.
   if (!isCluster) {
-    const clusterOnlyAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
+    const clusterOnlyAttributes = ["numberOfShards", "shardKeys"];
     /* , , "writeConcern" */
     for (const key of clusterOnlyAttributes) {
       delete attributes[key];
@@ -148,6 +148,7 @@ const getDefaultProps = () => {
         "lastValue": 0
       },
       "writeConcern": 1,
+      "replicationFactor": 1,
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,
@@ -398,7 +399,8 @@ function RestoreCollectionsSuite() {
             // NOTE: SingleServer Enterprise for some reason this restore returns MORE properties, then the others.
             if (!isCluster) {
               if (replicationFactor === 0) {
-                validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
+                // SingleServer drops 0, so the default replicationFactor is used
+                validateProperties({}, collname, 2);
               } else {
                 validateProperties({replicationFactor: "satellite", writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
               }
@@ -1348,6 +1350,10 @@ function IgnoreIllegalTypesSuite() {
                 } else {
                   isAllowed(res, collname, testParam);
                 }
+              } else if (prop === "replicationFactor" && typeof ignoredValue === "number" && ignoredValue > 0) {
+                // SingleServer floors doubles and keeps the value, even though it has no meaning there
+                assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                validateProperties({replicationFactor: Math.floor(ignoredValue)}, collname, 2);
               } else {
                 // Just ignore if we are not in cluster.
                 isAllowed(res, collname, testParam);
@@ -1388,6 +1394,11 @@ function RestoreInOneShardSuite() {
     // Original restore uses compat.
     return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
   };
+  // OneShard has no meaning in single server, but the collections still get the
+  // replicationFactor of the leader.
+  const getSingleServerOneShardValues = () => {
+    return _.pick(db[oneShardLeader].properties(), ["replicationFactor"]);
+  };
   return {
     setUpAll: function () {
       db._createDatabase("UnitTestOneShard", {sharding: "single"});
@@ -1406,8 +1417,7 @@ function RestoreInOneShardSuite() {
         if (isCluster) {
           validateProperties(getOneShardShardingValues(), collname, 2);
         } else {
-          // OneShard has no meaning in single server, just assert values are taken
-          validateProperties({}, collname, 2);
+          validateProperties(getSingleServerOneShardValues(), collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -1437,7 +1447,7 @@ function RestoreInOneShardSuite() {
                 validateProperties(getOneShardShardingValues(), collname, 2);
               }
             } else {
-              validateProperties({[v]: 2}, collname, 2);
+              validateProperties({...getSingleServerOneShardValues(), [v]: 2}, collname, 2);
             }
           }
         } finally {
@@ -1459,8 +1469,7 @@ function RestoreInOneShardSuite() {
           if (isCluster) {
             validateProperties(getOneShardShardingValues(), collname, 2);
           } else {
-            // OneShard has no meaning in single server, just assert default values are hold
-            validateProperties({}, collname, 2);
+            validateProperties(getSingleServerOneShardValues(), collname, 2);
             validatePropertiesDoNotExist(collname, ["distributeShardsLike"]);
           }
         } finally {
@@ -1478,7 +1487,8 @@ function RestoreInOneShardSuite() {
           isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
         } else {
           // In single servers shardKeys have no effect. They are ignored, hence the restore works here
-          isAllowed(res, collname, {shardKeys: ["foo", "bar"]});
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          validateProperties(getSingleServerOneShardValues(), collname, 2);
           validatePropertiesDoNotExist(collname, ["shardKeys"]);
         }
       } finally {

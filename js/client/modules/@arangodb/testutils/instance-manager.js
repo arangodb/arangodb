@@ -1458,7 +1458,7 @@ class instanceManager {
           let shards = Object.keys(col.Plan);
           shards.forEach((s) => {
             try {
-              if (col.Current.hasOwnProperty(s) && (col.Plan[s].leader !== col.Current[s].leader)) {
+              if (!col.Current.hasOwnProperty(s) || (col.Plan[s].leader !== col.Current[s].leader)) {
                 ++found;
                 collections.push([c, s]);
               }
@@ -1483,8 +1483,11 @@ class instanceManager {
         break;
       }
     }
-    print(`${RED}${Date()} waitForAllShardsInSync FAILED.${RESET}`);
-    return count < 500;
+    if (count >= 500) {
+      print(`${RED}${Date()} waitForAllShardsInSync FAILED.${RESET}`);
+      return false;
+    }
+    return true;
   }
 
   stopServer(urlIDOrShortName) {

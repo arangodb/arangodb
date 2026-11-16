@@ -30,7 +30,6 @@
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
-#include "Ssl/SslInterface.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -42,11 +41,24 @@
 
 #include <absl/crc/crc32c.h>
 
+#include <boost/hash2/md5.hpp>
+#include <boost/hash2/sha1.hpp>
+#include <boost/hash2/sha2.hpp>
+
 #include <string_view>
 
 using namespace arangodb;
 
 namespace arangodb::aql {
+
+namespace {
+template<typename HashType>
+AqlValue AqlHash(std::string const& buffer) {
+  HashType hash;
+  hash.update(buffer.c_str(), buffer.size());
+  return AqlValue{boost::hash2::to_string(hash.result())};
+}
+}  // anonymous namespace
 
 /// @brief function SOUNDEX
 AqlValue functions::Soundex(ExpressionContext* expr, AstNode const&,
@@ -77,16 +89,7 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-
-  // create md5
-  char hash[16];
-  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), &hash[0]);
-
-  // as hex
-  char hex[32];
-  rest::SslInterface::sslHEX(hash, 16, &hex[0]);
-
-  return AqlValue(std::string_view{&hex[0], 32});
+  return AqlHash<boost::hash2::md5_128>(*buffer);
 }
 
 /// @brief function SHA1
@@ -100,16 +103,7 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-
-  // create sha1
-  char hash[20];
-  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), &hash[0]);
-
-  // as hex
-  char hex[40];
-  rest::SslInterface::sslHEX(hash, 20, &hex[0]);
-
-  return AqlValue(std::string_view{&hex[0], 40});
+  return AqlHash<boost::hash2::sha1_160>(*buffer);
 }
 
 /// @brief function SHA256
@@ -123,16 +117,7 @@ AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-
-  // create sha256
-  char hash[32];
-  rest::SslInterface::sslSHA256(buffer->data(), buffer->length(), &hash[0]);
-
-  // as hex
-  char hex[64];
-  rest::SslInterface::sslHEX(hash, 32, &hex[0]);
-
-  return AqlValue(std::string_view{&hex[0], 64});
+  return AqlHash<boost::hash2::sha2_256>(*buffer);
 }
 
 /// @brief function SHA512
@@ -146,16 +131,7 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-
-  // create sha512
-  char hash[64];
-  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), &hash[0]);
-
-  // as hex
-  char hex[128];
-  rest::SslInterface::sslHEX(hash, 64, &hex[0]);
-
-  return AqlValue(std::string_view{&hex[0], 128});
+  return AqlHash<boost::hash2::sha2_512>(*buffer);
 }
 
 /// @brief function Crc32

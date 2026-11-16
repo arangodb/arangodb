@@ -25,7 +25,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const chai = require('chai');
-const Joi = require('joi');
 const expect = chai.expect;
 chai.Assertion.addProperty('does', function () {
   return this;
@@ -88,39 +87,40 @@ describe('_api/gharial', () => {
     }
   };
 
+  const expectNonEmptyString = (value) => {
+    expect(value).to.be.a('string');
+    expect(value).to.not.be.empty;
+  };
+
+  const expectStringArray = (value) => {
+    expect(value).to.be.an('array');
+    value.forEach(expectNonEmptyString);
+  };
+
+  // A graph document has exactly these attributes (no extra ones).
   const validateGraphFormat = (graph) => {
-    const edgeDefinition = Joi.object({
-      collection: Joi.string().required(),
-      from: Joi.array().items(Joi.string()).required(),
-      to: Joi.array().items(Joi.string()).required()
-    });
-    let schema;
+    const keys = ['_key', '_rev', '_id', 'name', 'orphanCollections', 'edgeDefinitions'];
     if (isCluster) {
-      schema = Joi.object({
-        "_key": Joi.string().required(),
-        "_rev": Joi.string().required(),
-        "_id": Joi.string().required(),
-        name: Joi.string().required(),
-        numberOfShards: Joi.number().integer().min(1).required(),
-        replicationFactor: Joi.number().integer().min(1).required(),
-        writeConcern: Joi.number().integer().min(1).required(),
-        isSmart: Joi.boolean().required(),
-        isSatellite: Joi.boolean().required(),
-        orphanCollections: Joi.array().items(Joi.string()).required(),
-        edgeDefinitions: Joi.array().items(edgeDefinition).required()
-      });
-    } else {
-      schema = Joi.object({
-        "_key": Joi.string().required(),
-        "_rev": Joi.string().required(),
-        "_id": Joi.string().required(),
-        name: Joi.string().required(),
-        orphanCollections: Joi.array().items(Joi.string()).required(),
-        edgeDefinitions: Joi.array().items(edgeDefinition).required()
-      });
+      keys.push('numberOfShards', 'replicationFactor', 'writeConcern', 'isSmart', 'isSatellite');
     }
-    const res = schema.validate(graph);
-    expect(res.error).to.be.null;
+    expect(graph).to.be.an('object');
+    expect(graph).to.have.all.keys(keys);
+    ['_key', '_rev', '_id', 'name'].forEach((key) => expectNonEmptyString(graph[key]));
+    expectStringArray(graph.orphanCollections);
+    expect(graph.edgeDefinitions).to.be.an('array');
+    graph.edgeDefinitions.forEach((edgeDefinition) => {
+      expect(edgeDefinition).to.have.all.keys(['collection', 'from', 'to']);
+      expectNonEmptyString(edgeDefinition.collection);
+      expectStringArray(edgeDefinition.from);
+      expectStringArray(edgeDefinition.to);
+    });
+    if (isCluster) {
+      ['numberOfShards', 'replicationFactor', 'writeConcern'].forEach((key) => {
+        expect(Number.isInteger(graph[key])).to.equal(true);
+        expect(graph[key]).to.be.at.least(1);
+      });
+      ['isSmart', 'isSatellite'].forEach((key) => expect(graph[key]).to.be.a('boolean'));
+    }
   };
 
   beforeEach(cleanup);

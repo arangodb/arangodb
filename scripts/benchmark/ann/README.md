@@ -24,7 +24,7 @@ The scripts here also set up the results store and Grafana locally, so the whole
    port 8529, so use another one, e.g.:
 
    ```bash
-   docker run -d -p 8530:8529 -e ARANGO_NO_AUTH=1 arangodb/enterprise-preview:devel-nightly --vector-index=true
+   docker run -d -p 8530:8529 -e ARANGO_NO_AUTH=1 arangodb/core-preview:4.0-nightly --vector-index=true
    ```
 
 2. Start the results store + Grafana (http://localhost:3000, `admin` / `admin`). With
@@ -56,9 +56,12 @@ The scripts here also set up the results store and Grafana locally, so the whole
 
 ## CI
 
-`.circleci/benchmarks.yml` is its own pipeline, triggered manually or by schedule with
-`benchmark` = `ann`. By default (`build-arango` = `true`) it benchmarks a release build of the
-branch (workflow `ann-benchmark-local`); `build-arango` = `false` benchmarks the image in
-`arango-image` instead (workflow `ann-benchmark-docker`). Either way `glove-100-angular` and
+`.circleci/benchmarks.yml` is its own pipeline, triggered manually or by the nightly-packages
+pipeline (`run-benchmarks-on-success`) with `benchmark` = `ann`. By default
+(`build-arango` = `true`) it benchmarks a release build of the branch (workflow
+`ann-benchmark-local-<run-origin>`); `build-arango` = `false` benchmarks the image in
+`arango-image` instead (workflow `ann-benchmark-docker-<run-origin>`). `run-origin` is `pr`
+(default) or `nightly`, which the nightly trigger sets, so a nightly run shows up as
+`ann-benchmark-docker-nightly`. Either way `glove-100-angular` and
 `sift-128-euclidean` run as parallel jobs. Store credentials come from the `ann-benchmark-store`
 context. Artifacts are under `ann-benchmark/`.
