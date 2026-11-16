@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/debugging.h"
 
 #include <memory>
 
@@ -50,30 +51,43 @@ void PathConstruction::addPathEdge(std::vector<AstNode const*>& pathEdges,
 void PathConstruction::appendTraversalPath(
     std::vector<AstNode const*>& pathVertices,
     std::vector<AstNode const*>& pathEdges,
-    Variable const* traversalPathVariable) {
+    Variable const* traversalPathVariable,
+    Variable const* startDestinationVariable,
+    Variable const* targetDestinationVariable) {
+  TRI_ASSERT(traversalPathVariable != nullptr);
+  TRI_ASSERT(targetDestinationVariable != nullptr);
+  TRI_ASSERT(!pathVertices.empty());
+
   auto* pathRef = _ast->createNodeReference(traversalPathVariable);
   pathEdges.push_back(_ast->createNodeArraySplice(
       _ast->createNodeAttributeAccess(pathRef, "edges")));
 
-  // vertices[0] is the segment start, which is already stored as the previous
-  // entry. A single vertex can be replaced by this segment's complete vertex
-  // list. Preserve any previous traversal splice, remove only the shared start
-  // vertex.
+  // Rebuild the traversal segment using MATCH endpoint variables if
+  // available. The traversal's first vertex may originate from an external
+  // ID, so use FIRST(traversalPath.vertices) when no projected start
+  // variable exists to ensure the path contains a document rather than an
+  // ID string. Intermediate vertices remain full traversal documents,
+  // while the target uses its destination variable.
+  pathVertices.pop_back();
+
   auto* vertices = _ast->createNodeAttributeAccess(
       _ast->createNodeReference(traversalPathVariable), "vertices");
-  bool const continuesTraversal =
-      !pathVertices.empty() &&
-      pathVertices.back()->type == NODE_TYPE_ARRAY_SPLICE;
-  if (continuesTraversal) {
-    auto* args = _ast->createNodeArray();
-    args->addMember(vertices);
-    args->addMember(_ast->createNodeValueInt(1));
-    pathVertices.push_back(_ast->createNodeArraySplice(
-        _ast->createNodeFunctionCall("SLICE", args, true)));
+  if (startDestinationVariable != nullptr) {
+    pathVertices.push_back(_ast->createNodeReference(startDestinationVariable));
   } else {
-    pathVertices.pop_back();
-    pathVertices.push_back(_ast->createNodeArraySplice(vertices));
+    auto* firstArgs = _ast->createNodeArray();
+    firstArgs->addMember(vertices);
+    pathVertices.push_back(
+        _ast->createNodeFunctionCall("FIRST", firstArgs, true));
   }
+
+  auto* sliceArgs = _ast->createNodeArray();
+  sliceArgs->addMember(vertices);
+  sliceArgs->addMember(_ast->createNodeValueInt(1));
+  sliceArgs->addMember(_ast->createNodeValueInt(-1));
+  pathVertices.push_back(_ast->createNodeArraySplice(
+      _ast->createNodeFunctionCall("SLICE", sliceArgs, true)));
+  pathVertices.push_back(_ast->createNodeReference(targetDestinationVariable));
 }
 
 AstNode* PathConstruction::constructArray(

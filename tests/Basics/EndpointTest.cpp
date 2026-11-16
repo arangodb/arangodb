@@ -28,7 +28,6 @@
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
-#include "Endpoint/EndpointUnixDomain.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 
@@ -114,11 +113,6 @@ TEST(EndpointTest, EndpointSpecification) {
                          "http+tcp://127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "https://localhost", specification,
                          "http+ssl://127.0.0.1:8529");
-
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification,
-                                "http+unix:///path/to/socket");
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s",
-                                specification, "http+unix:///a/b/c/d/e/f.s");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,8 +130,6 @@ TEST(EndpointTest, EndpointTypes) {
                          arangodb::Endpoint::EndpointType::CLIENT);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", type,
                          arangodb::Endpoint::EndpointType::CLIENT);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///path/to/socket", type,
-                         arangodb::Endpoint::EndpointType::CLIENT);
 
   CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://127.0.0.1", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
@@ -150,8 +142,6 @@ TEST(EndpointTest, EndpointTypes) {
   CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "https://localhost", type,
-                                arangodb::Endpoint::EndpointType::SERVER);
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
 }
 
@@ -198,12 +188,6 @@ TEST(EndpointTest, EndpointDomains) {
   CHECK_ENDPOINT_FEATURE(
       client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
       domain, AF_INET6);
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domain, AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domain,
-                         AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", domain,
-                         AF_UNIX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,19 +260,6 @@ TEST(EndpointTest, EndpointDomainTypes) {
                          arangodb::Endpoint::DomainType::IPV4);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", domainType,
                          arangodb::Endpoint::DomainType::IPV4);
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", domainType,
-                         arangodb::Endpoint::DomainType::UNIX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,11 +348,6 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(
       client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port,
       666);
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", port, 0);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", port, 0);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", port,
-                         0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,19 +419,6 @@ TEST(EndpointTest, EndpointEncryption) {
                          arangodb::Endpoint::EncryptionType::SSL);
   CHECK_ENDPOINT_FEATURE(client, "https://[::]:8529", encryption,
                          arangodb::Endpoint::EncryptionType::SSL);
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", encryption,
-                         arangodb::Endpoint::EncryptionType::NONE);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", encryption,
-                         arangodb::Endpoint::EncryptionType::NONE);
-  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket/arango.sock", encryption,
-                         arangodb::Endpoint::EncryptionType::NONE);
-  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket/arango.sock", encryption,
-                         arangodb::Endpoint::EncryptionType::NONE);
-  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket/arango.sock", encryption,
-                         arangodb::Endpoint::EncryptionType::NONE);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock",
-                         encryption, arangodb::Endpoint::EncryptionType::NONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,12 +478,6 @@ TEST(EndpointTest, EndpointHost) {
                          "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
                          host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", host, "::");
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", host,
-                         "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", host,
-                         "localhost");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,13 +582,6 @@ TEST(EndpointTest, EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(
       client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994",
       hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
-
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", hostAndPort,
-                         "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", hostAndPort,
-                         "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock",
-                         hostAndPort, "localhost");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,18 +612,6 @@ TEST(EndpointTest, EndpointIsConnectedServer2) {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST(EndpointTest, EndpointIsConnectedServer3) {
-  Endpoint* e;
-
-  e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
-  EXPECT_TRUE(false == e->isConnected());
-  delete e;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test isconnected
-////////////////////////////////////////////////////////////////////////////////
-
 TEST(EndpointTest, EndpointIsConnectedClient1) {
   Endpoint* e;
 
@@ -700,18 +628,6 @@ TEST(EndpointTest, EndpointIsConnectedClient2) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("ssl://127.0.0.1");
-  EXPECT_TRUE(false == e->isConnected());
-  delete e;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test isconnected
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(EndpointTest, EndpointIsConnectedClient3) {
-  Endpoint* e;
-
-  e = arangodb::Endpoint::clientFactory("unix:///tmp/socket");
   EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
@@ -740,20 +656,20 @@ TEST(EndpointTest, EndpointServerTcpIpv4WithPort) {
 /// @brief test server endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST(EndpointTest, EndpointServerUnix) {
-  Endpoint* e;
+TEST(EndpointTest, EndpointUnixDomainSocketsAreRejected) {
+  tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> suppressor;
 
-  e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
-  EXPECT_TRUE("http+unix:///path/to/arango.sock" == e->specification());
-  EXPECT_TRUE(arangodb::Endpoint::EndpointType::SERVER == e->type());
-  EXPECT_TRUE(arangodb::Endpoint::DomainType::UNIX == e->domainType());
-  EXPECT_TRUE(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
-  EXPECT_TRUE(AF_UNIX == e->domain());
-  EXPECT_TRUE("localhost" == e->host());
-  EXPECT_TRUE(0 == e->port());
-  EXPECT_TRUE("localhost" == e->hostAndPort());
-  EXPECT_TRUE(false == e->isConnected());
-  delete e;
+  EXPECT_EQ(nullptr, arangodb::Endpoint::serverFactory(
+                         "unix:///tmp/arango.sock", 1, true));
+  EXPECT_EQ(nullptr, arangodb::Endpoint::serverFactory(
+                         "http+unix:///tmp/arango.sock", 1, true));
+  EXPECT_EQ(nullptr,
+            arangodb::Endpoint::clientFactory("unix:///tmp/arango.sock"));
+  EXPECT_EQ(nullptr,
+            arangodb::Endpoint::clientFactory("http@unix:///tmp/arango.sock"));
+  EXPECT_EQ("", arangodb::Endpoint::unifiedForm("unix:///tmp/arango.sock"));
+  EXPECT_EQ("", arangodb::Endpoint::uriForm("unix:///tmp/arango.sock"));
+  EXPECT_EQ("", arangodb::Endpoint::uriForm("http+unix:///tmp/arango.sock"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

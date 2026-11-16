@@ -2,7 +2,7 @@
 # `--profile ci` adds the arangod under test and the harness, wired like the
 # CircleCI job, to reproduce a CI run locally:
 #   docker compose --profile ci up --build harness
-x-sut-image: &sut-image ${ARANGODB_IMAGE:-arangodb/enterprise-preview:devel-nightly}
+x-sut-image: &sut-image ${ARANGODB_IMAGE:-arangodb/core-preview:4.0-nightly}
 
 services:
   arangodb:

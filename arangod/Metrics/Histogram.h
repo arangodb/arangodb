@@ -23,8 +23,12 @@
 
 #include "Metrics/Metric.h"
 
+#include "Basics/StringUtils.h"
+
 #include <atomic>
-#include <ostream>  // TODO(MBkkt) replace to iosfwd, compile error now
+#include <format>
+#include <functional>
+#include <iosfwd>
 #include <vector>
 
 namespace arangodb::metrics {
@@ -158,7 +162,9 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
     if (ensureWhitespace) {
       result.push_back(' ');
     }
-    result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
+    result.append(
+        basics::StringUtils::concatT("", _sum.load(std::memory_order_relaxed)));
+    result.append("\n");
   }
 
   void toVPack(velocypack::Builder& builder) const override {}
@@ -166,7 +172,9 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
   std::ostream& print(std::ostream& o) const {
     o << this->name() << " scale: " << _scale;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    o << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << basics::StringUtils::concatT(
+        " extremes: [", _lowr.load(std::memory_order_relaxed), " ,",
+        _highr.load(std::memory_order_relaxed), "]");
 #endif
     return o;
   }

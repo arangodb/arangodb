@@ -37,7 +37,9 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/RestartAction.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Rest/Version.h"
 #include "Utils/ExecContext.h"
+#include "VectorIndex/Feature.h"
 
 using namespace arangodb;
 
@@ -134,6 +136,7 @@ int main(int argc, char* argv[]) {
   auto workdir = std::filesystem::current_path();
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+  rest::Version::Values.merge(VectorIndexFeature::versionDetails());
 
   arangodb::restartAction = nullptr;
 

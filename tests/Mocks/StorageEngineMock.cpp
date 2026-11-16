@@ -205,11 +205,15 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server,
     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "Mock", _dbProvider, _dbProvider),
+    : StorageEngine(
+          server, "Mock", "Mock", _dbProvider, _dbProvider,
+          [&server,
+           injectClusterIndexes](arangodb::IndexTypeCatalog const& catalog) {
+            return std::unique_ptr<arangodb::IndexFactory>(
+                new IndexFactoryMock(server, injectClusterIndexes, catalog));
+          }),
       vocbaseCount(1),
       _releasedTick(0) {
-  setIndexFactory(std::unique_ptr<arangodb::IndexFactory>(
-      new IndexFactoryMock(server, injectClusterIndexes, indexTypeCatalog())));
   initTransactionStatistics(_mockRegistry);
   ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }

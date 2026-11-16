@@ -337,6 +337,7 @@ std::string TRI_GetTempPath();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the system's temporary path - WARN: The directory is not created
+/// Must be called before the first call to TRI_GetTempPath.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetTempPath(std::string const& path);

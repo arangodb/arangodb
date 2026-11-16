@@ -7,7 +7,7 @@
   ],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "time": {
     "from": "now-1y",
@@ -444,12 +444,113 @@
       ]
     },
     {
+      "id": 14,
+      "type": "timeseries",
+      "title": "p95 latency over runs  ($dataset)",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "p95 latency"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 95 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": 13,
       "type": "timeseries",
       "title": "p99 latency over runs  ($dataset)",
       "gridPos": {
-        "x": 12,
-        "y": 10,
+        "x": 0,
+        "y": 20,
         "w": 12,
         "h": 10
       },
@@ -545,12 +646,113 @@
       ]
     },
     {
+      "id": 15,
+      "type": "timeseries",
+      "title": "p99.9 latency over runs  ($dataset)",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "bench"
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "p99.9 latency"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.series}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "parser": "backend",
+          "url": "/_db/ann-bench/_api/cursor",
+          "url_options": {
+            "method": "POST",
+            "body_type": "raw",
+            "body_content_type": "application/json",
+            "data": "{\"query\": \"FOR m IN measurement_recall_lat FILTER m.percentile == 99.9 LET d = DOCUMENT('dataset', m.dataset_id) FILTER d.name == '$dataset' LET r = DOCUMENT('run', m.run_id) FILTER r.docker_image_version IN [${image:singlequote}] LET ix = DOCUMENT('index_setup', m.index_id) FILTER ix.index_params.nProbe IN [${nprobe:csv}] SORT r.started_at RETURN {time: r.started_at, value: m.latency, series: CONCAT((CONTAINS(r.docker_image_version, ' ') ? REGEX_REPLACE(r.docker_image_version, '@([0-9a-f]{7})[0-9a-f]*$', '@$1') : LAST(SPLIT(r.docker_image_version, '/'))), ' ', CONCAT('nProbe=', ix.index_params.nProbe))}\", \"batchSize\": 100000}"
+          },
+          "root_selector": "result",
+          "columns": [
+            {
+              "selector": "time",
+              "text": "time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "value",
+              "text": "value",
+              "type": "number"
+            },
+            {
+              "selector": "series",
+              "text": "series",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": 5,
       "type": "timeseries",
       "title": "Index build time over runs  ($dataset)",
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 30,
         "w": 12,
         "h": 9
       },
@@ -653,7 +855,7 @@
       "title": "Index builds  ($dataset)",
       "gridPos": {
         "x": 12,
-        "y": 20,
+        "y": 30,
         "w": 12,
         "h": 9
       },

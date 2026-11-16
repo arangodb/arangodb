@@ -173,6 +173,19 @@ class PatternNormalizerTest
     expectNestedAttributeAccess(node, expectedVariable, {expectedAttribute});
   }
 
+  void expectNonDocumentVertexReference(std::string_view query) {
+    auto parsed = parseMatch(query);
+    optimizeAst(parsed);
+    try {
+      (void)normalize(parsed);
+      FAIL() << "expected a parse error for query: " << query;
+    } catch (basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_QUERY_PARSE, ex.code()) << query;
+      EXPECT_EQ("MATCH vertex reference must be a document", ex.message())
+          << query;
+    }
+  }
+
   static AstNode const* equalityLhs(AstNode const* eqNode) {
     EXPECT_NE(nullptr, eqNode);
     if (eqNode == nullptr) {
@@ -574,6 +587,35 @@ TEST_F(PatternNormalizerTest, projectionReservedAttributeClassification) {
                 kMandatoryEdgeDocumentProjectionAttributes.end()));
 }
 
+TEST_F(PatternNormalizerTest, rejectsConstantNonDocumentVertexReference) {
+  expectNonDocumentVertexReference(
+      "LET x = null MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = 1 MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = \"abc\" MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = true MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = { _key: \"v0\" } MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = [1] MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  expectNonDocumentVertexReference(
+      "LET x = null MATCH (y :vc) -[e :ec]-> (x) RETURN y");
+  expectNonDocumentVertexReference("LET x = null MATCH (y :vc), (x) RETURN y");
+}
+
+TEST_F(PatternNormalizerTest, documentBindingStaysVariableReference) {
+  auto parsed = parseMatch(
+      "LET x = DOCUMENT(\"vc/v0\") MATCH (x) -[e :ec]-> (y :vc) RETURN y");
+  optimizeAst(parsed);
+  auto statement = normalize(parsed);
+
+  ASSERT_EQ(PatternElement::Kind::kVariableReference,
+            statement.patterns.front().start.kind);
+  EXPECT_EQ("x", statement.patterns.front().start.variableReference->name);
+}
+
 TEST_F(PatternNormalizerTest, variableReferenceTarget) {
   auto parsed = parseMatch(
       "FOR w IN 1..1 LET start = \"vc/v0\" "
@@ -592,6 +634,20 @@ TEST_F(PatternNormalizerTest, pathVariable) {
 
   ASSERT_NE(nullptr, statement.patterns.front().pathVariable);
   EXPECT_EQ("p", statement.patterns.front().pathVariable->name);
+}
+
+TEST_F(PatternNormalizerTest, rejectsPathVariableSelfReferenceInWhere) {
+  auto parsed =
+      parseMatch("MATCH p = (v :vc WHERE p.vertices[0]._key == 'v0') RETURN v");
+  try {
+    (void)normalize(parsed);
+    FAIL() << "expected an exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(TRI_ERROR_QUERY_PARSE, ex.code());
+    EXPECT_NE(std::string::npos,
+              std::string(ex.what()).find(
+                  "cannot be referenced in its own pattern WHERE"));
+  }
 }
 
 TEST_F(PatternNormalizerTest, vertexPropertiesAndWhereFilter) {

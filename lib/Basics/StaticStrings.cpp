@@ -214,7 +214,7 @@ std::string const StaticStrings::Etag("etag");
 std::string const StaticStrings::Expect("expect");
 std::string const StaticStrings::ExposedCorsHeaders(
     "etag, content-encoding, content-length, location, server, "
-    "x-arango-errors, x-arango-async-id");
+    "x-arango-errors, x-arango-async-id, x-arango-api-version");
 std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
@@ -237,6 +237,7 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoApiVersion("x-arango-api-version");
 std::string const StaticStrings::ContentSecurityPolicy(
     "content-security-policy");
 std::string const StaticStrings::Pragma("pragma");

@@ -327,6 +327,8 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(
             output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        // Already reported. fullCount fast-forward must not count it again.
+        _haveSeenData = true;
       }
       break;
     }
@@ -451,6 +453,9 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         if (_infos.getGroupRegisters().empty()) {
           // by definition we need to emit one collect row
           clientCall.didSkip(1);
+          // The row was already skipped. Do not count it again during
+          // the subsequent fullCount fast-forward.
+          _haveSeenData = true;
         }
       } else {
         if (_currentGroup.isValid()) {

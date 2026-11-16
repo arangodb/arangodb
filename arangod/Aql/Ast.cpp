@@ -2179,6 +2179,24 @@ AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
   return createNodeVariable(name, true);
 }
 
+AstNode* Ast::createPatternVertexReference(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // (name) references a previously bound vertex. A new vertex requires a
+  // collection label, so an unknown name should raise a parse error instead
+  // of an internal "variable not found" error.
+  if (!_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("MATCH vertex variable '", name,
+                     "' needs a label or has to be bound earlier"));
+  }
+
+  return createNodeReference(name);
+}
+
 AstNode* Ast::createNodeMatch() {
   if (not query().queryOptions().isMatchStatementEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

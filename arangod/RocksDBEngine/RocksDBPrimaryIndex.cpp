@@ -1005,7 +1005,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // any array or object value is bigger than any potential key
       value = KeyGeneratorHelper::highestKey;
     } else if (aap.value->isNullValue() || aap.value->isBoolValue() ||
-               aap.value->isIntValue()) {
+               aap.value->isNumericValue()) {
       // any null, bool or numeric value is lower than any potential key
       // keep lower bound
     } else {

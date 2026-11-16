@@ -21,6 +21,7 @@ ALL_TRUE = {
     "scan-viruses": "true",
     "security-check": "true",
     "pr-run": "false",
+    "run-benchmarks-on-success": "true",
 }
 
 
@@ -173,6 +174,11 @@ def test_every_generated_graph_is_consistent(base_config):
             continue
         names = workflow_names(config)
         assert "publish-nightly" in names
+        assert (gen.TRIGGER_BENCHMARKS in names) == (
+            values["run-benchmarks-on-success"] == "true"
+            and values["pr-run"] == "false"
+            and values["build-alpine-images"] == "true"
+        )
         # The tolerated-failure exemption must hold whatever is pruned:
         # exactly the security-check jobs when the scans run, nothing
         # otherwise — and the verdicts publish-nightly verifies must
@@ -400,7 +406,10 @@ def test_pr_run_renames_workflow_and_keeps_job_graph(base_config):
     name, _ = only_workflow(config)
     assert name == gen.PR_WORKFLOW_NAME
     assert gen.WORKFLOW_NAME not in config["workflows"]
-    assert workflow_names(config) == workflow_names(base_config)
+    # ... minus the benchmarks trigger: a dry run publishes nothing.
+    assert workflow_names(config) == workflow_names(base_config) - {
+        gen.TRIGGER_BENCHMARKS
+    }
 
 
 def test_pr_run_combines_with_pruning(base_config):
@@ -428,3 +437,34 @@ def test_docker_gate_item_must_match_the_job_name(base_config):
             entry["security-check-docker-image"]["gate-item-image"] = "client-tools"
     with pytest.raises(ValueError, match="must match the job name"):
         gen.check_workflow(broken)
+
+
+def test_benchmarks_trigger_is_off_by_default(base_config):
+    config = run_generate(base_config, **{"run-benchmarks-on-success": "false"})
+    assert gen.TRIGGER_BENCHMARKS not in workflow_names(config)
+
+
+def test_benchmarks_trigger_waits_for_publish(base_config):
+    config = run_generate(base_config)
+    assert requires_of(config, gen.TRIGGER_BENCHMARKS) == ["publish-nightly"]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"pr-run": "true"}, {"build-alpine-images": "false"}],
+)
+def test_benchmarks_trigger_needs_a_real_publish_of_the_image(base_config, overrides):
+    config = run_generate(base_config, **overrides)
+    assert gen.TRIGGER_BENCHMARKS not in workflow_names(config)
+
+
+def test_check_workflow_rejects_benchmarks_not_gated_on_publish(base_config):
+    config = run_generate(base_config)
+    _, workflow = only_workflow(config)
+    for entry in workflow["jobs"]:
+        if gen.entry_name(entry) == gen.TRIGGER_BENCHMARKS:
+            [(_, job_config)] = entry.items()
+            job_config["requires"] = [{"publish-nightly": ["success", "failed"]}]
+    with pytest.raises(ValueError, match="trigger-benchmarks must require"):
+        gen.check_workflow(config)
+

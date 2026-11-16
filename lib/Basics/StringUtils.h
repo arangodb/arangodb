@@ -448,6 +448,9 @@ auto toStringOrView(T&& arg) {
     return std::string_view(arg);
   } else if constexpr (std::is_convertible_v<Arg, std::string>) {
     return std::string(arg);
+  } else if constexpr (std::is_same_v<Arg, double> ||
+                       std::is_same_v<Arg, float>) {
+    return std::format("{0:.6f}", arg);
   } else {
     // Use using, so ADL could also find to_string in other namespaces than std.
     using std::to_string;

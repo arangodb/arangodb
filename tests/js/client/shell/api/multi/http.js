@@ -57,6 +57,22 @@ function getBypassingFuerte(path) {
   return { code: res.statusCode, parsedBody: res.json, headers: res.headers };
 }
 
+const apiVersionHeader = "x-arango-api-version";
+// The branch tag of the served API version is the major product version.
+const branch = parseInt(db._version().split('.')[0]);
+const servedApiVersion = `v1.0-${branch}`;
+const apiVersionPattern = /^v\d+\.\d+-\d+$/;
+
+function assertApiVersionMismatch(path, requested) {
+  const doc = arango.GET_RAW(path, { [apiVersionHeader]: requested });
+  assertEqual(doc.code, 400);
+  assertTrue(doc.parsedBody.error);
+  assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_HTTP_API_VERSION_MISMATCH.code);
+  assertEqual(doc.parsedBody.errorMessage,
+              `requested API version ${requested} is not compatible with ` +
+              `served API version ${servedApiVersion}`);
+}
+
 function assertInvalidApiVersion(path, query = "") {
   const doc = getBypassingFuerte(path + query);
   assertEqual(doc.code, 404);
@@ -391,10 +407,10 @@ function API_versioningSuite () {
       assertTrue(Array.isArray(doc.parsedBody.apiVersions));
       assertTrue(doc.parsedBody.apiVersions.length > 0);
 
-      // Check that all entries start with 'v' followed by a number
       doc.parsedBody.apiVersions.forEach(version => {
-        assertTrue(version.match(/^v\d+$/), `Version ${version} should match pattern v<number>`);
+        assertTrue(version.match(apiVersionPattern), `Version ${version} should match pattern vMAJOR.MINOR-BRANCH`);
       });
+      assertEqual(doc.parsedBody.apiVersions[0], servedApiVersion);
 
       // Check that versions are sorted in descending order
       for (let i = 0; i < doc.parsedBody.apiVersions.length - 1; i++) {
@@ -415,9 +431,8 @@ function API_versioningSuite () {
       assertTrue(doc.parsedBody.hasOwnProperty('deprecatedApiVersions'));
       assertTrue(Array.isArray(doc.parsedBody.deprecatedApiVersions));
 
-      // Check that all entries start with 'v' followed by a number
       doc.parsedBody.deprecatedApiVersions.forEach(version => {
-        assertTrue(version.match(/^v\d+$/), `Version ${version} should match pattern v<number>`);
+        assertTrue(version.match(apiVersionPattern), `Version ${version} should match pattern vMAJOR.MINOR-BRANCH`);
       });
 
       // Check that versions are sorted in descending order
@@ -533,6 +548,80 @@ function API_versioningSuite () {
     test_checks_unsupported_api_version_with_different_endpoint: function() {
       let cmd = "/_arango/v100/_api/collection";
       assertInvalidApiVersion(cmd);
+    },
+
+    test_api_version_header_accepts_the_served_version: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version",
+                               { [apiVersionHeader]: servedApiVersion });
+      assertEqual(doc.code, 200);
+    },
+
+    // A client written against 3.12 keeps working after the upgrade.
+    test_api_version_header_accepts_a_lower_branch: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version",
+                               { [apiVersionHeader]: `v1.0-${branch - 1}` });
+      assertEqual(doc.code, 200);
+    },
+
+    test_api_version_header_rejects_a_higher_minor_version: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v1.1-${branch}`);
+    },
+
+    test_api_version_header_rejects_a_higher_branch: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v1.0-${branch + 1}`);
+    },
+
+    test_api_version_header_rejects_a_major_version_that_differs_from_the_url: function() {
+      assertApiVersionMismatch("/_arango/v1/_api/version", `v2.0-${branch}`);
+    },
+
+    test_api_version_header_is_checked_against_the_default_version: function() {
+      assertApiVersionMismatch("/_api/version", `v1.1-${branch}`);
+    },
+
+    test_api_version_header_rejects_a_malformed_value: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version", { [apiVersionHeader]: "v1" });
+      assertEqual(doc.code, 400);
+      assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
+    },
+
+    test_api_version_header_is_not_allowed_for_experimental: function() {
+      let doc = arango.GET_RAW("/_arango/experimental/openapi.json",
+                               { [apiVersionHeader]: servedApiVersion });
+      assertEqual(doc.code, 400);
+      assertEqual(doc.parsedBody.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
+    },
+
+    test_response_carries_the_served_api_version: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/version");
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers[apiVersionHeader], servedApiVersion);
+    },
+
+    test_response_carries_the_served_api_version_without_prefix: function() {
+      let doc = arango.GET_RAW("/_api/version");
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers[apiVersionHeader], servedApiVersion);
+    },
+
+    test_handler_error_response_carries_the_served_api_version: function() {
+      let doc = arango.GET_RAW("/_arango/v1/_api/collection/doesNotExist");
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers[apiVersionHeader], servedApiVersion);
+    },
+
+    test_experimental_response_carries_experimental: function() {
+      let doc = arango.GET_RAW("/_arango/experimental/openapi.json");
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers[apiVersionHeader], "experimental");
+    },
+
+    test_api_version_header_is_exposed_to_cors_clients: function() {
+      let doc = arango.GET_RAW("/_api/version", { "Origin": "http://127.0.0.1" });
+      assertEqual(doc.code, 200);
+      assertTrue(doc.headers['access-control-expose-headers']
+                   .split(',').map(h => h.trim()).includes(apiVersionHeader),
+                 doc.headers['access-control-expose-headers']);
     },
 
     test_checks_unsupported_api_version_0_with_different_endpoint: function() {
