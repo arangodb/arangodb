@@ -60,5 +60,14 @@ std::optional<double> extractExpiration(std::string_view token);
  */
 std::optional<std::string> extractPreferredUsername(std::string_view token);
 
+/**
+ * Returns the claims of a JWT without the time claims "iat", "nbf" and "exp",
+ * as JSON
+ *
+ * Tokens issued for the same identity at different times yield the same
+ * value. Returns nullopt for malformed tokens.
+ */
+std::optional<std::string> extractTimelessClaims(std::string_view token);
+
 }  // namespace rest::SslInterface::jwt
 }  // namespace arangodb
