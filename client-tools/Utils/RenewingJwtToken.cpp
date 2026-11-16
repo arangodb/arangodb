@@ -22,8 +22,10 @@
 
 #include "RenewingJwtToken.h"
 
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Rest/CommonDefines.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/jwt.h"
@@ -35,11 +37,16 @@
 #include <algorithm>
 #include <chrono>
 #include <exception>
+#include <memory>
+#include <string_view>
 #include <utility>
 
 namespace arangodb {
 
 namespace {
+
+/// the token /_open/auth answers with while authentication is disabled
+constexpr std::string_view kAuthDisabledToken = "invalid";
 
 /**
  * Expiry of a token as a time point, or nullopt if it never expires
@@ -86,6 +93,12 @@ void logRenewal(TokenOutcome const& outcome, JwtTokenState const& state,
 
 }  // namespace
 
+auto tokenStateFor(JwtToken token, JwtClock::time_point now) -> JwtTokenState {
+  auto expiresAt = expiryOf(token);
+  return JwtTokenState{
+      .token = std::move(token), .obtainedAt = now, .expiresAt = expiresAt};
+}
+
 auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
                   JwtClock::duration renewalThreshold) -> bool {
   if (!state.expiresAt.has_value()) {
@@ -103,58 +116,77 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
 auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState {
   if (outcome.ok() && outcome.get().has_value()) {
-    return JwtTokenState{.token = *outcome.get(),
-                         .obtainedAt = now,
-                         .expiresAt = expiryOf(*outcome.get())};
+    return tokenStateFor(*outcome.get(), now);
   }
   state.nextAttemptAt = now + kRenewalRetryInterval;
   return state;
 }
 
-auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
-    -> TokenOutcome {
-  if (auto const check = HttpResponseChecker::check("", &response);
-      check.fail()) {
-    return check;
+auto parseTokenReply(TokenRequest request, int httpStatus,
+                     velocypack::Slice body) -> TokenOutcome {
+  if (request == TokenRequest::kLogin &&
+      (httpStatus == static_cast<int>(rest::ResponseCode::NOT_FOUND) ||
+       httpStatus == static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED))) {
+    // the server does not implement /_open/auth, so it issues no tokens
+    return TokenOutcome::success(std::nullopt);
   }
-  try {
-    auto const builder = response.getBodyVelocyPack();
-    auto const body = builder->slice();
-    if (!body.isObject()) {
-      return TokenOutcome::error(
-          TRI_ERROR_INTERNAL,
-          "unexpected reply from /_open/auth: not an object");
+  if (httpStatus != static_cast<int>(rest::ResponseCode::OK)) {
+    auto errorNum = ErrorCode{httpStatus};
+    std::string errorMessage = absl::StrCat("HTTP ", httpStatus);
+    if (body.isObject()) {
+      if (auto const num = body.get(StaticStrings::ErrorNum); num.isNumber()) {
+        errorNum = ErrorCode{num.getNumber<int>()};
+      }
+      if (auto const msg = body.get(StaticStrings::ErrorMessage);
+          msg.isString()) {
+        errorMessage = msg.copyString();
+      }
     }
-    auto const jwt = body.get("jwt");
-    if (jwt.isNone()) {
-      return TokenOutcome::success(std::nullopt);
-    }
-    if (!jwt.isString()) {
-      return TokenOutcome::error(
-          TRI_ERROR_INTERNAL,
-          "unexpected reply from /_open/auth: jwt is not a string");
-    }
-    if (jwt.isEqualString("")) {
-      return TokenOutcome::success(std::nullopt);
-    }
-    if (jwt.isEqualString("invalid")) {
-      // the server issues no tokens while authentication is disabled
-      return TokenOutcome::success(std::nullopt);
-    }
-    return TokenOutcome::success(jwt.copyString());
-  } catch (std::exception const& ex) {
+    return TokenOutcome::error(
+        errorNum, absl::StrCat("got invalid response from server: HTTP ",
+                               httpStatus, ": '", errorMessage, "'"));
+  }
+  if (!body.isObject()) {
+    return TokenOutcome::error(
+        TRI_ERROR_INTERNAL, "unexpected reply from /_open/auth: not an object");
+  }
+  auto const jwt = body.get("jwt");
+  if (jwt.isNone()) {
+    return TokenOutcome::success(std::nullopt);
+  }
+  if (!jwt.isString()) {
     return TokenOutcome::error(
         TRI_ERROR_INTERNAL,
-        absl::StrCat("cannot parse reply from /_open/auth: ", ex.what()));
+        "unexpected reply from /_open/auth: jwt is not a string");
   }
+  if (jwt.isEqualString("") || jwt.isEqualString(kAuthDisabledToken)) {
+    return TokenOutcome::success(std::nullopt);
+  }
+  return TokenOutcome::success(jwt.copyString());
+}
+
+auto parseTokenResponse(TokenRequest request,
+                        httpclient::SimpleHttpResult const& response)
+    -> TokenOutcome {
+  if (!response.isComplete()) {
+    // no reply at all, e.g. the connection failed
+    return HttpResponseChecker::check("", &response);
+  }
+  std::shared_ptr<velocypack::Builder> parsed;
+  velocypack::Slice body;
+  try {
+    parsed = response.getBodyVelocyPack();
+    body = parsed->slice();
+  } catch (std::exception const&) {
+    // not JSON; body stays None
+  }
+  return parseTokenReply(request, response.getHttpReturnCode(), body);
 }
 
 RenewingJwtToken::RenewingJwtToken(JwtToken initialToken, Renewer renewer,
                                    JwtClock::duration renewalThreshold,
                                    TimeSource now)
-    : _state{.token = initialToken,
-             .obtainedAt = now(),
-             .expiresAt = expiryOf(initialToken)},
+    : _state{tokenStateFor(std::move(initialToken), now())},
       _renewer(std::move(renewer)),
       _renewalThreshold(renewalThreshold),
       _now(std::move(now)) {}

@@ -30,6 +30,8 @@
 #include <memory>
 
 #include "Basics/ResultT.h"
+#include "Utils/ConnectionHandles.h"
+#include "Utils/RenewingJwtToken.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -90,8 +92,11 @@ class V8ClientConnection {
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value);
   void setForceJson(bool value) { _forceJson = value; };
-  std::string username() const { return _builder.user(); }
-  std::string password() const { return _builder.password(); }
+  /// @brief endpoint and user of the active connection, as configured when
+  /// it was created; those of the client before the first connect
+  std::string endpoint() const;
+  std::string username() const;
+  std::string password() const { return _handles.config().builder.password(); }
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
@@ -100,8 +105,8 @@ class V8ClientConnection {
   std::string endpointSpecification() const;
 
   std::string getLocalEndpoint() {
-    if (_connection) {
-      return _connection->localEndpoint();
+    if (auto const& connection = _handles.connection(); connection) {
+      return connection->localEndpoint();
     } else {
       return "not connected";
     }
@@ -174,6 +179,34 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
+  // how the jwt token of a connection is kept fresh
+  struct TokenRenewal {
+    enum class Kind {
+      // basic auth, no auth, or a token without expiry from --server.jwt-secret
+      kNone,
+      // a user token from /_open/auth, renewed by logging in again
+      kLogin,
+      // the --server.jwt-token, renewed by the ClientFeature in the background
+      kJwtTokenOption,
+    };
+    Kind kind = Kind::kNone;
+    // password and token state of kLogin; the user is that of the
+    // Configuration
+    std::string password;
+    JwtTokenState token;
+  };
+
+  // how a connection is configured
+  struct Configuration {
+    fuerte::ConnectionBuilder builder;
+    TokenRenewal renewal;
+    // the endpoint and user as given by the client
+    std::string endpoint;
+    std::string username;
+  };
+
+  using Handles = ConnectionHandles<Configuration>;
+
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
@@ -193,8 +226,8 @@ class V8ClientConnection {
                                     std::unique_ptr<fuerte::Response> response,
                                     fuerte::Error ec);
 
-  /// @brief shuts down the connection _connection and resets the pointer
-  /// to a nullptr
+  /// @brief cancels the active connection, which stays active but closed
+  /// until it is replaced
   void shutdownConnection();
 
   void setCustomError(int httpCode, std::string const& msg) {
@@ -203,31 +236,32 @@ class V8ClientConnection {
     _lastErrorMessage = msg;
   }
 
-  // Helper function to authenticate via /_open/auth endpoint
-  ResultT<std::string> authenticateViaOpenAuth();
+  // Requests a token at the endpoint of target: kLogin logs in via
+  // /_open/auth with username and password, kRenew renews the token of target
+  // via /_open/auth/renew, over the active connection if that has the token.
+  // yields no token if the server issues none (yet). Need to hold _lock
+  TokenOutcome requestToken(TokenRequest request,
+                            fuerte::ConnectionBuilder const& target,
+                            std::string const& username = "",
+                            std::string const& password = "");
 
-  // Helper function to check if JWT token needs renewal
-  bool needsTokenRenewal();
+  // The superuser token for the jwt secret, generated once per secret
+  std::string const& internalToken(std::string const& jwtSecret);
 
-  // Helper function to renew JWT token
-  ResultT<std::string> renewJwtToken();
-
-  // Switches the connection to a --server.jwt-token that the ClientFeature
-  // renewed in the background; no-op for all other authentication modes
-  void adoptRenewedJwtToken();
+  // Renews the token of the active configuration if due, and switches to a
+  // connection with the new token
+  void renewTokenIfDue();
 
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;
-  std::chrono::duration<double> _requestTimeout;
 
-  // Store credentials for JWT token renewal
-  std::string _storedUsername;
-  std::string _storedPassword;
-  std::string _currentJwtToken;
-  double _jwtTokenExpiry;  // expiration time in seconds since epoch
+  // the last superuser token, and the jwt secret it was generated with
+  std::string _internalToken;
+  std::string _internalTokenSecret;
+  std::chrono::duration<double> _requestTimeout;
 
   mutable std::recursive_mutex _lock;
   unsigned _lastHttpReturnCode;
@@ -237,24 +271,19 @@ class V8ClientConnection {
   std::string _role;
 
   fuerte::EventLoopService _loop;
-  fuerte::ConnectionBuilder _builder;
-  fuerte::ConnectionBuilder _connectedBuilder;
-  std::string _currentConnectionId;
-  std::shared_ptr<fuerte::Connection> _connection;
   bool _foundConnectionClose;
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;
 
-  // a per-endpoint, per-user cache for connections. whenever we reconnect
-  // to another endpoint, we can put the old connection into this cache,
-  // and recycle it later. the goal is to not use too many separate connections
-  // and ephemeral ports for patterns such as "connect-to-leader" ->
-  // "connect-to-follower"
-  // -> "connect-to-leader" etc.
-  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>>
-      _connectionCache;
-  std::unordered_map<std::string, fuerte::ConnectionBuilder>
-      _connectionBuilderCache;
+  // the active connection and a per-endpoint, per-user cache of inactive
+  // ones. whenever we reconnect to another endpoint, we can put the old
+  // connection into this cache, and recycle it later. the goal is to not use
+  // too many separate connections and ephemeral ports for patterns such as
+  // "connect-to-leader" -> "connect-to-follower" -> "connect-to-leader" etc.
+  // the config() of the active entry is the one to connect with next while no
+  // connection is active; whoever retargets it to another connection has to
+  // deactivate() the active connection first
+  Handles _handles;
 };
 }  // namespace arangodb

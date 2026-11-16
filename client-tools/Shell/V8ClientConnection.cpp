@@ -76,13 +76,18 @@ namespace fu = arangodb::fuerte;
 
 namespace {
 // return an identifier to a connection configuration, consisting of
-// endpoint, username, password, jwt, authentication and protocol type
-std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  std::string const raw =
-      absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
-                   builder.password(), "/", builder.jwtToken(), "/",
-                   to_string(builder.authenticationType()), "/",
-                   to_string(builder.protocolType()));
+// endpoint, username, password, jwt, authentication and protocol type.
+// the time claims of the jwt are left out, so that a renewed or regenerated
+// token for the same identity keeps the identifier
+std::string connectionIdentifier(fuerte::ConnectionBuilder const& builder) {
+  std::string const jwtToken = builder.jwtToken();
+  std::string const raw = absl::StrCat(
+      builder.normalizedEndpoint(), "/", builder.user(), "/",
+      builder.password(), "/",
+      arangodb::rest::SslInterface::jwt::extractTimelessClaims(jwtToken)
+          .value_or(jwtToken),
+      "/", to_string(builder.authenticationType()), "/",
+      to_string(builder.protocolType()));
   // create md5
   boost::hash2::md5_128 hash;
   hash.update(raw.c_str(), raw.size());
@@ -109,7 +114,6 @@ V8ClientConnection::V8ClientConnection(
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
-      _jwtTokenExpiry(0.0),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
@@ -123,11 +127,12 @@ V8ClientConnection::V8ClientConnection(
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
 
-  _builder.maxConnectRetries(3);
-  _builder.connectRetryPause(std::chrono::milliseconds(100));
-  _builder.connectTimeout(std::chrono::milliseconds(
+  _handles.config().builder.maxConnectRetries(3);
+  _handles.config().builder.connectRetryPause(std::chrono::milliseconds(100));
+  _handles.config().builder.connectTimeout(std::chrono::milliseconds(
       static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
-  _builder.onFailure([this](fu::Error err, std::string const& msg) {
+  _handles.config().builder.onFailure([this](fu::Error err,
+                                             std::string const& msg) {
     // care only about connection errors
     if (err == fu::Error::CouldNotConnect || err == fu::Error::ProtocolError) {
       std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
@@ -141,58 +146,42 @@ V8ClientConnection::V8ClientConnection(
 }
 
 V8ClientConnection::~V8ClientConnection() {
-  _builder.onFailure(nullptr);  // reset callback
+  _handles.config().builder.onFailure(nullptr);  // reset callback
   shutdownConnection();
   _loop.stop();
 }
 
 std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     bool bypassCache) {
-  if (_client.endpoint() == "none") {
+  if (endpoint() == "none") {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
 
-  auto findConnection = [bypassCache, this]() {
-    std::string id = connectionIdentifier(_builder);
-    // we will be connected to a connection by that ID
-    std::string oldConnectionId = _currentConnectionId;
-    _currentConnectionId = id;
-    // check if we have a connection for that endpoint in our cache
-    if (!bypassCache) {
-      auto it = _connectionCache.find(id);
-      auto iit = _connectionBuilderCache.find(id);
-      if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
-        _connectionCache.erase(it);
-        _connectionBuilderCache.erase(iit);
-      } else if (it != _connectionCache.end()) {
-        std::shared_ptr<fu::Connection> oldConnection;
-        auto haveOld = (_connection && _connection->state() ==
-                                           fu::Connection::State::Connected);
-        if (haveOld) {
-          _connection.swap(oldConnection);
-        }
-        auto c = (*it).second;
-        // cache hit. remove the connection from the cache and return it!
-        _connectedBuilder = (*iit).second;
-        _connectionCache.erase(it);
-        if (haveOld) {
-          _connectionCache.emplace(oldConnectionId, oldConnection);
-        }
-        return std::make_pair(c, true);
+  // try to find an existing connection in the cache
+  // the cache has one connection per endpoint. the active connection is only
+  // replaced once the new one has proven to work
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  std::string const id = connectionIdentifier(_handles.config().builder);
+  Handles::Entry candidate{nullptr, _handles.config()};
+  bool wasFromCache = false;
+  if (!bypassCache) {
+    if (auto cached = _handles.take(id); cached.has_value()) {
+      if (cached->config.builder.jwtToken() ==
+          _handles.config().builder.jwtToken()) {
+        candidate = std::move(*cached);
+        wasFromCache = true;
+      } else if (cached->connection != nullptr) {
+        // same identity, but a newer token. a connection keeps the token it
+        // was created with, so the cached one is replaced
+        cached->connection->cancel();
       }
     }
-    // no connection found in cache. create a new one
-    // remember the current builder for later use
-    _connectionBuilderCache.emplace(id, _builder);
-    _connectedBuilder = _builder;
-    return std::make_pair(_builder.connect(_loop), false);
-  };
-
-  // try to find an existing connection in the cache
-  // the cache has one connection per endpoint
-  std::lock_guard<std::recursive_mutex> guard(_lock);
-  auto [newConnection, wasFromCache] = findConnection();
+  }
+  if (candidate.connection == nullptr) {
+    candidate.connection = candidate.config.builder.connect(_loop);
+  }
+  auto newConnection = candidate.connection;
   int retryCount = wasFromCache ? 2 : 1;
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
@@ -209,7 +198,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (!res) {
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed fatally from: " << newConnection->localEndpoint();
         return nullptr;
       }
@@ -240,7 +229,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           }
           setCustomError(_lastHttpReturnCode, errorMessage);
           LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
-              << "Connection attempt to endpoint '" << _client.endpoint()
+              << "Connection attempt to endpoint '" << endpoint()
               << "' failed: " << errorMessage
               << " from: " << newConnection->localEndpoint();
           return nullptr;
@@ -254,14 +243,14 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         msg += "'";
         setCustomError(503, msg);
         LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed: " << msg
             << " from: " << newConnection->localEndpoint();
         return nullptr;
       }
 
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      _connection = newConnection;
+      // from here on, newConnection is the active connection
+      _handles.activate(id, std::move(candidate));
 
       std::string const server =
           VelocyPackHelper::getStringValue(body, "server", "");
@@ -301,19 +290,19 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           return newConnection;
         }
       }
-      return _connection;
+      return newConnection;
     } catch (fu::Error const& e) {  // connection error
       if (retryCount <= 0) {
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
-        _currentConnectionId.erase();
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed: " << msg
             << " from: " << newConnection->localEndpoint();
         return nullptr;
       } else {
-        newConnection = _builder.connect(_loop);
+        newConnection = candidate.config.builder.connect(_loop);
+        candidate.connection = newConnection;
       }
     }
   }
@@ -327,29 +316,33 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
-  if (!_connection || (_connection->state() == fu::Connection::State::Closed) ||
+  // renew the token before sending a request with it
+  renewTokenIfDue();
+
+  if (!_handles.connection() ||
+      (_handles.connection()->state() == fu::Connection::State::Closed) ||
       _foundConnectionClose) {
     _foundConnectionClose = false;
     return createConnection(bypassCache);
   }
-  return _connection;
+  return _handles.connection();
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  if (interrupted && _connection != nullptr) {
+  if (interrupted && _handles.connection() != nullptr) {
     shutdownConnection();
-  } else if (!interrupted &&
-             (_connection == nullptr ||
-              (_connection->state() == fu::Connection::State::Closed))) {
+  } else if (!interrupted && (_handles.connection() == nullptr ||
+                              (_handles.connection()->state() ==
+                               fu::Connection::State::Closed))) {
     createConnection();
   }
 }
 
 bool V8ClientConnection::isConnected() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  if (_connection) {
-    if (_connection->state() == fu::Connection::State::Connected) {
+  if (_handles.connection()) {
+    if (_handles.connection()->state() == fu::Connection::State::Connected) {
       return true;
     }
     // the client might have automatically closed the connection,
@@ -361,8 +354,8 @@ bool V8ClientConnection::isConnected() const {
 
 std::string V8ClientConnection::endpointSpecification() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  if (_connection) {
-    return _connection->endpoint();
+  if (_handles.connection()) {
+    return _handles.connection()->endpoint();
   }
   return "";
 }
@@ -381,8 +374,20 @@ void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
 
+std::string V8ClientConnection::endpoint() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.endpoint()
+                                            : _handles.config().endpoint;
+}
+
+std::string V8ClientConnection::username() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.username()
+                                            : _handles.config().username;
+}
+
 std::string V8ClientConnection::protocol() const {
-  switch (_builder.protocolType()) {
+  switch (_handles.config().builder.protocolType()) {
     case fuerte::ProtocolType::Http:
       return "http";
     case fuerte::ProtocolType::Http2:
@@ -393,183 +398,152 @@ std::string V8ClientConnection::protocol() const {
 }
 
 // Helper function to authenticate via /_open/auth endpoint
-ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
-  // Create a temporary connection builder for the auth request
-  fuerte::ConnectionBuilder tempBuilder;
-  tempBuilder.endpoint(_client.endpoint());
-
-  // Create connection without authentication
+TokenOutcome V8ClientConnection::requestToken(
+    TokenRequest request, fu::ConnectionBuilder const& target,
+    std::string const& username, std::string const& password) {
   try {
-    auto connection = tempBuilder.connect(_loop);
+    std::shared_ptr<fu::Connection> connection;
+    if (request == TokenRequest::kRenew && _handles.connection() != nullptr &&
+        _handles.connection()->state() == fu::Connection::State::Connected &&
+        _handles.config().builder.jwtToken() == target.jwtToken()) {
+      // the active connection already authenticates with the token
+      connection = _handles.connection();
+    } else {
+      // a temporary connection to the endpoint of target and with its
+      // settings, which does not report failures as errors of this
+      // connection. a login sends credentials instead of a token
+      fu::ConnectionBuilder tempBuilder = target;
+      tempBuilder.onFailure(nullptr);
+      if (request == TokenRequest::kLogin) {
+        tempBuilder.user("").password("").jwtToken("").authenticationType(
+            fu::AuthenticationType::None);
+      }
+      connection = tempBuilder.connect(_loop);
+    }
     if (!connection) {
-      return ResultT<std::string>::error(
+      return TokenOutcome::error(
           TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
           "Failed to create connection for authentication");
     }
-    // Prepare the authentication request
     auto req = std::make_unique<fu::Request>();
     req->header.restVerb = fu::RestVerb::Post;
-    req->header.path = "/_open/auth";
+    req->header.path =
+        request == TokenRequest::kLogin ? "/_open/auth" : "/_open/auth/renew";
     req->header.contentType(fu::ContentType::Json);
     req->header.acceptType(fu::ContentType::Json);
     req->timeout(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-    // Create JSON body with username and password
-    velocypack::Builder bodyBuilder;
-    bodyBuilder.openObject();
-    bodyBuilder.add("username", _client.username());
-    bodyBuilder.add("password", _client.password());
-    bodyBuilder.close();
-
-    // Add the JSON body to the request
-    std::string jsonBody = bodyBuilder.slice().toJson();
-    req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
-                   jsonBody.size());
+    if (request == TokenRequest::kLogin) {
+      velocypack::Builder bodyBuilder;
+      bodyBuilder.openObject();
+      bodyBuilder.add("username", username);
+      bodyBuilder.add("password", password);
+      bodyBuilder.close();
+      std::string jsonBody = bodyBuilder.slice().toJson();
+      req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
+                     jsonBody.size());
+    }
 
     // Send the request
     auto response = connection->sendRequest(std::move(req));
     if (!response) {
-      return ResultT<std::string>::error(
-          TRI_ERROR_FAILED, "Failed to send authentication request");
+      return TokenOutcome::error(TRI_ERROR_FAILED,
+                                 "Failed to send authentication request");
     }
-    // Parse the response to extract the JWT token
-    if (response->payloadSize() == 0) {
-      if (response->statusCode() != fuerte::StatusOK) {
-        return ResultT<std::string>::error(
-            ::ErrorCode{static_cast<int>(response->statusCode())},
-            "Empty response from authentication endpoint");
-      } else {
-        return ResultT<std::string>::error(
-            TRI_ERROR_MALFORMED_JSON,
-            "Empty response from authentication endpoint");
+    std::shared_ptr<VPackBuilder> parsedBody;
+    VPackSlice body;
+    if (response->payloadSize() > 0) {
+      try {
+        parsedBody = VPackParser::fromJson(
+            reinterpret_cast<char const*>(response->payload().data()),
+            response->payload().size());
+        body = parsedBody->slice();
+      } catch (std::exception const&) {
+        // not JSON; body stays None
       }
     }
-
-    try {
-      auto parsedBody = VPackParser::fromJson(
-          reinterpret_cast<char const*>(response->payload().data()),
-          response->payload().size());
-      auto slice = parsedBody->slice();
-
-      if (response->statusCode() != fuerte::StatusOK) {
-        std::string errorMsg = "Authentication failed with status code: " +
-                               std::to_string(response->statusCode());
-        if (slice.isObject() && slice.hasKey("errorMessage")) {
-          errorMsg =
-              VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
-        }
-
-        // This means that open/auth endpoint is not implemented and we are not
-        // communicating to the coordinator
-        if (slice.hasKey("code") && slice.get(StaticStrings::Code).isNumber()) {
-          auto const errorCode =
-              ErrorCode(slice.get(StaticStrings::Code).getNumber<int>());
-          if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
-              errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
-            return ResultT<std::string>::error(TRI_ERROR_ARANGO_TRY_AGAIN, "");
-          }
-          if (VPackSlice errorNumSlice = slice.get(StaticStrings::ErrorNum);
-              errorNumSlice.isNumber()) {
-            auto const errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
-            return ResultT<std::string>::error(errorNum, errorMsg);
-          }
-        }
-        return ResultT<std::string>::error(
-            ::ErrorCode{static_cast<int>(response->statusCode())}, errorMsg);
-      }
-      if (!slice.isObject() || !slice.hasKey("jwt")) {
-        return ResultT<std::string>::error(
-            TRI_ERROR_MALFORMED_JSON,
-            "Invalid response format from authentication endpoint");
-      }
-
-      return ResultT<std::string>::success(
-          VelocyPackHelper::getStringValue(slice, "jwt", ""));
-    } catch (std::exception const& ex) {
-      return ResultT<std::string>::error(TRI_ERROR_MALFORMED_JSON, ex.what());
-    }
+    return parseTokenReply(request, static_cast<int>(response->statusCode()),
+                           body);
   } catch (std::exception const& ex) {
-    return ResultT<std::string>::error(TRI_ERROR_FAILED, ex.what());
+    return TokenOutcome::error(TRI_ERROR_FAILED, ex.what());
   } catch (fu::Error const& ec) {
-    return ResultT<std::string>::error(TRI_ERROR_FAILED,
-                                       fuerte::v1::to_string(ec));
+    return TokenOutcome::error(TRI_ERROR_FAILED, fuerte::v1::to_string(ec));
   } catch (...) {
     // intentional fall through to error
   }
-  return ResultT<std::string>::error(TRI_ERROR_FAILED, "unknown error");
+  return TokenOutcome::error(TRI_ERROR_FAILED, "unknown error");
 }
 
-// Helper function to check if JWT token needs renewal
-bool V8ClientConnection::needsTokenRenewal() {
-  // If we don't have stored credentials, we can't renew
-  if (_storedUsername.empty() && _storedPassword.empty()) {
-    return false;
-  }
-
-  // If we don't have a JWT token or expiry time, no renewal needed
-  if (_currentJwtToken.empty() || _jwtTokenExpiry == 0.0) {
-    return false;
-  }
-
-  // Get current time in seconds since epoch
-  double now = TRI_microtime();
-
-  // Get renewal threshold from client feature (configurable via
-  // --server.jwt-renewal-threshold)
-  double renewalThreshold = _client.jwtRenewalThreshold();
-
-  // Check if token is expired or will expire within the threshold
-  return (now + renewalThreshold) >= _jwtTokenExpiry;
-}
-
-// Helper function to renew JWT token
-ResultT<std::string> V8ClientConnection::renewJwtToken() {
+void V8ClientConnection::renewTokenIfDue() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-
-  // Temporarily store the current values to restore _builder later
-  auto oldUsername = _client.username();
-  auto oldPassword = _client.password();
-
-  // Set the stored credentials for authentication
-  _client.setUsername(_storedUsername);
-  _client.setPassword(_storedPassword);
-
-  // Authenticate and get new JWT token
-  auto const res = authenticateViaOpenAuth();
-  if (res.ok()) {
-    std::string newJwtToken = res.get();
-    if (!newJwtToken.empty() && newJwtToken != "invalid") {
-      // Update the JWT token in the builder
-      _builder.jwtToken(newJwtToken);
-      _builder.authenticationType(fu::AuthenticationType::Jwt);
-
-      // Store the new token and extract its expiration time
-      _currentJwtToken = newJwtToken;
-      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-          _currentJwtToken);
-      _jwtTokenExpiry = expiry.value_or(0.0);
-
-      // Force reconnection with the new token
-      shutdownConnection();
-      createConnection();
+  std::string newToken;
+  switch (_handles.config().renewal.kind) {
+    case TokenRenewal::Kind::kNone:
+      return;
+    case TokenRenewal::Kind::kJwtTokenOption:
+      // the ClientFeature renews the --server.jwt-token in the background
+      newToken = _client.jwtToken();
+      break;
+    case TokenRenewal::Kind::kLogin: {
+      auto const now = JwtClock::now();
+      auto const threshold = std::chrono::duration_cast<JwtClock::duration>(
+          std::chrono::duration<double>{_client.jwtRenewalThreshold()});
+      if (!isRenewalDue(_handles.config().renewal.token, now, threshold)) {
+        return;
+      }
+      // a token that is still valid is renewed without sending the password.
+      // an expired one, or one the server refuses to renew, requires logging
+      // in again at the server of this connection, as the user it was created
+      // for
+      auto const outcome = [&]() -> TokenOutcome {
+        auto const& config = _handles.config();
+        auto const& expiresAt = config.renewal.token.expiresAt;
+        if (expiresAt.has_value() && now < *expiresAt) {
+          auto renewed = requestToken(TokenRequest::kRenew, config.builder);
+          if (renewed.ok()) {
+            return renewed;
+          }
+        }
+        return requestToken(TokenRequest::kLogin, config.builder,
+                            config.username, config.renewal.password);
+      }();
+      if (outcome.fail()) {
+        LOG_TOPIC("7552f", WARN, arangodb::Logger::AUTHENTICATION)
+            << "renewing the JWT token of user '" << _handles.config().username
+            << "' at '" << _handles.config().endpoint
+            << "' failed: " << outcome.errorMessage() << "; retrying in "
+            << kRenewalRetryInterval.count() << " seconds at the earliest";
+      }
+      _handles.config().renewal.token = applyRenewal(
+          std::move(_handles.config().renewal.token), outcome, now);
+      newToken = _handles.config().renewal.token.token;
+      break;
     }
-    // Restore original client credentials (in case they were different)
-    _client.setUsername(oldUsername);
-    _client.setPassword(oldPassword);
   }
-  return res;
-}
-
-void V8ClientConnection::adoptRenewedJwtToken() {
-  std::lock_guard<std::recursive_mutex> guard(_lock);
-  auto const token = _client.jwtToken();
-  if (token.empty() || token == _builder.jwtToken()) {
+  if (newToken.empty() || newToken == _handles.config().builder.jwtToken()) {
     return;
   }
-  _builder.jwtToken(token);
-  shutdownConnection();
-  createConnection();
+  // a connection keeps the token it was created with, so switch to a new
+  // one. its identifier stays the same, so it supersedes the old connection
+  _handles.config().builder.jwtToken(newToken);
+  if (_handles.connection() != nullptr) {
+    shutdownConnection();
+    createConnection();
+  }
+}
+
+std::string const& V8ClientConnection::internalToken(
+    std::string const& jwtSecret) {
+  // superuser tokens do not expire, and a new one would only differ in its
+  // "iat" claim. reusing it lets a reconnect reuse the cached connection,
+  // which keeps the token it was created with
+  if (_internalToken.empty() || _internalTokenSecret != jwtSecret) {
+    _internalToken = arangodb::rest::SslInterface::jwt::generateInternalToken(
+        jwtSecret, "arangosh");
+    _internalTokenSecret = jwtSecret;
+  }
+  return _internalToken;
 }
 
 ResultT<std::string> V8ClientConnection::prepareConnection() {
@@ -577,55 +551,61 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
-  _builder.endpoint(_client.endpoint());
+
+  // configure a copy, so that a failed login leaves the configuration
+  // untouched. each authentication mode clears the fields of the others;
+  // leftovers would become part of the connection identifier
+  fu::ConnectionBuilder builder = _handles.config().builder;
+  builder.endpoint(_client.endpoint());
+  TokenRenewal renewal;
+  auto const useJwt = [&builder](std::string const& token) {
+    builder.jwtToken(token).user("").password("").authenticationType(
+        fu::AuthenticationType::Jwt);
+  };
 
   // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
   TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
 
   if (!_client.jwtToken().empty()) {
-    _builder.jwtToken(_client.jwtToken());
-    _builder.authenticationType(fu::AuthenticationType::Jwt);
-    return ResultT<std::string>::success("");
+    useJwt(_client.jwtToken());
+    renewal.kind = TokenRenewal::Kind::kJwtTokenOption;
   } else if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
-        _client.jwtSecret(), "arangosh"));
-    _builder.authenticationType(fu::AuthenticationType::Jwt);
-    return ResultT<std::string>::success("");
+    useJwt(internalToken(_client.jwtSecret()));
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
-    auto const res = authenticateViaOpenAuth();
-    std::string jwtToken;
-
-    if (res.ok()) {
-      jwtToken = res.get();
-      // Server has authentication enabled, use the JWT token
-      _builder.jwtToken(jwtToken);
-      _builder.authenticationType(fu::AuthenticationType::Jwt);
-
-      // Store credentials and JWT token for automatic renewal
-      _storedUsername = _client.username();
-      _storedPassword = _client.password();
-      _currentJwtToken = jwtToken;
-
-      // Extract and store the expiration time
-      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-          _currentJwtToken);
-      _jwtTokenExpiry = expiry.value_or(0.0);
+    auto const login = requestToken(TokenRequest::kLogin, builder,
+                                    _client.username(), _client.password());
+    if (login.fail()) {
+      return ResultT<std::string>::error(login.errorNumber(),
+                                         login.errorMessage());
     }
-    if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
-        jwtToken == "invalid") {
-      // This happens only on agents and dbsevers since they do noe implement
-      // _open/auth API and we will try basic auth. Used only in tests
-      _builder.user(_client.username()).password(_client.password());
-      _builder.authenticationType(fu::AuthenticationType::Basic);
-
-      // Store credentials for potential future use
-      _storedUsername = _client.username();
-      _storedPassword = _client.password();
+    if (auto const& token = login.get(); token.has_value()) {
+      // Server has authentication enabled, use the JWT token and keep the
+      // credentials for renewing it
+      useJwt(*token);
+      renewal = TokenRenewal{.kind = TokenRenewal::Kind::kLogin,
+                             .password = _client.password(),
+                             .token = tokenStateFor(*token, JwtClock::now())};
+    } else {
+      // the server does not implement the _open/auth API, or has
+      // authentication disabled and issues no real token: use basic auth
+      builder.user(_client.username())
+          .password(_client.password())
+          .jwtToken("")
+          .authenticationType(fu::AuthenticationType::Basic);
     }
-    return res;
+  } else {
+    builder.user("").password("").jwtToken("").authenticationType(
+        fu::AuthenticationType::None);
   }
+  // the configuration describes the active connection, so put that into the
+  // cache for later reuse before retargeting it
+  _handles.deactivate();
+  _handles.config() = Configuration{.builder = std::move(builder),
+                                    .renewal = std::move(renewal),
+                                    .endpoint = _client.endpoint(),
+                                    .username = _client.username()};
   return ResultT<std::string>::success("");
 }
 
@@ -641,35 +621,16 @@ ResultT<std::string> V8ClientConnection::connect() {
 ResultT<std::string> V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
-
   auto res = prepareConnection();
   if (!res.ok()) {
     return res;
   }
 
-  std::shared_ptr<fu::Connection> oldConnection;
-  _connection.swap(oldConnection);
-  if (oldConnection) {
-    if (oldConnection->state() == fu::Connection::State::Closed) {
-      LOG_TOPIC("7aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-          << "connection state is closed of " << oldConnectionId
-          << " not putting back to cache";
-      oldConnection->cancel();
-    } else {
-      // a non-closed connection. now try to insert it into the connection
-      // cache for later reuse
-      _connectionCache.emplace(oldConnectionId, oldConnection);
-      _currentConnectionId = oldConnectionId;
-      _connectionBuilderCache.emplace(oldConnectionId, _connectedBuilder);
-    }
-  }
-  oldConnection.reset();
   try {
     createConnection();
   } catch (...) {
     return ResultT<std::string>::error(TRI_ERROR_FAILED,
-                                       "error in '" + _client.endpoint() + "'");
+                                       "error in '" + endpoint() + "'");
   }
 
   if (isConnected() &&
@@ -681,9 +642,8 @@ ResultT<std::string> V8ClientConnection::reconnect() {
   } else {
     if (_client.getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::HTTPCLIENT)
-          << "Could not connect to endpoint '" << _client.endpoint()
-          << "', username: '" << _client.username()
-          << "' - Server message: " << _lastErrorMessage;
+          << "Could not connect to endpoint '" << endpoint() << "', username: '"
+          << _client.username() << "' - Server message: " << _lastErrorMessage;
     }
     return ResultT<std::string>::error(
         TRI_ERROR_FAILED,
@@ -692,7 +652,7 @@ ResultT<std::string> V8ClientConnection::reconnect() {
   return ResultT<std::string>::success("");
 }
 
-std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
+std::string V8ClientConnection::getHandle() { return _handles.activeHandle(); }
 
 void V8ClientConnection::getConnectionHandleTable(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -739,23 +699,14 @@ void V8ClientConnection::getConnectionHandleTable(
         table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
       };
 
-  bool foundCurrentConnection = false;
-
-  for (auto const& [id, cachedConn] : _connectionCache) {
-    if (cachedConn != nullptr) {
-      auto builderIt = _connectionBuilderCache.find(id);
-      if (builderIt != _connectionBuilderCache.end()) {
-        addEntry(id, cachedConn, builderIt->second, /*isActive=*/false);
-      }
-    } else {
-      // Connection was taken from cache and is now the active connection
-      addEntry(id, _connection, _builder, /*isActive=*/true);
-      foundCurrentConnection = true;
-    }
+  for (auto const& [id, cached] : _handles.inactive()) {
+    addEntry(id, cached.connection, cached.config.builder, /*isActive=*/false);
   }
 
-  if (!foundCurrentConnection && _connection != nullptr) {
-    addEntry(_currentConnectionId, _connection, _builder, /*isActive=*/true);
+  if (_handles.connection() != nullptr) {
+    addEntry(_handles.activeHandle(), _handles.connection(),
+             _handles.config().builder,
+             /*isActive=*/true);
   }
 
   TRI_V8_RETURN(table);
@@ -769,32 +720,23 @@ void V8ClientConnection::connectHandle(
       << "Connecting to handle: " << handle;
 #endif
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  if (_currentConnectionId == handle) {
-    _builder = _connectedBuilder;
+  if (_handles.activeHandle() == handle) {
     // its the currently active one
     TRI_V8_RETURN_TRUE();
     return;
   }
   // check if we have a connection for that endpoint in our cache
-  auto it = _connectionCache.find(handle);
-  auto iit = _connectionBuilderCache.find(handle);
-  if (it != _connectionCache.end() && iit != _connectionBuilderCache.end()) {
-    // cache hit. remove the connection from the cache and return it!
-    std::shared_ptr<fu::Connection> oldConnection;
-    std::string oldConnectionId = _currentConnectionId;
-    _connection.swap(oldConnection);
-    _connection.swap(it->second);
-    _connectionCache.erase(it);
-    _connectionCache.emplace(oldConnectionId, oldConnection);
-    _currentConnectionId = handle;
-    _builder = (*iit).second;
-    _connectedBuilder = _builder;
-
-    TRI_V8_RETURN_TRUE();
-  } else {
+  auto cached = _handles.take(handle);
+  if (!cached.has_value()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                    "Handle not found in the connection list");
   }
+  // cache hit. make it the active connection, caching the previous one. it
+  // brings its own renewal state, so an expired token is renewed on the next
+  // request
+  _handles.activate(handle, std::move(*cached));
+
+  TRI_V8_RETURN_TRUE();
 }
 
 void V8ClientConnection::disconnectHandle(
@@ -802,23 +744,17 @@ void V8ClientConnection::disconnectHandle(
     std::string const& handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
-  auto it = _connectionCache.find(handle);
-  if (it != _connectionCache.end()) {
-    auto c = (*it).second;
-    // cache hit. remove the connection from the cache!
-    _connectionCache.erase(it);
+  if (_handles.take(handle).has_value()) {
+    // cache hit. it is now removed from the cache
+    TRI_V8_RETURN_TRUE();
+  } else if (!_handles.activeHandle().empty() &&
+             _handles.activeHandle() == handle) {
+    // our main connection is the one to trash.
+    _handles.dropActive();
     TRI_V8_RETURN_TRUE();
   } else {
-    auto id = connectionIdentifier(_builder);
-    if (id == handle) {
-      // our main connection is the one to trash.
-      _connection.reset();
-      _currentConnectionId.erase();
-      TRI_V8_RETURN_TRUE();
-    } else {
-      // we don't know that connection?
-      TRI_V8_RETURN_FALSE();
-    }
+    // we don't know that connection?
+    TRI_V8_RETURN_FALSE();
   }
 }
 
@@ -826,10 +762,7 @@ void V8ClientConnection::flushConnectionCache(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  _connectionCache.clear();
-  _connectionBuilderCache.clear();
-  _connection.reset();
-  _currentConnectionId.erase();
+  _handles.clear();
   TRI_V8_RETURN_TRUE();
 }
 
@@ -1284,16 +1217,18 @@ static void ClientConnection_connectedUser(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  if (client == nullptr) {
+  if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
         "connectedUser() must be invoked on an arango connection object "
         "instance.");
   }
 
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+  // the user of the active connection, which connectHandle() may have
+  // switched to
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, v8connection->username()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1955,7 +1890,9 @@ static void ClientConnection_getEndpoint(
     TRI_V8_THROW_EXCEPTION_USAGE("getEndpoint()");
   }
 
-  TRI_V8_RETURN_STD_STRING(client->endpoint());
+  // the endpoint of the active connection, which connectHandle() may have
+  // switched to
+  TRI_V8_RETURN_STD_STRING(v8connection->endpoint());
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3134,12 +3071,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
-  // Check if JWT token needs renewal before sending request
-  if (needsTokenRenewal()) {
-    renewJwtToken();
-  }
-  adoptRenewedJwtToken();
-
   bool retry = true;
 
 again:
@@ -3216,12 +3147,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  // Check if JWT token needs renewal before sending request
-  if (needsTokenRenewal()) {
-    renewJwtToken();
-  }
-  adoptRenewedJwtToken();
-
   bool retry = true;
 
 again:
@@ -3315,7 +3240,7 @@ void V8ClientConnection::forceNewConnection() {
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
-  // createConnection will populate _connection
+  // createConnection will populate the active connection
   createConnection(/*bypassCache*/ true);
 }
 
@@ -3572,7 +3497,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
 void V8ClientConnection::shutdownConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  if (_connection) {
-    _connection->cancel();
+  if (_handles.connection()) {
+    _handles.connection()->cancel();
   }
 }

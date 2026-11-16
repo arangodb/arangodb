@@ -28,6 +28,7 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <openssl/evp.h>
@@ -184,6 +185,24 @@ std::optional<std::string> extractPreferredUsername(std::string_view token) {
     return std::nullopt;
   }
   return username.copyString();
+}
+
+std::optional<std::string> extractTimelessClaims(std::string_view token) {
+  auto const claims = decodeClaims(token);
+  if (claims == nullptr) {
+    return std::nullopt;
+  }
+  velocypack::Builder timeless;
+  timeless.openObject();
+  for (auto const& [key, value] : velocypack::ObjectIterator(
+           claims->slice(), /*useSequentialIteration*/ true)) {
+    auto const name = key.stringView();
+    if (name != "iat" && name != "nbf" && name != "exp") {
+      timeless.add(name, value);
+    }
+  }
+  timeless.close();
+  return timeless.slice().toJson();
 }
 
 }  // namespace arangodb::rest::SslInterface::jwt
