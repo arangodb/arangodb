@@ -483,13 +483,13 @@
       dumpAgencyOnError: true
     suites:
       - hot_backup
+      - BackupAuthNoSysTests
       - hot_backup_views
+      - BackupAuthSysTests
       - hot_backup_aql
+      - BackupNoAuthSysTests
       - hot_backup_smart_graphs
       - hot_backup_el_cheapo
-      - BackupAuthNoSysTests
-      - BackupAuthSysTests
-      - BackupNoAuthSysTests
       - BackupNoAuthNoSysTests
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
