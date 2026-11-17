@@ -63,8 +63,13 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
     builder.add("vectorListsScanned", VPackValue(vectorListsScanned));
     builder.add("vectorDistancesComputed", VPackValue(vectorDistancesComputed));
     builder.add("vectorHeapUpdates", VPackValue(vectorHeapUpdates));
+    builder.add("vectorFastScanSearches", VPackValue(vectorFastScanSearches));
+    builder.add("vectorRerankCandidates", VPackValue(vectorRerankCandidates));
     builder.add("vectorCoarseSearchTime", VPackValue(vectorCoarseSearchTime));
+    builder.add("vectorListReadTime", VPackValue(vectorListReadTime));
     builder.add("vectorListScanTime", VPackValue(vectorListScanTime));
+    builder.add("vectorRerankTime", VPackValue(vectorRerankTime));
+    builder.add("vectorSearchTime", VPackValue(vectorSearchTime));
   }
 
   if (!_nodes.empty()) {
@@ -109,8 +114,13 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   vectorListsScanned += summand.vectorListsScanned;
   vectorDistancesComputed += summand.vectorDistancesComputed;
   vectorHeapUpdates += summand.vectorHeapUpdates;
+  vectorFastScanSearches += summand.vectorFastScanSearches;
+  vectorRerankCandidates += summand.vectorRerankCandidates;
   vectorCoarseSearchTime += summand.vectorCoarseSearchTime;
+  vectorListReadTime += summand.vectorListReadTime;
   vectorListScanTime += summand.vectorListScanTime;
+  vectorRerankTime += summand.vectorRerankTime;
+  vectorSearchTime += summand.vectorSearchTime;
   // intentionally no modification of executionTime, as the overall
   // time is calculated in the end
 
@@ -177,8 +187,13 @@ ExecutionStats::ExecutionStats() noexcept
       vectorListsScanned(0),
       vectorDistancesComputed(0),
       vectorHeapUpdates(0),
+      vectorFastScanSearches(0),
+      vectorRerankCandidates(0),
       vectorCoarseSearchTime(0.0),
-      vectorListScanTime(0.0) {}
+      vectorListReadTime(0.0),
+      vectorListScanTime(0.0),
+      vectorRerankTime(0.0),
+      vectorSearchTime(0.0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
   if (!slice.isObject()) {
@@ -237,10 +252,20 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "vectorDistancesComputed", 0);
   vectorHeapUpdates = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "vectorHeapUpdates", 0);
+  vectorFastScanSearches = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorFastScanSearches", 0);
+  vectorRerankCandidates = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "vectorRerankCandidates", 0);
   vectorCoarseSearchTime = basics::VelocyPackHelper::getNumericValue<double>(
       slice, "vectorCoarseSearchTime", 0.0);
+  vectorListReadTime = basics::VelocyPackHelper::getNumericValue<double>(
+      slice, "vectorListReadTime", 0.0);
   vectorListScanTime = basics::VelocyPackHelper::getNumericValue<double>(
       slice, "vectorListScanTime", 0.0);
+  vectorRerankTime = basics::VelocyPackHelper::getNumericValue<double>(
+      slice, "vectorRerankTime", 0.0);
+  vectorSearchTime = basics::VelocyPackHelper::getNumericValue<double>(
+      slice, "vectorSearchTime", 0.0);
 
   // note: fullCount is an optional attribute!
   if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
@@ -314,8 +339,13 @@ void ExecutionStats::clear() noexcept {
   vectorListsScanned = 0;
   vectorDistancesComputed = 0;
   vectorHeapUpdates = 0;
+  vectorFastScanSearches = 0;
+  vectorRerankCandidates = 0;
   vectorCoarseSearchTime = 0.0;
+  vectorListReadTime = 0.0;
   vectorListScanTime = 0.0;
+  vectorRerankTime = 0.0;
+  vectorSearchTime = 0.0;
   _nodes.clear();
 }
 

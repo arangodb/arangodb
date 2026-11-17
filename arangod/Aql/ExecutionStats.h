@@ -136,11 +136,26 @@ struct ExecutionStats {
   /// @brief number of top-k heap updates during list scans
   uint64_t vectorHeapUpdates = 0;
 
+  /// @brief number of searches served by the RaBitQ FastScan path
+  uint64_t vectorFastScanSearches = 0;
+
+  /// @brief number of candidates reranked with exact distances
+  uint64_t vectorRerankCandidates = 0;
+
   /// @brief time spent comparing query points against centroids (seconds)
   double vectorCoarseSearchTime = 0.0;
 
+  /// @brief time spent reading packed lists, FastScan path only (seconds)
+  double vectorListReadTime = 0.0;
+
   /// @brief time spent scanning the probed lists (seconds)
   double vectorListScanTime = 0.0;
+
+  /// @brief time spent reranking candidates with exact distances (seconds)
+  double vectorRerankTime = 0.0;
+
+  /// @brief total time spent in the vector index search (seconds)
+  double vectorSearchTime = 0.0;
 
  private:
   /// @brief Node aliases, source => target.

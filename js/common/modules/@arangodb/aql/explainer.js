@@ -380,19 +380,29 @@ function printVectorStats(stats) {
   }
 
   const spc = '      ';
-  const columns = [
+  const seconds = (val) => (val || 0).toFixed(5);
+  const counts = [
     ['Searches', stats.vectorSearches],
+    ['FastScan Searches', stats.vectorFastScanSearches || 0],
     ['Lists Scanned', stats.vectorListsScanned],
     ['Distances', stats.vectorDistancesComputed],
     ['Heap Updates', stats.vectorHeapUpdates],
-    ['Coarse Time [s]', stats.vectorCoarseSearchTime.toFixed(5)],
-    ['List Scan Time [s]', stats.vectorListScanTime.toFixed(5)],
+    ['Rerank Candidates', stats.vectorRerankCandidates || 0],
+  ];
+  const times = [
+    ['Search Time [s]', seconds(stats.vectorSearchTime)],
+    ['Coarse Time [s]', seconds(stats.vectorCoarseSearchTime)],
+    ['List Read Time [s]', seconds(stats.vectorListReadTime)],
+    ['List Scan Time [s]', seconds(stats.vectorListScanTime)],
+    ['Rerank Time [s]', seconds(stats.vectorRerankTime)],
   ];
 
   stringBuilder.appendLine(section('Vector Search Statistics:'));
-  stringBuilder.appendLine(' ' + columns.map(([name]) => header(name)).join(spc));
-  stringBuilder.appendLine(' ' + columns.map(([name, val]) =>
-    pad(1 + name.length - String(val).length) + value(val)).join(spc));
+  for (const columns of [counts, times]) {
+    stringBuilder.appendLine(' ' + columns.map(([name]) => header(name)).join(spc));
+    stringBuilder.appendLine(' ' + columns.map(([name, val]) =>
+      pad(1 + name.length - String(val).length) + value(val)).join(spc));
+  }
   stringBuilder.appendLine();
 }
 

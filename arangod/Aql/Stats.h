@@ -245,16 +245,26 @@ struct EnumerateNearVectorStats {
   std::uint64_t listsScanned = 0;
   std::uint64_t distancesComputed = 0;
   std::uint64_t heapUpdates = 0;
+  std::uint64_t fastScanSearches = 0;
+  std::uint64_t rerankCandidates = 0;
   double coarseSearchTime = 0.0;
+  double listReadTime = 0.0;
   double listScanTime = 0.0;
+  double rerankTime = 0.0;
+  double searchTime = 0.0;
 
   void operator+=(EnumerateNearVectorStats const& stats) noexcept {
     searches += stats.searches;
     listsScanned += stats.listsScanned;
     distancesComputed += stats.distancesComputed;
     heapUpdates += stats.heapUpdates;
+    fastScanSearches += stats.fastScanSearches;
+    rerankCandidates += stats.rerankCandidates;
     coarseSearchTime += stats.coarseSearchTime;
+    listReadTime += stats.listReadTime;
     listScanTime += stats.listScanTime;
+    rerankTime += stats.rerankTime;
+    searchTime += stats.searchTime;
   }
 };
 
@@ -265,8 +275,13 @@ inline ExecutionStats& operator+=(
   executionStats.vectorListsScanned += vectorStats.listsScanned;
   executionStats.vectorDistancesComputed += vectorStats.distancesComputed;
   executionStats.vectorHeapUpdates += vectorStats.heapUpdates;
+  executionStats.vectorFastScanSearches += vectorStats.fastScanSearches;
+  executionStats.vectorRerankCandidates += vectorStats.rerankCandidates;
   executionStats.vectorCoarseSearchTime += vectorStats.coarseSearchTime;
+  executionStats.vectorListReadTime += vectorStats.listReadTime;
   executionStats.vectorListScanTime += vectorStats.listScanTime;
+  executionStats.vectorRerankTime += vectorStats.rerankTime;
+  executionStats.vectorSearchTime += vectorStats.searchTime;
   return executionStats;
 }
 

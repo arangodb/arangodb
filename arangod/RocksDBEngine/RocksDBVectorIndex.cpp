@@ -522,6 +522,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       << config.topK << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
+  using Clock = std::chrono::steady_clock;
+  auto const searchStart = Clock::now();
+
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
@@ -584,8 +587,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   if (rerank) {
+    auto const rerankStart = Clock::now();
+    result.stats.rerankCandidates = std::ranges::count_if(
+        result.labels, [](auto const label) { return label >= 0; });
     std::tie(result.labels, result.distances) =
         rerankExact(inputs, result.labels, config.topK, ctx.trx);
+    result.stats.rerankTime =
+        std::chrono::duration<double>(Clock::now() - rerankStart).count();
   }
 
   // faiss returns squared distances for L2, square them so they are returned in
@@ -595,6 +603,8 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
                            [](auto const& elem) { return std::sqrt(elem); });
   }
 
+  result.stats.searchTime =
+      std::chrono::duration<double>(Clock::now() - searchStart).count();
   return result;
 }
 
@@ -705,6 +715,7 @@ aql::EnumerateNearVectorStats RocksDBVectorIndex::searchFastScan(
   auto const coarseDone = Clock::now();
 
   auto lists = readPackedLists(listIds, trx);
+  auto const readDone = Clock::now();
   // Per-query copy so that concurrent searches do not share `invlists`.
   faiss::IndexIVFRaBitQFastScan fastScanIndex(*_fastScanIndex);
   fastScanIndex.invlists = &lists;
@@ -727,10 +738,13 @@ aql::EnumerateNearVectorStats RocksDBVectorIndex::searchFastScan(
       .searches = 1,
       .listsScanned = lists.nonEmptyLists(),
       .distancesComputed = lists.totalEntries(),
+      .fastScanSearches = 1,
       .coarseSearchTime =
           std::chrono::duration<double>(coarseDone - start).count(),
+      .listReadTime =
+          std::chrono::duration<double>(readDone - coarseDone).count(),
       .listScanTime =
-          std::chrono::duration<double>(scanDone - coarseDone).count(),
+          std::chrono::duration<double>(scanDone - readDone).count(),
   };
 }
 
