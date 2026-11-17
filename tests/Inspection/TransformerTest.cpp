@@ -41,9 +41,9 @@ TEST_F(TimeStampTransformerTest, transforms_min) {
   auto result = transformer.toSerialized(TimeStamp::min(), target);
 
   ASSERT_TRUE(result.ok()) << result.error();
-  ASSERT_EQ(
-      std::format("%FT%TZ", floor<std::chrono::seconds>(TimeStamp::min())),
-      target);
+  ASSERT_EQ(std::format("{0:%F}T{0:%T}Z",
+                        floor<std::chrono::seconds>(TimeStamp::min())),
+            target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_now) {
@@ -53,7 +53,8 @@ TEST_F(TimeStampTransformerTest, transforms_now) {
   auto result = transformer.toSerialized(now, target);
 
   ASSERT_TRUE(result.ok()) << result.error();
-  ASSERT_EQ(std::format("%FT%TZ", floor<std::chrono::seconds>(now)), target);
+  ASSERT_EQ(std::format("{0:%F}T{0:%T}Z", floor<std::chrono::seconds>(now)),
+            target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_back) {
