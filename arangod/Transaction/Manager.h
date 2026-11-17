@@ -97,8 +97,16 @@ class Manager final : public IManager {
     ~ManagedTrx();
 
     bool hasPerformedIntermediateCommits() const noexcept;
+    /// @brief whether the transaction's time-to-live has run out
     bool expired() const noexcept;
     void updateExpiry() noexcept;
+    /// @brief mark the transaction for abortion. it is aborted by
+    /// returnManagedTrx() once its current user returns it, or by the next
+    /// garbage collection run otherwise. must be called under the bucket's
+    /// write lock
+    void softAbort() noexcept;
+    /// @brief whether the transaction was soft-aborted
+    bool aborted() const noexcept;
 
     /// @brief managed, AQL or tombstone
     MetaType type;
@@ -107,6 +115,9 @@ class Manager final : public IManager {
     bool intermediateCommits;
     /// @brief whether or not the transaction did expire at least once
     bool wasExpired;
+    /// @brief whether or not the transaction was soft-aborted, i.e. marked
+    /// to be aborted as soon as it is no longer in use
+    bool softAborted;
     /// @brief number of (reading) side users of the transaction. this number
     /// is currently only increased on DB servers when they handle incoming
     /// requests by the AQL document function. while this number is > 0, there
@@ -206,6 +217,13 @@ class Manager final : public IManager {
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /// @brief test-only access to softAbortManagedTrx()
+  bool softAbortManagedTrxForTesting(TransactionId tid) noexcept {
+    return softAbortManagedTrx(tid);
+  }
+#endif
 
   /// @brief a managed transaction selected for a bulk operation
   struct SelectedTrx {
@@ -314,8 +332,8 @@ class Manager final : public IManager {
   /// @brief Aborts a managed transaction. Should it be still in
   /// use, soft-abort instead, so it is aborted when its current
   /// user returns it, or by the next garbage collection run
-  Result abortOrSoftAbortManagedTrx(TransactionId tid,
-                                    std::string const& database);
+  futures::Future<Result> abortOrSoftAbortManagedTrx(
+      TransactionId tid, std::string const& database);
 
   /// @brief Mark a managed transaction expired, it is aborted
   /// when it is returned by its current user or by the next garbage
