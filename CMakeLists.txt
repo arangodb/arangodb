@@ -154,12 +154,12 @@ if(STATIC_EXECUTABLES)
   if(USE_FIPS)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
     execute_process(
-      COMMAND gcc -print-file-name=libatomic.a
+      COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libatomic.a
       OUTPUT_VARIABLE _libatomic_path
       OUTPUT_STRIP_TRAILING_WHITESPACE
-      RESULT_VARIABLE GCC_LIBATOMIC_RESULT
+      RESULT_VARIABLE LIBATOMIC_RESULT
     )
-    if(GCC_LIBATOMIC_RESULT OR NOT EXISTS "${_libatomic_path}")
+    if(LIBATOMIC_RESULT OR NOT EXISTS "${_libatomic_path}")
       message(FATAL_ERROR "Static libatomic not found (required for USE_FIPS).")
     endif()
     message(STATUS "FIPS: forcing static libatomic from ${_libatomic_path}")

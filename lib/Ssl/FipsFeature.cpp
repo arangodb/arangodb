@@ -29,18 +29,16 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LogTopic.h"
 
 #define OPENSSL_THREAD_DEFINES
 #include <openssl/conf.h>
 #include <openssl/evp.h>
-#include <openssl/opensslconf.h>
 #include <openssl/provider.h>
 #include <openssl/ssl.h>
 
-#ifndef OPENSSL_THREADS
-#error missing thread support for openssl, please recomple OpenSSL with threads
-#endif
+#include <algorithm>
+#include <string_view>
+
 #endif  // USE_FIPS
 
 using namespace arangodb::basics;
@@ -48,26 +46,30 @@ using namespace arangodb::options;
 
 namespace arangodb {
 #ifdef USE_FIPS
-// We want the base and fips providers to be the only providers that loaded,
-// so before we start we check if there is already something loaded, if yes:
-// something in the order changed, and we need to abort as we do not want to
-// allow any way around fips. Even when the module, that is already loaded, is
-// fips, we want this here be the only source of truth.
-void assertNoProviderYetLoaded() {
-  bool foundLoadedProvider = false;
+// We want the base and fips providers to be the only providers that were
+// loaded, so after we are done this should make sure that's the case.
+void assertOnlyFipsAndBaseProviderAreLoaded() {
+  std::vector<std::string_view> foundProviders;
   OSSL_PROVIDER_do_all(
       nullptr,
-      [](OSSL_PROVIDER*, void* arg) -> int {
-        bool& foundLoadedProvider = *static_cast<bool*>(arg);
-        foundLoadedProvider = true;
-        return 0;
+      [](OSSL_PROVIDER* const pr, void* arg) -> int {
+        auto foundProviders = static_cast<std::vector<std::string_view>*>(arg);
+        foundProviders->emplace_back(OSSL_PROVIDER_get0_name(pr));
+        return 1;
       },
-      &foundLoadedProvider);
+      &foundProviders);
 
-  if (foundLoadedProvider) {
+  if (!std::ranges::is_permutation(
+          foundProviders, std::array<std::string_view, 2>{"fips", "base"})) {
+    std::string providerList{"["};
+    for (auto const& provider : foundProviders) {
+      providerList.append(provider);
+      providerList.append(",");
+    }
+    providerList.back() = ']';
     LOG_TOPIC("20e5d", FATAL, Logger::SSL)
-        << "An OpenSSL provider was found to be loaded before fips and base. "
-        << "This could allow to circumvent fips.";
+        << "Expected [fips, base] to be the only providers to be loaded found: "
+        << providerList;
     FATAL_ERROR_EXIT();
   }
 }
@@ -86,8 +88,6 @@ FipsFeature::FipsFeature(application_features::ApplicationServer& server,
 void FipsFeature::prepare() {
 #ifdef USE_FIPS
   if (_options.enableFips) {
-    assertNoProviderYetLoaded();
-
     if (OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1 ||
         OPENSSL_init_ssl(OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1) {
       LOG_TOPIC("19f8c", FATAL, Logger::SSL) << "Failed to initialize OpenSSL";
@@ -129,6 +129,9 @@ void FipsFeature::prepare() {
           << "Failed to enable FIPS as default OpenSSL property";
       FATAL_ERROR_EXIT();
     }
+
+    assertOnlyFipsAndBaseProviderAreLoaded();
+
     LOG_TOPIC("eb4c5", INFO, Logger::SSL)
         << "FIPS module was loaded successfully.";
   }
