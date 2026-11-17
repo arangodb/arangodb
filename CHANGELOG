@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2542: Fix `/_admin/cluster/shardDistribution` reporting the shards of
+  SmartGraph edge collections as never in sync, because their `Current` entries
+  were looked up under the virtual collection instead of its shadow collections.
+
 * Patch FAISS v1.16.0 with alubsan fix.
 
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
