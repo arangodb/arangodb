@@ -674,8 +674,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -945,8 +945,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -1039,8 +1039,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(consolidate_all), callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }

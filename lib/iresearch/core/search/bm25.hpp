@@ -68,8 +68,9 @@ class BM25 final : public irs::ScorerBase<BM25, BM25Stats> {
 
   static void init();  // for trigering registration in a static build
 
-  BM25(float_t k = K(), float_t b = B(), bool boost_as_score = BOOST_AS_SCORE())
-  noexcept : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
+  BM25(float_t k = K(), float_t b = B(),
+       bool boost_as_score = BOOST_AS_SCORE()) noexcept
+    : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
   void collect(byte_type* stats_buf, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final;
