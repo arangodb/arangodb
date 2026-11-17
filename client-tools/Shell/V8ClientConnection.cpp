@@ -303,6 +303,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
             << " from: " << newConnection->localEndpoint();
         return nullptr;
       } else {
+        newConnection->cancel();
         newConnection = candidate.config.builder.connect(_loop);
         candidate.connection = newConnection;
       }
