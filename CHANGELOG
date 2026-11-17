@@ -10,6 +10,8 @@
   Docker image is provided. Docker images are now based on Ubuntu 26.04 instead
   of Alpine.
 
+* Patch FAISS v1.16.0 with alubsan fix.
+
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
   the vector attribute of a vector index without `storedValues`.
 
