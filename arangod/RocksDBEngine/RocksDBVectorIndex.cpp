@@ -145,12 +145,15 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
   return searchCtx;
 }
 
-constexpr std::size_t kRerankOversamplingFactor = 2;
-constexpr std::size_t kRerankMinCandidates = 100;
+constexpr double kRerankPoolCoefficient = 3.0;
+constexpr double kRerankPoolNProbeExponent = 0.15;
 
-// Small topK gets a fixed floor, large topK oversamples linearly
-std::size_t rerankCandidates(std::size_t topK) noexcept {
-  return std::max(topK * kRerankOversamplingFactor, kRerankMinCandidates);
+// Rerank pool sizing from pg_vectorsearch (PRISM): 3 * k * nProbe^0.15
+std::size_t rerankCandidates(std::size_t topK, std::size_t nProbe) noexcept {
+  auto const pool = std::lround(
+      kRerankPoolCoefficient * static_cast<double>(topK) *
+      std::pow(static_cast<double>(nProbe), kRerankPoolNProbeExponent));
+  return std::max(static_cast<std::size_t>(pool), topK);
 }
 
 RocksDBValue makeVectorIndexValue(
@@ -525,7 +528,10 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   bool const isQuantized =
       _faissIndex->code_size < _definition.dimension * sizeof(float);
   bool const rerank = config.searchParameters.rerank.value_or(isQuantized);
-  auto const candidates = rerank ? rerankCandidates(config.topK) : config.topK;
+  auto const nProbe =
+      config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
+  auto const candidates =
+      rerank ? rerankCandidates(config.topK, nProbe) : config.topK;
   result.distances.resize(candidates);
   result.labels.resize(candidates);
 
@@ -534,8 +540,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       makeFaissIteratorContext(config, ctx, captureSink, &visitedIds);
 
   faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe =
-      config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
+  searchParametersIvf.nprobe = nProbe;
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   result.stats = searchIvf(inputs.data(), candidates, searchParametersIvf,
                            result.distances.data(), result.labels.data());
