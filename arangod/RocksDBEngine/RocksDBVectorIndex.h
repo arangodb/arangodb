@@ -45,7 +45,14 @@ namespace rocksdb {
 class DB;
 }  // namespace rocksdb
 
+namespace faiss {
+struct IndexIVFRaBitQFastScan;
+}  // namespace faiss
+
 namespace arangodb {
+namespace vector {
+struct PackedInvertedLists;
+}  // namespace vector
 
 enum class VectorIndexTrainingState : std::uint8_t {
   kUnusable,
@@ -95,6 +102,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
     return _faissIndex;
+  }
+
+  // Set only for IndexIVFRaBitQ indexes without storedValues.
+  std::shared_ptr<faiss::IndexIVFRaBitQFastScan> const& fastScanIndex()
+      const noexcept {
+    return _fastScanIndex;
   }
 
   std::optional<std::size_t> resolvedNLists() const noexcept {
@@ -187,6 +200,16 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       faiss::SearchParametersIVF const& params, float* distances,
       faiss::idx_t* labels) const;
 
+  aql::EnumerateNearVectorStats searchFastScan(
+      float const* query, std::size_t topK, std::size_t nProbe,
+      transaction::Methods* trx, float* distances, faiss::idx_t* labels) const;
+
+  vector::PackedInvertedLists readPackedLists(
+      std::span<faiss::idx_t const> listNumbers,
+      transaction::Methods* trx) const;
+
+  void setFaissIndex(std::shared_ptr<faiss::IndexIVF> faissIndex);
+
   std::pair<vector::Labels, vector::Distances> rerankExact(
       vector::Vector const& query, std::span<vector::LabelId const> candidates,
       std::size_t topK, transaction::Methods* trx) const;
@@ -195,6 +218,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   vector::UserDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
+  // Borrows the quantizer of _faissIndex, so it is declared after it.
+  std::shared_ptr<faiss::IndexIVFRaBitQFastScan> _fastScanIndex;
   vector::TrainedData _trainedData;
   vector::FormatVersion _formatVersion{
       vector::kCurrentVectorIndexFormatVersion};

@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <format>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <span>
 #include <tuple>
@@ -49,6 +50,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "RocksDBIndex.h"
@@ -66,6 +68,8 @@
 #include "VectorIndex/Definition.h"
 #include "VectorIndex/ListAssignment.h"
 
+#include "faiss/IndexIVFRaBitQ.h"
+#include "faiss/IndexIVFRaBitQFastScan.h"
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
 
@@ -156,6 +160,38 @@ std::size_t rerankCandidates(std::size_t topK, std::size_t nProbe) noexcept {
   return std::max(static_cast<std::size_t>(pool), topK);
 }
 
+// Must run while `index` still has its empty in-memory lists: the faiss
+// conversion reads every list of the source index.
+std::shared_ptr<faiss::IndexIVFRaBitQFastScan> makeFastScanIndex(
+    faiss::IndexIVF const& index) {
+  auto const* rabitq = dynamic_cast<faiss::IndexIVFRaBitQ const*>(&index);
+  if (rabitq == nullptr) {
+    return nullptr;
+  }
+  auto fastScanIndex = std::make_shared<faiss::IndexIVFRaBitQFastScan>(*rabitq);
+  // Borrowed from the source and freed once the RocksDB lists replace it.
+  fastScanIndex->orig_invlists = nullptr;
+  return fastScanIndex;
+}
+
+// Keeps the first (best) occurrence of each label; a vector can be stored in
+// two lists.
+void removeDuplicateLabels(std::span<faiss::idx_t> labels,
+                           std::span<float> distances, float padDistance) {
+  containers::FlatHashSet<faiss::idx_t> seen;
+  std::size_t kept = 0;
+  for (std::size_t i = 0; i < labels.size(); ++i) {
+    if (labels[i] < 0 || !seen.emplace(labels[i]).second) {
+      continue;
+    }
+    labels[kept] = labels[i];
+    distances[kept] = distances[i];
+    ++kept;
+  }
+  std::fill(labels.begin() + kept, labels.end(), faiss::idx_t{-1});
+  std::fill(distances.begin() + kept, distances.end(), padDistance);
+}
+
 RocksDBValue makeVectorIndexValue(
     std::span<uint8_t const> codes,
     std::optional<velocypack::SharedSlice> const& storedValues,
@@ -198,13 +234,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   _formatVersion = metadata.formatVersion;
 
   if (!_trainedData.codeData.empty()) {
-    _faissIndex =
-        vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
-
-    _faissIndex->replace_invlists(
-        new vector::RocksDBInvertedLists(this, &coll, _faissIndex->nlist,
-                                         _faissIndex->code_size),
-        true /* faiss owns the inverted list */);
+    setFaissIndex(
+        vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData));
 
     setTrainingState(VectorIndexTrainingState::kUnusable,
                      VectorIndexTrainingState::kReady);
@@ -535,15 +566,22 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(candidates);
   result.labels.resize(candidates);
 
-  containers::FlatHashSet<LocalDocumentId> visitedIds;
-  auto faissSearchContext =
-      makeFaissIteratorContext(config, ctx, captureSink, &visitedIds);
+  if (_fastScanIndex != nullptr &&
+      config.strategy.filter == FilterMode::kNone) {
+    result.stats =
+        searchFastScan(inputs.data(), candidates, nProbe, ctx.trx,
+                       result.distances.data(), result.labels.data());
+  } else {
+    containers::FlatHashSet<LocalDocumentId> visitedIds;
+    auto faissSearchContext =
+        makeFaissIteratorContext(config, ctx, captureSink, &visitedIds);
 
-  faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe = nProbe;
-  searchParametersIvf.inverted_list_context = &faissSearchContext;
-  result.stats = searchIvf(inputs.data(), candidates, searchParametersIvf,
-                           result.distances.data(), result.labels.data());
+    faiss::SearchParametersIVF searchParametersIvf;
+    searchParametersIvf.nprobe = nProbe;
+    searchParametersIvf.inverted_list_context = &faissSearchContext;
+    result.stats = searchIvf(inputs.data(), candidates, searchParametersIvf,
+                             result.distances.data(), result.labels.data());
+  }
 
   if (rerank) {
     std::tie(result.labels, result.distances) =
@@ -653,6 +691,77 @@ aql::EnumerateNearVectorStats RocksDBVectorIndex::searchIvf(
   };
 }
 
+aql::EnumerateNearVectorStats RocksDBVectorIndex::searchFastScan(
+    float const* query, std::size_t topK, std::size_t nProbe,
+    transaction::Methods* trx, float* distances, faiss::idx_t* labels) const {
+  using Clock = std::chrono::steady_clock;
+  nProbe = std::min(nProbe, _faissIndex->nlist);
+  std::vector<faiss::idx_t> listIds(nProbe);
+  std::vector<float> centroidDistances(nProbe);
+
+  auto const start = Clock::now();
+  _faissIndex->quantizer->search(1, query, nProbe, centroidDistances.data(),
+                                 listIds.data());
+  auto const coarseDone = Clock::now();
+
+  auto lists = readPackedLists(listIds, trx);
+  // Per-query copy so that concurrent searches do not share `invlists`.
+  faiss::IndexIVFRaBitQFastScan fastScanIndex(*_fastScanIndex);
+  fastScanIndex.invlists = &lists;
+  fastScanIndex.own_invlists = false;
+  faiss::IVFSearchParameters params;
+  params.nprobe = nProbe;
+  fastScanIndex.search_preassigned(1, query, topK, listIds.data(),
+                                   centroidDistances.data(), distances, labels,
+                                   false, &params);
+  auto const scanDone = Clock::now();
+
+  bool const isDescending =
+      _definition.metric == vector::SimilarityMetric::kCosine ||
+      _definition.metric == vector::SimilarityMetric::kInnerProduct;
+  removeDuplicateLabels({labels, topK}, {distances, topK},
+                        isDescending ? -std::numeric_limits<float>::infinity()
+                                     : std::numeric_limits<float>::infinity());
+
+  return aql::EnumerateNearVectorStats{
+      .searches = 1,
+      .listsScanned = lists.nonEmptyLists(),
+      .distancesComputed = lists.totalEntries(),
+      .coarseSearchTime =
+          std::chrono::duration<double>(coarseDone - start).count(),
+      .listScanTime =
+          std::chrono::duration<double>(scanDone - coarseDone).count(),
+  };
+}
+
+vector::PackedInvertedLists RocksDBVectorIndex::readPackedLists(
+    std::span<faiss::idx_t const> listNumbers,
+    transaction::Methods* trx) const {
+  std::vector<RocksDBKey> keys(listNumbers.size());
+  std::vector<rocksdb::Slice> keySlices;
+  keySlices.reserve(listNumbers.size());
+  for (std::size_t i = 0; i < listNumbers.size(); ++i) {
+    // Unused probe slots are -1; masking yields a key no list is stored under.
+    keys[i].constructVectorIndexValue(
+        objectId(),
+        static_cast<std::uint64_t>(listNumbers[i]) | vector::kPackedListBit);
+    keySlices.emplace_back(keys[i].string());
+  }
+
+  std::vector<rocksdb::PinnableSlice> values(listNumbers.size());
+  std::vector<rocksdb::Status> statuses(listNumbers.size());
+  auto* methods = RocksDBTransactionState::toMethods(trx, _collection.id());
+  methods->MultiGet(*columnFamily(), keySlices.size(), keySlices.data(),
+                    values.data(), statuses.data(), ReadOwnWrites::no);
+  for (auto const& status : statuses) {
+    if (!status.ok() && !status.IsNotFound()) {
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+    }
+  }
+  return vector::PackedInvertedLists(_faissIndex->nlist, listNumbers,
+                                     std::move(values));
+}
+
 bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept { return true; }
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
@@ -669,13 +778,24 @@ Result RocksDBVectorIndex::readDocumentVectorData(
 void RocksDBVectorIndex::applyTrainingResult(
     std::shared_ptr<faiss::IndexIVF> faissIndex,
     vector::TrainedData trainedData) {
-  _faissIndex = std::move(faissIndex);
+  setFaissIndex(std::move(faissIndex));
   _trainedData = std::move(trainedData);
+}
 
-  _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
-                                       _faissIndex->code_size),
+void RocksDBVectorIndex::setFaissIndex(
+    std::shared_ptr<faiss::IndexIVF> faissIndex) {
+  auto fastScanIndex =
+      hasStoredValues() ? nullptr : makeFastScanIndex(*faissIndex);
+  if (fastScanIndex != nullptr) {
+    LOG_VECTOR_INDEX("22da6", ERR, Logger::ENGINES)
+        << "created RaBitQ FastScan index, nlist=" << fastScanIndex->nlist;
+  }
+  faissIndex->replace_invlists(
+      new vector::RocksDBInvertedLists(this, &collection(), faissIndex->nlist,
+                                       faissIndex->code_size),
       true /* faiss owns the inverted list */);
+  _fastScanIndex = std::move(fastScanIndex);
+  _faissIndex = std::move(faissIndex);
 }
 
 bool RocksDBVectorIndex::setTrainingState(

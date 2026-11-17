@@ -25,6 +25,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/Definition.h"
@@ -45,6 +46,11 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <vector>
+
+namespace faiss {
+struct IndexIVFRaBitQFastScan;
+}
 
 namespace arangodb {
 
@@ -342,33 +348,48 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
 };
 
 // Prototype packed layout: one value per list under listNumber |
-// kPackedListBit, holding [count][count docIds][count codes].
+// kPackedListBit, holding [count][count docIds][FastScan code blocks].
 inline constexpr std::uint64_t kPackedListBit = std::uint64_t{1} << 62;
 
 std::string makePackedListValue(std::span<std::uint64_t const> docIds,
-                                std::span<std::uint8_t const> codes);
+                                std::span<std::uint8_t const> blockCodes);
 
-struct RocksDBPackedListIterator final : faiss::InvertedListsIterator {
-  RocksDBPackedListIterator(RocksDBVectorIndex* index,
-                            LogicalCollection* collection,
-                            IteratorContext const& ctx, std::size_t listNumber,
-                            std::size_t codeSize);
+// Packs `count` IndexIVFRaBitQ codes into the block layout of `index`.
+std::vector<std::uint8_t> packFastScanCodes(
+    faiss::IndexIVFRaBitQFastScan const& index,
+    std::span<std::uint8_t const> codes, std::size_t count);
 
-  [[nodiscard]] bool is_available() const override;
-  void next() override;
-  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+// Read-only inverted lists over the packed list values fetched for one query.
+struct PackedInvertedLists final : faiss::InvertedLists {
+  PackedInvertedLists(std::size_t nlist,
+                      std::span<faiss::idx_t const> listNumbers,
+                      std::vector<rocksdb::PinnableSlice> values);
+
+  std::size_t list_size(std::size_t listNumber) const override;
+  std::uint8_t const* get_codes(std::size_t listNumber) const override;
+  faiss::idx_t const* get_ids(std::size_t listNumber) const override;
+
+  size_t add_entries(std::size_t listNumber, std::size_t nEntry,
+                     faiss::idx_t const* ids,
+                     std::uint8_t const* code) override;
+  void update_entries(std::size_t listNumber, std::size_t offset,
+                      std::size_t nEntry, faiss::idx_t const* ids,
+                      std::uint8_t const* code) override;
+  void resize(std::size_t listNumber, std::size_t newSize) override;
+
+  std::size_t nonEmptyLists() const noexcept { return _lists.size(); }
+  std::size_t totalEntries() const noexcept { return _totalEntries; }
 
  private:
-  LocalDocumentId idAt(std::size_t pos) const;
-  void skipVisitedEntries();
+  struct List {
+    std::size_t count;
+    faiss::idx_t const* ids;
+    std::uint8_t const* codes;
+  };
 
-  rocksdb::PinnableSlice _value;
-  std::size_t _codeSize;
-  std::uint64_t _count{0};
-  std::size_t _pos{0};
-  char const* _ids{nullptr};
-  uint8_t const* _codes{nullptr};
-  containers::FlatHashSet<LocalDocumentId>* _visitedIds{nullptr};
+  std::vector<rocksdb::PinnableSlice> _values;
+  containers::FlatHashMap<std::size_t, List> _lists;
+  std::size_t _totalEntries{0};
 };
 
 using RocksDBFaissIteratorContext =

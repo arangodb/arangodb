@@ -77,6 +77,7 @@
 
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFRaBitQ.h"
+#include "faiss/IndexIVFRaBitQFastScan.h"
 #include "faiss/impl/io.h"
 #include "faiss/index_io.h"
 #include "faiss/utils/distances.h"
@@ -444,6 +445,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   auto const hasStored = index.hasStoredValues();
   auto const& stored = index.storedValues();
   auto const faissIndex = index.faissIndex();
+  auto const fastScanIndex = index.fastScanIndex();
   auto* cf = index.columnFamily();
   auto const oid = index.objectId();
   auto const formatVersion = index.formatVersion();
@@ -704,7 +706,9 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     RocksDBKey key;
     for (auto const& [listId, list] : packedLists) {
       key.constructVectorIndexValue(oid, listId | vector::kPackedListBit);
-      auto const value = vector::makePackedListValue(list.docIds, list.codes);
+      auto const blockCodes = vector::packFastScanCodes(
+          *fastScanIndex, list.codes, list.docIds.size());
+      auto const value = vector::makePackedListValue(list.docIds, blockCodes);
       if (auto status = batch.Put(cf, key.string(), value); !status.ok()) {
         return rocksutils::convertStatus(status);
       }
@@ -753,7 +757,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         if (not status.ok()) {
           THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
         }
-        if (!hasStored) {
+        if (fastScanIndex != nullptr) {
           collectPackedLists(*item, codeSize);
         }
       });
@@ -780,7 +784,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
   threads.clear();
 
-  if (firstError.ok() && !hasStored) {
+  if (firstError.ok() && fastScanIndex != nullptr) {
     firstError = writePackedLists();
   }
 
