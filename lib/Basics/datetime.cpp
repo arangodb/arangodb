@@ -35,6 +35,7 @@
 #include <utility>
 #include <vector>
 
+#include "Basics/IsoWeek.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
@@ -280,15 +281,7 @@ std::
                  }},
                 {"%kk",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   /*
-                   iso_week::year_weeknum_weekday yww{
-                       floor<std::chrono::days>(tp)};
-                   uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-                   if (isoWeek < 10) {
-                     wrk.append("0");
-                   }
-                   wrk.append(std::to_string(isoWeek)); */
-                   wrk.append(std::format("%V", tp));
+                   wrk.append(std::format("{0:%V}", tp));
                  }},
 
                 {"%t",
@@ -304,7 +297,7 @@ std::
                 {"%z",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    std::string formatted = std::format(
-                       "%FT%TZ", floor<std::chrono::milliseconds>(tp));
+                       "{0:%F}T{0:%T}Z", floor<std::chrono::milliseconds>(tp));
                    wrk.append(formatted);
                  }},
                 {"%w",
@@ -376,17 +369,12 @@ std::
                  }},
                 {"%k",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto r = std::format("%V", tp);
+                   auto r = std::format("{0:%V}", tp);
                    if (r[0] == '0') {
                      wrk.append(r.substr(1));
+                   } else {
+                     wrk.append(r);
                    }
-                   /*
-                   std::chrono
-
-                       : year_month_weekday yww{floor<std::chrono::days>(tp)};
-                   uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-                   wrk.append(std::to_string(isoWeek));
-                   */
                  }},
                 {"%l",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -723,17 +711,6 @@ bool arangodb::basics::parseDateTime(std::string_view dateTime,
       }
     }
   }
-
-  // LOG_TOPIC("51643", TRACE, Logger::FIXME)
-  //           << "year: " << result.year
-  //           << ", month: " << result.month
-  //           << ", day: " << result.day
-  //           << ", hour: " << result.hour
-  //           << ", minute: " << result.minute
-  //           << ", second: " << result.second
-  //           << ", millisecond: " << result.millisecond
-  //           << ", tz hour: " << result.tzOffsetHour
-  //           << ", tz minute: " << result.tzOffsetMinute;
 
   return true;
 }

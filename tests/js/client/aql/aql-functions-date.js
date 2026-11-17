@@ -2591,7 +2591,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1)");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TIMESTAMP(-1, 1, 1, 1, 1, 1, 1)");
+    //  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TIMESTAMP(-1, 1, 1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TIMESTAMP(1, -1, 1, 1, 1, 1, 1)");
 

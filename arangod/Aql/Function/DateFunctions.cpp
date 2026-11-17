@@ -454,13 +454,12 @@ AqlValue dateFromParameters(
     std::chrono::day d(
         aql::functions::extractFunctionParameterValue(parameters, 2).toInt64());
 
-    if ((y < std::chrono::year{0} || y > std::chrono::year{9999}) ||
-        (m < std::chrono::month{0}) || (d < std::chrono::day{0})) {
+    std::chrono::year_month_day ymd(y, m, d);
+    if (!ymd.ok()) {
       aql::functions::registerWarning(expressionContext, AFN,
                                       TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    std::chrono::year_month_day ymd(y, m, d);
 
     // Parse the time
     hours h(0);
