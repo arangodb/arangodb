@@ -13,6 +13,7 @@ struct Interior {
   [[nodiscard]] auto size() const -> size_t { return _screamer.size(); }
 
   std::vector<Entry> _screamer;
+  VertexId _startVertex;
 };
 
 auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel startLabel)
