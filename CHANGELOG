@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2542: Fix `/_admin/cluster/shardDistribution` reporting the shards of
+  SmartGraph edge collections as never in sync, because their `Current` entries
+  were looked up under the virtual collection instead of its shadow collections.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   

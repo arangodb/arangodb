@@ -73,6 +73,44 @@ struct SyncCountInfo {
 };
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Current entries of all shards of a collection. The shards of a
+/// smart edge collection belong to its shadow collections, so their Current
+/// entries are not stored under the virtual collection, but under the shadow
+/// collections. realNames() gives us those.
+//////////////////////////////////////////////////////////////////////////////
+
+class CollectionCurrentServers {
+ public:
+  CollectionCurrentServers(ClusterInfo& ci, std::string const& dbName,
+                           LogicalCollection const& col) {
+    auto realNames = col.realNames();
+    if (realNames.size() == 1 && realNames[0] == col.name()) {
+      _infos.emplace_back(
+          ci.getCollectionCurrent(dbName, std::to_string(col.id().id())));
+      return;
+    }
+    for (auto const& name : realNames) {
+      if (auto realCol = ci.getCollectionNT(dbName, name); realCol != nullptr) {
+        _infos.emplace_back(ci.getCollectionCurrent(
+            dbName, std::to_string(realCol->id().id())));
+      }
+    }
+  }
+
+  std::vector<ServerID> servers(ShardID const& shardId) const {
+    for (auto const& info : _infos) {
+      if (auto servers = info->servers(shardId); !servers.empty()) {
+        return servers;
+      }
+    }
+    return {};
+  }
+
+ private:
+  std::vector<std::shared_ptr<CollectionInfoCurrent>> _infos;
+};
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief Static helper functions
 //////////////////////////////////////////////////////////////////////////////
 
@@ -337,15 +375,14 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
       auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic =
-          _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
+      CollectionCurrentServers cic{*_ci, dbName, *col};
 
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
 
         serversToAsk.clear();
-        auto curServers = cic->servers(s.first);
+        auto curServers = cic.servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
         if (curServers.empty() || s.second.empty()) {
           // either of the two vectors is empty...
@@ -575,10 +612,10 @@ bool ShardDistributionReporter::testAllShardsInSync(
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
+  CollectionCurrentServers cic{*_ci, dbName, *col};
 
   for (auto const& s : *shardIds) {
-    auto curServers = cic->servers(s.first);
+    auto curServers = cic.servers(s.first);
 
     if (s.second.empty() || curServers.empty() ||
         !TestIsShardInSync(s.second, curServers)) {
