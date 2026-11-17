@@ -26,6 +26,9 @@ auto materializePaths(std::shared_ptr<IGraphView> view, Interior interior)
     -> std::vector<Path> {
   std::vector<Path> result;
 
+  result.emplace_back(
+      Path{.vertices = {*view->retrieveDocument(interior._startVertex)}});
+
   for (auto [prev, edgeId] : interior._screamer | std::views::reverse) {
     auto path = Path{};
 

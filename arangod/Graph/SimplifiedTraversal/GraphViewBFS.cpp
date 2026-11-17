@@ -50,6 +50,7 @@ auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
 
   // TODO: possibly this should be a single command for the GraphView
   auto startId = view->ensureVertex(start);
+  interior._startVertex = startId;
   auto initialEdges = view->outEdges(startId);
 
   for (auto&& ie : initialEdges) {
