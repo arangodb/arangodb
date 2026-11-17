@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Add infrastructure for security logging.
+
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
   the vector attribute of a vector index without `storedValues`.
 
