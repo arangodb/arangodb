@@ -34,6 +34,7 @@
  - fast-uri to 3.1.9 to resolve CVE-2026-110180, CVE-2026-110306,
    CVE-2026-110095 and CVE-2026-110725
  - qs to 6.16.1 to resolve CVE-2026-110816
+ - moment to 2.31.0 in the UI to resolve CVE-2026-17495
  
  * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
   dependencies.
