@@ -217,7 +217,7 @@ class TestDockerImagesWorkflow:
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
             circleci=CircleCIConfig(
-                create_test_docker_images="alpine",
+                create_test_docker_images="ubuntu",
                 create_preview_docker_images=preview,
                 test_image="default",
             ),
@@ -407,8 +407,8 @@ class TestDockerImagesWorkflow:
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
             circleci=CircleCIConfig(
-                create_test_docker_images="alpine",
-                create_preview_docker_images="alpine",
+                create_test_docker_images="ubuntu",
+                create_preview_docker_images="ubuntu",
                 test_image="default",
             ),
             build_variants=[BuildVariant.NORMAL],
