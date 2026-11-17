@@ -382,7 +382,9 @@ TYPED_TEST(AsyncTest, coroutine_is_deleted_earlier_than_registry_entry) {
     EXPECT_EQ(arangodb::async_registry::registry.size(), 2);
   }
   {
-    { std::ignore = coro(); }
+    {
+      std::ignore = coro();
+    }
 
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
     EXPECT_EQ(arangodb::async_registry::registry.size(), 3);

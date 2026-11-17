@@ -182,7 +182,7 @@ void MaintenanceRestHandler::putAction() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     result.errorMessage());
     }  // if
-  }    // if
+  }  // if
 }
 
 bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {

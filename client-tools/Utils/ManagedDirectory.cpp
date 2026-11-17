@@ -495,13 +495,9 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status{::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status{::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
@@ -521,13 +517,9 @@ ManagedDirectory::File::File(ManagedDirectory const& directory, int fd,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status{::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status{::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)

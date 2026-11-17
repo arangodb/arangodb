@@ -68,7 +68,7 @@ void CachedValue::operator delete(void* ptr) {
   CachedValue* cv = reinterpret_cast<CachedValue*>(ptr);
   std::size_t offset = cv->offset();
   cv->~CachedValue();
-  delete[](reinterpret_cast<std::uint8_t*>(ptr) - offset);
+  delete[] (reinterpret_cast<std::uint8_t*>(ptr) - offset);
 }
 
 CachedValue::CachedValue(std::size_t off, void const* k, std::size_t kSize,

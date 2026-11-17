@@ -132,7 +132,7 @@ class FakePathFinder {
 
   ~FakePathFinder() = default;
 
-  void clear(){};
+  void clear() {};
 
   aql::TraversalStats stealStats() { return {}; }
 

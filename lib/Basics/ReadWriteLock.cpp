@@ -93,10 +93,14 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
 
   if ((state & WRITE_LOCK) == 0) {
     if ((state & QUEUED_WRITER_MASK) != 0) {
-      { std::lock_guard<std::mutex> guard(_writer_mutex); }
+      {
+        std::lock_guard<std::mutex> guard(_writer_mutex);
+      }
       _writers_bell.notify_one();
     } else {
-      { std::lock_guard<std::mutex> guard(_reader_mutex); }
+      {
+        std::lock_guard<std::mutex> guard(_reader_mutex);
+      }
       _readers_bell.notify_all();
     }
   }
@@ -185,11 +189,15 @@ void ReadWriteLock::unlockWrite() noexcept {
   auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
   if ((state & QUEUED_WRITER_MASK) != 0) {
     // there are other writers waiting -> wake up one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_writer_mutex);
+    }
     _writers_bell.notify_one();
   } else {
     // no more writers -> wake up any waiting readings
-    { std::lock_guard<std::mutex> guard(_reader_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_reader_mutex);
+    }
     _readers_bell.notify_all();
   }
 }
@@ -204,7 +212,9 @@ void ReadWriteLock::unlockRead() noexcept {
   if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {
     // we were the last reader and there are other writers waiting
     // -> wake up one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
+    {
+      std::lock_guard<std::mutex> guard(_writer_mutex);
+    }
     _writers_bell.notify_one();
   }
 }

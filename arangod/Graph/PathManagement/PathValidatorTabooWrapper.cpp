@@ -48,7 +48,7 @@ PathValidatorTabooWrapper<PathValidatorImplementation>::
 
 template<class PathValidatorImplementation>
 PathValidatorTabooWrapper<
-    PathValidatorImplementation>::~PathValidatorTabooWrapper(){};
+    PathValidatorImplementation>::~PathValidatorTabooWrapper() {};
 
 template<class PathValidatorImplementation>
 auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(

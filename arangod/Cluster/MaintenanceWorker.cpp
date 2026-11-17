@@ -214,7 +214,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
       // no current action, go back to hunting for one
       _loopState = (_directAction ? eSTOP : eFIND_ACTION);
     }  // else
-  }    // else
+  }  // else
 }
 
 void MaintenanceWorker::recordJobStats(bool failed) {

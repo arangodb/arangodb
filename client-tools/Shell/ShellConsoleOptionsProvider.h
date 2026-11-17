@@ -39,7 +39,7 @@ struct ShellConsoleOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ShellConsoleFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ShellConsoleFeatureOptions& /*options*/){};
+                           ShellConsoleFeatureOptions& /*options*/) {};
 };
 
 }  // namespace arangodb

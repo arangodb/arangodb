@@ -230,13 +230,12 @@ Result fillIndexSingleThreaded(
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
                                          uint64_t numDocsHint,
                                          size_t numThreads)
-    : RocksDBIndex{wp->id(), wp->collection(), wp->name(), wp->fields(),
-                   wp->unique(), wp->sparse(), wp->columnFamily(),
-                   wp->objectId(), /*useCache*/ false,
-                   /*cacheManager*/ nullptr,
-                   /*engine*/
-                   static_cast<RocksDBEngine&>(
-                       wp->collection().vocbase().engine())},
+    : RocksDBIndex{
+          wp->id(), wp->collection(), wp->name(), wp->fields(), wp->unique(),
+          wp->sparse(), wp->columnFamily(), wp->objectId(), /*useCache*/ false,
+          /*cacheManager*/ nullptr,
+          /*engine*/
+          static_cast<RocksDBEngine&>(wp->collection().vocbase().engine())},
       _wrapped{std::move(wp)},
       _docsProcessed{0},
       _numDocsHint{numDocsHint},

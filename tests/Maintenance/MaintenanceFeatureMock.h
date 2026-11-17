@@ -173,7 +173,7 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
                   << check->_progress << std::endl;
         good = false;
       }  // if
-    }    // for
+    }  // for
 
     if (registry.end() != action) {
       std::cerr << "Found more actions in registry than expected!" << std::endl;
