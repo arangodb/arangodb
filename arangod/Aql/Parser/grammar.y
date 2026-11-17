@@ -1308,8 +1308,6 @@ pattern_variable_length_relationship:
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
-    // Labeled vertex declaration: always introduces a new binding.
-    // Reusing an existing name is TRI_ERROR_QUERY_VARIABLE_REDECLARED.
     T_OPEN pattern_out_variable[variable]
 		       pattern_label[label]
 					 pattern_maybe_property_key_value_expression[kv_expr]
@@ -1319,10 +1317,6 @@ pattern_node_pattern:
         $$ = parser->ast()->createPatternNodePattern($variable, $label, $kv_expr, $where, $projection);
     }
     |
-    // A bare vertex pattern `(name)` refers to an existing variable. Any
-    // property constraints, WHERE filters, or projections are rejected during
-    // AST validation (TRI_ERROR_QUERY_PARSE - COR-1049). Unlike a labeled
-    // vertex pattern, it does not introduce a new variable binding.
 		T_OPEN variable_name
 		       pattern_maybe_property_key_value_expression[kv_expr]
 		       pattern_maybe_where_expression[where]

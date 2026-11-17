@@ -2151,9 +2151,6 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  // A labeled vertex pattern `(name :collection ...)` declares a new variable.
-  // If the name is already in use, report it as a redeclaration, just like a
-  // duplicate variable declaration in LET
   if (_scopes.existsVariable(name)) {
     ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
@@ -2194,9 +2191,6 @@ AstNode* Ast::createPatternVertexReference(std::string_view name,
                      "' needs a label or has to be bound earlier"));
   }
 
-  // COR-1049: Bare vertex references cannot have property predicates, WHERE
-  // filters, or projections. These are supported only on labeled vertex
-  // declarations.
   if (properties != nullptr || filterExpression != nullptr ||
       projections != nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

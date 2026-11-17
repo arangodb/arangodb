@@ -1469,8 +1469,6 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
-        // COR-1049: bare references `(x)` must not carry WHERE / property
-        // constraints. That is distinct from COR-1222 labeled redeclarations.
         testRejectReferenceWithWhereFilter: function () {
             assertRejected(
                 `LET x = DOCUMENT("vc/v1")
@@ -1491,8 +1489,6 @@ function aqlMatchStatementTestSuite() {
                 "filters or constraints are not allowed on MATCH pattern reference 'x'");
         },
 
-        // COR-1222: a labeled vertex pattern always declares a new binding.
-        // Reusing an existing name is a redeclaration (same as duplicate LET).
         testRejectReferenceWithLabelAndWhere: function () {
             assertRejected(
                 `LET x = DOCUMENT("vc/v1")
@@ -1753,7 +1749,6 @@ function aqlMatchStatementTestSuite() {
                 "MATCH label 'ec' has the same name as a variable in scope; labels must name a collection");
         },
 
-        // COR-1222: redeclaration must use the same error as duplicate LET.
         testRejectDuplicateVertexVariableInSamePattern: function () {
             assertRejected(
                 "MATCH (a:vc) -[e:ec]-> (a:vc) RETURN a",
@@ -1789,7 +1784,6 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
-        // COR-1049: filter on a bare reference to a prior MATCH binding.
         testRejectPriorMatchReferenceWithWhereFilter: function () {
             assertRejected(
                 "MATCH (a:vc) MATCH (a WHERE a.i > 100) RETURN a",
