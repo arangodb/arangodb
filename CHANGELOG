@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
+  instead of value content, causing byte-identical values to be serialized
+  multiple times instead of reusing their position in the AqlItemBlock raw
+  array.
+
 * Patch FAISS v1.16.0 with alubsan fix.
 
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
