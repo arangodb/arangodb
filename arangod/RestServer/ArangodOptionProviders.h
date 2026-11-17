@@ -47,6 +47,7 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "Scheduler/SchedulerOptionsProvider.h"
+#include "Ssl/FipsFeatureOptionsProvider.h"
 #include "SystemMonitor/Activities/OptionsProvider.h"
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 #include "Transaction/ManagerOptionsProvider.h"
@@ -82,22 +83,22 @@ using ArangodOptionProviders = CoreOptionProviders<
     metrics::ClusterMetricsOptionsProvider, ConfigOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabaseOptionsProvider,
     DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-    EndpointOptionsProvider, fortune::FortuneOptionsProvider,
-    GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-    iresearch::IResearchOptionsProvider, LanguageOptionsProvider,
-    LogApiOptionsProvider, LogBufferOptionsProvider, LogRotateOptionsProvider,
-    MaintenanceOptionsProvider, metrics::MetricsOptionsProvider,
-    NetworkOptionsProvider, aql::OptimizerRulesOptionsProvider,
-    aql::QueryInfoLoggerOptionsProvider, PrivilegeOptionsProvider,
-    QueryRegistryOptionsProvider, replication2::ReplicatedLogOptionsProvider,
-    ReplicationOptionsProvider, ReplicationTimeoutOptionsProvider,
-    RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-    RocksDBOptionFeatureOptionsProvider, SchedulerOptionsProvider,
-    ServerOptionsProvider, security::ServerSecurityOptionsProvider,
-    SslServerOptionsProvider, TempOptionsProvider,
-    TemporaryStorageOptionsProvider, transaction::ManagerOptionsProvider,
-    TtlOptionsProvider, UpgradeOptionsProvider, vector_index::OptionsProvider,
-    LegacyOptionsProvider
+    EndpointOptionsProvider, FipsFeatureOptionsProvider,
+    fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
+    InitDatabaseOptionsProvider, iresearch::IResearchOptionsProvider,
+    LanguageOptionsProvider, LogApiOptionsProvider, LogBufferOptionsProvider,
+    LogRotateOptionsProvider, MaintenanceOptionsProvider,
+    metrics::MetricsOptionsProvider, NetworkOptionsProvider,
+    aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
+    PrivilegeOptionsProvider, QueryRegistryOptionsProvider,
+    replication2::ReplicatedLogOptionsProvider, ReplicationOptionsProvider,
+    ReplicationTimeoutOptionsProvider, RocksDBEngineOptionsProvider,
+    RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+    SchedulerOptionsProvider, ServerOptionsProvider,
+    security::ServerSecurityOptionsProvider, SslServerOptionsProvider,
+    TempOptionsProvider, TemporaryStorageOptionsProvider,
+    transaction::ManagerOptionsProvider, TtlOptionsProvider,
+    UpgradeOptionsProvider, vector_index::OptionsProvider, LegacyOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,
