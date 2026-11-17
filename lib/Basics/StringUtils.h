@@ -32,6 +32,7 @@
 #include <system_error>
 #include <unordered_map>
 #include <vector>
+#include <format>
 
 #include "Basics/debugging.h"
 
