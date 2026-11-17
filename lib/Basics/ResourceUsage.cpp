@@ -98,6 +98,14 @@ ResourceMonitor::~ResourceMonitor() {
       phases << '-';
     }
   }
+  // Per requested-size bucket: count/requested/no-header/actual bytes.
+  std::ostringstream sizes;
+  for (auto const& b : m->allocSizeStats().buckets) {
+    sizes << ' ' << b.count.load(std::memory_order_relaxed) << '/'
+          << b.requested.load(std::memory_order_relaxed) << '/'
+          << b.noHeader.load(std::memory_order_relaxed) << '/'
+          << b.actual.load(std::memory_order_relaxed);
+  }
   LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
       << "query memory " << m
       << " | old: peak=" << peak() << " exact=" << exactPeak()
@@ -117,6 +125,7 @@ ResourceMonitor::~ResourceMonitor() {
       << " (req=" << cache.requestedBytes()
       << " hdr=" << headerBytes(cache.liveAllocations()) << ")"
       << " | phases:" << phases.str()
+      << " | sizes:" << sizes.str()
       << " | monitors: " << describeRegistry();
 
   m->retire();

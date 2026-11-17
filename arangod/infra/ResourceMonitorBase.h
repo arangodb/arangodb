@@ -21,10 +21,47 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 
 namespace arangodb::infra {
+
+// Diagnostics: every allocation made on a monitor, grouped by requested size.
+// Only added to, never subtracted, so it counts allocations made, not live
+// memory.
+struct AllocSizeStats {
+  // Upper bounds (exclusive) of all buckets but the last one.
+  static constexpr std::array<uint64_t, 4> kLimits{100, 1024, 10 * 1024,
+                                                   1024 * 1024};
+  static constexpr std::size_t kBuckets = kLimits.size() + 1;
+
+  struct Bucket {
+    std::atomic<uint64_t> count{0};
+    std::atomic<uint64_t> requested{0};
+    std::atomic<uint64_t> noHeader{0};
+    std::atomic<uint64_t> actual{0};
+  };
+
+  static constexpr auto bucketOf(uint64_t requested) noexcept -> std::size_t {
+    std::size_t i = 0;
+    while (i < kLimits.size() && requested >= kLimits[i]) {
+      ++i;
+    }
+    return i;
+  }
+
+  void record(uint64_t requested, uint64_t noHeader, uint64_t actual) noexcept {
+    auto& b = buckets[bucketOf(requested)];
+    b.count.fetch_add(1, std::memory_order_relaxed);
+    b.requested.fetch_add(requested, std::memory_order_relaxed);
+    b.noHeader.fetch_add(noHeader, std::memory_order_relaxed);
+    b.actual.fetch_add(actual, std::memory_order_relaxed);
+  }
+
+  std::array<Bucket, kBuckets> buckets;
+};
 
 struct ResourceMonitorBase {
   ResourceMonitorBase(ResourceMonitorBase const&) = delete;
@@ -91,6 +128,15 @@ struct ResourceMonitorBase {
 
   void subNoHeader(uint64_t bytes) noexcept {
     _noHeaderBytes.fetch_sub(bytes, std::memory_order_relaxed);
+  }
+
+  [[nodiscard]] auto allocSizeStats() const noexcept -> AllocSizeStats const& {
+    return _allocSizeStats;
+  }
+
+  void recordAllocation(uint64_t requested, uint64_t noHeader,
+                        uint64_t actual) noexcept {
+    _allocSizeStats.record(requested, noHeader, actual);
   }
 
   void resetPeak() noexcept {
@@ -170,6 +216,7 @@ struct ResourceMonitorBase {
   std::atomic<uint64_t> _peakLiveAllocations{0};
   std::atomic<uint64_t> _noHeaderBytes{0};
   std::atomic<uint64_t> _peakNoHeaderBytes{0};
+  AllocSizeStats _allocSizeStats;
   std::atomic<bool> _limitHit{false};
 };
 
