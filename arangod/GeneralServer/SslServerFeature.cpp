@@ -54,6 +54,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/UniformCharacter.h"
+#include "Ssl/FipsFeature.h"
 #include "Ssl/ssl-helper.h"
 
 #include <nghttp2/nghttp2.h>
@@ -70,6 +71,7 @@ SslServerFeature::SslServerFeature(
     application_features::ApplicationServer& server, SslServerOptions options)
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
+  startsAfter<FipsFeature>();
 }
 
 void SslServerFeature::prepare() {
