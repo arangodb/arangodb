@@ -1350,9 +1350,9 @@ void Manager::iterateManagedTrx(
   }
 }
 
-Result Manager::abortOrSoftAbortManagedTrx(TransactionId tid,
+async<Result> Manager::abortOrSoftAbortManagedTrx(TransactionId tid,
                                            std::string const& database) {
-  Result res = abortManagedTrx(tid, database).waitAndGet();
+  Result res = co_await abortManagedTrx(tid, database);
   if (res.is(TRI_ERROR_LOCKED)) {
     // The transaction is still in use after waiting for it. if it's left it
     // may never get aborted. The lock remains here until expiry.
