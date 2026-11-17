@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utilities/NameValidator.h"
@@ -573,28 +574,9 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(IndexTypeCatalog const& catalog, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto normalizeType = [](VPackSlice s) -> std::string_view {
-    TRI_ASSERT(s.isString());
-    // "zkd" is the old naming for "mdi", so we have to treat these
-    // two type names as identical.
-    if (s.stringView() == "zkd") {
-      return "mdi";
-    }
-    return s.stringView();
-  };
-
-  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
-  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
-
-  if (lhsType != rhsType) {
-    return false;
-  }
-
-  return engine.indexFactory()
-      .factory(std::string{lhsType})
-      .equal(lhs, rhs, dbname);
+  return catalog.equal(lhs, rhs, dbname);
 }
 
 /// @brief return a contextual string for logging
@@ -832,6 +814,11 @@ bool Index::canUseConditionPart(
     aql::AstNode const* op, aql::Variable const* reference,
     containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
+  if (!access->isDeterministic() || !other->isDeterministic()) {
+    // we can only use deterministic values in index lookups; we should not look
+    // up index for non-deterministic values such as RAND()
+    return false;
+  }
   if (_sparse) {
     if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;

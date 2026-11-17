@@ -32,7 +32,9 @@ const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const {
   sleep,
+  killExternal,
   executeExternal,
+  getExternalSpawned,
   SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
@@ -59,23 +61,24 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
     case 'restore':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangorestore.conf');
-      this.executable = pu.ARANGORESTORE_BIN;
+      this.configName = 'arangorestore.conf';
+      this.binName = 'ARANGORESTORE_BIN';
       this.logprefix = 'restore';
       break;
     case 'dump':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangodump.conf');
-      this.executable = pu.ARANGODUMP_BIN;
+      this.configName = 'arangodump.conf';
+      this.binName = 'ARANGODUMP_BIN';
       this.logprefix = 'dump';
       break;
     case 'import':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangoimport.conf');
-      this.executable = pu.ARANGOIMPORT_BIN;
+      this.configName = 'arangoimport.conf';
+      this.binName = 'ARANGOIMPORT_BIN';
       this.logprefix = 'import';
       break;
     default:
       throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
   }
 
   setWhatToImport (what) {
@@ -276,12 +279,16 @@ class ConfigBuilder {
   disableContinue() {
     delete this.config['continue'];
   }
-  toArgv() { return internal.toArgv(this.config); }
+  // the binary set may change between runs (--oldSource upgrade tests)
+  toArgv() {
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
+    return internal.toArgv(this.config);
+  }
 
-  getExe() { return this.executable; }
+  getExe() { return pu[this.binName]; }
 
   print() {
-    print(this.executable);
+    print(this.getExe());
     print(this.config);
   }
 }
@@ -312,20 +319,24 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
+function makeArgsArangosh (options, instanceManager, force_jwt) {
   let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
-  if (options.hasOwnProperty('username')) {
-    args['server.username'] = options.username;
-  }
-  if (options.hasOwnProperty('password')) {
-    args['server.password'] = options.password;
-  }
 
+  if (force_jwt) {
+    args['server.jwt-token'] = instanceManager.JWT;
+  } else {
+    if (options.hasOwnProperty('username')) {
+      args['server.username'] = options.username;
+    }
+    if (options.hasOwnProperty('password')) {
+      args['server.password'] = options.password;
+    }
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -742,8 +753,23 @@ function readRtaErrorLog(logFile) {
   return fnLines;
 }
 
+// version that created the data; the SUT gets upgraded, the data does not
+let rtaDataVersion;
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
-  let args = Object.assign(makeArgsArangosh(options), {
+  if (rtaDataVersion === undefined) {
+    if (pu.currentBinarySet !== 0) {
+      throw new Error('rta oldVersion captured after the binary switch');
+    }
+    rtaDataVersion = internal.db._version();
+  }
+  let args = Object.assign(makeArgsArangosh(
+    options, instanceManager,
+    // waitData needs JWT access for the _users collection;
+    // old arangosh (< 3.12.6) has no --server.jwt-token
+    (writeReadClean === 2 && instanceManager.options.cluster &&
+     !(options.oldSource !== undefined && pu.currentBinarySet === 0))
+  ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
@@ -767,8 +793,11 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', true,
                        '--printTimeTableMeasurement', true,
                        '--progress', 'true',
-                       '--oldVersion', require('internal').db._version()
+                       '--oldVersion', rtaDataVersion
                      ]);
+  if (options.password) {
+    argv = argv.concat(['--passvoid', options.password]);
+  }
   if (options.rtaNegFilter !== '') {
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
@@ -782,13 +811,31 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.extremeVerbosity !== 'silence') {
     print(argv);
   }
-  
+  let ret;
   let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
   SetGlobalExecutionDeadlineTo(timeout);
-  let ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
-  timeout = SetGlobalExecutionDeadlineTo(0.0);
-  if (timeout) {
-    ret.status = false;
+  try {
+    ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    if (timeout) {
+      ret.status = false;
+    }
+  } catch (ex) {
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    print(`${RED}${Date()}rtaMakedata(): caught exception during executing makedata: ${timeout?"timeout ":""}${ex}${RESET}`);
+    ret = {
+      status: false,
+      message: `failed to execute ${argv} by: ${ex} ${ex.stack}`
+    };
+    let running = getExternalSpawned();
+    running.forEach(process => {
+      // [0] is not there in argv, only in arguments.
+      if (process.arguments[0] === pu.ARANGOSH_BIN && (process.arguments.length -1) === argv.length) {
+        print(`${RED}${Date()} rtaMakedata(): identified my process, killing ${JSON.stringify(process)}${RESET}`);
+        let msg = killExternal(process.pid, 9);
+        ret.message += '\n' + msg;
+      }
+    });
   }
   return ret;
 }
@@ -927,6 +974,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -939,6 +987,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };

@@ -40,7 +40,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/FindProjections.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
@@ -225,8 +225,8 @@ void removeUnnecessaryProjections(ExecutionPlan& plan, JoinNode* jn) {
     // in that case we need to keep the projection, otherwise
     // we can remove it.
     projectionsUsedLater.clear();
-    utils::findProjections(jn->getFirstParent(), outVariable, "", false,
-                           projectionsUsedLater);
+    optimizer::findProjections(jn->getFirstParent(), outVariable, "", false,
+                               projectionsUsedLater);
 
     // remove all projections for which the lambda returns true:
     TRI_ASSERT(!indexInfos[i].projections.empty());
@@ -294,6 +294,12 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
   if (isVarAccessToOthersSideOutVariable) {
     // Simple attribute access to the first candidate's outVariable is a join
     // key, not a constant expression evaluated by JoinExecutor.
+    return false;
+  }
+
+  // JoinExecutor evaluates constant expressions once per input row, and
+  // without a V8 context.
+  if (!node->isDeterministic() || node->willUseV8()) {
     return false;
   }
 
@@ -645,6 +651,22 @@ bool checkCandidateEligibleForAdvancedJoin(
 
 std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan, std::span<IndexNode*> candidates) {
+  // Do not join the primary index with other indexes. The primary index
+  // returns its keys in byte order, the other indexes in VelocyPack order.
+  auto usesPrimaryIndex = [](IndexNode const* node) {
+    return node->getIndexes()[0]->type() == IndexType::Primary;
+  };
+  if (!candidates.empty() &&
+      !std::all_of(candidates.begin(), candidates.end(),
+                   [&](IndexNode const* node) {
+                     return usesPrimaryIndex(node) ==
+                            usesPrimaryIndex(candidates.front());
+                   })) {
+    LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: mixes the "
+                               "primary index with other indexes";
+    return {false, {}};
+  }
+
   IndicesOffsets indicesOffsets = {};
   // Variables available on the JoinNode *input* row when JoinExecutor
   // evaluates constantExpressions. JoinNode replaces the first candidate, so
@@ -716,16 +738,19 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
     }
 
     // if there is a post filter, make sure it only accesses variables
-    // that are available before all index nodes
+    // that are available before all index nodes, or the candidate's own
+    // document.
     if (candidate->hasFilter()) {
       VarSet vars;
       candidate->filter()->variables(vars);
 
-      for (auto* other : candidates) {
-        if (other != candidate && other->setsVariable(vars)) {
+      for (auto const* var : vars) {
+        if (var != candidate->outVariable() &&
+            !knownConstVariables->contains(var)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's post filter "
-                                     "accesses variables that are "
-                                     "not available before all "
+                                     "accesses variable "
+                                  << var->name
+                                  << " that is not available before all "
                                      "index nodes";
           return {false, {}};
         }

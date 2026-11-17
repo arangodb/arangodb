@@ -25,28 +25,28 @@
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/system-functions.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
-#include "Basics/debugging.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/Metric.h"
 #include "Basics/CGroupDetection.h"
+#include "Basics/debugging.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
+#include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RequestStatisticsMetrics.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/Builder.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/Metric.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -58,12 +58,10 @@ MetricsFeature::MetricsFeature(
     application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
-    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
     : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
-                     std::move(lazyDatabaseFeatureRef),
                      std::move(lazyClusterMetricsFeatureRef),
                      std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
 
@@ -71,14 +69,12 @@ MetricsFeature::MetricsFeature(
     application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
-    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
     MetricsOptions options)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
-      _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
       _options(std::move(options)) {
@@ -657,7 +653,7 @@ void MetricsFeature::toPrometheus(std::string& result,
     }
 
     // Storage engine only provides standard metrics
-    auto& es = _databaseFeature->engine();
+    auto& es = server().getFeature<StorageEngine>();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _options.ensureWhitespace);
     }
@@ -771,7 +767,6 @@ void MetricsFeature::batchRemove(std::string_view name,
 
 void MetricsFeature::prepare() {
   _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
-  _databaseFeature = std::move(_lazyDatabaseFeatureRef).get();
   _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
   _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }

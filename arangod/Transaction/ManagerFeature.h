@@ -32,6 +32,10 @@
 #include <memory>
 #include <mutex>
 
+namespace arangodb {
+class StorageEngine;
+}  // namespace arangodb
+
 namespace arangodb::metrics {
 struct IRegistry;
 }  // namespace arangodb::metrics
@@ -46,10 +50,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   }
 
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::IRegistry& metricsRegistry,
+                 metrics::IRegistry& metricsRegistry, StorageEngine& engine,
                  ManagerFeatureOptions options);
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::IRegistry& metricsRegistry);
+                 metrics::IRegistry& metricsRegistry, StorageEngine& engine);
   ~ManagerFeature();
 
   void prepare() override;
@@ -66,6 +70,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 
   static std::shared_ptr<transaction::Manager> MANAGER;
 
+  StorageEngine& _engine;
   ManagerFeatureOptions _options;
 
   std::mutex _workItemMutex;

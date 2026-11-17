@@ -90,7 +90,7 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
 
 void IResearchRocksDBRecoveryHelper::prepare() {
   TRI_ASSERT(_server);
-  _engine = &_server->getFeature<RocksDBEngine>();
+  _engine = &_server->getFeature<StorageEngine, RocksDBEngine>();
   _dbFeature = &_server->getFeature<DatabaseFeature>();
   _documentCF = RocksDBColumnFamilyManager::get(
                     RocksDBColumnFamilyManager::Family::Documents)

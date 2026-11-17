@@ -34,6 +34,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Mocks/Servers.h"
 #include "RestServer/DatabaseFeature.h"
@@ -81,9 +82,9 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
-      auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          "{ \"id\":102, \"name\": \"foo\" }");
-      EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+          "foo", arangodb::DataSourceId{102});
+      EXPECT_NE(nullptr, vocbase->createCollection(colDescriptor));
     }
   }
 
@@ -458,7 +459,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // analyzer single-server (inRecovery), for creation
+  // analyzer single-server (engine !isReady()), for creation
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -467,8 +468,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"storedValues\":[[], [\"\"], [\"test.t\"], [\"a.a\", \"b.b\"]] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -507,7 +507,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
-  // analyzer single-server (inRecovery), not for creation
+  // analyzer single-server (engine !isReady()), not for creation
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -515,8 +515,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"analyzers\": [\"testAnalyzer1\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -544,7 +543,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
-  // analyzer single-server (inRecovery), for creation with specified
+  // analyzer single-server (engine !isReady()), for creation with specified
   // compression
   {
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -555,8 +554,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"some_unknown\":1}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -604,8 +602,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"some_unknown\":1}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -656,8 +653,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"some_unknown\":1}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -711,8 +707,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       "some_unknown":1}, {"fields":["a.a", "b.b"], "compression":"none"}]
     })");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -765,8 +760,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       "some_unknown":1}, {"fields":["a.a", "b.b"], "compression":"none"}]
     })");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -820,8 +814,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       "some_unknown":1}, {"fields":["a.a", "b.b"], "compression":"none"}]
     })");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -849,8 +842,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       "some_unknown":1}, {"fields":["a.a", "b.b"], "compression":"none"}]
     })");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };

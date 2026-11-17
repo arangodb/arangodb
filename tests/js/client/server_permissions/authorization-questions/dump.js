@@ -28,10 +28,11 @@
 //
 // Handler: arangod/RestHandler/RestDumpHandler.cpp
 //
-// Every request first asks `UseApiVersion version=1` and then
+// Every request first asks `UseApiVersion version=v1` and then
 // `UseDatabase name=d level=read` (the paths carry the /_db/d/ prefix).
 //
-//   POST /_api/dump/start   validateRequest() iterates the requested shards and
+//   POST /_api/dump/start   validateRequest() rejects an empty shard list
+//                           outright, then iterates the requested shards and
 //                           asks canDumpCollection(db, coll) for each ->
 //                           `DumpCollection db=d name=c`. handleCommandDumpStart()
 //                           then always calls canUseAdminAction(AdminDump) to
@@ -63,6 +64,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const { assertEqual, assertUndefined } = jsunity.jsUnity.assertions;
 const {
   beginObserve,
   endObserve,
@@ -117,7 +119,7 @@ function dumpApiAuthzSuite () {
       // AUDIT: on a coordinator the question carries an empty collection
       // name, and AdminDump is not asked at all
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read",
         ...singleOnly([
           "DumpCollection db=d name=c",
@@ -134,6 +136,21 @@ function dumpApiAuthzSuite () {
       }
     },
 
+    // POST /_api/dump/start without shards - rejected before any dump question
+    // An empty shard list names no collection to ask about, and a context
+    // built from it would hand out no data, so the request is rejected as a
+    // bad parameter and no dump permission is consulted at all.
+    testDumpStartWithoutShards: function () {
+      beginObserve();
+      const res = arango.POST_RAW(`/_db/${DB}/_api/dump/start`, { shards: [] });
+      assertPermissions([
+        "UseApiVersion version=v1",
+        "UseDatabase name=d level=read"
+      ], endObserve());
+      assertEqual(400, res.code, res);
+      assertUndefined(res.headers['x-arango-dump-id'], res);
+    },
+
     // POST /_api/dump/next/{id} - SAME-USER check (no can() question)
     // AUDIT: the SAME-USER restriction is enforced inside RocksDBDumpManager::find()
     // and does not go through ExecContext::can(), so only the base UseDatabase
@@ -145,7 +162,7 @@ function dumpApiAuthzSuite () {
       arango.POST_RAW(
         `/_db/${DB}/_api/dump/next/${dumpId}?batchId=${batchId}`, {});
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);
@@ -160,7 +177,7 @@ function dumpApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/dump/${dumpId}`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=d level=read"
       ], endObserve());
       abortDump(dumpId);

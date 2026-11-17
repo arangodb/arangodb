@@ -865,21 +865,17 @@ bool State::ensureCollection(std::string const& name, bool drop) {
     return true;
   }
 
-  Builder body;
-  {
-    VPackObjectBuilder b(&body);
-    body.add(StaticStrings::DataSourceType,
-             VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    body.add(StaticStrings::DataSourceName, VPackValue(name));
-    body.add(StaticStrings::DataSourceSystem,
-             VPackValue(NameValidator::isSystemName(name)));
-  }
+  CollectionDescriptor descriptor;
+  descriptor.constant.type = TRI_COL_TYPE_DOCUMENT;
+  descriptor.mutableProps.name = name;
+  descriptor.constant.isSystem = NameValidator::isSystemName(name);
+  descriptor.internal.usesRevisionsAsDocumentIds = false;
 
   if (drop && _vocbase->lookupCollection(name) != nullptr) {
     dropCollection(name);
   }
 
-  auto collection = _vocbase->createCollection(body.slice());
+  auto collection = _vocbase->createCollection(std::move(descriptor));
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -1649,54 +1645,6 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   LOG_TOPIC("4c42c", DEBUG, Logger::AGENCY)
       << "Updated persisted agency configuration: " << builder.slice().toJson();
-}
-
-query_t State::allLogs() const {
-  std::string const comp("FOR c IN compact SORT c._key RETURN c");
-  std::string const logs("FOR l IN log SORT l._key RETURN l");
-
-  TRI_ASSERT(nullptr != _vocbase);
-
-  std::lock_guard mutexLocker{_logLock};
-
-  auto origin =
-      transaction::OperationOriginInternal{"retrieving all agency logs"};
-  auto compq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::create(*_vocbase, origin),
-      aql::QueryString(comp), nullptr);
-  auto logsq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::create(*_vocbase, origin),
-      aql::QueryString(logs), nullptr);
-
-  aql::QueryResult compqResult = compq->executeSync();
-
-  if (compqResult.result.fail()) {
-    THROW_ARANGO_EXCEPTION(compqResult.result);
-  }
-
-  aql::QueryResult logsqResult = logsq->executeSync();
-
-  if (logsqResult.result.fail()) {
-    THROW_ARANGO_EXCEPTION(logsqResult.result);
-  }
-
-  auto everything = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder(everything.get());
-    try {
-      everything->add("compact", compqResult.data->slice());
-    } catch (std::exception const&) {
-      LOG_TOPIC("1face", ERR, Logger::AGENCY)
-          << "Failed to assemble compaction part of everything package";
-    }
-    try {
-      everything->add("logs", logsqResult.data->slice());
-    } catch (std::exception const&) {
-      LOG_TOPIC("fe816", ERR, Logger::AGENCY)
-          << "Failed to assemble remaining part of everything package";
-    }
-  }
-  return everything;
 }
 
 std::vector<index_t> State::inquire(velocypack::Slice query) const {

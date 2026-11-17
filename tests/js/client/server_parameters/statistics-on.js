@@ -24,8 +24,12 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  return {};
+  return {
+    'server.statistics': "true",
+    "server.authentication": false
+  };
 }
+
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');

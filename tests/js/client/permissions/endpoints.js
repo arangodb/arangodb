@@ -78,6 +78,15 @@ function testSuite() {
     }
   }
 
+  function reconnectFailed(url, method) {
+    try {
+      arango.reconnect(url, '_system', 'open', 'sesame');
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FAILED, err.errorNum, 'while reconnecting: ' + url);
+    }
+  }
+
   function reconnectPermitted(url, method) {
     try {
       arango.reconnect(url, '_system', 'open', 'sesame');
@@ -120,10 +129,11 @@ function testSuite() {
       reconnectForbidden('http://heise.de');
       reconnectForbidden('http://127.0.0.1:9999');
 
-      reconnectPermitted('https://allow.arangodb.com/bla');
-      reconnectPermitted('http://allow.arangodb.com/bla');
-      reconnectPermitted('https://arango.ai/blog');
-      reconnectPermitted('http://arango.ai/blog');
+      // they will not react in the way an arangod does:
+      reconnectFailed('https://allow.arangodb.com/bla');
+      reconnectFailed('http://allow.arangodb.com/bla');
+      reconnectFailed('https://arango.ai/blog');
+      reconnectFailed('http://arango.ai/blog');
     }
   };
 }

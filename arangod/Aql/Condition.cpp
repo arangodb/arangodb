@@ -27,7 +27,8 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
+#include "Aql/Optimizer/Utils/GetIndexForSortCondition.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
@@ -320,7 +321,7 @@ std::pair<bool, bool> Condition::findIndexes(
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(
-        false, aql::utils::getIndexForSortCondition(
+        false, aql::optimizer::getIndexForSortCondition(
                    coll, sortCondition, reference, itemsInIndex, node->hint(),
                    usedIndexes, dummy));
   }
@@ -329,7 +330,7 @@ std::pair<bool, bool> Condition::findIndexes(
       ExecutionNode::castTo<DocumentProducingNode const*>(node)
           ->canReadOwnWrites();
 
-  return aql::utils::getBestIndexHandlesForFilterCondition(
+  return aql::optimizer::getBestIndexHandlesForFilterCondition(
       trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
       node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex, readOwnWrites);
 }
@@ -1022,9 +1023,11 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
+                  // IN has no operator; other's type decides collation
                   CompareResult res =
-                      ResultsTable[compareAstNodes(value, other.valueNode,
-                                                   false) +
+                      ResultsTable[compareAstNodes(
+                                       value, other.valueNode,
+                                       other.whichCompareOperation() > 1) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
@@ -1055,10 +1058,9 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            // use Unicode comparison only when both operators are ordering ops
-            // (> 1)
+            // either operator being an ordering op forces collation
             bool const useUtf8Comparison =
-                current.whichCompareOperation() > 1 &&
+                current.whichCompareOperation() > 1 ||
                 other.whichCompareOperation() > 1;
             CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,

@@ -33,9 +33,11 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
+#include "Basics/Exceptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <functional>
@@ -230,6 +232,40 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
     ASSERT_TRUE(x.isNumber());
     ASSERT_EQ(x.slice().getInt(), 2);
   }
+}
+
+TEST_F(SortedCollectExecutorTestRowsUpstream,
+       resource_limit_while_writing_group_value) {
+  // ResourceMonitor checks its limit only when usage crosses a chunk boundary,
+  // so the group value must be at least one chunk to throw deterministically.
+  std::string const json =
+      absl::StrCat("\"", std::string(ResourceMonitor::chunkSize, 'x'), "\"");
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{json.c_str()}});
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
+
+  auto const queryMemoryBefore = fakedQuery->resourceMonitor().current();
+  {
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+        itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
+    SortedCollectExecutor testee(fetcher, executorInfos);
+
+    monitor.memoryLimit(monitor.current() + 1);
+    bool threw = false;
+    try {
+      std::ignore = testee.produceRows(inputRange, result);
+    } catch (arangodb::basics::Exception const& ex) {
+      threw = true;
+      EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+    }
+    EXPECT_TRUE(threw);
+  }
+  EXPECT_EQ(queryMemoryBefore, fakedQuery->resourceMonitor().current());
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
@@ -1022,5 +1058,103 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
 INSTANTIATE_TEST_CASE_P(SortedCollectExecutor, SortedCollectExecutorTestSplit,
                         ::testing::Values(splitIntoBlocks<2, 3>,
                                           splitIntoBlocks<3, 4>, splitStep<2>));
+
+// COLLECT AGGREGATE without group keys emits one row for empty input.
+// Once produced, this row must not be counted again during fullCount
+// fast-forward.
+TEST(SortedCollectExecutorEmptyAggregate,
+     produceThenFullCountDoesNotDoubleCount) {
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor};
+
+  mocks::MockAqlServer server{};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+  std::vector<std::string> aggregateTypes{"MAX"};
+  std::vector<std::pair<std::string, RegisterId>> variables;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+
+  auto registerInfos = RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, RegIdSet{},
+                                     RegIdSetStack{{}});
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister, nullptr,
+      std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
+
+  auto input = VPackParser::fromJson("[]");
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
+  SortedCollectExecutor testee(fetcher, executorInfos);
+
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
+
+  auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
+  ASSERT_EQ(ExecutorState::DONE, state);
+  ASSERT_EQ(1, result.numRowsWritten());
+  AqlValue aggregate = outputBlock->getValue(0, 1);
+  EXPECT_TRUE(aggregate.isNull(false));
+
+  AqlCall fullCountSkip{0, true, 0, AqlCall::LimitType::HARD};
+  auto [skipState, skipStats, skipped, skipCall] =
+      testee.skipRowsRange(inputRange, fullCountSkip);
+  EXPECT_EQ(ExecutorState::DONE, skipState);
+  EXPECT_EQ(0, skipped);
+}
+
+// The empty input row may be skipped before being produced, for example
+// due to a LIMIT offset. The subsequent fullCount fast-forward must not
+// count it again.
+TEST(SortedCollectExecutorEmptyAggregate, skipThenFullCountDoesNotDoubleCount) {
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor};
+
+  mocks::MockAqlServer server{};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{1, 0}};
+  std::vector<std::string> aggregateTypes{"MAX"};
+  std::vector<std::pair<std::string, RegisterId>> variables;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+
+  auto registerInfos = RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, RegIdSet{},
+                                     RegIdSetStack{{}});
+  auto executorInfos = SortedCollectExecutorInfos(
+      std::move(groupRegisters), collectRegister, expressionRegister, nullptr,
+      std::move(aggregateTypes), std::move(variables),
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
+
+  auto input = VPackParser::fromJson("[]");
+  SingleRowFetcherHelper<BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
+  SortedCollectExecutor testee(fetcher, executorInfos);
+
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
+
+  AqlCall offsetSkip{1};
+  auto [skipState, skipStats, skipped, skipCall] =
+      testee.skipRowsRange(inputRange, offsetSkip);
+  EXPECT_EQ(ExecutorState::DONE, skipState);
+  EXPECT_EQ(1, skipped);
+
+  AqlCall fullCountSkip{0, true, 0, AqlCall::LimitType::HARD};
+  auto [fullCountState, fullCountStats, fullCountSkipped, fullCountCall] =
+      testee.skipRowsRange(inputRange, fullCountSkip);
+  EXPECT_EQ(ExecutorState::DONE, fullCountState);
+  EXPECT_EQ(0, fullCountSkipped);
+}
 
 }  // namespace arangodb::tests::aql

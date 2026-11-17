@@ -34,7 +34,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetCollection.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/TypedAstNodes.h"
@@ -48,9 +48,10 @@
 
 #include <initializer_list>
 
+namespace arangodb::aql {
 namespace {
 
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 // static node types used by some optimizer rules
 // having them statically available avoids having to build the lists over
@@ -60,22 +61,20 @@ static constexpr std::initializer_list<EN::NodeType> undistributeNodeTypes{
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 class RemoveToEnumCollFinder final
-    : public arangodb::aql::WalkerWorker<
-          arangodb::aql::ExecutionNode,
-          arangodb::aql::WalkerUniqueness::NonUnique> {
-  arangodb::aql::ExecutionPlan* _plan;
-  ::arangodb::containers::HashSet<arangodb::aql::ExecutionNode*>& _toUnlink;
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  ExecutionPlan* _plan;
+  ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
   bool _foundModification;
   bool _foundScatter;
   bool _foundGather;
-  arangodb::aql::ExecutionNode* _enumColl;
-  arangodb::aql::ExecutionNode* _setter;
-  arangodb::aql::Variable const* _variable;
+  ExecutionNode* _enumColl;
+  ExecutionNode* _setter;
+  Variable const* _variable;
 
  public:
   RemoveToEnumCollFinder(
-      arangodb::aql::ExecutionPlan* plan,
-      ::arangodb::containers::HashSet<arangodb::aql::ExecutionNode*>& toUnlink)
+      ExecutionPlan* plan,
+      ::arangodb::containers::HashSet<ExecutionNode*>& toUnlink)
       : _plan(plan),
         _toUnlink(toUnlink),
         _foundModification(false),
@@ -85,7 +84,7 @@ class RemoveToEnumCollFinder final
         _setter(nullptr),
         _variable(nullptr) {}
 
-  bool before(arangodb::aql::ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::UPDATE:
       case EN::REPLACE:
@@ -95,28 +94,24 @@ class RemoveToEnumCollFinder final
         }
 
         // find the variable we are removing . . .
-        auto rn = EN::castTo<arangodb::aql::ModificationNode*>(en);
-        arangodb::aql::Variable const* toRemove = nullptr;
+        auto rn = EN::castTo<ModificationNode*>(en);
+        Variable const* toRemove = nullptr;
 
         if (en->getType() == EN::REPLACE) {
-          toRemove = EN::castTo<arangodb::aql::ReplaceNode const*>(en)
-                         ->inKeyVariable();
+          toRemove = EN::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
           // first try if we have the pattern UPDATE <key> WITH <doc> IN
           // collection. if so, then toRemove will contain <key>.
-          toRemove =
-              EN::castTo<arangodb::aql::UpdateNode const*>(en)->inKeyVariable();
+          toRemove = EN::castTo<UpdateNode const*>(en)->inKeyVariable();
 
           if (toRemove == nullptr) {
             // if we don't have that pattern, we can if instead have
             // UPDATE <doc> IN collection.
             // in this case toRemove will contain <doc>.
-            toRemove = EN::castTo<arangodb::aql::UpdateNode const*>(en)
-                           ->inDocVariable();
+            toRemove = EN::castTo<UpdateNode const*>(en)->inDocVariable();
           }
         } else if (en->getType() == EN::REMOVE) {
-          toRemove =
-              EN::castTo<arangodb::aql::RemoveNode const*>(en)->inVariable();
+          toRemove = EN::castTo<RemoveNode const*>(en)->inVariable();
         } else {
           TRI_ASSERT(false);
         }
@@ -132,7 +127,7 @@ class RemoveToEnumCollFinder final
 
         if (_setter->getType() == EN::CALCULATION) {
           // this should be an attribute access for _key
-          auto cn = EN::castTo<arangodb::aql::CalculationNode*>(_setter);
+          auto cn = EN::castTo<CalculationNode*>(_setter);
 
           auto expr = cn->expression();
           if (expr->isAttributeAccess()) {
@@ -151,7 +146,7 @@ class RemoveToEnumCollFinder final
 
             // set the varsToRemove to the variable in the expression of this
             // node and also define enumColl
-            arangodb::aql::VarSet varsToRemove;
+            VarSet varsToRemove;
             cn->getVariablesUsedHere(varsToRemove);
             TRI_ASSERT(varsToRemove.size() == 1);
             toRemove = *(varsToRemove.begin());
@@ -176,17 +171,17 @@ class RemoveToEnumCollFinder final
 
             // go through the input object attribute by attribute
             // and look for our shard keys
-            arangodb::aql::Variable const* lastVariable = nullptr;
+            Variable const* lastVariable = nullptr;
             bool doOptimize = true;
 
             for (size_t i = 0; i < n->numMembers(); ++i) {
               auto sub = n->getMember(i);
 
-              if (sub->type != arangodb::aql::NODE_TYPE_OBJECT_ELEMENT) {
+              if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
                 continue;
               }
 
-              arangodb::aql::ast::ObjectElementNode objElem(sub);
+              ast::ObjectElementNode objElem(sub);
               std::string attributeName = sub->getString();
               auto it = toFind.find(attributeName);
 
@@ -196,14 +191,14 @@ class RemoveToEnumCollFinder final
                 auto value = objElem.getValue();
 
                 // check if we have something like: { key: source.key }
-                if (value->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
                     value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
-                  arangodb::aql::ast::AttributeAccessNode attrAccess(value);
+                  ast::AttributeAccessNode attrAccess(value);
                   auto var = attrAccess.getObject();
-                  if (var->type == arangodb::aql::NODE_TYPE_REFERENCE) {
-                    arangodb::aql::ast::ReferenceNode ref(var);
+                  if (var->type == NODE_TYPE_REFERENCE) {
+                    ast::ReferenceNode ref(var);
                     auto accessedVariable = ref.getVariable();
 
                     if (lastVariable == nullptr) {
@@ -239,8 +234,7 @@ class RemoveToEnumCollFinder final
         }
 
         auto const& projections =
-            dynamic_cast<arangodb::aql::DocumentProducingNode const*>(enumColl)
-                ->projections();
+            dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
         if (projections.isSingle(arangodb::StaticStrings::KeyString)) {
           // cannot handle projections
           break;
@@ -248,8 +242,7 @@ class RemoveToEnumCollFinder final
 
         _enumColl = enumColl;
 
-        if (arangodb::aql::utils::getCollection(_enumColl) !=
-            rn->collection()) {
+        if (optimizer::getCollection(_enumColl) != rn->collection()) {
           break;  // abort . . .
         }
 
@@ -283,7 +276,7 @@ class RemoveToEnumCollFinder final
       }
       case EN::CALCULATION: {
         TRI_vocbase_t& vocbase = _plan->getAst()->query().vocbase();
-        auto calculationNode = EN::castTo<arangodb::aql::CalculationNode*>(en);
+        auto calculationNode = EN::castTo<CalculationNode*>(en);
         auto expr = calculationNode->expression();
 
         // If we find an expression that is not allowed to run on a DBServer,
@@ -338,8 +331,6 @@ class RemoveToEnumCollFinder final
 
 }  // namespace
 
-namespace arangodb::aql {
-
 /// @brief recognizes that a RemoveNode can be moved to the shards.
 void undistributeRemoveAfterEnumCollRule(Optimizer* opt,
                                          std::unique_ptr<ExecutionPlan> plan,
@@ -347,7 +338,7 @@ void undistributeRemoveAfterEnumCollRule(Optimizer* opt,
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, undistributeNodeTypes, true);
 
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);

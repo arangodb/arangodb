@@ -30,7 +30,6 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipEndpoints`: if set to true endpoints tests are skipped',
   '   - `skipEndpointsIpv6`: if set to true endpoints tests using IPv6 are skipped',
-  '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped',
 ];
 
 const _ = require('lodash');
@@ -69,18 +68,17 @@ class endpointRunner extends trs.runInArangoshRunner {
     // For now we always want the noise here!
     this.options = _.clone(this.options);
     this.options.extremeVerbosity = true;
-    this.instance = new inst.instance(this.options,
-                                      inst.instanceRole.single,
-                                      {
-                                        'log.level': ['startup=trace', 'rocksdb=trace'],
-                                        'log.force-direct': 'true',
-                                        'rocksdb.debug-logging': 'true',
-                                      },
-                                      {}, {}, 'tcp', this.dummyDir, '',
-                                      new agencyMgr(this.options, null),
-                                      this.dummyDir,
-                                      this.options.memory
-                                     );
+    this.instance = new inst.instance(
+      this.options, inst.instanceRole.single, 'tcp',
+      new agencyMgr(this.options, null), {
+        'log.level': ['startup=trace', 'rocksdb=trace'],
+        'log.force-direct': 'true',
+        'rocksdb.debug-logging': 'true',
+        'server.authentication': false,
+      },
+      this.dummyDir, '',
+      '', this.options.memory
+    );
     this.endpoint = this.instance.args['server.endpoint'];
   }
   getEndpoint() {
@@ -235,24 +233,6 @@ class endpointRunner extends trs.runInArangoshRunner {
           },
         ],
       },
-
-      unix: {
-        skip: function () { return obj.options.skipEndpointsUnix; },
-        protocol: 'unix',
-        serverArgs: function () {
-          // use a random filename
-          return {
-            'server.endpoint': 'unix://' + obj.dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8)
-          };
-        },
-        shellTests: [
-          {
-            name: 'unix',
-            endpoint: function (endpoint) { return endpoint; },
-            success: true
-          },
-        ]
-      },
     };
     obj.orgArgs = _.clone(obj.instance.args);
     let fatalError = false;
@@ -386,7 +366,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipEndpointsIpv6'] = false;
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
-  opts['skipEndpointsUnix'] = false;
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);

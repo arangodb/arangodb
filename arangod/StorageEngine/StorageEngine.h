@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "StorageEngine/TransactionStatistics.h"
 #include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
@@ -35,6 +36,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -45,22 +47,15 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class RecoveryState : uint32_t {
-  /// @brief recovery is not yet started
-  BEFORE = 0,
-
-  /// @brief recovery is in progress
-  IN_PROGRESS,
-
-  /// @brief recovery is done
-  DONE
-};
+enum class EngineState : uint32_t { kPreRecovery = 0, kRecovering, kRunning };
 
 namespace aql {
 class OptimizerRulesFeature;
 }
 
 class DatabaseInitialSyncer;
+class IndexTypeCatalog;
+struct IndexDefinition;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -69,6 +64,8 @@ class TransactionCollection;
 class TransactionState;
 class WalAccess;
 struct IDatabaseProvider;
+struct IDatabaseBootstrap;
+struct CollectionStorageProperties;
 
 namespace rest {
 class RestHandlerFactory;
@@ -103,12 +100,17 @@ class StorageSnapshot {
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
+  // passed in since the engine may need a ref that only its own ctor has
+  using IndexFactoryCreator =
+      std::function<std::unique_ptr<IndexFactory>(IndexTypeCatalog const&)>;
+
   // create the storage engine
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
-                std::type_index registration,
-                std::unique_ptr<IndexFactory>&& indexFactory,
-                IDatabaseProvider& databaseProvider);
+                IDatabaseProvider& databaseProvider,
+                IDatabaseBootstrap& databaseBootstrap,
+                IndexFactoryCreator createIndexFactory);
+  ~StorageEngine() override;
 
   virtual HealthData healthCheck() = 0;
 
@@ -128,14 +130,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // createTransactionManager). Must only be called once the manager exists.
   transaction::Manager& transactionManager() const;
 
-  // when a new collection is created, this method is called to augment the
-  // collection creation data with engine-specific information
-  virtual void addParametersForNewCollection(velocypack::Builder&,
-                                             velocypack::Slice /*info*/);
+  // the id the engine uses to address the collection's data; keeps one that
+  // was supplied already
+  virtual uint64_t resolveObjectId(
+      CollectionStorageProperties const& storage) const;
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice info) = 0;
+      LogicalCollection& collection, LocalStorageProperties const& storage) = 0;
 
   // status functionality
   // --------------------
@@ -156,13 +158,6 @@ class StorageEngine : public application_features::ApplicationFeature {
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes,
                                  TRI_voc_tick_t maxTick) = 0;
-
-  // fill the Builder object with an array of collections (and their
-  // corresponding indexes) that were detected by the storage engine. called at
-  // server start separately for each database
-  virtual ErrorCode getCollectionsAndIndexes(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-      bool wasCleanShutdown, bool isUpgrade) = 0;
 
   virtual ErrorCode getViews(TRI_vocbase_t& vocbase,
                              arangodb::velocypack::Builder& result) = 0;
@@ -223,14 +218,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
-  /// @brief is database in recovery
-  bool inRecovery();
+  /// @brief true once recovery has finished and the engine is running
+  bool isReady();
 
   /// @brief current recovery state
-  virtual RecoveryState recoveryState() = 0;
+  virtual EngineState engineState() noexcept = 0;
 
   /// @brief current recovery tick
-  virtual TRI_voc_tick_t recoveryTick() = 0;
+  virtual TRI_voc_tick_t recoveryTick() noexcept = 0;
 
   virtual auto dropReplicatedState(
       TRI_vocbase_t&,
@@ -323,7 +318,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
-  IndexFactory const& indexFactory() const;
+  virtual IndexFactory const& indexFactory() const;
+
+  // IResearchFeature injects this in a later feature phase, after construction
+  void setLinkCreator(IndexFactory::LinkCreator creator);
+
+  IndexTypeCatalog const& indexTypeCatalog() const noexcept;
+
+  // catalog takes ownership of definition
+  Result registerIndexDefinition(std::string_view name,
+                                 std::unique_ptr<IndexDefinition> definition);
 
   // AQL functions
   // -------------
@@ -338,8 +342,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                    velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  virtual void getCapabilities(velocypack::Builder& builder,
-                               uint32_t apiVersion) const;
+  virtual void getCapabilities(velocypack::Builder& builder) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
@@ -385,7 +388,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // name settings).
   IDatabaseProvider& _databaseProvider;
 
+  // startup-lifecycle hooks called as the engine opens.
+  IDatabaseBootstrap& _databaseBootstrap;
+
  private:
+  std::unique_ptr<IndexTypeCatalog> const _indexTypeCatalog;
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;

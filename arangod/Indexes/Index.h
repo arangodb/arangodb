@@ -38,6 +38,7 @@
 #include <vector>
 
 namespace arangodb {
+class IndexTypeCatalog;
 class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
@@ -259,7 +260,7 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool compare(StorageEngine&, velocypack::Slice const& lhs,
+  static bool compare(IndexTypeCatalog const&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs, std::string const& dbname);
 
   static void normalizeFilterCosts(Index::FilterCosts& costs,

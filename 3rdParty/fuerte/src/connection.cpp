@@ -91,15 +91,13 @@ std::string Connection::endpoint() const {
   // http
   endpoint.append(fuerte::to_string(_config._protocolType));
   endpoint.push_back('+');
-  // tcp/ssl/unix
+  // tcp/ssl
   endpoint.append(fuerte::to_string(_config._socketType));
   endpoint.append("://");
   // domain name or IP (xxx.xxx.xxx.xxx)
   endpoint.append(_config._host);
-  if (_config._socketType != SocketType::Unix) {
-    endpoint.push_back(':');
-    endpoint.append(_config._port);
-  }
+  endpoint.push_back(':');
+  endpoint.append(_config._port);
   return endpoint;
 }
 

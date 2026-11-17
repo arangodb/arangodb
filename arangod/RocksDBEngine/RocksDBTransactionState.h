@@ -81,9 +81,6 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] bool hasFailedOperations() const noexcept override;
 
-  [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
-                                             ReadOwnWrites readOwnWrites) const;
-
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 

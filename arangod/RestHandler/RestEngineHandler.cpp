@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -37,7 +36,7 @@ RestEngineHandler::RestEngineHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()) {}
+      _engine(server.getFeature<StorageEngine>()) {}
 
 // Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {
@@ -82,7 +81,7 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  _engine.getCapabilities(result, _request->requestedApiVersion());
+  _engine.getCapabilities(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

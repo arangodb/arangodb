@@ -40,7 +40,7 @@ class Methods;
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
-  template<bool reverse, bool mustCheckBounds>
+  template<bool reverse>
   friend class RocksDBPrimaryIndexRangeIterator;
 
  public:

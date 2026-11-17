@@ -47,17 +47,6 @@ class LogicalCollection;
 
 namespace vector {
 
-inline faiss::MetricType metricToFaissMetric(
-    SimilarityMetric const metric) noexcept {
-  switch (metric) {
-    case SimilarityMetric::kL2:
-      return faiss::MetricType::METRIC_L2;
-    case SimilarityMetric::kCosine:
-      return faiss::MetricType::METRIC_INNER_PRODUCT;
-    case SimilarityMetric::kInnerProduct:
-      return faiss::METRIC_INNER_PRODUCT;
-  }
-}
 velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 
 // =====================================================================
@@ -105,6 +94,8 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 // the same thread. capturedDocuments is therefore unsynchronised. If
 // parallel_mode is ever changed to 1 or 2, or n>1 with a shared sink, this
 // needs revisiting.
+// Update: Since we split quantizer and lists search and perform them ourselves
+// the parallelism is not possible anymore.
 // =====================================================================
 
 // Common per-search context shared by every iterator path.

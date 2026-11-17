@@ -176,11 +176,14 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
 
   auto list = basics::FileUtils::listFiles(path);
   std::ranges::sort(list);
-  auto f =
-      list |  //
-      std::views::filter([](std::string const& file) {
-        return not(file.empty() or file[0] == '.' or file.ends_with(".tmp"));
-      });
+  auto f = list |  //
+           std::views::filter([&path](std::string const& file) {
+             if (file.empty() or file[0] == '.' or file.ends_with(".tmp")) {
+               return false;
+             }
+             // Includes symlinks to regular files but skips directories etc.
+             return std::filesystem::is_regular_file(path / file);
+           });
 
   if (f.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
@@ -188,16 +191,17 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
                               path.string()));
   }
 
-  auto r =
-      loadJwtSecretFile(basics::FileUtils::buildFilename(path, list.at(0)));
+  auto const fn = basics::FileUtils::buildFilename(path, f.front());
+  auto const r = loadKeyfile(fn);
   if (!r.ok()) {
     return r.result();
   }
-  auto result = r.get();
+  auto result = AuthInfo{.activeSecret = r.get(), .passiveSecrets = {}};
 
   std::vector<AuthKey> passiveSecrets;
   for (auto&& file : f | std::views::drop(1)) {
-    auto r = loadKeyfile(basics::FileUtils::buildFilename(path, file));
+    auto const fn = basics::FileUtils::buildFilename(path, file);
+    auto const r = loadKeyfile(fn);
 
     if (!r.ok()) {
       return r.result();

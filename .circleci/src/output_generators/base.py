@@ -26,8 +26,12 @@ class TestExecutionConfig:
 class CircleCIConfig:
     """CircleCI-specific configuration."""
 
-    # Test Docker images to build and publish: "none" or "alpine"
+    # Test Docker images (maintainer mode) to build and publish: "none" or
+    # "alpine"
     create_test_docker_images: str = "none"
+    # Preview Docker images (non-maintainer, release-like) to build and
+    # publish: "none" or "alpine"
+    create_preview_docker_images: str = "none"
     test_image: str = ""
 
 
@@ -45,6 +49,8 @@ class GeneratorConfig:
     circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
     validate_only: bool = False
     build_variants: List[BuildVariant] = field(default_factory=list)
+    # Only compile (and cppcheck); no test jobs in the variant workflows.
+    build_only: bool = False
 
 
 class OutputGenerator(ABC):

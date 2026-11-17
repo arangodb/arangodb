@@ -9,8 +9,7 @@ add_library(arango_cluster_engine STATIC
 
 target_link_libraries(arango_cluster_engine
   arango_health
-  arango_indexes
-  boost_boost)
+  arango_indexes)
 
 target_include_directories(arango_cluster_engine PUBLIC
   ${IRESEARCH_INCLUDE})

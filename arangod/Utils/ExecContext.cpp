@@ -547,6 +547,52 @@ Result ExecContext::canReadUser(std::string_view userName) const {
   return can(ReadUser{.name{userName}});
 }
 
+/// @brief returns true if the AQL query of the given user may be seen or
+/// removed from the slow query list
+Result ExecContext::canMonitorQuery(std::string_view queryUser) const {
+  if (!_authMode.isUnauthenticated() && queryUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminMonitorAqlQueries{});
+}
+
+/// @brief returns true if the AQL query of the given user may be killed
+Result ExecContext::canKillQuery(std::string_view queryUser) const {
+  if (!_authMode.isUnauthenticated() && queryUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminKillAqlQueries{});
+}
+
+/// @brief returns true if the query properties of the given database
+/// may be updated
+Result ExecContext::canUpdateQueryProperties(std::string_view db) const {
+  using namespace auth::perms;
+  if (auto r = can(UpdateQueryProperties{.db{db}}); r.fail()) {
+    return r;
+  }
+  if (auto r = checkNotReadOnly(); r.fail()) {
+    return r;
+  }
+  return {};
+}
+
+/// @brief returns true if the transaction of the given user may be seen
+Result ExecContext::canMonitorTransaction(std::string_view trxUser) const {
+  if (!_authMode.isUnauthenticated() && trxUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminMonitorTransactions{});
+}
+
+/// @brief returns true if the transaction of the given user may be aborted
+Result ExecContext::canKillTransaction(std::string_view trxUser) const {
+  if (!_authMode.isUnauthenticated() && trxUser == user()) {
+    return {};
+  }
+  return can(auth::perms::AdminKillTransactions{});
+}
+
 /// @brief returns true if the given user may be created.
 Result ExecContext::canCreateUser(std::string_view userName) const {
   using namespace auth::perms;
@@ -607,7 +653,7 @@ Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
 }
 
 /// @brief returns whether the given REST API version may be used
-Result ExecContext::canUseApiVersion(uint32_t version) const {
+Result ExecContext::canUseApiVersion(ApiVersion version) const {
   using namespace auth::perms;
   // Using an API version never modifies anything, so the read-only gate does
   // not apply here.

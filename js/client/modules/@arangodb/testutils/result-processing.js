@@ -51,6 +51,7 @@ const internalMembers = [
   'crashreport',
   'code',
   'exitCode',
+  'exit',
   'error',
   'status',
   'skipped',

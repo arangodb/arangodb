@@ -91,8 +91,8 @@ RestHandler::~RestHandler() {
 
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
-               RequestPriority::LOW);
+    TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+    TRI_ASSERT(PriorityRequestLane(_lane) == RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
@@ -215,13 +215,17 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
+  auto headers = request()->headers();
+  headers.insert_or_assign(StaticStrings::Authorization,
+                           "SENSITIVE_DETAILS_HIDDEN");
+
   _activity = activities::make<arangodb::rest::RestHandlerActivity>(
       RestHandlerActivityData{
           .handler = name(),           //
           .url = _request->fullUrl(),  //
           .method = std::string{GeneralRequest::translateMethod(
               _request->requestType())},  //
-          .headers = request()->headers(),
+          .headers = std::move(headers),
           .connectionInfo = request()->connectionInfo()});
 }
 
@@ -724,15 +728,6 @@ async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
     co_return AuthenticationGrant::GRANTED_EARLY;
   }
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  auto const& ci = request()->connectionInfo();
-  if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !auth->authenticationUnixSockets()) {
-    // no authentication required for unix domain socket connections
-    co_return AuthenticationGrant::GRANTED_EARLY;
-  }
-#endif
-
   if (request()->authenticated()) {
     if (auth->rbacEnabled() && request()->authenticationMethod() ==
                                    rest::AuthenticationMethod::BASIC) {
@@ -772,12 +767,7 @@ async<Result> RestHandler::checkDatabaseAccess() const {
 
   LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
       << "Access forbidden to " << request()->requestPath();
-  if (_request->requestedApiVersion() == 0 && ec->isClassic()) {
-    co_return Result(TRI_ERROR_HTTP_UNAUTHORIZED,
-                     "No read access to database.");
-  } else {
-    co_return canUseDB;
-  }
+  co_return canUseDB;
 }
 
 async<void> RestHandler::handleAuthorizationChecks() {
@@ -826,15 +816,6 @@ async<void> RestHandler::handleAuthorizationChecks() {
   if (auto res = co_await checkDatabaseAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    if (_request->requestedApiVersion() == 0) {
-      // This one here is very special. Due to backwards compatibility
-      // requirements, we have to produce exactly the following combination
-      // here, which cannot be achieved with the `generateError` method
-      // which takes only a `Result`. Funny.
-      generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                    res.errorMessage());
-      co_return;
-    }
     generateError(res);
   }
 }

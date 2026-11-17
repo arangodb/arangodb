@@ -48,6 +48,10 @@ struct BatchOptions {
 
   bool validateShardKeysOnUpdateReplace = false;
   bool validateSmartJoinAttribute = false;
+  // run the collection's internal validators (e.g. SmartGraph edge checks).
+  // disabled when applying data from the shard leader, which has already
+  // validated it.
+  bool runInternalValidators = true;
   std::shared_ptr<ValidatorBase> schema;
   std::shared_ptr<ComputedValues> computedValues;
   std::unique_ptr<aql::ExpressionContext> computedValuesContext;

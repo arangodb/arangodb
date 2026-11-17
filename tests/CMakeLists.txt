@@ -105,6 +105,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Match/BuilderTest.cpp
   Aql/Match/CollectionAccessBuilderTest.cpp
   Aql/Match/FilterBuilderTest.cpp
+  Aql/Match/MatchOptionsTest.cpp
   Aql/Match/PathConstructionTest.cpp
   Aql/Match/PatternNormalizerTest.cpp
   Aql/Match/PatternTypesTest.cpp
@@ -169,6 +170,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramMatchFunctionTest.cpp
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
+  Aql/Function/RangeFunctionTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinGraphTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
@@ -192,7 +194,7 @@ set(ARANGODB_TESTS_SOURCES
   Auth/RbacAuthModeTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
-  # Auth/RbacIntegrationTest.cpp
+  Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
   Auth/RbacServiceImplTest.cpp
@@ -214,6 +216,8 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionsWithBackingStore.cpp
+  ClientTools/BackgroundJwtRenewalTest.cpp
+  ClientTools/RenewingJwtTokenTest.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
@@ -225,6 +229,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ShardAutoRebalancerTest.cpp
   Cluster/ShardIDTest.cpp
   Cluster/ServerStateTest.cpp
+  ClusterEngine/ClusterIndexFactoryTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -235,6 +240,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Indexes/IndexTypeCatalogTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   Maintenance/MaintenanceFeatureTest.cpp
@@ -249,6 +255,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/ApiVersionTest.cpp
   Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
@@ -267,12 +274,15 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
+  RocksDBEngine/RocksDBIndexFactoryTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Scheduler/ThreadPoolTest.cpp
   Scheduler/SchedulerExecContextTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
+  SimpleHttpClient/SimpleHttpClientParamsTest.cpp
+  Ssl/JwtTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
@@ -285,6 +295,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/QuickGen.cpp
   VectorIndex/TrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
+  VocBase/CreateShardTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
@@ -366,7 +377,9 @@ target_link_libraries(arangodbtests
   rocksdb
   snappy
   gtest
-  boost_boost
+  Boost::container
+  Boost::core
+  Boost::lockfree
   velocypack_utils
 )
 

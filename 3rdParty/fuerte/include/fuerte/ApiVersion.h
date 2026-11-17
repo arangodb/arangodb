@@ -30,9 +30,10 @@
 namespace arangodb { namespace fuerte { namespace api_version {
 inline namespace v1 {
 
-/// ApiVersion is also used by ArangoDB server but is defined here (in fuerte)
-/// so that fuerte does not need to include server headers.
-/// lib/Rest/ApiVersion.h re-exports this enum.
+/// ApiVersion is also used by the ArangoDB server, which defines its own
+/// arangodb::ApiVersion so that neither side has to include the other's
+/// headers. lib/Basics/ApiVersionFuerte.h maps between the two and asserts that
+/// they stay in lockstep.
 
 enum class ApiVersion { V1 = 1, Experimental };
 
@@ -54,6 +55,17 @@ constexpr auto to_string(ApiVersion v) -> std::string {
   }
 }
 
+constexpr auto from(uint32_t v) -> std::optional<ApiVersion> {
+  switch (v) {
+    case 1:
+      return ApiVersion::V1;
+    case 2:
+      return ApiVersion::Experimental;
+    default:
+      return std::nullopt;
+  }
+}
+
 // the inspector only works when we link with the inspector library
 template <typename Inspector>
 auto inspect(Inspector& f, ApiVersion& x) {
@@ -65,6 +77,7 @@ auto inspect(Inspector& f, ApiVersion& x) {
     }
     if (auto opt = from(str); opt.has_value()) {
       x = *opt;
+      return res;
     }
     return decltype(res){"invalid ApiVersion: " + str};
   } else {

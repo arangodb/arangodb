@@ -32,7 +32,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Utils/CursorRepository.h"
+#include "Utils/ExecContext.h"
 
 #include <atomic>
 
@@ -44,8 +44,13 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval,
                                                  metrics::IRegistry& metrics)
-    // the settingsManager sync installs its own superuser scope where needed
-    : Thread("RocksDBThread", nullptr),
+    // This is an internal thread that's not working on behalf of any user,
+    // thus it's running as a Superuser.
+    // Having an ExecContext is required by the work items scheduled by
+    // processTreeRebuilds().
+    // RocksDBSettingsManager::sync() already installs a scoped Superuser
+    // context internally, because it can also be called from other threads.
+    : Thread("RocksDBThread", ExecContext::superuserAsShared()),
       _engine(engine),
       _interval(interval),
       _metricsWalReleasedTickReplication(
@@ -62,6 +67,9 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  // bg thread must only run after recovery is done
+  TRI_ASSERT(_engine.isReady());
+
   auto& flushControl = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
@@ -74,10 +82,6 @@ void RocksDBBackgroundThread::run() {
       _condition.cv.wait_for(guard,
                              std::chrono::microseconds{
                                  static_cast<uint64_t>(_interval * 1000000.0)});
-    }
-
-    if (_engine.inRecovery()) {
-      continue;
     }
 
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }

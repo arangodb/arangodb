@@ -36,7 +36,6 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"

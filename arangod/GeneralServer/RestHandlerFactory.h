@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include "Basics/ApiVersion.h"
+
 #include <initializer_list>
 #include <memory>
 #include <string>
@@ -51,35 +52,42 @@ class RestHandlerFactory {
       application_features::ApplicationServer&, GeneralRequest*,
       GeneralResponse*, void* data);
 
-  explicit RestHandlerFactory(uint32_t maxApiVersion);
+  RestHandlerFactory();
 
-  // creates a new handler
-  // if nullptr is returned, errorBuilder will contain error information
+  // creates a new handler; returns nullptr if no route matches
   std::shared_ptr<RestHandler> createHandler(
       application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>,
-      velocypack::Builder& errorBuilder) const;
+      std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr,
-                  std::initializer_list<uint32_t> apiVersions,
+                  std::initializer_list<ApiVersion> apiVersions,
                   void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
   void addPrefixHandler(std::string const& path, create_fptr,
-                        std::initializer_list<uint32_t> apiVersions,
+                        std::initializer_list<ApiVersion> apiVersions,
                         void* data = nullptr);
 
   // make the factory read-only (i.e. no new handlers can be added)
   void seal();
 
  private:
-  // list of constructors per API version
-  std::vector<std::unordered_map<std::string, std::pair<create_fptr, void*>>>
-      _constructors;
+  using HandlerMap =
+      std::unordered_map<std::string, std::pair<create_fptr, void*>>;
 
-  // list of prefix handlers per API version
-  std::vector<std::vector<std::string>> _prefixes;
+  struct VersionRoutes {
+    ApiVersion version;
+    HandlerMap constructors;
+    // sorted by length descending once sealed
+    std::vector<std::string> prefixes;
+  };
+
+  VersionRoutes* find(ApiVersion version);
+  VersionRoutes const* find(ApiVersion version) const;
+
+  // There are only ever a handful of versions, so a linear scan is enough.
+  std::vector<VersionRoutes> _routes;
 
   // whether or not handlers can be added (sealed = false)
   bool _sealed;

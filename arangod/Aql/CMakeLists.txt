@@ -72,7 +72,6 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
@@ -93,9 +92,11 @@ add_library(arango_aql STATIC
   QueryString.cpp
   QueryWarnings.cpp
   Range.cpp
+  RangeSpec.cpp
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
+  RegisterResolver.cpp
   RemoveModifier.cpp
   RestAqlHandler.cpp
   Scopes.cpp

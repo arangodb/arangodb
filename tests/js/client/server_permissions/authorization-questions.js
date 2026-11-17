@@ -36,7 +36,9 @@ if (getOptions === true) {
     // not be written by the logging thread
     'log.force-direct': 'true',
     // keep background threads from accessing collections while we observe
-    'foxx.queues': 'false'
+    'foxx.queues': 'false',
+    // disable so it doesn't spoil the test output:
+    'server.statistics': 'false'
   };
 }
 
@@ -50,7 +52,7 @@ const {
 } = require('@arangodb/testutils/permissions-observer');
 const { singleOnly } = require('@arangodb/testutils/apitest-fixtures');
 
-function authorizationQuestionsSuite () {
+function authorizationQuestionsSuite() {
   const cn = 'UnitTestsAuthzQuestions';
 
   return {
@@ -69,7 +71,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/collection/${cn}/count`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=read"
       ], endObserve());
@@ -79,7 +81,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.POST_RAW(`/_api/document/${cn}`, { value: 1 });
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=writedata",
@@ -96,7 +98,7 @@ function authorizationQuestionsSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_api/collection/${cn}`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read",
         "IsReadOnly",
         "DropCollection db=_system name=UnitTestsAuthzQuestions",

@@ -239,6 +239,37 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+// Per-query IVF search statistics; times are in seconds.
+struct EnumerateNearVectorStats {
+  std::uint64_t searches = 0;
+  std::uint64_t listsScanned = 0;
+  std::uint64_t distancesComputed = 0;
+  std::uint64_t heapUpdates = 0;
+  double coarseSearchTime = 0.0;
+  double listScanTime = 0.0;
+
+  void operator+=(EnumerateNearVectorStats const& stats) noexcept {
+    searches += stats.searches;
+    listsScanned += stats.listsScanned;
+    distancesComputed += stats.distancesComputed;
+    heapUpdates += stats.heapUpdates;
+    coarseSearchTime += stats.coarseSearchTime;
+    listScanTime += stats.listScanTime;
+  }
+};
+
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    EnumerateNearVectorStats const& vectorStats) noexcept {
+  executionStats.vectorSearches += vectorStats.searches;
+  executionStats.vectorListsScanned += vectorStats.listsScanned;
+  executionStats.vectorDistancesComputed += vectorStats.distancesComputed;
+  executionStats.vectorHeapUpdates += vectorStats.heapUpdates;
+  executionStats.vectorCoarseSearchTime += vectorStats.coarseSearchTime;
+  executionStats.vectorListScanTime += vectorStats.listScanTime;
+  return executionStats;
+}
+
 class ModificationStats {
  public:
   ModificationStats() noexcept : _writesExecuted(0), _writesIgnored(0) {}

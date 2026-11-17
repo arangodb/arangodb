@@ -22,7 +22,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -243,16 +242,14 @@ bool ClusterIndex::isSorted() const {
                                  "unsupported cluster storage engine");
 }
 
-void ClusterIndex::updateProperties(velocypack::Slice slice) {
+void ClusterIndex::setCacheEnabled(bool cacheEnabled) {
   VPackBuilder merge;
   merge.openObject();
 
   TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
-    merge.add(StaticStrings::CacheEnabled,
-              VPackValue(basics::VelocyPackHelper::getBooleanValue(
-                  slice, StaticStrings::CacheEnabled, false)));
+    merge.add(StaticStrings::CacheEnabled, VPackValue(cacheEnabled));
 
   } else {
     TRI_ASSERT(false);
@@ -272,7 +269,7 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine = _collection.vocbase().engine();
-  return Index::compare(engine, _info.slice(), info,
+  return Index::compare(engine.indexTypeCatalog(), _info.slice(), info,
                         _collection.vocbase().name());
 }
 
@@ -468,6 +465,7 @@ ClusterIndex::coveredFields() const {
     case IndexType::Zkd:
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
+    case IndexType::Vector:
     case IndexType::NoAccess: {
       return Index::emptyCoveredFields;
     }

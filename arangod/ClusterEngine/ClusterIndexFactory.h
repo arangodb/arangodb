@@ -30,23 +30,9 @@ class ClusterEngine;
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void linkIndexFactories(
-      application_features::ApplicationServer& server, IndexFactory& factory,
-      ClusterEngine& engine);
-  explicit ClusterIndexFactory(application_features::ApplicationServer&,
-                               ClusterEngine& engine);
-  ~ClusterIndexFactory() = default;
-
-  // normalize definition
-  Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                velocypack::Builder& normalized,
-                                bool isCreation,
-                                Database const& vocbase) const override;
-
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-  /// "hash") used to display storage engine capabilities
-  std::vector<std::pair<std::string_view, std::string_view>> indexAliases(
-      uint32_t apiVersion) const override;
+  ClusterIndexFactory(application_features::ApplicationServer&,
+                      ClusterEngine& engine, IndexTypeCatalog const& catalog);
+  ~ClusterIndexFactory() override = default;
 
   void fillSystemIndexes(
       LogicalCollection& col,
@@ -57,7 +43,21 @@ class ClusterIndexFactory final : public IndexFactory {
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
 
+  std::shared_ptr<Index> createIndex(
+      IndexType type, IndexCreationContext const& ctx) const override;
+
  private:
+  // generic path shared by every type that just becomes a ClusterIndex of
+  // the given IndexType
+  std::shared_ptr<Index> createGeneric(IndexType type,
+                                       LogicalCollection& collection,
+                                       velocypack::Slice definition,
+                                       IndexId id) const;
+
+  std::shared_ptr<Index> createInverted(LogicalCollection& collection,
+                                        velocypack::Slice definition,
+                                        IndexId id) const;
+
   ClusterEngine& _engine;
 };
 

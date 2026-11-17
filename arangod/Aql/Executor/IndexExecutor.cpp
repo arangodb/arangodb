@@ -200,6 +200,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _oneIndexCondition(oneIndexCondition),
       _readOwnWrites(readOwnWrites),
       _perIndexCovering(std::move(perIndexCovering)) {
+  // IndexIteratorOptions only sees killed() func, not the query itself here
+  _options.token = &query;
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -919,7 +921,8 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           getCursor().readIndex(output, _documentProducingFunctionContext);
       TRI_ASSERT(more == getCursor().hasMore());
 
-      if (!more && _currentIndex + 1 >= _cursors.size() && output.isFull()) {
+      if (!more && _currentIndex + 1 >= _infos.getIndexes().size() &&
+          output.isFull()) {
         // optimization for the case that the cursor cannot produce more data,
         // we are at the last cursor and we have filled up the output block
         // completely.

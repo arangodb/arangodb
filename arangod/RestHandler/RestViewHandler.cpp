@@ -205,6 +205,11 @@ void RestViewHandler::createView() {
   }
 
   try {
+    if (!server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "analyzers are not supported on this server");
+    }
     auto& analyzers =
         server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     // First refresh our analyzers cache to see all latest changes in analyzers
@@ -292,11 +297,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
-  // From API V1 we only allow view names here:
-  if (request()->requestedApiVersion() > 0) {
-    if (auto r = auth::isNameAndNoId(name); r.fail()) {
-      return generateError(r);
-    }
+  if (auto r = auth::isNameAndNoId(name); r.fail()) {
+    return generateError(r);
   }
 
   auto const& execContext = ExecContext::current();
@@ -321,6 +323,13 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
+  // a view can only exist where analyzers exist too
+  TRI_ASSERT(server().hasFeature<iresearch::IResearchAnalyzerFeature>());
+  if (!server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    return generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                         TRI_ERROR_NOT_IMPLEMENTED,
+                         "analyzers are not available on this instance");
+  }
   auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
   // First refresh our analyzers cache to see all latest changes in analyzers
   if (auto r = analyzers.loadAvailableAnalyzers(
@@ -408,13 +417,10 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  // From API V1 on, we will only accept view names here:
-  if (request()->requestedApiVersion() > 0) {
-    if (auto r = auth::isNameAndNoId(name); r.fail()) {
-      generateError(r);
-      events::DropView(_vocbase.name(), name, r.errorNumber());
-      return;
-    }
+  if (auto r = auth::isNameAndNoId(name); r.fail()) {
+    generateError(r);
+    events::DropView(_vocbase.name(), name, r.errorNumber());
+    return;
   }
 
   if (auto r = ExecContext::current().canDropView(

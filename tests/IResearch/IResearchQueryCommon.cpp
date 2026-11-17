@@ -22,11 +22,13 @@
 
 #include "IResearchQueryCommon.h"
 
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/DownCast.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchView.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -39,6 +41,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
 
   auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
   server.addFeature<arangodb::FlushFeature>(false, metrics);
+  server.addFeatureUntracked<arangodb::LanguageFeature>();
   server.startFeatures();
 
   auto& analyzers =
@@ -178,8 +181,9 @@ namespace arangodb::tests {
 void QueryTest::createCollections() {
   // testCollection0
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 
     std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -214,8 +218,9 @@ void QueryTest::createCollections() {
   }
   // testCollection1
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection1");
+    auto collection = _vocbase.createCollection(colDescriptor);
     ASSERT_TRUE(collection);
 
     std::filesystem::path resource;

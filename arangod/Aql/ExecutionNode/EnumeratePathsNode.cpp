@@ -28,7 +28,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EnumeratePathsExecutor.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -88,19 +88,13 @@ static GraphNode::InputVertex prepareVertexInput(EnumeratePathsNode const* node,
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->targetInVariable().id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(&node->targetInVariable())};
     } else {
       return InputVertex{node->getTargetVertex()};
     }
   } else {
     if (node->usesStartInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->startInVariable().id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(&node->startInVariable())};
     } else {
       return InputVertex{node->getStartVertex()};
     }
@@ -406,15 +400,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegIdSet inputRegisters;
   if (usesStartInVariable()) {
-    inputRegisters.emplace(variableToRegisterId(&startInVariable()));
+    inputRegisters.emplace(inputRegister(&startInVariable()));
   }
   if (usesTargetInVariable()) {
-    inputRegisters.emplace(variableToRegisterId(&targetInVariable()));
+    inputRegisters.emplace(inputRegister(&targetInVariable()));
   }
 
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
-  auto outputRegister = variableToRegisterId(&pathOutVariable());
-  auto outputRegisters = RegIdSet{outputRegister};
+  auto outReg = outputRegister(&pathOutVariable());
+  auto outputRegisters = RegIdSet{outReg};
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                            std::move(outputRegisters));
@@ -488,7 +482,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            validatorOptions, outReg, engine, sourceInput, targetInput,
             registerInfos);
       case arangodb::graph::PathType::Type::AllShortestPaths:
         return _makeExecutionBlockImpl<AllShortestPathsEnumerator<Provider>,
@@ -496,7 +490,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            validatorOptions, outReg, engine, sourceInput, targetInput,
             registerInfos);
       case arangodb::graph::PathType::Type::KShortestPaths:
         enumeratorOptions.setMinDepth(0);
@@ -509,8 +503,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                          SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -543,8 +537,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         }
 
       default:
@@ -580,7 +574,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                        ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            validatorOptions, outReg, engine, sourceInput, targetInput,
             registerInfos);
       case arangodb::graph::PathType::Type::AllShortestPaths:
         return _makeExecutionBlockImpl<
@@ -588,7 +582,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
             ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
                                         std::move(backwardProviderOptions),
                                         enumeratorOptions, validatorOptions,
-                                        outputRegister, engine, sourceInput,
+                                        outReg, engine, sourceInput,
                                         targetInput, registerInfos);
       case arangodb::graph::PathType::Type::KShortestPaths:
         // TODO: deduplicate with SingleServer && SingleServer non-traced
@@ -603,8 +597,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         } else {
           // Weighted Variant
           double defaultWeight = opts->getDefaultWeight();
@@ -637,8 +631,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               ClusterProvider, ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outReg, engine, sourceInput, targetInput,
+              registerInfos);
         }
       default:
         ADB_PROD_ASSERT(false)
@@ -838,7 +832,7 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
         _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ true);

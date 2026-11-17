@@ -316,35 +316,34 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   if (!ec) {
     // Inspect the received data
     size_t nparsed = 0;
-    for (auto const& buffer : this->_protocol->buffer.data()) {
-      char const* data = reinterpret_cast<char const*>(buffer.data());
-      char const* end = data + buffer.size();
-      do {
-        size_t datasize = end - data;
+    auto const buffer = this->_protocol->buffer.data();
+    char const* data = reinterpret_cast<char const*>(buffer.data());
+    char const* end = data + buffer.size();
+    do {
+      size_t datasize = end - data;
 
-        TRI_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
-          // we had an issue that URLs were cut off because the url data was
-          // handed in in multiple buffers. To cover this case, we simulate that
-          // data fed to the parser in small chunks.
-          constexpr size_t chunksize = 5;
-          datasize = std::min<size_t>(datasize, chunksize);
-        }
+      TRI_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
+        // we had an issue that URLs were cut off because the url data was
+        // handed in in multiple buffers. To cover this case, we simulate that
+        // data fed to the parser in small chunks.
+        constexpr size_t chunksize = 5;
+        datasize = std::min<size_t>(datasize, chunksize);
+      }
 
-        err = llhttp_execute(&_parser, data, datasize);
-        if (err != HPE_OK) {
-          if (err == HPE_INVALID_HEADER_TOKEN || err == HPE_INVALID_URL ||
-              err == HPE_UNEXPECTED_CONTENT_LENGTH) {
-            _headerCorrupt = true;
-          }
-          ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
-          TRI_ASSERT(diff >= 0);
-          nparsed += static_cast<size_t>(diff);
-          break;
+      err = llhttp_execute(&_parser, data, datasize);
+      if (err != HPE_OK) {
+        if (err == HPE_INVALID_HEADER_TOKEN || err == HPE_INVALID_URL ||
+            err == HPE_UNEXPECTED_CONTENT_LENGTH) {
+          _headerCorrupt = true;
         }
-        nparsed += datasize;
-        data += datasize;
-      } while (ADB_UNLIKELY(data < end));
-    }
+        ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
+        TRI_ASSERT(diff >= 0);
+        nparsed += static_cast<size_t>(diff);
+        break;
+      }
+      nparsed += datasize;
+      data += datasize;
+    } while (ADB_UNLIKELY(data < end));
 
     TRI_ASSERT(nparsed < std::numeric_limits<size_t>::max());
     // Remove consumed data from receive buffer.
@@ -618,9 +617,9 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*_request); res.fail()) {
-    this->sendErrorResponse(rest::ResponseCode::BAD,
+    this->sendErrorResponse(this->contentEncodingErrorCode(res),
                             _request->contentTypeResponse(), 1,
-                            TRI_ERROR_BAD_PARAMETER, res.errorMessage());
+                            res.errorNumber(), res.errorMessage());
     return;
   }
 
@@ -883,4 +882,3 @@ std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;
 template class arangodb::rest::HttpCommTask<SocketType::Ssl>;
-template class arangodb::rest::HttpCommTask<SocketType::Unix>;

@@ -372,6 +372,30 @@ function printStats(stats, isCoord) {
   stringBuilder.appendLine();
 }
 
+/* print vector index (IVF) search stats */
+function printVectorStats(stats) {
+  'use strict';
+  if (!stats || !stats.vectorSearches) {
+    return;
+  }
+
+  const spc = '      ';
+  const columns = [
+    ['Searches', stats.vectorSearches],
+    ['Lists Scanned', stats.vectorListsScanned],
+    ['Distances', stats.vectorDistancesComputed],
+    ['Heap Updates', stats.vectorHeapUpdates],
+    ['Coarse Time [s]', stats.vectorCoarseSearchTime.toFixed(5)],
+    ['List Scan Time [s]', stats.vectorListScanTime.toFixed(5)],
+  ];
+
+  stringBuilder.appendLine(section('Vector Search Statistics:'));
+  stringBuilder.appendLine(' ' + columns.map(([name]) => header(name)).join(spc));
+  stringBuilder.appendLine(' ' + columns.map(([name, val]) =>
+    pad(1 + name.length - String(val).length) + value(val)).join(spc));
+  stringBuilder.appendLine();
+}
+
 function printProfile(profile) {
   'use strict';
   if (!profile) {
@@ -2413,6 +2437,7 @@ function processQuery(query, explain, planIndex) {
   // printModificationFlags(modificationFlags);
   if (profileMode) {
     printStats(explain.stats, isCoord);
+    printVectorStats(explain.stats);
     printProfile(explain.profile);
   }
   printWarnings(explain.warnings);

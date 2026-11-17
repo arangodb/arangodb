@@ -70,9 +70,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
@@ -339,13 +338,17 @@ bool Database::dropCollectionCallback(LogicalCollection& collection) {
 
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> Database::createCollectionObject(
-    velocypack::Slice data, bool isAStub) {
+    CollectionDescriptor descriptor, bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
   // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
+  if (!isAStub) {
+    // stubs are not persisted, so they get no object id
+    descriptor.storage.objectId = _engine.resolveObjectId(descriptor.storage);
+  }
 
-  return std::make_shared<LogicalCollection>(*this, data, isAStub);
+  return std::make_shared<LogicalCollection>(*this, descriptor, isAStub);
 }
 #endif
 
@@ -741,43 +744,20 @@ std::shared_ptr<LogicalView> Database::lookupView(
   return basics::downCast<LogicalView>(std::move(ptr));
 }
 
-std::shared_ptr<LogicalCollection> Database::createCollectionObjectForStorage(
-    velocypack::Slice parameters) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // augment collection parameters with storage-engine specific data
-  VPackBuilder merged;
-  merged.openObject();
-  _engine.addParametersForNewCollection(merged, parameters);
-  merged.close();
-
-  merged =
-      velocypack::Collection::merge(parameters, merged.slice(), true, false);
-  parameters = merged.slice();
-
-  // Try to create a new collection. This is not registered yet
-  // This is always a new and empty collection.
-  return createCollectionObject(parameters, /*isAStub*/ false);
-}
-
 std::shared_ptr<LogicalCollection> Database::createCollection(
-    velocypack::Slice parameters) {
+    CollectionDescriptor descriptor) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   auto const& dbName = _info.getName();
-  std::string name = VelocyPackHelper::getStringValue(
-      parameters, StaticStrings::DataSourceName, "");
+  std::string name = descriptor.mutableProps.name;
 
-  // validate collection parameters
-  Result res = validateCollectionParameters(parameters);
-  if (res.fail()) {
+  if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
     events::CreateCollection(dbName, name, res.errorNumber());
     THROW_ARANGO_EXCEPTION(res);
   }
-
   try {
-    // Try to create a new collection. This is not registered yet
-    auto collection = createCollectionObjectForStorage(parameters);
+    auto collection =
+        createCollectionObject(std::move(descriptor), /*isAStub*/ false);
 
     {
       READ_LOCKER(readLocker, _inventoryLock);
@@ -785,7 +765,6 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
     }
 
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
-
     _databaseProvider.notifyDdlChange("create collection");
 
     // Update metadata metrics on single server
@@ -806,45 +785,7 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
 
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 Database::createCollections(
-    std::vector<arangodb::CreateCollectionBody> const& collections,
-    bool allowEnterpriseCollectionsOnSingleServer) {
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
-  VPackBuilder builder =
-      CreateCollectionBody::toCreateCollectionProperties(collections);
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
-  try {
-    // Here we do have a single server setup, or we're either on a DBServer
-    // / Agency. In that case, we're not batching collection creating.
-    // Therefore, we need to iterate over the infoSlice and create each
-    // collection one by one.
-    auto result =
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
-
-    // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer() &&
-        _server.hasFeature<DatabaseFeature>()) {
-      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
-          result.size());
-    }
-
-    return {result};
-
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
-  }
-}
-
-std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
-    velocypack::Slice infoSlice,
+    std::vector<arangodb::CollectionDescriptor> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -857,62 +798,57 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
   }
 #endif
 
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // typed path: hand the properties down as a descriptor instead of
+  // serializing them and parsing them again
+  try {
+    auto result = createCollections(std::move(collections));
+
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+          result.size());
+    }
+    return {result};
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
+    std::vector<CollectionDescriptor> descriptors) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   auto const& dbName = _info.getName();
 
-  // first validate all collections
-  for (auto slice : VPackArrayIterator(infoSlice)) {
-    Result res = validateCollectionParameters(slice);
-    if (res.fail()) {
-      std::string name = VelocyPackHelper::getStringValue(
-          slice, StaticStrings::DataSourceName, "");
-      events::CreateCollection(dbName, name, res.errorNumber());
+  for (auto const& descriptor : descriptors) {
+    if (auto res = validateCollectionDescriptor(descriptor); res.fail()) {
+      events::CreateCollection(dbName, descriptor.mutableProps.name,
+                               res.errorNumber());
       THROW_ARANGO_EXCEPTION(res);
     }
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> collections;
-  collections.reserve(infoSlice.length());
-
-  // now create all collection objects
-  for (auto slice : VPackArrayIterator(infoSlice)) {
-    // collection object to be created
-    std::shared_ptr<LogicalCollection> col;
-
-    if (ServerState::instance()->isCoordinator()) {
-      // create a non-augmented collection object. on coordinators,
-      // we do not persist any data, so we can get away with a lightweight
-      // object (isAStub = true).
-      // This is always a new and empty collection.
-      col = createCollectionObject(slice, /*isAStub*/ true);
-    } else {
-      // if we are not on a coordinator, we want to store the collection,
-      // so we augment the collection data with some storage-engine
-      // specific values
-      col = createCollectionObjectForStorage(slice);
-    }
-
+  collections.reserve(descriptors.size());
+  for (auto& descriptor : descriptors) {
+    auto col = createCollectionObject(std::move(descriptor), /*isAStub*/ false);
     TRI_ASSERT(col != nullptr);
-    collections.emplace_back(col);
-
-    // add SmartGraph sub-collections to collections if col is a
-    // SmartGraph edge collection that requires it.
-    addSmartGraphCollections(col, collections);
+    collections.emplace_back(std::move(col));
   }
 
-  if (!ServerState::instance()->isCoordinator()) {
-    // if we are not on a coordinator, we want to store the collection
-    // objects for later lookups by name, guid etc. on a coordinator, this
-    // is not necessary here, because the collections are first created via
-    // the agency and stored there. they will later find their way to the
-    // coordinator again via the AgencyCache and ClusterInfo, which will
-    // create and register them using a separate codepath.
+  {
     READ_LOCKER(readLocker, _inventoryLock);
     for (auto& col : collections) {
       persistCollection(col);
     }
   }
 
-  // audit-log all collections
   for (auto& col : collections) {
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
@@ -930,7 +866,7 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && collection->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && collection->system() && _engine.isReady()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
@@ -964,44 +900,30 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
   return res;
 }
 
-Result Database::validateCollectionParameters(velocypack::Slice parameters) {
-  if (!parameters.isObject()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "collection parameters should be an object"};
-  }
-  // check that the name does not contain any strange characters
-  std::string name = VelocyPackHelper::getStringValue(
-      parameters, StaticStrings::DataSourceName, "");
-  bool isSystem = VelocyPackHelper::getBooleanValue(
-      parameters, StaticStrings::DataSourceSystem, false);
-  if (auto res = CollectionNameValidator::validateName(isSystem,
-                                                       extendedNames(), name);
+Result Database::validateCollectionDescriptor(CollectionDescriptor const& d) {
+  if (auto res = CollectionNameValidator::validateName(
+          d.constant.isSystem, extendedNames(), d.mutableProps.name);
       res.fail()) {
     return res;
   }
 
-  TRI_col_type_e collectionType =
-      VelocyPackHelper::getNumericValue<TRI_col_type_e, int>(
-          parameters, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
-
-  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+  auto type = d.constant.getType();
+  if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
     return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-            "invalid collection type for collection '" + name + "'"};
+            "invalid collection type for collection '" +
+                std::string{d.mutableProps.name} + "'"};
   }
 
-  // needed for EE
-  return validateExtendedCollectionParameters(parameters);
+  if (auto status = CollectionDescriptor::Invariants::isSmartConfiguration(d);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, status.error()};
+  }
+
+  return validateEnterpriseLicense(d);
 }
 
 #ifndef USE_ENTERPRISE
-void Database::addSmartGraphCollections(
-    std::shared_ptr<LogicalCollection> const& /*collection*/,
-    std::vector<std::shared_ptr<LogicalCollection>>& /*collections*/) const {
-  // nothing to be done here. more in EE version
-}
-
-Result Database::validateExtendedCollectionParameters(velocypack::Slice) {
+Result Database::validateEnterpriseLicense(CollectionDescriptor const&) {
   // nothing to be done here. more in EE version
   return {};
 }
@@ -1049,8 +971,8 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
   // Important to save it here, before emplace in map
   auto dataSource = it1->second;
   TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
-  // skip persistence while in recovery since definition already from engine
-  if (!_engine.inRecovery()) {
+  // not ready means this definition already came from the engine
+  if (_engine.isReady()) {
     velocypack::Builder build;
     build.openObject();
     auto r = view->properties(
@@ -1306,7 +1228,7 @@ Result Database::dropView(DataSourceId cid, bool allowDropSystem) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  if (!allowDropSystem && view->system() && !_engine.inRecovery()) {
+  if (!allowDropSystem && view->system() && _engine.isReady()) {
     events::DropView(dbName, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }
@@ -1449,7 +1371,7 @@ replication::Version Database::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-void Database::toVelocyPack(VPackBuilder& result, uint32_t apiVersion) const {
+void Database::toVelocyPack(VPackBuilder& result) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
 }
@@ -1673,8 +1595,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   DatabaseConfiguration config{
       std::move(idGenerator),
-      [this](
-          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      [this](std::string const& name) -> ResultT<CollectionDescriptor> {
         CollectionNameResolver resolver{*this};
         auto c = resolver.getCollection(name);
         if (c == nullptr) {
@@ -1682,7 +1603,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                         absl::StrCat("Collection not found: ", name,
                                      " in database ", this->name())};
         }
-        return c->getCollectionProperties();
+        return c->properties();
       }};
 
   config.isSystemDB = isSystem();

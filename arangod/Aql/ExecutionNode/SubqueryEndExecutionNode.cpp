@@ -85,11 +85,11 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto inputRegisters = RegIdSet{};
   auto outputRegisters = RegIdSet{};
 
-  auto inReg = variableToRegisterOptionalId(_inVariable);
+  auto inReg = inputRegisterOrInvalid(_inVariable);
   if (inReg.value() != RegisterId::maxRegisterId) {
     inputRegisters.emplace(inReg);
   }
-  auto outReg = variableToRegisterId(_outVariable);
+  auto outReg = outputRegister(_outVariable);
   outputRegisters.emplace(outReg);
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),

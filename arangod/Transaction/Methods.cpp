@@ -129,6 +129,8 @@ BatchOptions buildBatchOptions(OperationOptions const& options,
                                TRI_voc_document_operation_e opType,
                                bool isDBServer) {
   BatchOptions batchOptions;
+  batchOptions.runInternalValidators =
+      options.isSynchronousReplicationFrom.empty();
 
   if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
     if (isDBServer) {
@@ -454,6 +456,16 @@ struct GenericProcessor {
       co_return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
+    static_assert(Derived::accessMode() == AccessMode::Type::READ ||
+                  Derived::accessMode() == AccessMode::Type::WRITE);
+    if constexpr (Derived::accessMode() == AccessMode::Type::WRITE) {
+      auto res =
+          co_await methods.state()->performIntermediateCommitIfRequired(cid);
+      if (res.fail()) {
+        co_return res;
+      }
+    }
+
     try {
       co_return Derived(methods, *trxColl, *collection, value, options,
                         std::forward<Args>(args)...);
@@ -759,7 +771,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
 
     auto resDocs = this->_resultBuilder.steal();
-    auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       StorageEngine& engine = this->_collection.vocbase().engine();
@@ -797,11 +808,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                                      std::move(options), std::move(errs));
             });
       }
-
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          this->_methods.state()->performIntermediateCommitIfRequired(
-              this->_collection.id());
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -809,13 +815,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       resDocs->clear();
     }
 
-    return std::move(intermediateCommit)
-        .thenValue([options = this->_options,
-                    errorCounter = std::move(errorCounter),
-                    resDocs = std::move(resDocs)](auto&& res) mutable {
-          return OperationResult(res, std::move(resDocs), options,
-                                 std::move(errorCounter));
-        });
+    return OperationResult(std::move(res), std::move(resDocs), this->_options,
+                           std::move(errorCounter));
   }
 
  protected:
@@ -1196,12 +1197,11 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
         return {TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE};
       }
 
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      res = this->_collection.validate(
-          _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
-          this->_methods.transactionContextPtr()->getVPackOptions());
+      if (_batchOptions.runInternalValidators) {
+        res = this->_collection.validate(
+            _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
+            this->_methods.transactionContextPtr()->getVPackOptions());
+      }
 
       if (res.ok()) {
         if (isUpdate) {
@@ -1496,10 +1496,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
 #else
       constexpr bool isMock = false;
 #endif
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      if (!isMock) {
+      if (!isMock && _batchOptions.runInternalValidators) {
         res = _collection.validate(
             _batchOptions.schema, _newDocumentBuilder->slice(),
             _methods.transactionContextPtr()->getVPackOptions());
@@ -3829,13 +3826,8 @@ Future<Result> Methods::replicateOperations(
 
   if (didRefuse) {  // case (1), caller may abort this transaction
     co_return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-  } else {
-    // execute a deferred intermediate commit, if required.
-    // note: this runs with the replayed ExecContext of the transaction
-    // initiator (see above).
-    co_return co_await state->performIntermediateCommitIfRequired(
-        collection->id());
   }
+  co_return Result{};
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {

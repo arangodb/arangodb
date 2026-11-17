@@ -8,7 +8,9 @@ target_link_libraries(arango_vector_index
   PUBLIC
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch)
+    arango_iresearch
+  PRIVATE
+    faiss)
 
 target_include_directories(arango_vector_index PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

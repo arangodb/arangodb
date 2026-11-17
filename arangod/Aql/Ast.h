@@ -491,6 +491,9 @@ class Ast {
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);
+  AstNode* createPatternOutVariable(std::string_view name);
+  AstNode* createPatternEdgeVariable(std::string_view name);
+  AstNode* createPatternVertexReference(std::string_view name);
   AstNode* createNodeMatch();
   AstNode* createNodeMatchExpr();
   AstNode* createNodeVariableOrReference(std::string_view name);
@@ -652,6 +655,8 @@ class Ast {
       std::string_view name);
 
  private:
+  void rejectVariableAsPatternLabel(AstNode const* label) const;
+
   /// @brief replace a bind parameter with its value equivalent.
   AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);
 

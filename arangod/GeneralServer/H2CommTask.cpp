@@ -27,6 +27,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -40,6 +41,8 @@
 
 #include <absl/strings/escaping.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cstring>
 
 #include <llhttp.h>
@@ -176,7 +179,7 @@ template<SocketType T>
             << me;
 
         Stream* strm = me->findStream(sid);
-        if (strm) {
+        if (strm && !strm->bodyLimitExceeded) {
           me->processStream(*strm);
         }
       }
@@ -200,6 +203,24 @@ template<SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
+    // auth only runs at END_STREAM, so cap the body as it arrives
+    size_t maxBodySize = CommTask::MaximalBodySize;
+    TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {
+      // lets tests trigger the limit without sending a 1GB body
+      maxBodySize = 16;
+    }
+    bool const overLimit = strm->bodySize + len > maxBodySize ||
+                           me->_bufferedBodyBytes + len > maxBodySize;
+    if (overLimit) {
+      LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the allowed size, resetting the stream";
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    }
+    strm->bodySize += len;
+    me->_bufferedBodyBytes += len;
     strm->request->appendBody(reinterpret_cast<char const*>(data), len);
   }
 
@@ -208,6 +229,15 @@ template<SocketType T>
   // the caller of this function is a C function, which doesn't know
   // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
+}
+
+template<SocketType T>
+void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
+  if (strm.bodySize != 0) {
+    TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
+    _bufferedBodyBytes -= strm.bodySize;
+    strm.bodySize = 0;
+  }
 }
 
 template<SocketType T>
@@ -227,6 +257,7 @@ template<SocketType T>
         me->finalizeTimingData(h2Response->timingData);
       }
     }
+    me->releaseBufferedBody(strm);
     me->_streams.erase(it);
   }
 
@@ -292,6 +323,10 @@ H2CommTask<T>::~H2CommTask() noexcept {
   if (!_streams.empty()) {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
+    // nghttp2_session_del does not fire on_stream_close, so release the rest
+    for (auto& [sid, strm] : _streams) {
+      releaseBufferedBody(strm);
+    }
   }
   HttpResponse* res = nullptr;
   while (_responses.pop(res)) {
@@ -479,20 +514,19 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   size_t parsedBytes = 0;
-  for (auto const& buffer : this->_protocol->buffer.data()) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
+  auto const buffer = this->_protocol->buffer.data();
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
-      LOG_TOPIC("43942", INFO, Logger::REQUESTS)
-          << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
-          << rv << ")";
-      this->close(ec);
-      return false;  // stop read loop
-    }
-
-    parsedBytes += static_cast<size_t>(rv);
+  auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+  if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
+    LOG_TOPIC("43942", INFO, Logger::REQUESTS)
+        << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
+        << rv << ")";
+    this->close(ec);
+    return false;  // stop read loop
   }
+
+  parsedBytes += static_cast<size_t>(rv);
 
   TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
   // Remove consumed data from receive buffer.
@@ -584,6 +618,8 @@ void H2CommTask<T>::processStream(Stream& stream) {
     stream.mustSendAuthHeader = true;
   }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+  // release before the try, so a throw during dispatch still frees the budget
+  releaseBufferedBody(stream);
 
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
@@ -669,8 +705,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*req); res.fail()) {
-    this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                            1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
+    this->sendErrorResponse(this->contentEncodingErrorCode(res),
+                            req->contentTypeResponse(), messageId,
+                            res.errorNumber(), res.errorMessage());
     return;
   }
 
@@ -778,7 +815,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
           << "response with message id '" << streamId
           << "' has no H2 stream on server";
-      return;
+      continue;  // Need to keep going for the rest of the responses, since
+                 // they might be for other streams!
     }
     strm->response = std::move(guard);
     auto& res = *response;
@@ -1048,6 +1086,5 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-template class arangodb::rest::H2CommTask<SocketType::Unix>;
 
 }  // namespace arangodb::rest

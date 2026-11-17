@@ -207,7 +207,27 @@ class Manager final : public IManager {
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
 
-  /// @brief abort all transactions matching
+  /// @brief a managed transaction selected for a bulk operation
+  struct SelectedTrx {
+    TransactionId tid;
+    std::string owner;
+  };
+
+  /// @brief the managed transactions matching `select`
+  ///
+  /// `select` runs under the registry locks, so it must be cheap and must not
+  /// ask the authorization service; decide permissions on the result instead
+  std::vector<SelectedTrx> selectManagedTrx(
+      std::function<bool(TransactionState const&, std::string const&)> const&
+          select) const;
+
+  /// @brief aborts the given transactions without a permission check: the
+  /// caller selected them and decided the permission already. Returns whether
+  /// any transaction was given.
+  bool abortSelectedTrx(std::vector<SelectedTrx> const& selected);
+
+  /// @brief abort all transactions matching; the predicate is the only
+  /// permission check (see abortSelectedTrx)
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
 
@@ -299,11 +319,27 @@ class Manager final : public IManager {
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
       TransactionId tid, ManagedTrx& mtrx);
 
+  /// @brief changes the status of a managed transaction after checking that
+  /// the current identity may do so (see canKill, and the owner rule for
+  /// commits)
   Result updateTransaction(
       TransactionId tid, transaction::Status status, bool clearServers,
       // TODO - use a better solution
       std::string const& database =
           "" /* leave empty to operate across all databases */);
+
+  /// @brief changes the status of a managed transaction without a permission
+  /// check: the caller decided that already (see abortSelectedTrx)
+  Result updateAuthorizedTransaction(TransactionId tid,
+                                     transaction::Status status,
+                                     bool clearServers);
+
+  /// @brief the status change shared by the two functions above; `authorize`
+  /// is evaluated under the bucket write lock
+  Result updateTransactionIf(
+      TransactionId tid, transaction::Status status, bool clearServers,
+      std::string const& database,
+      std::function<bool(ManagedTrx const&)> const& authorize);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(
@@ -319,8 +355,20 @@ class Manager final : public IManager {
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
 
-  bool isAuthorized(ManagedTrx const& trx) const;
-  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
+  /// @brief whether the current identity may use `trx`, i.e. operate inside
+  /// it (lease and return it)
+  bool canUse(ManagedTrx const& trx) const;
+  bool canUse(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief whether the current identity may see the state of `trx`
+  bool canMonitor(ManagedTrx const& trx) const;
+
+  /// @brief whether the current identity may abort `trx`
+  bool canKill(ManagedTrx const& trx, std::string_view database) const;
+
+  /// @brief name of the database of the current request context; empty when
+  /// the superuser acts without one
+  std::string contextDatabaseName() const;
 
   static std::string buildContextFromState(TransactionState& state,
                                            MetaType type);

@@ -23,6 +23,5 @@ tests:
       size: large
       timeLimit: 7200
     args:
-      extremeVerbosity: true
       oneTestTimeout: 7150
       goVersion: v2

@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Metrics/CounterBuilder.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Transaction/Manager.h"
@@ -89,6 +90,8 @@ class BasicStorageEngineDataTest : public BaseFixture {
 
   inline static std::shared_ptr<transaction::Manager> _transactionManager;
 
+  ExecContextScope scope = ExecContextScope{ExecContext::superuserAsShared()};
+
   // Build an in-memory Database object. We construct the database directly
   // with the fixture's injected database provider rather than going through
   // engine().openDatabase(): the direct path keeps the test in full control of
@@ -128,14 +131,10 @@ class BasicStorageEngineDataTest : public BaseFixture {
   std::shared_ptr<LogicalCollection> makeCollection(Database& database,
                                                     std::string_view name,
                                                     bool timeTravel = false) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add(StaticStrings::DataSourceName, VPackValue(name));
-    if (timeTravel) {
-      builder.add(StaticStrings::EnableTimeTravel, VPackValue(true));
-    }
-    builder.close();
-    auto collection = database.createCollection(builder.slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(std::string{name});
+    colDescriptor.constant.enableTimeTravel = timeTravel;
+    auto collection = database.createCollection(colDescriptor);
     this->engine().createCollection(database, *collection);
     return collection;
   }

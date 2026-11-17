@@ -3850,6 +3850,20 @@ function ahuacatlNumericFunctionsTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testRoundKeepsLargeIntegersUnchanged : function () {
+      const values = [ 4503599627370496, 4503599627370497, 4503599627370499,
+                       9007199254740991, -4503599627370497 ];
+      assertEqual(values, getQueryResults(
+        "FOR r IN @values RETURN ROUND(r)", { values }));
+      assertEqual([ 4503599627370497 ], getQueryResults(
+        "RETURN ROUND(4503599627370497)"));
+    },
+
+    testRoundJustBelowHalf : function () {
+      assertEqual([ 0, 0 ], getQueryResults(
+        "FOR r IN [ 0.49999999999999994, -0.49999999999999994 ] RETURN ROUND(r)"));
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test round function
 ////////////////////////////////////////////////////////////////////////////////

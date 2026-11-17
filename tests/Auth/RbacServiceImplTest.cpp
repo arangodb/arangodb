@@ -89,6 +89,18 @@ TEST(RbacServiceImplCheckTest, translatesDatabaseRead) {
   EXPECT_EQ(f.mock->lastJwtToken, testToken);
 }
 
+TEST(RbacServiceImplCheckTest, translatesUpdateQueryProperties) {
+  auto f = CheckFixture::make();
+  std::array queries{
+      rbac::ActionResource{rbac::Action::UpdateQueryProperties,
+                           rbac::resources::Database{.name = "mydb"}}};
+  auto r = f.svc.check({testToken}, queries);
+  EXPECT_TRUE(r.ok());
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UpdateQueryProperties");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:database:mydb");
+}
+
 TEST(RbacServiceImplCheckTest, translatesCollectionCreate) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
@@ -154,21 +166,35 @@ TEST(RbacServiceImplCheckTest, translatesUserRead) {
 TEST(RbacServiceImplCheckTest, translatesUseApiVersion) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
-      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 1}}};
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version = arangodb::ApiVersion::V1}}};
   f.svc.check({testToken}, queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
   EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v1");
 }
 
-TEST(RbacServiceImplCheckTest, translatesUseApiVersionZero) {
+TEST(RbacServiceImplCheckTest, translatesUseApiVersionOne) {
   auto f = CheckFixture::make();
   std::array queries{rbac::ActionResource{
-      rbac::Action::UseApiVersion, rbac::resources::ApiVersion{.version = 0}}};
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version = arangodb::ApiVersion::V1}}};
   f.svc.check({testToken}, queries);
   ASSERT_EQ(f.mock->lastItems.size(), 1u);
   EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
-  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v0");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:v1");
+}
+
+TEST(RbacServiceImplCheckTest, translatesUseApiVersionExperimental) {
+  auto f = CheckFixture::make();
+  std::array queries{rbac::ActionResource{
+      rbac::Action::UseApiVersion,
+      rbac::resources::ApiVersion{.version =
+                                      arangodb::ApiVersion::Experimental}}};
+  f.svc.check({testToken}, queries);
+  ASSERT_EQ(f.mock->lastItems.size(), 1u);
+  EXPECT_EQ(f.mock->lastItems[0].action, "db:UseApiVersion");
+  EXPECT_EQ(f.mock->lastItems[0].resource, "db:apiversion:experimental");
 }
 
 TEST(RbacServiceImplCheckTest, adminActionHasNoResource) {
@@ -216,7 +242,8 @@ TEST(RbacServiceImplCheckTest, denyReturnsForbiddenWithMessage) {
       rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
   auto r = f.svc.check({testToken}, queries);
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_FORBIDDEN);
-  EXPECT_EQ(r.errorMessage(), "role lacks db:Read");
+  EXPECT_EQ(r.errorMessage(),
+            "Failed to read database 'mydb'. role lacks db:Read");
 }
 
 TEST(RbacServiceImplCheckTest, backendErrorIsThrown) {

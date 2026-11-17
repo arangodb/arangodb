@@ -32,6 +32,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
@@ -1002,12 +1003,10 @@ PhysicalCollectionMock::createIndex(
         StorageEngineMock::buildInvertedIndexMock(id, _logicalCollection, info);
   } else if (type == arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
     try {
-      auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
-        auto& factory =
-            server.getFeature<arangodb::iresearch::IResearchFeature>()
-                .factory<arangodb::ClusterEngine>();
-        index = factory.instantiate(_logicalCollection, info, id, false);
+        index = arangodb::iresearch::createLinkCoordinator(
+            arangodb::IndexCreationContext{_logicalCollection, info, id,
+                                           false});
       } else {
         index = StorageEngineMock::buildLinkMock(id, _logicalCollection, info);
       }
@@ -1471,8 +1470,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
-arangodb::Result PhysicalCollectionMock::updateProperties(
-    arangodb::velocypack::Slice slice) {
+arangodb::Result PhysicalCollectionMock::setCacheEnabled(bool cacheEnabled) {
   before();
 
   return arangodb::Result(

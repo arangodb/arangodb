@@ -104,7 +104,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
   opts->addOption(
           "--auth.maximal-access-token-expiry-time",
           "The maximal expiry time (in seconds) allowed for personal access "
-          "tokens requested via the `POST /_api/token` endpoint.",
+          "tokens requested via the `POST /_api/token/{user}` endpoint.",
           new DoubleParameter(&options.maximalAccessTokenExpiryTime,
                               /*base*/ 1.0,
                               /*minValue*/ 1.0,
@@ -117,9 +117,9 @@ endpoint. Requests with expiry times above this value will be rejected.)");
       .setIntroducedIn(31210)
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for a personal access token via the `valid_until` parameter in the
-`POST /_api/token` endpoint. If a request specifies a `valid_until` further in
-the future than this maximum allows, it is silently capped to `now` plus this
-option's value.)");
+`POST /_api/token/{user}` endpoint. If a request specifies a `valid_until`
+further in the future than this maximum allows, it is silently capped to the
+moment of the request plus this option's value.)");
 
   opts->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
@@ -149,18 +149,10 @@ use RBAC if you run ArangoDB standalone.
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  opts->addOption(
-          "--server.authentication-unix-sockets",
-          "Whether to use authentication for requests via UNIX domain sockets.",
-          new BooleanParameter(&options.authenticationUnixSockets),
-          arangodb::options::makeFlags())
-      .setLongDescription(R"(If you set this option to `false`, authentication
-for requests coming in via UNIX domain sockets is turned off on the server-side.
-Clients located on the same host as the ArangoDB server can use UNIX domain
-sockets to connect to the server without authentication. Requests coming in by
-other means (e.g. TCP/IP) are not affected by this option.)");
-#endif
+  opts->addObsoleteOption(
+      "--server.authentication-unix-sockets",
+      "Whether to use authentication for requests via UNIX domain sockets.",
+      true);
 
   opts->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "
@@ -199,8 +191,10 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
 the configured folder.
 
 Files are sorted lexicographically by name.
-Two kinds are ignored: hidden files (names starting with `.`) and files ending
-in `.tmp`.
+The following entries are ignored: hidden files (names starting with `.`),
+files ending in `.tmp`, and anything that is not a regular file, such as
+subfolders, sockets, devices, or named pipes. Symbolic links are followed and
+are only used if they point to a regular file.
 
 - **First remaining file = active secret.** Signs new tokens and verifies
   incoming ones.

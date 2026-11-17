@@ -101,6 +101,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   void setTimingData(uint64_t id, RequestTimingData&& data);
 
+  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
@@ -110,7 +112,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                             RequestTimingData) = 0;
 
   enum class Flow : bool { Continue = true, Abort = false };
-  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
@@ -157,6 +158,10 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   /// decompress content
   Result handleContentEncoding(GeneralRequest&);
+
+  // HTTP status for a failed handleContentEncoding()
+  static rest::ResponseCode contentEncodingErrorCode(
+      Result const& res) noexcept;
 
  private:
   void handleRequestStartup(std::shared_ptr<RestHandler>);

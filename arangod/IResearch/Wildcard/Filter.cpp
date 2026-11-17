@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/Wildcard/Filter.h"
+#include "Basics/Utf8Helper.h"
+#include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "Basics/Exceptions.h"
@@ -33,8 +35,8 @@ namespace arangodb::iresearch::wildcard {
 
 class Iterator : public irs::doc_iterator {
  public:
-  Iterator(icu_64_64::RegexMatcher* matcher, doc_iterator::ptr&& approx,
-           doc_iterator::ptr&& columnIt)
+  Iterator(icu_64_64::RegexMatcher* matcher, ICancellationToken const* token,
+           doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt)
       : _approx{std::move(approx)}, _columnIt{std::move(columnIt)} {
     TRI_ASSERT(_approx);
     TRI_ASSERT(_columnIt);
@@ -47,6 +49,9 @@ class Iterator : public irs::doc_iterator {
     if (!matcher) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
                                      "Cannot create matcher for this pattern");
+    }
+    if (token != nullptr) {
+      basics::abortMatchWhenKilled(*matcher, token);
     }
     TRI_ASSERT(status == U_ZERO_ERROR);
     _matcher = matcher;
@@ -97,11 +102,13 @@ class Iterator : public irs::doc_iterator {
                                  static_cast<int32_t>(size)});
 
       _matcher->reset(term);
-
-      if (auto status = U_ZERO_ERROR; _matcher->matches(status)) {
+      auto status = U_ZERO_ERROR;
+      if (_matcher->matches(status)) {
         return true;
       }
-
+      if (status == U_REGEX_STOPPED_BY_CALLER) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
       terms_begin += size + 1;  // skip data and end marker
     }
 
@@ -143,9 +150,16 @@ class Query : public irs::filter::prepared {
     if (column == nullptr) {
       return irs::doc_iterator::empty();
     }
+    ICancellationToken const* token = nullptr;
+    if (ctx.ctx) {
+      if (auto const* cancellation =
+              irs::get<CancellationAttribute>(*ctx.ctx)) {
+        token = cancellation->token;
+      }
+    }
     auto columnIt = column->iterator(irs::ColumnHint::kNormal);
-    return irs::memory::make_managed<Iterator>(_matcher, std::move(approx),
-                                               std::move(columnIt));
+    return irs::memory::make_managed<Iterator>(
+        _matcher, token, std::move(approx), std::move(columnIt));
   }
 
   void visit(const irs::SubReader&, irs::PreparedStateVisitor&,

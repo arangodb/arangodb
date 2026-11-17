@@ -23,6 +23,7 @@
 #pragma once
 
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/KeyGeneratorProperties.h"
 
 #include <array>
 #include <memory>
@@ -63,7 +64,8 @@ struct KeyGeneratorHelper {
 
   /// @brief create a key generator based on the options specified
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
-      LogicalCollection const& collection, velocypack::Slice);
+      LogicalCollection const& collection,
+      KeyGeneratorProperties const& options);
 
   static std::unique_ptr<KeyGenerator> createEnterpriseKeyGenerator(
       std::unique_ptr<KeyGenerator> generator);
@@ -113,6 +115,9 @@ class KeyGenerator {
 
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(velocypack::Builder&) const;
+
+  /// @brief typed counterpart of toVelocyPack
+  virtual KeyGeneratorProperties properties() const = 0;
 
   /// @brief initialize key generator state, reading data/state from the
   /// state object. state is guaranteed to be a velocypack object
@@ -169,6 +174,10 @@ class KeyGeneratorWrapper : public KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   void toVelocyPack(velocypack::Builder& result) const override {
     _wrapped->toVelocyPack(result);
+  }
+
+  KeyGeneratorProperties properties() const override {
+    return _wrapped->properties();
   }
 
  protected:

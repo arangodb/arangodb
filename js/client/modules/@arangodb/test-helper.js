@@ -37,7 +37,6 @@ const {
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
-const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 const CI = require('@arangodb/cluster-info');

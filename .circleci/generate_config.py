@@ -151,8 +151,10 @@ def create_generator_config(
     extra_args: str,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ) -> GeneratorConfig:
@@ -168,8 +170,10 @@ def create_generator_config(
     # Build list of requested build variants
     build_variants = []
 
-    if no_sanitizer or (not tsan and not alubsan and not coverage):
-        # Include non-instrumented build if explicitly requested or no variants specified
+    # No variant requested: compile the non-instrumented build only, without
+    # any tests.
+    build_only = not (no_sanitizer or tsan or alubsan or coverage)
+    if no_sanitizer or build_only:
         build_variants.append(BuildVariant.NORMAL)
     if tsan:
         build_variants.append(BuildVariant.TSAN)
@@ -178,12 +182,11 @@ def create_generator_config(
     if coverage:
         build_variants.append(BuildVariant.COVERAGE)
 
-    assert build_variants, "build_variants must not be empty (logic error)"
-
     # Create filter criteria
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
+        clang_tidy=clang_tidy,
         test_suite=test_suite,
     )
 
@@ -200,6 +203,7 @@ def create_generator_config(
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
         create_test_docker_images=create_test_docker_images,
+        create_preview_docker_images=create_preview_docker_images,
         test_image=test_image,
     )
 
@@ -209,6 +213,7 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        build_only=build_only,
     )
 
 
@@ -235,7 +240,9 @@ def create_generator_config(
 @click.option(
     "--no-sanitizer",
     is_flag=True,
-    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/"
+    "--coverage); without any of them only the non-instrumented build is "
+    "compiled, without tests",
 )
 @click.option(
     "--coverage",
@@ -272,6 +279,11 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
+    "--clang-tidy",
+    is_flag=True,
+    help="Schedule the clang-tidy job",
+)
+@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
@@ -282,8 +294,16 @@ def create_generator_config(
     type=click.Choice(["none", "alpine"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-test and "
-    "arangodb/client-tools-test Docker images (Alpine 3.24 based) to "
-    "public ECR from the build results",
+    "arangodb/client-tools-test Docker images (maintainer mode, Alpine "
+    "3.24 based) to public ECR from the build results",
+)
+@click.option(
+    "--create-preview-docker-images",
+    type=click.Choice(["none", "alpine"]),
+    default="none",
+    help="Build and publish the multi-arch arangodb/core-preview and "
+    "arangodb/client-tools-preview Docker images (non-maintainer, "
+    "release-like; Alpine 3.24 based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",
@@ -308,8 +328,10 @@ def main(
     extra_args: str,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ):
@@ -341,8 +363,10 @@ def main(
             extra_args=extra_args,
             gtest=gtest,
             full=full,
+            clang_tidy=clang_tidy,
             replication_two=replication_two,
             create_test_docker_images=create_test_docker_images,
+            create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
         )

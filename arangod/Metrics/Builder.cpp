@@ -24,7 +24,14 @@
 
 #include "Metrics/IBatch.h"
 
+#include <absl/strings/str_replace.h>
+
 namespace arangodb::metrics {
+
+std::string escapeLabelValue(std::string_view value) {
+  return absl::StrReplaceAll(value,
+                             {{"\\", "\\\\"}, {"\"", "\\\""}, {"\n", "\\n"}});
+}
 
 std::string_view Builder::name() const noexcept { return _name; }
 std::string_view Builder::labels() const noexcept { return _labels; }
@@ -36,7 +43,7 @@ void Builder::addLabel(std::string_view key, std::string_view value) {
   _labels.append(key);
   _labels.push_back('=');
   _labels.push_back('"');
-  _labels.append(value);
+  _labels.append(escapeLabelValue(value));
   _labels.push_back('"');
 }
 

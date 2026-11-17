@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Aql/Match/MatchOptions.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
@@ -1318,13 +1319,20 @@ pattern_node_pattern:
     | 
 		T_OPEN variable_name 
 		       T_CLOSE {
-			  $$ = parser->ast()->createNodeReference({$variable_name.value, $variable_name.length});
+			  $$ = parser->ast()->createPatternVertexReference({$variable_name.value, $variable_name.length});
 		}
 
 %type <node> pattern_out_variable;
 pattern_out_variable:
     variable_name {
-      $$ = parser->ast()->createNodeVariable({$1.value, $1.length}, true);
+      $$ = parser->ast()->createPatternOutVariable({$1.value, $1.length});
+    }
+  | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
+
+%type <node> pattern_edge_out_variable;
+pattern_edge_out_variable:
+    variable_name {
+      $$ = parser->ast()->createPatternEdgeVariable({$1.value, $1.length});
     }
   | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
 
@@ -1338,7 +1346,7 @@ pattern_close_relation:
   | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
 
 %type <node> pattern_edge;
-pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
+pattern_edge: pattern_open_relation[inbound] pattern_edge_out_variable[variable]
               pattern_edge_label[label]
               pattern_maybe_property_key_value_expression[kv_expr]
               pattern_maybe_where_expression[where]
@@ -1348,7 +1356,7 @@ pattern_edge: pattern_open_relation[inbound] pattern_out_variable[variable]
                                               nullptr, $inbound, $outbound,
                                               $projection);
     }
-    | pattern_open_relation pattern_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
+    | pattern_open_relation pattern_edge_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
     }
 
@@ -1420,8 +1428,15 @@ match_statement:
     T_MATCH {
         auto node = parser->ast()->createNodeMatch();
         parser->pushStack(node);
-    } pattern_expression_list {
+    } pattern_expression_list options {
         auto node = static_cast<AstNode*>(parser->popStack());
+        // OPTIONS is optional and, when present, must be the last part of MATCH. 
+        // The shared options rule already validates that it is a constant object. 
+        // Parse it here so invalid or unknown options are reported immediately.
+        if ($4 != nullptr) {
+          arangodb::aql::match::MatchOptions::fromAstNode($4);
+          node->addMember($4);
+        }
         parser->ast()->addOperation(node);
     }
 

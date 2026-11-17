@@ -1,10 +1,12 @@
 target_sources(arango_aql PRIVATE
   Builder.cpp
+  MatchOptions.cpp
   PatternNormalizer.cpp
   PatternTypes.cpp
   CollectionAccessBuilder.cpp
   FilterBuilder.cpp
   ProjectionBuilder.cpp
+  ProjectionAccessChecker.cpp
   VariableScope.cpp
   PatternBuildState.cpp
   PathConstruction.cpp

@@ -133,12 +133,12 @@ TEST_F(
               (std::vector<PromiseSnapshot>{promise.snapshot()}));
   }  // marks promise for deletion
 
-  promise_in_registry.state = State::Deleted;
-  EXPECT_EQ(promises_in_registry(),
-            (std::vector<PromiseSnapshot>{promise_in_registry}));
+  // promises does not show up because it is already marked for deletion
+  EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+  EXPECT_EQ(registry.size(), 1);
 
   get_thread_registry().garbage_collect();
-  EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+  EXPECT_EQ(registry.size(), 0);
 }
 
 TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
@@ -167,11 +167,6 @@ TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
   all_promises = promises_in_registry();
   EXPECT_EQ(all_promises[0].state, State::Running);
   EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
-
-  promise.update_state(State::Deleted);
-  all_promises = promises_in_registry();
-  EXPECT_EQ(all_promises[0].state, State::Deleted);
-  EXPECT_EQ(all_promises[0].thread, std::nullopt);
 
   promise.update_state(State::Running);
   all_promises = promises_in_registry();

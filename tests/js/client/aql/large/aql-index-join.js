@@ -1075,15 +1075,21 @@ const IndexJoinTestSuite = function () {
       const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
-      assertEqual(nodes.indexOf("JoinNode"), 1);
-      const join = plan.nodes[1];
-      assertEqual(join.type, "JoinNode");
+      if (isCluster) {
+        // doc2 is not joined with doc3, so doc1 and doc3 cannot be joined
+        // shard-locally across it
+        assertEqual(nodes.indexOf("JoinNode"), -1);
+      } else {
+        assertEqual(nodes.indexOf("JoinNode"), 1);
+        const join = plan.nodes[1];
+        assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos.length, 2);
-      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
-      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+        assertEqual(join.indexInfos.length, 2);
+        assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+        assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+      }
 
-      const result = db._createStatement(query).execute().toArray();
+      const result = db._createStatement({query, options: queryOptions}).execute().toArray();
       assertEqual(result.length, 400);
       for (const [a, b, c, d] of result) {
         assertEqual(b, d);
@@ -1196,6 +1202,38 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 20);
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
+      }
+    },
+
+    testPostFilterOnLateMaterializedOuterDocument: function () {
+      // BTS-2474
+      const n = 1000;
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", attributeGenerator(n, {x: x => x, z: x => x % 7}));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", attributeGenerator(n, {x: x => x, y: x => x % 5}));
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+            FILTER doc2.x == doc1.x
+            FILTER doc2.y == doc1.z
+            RETURN [doc1, doc2]
+      `;
+      const plan = db._createStatement({query}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+      assertTrue(plan.rules.includes("batch-materialize-documents"), plan.rules);
+      assertEqual(nodes.indexOf("JoinNode"), -1, nodes);
+
+      const result = db._createStatement({query}).execute().toArray();
+      const expected = _.range(n).filter(x => x % 5 === x % 7).length;
+      assertEqual(result.length, expected);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+        assertEqual(a.z, b.y);
       }
     },
 

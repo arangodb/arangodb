@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "Basics/Result.h"
 
 namespace arangodb {

@@ -192,7 +192,7 @@ class HashSet {
     }
   }
 
-  void swap(HashSet& other) {
+  void swap(HashSet& other) noexcept {
     std::swap(_hasher, other._hasher);
     std::swap(_eq, other._eq);
     std::swap(_buffer, other._buffer);

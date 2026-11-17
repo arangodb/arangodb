@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorReadBatch.h"
@@ -81,8 +82,7 @@ class EnumerateNearVectorsExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateNearVectorsExecutorInfos;
-  // TODO(jbajic) add stats
-  using Stats = NoStats;
+  using Stats = EnumerateNearVectorStats;
 
   EnumerateNearVectorsExecutor(Fetcher&, Infos&);
   EnumerateNearVectorsExecutor(EnumerateNearVectorsExecutor const&) = delete;
@@ -127,10 +127,12 @@ class EnumerateNearVectorsExecutor {
   transaction::Methods _trx;
   aql::Collection const* _collection;
   RocksDBVectorIndex const& _vectorIndex;
+  ResourceUsageScope _resultBuffersMemory;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;
   ExecutorState _state{ExecutorState::HASMORE};
+  Stats _stats;
 
   std::vector<float> _distances;
   std::vector<vector::LabelId> _labels;

@@ -35,7 +35,6 @@
 #include "Aql/Executor/IResearchViewHeapSortExecutor.h"
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
-#include "Aql/OptimizerUtils.h"
 #include "Aql/Optimizer/Utils/IResearchViewSortHelpers.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
@@ -1761,6 +1760,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_immutableParts = _immutableParts;
   node->_sort = _sort;
+  node->_sortBuckets = _sortBuckets;
   node->_optState = _optState;
   if (_outSearchDocId != nullptr) {
     node->setSearchDocIdVar(*_outSearchDocId);
@@ -1945,9 +1945,17 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
       vars.erase(_outVariable);
     }
 
+    // The filter condition may refer to variables that this node writes
+    // itself, and to variables that only become available further downstream:
+    // under late materialization the document variable is produced by the
+    // MaterializeNode, at a greater depth than this node's input rows. Neither
+    // is an input register, so probe instead of resolving.
+    auto const registers = inputRegisterResolver();
     for (auto const& it : vars) {
-      aql::RegisterId reg = variableToRegisterId(it);
-      // The filter condition may refer to registers that are written here
+      auto const [reg, status] = registers.lookup(it->id);
+      if (status != aql::RegisterResolver::Status::Ok) {
+        continue;
+      }
       if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
       }
@@ -2066,20 +2074,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     aql::RegisterId searchDocRegId{aql::RegisterId::makeInvalid()};
     if (_outSearchDocId != nullptr) {
-      searchDocRegId = variableToRegisterId(_outSearchDocId);
+      searchDocRegId = outputRegister(_outSearchDocId);
       writableOutputRegisters.emplace(searchDocRegId);
     }
 
     auto const outRegister = std::invoke([&]() -> aql::RegisterId {
       if (isLateMaterialized()) {
         aql::RegisterId documentRegId =
-            variableToRegisterId(_outNonMaterializedDocId);
+            outputRegister(_outNonMaterializedDocId);
         writableOutputRegisters.emplace(documentRegId);
         return documentRegId;
       } else if (isNoMaterialization()) {
         return aql::RegisterId::makeInvalid();
       } else {
-        auto outReg = variableToRegisterId(_outVariable);
+        auto outReg = outputRegister(_outVariable);
         writableOutputRegisters.emplace(outReg);
         return outReg;
       }
@@ -2088,23 +2096,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
-      auto registerId = variableToRegisterId(scorer.var);
+      auto registerId = outputRegister(scorer.var);
       writableOutputRegisters.emplace(registerId);
       scoreRegisters.emplace_back(registerId);
     });
-
-    // TODO remove if not needed
-    auto const& varInfos = getRegisterPlan()->varInfo;
 
     ViewValuesRegisters outNonMaterializedViewRegs;
 
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
-        auto const it = varInfos.find(fieldsVars.var->id);
-
-        TRI_ASSERT(it != varInfos.cend());
-        auto const regId = it->second.registerId;
+        auto const regId = outputRegister(fieldsVars.var);
         writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
       }
@@ -2132,8 +2134,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         filterCondition(),
         volatility(),
         _immutableParts,
-        getRegisterPlan()->varInfo,  // ??? do we need this?
-        getDepth(),
+        inputRegisterResolver(),
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),

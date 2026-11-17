@@ -75,7 +75,7 @@ struct LockfreeThreadPool {
 
   using Clock = std::chrono::steady_clock;
 
-  boost::lockfree::queue<WorkItem*> _queue;
+  boost::lockfree::queue<WorkItem*> _queue{0};
   std::vector<std::jthread> _threads;
   ThreadPoolMetrics _metrics;
 };

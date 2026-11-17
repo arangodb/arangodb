@@ -34,9 +34,11 @@
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
 #include "gtest/gtest.h"
@@ -123,9 +125,9 @@ TEST_F(TransactionManagerTest, collection_not_found) {
 TEST_F(TransactionManagerTest, transaction_id_reuse) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -151,9 +153,9 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
 TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -215,9 +217,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
 TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -269,9 +271,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
       arangodb::ServerState::ROLE_DBSERVER);
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -317,9 +319,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -365,9 +367,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
 TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -411,9 +413,9 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
 TEST_F(TransactionManagerTest, lock_conflict) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -444,9 +446,9 @@ TEST_F(TransactionManagerTest, lock_conflict) {
 TEST_F(TransactionManagerTest, lock_conflict_side_user) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -484,9 +486,9 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
 TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -516,9 +518,9 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
 TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -557,9 +559,9 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
 TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -601,9 +603,9 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
 TEST_F(TransactionManagerTest, permission_denied_readonly) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -633,9 +635,9 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json =
-        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+        "testCollection", arangodb::DataSourceId{42});
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -653,11 +655,140 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                             access to other users' transactions
+// -----------------------------------------------------------------------------
+
+namespace {
+
+/**
+ * Begins a write transaction on `testCollection` as user "alice" and returns
+ * once it is running
+ */
+void beginTransactionAsAlice(TRI_vocbase_t& vocbase, transaction::Manager& mgr,
+                             TransactionId tid) {
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  ASSERT_NE(vocbase.createCollection(colDescriptor), nullptr);
+
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+
+  auto collections = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  ASSERT_TRUE(mgr.ensureManagedTrx(vocbase, tid, collections->slice(),
+                                   transaction::OperationOriginTestCase{},
+                                   false)
+                  .waitAndGet()
+                  .ok());
+}
+
+/// @brief ids of the transactions the current identity may see in `database`
+std::vector<std::string> visibleTransactionIds(transaction::Manager& mgr,
+                                               std::string const& database) {
+  arangodb::velocypack::Builder builder;
+  {
+    arangodb::velocypack::ArrayBuilder guard(&builder);
+    mgr.toVelocyPack(builder, database, "", /*fanout*/ false,
+                     /*details*/ false);
+  }
+  std::vector<std::string> ids;
+  for (auto const entry :
+       arangodb::velocypack::ArrayIterator(builder.slice())) {
+    ids.push_back(entry.get("id").copyString());
+  }
+  return ids;
+}
+
+}  // namespace
+
+TEST_F(TransactionManagerTest, admin_can_abort_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  // classic admin: read-write access to _system
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, user_cannot_abort_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  {
+    auto const bob = arangodb::tests::mocks::makeClassicExecContext(
+        "bob", vocbase.name(), arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO);
+    arangodb::ExecContextScope scope(bob.execContext);
+
+    auto const res = mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet();
+    EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_NOT_FOUND);
+  }
+
+  // the transaction is still there: its owner can abort it
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, admin_cannot_commit_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  auto const res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_NOT_FOUND);
+  // aborting it is allowed, though
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, admin_sees_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  auto const admin = arangodb::tests::mocks::makeClassicExecContext(
+      "admin", vocbase.name(), arangodb::auth::Level::RW,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(admin.execContext);
+
+  EXPECT_EQ(visibleTransactionIds(*mgr, vocbase.name()),
+            std::vector<std::string>{std::to_string(tid.id())});
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
+TEST_F(TransactionManagerTest, user_does_not_see_foreign_transaction) {
+  beginTransactionAsAlice(vocbase, *mgr, tid);
+
+  {
+    auto const bob = arangodb::tests::mocks::makeClassicExecContext(
+        "bob", vocbase.name(), arangodb::auth::Level::NONE,
+        arangodb::auth::Level::RO);
+    arangodb::ExecContextScope scope(bob.execContext);
+
+    EXPECT_TRUE(visibleTransactionIds(*mgr, vocbase.name()).empty());
+  }
+
+  auto const alice = arangodb::tests::mocks::makeClassicExecContext(
+      "alice", vocbase.name(), arangodb::auth::Level::NONE,
+      arangodb::auth::Level::RW);
+  arangodb::ExecContextScope scope(alice.execContext);
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+}
+
 TEST_F(TransactionManagerTest, transaction_invalid_mode) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -685,8 +816,9 @@ TEST_F(TransactionManagerTest, transaction_invalid_mode) {
 TEST_F(TransactionManagerTest, transaction_origin) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -721,8 +853,9 @@ TEST_F(TransactionManagerTest, expired_transaction) {
 
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -762,8 +895,9 @@ TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
 
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
-    coll = vocbase.createCollection(json->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection");
+    coll = vocbase.createCollection(colDescriptor);
   }
   ASSERT_NE(coll, nullptr);
 

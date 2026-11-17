@@ -181,11 +181,16 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
-    this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
-    this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    // 3.11 arangodump has no --parallel-dump, and its --split-files needs
+    // --use-experimental-dump; use the classic dump there
+    if (!(this.firstRunOptions.oldSource !== undefined && pu.currentBinarySet === 0 &&
+          db._version().startsWith('3.11.'))) {
+      this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
+      this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    }
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
+      if (!fs.exists(this.keyDir)) {
         fs.makeDirectory(this.keyDir);
       }
       let keyFile = fs.join(this.keyDir, 'secret-for-dump');
@@ -487,6 +492,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
   restoreOld(directory) {
     this.print('restoreOld');
     db._useDatabase('_system');
+    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     this.restoreOldConfig.setInputDirectory(directory, true);
     this.results.restoreOld = this.arangorestoreOld();
     return this.validate(this.results.restoreOld);
@@ -544,6 +550,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
+    this.instanceManager.disconnect();
     this.instanceManager.reconnect();
     return true;
   }

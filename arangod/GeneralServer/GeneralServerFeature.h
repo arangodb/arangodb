@@ -24,6 +24,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerOptions.h"
@@ -36,7 +38,6 @@
 #include "Metrics/GaugeCounterGuard.h"
 #include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/LogApiOptions.h"
 
@@ -77,6 +78,7 @@ class GeneralServerFeature final
   std::string const& supportInfoApiPolicy() const noexcept;
   std::string const& optionsApiPolicy() const noexcept;
   uint64_t compressResponseThreshold() const noexcept;
+  uint64_t maxDecompressedRequestBodySize() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
@@ -112,6 +114,10 @@ class GeneralServerFeature final
   }
 
   double httpConnections() const noexcept { return _connectionHttp.load(); }
+
+  ResourceMonitor& decompressionMemory() noexcept {
+    return _decompressionMemory;
+  }
 
  private:
   // build HTTP server(s)
@@ -165,6 +171,9 @@ class GeneralServerFeature final
   metrics::Gauge<double>& _connectionHttp;
 
   metrics::MetricsFeature& _metricsFeature;
+
+  GlobalResourceMonitor _decompressionGlobal;
+  ResourceMonitor _decompressionMemory{_decompressionGlobal};
 };
 
 }  // namespace arangodb

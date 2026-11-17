@@ -33,7 +33,7 @@
 #include "Aql/Executor/IndexExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/NonConstExpressionContainer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/ExtractNonConstPartsOfIndexCondition.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -44,12 +44,53 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <cstdint>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
+
+namespace {
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index) {
+  // Translate the late materialize "projections" description
+  // into the usual projections description
+  auto& coveredFields = index->coveredFields();
+
+  std::vector<AttributeNamePath> projectedAttributes;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& field = coveredFields[fieldIndex];
+    std::vector<std::string> fieldCopy;
+    fieldCopy.reserve(field.size());
+    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
+                   [&](auto const& attr) {
+                     TRI_ASSERT(attr.shouldExpand == false);
+                     return attr.name;
+                   });
+    projectedAttributes.emplace_back(std::move(fieldCopy),
+                                     plan->getAst()->query().resourceMonitor());
+  }
+
+  Projections projections{std::move(projectedAttributes)};
+
+  std::size_t i = 0;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& proj = projections[i++];
+    proj.coveringIndexPosition = fieldIndex;
+    proj.coveringIndexCutoff = proj.path.size();
+    proj.variable = var;
+    proj.levelsToClose = proj.startsAtLevel = 0;
+    proj.type = proj.path.type();
+  }
+
+  if (index->covers(projections)) {
+    projections.setCoveringContext(index->collection().id(), index);
+  }
+  return projections;
+}
+}  // namespace
 
 IndexNode::IndexNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
@@ -186,8 +227,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     }
 
     // convert old index value vars to projections
-    utils::translateLMIndexVarsToProjections(plan, oldIndexValuesVars,
-                                             getSingleIndex());
+    translateLMIndexVarsToProjections(plan, oldIndexValuesVars,
+                                      getSingleIndex());
   }
   _options.forLateMaterialization = isLateMaterialized();
 
@@ -318,8 +359,8 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
                                      "The index id cannot be empty.");
     }
 
-    return utils::extractNonConstPartsOfIndexCondition(
-        _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
+    return optimizer::extractNonConstPartsOfIndexCondition(
+        _plan->getAst(), inputRegisterResolver(), options().evaluateFCalls,
         idx.get(), _condition->root(), _outVariable);
   }
   return {};
@@ -438,15 +479,18 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
-      if (var->id == outVariable()->id &&
-          filterProjections().usesCoveringIndex()) {
-        // if the index covers the filter projections, then don't add the
-        // document variable to the filter vars. It is not used and will cause
-        // an error during register planning.
+      if (var->id == outVariable()->id) {
+        if (filterProjections().usesCoveringIndex()) {
+          // the index covers the filter projections, so the filter does not
+          // read the document at all. Adding it would cause an error during
+          // register planning.
+          continue;
+        }
+        // not covered: the filter reads the document this node produces
+        filterVarsToRegs.emplace_back(var->id, outputRegister(var));
         continue;
       }
-      auto regId = variableToRegisterId(var);
-      filterVarsToRegs.emplace_back(var->id, regId);
+      filterVarsToRegs.emplace_back(var->id, inputRegister(var));
     }
 
     if (filterProjections().usesCoveringIndex()) {
@@ -471,7 +515,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
-  auto const outRegister = variableToRegisterId(outVariable);
+  auto const outRegister = outputRegister(outVariable);
 
   // if late materialized
   // We have one additional output register for each index variable which is
@@ -491,7 +535,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         continue;
       }
       TRI_ASSERT(var != nullptr);
-      auto regId = variableToRegisterId(var);
+      auto regId = outputRegister(var);
       filterVarsToRegs.emplace_back(var->id, regId);
       writableOutputRegisters.emplace(regId);
       if (hasFilter()) {
@@ -724,8 +768,8 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
                                           indVars.second.indexFieldNum);
   }
 
-  _projections = utils::translateLMIndexVarsToProjections(
-      plan(), oldIndexValuesVars, getSingleIndex());
+  _projections = translateLMIndexVarsToProjections(plan(), oldIndexValuesVars,
+                                                   getSingleIndex());
   _options.forLateMaterialization = true;
 }
 
@@ -824,3 +868,5 @@ aql::Variable const* IndexNode::getLateMaterializedDocIdOutVar() const {
   TRI_ASSERT(isLateMaterialized());
   return _outNonMaterializedDocId;
 }
+
+}  // namespace arangodb::aql

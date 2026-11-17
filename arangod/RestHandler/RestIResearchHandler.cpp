@@ -53,9 +53,9 @@ RestIResearchHandler::RestIResearchHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-std::shared_ptr<iresearch::IResearchDataStore>
-RestIResearchHandler::getIResearchDatastore() {
-  std::shared_ptr<iresearch::IResearchDataStore> datastorePtr;
+std::vector<std::shared_ptr<iresearch::IResearchDataStore>>
+RestIResearchHandler::getIResearchDatastores() {
+  std::vector<std::shared_ptr<iresearch::IResearchDataStore>> datastores;
 
   //  Callback to process each enumerated collection
   auto processCollection =
@@ -69,23 +69,20 @@ RestIResearchHandler::getIResearchDatastore() {
     for (size_t i = 0; i < idxs.size(); i++) {
       const auto& idx = idxs[i];
 
-      if (!idx || (IndexType::IResearchLink != idx->type() &&
-                   IndexType::Inverted != idx->type())) {
-        continue;
-      }
-
       // TODO(MBkkt) find a better way to retrieve an IResearchDataStore
       //  cannot use downCast since Index is not related to IResearchDataStore
-      datastorePtr =
-          std::dynamic_pointer_cast<iresearch::IResearchDataStore>(idx);
-      break;
+      if (idx && (IndexType::IResearchLink == idx->type() ||
+                  IndexType::Inverted == idx->type())) {
+        datastores.push_back(
+            std::dynamic_pointer_cast<iresearch::IResearchDataStore>(idx));
+      }
     }
 
-    return !datastorePtr;
+    return true;
   };
 
   methods::Collections::enumerate(&_vocbase, processCollection);
-  return datastorePtr;
+  return datastores;
 }
 
 RestStatus RestIResearchHandler::execute() {
@@ -107,18 +104,27 @@ RestStatus RestIResearchHandler::execute() {
   }
 
   try {
-    IResearchDatastoreStats result;
-    if (!getDatastoreStats(result)) {
-      generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-      return RestStatus::DONE;
+    IResearchIndexStats fullIndexStats;
+    auto dataStores = getIResearchDatastores();
+
+    fullIndexStats.indexStats.reserve(dataStores.size());
+
+    //  fetch the datastore stats for all stores
+    for (auto datastore : dataStores) {
+      IResearchDatastoreStats datastoreStats;
+      if (getDatastoreStats(datastore, datastoreStats)) {
+        fullIndexStats.indexStats.push_back(datastoreStats);
+      }
     }
 
+    //  serialize
     VPackBuilder builder;
-    if (!toVelocyPack(result, builder)) {
+    if (!toVelocyPack(fullIndexStats, builder)) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "failed to serialize ArangoSearch stats");
       return RestStatus::DONE;
     }
+
     generateResult(rest::ResponseCode::OK, builder.slice());
 
   } catch (std::exception const& ex) {
@@ -129,8 +135,9 @@ RestStatus RestIResearchHandler::execute() {
   return RestStatus::DONE;
 }
 
-bool RestIResearchHandler::getDatastoreStats(IResearchDatastoreStats& result) {
-  auto dataStore = getIResearchDatastore();
+bool RestIResearchHandler::getDatastoreStats(
+    std::shared_ptr<iresearch::IResearchDataStore> dataStore,
+    IResearchDatastoreStats& result) {
   if (!dataStore) {
     //  Looks like no inverted index or views exist
     return false;
@@ -138,7 +145,11 @@ bool RestIResearchHandler::getDatastoreStats(IResearchDatastoreStats& result) {
 
   auto stats = dataStore->getDatastoreStats();
   auto& summary = stats.summary;
+  const auto& index = dataStore->index();
 
+  result.indexName = index.name();
+  result.indexType = index.typeName();
+  result.collectionName = index.collection().name();
   result.numDocs = summary.numDocs;
   result.numLiveDocs = summary.numLiveDocs;
 

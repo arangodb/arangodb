@@ -23,6 +23,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
+#include "Assertions/ProdAssert.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
@@ -53,17 +54,9 @@ struct DistributeNodeDependency {
   std::unordered_map<std::string_view, AstNode const*> shardKeyAccessMap;
 };
 
-Collection const* getCollection(ExecutionNode const* node) {
-  switch (node->getType()) {
-    case ExecutionNode::NodeType::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<EnumerateCollectionNode const*>(node)
-          ->collection();
-    case ExecutionNode::NodeType::INDEX:
-      return ExecutionNode::castTo<IndexNode const*>(node)->collection();
-    default:
-      break;
-  }
-  return nullptr;
+CollectionAccess const& getCollectionAccess(ExecutionNode const* node) {
+  return ExecutionNode::castTo<CollectionAccessingNode const*>(node)
+      ->collectionAccess();
 }
 
 Variable const* getVariableFromAttributeAccess(AstNode const* node) {
@@ -119,7 +112,7 @@ bool checkIfAllShardKeysAreUsed(AstNode const* root, ExecutionNode const* node,
     LOG_RULE << "no out variable for node, skip";
     return false;
   }
-  Collection const* collection = getCollection(node);
+  auto collection = getCollectionAccess(node).collection();
   LOG_RULE << std::format("checking node {}({}) for var({}) and collection({})",
                           node->getTypeString(), node->id(), var->name,
                           collection->name());
@@ -182,12 +175,20 @@ bool checkIfAllShardKeysAreUsed(AstNode const* root, ExecutionNode const* node,
     bool isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
                                 attrField) != shardKeys.end();
 
-    if (isShardKey > 0 && expression != nullptr) {
-      if (shardKeyNode->getString() == arangodb::StaticStrings::IdString) {
-        distDep.shardKeyAccessMap[arangodb::StaticStrings::KeyString] =
-            expression;
-      } else {
-        distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
+    if (isShardKey && expression != nullptr) {
+      std::string_view shardKey =
+          shardKeyNode->getString() == arangodb::StaticStrings::IdString
+              ? std::string_view{arangodb::StaticStrings::KeyString}
+              : shardKeyNode->getStringView();
+      // If a shard key is compared with multiple expressions, e.g.
+      // `doc._key == "foo" AND doc._id == other._from`, prefer a constant
+      // one. restrict-to-single-shard derives the target shard from constant
+      // shard key values, so the distribute key has to agree with it.
+      // Otherwise rows would be sent to shards that were restricted away.
+      auto [it, inserted] =
+          distDep.shardKeyAccessMap.try_emplace(shardKey, expression);
+      if (!inserted && !it->second->isConstant()) {
+        it->second = expression;
       }
     }
   }
@@ -278,10 +279,20 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
                         true);
 
   for (auto const node : nodes) {
-    ExecutionNode* current = node->getFirstParent();
+    // skip the Remote right after the Scatter
+    auto const* remote = node->getFirstParent();
+    ADB_PROD_ASSERT(remote != nullptr &&
+                    remote->getType() == ExecutionNode::REMOTE);
+    ExecutionNode* current = remote->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == ExecutionNode::INDEX ||
           current->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        auto collectionAccess = getCollectionAccess(current);
+        if (collectionAccess.isUsedAsSatellite()) {
+          LOG_RULE << "collection is used as satellite, skip";
+          break;
+        }
+
         auto condition = getCondition(plan.get(), current);
 
         if (condition != nullptr) {
@@ -290,14 +301,22 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
           DistributeNodeDependency distDep;
           if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
             auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
-            Collection const* coll{getCollection(current)};
-            replaceScatterWithDistribute(*plan, scatterNode, coll,
+            replaceScatterWithDistribute(*plan, scatterNode,
+                                         collectionAccess.collection(),
                                          current->id(), distDep);
             wasModified = true;
           }
         }
         // Only the first Index / Enumeration Parent-Node is relevant for us, we
         // can skip the rest
+        break;
+      }
+      // Any other node can end the snippet (Remote), read from another data
+      // source (views, vector search) or change the rows in a way the shard
+      // key check does not handle. Stop there so that a collection node
+      // further up can not decide where this Scatter sends its rows.
+      if (current->getType() != ExecutionNode::CALCULATION &&
+          current->getType() != ExecutionNode::FILTER) {
         break;
       }
       current = current->getFirstParent();

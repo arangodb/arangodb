@@ -579,7 +579,24 @@ auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId) const
   if (it != varInfo.end()) {
     return it->second.registerId;
   }
-  return RegisterId{RegisterId::maxRegisterId};
+  return RegisterId::makeInvalid();
+}
+
+template<typename T>
+auto RegisterPlanT<T>::resolverForDepth(unsigned int depth) const
+    -> RegisterResolver {
+  return RegisterResolver{varInfo, depth};
+}
+
+template<typename T>
+auto RegisterPlanT<T>::constVariableToRegisterId(VariableId varId) const
+    -> RegisterId {
+  auto it = varInfo.find(varId);
+  if (it == varInfo.end()) {
+    return RegisterId::makeInvalid();
+  }
+  TRI_ASSERT(it->second.registerId.isConstRegister());
+  return it->second.registerId;
 }
 
 template<typename T>

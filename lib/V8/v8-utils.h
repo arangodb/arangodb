@@ -40,8 +40,7 @@ class Result;
 /// value contains an error message in case the first two returned parts are
 /// empty strings
 std::tuple<std::string, std::string, std::string> getEndpoint(
-    std::vector<std::string> const& endpoints, std::string& url,
-    std::string const& lastEndpoint);
+    std::string& url, std::string const& lastEndpoint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.

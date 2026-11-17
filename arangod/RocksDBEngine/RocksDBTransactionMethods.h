@@ -107,8 +107,6 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) = 0;
 
-  virtual bool iteratorMustCheckBounds(ReadOwnWrites) const = 0;
-
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;

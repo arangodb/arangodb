@@ -101,13 +101,13 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId inDoc = variableToRegisterId(_inDocVariable);
-  RegisterId insert = variableToRegisterId(_insertVariable);
-  RegisterId update = variableToRegisterId(_updateVariable);
+  RegisterId inDoc = inputRegister(_inDocVariable);
+  RegisterId insert = inputRegister(_insertVariable);
+  RegisterId update = inputRegister(_updateVariable);
 
-  RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
+  RegisterId outputNew = outputRegisterOrInvalid(_outVariableNew);
 
-  RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
+  RegisterId outputOld = outputRegisterOrInvalid(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};
@@ -169,23 +169,6 @@ void UpsertNode::replaceVariables(
   if (_updateVariable != nullptr) {
     _updateVariable = Variable::replace(_updateVariable, replacements);
   }
-}
-
-void UpsertNode::replaceAttributeAccess(ExecutionNode const* self,
-                                        Variable const* searchVariable,
-                                        std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable,
-                                        size_t /*index*/) {
-  auto replace = [&](Variable const*& variable) {
-    if (variable != nullptr && searchVariable == variable &&
-        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
-      variable = replaceVariable;
-    }
-  };
-
-  replace(_inDocVariable);
-  replace(_insertVariable);
-  replace(_updateVariable);
 }
 
 size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }

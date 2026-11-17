@@ -433,7 +433,7 @@ function ahuacatlFailureSuite () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
       IM.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(CONCAT('1','2')) RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOEVAL(CONCAT('1','2')) RETURN i");
     },
 
     testConditionFinder1 : function () {

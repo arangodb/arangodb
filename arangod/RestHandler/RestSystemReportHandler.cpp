@@ -65,6 +65,8 @@ std::string exec(std::string const& cmd) {
   if (!pipe) {
     throw std::runtime_error("popen() failed!");
   }
+  // This blocking fgets call is by design.
+  // NOLINTNEXTLINE(clang-analyzer-unix.BlockInCriticalSection)
   while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
     result += buffer.data();
   }

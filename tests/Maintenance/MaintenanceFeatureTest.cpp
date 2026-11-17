@@ -199,7 +199,6 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
         std::false_type{});
     as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));

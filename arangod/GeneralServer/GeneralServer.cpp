@@ -187,6 +187,8 @@ extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
 SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
+    // only reachable for an SSL-typed acceptor
+    TRI_ASSERT(server().getFeature<SslServerFeature>().isEnabled());
     _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
@@ -209,6 +211,8 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
+      // only reachable via the reload-TLS admin endpoint
+      TRI_ASSERT(server().getFeature<SslServerFeature>().isEnabled());
       _sslContexts =
           server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE

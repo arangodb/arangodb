@@ -24,6 +24,7 @@
 
 #include "Aql/Match/PatternBuildState.h"
 #include "Aql/Match/PatternNormalizer.h"
+#include "Aql/Match/ProjectionAccessChecker.h"
 
 namespace arangodb::aql::match {
 
@@ -43,11 +44,16 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
   NormalizedStatement const statement = normalizer.normalize(matchNode);
 
   auto* en = previous;
+  // Shared scope for the entire MATCH. A later comma-separated pattern must
+  // read full documents through these substitutions rather than the user
+  // variables already assigned by projection calculations.
+  VariableScope sharedScope;
 
   for (auto const& pattern : statement.patterns) {
     PatternBuildState state;
     state.previous = previous;
     state.en = previous;
+    state.variableScope = std::move(sharedScope);
 
     _vertices.emitStart(pattern.start, state);
 
@@ -59,8 +65,10 @@ ExecutionNode* Builder::build(ExecutionNode* previous,
                                 pattern.pathVariable, state.pathVertices,
                                 state.pathEdges);
     previous = en;
+    sharedScope = std::move(state.variableScope);
   }
 
+  warnExcludedAttributeAccesses(*_ast, statement);
   return en;
 }
 

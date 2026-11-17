@@ -27,6 +27,7 @@
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
@@ -61,22 +62,22 @@ class PhysicalCollectionTest
                                      arangodb::LogLevel::WARN> {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
       features;
 
-  PhysicalCollectionTest() : server(nullptr, nullptr), engine(server) {
+  PhysicalCollectionTest()
+      : server(nullptr, nullptr),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()) {
     // setup required application features
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(dbFeature);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -90,8 +91,6 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
-
     for (auto& f : features) {
       f.get().unprepare();
     }
@@ -105,10 +104,11 @@ class PhysicalCollectionTest
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
-  auto collection = vocbase.createCollection(json->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto collection = vocbase.createCollection(colDescriptor);
 
-  auto physical = engine.createPhysicalCollection(*collection, json->slice());
+  auto physical = engine.createPhysicalCollection(
+      *collection, arangodb::LocalStorageProperties{});
 
   auto doc = arangodb::velocypack::Parser::fromJson(
       "{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", "
@@ -238,8 +238,8 @@ class MockIndex : public Index {
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
   TRI_vocbase_t vocbase(testDBInfo(server), engine);
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
-  auto collection = vocbase.createCollection(json->slice());
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor("test");
+  auto collection = vocbase.createCollection(colDescriptor);
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed

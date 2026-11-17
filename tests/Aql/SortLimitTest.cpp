@@ -27,6 +27,7 @@
 
 // test setup
 #include "IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -170,9 +171,9 @@ class SortLimitTest
 
   // create collection0, insertedDocs[0, 999]
   void CreateCollection() {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase->createCollection(createJson->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor("testCollection0");
+    auto collection = vocbase->createCollection(colDescriptor);
     ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;

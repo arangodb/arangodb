@@ -117,8 +117,8 @@ void GetByPrimaryKey::Thread::run() {
       arangodb::RocksDBColumnFamilyManager::get(
           arangodb::RocksDBColumnFamilyManager::Family::PrimaryIndex);
 
-  auto& engine =
-      _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
+  auto& engine = static_cast<arangodb::RocksDBEngine&>(
+      _server.vocbase()->server().getFeature<arangodb::StorageEngine>());
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
   std::string temp;
