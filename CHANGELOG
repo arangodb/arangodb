@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1276: Fix a cluster crash for vector search queries that filter on or return only
+  the vector attribute of a vector index without `storedValues`.
+
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 
@@ -20,6 +23,8 @@
   attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
   cluster attributes that were ignored before, such as `numberOfShards` together
   with `distributeShardsLike`, or `writeConcern` on a single server.
+
+* Updated FAISS to v1.16.0.
 
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
