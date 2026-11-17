@@ -47,8 +47,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::Created("_created");
-std::string const StaticStrings::Expired("_expired");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
@@ -272,7 +270,6 @@ std::string const StaticStrings::ParsedBody("parsedBody");
 std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::ComputedValues("computedValues");
-std::string const StaticStrings::EnableTimeTravel("enableTimeTravel");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsLocalGraphNode("isLocalGraphNode");

@@ -286,7 +286,6 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
   Transaction/ManagerTest.cpp
-  Transaction/OptionsTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
   Utils/ExecContextTest.cpp

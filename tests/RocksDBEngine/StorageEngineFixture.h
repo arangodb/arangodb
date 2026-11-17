@@ -40,9 +40,6 @@
 namespace arangodb::tests {
 
 struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
-  explicit TestRocksDBOptionsProvider(bool timeTravel = false)
-      : _timeTravel(timeTravel) {}
-
   rocksdb::TransactionDBOptions getTransactionDBOptions() const override {
     return {};
   }
@@ -50,7 +47,6 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   uint32_t numThreadsHigh() const noexcept override { return 2; }
   uint32_t numThreadsLow() const noexcept override { return 2; }
   uint64_t periodicCompactionTtl() const noexcept override { return 0; }
-  bool timeTravelEnabled() const noexcept override { return _timeTravel; }
 
  protected:
   rocksdb::Options doGetOptions() const override {
@@ -62,9 +58,6 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override {
     return {};
   }
-
- private:
-  bool _timeTravel;
 };
 
 struct TestSchedulerProvider final : ISchedulerProvider {
@@ -75,10 +68,6 @@ struct TestSchedulerProvider final : ISchedulerProvider {
 };
 
 struct StorageEngineFixtureSuite {
-  // `timeTravel` enables the PrimaryIndex_TT column family on the engine; off
-  // by default so existing suites keep exercising the non-time-travel paths.
-  explicit StorageEngineFixtureSuite(bool timeTravel = false)
-      : optionsProvider(timeTravel) {}
   ~StorageEngineFixtureSuite();
 
   metrics::FakeRegistry metricsRegistry;
@@ -110,9 +99,8 @@ struct StorageEngineFixtureSuite {
 };
 
 // Build a suite, wire up the collaborator mocks the engine needs at startup,
-// and start the engine. Shared by the plain and time-travel fixtures.
-std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite(
-    bool timeTravel = false);
+// and start the engine.
+std::unique_ptr<StorageEngineFixtureSuite> makeStartedSuite();
 
 // Shut down and destroy a suite created by makeStartedSuite().
 void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite);
@@ -122,11 +110,10 @@ void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite);
 // for all tests in the suite. Each test gets a fresh collection via SetUp().
 // All collaborators are owned by the fixture suite and torn down (including
 // the on-disk data) when all tests in the class finish.
-template<class Derived>
-class BasicStorageEngineFixture : public ::testing::Test {
+class StorageEngineFixture : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
-    _suite = makeStartedSuite(Derived::timeTravelEnabled);
+    _suite = makeStartedSuite();
   }
 
   static void TearDownTestSuite() { stopSuite(_suite); }
@@ -134,16 +121,6 @@ class BasicStorageEngineFixture : public ::testing::Test {
   RocksDBEngine& engine() noexcept { return _suite->engine; }
 
   inline static std::unique_ptr<StorageEngineFixtureSuite> _suite;
-};
-
-struct StorageEngineFixture : BasicStorageEngineFixture<StorageEngineFixture> {
-  static constexpr bool timeTravelEnabled = false;
-};
-
-// Like StorageEngineFixture, but with the time-travel feature enabled
-struct TimeTravelStorageEngineFixture
-    : BasicStorageEngineFixture<TimeTravelStorageEngineFixture> {
-  static constexpr bool timeTravelEnabled = true;
 };
 
 }  // namespace arangodb::tests
