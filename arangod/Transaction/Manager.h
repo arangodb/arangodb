@@ -311,6 +311,17 @@ class Manager final : public IManager {
                                                   std::string const& database,
                                                   transaction::Status status);
 
+  /// @brief Aborts a managed transaction. Should it be still in
+  /// use, soft-abort instead, so it is aborted when its current
+  /// user returns it, or by the next garbage collection run
+  Result abortOrSoftAbortManagedTrx(TransactionId tid,
+                                    std::string const& database);
+
+  /// @brief Mark a managed transaction expired, it is aborted
+  /// when it is returned by its current user or by the next garbage
+  /// collection run. Returns whether the transaction was found
+  bool softAbortManagedTrx(TransactionId tid) noexcept;
+
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
     return absl::Hash<uint64_t>()(tid.id()) % numBuckets;
