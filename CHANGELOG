@@ -1,6 +1,8 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* Patch FAISS v1.16.0 with alubsan fix.
+
 * Updated FAISS to v1.16.0.
 
 * Fix a cluster crash for vector search queries that filter on or return only
