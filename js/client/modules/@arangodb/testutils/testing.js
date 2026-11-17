@@ -421,7 +421,7 @@ function iterateTests(cases, options) {
       let n = options.testBuckets.split('/');
       let r = parseInt(n[0]);
       let s = parseInt(n[1]);
-      if (isNaN(r) || isNaN(s) || r < 1 || s < 0 || s >= r || r > nTests)) {
+      if (isNaN(r) || isNaN(s) || r < 1 || s < 0 || s >= r || r > nTests) {
         throw new Error(`Number of buckets (${r}) must not exceed the number of suites to run (${nTests})`);
       }
       // distribute the suites round robin over the buckets, like splitBuckets() does with testcases
