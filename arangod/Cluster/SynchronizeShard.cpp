@@ -1171,12 +1171,6 @@ bool SynchronizeShard::first() {
       // because it was scheduled earlier:
       collection->followers()->setTheLeader(leader);
 
-      // From now on refuse all replication for this shard until back in sync.
-      // Any follower transaction still here belongs to a previous follower, of
-      // a failed leader or one that has dropped us). It may still hold the
-      // shard's lock.
-      transaction::cluster::abortFollowerTransactionsOnShard(collection->id());
-
       // If we fail to get in sync with this task, then we want to make
       // sure that the leader is reset to a known value, such that the
       // Maintenance will trigger another SynchronizeShard job eventually:
@@ -1187,6 +1181,12 @@ bool SynchronizeShard::first() {
             << "SynchronizeShard failed for " << shardNameForLogging()
             << ", resetting shard leader to trigger new run.";
       });
+
+      // From now on refuse all replication for this shard until back in sync.
+      // Any follower transaction still here belongs to a previous follower, of
+      // a failed leader or one that has dropped us). It may still hold the
+      // shard's lock.
+      transaction::cluster::abortFollowerTransactionsOnShard(collection->id());
 
       startTime = std::chrono::system_clock::now();
 
