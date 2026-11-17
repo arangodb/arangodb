@@ -148,4 +148,32 @@ else
     NUMACTL=""
 fi
 
+setup_fips() {
+    FIPS_MODULE="/opt/lib/ossl-modules/fips.so"
+    FIPS_CNF="/opt/ssl/fipsmodule.cnf"
+
+    if [ ! -f "$FIPS_MODULE" ]; then
+        echo "FIPS module not found at $FIPS_MODULE" >&2
+        exit 1
+    fi
+
+    if [ ! -f "$FIPS_CNF" ]; then
+        echo "Generating $FIPS_CNF via openssl fipsinstall..."
+        openssl fipsinstall \
+            -out "$FIPS_CNF" \
+            -module "$FIPS_MODULE" || exit 1
+        echo "fipsmodule.cnf generated successfully."
+    fi
+}
+USE_FIPS_NORM=$(printf '%s' "${USE_FIPS:-}" | tr '[:upper:]' '[:lower:]')
+case "$USE_FIPS_NORM" in
+    ""|0|false|no|off) ;;
+    *)
+        setup_fips
+        if [ "$1" = "arangod" ]; then
+            set -- "$@" --server.fips-enable=true
+        fi
+        ;;
+esac
+
 exec $NUMACTL "$@"
