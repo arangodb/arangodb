@@ -1,6 +1,10 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* BTS-2542: Fix `/_admin/cluster/shardDistribution` reporting the shards of
+  SmartGraph edge collections as never in sync, because their `Current` entries
+  were looked up under the virtual collection instead of its shadow collections.
+
 * COR-1287: Documents with a missing or malformed vector attribute are now
   rejected while a vector index is ingesting, instead of being accepted and
   making the index build fail. Addresses GitHub issue #23696.
