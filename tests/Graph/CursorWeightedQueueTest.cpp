@@ -79,9 +79,6 @@ template<typename Step>
 struct MockNeighbourCursor {
   auto next() -> std::vector<Step> { return {}; };
   auto hasMore() -> bool { return false; };
-  auto markForDeletion() -> void { _deletable = true; };
-
-  bool _deletable = false;
 };
 
 TEST_F(CursorWeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
