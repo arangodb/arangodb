@@ -1,7 +1,7 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
-* FE-1318: bump moment from 2.30.1 to 2.31.0.
+* FE-1318: bump moment from 2.30.1 to 2.31.0 to resolve CVE-2026-17495.
 
 * Updated FAISS to v1.16.0.
 
