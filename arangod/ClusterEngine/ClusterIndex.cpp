@@ -465,6 +465,7 @@ ClusterIndex::coveredFields() const {
     case IndexType::Zkd:
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
+    case IndexType::Vector:
     case IndexType::NoAccess: {
       return Index::emptyCoveredFields;
     }
