@@ -7,6 +7,8 @@
   arangorestore now also reports the first failed collection job instead of a
   follow-up error from creating search-alias views.
 
+* Patch FAISS v1.16.0 with alubsan fix.
+
 * Updated FAISS to v1.16.0.
 
 * Fix a cluster crash for vector search queries that filter on or return only
