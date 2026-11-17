@@ -112,9 +112,7 @@ void stopSuite(std::unique_ptr<StorageEngineFixtureSuite>& suite);
 // the on-disk data) when all tests in the class finish.
 class StorageEngineFixture : public ::testing::Test {
  protected:
-  static void SetUpTestSuite() {
-    _suite = makeStartedSuite();
-  }
+  static void SetUpTestSuite() { _suite = makeStartedSuite(); }
 
   static void TearDownTestSuite() { stopSuite(_suite); }
 
