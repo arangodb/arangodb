@@ -18,6 +18,8 @@
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 
+* BTS-2450: Remove exhausted neighbour cursors, fixes a memory leak in traversal queries
+
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).
 
@@ -111,6 +113,14 @@
   group variables are the leading keys of that SORT. Otherwise it adds a SORT
   on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
   returns each group once.
+
+* COR-1095: Remove custom AESNI code. This makes the command line
+  options
+  --temp.intermediate-results-encryption-hardware-acceleration and
+  --rocksdb.encryption-hardware-acceleration obsolete.  Benchmarking
+  has been done to ensure there are no negative impacts of this
+  removal, and upgrades from deployments using this acceleration to
+  not using it should work without problems.
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
