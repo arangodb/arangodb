@@ -243,6 +243,7 @@ add_library(arango_basic_logger STATIC
         Logger/LogAppenderSyslog.cpp
         Logger/LogContext.cpp
         Logger/LogLevel.cpp
+        Logger/LogSecurity.cpp
         Logger/LogThread.cpp
         Logger/LogTopic.cpp
         Logger/Logger.cpp

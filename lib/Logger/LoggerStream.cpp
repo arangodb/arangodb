@@ -32,8 +32,12 @@
 namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase(bool enabled)
+    : LoggerStreamBase(enabled, Security::None) {}
+
+LoggerStreamBase::LoggerStreamBase(bool enabled, Security security)
     : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
       _level(LogLevel::DEFAULT),
+      _security(security),
       _line(0),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enabled(enabled),
@@ -94,9 +98,15 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
+
+LoggerStream::LoggerStream(bool enabled, Security security)
+    : LoggerStreamBase(enabled, security) {}
 #endif
 
 LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
+
+LoggerStream::LoggerStream(Security security)
+    : LoggerStreamBase(true, security) {}
 
 LoggerStream::~LoggerStream() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
