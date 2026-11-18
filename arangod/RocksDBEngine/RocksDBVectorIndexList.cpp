@@ -325,12 +325,12 @@ template struct RocksDBInvertedListsFilteringIterator<
 
 /// RocksDBInvertedListsFilteringStoredValuesIterator
 template<VectorIndexStoredValuesStrategy Strategy>
-requires(Strategy::hasStoredValues)
-    RocksDBInvertedListsFilteringStoredValuesIterator<Strategy>::
-        RocksDBInvertedListsFilteringStoredValuesIterator(
-            RocksDBVectorIndex* index, LogicalCollection* collection,
-            IteratorFilterContext& filterContext, std::size_t listNumber,
-            std::size_t codeSize)
+  requires(Strategy::hasStoredValues)
+RocksDBInvertedListsFilteringStoredValuesIterator<Strategy>::
+    RocksDBInvertedListsFilteringStoredValuesIterator(
+        RocksDBVectorIndex* index, LogicalCollection* collection,
+        IteratorFilterContext& filterContext, std::size_t listNumber,
+        std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
           index, collection, filterContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() && filterContext.useStoredValuesIterator);
@@ -338,7 +338,8 @@ requires(Strategy::hasStoredValues)
 }
 
 template<VectorIndexStoredValuesStrategy Strategy>
-requires(Strategy::hasStoredValues) bool RocksDBInvertedListsFilteringStoredValuesIterator<
+  requires(Strategy::hasStoredValues)
+bool RocksDBInvertedListsFilteringStoredValuesIterator<
     Strategy>::searchFilteredIds() {
   // Get documents ids from the vector index
   std::vector<std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>> items;

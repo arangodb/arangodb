@@ -35,11 +35,11 @@ namespace arangodb::activities {
 
 template<typename F, typename Data>
 concept DataAccessor = requires(F f, Data& m) {
-  {f(m)};
+  { f(m) };
 };
 template<typename F, typename Data>
 concept DataConstAccessor = requires(F f, Data const& m) {
-  {f(m)};
+  { f(m) };
 };
 
 template<typename Derived, typename Data>
@@ -85,13 +85,15 @@ struct GuardedActivity : Activity {
   auto copyData() const -> Data { return _data.copy(); }
 
   template<typename F>
-  requires DataConstAccessor<F, Data>
+    requires DataConstAccessor<F, Data>
   auto getData(F&& getter) const {
     return _data.doUnderLock(std::move(getter));
   }
   template<typename F>
-  requires DataAccessor<F, Data>
-  auto updateData(F&& mutator) { return _data.doUnderLock(std::move(mutator)); }
+    requires DataAccessor<F, Data>
+  auto updateData(F&& mutator) {
+    return _data.doUnderLock(std::move(mutator));
+  }
   using HandleType = std::shared_ptr<Derived>;
 
  protected:

@@ -85,7 +85,9 @@ class CollectionInternalPropertiesTest : public ::testing::Test {
 
 TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
   EXPECT_TRUE(testee->syncByRevision);

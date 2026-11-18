@@ -145,17 +145,20 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenVertices(std::move(forbidden));
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private : auto clearProvider() -> void;
+   private:
+    auto clearProvider() -> void;
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 
@@ -253,14 +256,16 @@ class TwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };

@@ -51,5 +51,5 @@ auto MissingVariablesException::node() const noexcept -> ExecutionNode const* {
 
 template struct aql::RegisterPlanT<ExecutionNode>;
 template struct aql::RegisterPlanWalkerT<ExecutionNode>;
-template std::ostream& aql::operator<<<ExecutionNode>(
+template std::ostream& aql::operator<< <ExecutionNode>(
     std::ostream& os, const RegisterPlanT<ExecutionNode>& r);

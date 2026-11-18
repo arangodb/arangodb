@@ -11,8 +11,9 @@ struct expected {
 
   template<typename... Args>
   explicit expected(std::in_place_t, Args&&... args) noexcept(
-      std::is_nothrow_constructible_v<T, Args...>) requires
-      std::constructible_from<T, Args...> {
+      std::is_nothrow_constructible_v<T, Args...>)
+    requires std::constructible_from<T, Args...>
+  {
     new (&_value) T(std::forward<Args>(args)...);
     _state = kValue;
   }
@@ -23,16 +24,17 @@ struct expected {
   }
 
   expected(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>) requires
-      std::is_copy_constructible_v<T> {
+      std::is_nothrow_copy_constructible_v<T>)
+    requires std::is_copy_constructible_v<T>
+  {
     copy_from(other);
   }
 
   expected& operator=(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>&&
-          std::is_nothrow_destructible_v<T>&& std::is_nothrow_copy_assignable_v<
-              T>) requires(std::is_copy_constructible_v<T>&&
-                               std::is_copy_assignable_v<T>) {
+      std::is_nothrow_copy_constructible_v<T> &&
+      std::is_nothrow_destructible_v<T> && std::is_nothrow_copy_assignable_v<T>)
+    requires(std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>)
+  {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
         _value = other._value;
@@ -44,15 +46,16 @@ struct expected {
     return *this;
   }
 
-  expected(expected&& other) noexcept(
-      std::is_nothrow_move_constructible_v<T>) requires
-      std::move_constructible<T> {
+  expected(expected&& other) noexcept(std::is_nothrow_move_constructible_v<T>)
+    requires std::move_constructible<T>
+  {
     move_from(std::move(other));
   }
 
   expected& operator=(expected&& other) noexcept(
-      std::is_nothrow_destructible_v<T>&& std::is_nothrow_move_assignable_v<
-          T>) requires(std::is_move_assignable_v<T>) {
+      std::is_nothrow_destructible_v<T> && std::is_nothrow_move_assignable_v<T>)
+    requires(std::is_move_assignable_v<T>)
+  {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
         _value = std::move(other._value);
@@ -66,9 +69,10 @@ struct expected {
 
   template<typename... Args>
   T& emplace(Args&&... args) noexcept(
-      std::is_nothrow_constructible_v<T, Args...>&&
-          std::is_nothrow_destructible_v<T>) requires
-      std::constructible_from<T, Args...> {
+      std::is_nothrow_constructible_v<T, Args...> &&
+      std::is_nothrow_destructible_v<T>)
+    requires std::constructible_from<T, Args...>
+  {
     reset();
     new (&_value) T(std::forward<Args>(args)...);
     _state = kValue;
@@ -156,8 +160,9 @@ struct expected {
 
  private:
   auto copy_from(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>) requires
-      std::copy_constructible<T> {
+      std::is_nothrow_copy_constructible_v<T>)
+    requires std::copy_constructible<T>
+  {
     if (other._state == kValue) {
       new (&_value) T(other._value);
       _state = kValue;
@@ -168,8 +173,9 @@ struct expected {
     }
   }
   auto move_from(expected&& other) noexcept(
-      std::is_nothrow_move_constructible_v<T>) requires
-      std::move_constructible<T> {
+      std::is_nothrow_move_constructible_v<T>)
+    requires std::move_constructible<T>
+  {
     if (other._state == kValue) {
       new (&_value) T(std::move(other._value));
       _state = kValue;

@@ -77,8 +77,8 @@ struct Indexes {
                                                 IndexId indexId);
 
   template<typename IndexSpec>
-  requires std::is_same_v<IndexSpec, IndexId> or
-      std::is_same_v<IndexSpec, velocypack::Slice>
+    requires std::is_same_v<IndexSpec, IndexId> or
+             std::is_same_v<IndexSpec, velocypack::Slice>
   static futures::Future<arangodb::Result> dropDBServer(
       LogicalCollection& collection, IndexSpec indexSpec);
   static futures::Future<arangodb::Result> dropCoordinator(

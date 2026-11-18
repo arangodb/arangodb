@@ -1637,7 +1637,9 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
   auto& feature = server.getFeature<IResearchFeature>();
 
   auto blockQueue = [&]() {
-    { std::lock_guard lock{mtx}; }
+    {
+      std::lock_guard lock{mtx};
+    }
     cv.notify_one();
   };
 
@@ -1734,7 +1736,9 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { std::lock_guard lock{mtx}; }
+    {
+      std::lock_guard lock{mtx};
+    }
     cv.notify_one();
   };
 
@@ -1965,7 +1969,9 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { std::lock_guard lock{mtx}; }
+    {
+      std::lock_guard lock{mtx};
+    }
     cv.notify_one();
   };
 

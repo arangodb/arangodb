@@ -201,9 +201,9 @@ typedef struct zlib_filefunc64_32_def_s {
 #define ZWRITE64(filefunc, filestream, buf, size)                           \
   ((*((filefunc).zfile_func64.zwrite_file))((filefunc).zfile_func64.opaque, \
                                             filestream, buf, size))
-//#define ZTELL64(filefunc,filestream)            ((*((filefunc).ztell64_file))
+// #define ZTELL64(filefunc,filestream)            ((*((filefunc).ztell64_file))
 //((filefunc).opaque,filestream))
-//#define ZSEEK64(filefunc,filestream,pos,mode)   ((*((filefunc).zseek64_file))
+// #define ZSEEK64(filefunc,filestream,pos,mode)   ((*((filefunc).zseek64_file))
 //((filefunc).opaque,filestream,pos,mode))
 #define ZCLOSE64(filefunc, filestream)                                      \
   ((*((filefunc).zfile_func64.zclose_file))((filefunc).zfile_func64.opaque, \

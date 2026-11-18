@@ -832,7 +832,9 @@ TEST_F(NodeLoadInspectorTest,
 TEST_F(NodeLoadInspectorTest,
        error_missing_tag_when_parsing_qualified_variant) {
   auto node = consensus::Node::create();
-  { node = node->placeAt("a/v", 42); }
+  {
+    node = node->placeAt("a/v", 42);
+  }
   NodeLoadInspector inspector{node};
 
   QualifiedVariant v;

@@ -64,9 +64,8 @@ bool RemoveAllUnreferenced(directory& dir) {
 }  // namespace directory_utils
 
 TrackingDirectory::TrackingDirectory(directory& impl) noexcept
-  : impl_{impl}, on_close_{[this](size_t size) noexcept {
-      this->files_size_ += size;
-    }} {}
+  : impl_{impl},
+    on_close_{[this](size_t size) noexcept { this->files_size_ += size; }} {}
 
 index_output::ptr TrackingDirectory::create(std::string_view name)  //
   noexcept try {

@@ -105,7 +105,7 @@ auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
   return response;
 }
 
-void AsyncAgencyStorePoolConnection::cancel(){};
+void AsyncAgencyStorePoolConnection::cancel() {};
 
 void AsyncAgencyStorePoolConnection::sendRequest(
     std::unique_ptr<fuerte::Request> req, fuerte::RequestCallback cb) {
