@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2480: Fix an assertion failure in ~IResearchDataStore() when opening a
+  database at startup failed after a collection with arangosearch links was
+  loaded but before it was registered, e.g. because the server was shut down
+  while rebuilding a revision tree during a slow upgrade.
+
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
   server. The view links could get the same id as an index from the dump.

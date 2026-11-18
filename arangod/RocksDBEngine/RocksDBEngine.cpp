@@ -35,6 +35,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/BasicThread.h"
 #include "Basics/VelocyPackHelper.h"
@@ -2673,6 +2674,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
                                                         /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
+      // the indexes (e.g. arangosearch links) have already been opened. if we
+      // fail before the collection is registered (e.g. shutdown during the
+      // revision tree rebuild), they must be unloaded before the collection
+      // object is destroyed
+      auto closeGuard = scopeGuard([&collection]() noexcept {
+        try {
+          collection->close();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("2f1c7", WARN, arangodb::Logger::ENGINES)
+              << "caught exception while closing collection '"
+              << collection->name() << "': " << ex.what();
+        } catch (...) {
+        }
+      });
+
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
       Result r = phy->meta().deserializeMeta(_db, *collection);
@@ -2684,6 +2700,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
+      closeGuard.cancel();
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
