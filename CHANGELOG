@@ -1,15 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-<<<<<<< HEAD
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
   server. The view links could get the same id as an index from the dump.
   arangorestore now also reports the first failed collection job instead of a
   follow-up error from creating search-alias views.
 
-=======
->>>>>>> 38d9d57c968 ([COR-1197] Loading fips module. (#23650))
 * Fixed a data race in the bundled ICU 64 library when several threads ran their
   first AQL string search (e.g. `CONTAINS`) concurrently.
 
