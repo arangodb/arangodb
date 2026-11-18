@@ -22,6 +22,7 @@
 
 #include "Aql/QueryHelper.h"
 #include "IResearch/IResearchQueryCommon.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "gtest/gtest.h"
 
@@ -56,8 +57,9 @@ class InsertExecutorTest : public ::testing::Test {
 
   void SetUp() override {
     SCOPED_TRACE("SetUp");
-    auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
-    auto collection = vocbase.createCollection(info->slice());
+    auto colDescriptor =
+        arangodb::tests::testCollectionDescriptor(collectionName);
+    auto collection = vocbase.createCollection(colDescriptor);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
   }
 };
@@ -319,7 +321,8 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN [OLD.value, "
+        " OPTIONS { overwriteMode: 'replace' } SORT NEW.value RETURN "
+        "[OLD.value, "
         "NEW.value]";
 
     VPackBuilder builder;
@@ -340,7 +343,7 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: -i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN NEW.value";
+        " OPTIONS { overwriteMode: 'replace' } SORT NEW.value RETURN NEW.value";
 
     VPackBuilder builder;
     builder.openArray();

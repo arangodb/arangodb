@@ -35,26 +35,6 @@ if [ -z "${ARANGODB_VERSION:-}" ]; then
   find_arangodb_version "${PROJECT_DIR}/CMakeLists.txt" > /dev/null
 fi
 
-# V8 produces thin archives; rewrite them into self-contained ones so they
-# survive being shipped. Done with an ar MRI script: ADDLIB copies every
-# member (reading the thin archive's backing files) and — unlike the old
-# "ar -t | xargs ar rvs" — preserves duplicate member basenames (V8 has
-# e.g. heap/sweeper.o AND cppgc/sweeper.o; whenever xargs split the list
-# into batches, "r" REPLACED one duplicate with the other, shipping
-# archives with silently missing objects — undefined Sweeper symbols when
-# relinking arangod on arm64). The member count is asserted to match.
-while IFS= read -r lib; do
-  echo "${lib} ..."
-  printf 'CREATE %s\nADDLIB %s\nSAVE\nEND\n' "${lib}.new" "${lib}" | ar -M
-  OLD_COUNT="$(ar -t "${lib}" | wc -l)"
-  NEW_COUNT="$(ar -t "${lib}.new" | wc -l)"
-  if [ "${OLD_COUNT}" != "${NEW_COUNT}" ]; then
-    echo "pack-object-files: rewrite of ${lib} lost members (${OLD_COUNT} -> ${NEW_COUNT})" >&2
-    exit 1
-  fi
-  mv "${lib}.new" "${lib}"
-done < <(find "${BUILD_DIR}/3rdParty/v8-build" -name "*.a" 2>/dev/null)
-
 # The linking scripts reference ../../libssl.a / ../../libcrypto.a relative
 # to the build directory.
 cp -a "$(find /opt -name libssl.a | head -1)" "${BUILD_DIR}/"
@@ -64,7 +44,7 @@ INCLUSION_LIST="$(mktemp)"
 trap 'rm -f "${INCLUSION_LIST}"' EXIT
 
 find "${BUILD_DIR}" -name "*.a" > "${INCLUSION_LIST}"
-for obj in arangovpack arangobackup arangobench arangosh arangodump \
+for obj in arangovpack arangobackup arangosh arangodump \
            arangoexport arangorestore arangoimport arangod; do
   find "${BUILD_DIR}" -name "${obj}.cpp.o" >> "${INCLUSION_LIST}"
 done
@@ -93,7 +73,7 @@ echo "scripts/link_executables.sh" >> "${INCLUSION_LIST}"
 echo "README.static-linking" >> "${INCLUSION_LIST}"
 
 mkdir -p "${PACKAGES_OUT}"
-ARCHIVE="${PACKAGES_OUT}/arangodb3e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
+ARCHIVE="${PACKAGES_OUT}/arangodb4e-linux-object_files_${BUILDMODE}-${ARANGODB_VERSION}_${ARCH}.tar.gz"
 rm -f "${ARCHIVE}"
 tar -czf "${ARCHIVE}" \
   --transform "s|^${BUILD_DIR}|build|" \

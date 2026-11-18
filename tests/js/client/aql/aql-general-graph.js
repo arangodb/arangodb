@@ -335,7 +335,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     
     testNeighborsAny: function () {
-      var query = `FOR v IN ANY @start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true} SORT v._id RETURN v._id`;
+      var query = `FOR v IN ANY @start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"} SORT v._id RETURN v._id`;
       var bindVars = {
         name: gN,
         start: v1 + "/v1"
@@ -361,7 +361,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testNeighborsAnyStartExample: function () {
-      var query = `${AQL_PICK_START_EXAMPLE} FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+      var query = `${AQL_PICK_START_EXAMPLE} FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    COLLECT id = v._id
                    SORT id RETURN id`;
       var bindVars = {
@@ -379,7 +379,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsAnyVertexExample: function () {
       var query = `${AQL_START_EVERYWHERE}
-                   FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER v._key == "v1"
                    COLLECT id = v._id
                    SORT id RETURN id`;
@@ -393,7 +393,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsAnyStartExampleRestrictEdges: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                    FOR v IN ANY start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                    FOR v IN ANY start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                     COLLECT id = v._id
                     SORT id RETURN id`;
       var actual = getRawQueryResults(query);
@@ -406,7 +406,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsAnyStartExampleRestrictVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN ANY start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    COLLECT id = v._id SORT id RETURN id`;
       var bindVars = {
@@ -422,7 +422,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsAnyStartExampleRestrictEdgesAndVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN ANY start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN ANY start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    COLLECT id = v._id SORT id RETURN id`;
       var actual = getRawQueryResults(query);
@@ -437,7 +437,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     
     testNeighborsOutbound: function () {
-      var query = `FOR v IN OUTBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+      var query = `FOR v IN OUTBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    SORT v._id RETURN v._id`;
       var bindVars = {
         name: gN,
@@ -450,7 +450,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testNeighborsOutboundEdgeExample: function () {
-      var query = `FOR v, e IN OUTBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+      var query = `FOR v, e IN OUTBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER e.what == "v2->v1" OR e.what == "v1->v2"
                    SORT v._id RETURN v._id`;
       var bindVars = {
@@ -464,7 +464,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsOutboundStartExample: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    COLLECT id = v._id SORT id RETURN id`;
       var bindVars = {
         name: gN,
@@ -481,7 +481,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsOutboundVertexExample: function () {
       var query = `${AQL_START_EVERYWHERE}
-                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER v._key == "v1"
                    SORT v._id RETURN v._id`;
       var bindVars = {
@@ -494,7 +494,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsOutboundStartExampleRestrictEdges: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN OUTBOUND start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN OUTBOUND start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                    COLLECT id = v._id
                    SORT id
                    RETURN id`;
@@ -507,7 +507,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsOutboundStartExampleRestrictVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN OUTBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    COLLECT id = v._id
                    SORT id RETURN id`;
@@ -524,7 +524,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsOutboundStartExampleRestrictEdgesAndVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN OUTBOUND start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN OUTBOUND start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    COLLECT id = v._id
                    SORT id RETURN id`;
@@ -539,7 +539,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     
     testNeighborsInbound: function () {
-      var query = `FOR v IN INBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+      var query = `FOR v IN INBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    SORT v._id RETURN v._id`;
       var bindVars = {
         name: gN,
@@ -551,7 +551,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testNeighborsInboundEdgeExample: function () {
-      var query = `FOR v, e IN INBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+      var query = `FOR v, e IN INBOUND @start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER e.what == "v2->v1"
                    SORT v._id RETURN v._id`;
       var bindVars = {
@@ -564,7 +564,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsInboundStartExample: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    SORT v._id RETURN v._id`;
       var bindVars = {
         name: gN,
@@ -578,7 +578,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsInboundNeighborExample: function () {
       var query = `${AQL_START_EVERYWHERE}
-                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER v._key == "v1"
                    SORT v._id RETURN v._id`;
       var bindVars = {
@@ -592,7 +592,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsInboundStartExampleRestrictEdges: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN INBOUND start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN INBOUND start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                    SORT v._id
                    RETURN v._id`;
       var actual = getRawQueryResults(query);
@@ -602,7 +602,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsInboundStartExampleRestrictVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN INBOUND start GRAPH @name OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    SORT v._id RETURN v._id`;
       var bindVars = {
@@ -616,7 +616,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
     testNeighborsInboundStartExampleRestrictEdgesAndVertices: function () {
       var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v IN INBOUND start ${e2} OPTIONS {uniqueVertices: "global", bfs: true}
+                   FOR v IN INBOUND start ${e2} OPTIONS {uniqueVertices: "global", order: "bfs"}
                    FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
                    SORT v._id RETURN v._id`;
       var actual = getRawQueryResults(query);
@@ -630,7 +630,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       };
       var query = `
             ${AQL_PICK_START_EXAMPLE}
-            FOR v IN INBOUND start GRAPH @name OPTIONS {bfs: true, uniqueVertices: "global"}
+            FOR v IN INBOUND start GRAPH @name OPTIONS {order: "bfs", uniqueVertices: "global"}
               FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
               SORT v._id
               FOR e in @@eCol
@@ -650,7 +650,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
           LET thisVertex = DOCUMENT(edgeDoc._to)
           LET vertices = (
             ${AQL_PICK_START_EXAMPLE}
-            FOR v IN INBOUND start GRAPH @name OPTIONS {bfs: true, uniqueVertices: "global"}
+            FOR v IN INBOUND start GRAPH @name OPTIONS {order: "bfs", uniqueVertices: "global"}
               FILTER IS_SAME_COLLECTION(${v1}, v) OR IS_SAME_COLLECTION(${v3}, v)
               RETURN v)
           FOR oneVertex IN vertices RETURN {hugo: thisVertex.hugo, neighborVertex: oneVertex}`;
@@ -755,8 +755,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 
     testCommonNeighbors: function () {
       var query = `
-        LET n1 = (FOR n IN ANY 'UnitTestsAhuacatlVertex1/v3' GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"} RETURN n._id)
-        LET n2 = (FOR n IN ANY 'UnitTestsAhuacatlVertex2/v6' GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"} RETURN n._id)
+        LET n1 = (FOR n IN ANY 'UnitTestsAhuacatlVertex1/v3' GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"} RETURN n._id)
+        LET n2 = (FOR n IN ANY 'UnitTestsAhuacatlVertex2/v6' GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"} RETURN n._id)
         LET common = INTERSECTION(n1, n2)
         RETURN {left: 'UnitTestsAhuacatlVertex1/v3', right: 'UnitTestsAhuacatlVertex2/v6', neighbors: common}
       `;
@@ -773,10 +773,10 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     testCommonNeighborsIn: function () {
       var query = `
         FOR left IN ${AQL_START_EVERYWHERE}
-          LET n1 = (FOR n IN INBOUND left GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"} RETURN n._id)
+          LET n1 = (FOR n IN INBOUND left GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"} RETURN n._id)
           FOR right IN ${AQL_START_EVERYWHERE}
             FILTER left != right
-            LET n2 = (FOR n IN INBOUND right GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"} RETURN n._id)
+            LET n2 = (FOR n IN INBOUND right GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"} RETURN n._id)
             LET neighbors = INTERSECTION(n1, n2)
             FILTER LENGTH(neighbors) > 0
             SORT left._id, right._id
@@ -862,11 +862,11 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     testCommonNeighborsMixedOptionsDistinctFilters: function () {
       var query = `
       FOR left IN ${AQL_START_EVERYWHERE}
-      LET n1 = (FOR v IN OUTBOUND left GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"}
+      LET n1 = (FOR v IN OUTBOUND left GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"}
         FILTER IS_SAME_COLLECTION(UnitTestsAhuacatlVertex1, v) RETURN v._id)
         FOR right IN ${AQL_START_EVERYWHERE}
           FILTER left != right
-          LET n2 = (FOR v IN 1..2 INBOUND right GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"}
+          LET n2 = (FOR v IN 1..2 INBOUND right GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"}
             FILTER IS_SAME_COLLECTION(UnitTestsAhuacatlVertex2, v) RETURN v._id)
           LET neighbors = INTERSECTION(n1, n2)
           FILTER LENGTH(neighbors) > 0
@@ -880,11 +880,11 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     testCommonNeighborsMixedOptionsFilterBasedOnOneCollectionOnly: function () {
       var query = `
         FOR left IN ${AQL_START_EVERYWHERE}
-        LET n1 = (FOR v IN OUTBOUND left GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"}
+        LET n1 = (FOR v IN OUTBOUND left GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"}
           FILTER IS_SAME_COLLECTION(UnitTestsAhuacatlVertex2, v) RETURN v._id)
           FOR right IN ${AQL_START_EVERYWHERE}
             FILTER left != right
-            LET n2 = (FOR v IN 1..2 INBOUND right GRAPH 'bla3' OPTIONS {bfs: true, uniqueVertices: "global"}
+            LET n2 = (FOR v IN 1..2 INBOUND right GRAPH 'bla3' OPTIONS {order: "bfs", uniqueVertices: "global"}
               FILTER IS_SAME_COLLECTION(UnitTestsAhuacatlVertex2, v) RETURN v._id)
             LET neighbors = INTERSECTION(n1, n2)
             FILTER LENGTH(neighbors) > 0
@@ -1270,7 +1270,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
       // Alternative (identical, in some cases this is more performant, in others the first one is better)
       query = `
-        FOR v, e, p IN 1..1000 INBOUND "${vertexIds.Fritz}" GRAPH "${graphName}" OPTIONS {bfs: true}
+        FOR v, e, p IN 1..1000 INBOUND "${vertexIds.Fritz}" GRAPH "${graphName}" OPTIONS {order: "bfs"}
           FILTER v.gender == "female"
           LIMIT 1
           RETURN {

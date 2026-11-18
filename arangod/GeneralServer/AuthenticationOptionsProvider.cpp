@@ -36,16 +36,6 @@ using namespace arangodb::options;
 
 void AuthenticationOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AuthenticationOptions& options) {
-  opts->addObsoleteOption(
-      "server.disable-authentication",
-      "Whether to use authentication for all client requests.", false);
-  opts->addObsoleteOption(
-      "server.disable-authentication-unix-sockets",
-      "Whether to use authentication for requests via UNIX domain sockets.",
-      false);
-  opts->addOldOption("server.authenticate-system-only",
-                     "server.authentication-system-only");
-
   opts->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",
                   new BooleanParameter(&options.active))
@@ -62,8 +52,7 @@ the server to `localhost` to not expose it to the public internet)");
   opts->addOption(
           "--server.session-timeout",
           "The lifetime for tokens (in seconds) that can be obtained from "
-          "the `POST /_open/auth` endpoint. Used by the web interface "
-          "for JWT-based sessions.",
+          "the `POST /_open/auth` endpoint.",
           new DoubleParameter(&options.sessionTimeout, /*base*/ 1.0,
                               /*minValue*/ 1.0,
                               /*maxValue*/ std::numeric_limits<double>::max(),
@@ -115,7 +104,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
   opts->addOption(
           "--auth.maximal-access-token-expiry-time",
           "The maximal expiry time (in seconds) allowed for personal access "
-          "tokens requested via the `POST /_api/token` endpoint.",
+          "tokens requested via the `POST /_api/token/{user}` endpoint.",
           new DoubleParameter(&options.maximalAccessTokenExpiryTime,
                               /*base*/ 1.0,
                               /*minValue*/ 1.0,
@@ -128,15 +117,16 @@ endpoint. Requests with expiry times above this value will be rejected.)");
       .setIntroducedIn(31210)
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for a personal access token via the `valid_until` parameter in the
-`POST /_api/token` endpoint. If a request specifies a `valid_until` further in
-the future than this maximum allows, it is silently capped to `now` plus this
-option's value.)");
+`POST /_api/token/{user}` endpoint. If a request specifies a `valid_until`
+further in the future than this maximum allows, it is silently capped to the
+moment of the request plus this option's value.)");
 
   opts->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
-                  "external RBAC service endpoint. If the string is empty, "
-                  "RBAC is disabled.",
-                  new StringParameter(&options.externalRBACservice),
+                  "external RBAC service endpoint "
+                  "(empty string = RBAC disabled). "
+                  "Requires the Arango Contextual Data Platform.",
+                  new StringParameter(&options.externalRbacService),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -144,53 +134,25 @@ option's value.)");
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
       .setLongDescription(
-          R"(When set to a non-empty string, this must be the HTTP or HTTPS
-endpoint of an external RBAC authorization service for use by Coordinators and
-single servers. In this case, all requests use role-based-access-control
-(RBAC) via the specified service for authorization decisions. When set to an
-empty string, RBAC is disabled and instead the old permission system is used.)");
+          R"(Specify the HTTP or HTTPS endpoint of an external RBAC
+authorization service for use by Coordinators and single servers.
+This service is provided by the Arango Contextual Data Platform, and you cannot
+use RBAC if you run ArangoDB standalone.
+
+- When set to a non-empty string, all requests use role-based access control
+  (RBAC) via the specified service for authorization decisions.
+
+- When set to an empty string, RBAC is disabled and instead the classic
+  permission system is used.)");
 
   opts->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
 
-  opts->addOption("--server.authentication-system-only",
-                  "Use HTTP authentication only for requests to /_api and "
-                  "/_admin endpoints.",
-                  new BooleanParameter(&options.authenticationSystemOnly))
-      .setLongDescription(R"(If you set this option to `true`, then HTTP
-authentication is only required for requests going to URLs starting with `/_`,
-but not for other endpoints. You can thus use this option to expose custom APIs
-of Foxx microservices without HTTP authentication to the outside world, but
-prevent unauthorized access of ArangoDB APIs and the admin interface.
-
-Note that checking the URL is performed after any database name prefix has been
-removed. That means, if the request URL is `/_db/_system/myapp/myaction`, the
-URL `/myapp/myaction` is checked for the `/_` prefix.
-
-Authentication still needs to be enabled for the server via
-`--server.authentication` in order for HTTP authentication to be forced for the
-ArangoDB APIs and the web interface. Only setting
-`--server.authentication-system-only` is not enough.)");
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  opts->addOption(
-          "--server.authentication-unix-sockets",
-          "Whether to use authentication for requests via UNIX domain sockets.",
-          new BooleanParameter(&options.authenticationUnixSockets),
-          arangodb::options::makeFlags())
-      .setLongDescription(R"(If you set this option to `false`, authentication
-for requests coming in via UNIX domain sockets is turned off on the server-side.
-Clients located on the same host as the ArangoDB server can use UNIX domain
-sockets to connect to the server without authentication. Requests coming in by
-other means (e.g. TCP/IP) are not affected by this option.)");
-#endif
-
-  opts->addOption("--server.jwt-secret",
-                  "The secret to use when doing JWT authentication.",
-                  new StringParameter(&options.jwtSecretProgramOption))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
+  opts->addObsoleteOption(
+      "--server.authentication-unix-sockets",
+      "Whether to use authentication for requests via UNIX domain sockets.",
+      true);
 
   opts->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "
@@ -216,10 +178,6 @@ In single server setups, ArangoDB generates a secret if none is specified.
 In cluster deployments which have authentication enabled, a secret must
 be set consistently across all cluster nodes so they can talk to each other.
 
-ArangoDB also supports an `--server.jwt-secret` option to pass the secret
-directly (without a file). However, this is discouraged for security
-reasons.
-
 You can reload JWT secrets from disk without restarting the server or the nodes
 of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
 You can use this feature to roll out new JWT secrets throughout a cluster.)");
@@ -229,14 +187,39 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
           new StringParameter(&options.jwtSecretFolderProgramOption))
-      .setLongDescription(R"(Files are sorted alphabetically, the first secret
-is used for signing + verifying JWT tokens (_active_ secret), and all other
-secrets are only used to validate incoming JWT tokens (_passive_ secrets).
-Only one secret needs to verify a JWT token for it to be accepted.
+      .setLongDescription(R"(The server reads JWT secrets from every file in
+the configured folder.
 
-You can reload JWT secrets from disk without restarting the server or the nodes
-of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
-You can use this feature to roll out new JWT secrets throughout a cluster.)");
+Files are sorted lexicographically by name.
+The following entries are ignored: hidden files (names starting with `.`),
+files ending in `.tmp`, and anything that is not a regular file, such as
+subfolders, sockets, devices, or named pipes. Symbolic links are followed and
+are only used if they point to a regular file.
+
+- **First remaining file = active secret.** Signs new tokens and verifies
+  incoming ones.
+- **Every other file = passive secret.** Verifies only, never signs.
+
+A token is accepted if *any* secret verifies it. This allows zero-downtime
+rotation: keep the old secret in the folder as a passive secret so existing
+tokens stay valid, and put the new one first so it takes over signing
+(e.g. name the files like `01-current`, `02-previous` to control the order).
+
+To reload the JWT secrets from disk without restarting, call the
+`POST /_admin/server/jwt` HTTP API endpoint. This lets you roll out new
+JWT secrets throughout a cluster.
+
+**File contents:**
+
+Each file is either a PEM-encoded key or raw bytes; the server decides by
+inspecting the content.
+
+| File contains | As active secret | As passive secret |
+|---|---|---|
+| PEM public/private key pair | Signs with the private key, verifies with the public key | Verifies with the public key |
+| PEM public key only | ⚠️ Cannot sign — server starts but can't issue tokens | Verifies with the public key |
+| PEM with no usable key | Error | Error |
+| Anything else | Raw bytes used as an HMAC secret; signs and verifies | Raw bytes used as an HMAC secret; verifies |)");
 }
 
 void AuthenticationOptionsProvider::validateOptionsImpl(
@@ -263,9 +246,9 @@ void AuthenticationOptionsProvider::validateOptionsImpl(
     FATAL_ERROR_EXIT();
   }
 
-  if (!options.externalRBACservice.empty()) {
-    if (!options.externalRBACservice.starts_with("http://") &&
-        !options.externalRBACservice.starts_with("https://")) {
+  if (!options.externalRbacService.empty()) {
+    if (!options.externalRbacService.starts_with("http://") &&
+        !options.externalRbacService.starts_with("https://")) {
       LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
           << "--server.external-rbac-service must start with http:// or "
              "https://";

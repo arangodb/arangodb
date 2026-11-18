@@ -382,6 +382,9 @@ class ApplicationServer {
       _features;
 
  private:
+  void maybeDumpOptions();
+  void maybeDumpDependencies();
+
   // the current state
   std::atomic<State> _state;
 

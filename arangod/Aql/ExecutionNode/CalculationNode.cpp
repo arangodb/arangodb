@@ -130,9 +130,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId outputRegister = variableToRegisterId(_outVariable);
+  RegisterId outReg = outputRegister(_outVariable);
   TRI_ASSERT((_outVariable->type() == Variable::Type::Const) ==
-             outputRegister.isConstRegister());
+             outReg.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -144,7 +144,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    auto regId = variableToRegisterId(var);
+    auto regId = inputRegister(var);
     expInVarsToRegs.emplace_back(var->id, regId);
     inputRegisters.emplace(regId);
   }
@@ -153,29 +153,24 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   if (isReference) {
     TRI_ASSERT(expInVarsToRegs.size() == 1);
   }
-#ifdef USE_V8
-  bool const willUseV8 = expression()->willUseV8();
-#endif
 
   TRI_ASSERT(expression() != nullptr);
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                           outputRegister.isRegularRegister()
-                                               ? RegIdSet{outputRegister}
-                                               : RegIdSet{});
+  auto registerInfos = createRegisterInfos(
+      std::move(inputRegisters),
+      outReg.isRegularRegister() ? RegIdSet{outReg} : RegIdSet{});
 
   if (_outVariable->type() == Variable::Type::Const) {
     // we have a const variable, so we can simply use an IdExector to forward
     // the rows.
-    auto executorInfos = IdExecutorInfos(false, outputRegister);
+    auto executorInfos = IdExecutorInfos(false, outReg);
     return std::make_unique<ExecutionBlockImpl<
         IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 
   auto executorInfos = CalculationExecutorInfos(
-      outputRegister,
-      engine.getQuery() /* used for v8 contexts and in expression */,
+      outReg, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(),
       std::move(expInVarsToRegs)); /* required by expression.execute */
 
@@ -183,12 +178,6 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
-#ifdef USE_V8
-  } else if (willUseV8) {
-    return std::make_unique<
-        ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-#endif
   } else {
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(

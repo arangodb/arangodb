@@ -32,11 +32,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+// asio event loop threads; requests get their ExecContext via
+// CommTask/RestHandler
 IoContext::IoThread::IoThread(IoContext& iocontext)
-    : Thread("Io"), _iocontext(iocontext) {}
+    : Thread("Io", nullptr), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)
-    : Thread("Io"), _iocontext(other._iocontext) {}
+    : Thread("Io", nullptr), _iocontext(other._iocontext) {}
 
 IoContext::IoThread::~IoThread() { shutdown(); }
 

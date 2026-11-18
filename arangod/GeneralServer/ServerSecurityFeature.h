@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 
 namespace arangodb {
 
@@ -38,14 +38,7 @@ class ServerSecurityFeature final
   explicit ServerSecurityFeature(
       application_features::ApplicationServer& server);
 
-  // disable Foxx API. must only be called during server startup
-  void disableFoxxApi() noexcept;
-
   bool isRestApiHardened() const noexcept;
-  bool isFoxxApiDisabled() const noexcept;
-  bool isFoxxStoreDisabled() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
-  bool foxxAllowInstallFromRemote() const noexcept;
 
  private:
   ServerSecurityFeatureOptions _options;

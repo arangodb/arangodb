@@ -23,6 +23,7 @@
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -58,7 +59,7 @@
 #include "VocBase/LogicalCollection.h"
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -151,7 +152,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true,
                              /*allowExpansion*/ false)) {
-  TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(type() == IndexType::Vector);
   velocypack::deserialize(info.get("params"), _definition);
 
   auto metadata = loadVectorIndexMetadata(info);
@@ -180,23 +181,22 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
+vector::Metadata RocksDBVectorIndex::loadVectorIndexMetadata(
     velocypack::Slice info) const {
   // Try the V2 slot first, then fall back to the V1 slot. The slots are
   // distinct so an old binary that only knows the V1 slot will simply miss
   // V2 metadata after a downgrade and treat the index as unusable
-  auto readSlot = [&](vector::VectorIndexFormatVersion version,
-                      std::string& raw) -> bool {
+  auto readSlot = [&](vector::FormatVersion version, std::string& raw) -> bool {
     RocksDBKey key;
     key.constructVectorIndexTrainedData(objectId(), version);
     rocksdb::ReadOptions ro;
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  vector::VectorIndexMetadata result;
+  vector::Metadata result;
   std::string raw;
-  if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
-      readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
+  if (readSlot(vector::FormatVersion::kV2, raw) ||
+      readSlot(vector::FormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
     velocypack::deserialize(slice, result);
@@ -221,7 +221,7 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  vector::UserVectorIndexDefinition definition;
+  vector::UserDefinition definition;
   velocypack::deserialize(info.get("params"), definition);
   if (definition != _definition) {
     return false;
@@ -334,10 +334,9 @@ void RocksDBVectorIndex::captureDocument(
     captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
   } else if (projectionMode == vector::ProjectionMode::kCovered &&
              hasStoredValues()) {
-    auto extracted =
-        transaction::extractAttributeValues(*trx, _storedValues, docSlice, true)
-            ->get();
-    captureSink->insert_or_assign(docId, extracted->sharedSlice());
+    auto extracted = transaction::extractAttributeValues(*trx, _storedValues,
+                                                         docSlice, true);
+    captureSink->insert_or_assign(docId, extracted->get()->sharedSlice());
   }
 }
 
@@ -368,7 +367,7 @@ RocksDBVectorIndex::bruteForceSearch(
   bool const hasFilter = config.strategy.filter != FilterMode::kNone;
   aql::AqlFunctionsInternalCache functionsCache;
 
-  auto eraseCaptured = [&](vector::VectorIndexLabelId id) {
+  auto eraseCaptured = [&](vector::LabelId id) {
     if (captureSink != nullptr && id >= 0) {
       captureSink->erase(LocalDocumentId{static_cast<std::uint64_t>(id)});
     }
@@ -390,7 +389,7 @@ RocksDBVectorIndex::bruteForceSearch(
     }
 
     auto dist = computeDistance(currentDocVector, searchVector, isDescending);
-    auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
+    auto id = static_cast<vector::LabelId>(docId.id());
 
     if (n < topK) {
       if (isDescending) {
@@ -421,16 +420,16 @@ RocksDBVectorIndex::bruteForceSearch(
     return true;
   });
 
-  // Truncate labels and distances to min(topK, total_no_of_documents)
-  labels.resize(n);
-  distances.resize(n);
-
   // Reorder heap so results are sorted
   if (isDescending) {
     faiss::minheap_reorder(topK, distances.data(), labels.data());
   } else {
     faiss::maxheap_reorder(topK, distances.data(), labels.data());
   }
+
+  // Truncate labels and distances to min(topK, total_no_of_documents)
+  labels.resize(n);
+  distances.resize(n);
 
   // L2: fvec_L2sqr returns squared distances, take sqrt
   if (_definition.metric == vector::SimilarityMetric::kL2) {
@@ -497,8 +496,8 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
-                      result.labels.data(), &searchParametersIvf);
+  result.stats = searchIvf(inputs.data(), config.topK, searchParametersIvf,
+                           result.distances.data(), result.labels.data());
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -508,6 +507,40 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   return result;
+}
+
+// Same steps as faiss::IndexIVF::search for a single query, but with local
+// IndexIVFStats
+// IndexIvf::search() accumulates into the unsynchronized global indexIVF_stats.
+aql::EnumerateNearVectorStats RocksDBVectorIndex::searchIvf(
+    float const* query, std::size_t topK,
+    faiss::SearchParametersIVF const& params, float* distances,
+    faiss::idx_t* labels) const {
+  using Clock = std::chrono::steady_clock;
+  auto const nProbe = std::min(params.nprobe, _faissIndex->nlist);
+  std::vector<faiss::idx_t> listIds(nProbe);
+  std::vector<float> centroidDistances(nProbe);
+  faiss::IndexIVFStats ivfStats;
+
+  auto const start = Clock::now();
+  _faissIndex->quantizer->search(1, query, nProbe, centroidDistances.data(),
+                                 listIds.data(), params.quantizer_params);
+  auto const coarseDone = Clock::now();
+  _faissIndex->search_preassigned(1, query, topK, listIds.data(),
+                                  centroidDistances.data(), distances, labels,
+                                  false, &params, &ivfStats);
+  auto const scanDone = Clock::now();
+
+  return aql::EnumerateNearVectorStats{
+      .searches = ivfStats.nq,
+      .listsScanned = ivfStats.nlist,
+      .distancesComputed = ivfStats.ndis,
+      .heapUpdates = ivfStats.nheap_updates,
+      .coarseSearchTime =
+          std::chrono::duration<double>(coarseDone - start).count(),
+      .listScanTime =
+          std::chrono::duration<double>(scanDone - coarseDone).count(),
+  };
 }
 
 bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept { return true; }
@@ -659,11 +692,10 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   auto value = std::invoke([&]() {
     if (hasStoredValues()) {
       auto const extractedAttributeValues =
-          transaction::extractAttributeValues(trx, _storedValues, doc, true)
-              ->get();
-      auto storedValues = extractedAttributeValues->sharedSlice();
+          transaction::extractAttributeValues(trx, _storedValues, doc, true);
+      auto storedValues = extractedAttributeValues->get()->sharedSlice();
 
-      if (_formatVersion == vector::VectorIndexFormatVersion::kV2) {
+      if (_formatVersion == vector::FormatVersion::kV2) {
         return RocksDBValue::VectorIndexValueV2(
             flat_codes.get(), _faissIndex->code_size, storedValues);
       }
@@ -717,8 +749,8 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   return {};
 }
 
-vector::UserVectorIndexDefinition const&
-RocksDBVectorIndex::getVectorIndexDefinition() const {
+vector::UserDefinition const& RocksDBVectorIndex::getVectorIndexDefinition()
+    const {
   return getDefinition();
 }
 

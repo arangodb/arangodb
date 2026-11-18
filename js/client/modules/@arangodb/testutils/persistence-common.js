@@ -67,6 +67,9 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.allDatabases = [];
     this.allDumps = [];
     if (this.firstRunOptions.skipServerJS) {
+      // -- special case - we need this with reference to the external repository testcases.
+      // this will be removed in future when rta testcases for foxx removed .
+
       // TODO: what about 550,900,960 - QA-703?
       if (rtaArgs.length === 2) {
         rtaArgs[1] += ",070,071,801,550,900,960";
@@ -178,11 +181,16 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
-    this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
-    this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    // 3.11 arangodump has no --parallel-dump, and its --split-files needs
+    // --use-experimental-dump; use the classic dump there
+    if (!(this.firstRunOptions.oldSource !== undefined && pu.currentBinarySet === 0 &&
+          db._version().startsWith('3.11.'))) {
+      this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
+      this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
+    }
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
+      if (!fs.exists(this.keyDir)) {
         fs.makeDirectory(this.keyDir);
       }
       let keyFile = fs.join(this.keyDir, 'secret-for-dump');
@@ -484,6 +492,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
   restoreOld(directory) {
     this.print('restoreOld');
     db._useDatabase('_system');
+    this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     this.restoreOldConfig.setInputDirectory(directory, true);
     this.results.restoreOld = this.arangorestoreOld();
     return this.validate(this.results.restoreOld);
@@ -494,111 +503,6 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     db._useDatabase('_system');
     this.results.testRestoreOld = this.runOneTest(file);
     return this.validate(this.results.testRestoreOld);
-  }
-
-  restoreFoxxComplete(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps with full restore to ' + database);
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.setIncludeSystem(true);
-      this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
-      this.results.restoreFoxxComplete = this.arangorestore();
-      return this.validate(this.results.restoreFoxxComplete);
-    }
-    return true;
-  }
-
-  testFoxxRoutingReady() {
-    if (!this.firstRunOptions.skipServerJS) {
-      for (let i = 0; i < 20; i++) {
-        try {
-          let reply = arango.GET_RAW('/this_route_is_not_here', true);
-          if (reply.code === 404) {
-            print("selfHeal was already executed - Foxx is ready!");
-            return 0;
-          }
-          print(" Not yet ready, retrying: " + reply.parsedBody);
-        } catch (e) {
-          print(" Caught - need to retry. " + JSON.stringify(e));
-        }
-        sleep(3);
-      }
-      throw new Error("020: foxx routeing not ready on time!");
-    }
-    return 0;
-  }
-
-  testFoxxComplete(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after full restore - ' + file);
-      db._useDatabase(database);
-      this.testFoxxRoutingReady();
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxComplete = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxComplete);
-    }
-    return true;
-  }
-
-  restoreFoxxAppsBundle(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps restore _apps then _appbundles');
-      db._useDatabase('_system');
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.restrictToCollection('_apps');
-      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-        return false;
-      }
-      this.restoreConfig.restrictToCollection('_appbundles');
-      // TODO if cluster, switch coordinator!
-      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-      return this.validate(this.results.restoreFoxxAppBundlesStep2);
-    }
-    return true;
-  }
-
-  testFoxxAppsBundle(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after _apps then _appbundles restore - ' + file);
-      db._useDatabase(database);
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxAppBundles = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxAppBundles);
-    }
-    return true;
-  }
-
-  restoreFoxxBundleApps(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps restore _appbundles then _apps');
-      db._useDatabase(database);
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.restrictToCollection('_appbundles');
-      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-        return false;
-      }
-      this.restoreConfig.restrictToCollection('_apps');
-      // TODO if cluster, switch coordinator!
-      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-      return this.validate(this.results.restoreFoxxAppBundlesStep2);
-    }
-    return true;
-  }
-
-  testFoxxBundleApps(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after _appbundles then _apps restore - ' + file);
-      db._useDatabase(database);
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxFoxxAppBundles = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxAppBundles);
-    }
-    return true;
   }
 
   createHotBackup() {
@@ -646,6 +550,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
+    this.instanceManager.disconnect();
     this.instanceManager.reconnect();
     return true;
   }
@@ -659,7 +564,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
     let rc = ct.run.rtaMakedata(this.instanceManager.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaMakedata = {
+      this.results[`${this.which}_RtaMakedata`] = {
         message:  'Makedata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         duration: rc.duration
@@ -668,7 +573,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaMakedata = rc;
+      this.results[`${this.which}_RtaMakedata`] = rc;
       return true;
     }
   }
@@ -697,7 +602,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
 
   dumpFromRta() {
     let success = true;
-    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
+    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst'];
     db._useDatabase('_system');
     db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db);}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
@@ -748,7 +653,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         message: 'Checkdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
@@ -758,7 +663,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         status: true,
         failed: 0,
         duration: rc.duration,
@@ -772,7 +677,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_waitdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 2, "waiting for the SUT to come in sync", logFile, this.rtaArgs);
     if (!rc.status) {
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaWaitdata`] = {
         message: 'Waitdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
@@ -782,7 +687,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaCheckdata = {
+      this.results[`${this.which}_RtaCheckdata`] = {
         status: true,
         failed: 0,
         duration: rc.duration,

@@ -547,6 +547,9 @@ void mdi::extractBoundsFromCondition(
     // not be null.
     for (size_t i = 0; i < condition->numMembers(); i++) {
       auto op = condition->getMemberUnchecked(i);
+      if (!op->isComparisonOperator()) {
+        continue;
+      }
       auto other = op->getMember(0);
       auto access = op->getMember(1);
       index->canUseConditionPart(access, other, op, reference,
@@ -897,9 +900,8 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                              /*allowExpansion*/ false)),
       _coveredFields(Index::mergeFields(_prefixFields, _storedValues)),
       _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {
-  TRI_ASSERT(_type == TRI_IDX_TYPE_ZKD_INDEX ||
-             _type == TRI_IDX_TYPE_MDI_INDEX ||
-             _type == TRI_IDX_TYPE_MDI_PREFIXED_INDEX);
+  TRI_ASSERT(_type == IndexType::Zkd || _type == IndexType::MDI ||
+             _type == IndexType::MDIPrefixed);
 }
 
 void RocksDBMdiIndexBase::toVelocyPack(
@@ -1047,7 +1049,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
   return mdi::specializeCondition(this, condition, reference);
 }
 
-Index::IndexType RocksDBMdiIndexBase::type() const { return _type; }
+IndexType RocksDBMdiIndexBase::type() const { return _type; }
 
 char const* RocksDBMdiIndexBase::typeName() const {
   return Index::oldtypeName(type());

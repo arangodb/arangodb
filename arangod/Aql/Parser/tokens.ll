@@ -5,6 +5,7 @@
 %option bison-bridge
 %option yylineno
 %option noyywrap nounput batch
+%option noyyalloc noyyrealloc noyyfree
 %x BACKTICK
 %x FORWARDTICK
 %x SINGLE_QUOTE
@@ -17,6 +18,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
+#include <new>
 
 }
 
@@ -134,6 +137,10 @@ class Parser;
   return T_NOT_IN;
 }
 
+(?i:NOT[ \t\r\n]+LIKE)/[^_a-zA-Z0-9] {
+  return T_NOT_LIKE;
+}
+
 (?i:NOT) {
   return T_NOT;
 }
@@ -202,6 +209,10 @@ class Parser;
   return T_K_PATHS;
 }
 
+(?i:MATCH) {
+  return T_MATCH;
+}
+
 (?i:OUTBOUND) {
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
@@ -212,6 +223,54 @@ class Parser;
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
   return T_INBOUND;
+}
+
+(?i:ALL[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ALL_NOT_LIKE;
+}
+
+(?i:ANY[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ANY_NOT_LIKE;
+}
+
+(?i:NONE[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_NONE_NOT_LIKE;
+}
+
+(?i:ALL[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ALL_LIKE;
+}
+
+(?i:ANY[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ANY_LIKE;
+}
+
+(?i:NONE[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_NONE_LIKE;
+}
+
+(?i:ALL[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_ALL_REGEX_NON_MATCH;
+}
+
+(?i:ANY[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_ANY_REGEX_NON_MATCH;
+}
+
+(?i:NONE[ \t\r\n]+!~)/[^(_a-zA-Z0-9] {
+  return T_NONE_REGEX_NON_MATCH;
+}
+
+(?i:ALL[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_ALL_REGEX_MATCH;
+}
+
+(?i:ANY[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_ANY_REGEX_MATCH;
+}
+
+(?i:NONE[ \t\r\n]+=~)/[^(_a-zA-Z0-9] {
+  return T_NONE_REGEX_MATCH;
 }
 
 (?i:ANY) {
@@ -240,6 +299,38 @@ class Parser;
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
   return T_LIKE;
+}
+
+(?i:WHILE) {
+  return T_WHILE;
+}
+
+(?i:UNTIL) {
+  return T_UNTIL;
+}
+
+(?i:SCAN) {
+  return T_SCAN;
+}
+
+(?i:FOLD) {
+  return T_FOLD;
+}
+
+(?i:INNER_JOIN) {
+  return T_INNER_JOIN;
+}
+
+(?i:LEFT_JOIN) {
+  return T_LEFT_JOIN;
+}
+
+(?i:RIGHT_JOIN) {
+  return T_RIGHT_JOIN;
+}
+
+(?i:OUTER_JOIN) {
+  return T_OUTER_JOIN;
 }
 
  /* ---------------------------------------------------------------------------
@@ -302,6 +393,10 @@ class Parser;
   return T_NOT_IN;
 }
 
+(?i:![ \t\r\n]*LIKE)/[^_a-zA-Z0-9] {
+  return T_NOT_LIKE;
+}
+
 "!" {
   return T_NOT;
 }
@@ -312,6 +407,10 @@ class Parser;
 
 "||" {
   return T_OR;
+}
+
+"|" {
+  return T_PIPE;
 }
 
 "+" {
@@ -348,6 +447,10 @@ class Parser;
 
 ".." {
   return T_RANGE;
+}
+
+"..." {
+  return T_ELLIPSIS;
 }
 
  /* ---------------------------------------------------------------------------
@@ -734,3 +837,22 @@ class Parser;
 
 
 %%
+
+// flex calls exit() when an allocation fails; throw instead so only the query fails.
+void* Aqlalloc(yy_size_t size, yyscan_t /*yyscanner*/) {
+  void* p = std::malloc(size);
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  return p;
+}
+
+void* Aqlrealloc(void* ptr, yy_size_t size, yyscan_t /*yyscanner*/) {
+  void* p = std::realloc(ptr, size);
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  return p;
+}
+
+void Aqlfree(void* ptr, yyscan_t /*yyscanner*/) { std::free(ptr); }

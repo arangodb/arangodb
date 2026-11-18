@@ -166,7 +166,7 @@ function vertexCollectionRestrictionSuite() {
     testNoRestrictionBfs : function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
-                       OPTIONS {bfs: true}
+                       OPTIONS {order: "bfs"}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
@@ -186,7 +186,7 @@ function vertexCollectionRestrictionSuite() {
     testNoPracticalRestrictionBfs: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
-                       OPTIONS {bfs: true, vertexCollections: ["${vc1Name}", "${vc2Name}"]}
+                       OPTIONS {order: "bfs", vertexCollections: ["${vc1Name}", "${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
@@ -206,7 +206,7 @@ function vertexCollectionRestrictionSuite() {
     testRestrict1Bfs: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
-                       OPTIONS {bfs: true, vertexCollections: ["${vc1Name}"]}
+                       OPTIONS {order: "bfs", vertexCollections: ["${vc1Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
@@ -221,7 +221,7 @@ function vertexCollectionRestrictionSuite() {
     testRestrict2Bfs: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
-                       OPTIONS {bfs: true, vertexCollections: ["${vc2Name}"]}
+                       OPTIONS {order: "bfs", vertexCollections: ["${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 

@@ -22,6 +22,7 @@
 
 #include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
+#include "../Mocks/ExecContextFactory.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -37,7 +38,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Async/async.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -75,37 +76,10 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
-    expectUserManagerCalls();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
@@ -219,14 +193,18 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   std::shared_ptr<arangodb::Index> link;
-  auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
-                      .factory<arangodb::ClusterEngine>();
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection0, linkJson->slice(),
-                                         arangodb::IndexId{1}, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection1, linkJson->slice(),
-                                         arangodb::IndexId{2}, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection2, linkJson->slice(),
-                                         arangodb::IndexId{3}, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
+                         arangodb::IndexCreationContext{
+                             *logicalCollection0, linkJson->slice(),
+                             arangodb::IndexId{1}, false}));
+  EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
+                         arangodb::IndexCreationContext{
+                             *logicalCollection1, linkJson->slice(),
+                             arangodb::IndexId{2}, false}));
+  EXPECT_NE(nullptr, arangodb::iresearch::createLinkCoordinator(
+                         arangodb::IndexCreationContext{
+                             *logicalCollection2, linkJson->slice(),
+                             arangodb::IndexId{3}, false}));
 
   // visit view
   arangodb::DataSourceId expectedCollections[] = {arangodb::DataSourceId{1},
@@ -245,7 +223,8 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature->userManager());
   userManager->setAuthInfo({});
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -443,15 +422,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
         });
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
+    auto execCtxBundle = arangodb::tests::mocks::makeClassicExecContext(
+        "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
@@ -749,7 +722,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     auto indexes = logicalCollection->getPhysical()->getAllIndexes();
     ASSERT_EQ(1, indexes.size());  // arangosearch should be there
     auto index = indexes[0];
-    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, index->type());
+    ASSERT_EQ(arangodb::IndexType::IResearchLink, index->type());
     VPackBuilder builder;
     index->toVelocyPack(builder, arangodb::Index::makeFlags(
                                      arangodb::Index::Serialize::Internals));
@@ -849,45 +822,19 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   }
 
   {
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    // not authorised (NONE collection) as per
-    // https://github.com/arangodb/backlog/issues/459
-    {
-      arangodb::auth::UserMap userMap;
-      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
-                       .first->second;
-      user.grantCollection(
-          vocbase->name(), "testCollection",
-          arangodb::auth::Level::NONE);   // for missing collections
-                                          // User::collectionAuthLevel(...)
-                                          // returns database auth::Level
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
-
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->drop().errorNumber()));
-      logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-      ASSERT_TRUE((false == !logicalCollection));
-      EXPECT_TRUE(
-          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
-      EXPECT_TRUE((false == !ci.getView(vocbase->name(), viewId)));
-    }
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
       auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
+      user.grantDatabase(vocbase->name(), arangodb::auth::Level::RW);
       user.grantCollection(
           vocbase->name(), "testCollection",
           arangodb::auth::Level::RO);  // for missing collections
@@ -3373,8 +3320,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3438,8 +3384,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3503,8 +3448,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3668,8 +3612,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -3734,8 +3677,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4046,8 +3988,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4108,8 +4049,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4288,8 +4228,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4354,8 +4293,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4420,8 +4358,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4554,17 +4491,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -4800,8 +4732,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -4862,8 +4793,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5033,8 +4963,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5188,8 +5117,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5517,8 +5445,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5583,8 +5510,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5648,8 +5574,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->isSorted()));
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                 index->type()));
+    EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
     EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                  index->typeName()));
     EXPECT_TRUE((false == index->unique()));
@@ -5970,8 +5895,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE((false == index->isSorted()));
       EXPECT_EQ(0, index->memory());
       EXPECT_TRUE((true == index->sparse()));
-      EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                   index->type()));
+      EXPECT_TRUE((arangodb::IndexType::IResearchLink == index->type()));
       EXPECT_TRUE((arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                    index->typeName()));
       EXPECT_TRUE((false == index->unique()));
@@ -6127,17 +6051,12 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -6356,17 +6275,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6484,17 +6398,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -6595,17 +6504,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6762,17 +6666,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6957,17 +6856,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7241,17 +7135,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                           arangodb::LogicalView::Indexes*) { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7369,17 +7258,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                      [](arangodb::DataSourceId,
                         arangodb::LogicalView::Indexes*) { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
@@ -7479,17 +7363,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7654,17 +7533,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7849,17 +7723,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {

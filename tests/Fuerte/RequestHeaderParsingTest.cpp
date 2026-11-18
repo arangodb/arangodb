@@ -19,9 +19,9 @@ TEST(RequestHeaderParsingTest, sets_path) {
 
 TEST(RequestHeaderParsingTest, strips_version_number) {
   auto header = RequestHeader{};
-  header.parseArangoPath("/_arango/v0/something/else");
+  header.parseArangoPath("/_arango/v1/something/else");
   ASSERT_EQ(header.path, "/something/else");
-  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V0));
+  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V1));
 }
 
 TEST(RequestHeaderParsingTest, strips_experimental_version) {
@@ -41,16 +41,16 @@ TEST(RequestHeaderParsingTest,
 
 TEST(RequestHeaderParsingTest, strips_version_when_there_is_only_slash_left) {
   auto header = RequestHeader{};
-  header.parseArangoPath("/_arango/v0/");
+  header.parseArangoPath("/_arango/v1/");
   ASSERT_EQ(header.path, "/");
-  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V0));
+  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V1));
 }
 
 TEST(RequestHeaderParsingTest, strips_version_when_there_is_nothing_else_left) {
   auto header = RequestHeader{};
-  header.parseArangoPath("/_arango/v0");
+  header.parseArangoPath("/_arango/v1");
   ASSERT_EQ(header.path, "/");
-  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V0));
+  ASSERT_EQ(header.apiVersion, std::optional<ApiVersion>(ApiVersion::V1));
 }
 
 TEST(RequestHeaderParsingTest, ignores_versions_with_leading_zeros) {

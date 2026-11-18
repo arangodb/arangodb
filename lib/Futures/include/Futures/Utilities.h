@@ -178,7 +178,7 @@ template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
   (ts.update_requester(c->p.id()), ...);
   (std::move(ts).thenFinal(
-       [&](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
+       [c](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
    ...);
 }
 }  // namespace gather

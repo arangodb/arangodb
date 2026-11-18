@@ -37,7 +37,6 @@ const {
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
-const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 const CI = require('@arangodb/cluster-info');
@@ -175,6 +174,21 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
   }
   assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
   return metricValue;
+};
+
+// can be used to assert that an endpoint only accepts GET requests
+exports.assertEndpointGetOnly = function(url) {
+  const code405 = internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code;
+  let res = arango.POST_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.PUT_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.DELETE_RAW(url);
+  assertEqual(res.errorNum, code405);
+  res = arango.PATCH_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.HEAD_RAW(url);
+  assertEqual(res.errorNum, code405);
 };
 
 // Function for getting metric/metrics from either cluster or single server deployments.

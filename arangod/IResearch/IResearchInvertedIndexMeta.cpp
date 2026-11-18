@@ -345,6 +345,7 @@ bool IResearchInvertedIndexMeta::init(
       }
     }
   }
+  TRI_ASSERT(server.hasFeature<IResearchAnalyzerFeature>());
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
 #ifdef USE_ENTERPRISE

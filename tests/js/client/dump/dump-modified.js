@@ -40,9 +40,6 @@ jsunity.run(function dump_single_testsuite() {
   let clusterBlacklist = [];
   if (internal.isCluster()) {
     clusterBlacklist = [
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
       "testLatestId"
     ];
   }
@@ -57,16 +54,16 @@ jsunity.run(function dump_single_testsuite() {
       manyCount: 200000,
       manyCountInc: 2,
       // testEdges
-      edgesIndexCount:3,
+      edgesIndexCount: 3,
       edgeIndexLoopStart: 1,
-      edgeIndexLoopCount:20,
+      edgeIndexLoopCount: 20,
       edgeIndexLoopInc: 2,
       // testRemoved
       removedCount: 8001,
       removedSingleIndices: 2,
       removedModulo: 5,
       // testIndexes
-      indexesCount: 10
+      indexesCount: 9
     }),
     suite,
     "_modified",

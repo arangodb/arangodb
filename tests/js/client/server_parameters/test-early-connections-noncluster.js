@@ -26,7 +26,7 @@
 const jwtSecret = 'haxxmann';
 const jsunity = require('jsunity');
 const request = require("@arangodb/request");
-const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue, assertFalse, assertNotEqual } = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const arango = require('@arangodb').arango;
 let IM = global.instanceManager;
@@ -48,7 +48,7 @@ function testSuite() {
   }, 'HS256');
 
   return {
-    tearDownAll: function() {
+    tearDownAll: function () {
       let result = IM.debugClearFailAt("startListeningEarly");
 
       // wait until normal REST API responds normally
@@ -63,27 +63,27 @@ function testSuite() {
       }
     },
 
-    testForbiddenWithoutJWT: function() {
-      ["/_api/version", "/_admin/version", "/_admin/status", "/_api/collection", "/_admin/aardvark"].forEach((url) => {
+    testForbiddenWithoutJWT: function () {
+      ["/_api/version", "/_admin/status", "/_api/collection"].forEach((url) => {
         let result = request({ url: IM.url + url, method: "get" });
         assertEqual(401, result.status);
       });
     },
-    
-    testOkWithJWT: function() {
-      ["/_api/version", "/_admin/version", "/_admin/status"].forEach((url) => {
+
+    testOkWithJWT: function () {
+      ["/_api/version", "/_admin/status"].forEach((url) => {
         let result = arango.GET_RAW(url);
         assertEqual(200, result.code);
       });
     },
-    
-    testDisabledEndpoint: function() {
-      ["/_api/collection", "/_api/transaction", "/_admin/aardvark"].forEach((url) => {
+
+    testDisabledEndpoint: function () {
+      ["/_api/collection", "/_api/transaction"].forEach((url) => {
         let result = arango.GET_RAW(url);
         assertEqual(503, result.code);
       });
     },
-    
+
   };
 }
 

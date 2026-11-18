@@ -165,8 +165,11 @@ SortInformation SortNode::getSortInformation() const {
 /// @brief clone ExecutionNode recursively
 ExecutionNode* SortNode::clone(ExecutionPlan* plan,
                                bool withDependencies) const {
-  return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
-                     withDependencies);
+  auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
+  c->_numberOfTopGroupedElements = _numberOfTopGroupedElements;
+  c->_reinsertInCluster = _reinsertInCluster;
+  c->_limit = _limit;
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -178,9 +181,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   std::vector<SortRegister> sortRegs;
   auto inputRegs = RegIdSet{};
   for (auto const& element : _elements) {
-    auto it = getRegisterPlan()->varInfo.find(element.var->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    RegisterId id = it->second.registerId;
+    RegisterId id = inputRegister(element.var);
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
@@ -207,10 +208,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       size_t count = 0;
       for (auto const& element : _elements) {
         if (count < _numberOfTopGroupedElements) {
-          auto it = getRegisterPlan()->varInfo.find(element.var->id);
-          TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-          RegisterId id = it->second.registerId;
-          groupedRegisters.emplace_back(id);
+          groupedRegisters.emplace_back(inputRegister(element.var));
         }
         count++;
       }

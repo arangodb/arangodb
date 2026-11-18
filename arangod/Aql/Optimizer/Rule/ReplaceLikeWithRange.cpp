@@ -132,8 +132,7 @@ void replaceLikeWithRangeRule(Optimizer* opt,
             // an inverted index. if so, we disable the optimization
             for (auto const& name : hint.candidateIndexes()) {
               auto idx = c->getCollection()->lookupIndex(name);
-              if (idx != nullptr &&
-                  idx->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+              if (idx != nullptr && idx->type() == IndexType::Inverted) {
                 // usage of an inverted index -> prevent optimization
                 return node;
               }

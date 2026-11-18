@@ -27,16 +27,17 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
+#include "Aql/Optimizer/Utils/GetIndexForSortCondition.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
@@ -315,19 +316,12 @@ std::pair<bool, bool> Condition::findIndexes(
   }
 
   size_t itemsInIndex;
-  if (collectionName.starts_with(StaticStrings::StatisticsCollection)) {
-    // use hard-coded number of items in index, because we are dealing with
-    // the statistics collection here. this saves a roundtrip to the DB servers
-    // for statistics queries that do not need a fully accurate collection count
-    itemsInIndex = 1024;
-  } else {
-    // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
-  }
+  // estimate for the number of documents in the index. may be outdated...
+  itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(
-        false, aql::utils::getIndexForSortCondition(
+        false, aql::optimizer::getIndexForSortCondition(
                    coll, sortCondition, reference, itemsInIndex, node->hint(),
                    usedIndexes, dummy));
   }
@@ -336,7 +330,7 @@ std::pair<bool, bool> Condition::findIndexes(
       ExecutionNode::castTo<DocumentProducingNode const*>(node)
           ->canReadOwnWrites();
 
-  return aql::utils::getBestIndexHandlesForFilterCondition(
+  return aql::optimizer::getBestIndexHandlesForFilterCondition(
       trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
       node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex, readOwnWrites);
 }
@@ -370,8 +364,9 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       clearAttributeAccess(parts);
 
-      auto lhs = member->getMember(0);
-      auto rhs = member->getMember(1);
+      ast::BinaryOperatorNode binOpNode(member);
+      auto lhs = binOpNode.getLeft();
+      auto rhs = binOpNode.getRight();
 
       if (lhs->isAttributeAccessForVariable(parts) &&
           parts.first == reference) {
@@ -424,8 +419,10 @@ Condition::getNonNullAttributes(Variable const* reference) const {
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
       clearAttributeAccess(parts);
 
-      AstNode const* lhs = member->getMember(0);
-      AstNode const* rhs = member->getMember(1);
+      ast::BinaryOperatorNode binOpNode(member);
+      AstNode const* lhs = binOpNode.getLeft();
+      AstNode const* rhs = binOpNode.getRight();
+
       AstNode const* check = nullptr;
 
       if (lhs->isConstant() && lhs->isNullValue() &&
@@ -1026,9 +1023,11 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
+                  // IN has no operator; other's type decides collation
                   CompareResult res =
-                      ResultsTable[compareAstNodes(value, other.valueNode,
-                                                   false) +
+                      ResultsTable[compareAstNodes(
+                                       value, other.valueNode,
+                                       other.whichCompareOperation() > 1) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
@@ -1059,10 +1058,9 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            // use Unicode comparison only when both operators are ordering ops
-            // (> 1)
+            // either operator being an ordering op forces collation
             bool const useUtf8Comparison =
-                current.whichCompareOperation() > 1 &&
+                current.whichCompareOperation() > 1 ||
                 other.whichCompareOperation() > 1;
             CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,

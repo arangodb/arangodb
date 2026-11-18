@@ -72,15 +72,15 @@ function ensureIndexSuite() {
 
     testEnsureId1 : function () {
       var id = "273475235";
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a" ], id: id });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a" ], id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "a" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
       var res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertEqual([ "a" ], res.fields);
       assertEqual(collection.name() + "/" + id, res.id);
@@ -88,15 +88,15 @@ function ensureIndexSuite() {
 
     testEnsureId2 : function () {
       var id = "2734752388";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
       var res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertEqual([ "b", "d" ], res.fields);
       assertEqual(collection.name() + "/" + id, res.id);
@@ -104,15 +104,15 @@ function ensureIndexSuite() {
 
     testEnsureId3 : function () {
       var id = "2734752388";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
-      // expect duplicate id with different definition to fail and error out
+      // expect duplicate id with different index type to fail and error out
       try {
-        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], id: id });
+        collection.ensureIndex({ type: "geo", fields: [ "a" ], id: id });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
@@ -122,16 +122,16 @@ function ensureIndexSuite() {
     testEnsureId4 : function () {
       var id = "2734752388";
       var name = "name";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
       assertEqual(name, idx.name);
 
       // expect duplicate id with same definition to return old index
-      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
-      assertEqual("skiplist", idx.type);
+      idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
@@ -163,15 +163,15 @@ function ensureIndexSuite() {
 
     testEnsureName1 : function () {
       var name = "byValue";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], name: name });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(name, idx.name);
 
       var res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertEqual([ "b", "d" ], res.fields);
       assertEqual(name, idx.name);
@@ -179,15 +179,15 @@ function ensureIndexSuite() {
 
     testEnsureName2 : function () {
       var name = "byValue";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], name: name });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(name, idx.name);
 
       // expect duplicate name to fail and error out
       try {
-        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
+        collection.ensureIndex({ type: "persistent", fields: [ "a", "c" ], name: name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
@@ -195,15 +195,15 @@ function ensureIndexSuite() {
     },
 
     testEnsureName3 : function () {
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ]});
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ]});
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual("idx_", idx.name.substr(0,4));
 
       var res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("skiplist", idx.type);
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual("idx_", idx.name.substr(0,4));
@@ -212,16 +212,16 @@ function ensureIndexSuite() {
     testEnsureName4 : function () {
       var id = "2734752388";
       var name = "old";
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
       assertEqual(name, idx.name);
 
       // expect duplicate id with same definition to return old index
-      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
-      assertEqual("skiplist", idx.type);
+      idx = collection.ensureIndex({ type: "persistent", fields: [ "b", "d" ], name: name });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
@@ -263,7 +263,7 @@ function ensureIndexSuite() {
     testEnsureInvalidAttribute : function () {
       try {
         // no type given
-        collection.ensureIndex({ type: "hash", fields: [ "_id" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "_id" ] });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -277,7 +277,7 @@ function ensureIndexSuite() {
     testEnsureInvalidSubAttributeArray : function () {
       try {
         // no type given
-        collection.ensureIndex({ type: "hash", fields: [ "foo[*]._id" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "foo[*]._id" ] });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -291,7 +291,7 @@ function ensureIndexSuite() {
     testEnsureInvalidSubAttribute : function () {
       try {
         // no type given
-        collection.ensureIndex({ type: "hash", fields: [ "foo._id" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "foo._id" ] });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -327,23 +327,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure w/ persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHash : function () {
+    testEnsurePersistent : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a" ] });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "a" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "a" ], res.fields);
@@ -352,23 +352,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure sparse persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSparseHash : function () {
+    testEnsureSparsePersistent : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a" ], sparse: true });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.sparse);
       assertEqual([ "a" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertTrue(idx.sparse);
       assertEqual([ "a" ], res.fields);
@@ -377,23 +377,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure unique persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureUniqueConstraint : function () {
+    testEnsureUniquePersistent : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ] });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", unique: true, fields: [ "b", "c" ] });
+      assertEqual("persistent", idx.type);
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "b", "c" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertTrue(res.unique);
       assertFalse(idx.sparse);
       assertEqual([ "b", "c" ], res.fields);
@@ -402,23 +402,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure sparse unique persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSparseUniqueConstraint : function () {
+    testEnsureSparseUniquePersistent : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ], sparse: true });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", unique: true, fields: [ "b", "c" ], sparse: true });
+      assertEqual("persistent", idx.type);
       assertTrue(idx.unique);
       assertTrue(idx.sparse);
       assertEqual([ "b", "c" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertTrue(res.unique);
       assertTrue(idx.sparse);
       assertEqual([ "b", "c" ], res.fields);
@@ -427,48 +427,48 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure multiple persistent indexes with different sparsity
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSparseMultipleHashIndexes : function () {
+    testEnsureSparseMultiplePersistentIndexes : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx1 = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ], sparse: true });
-      assertEqual("hash", idx1.type);
+      var idx1 = collection.ensureIndex({ type: "persistent", unique: true, fields: [ "b", "c" ], sparse: true });
+      assertEqual("persistent", idx1.type);
       assertTrue(idx1.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], idx1.fields);
 
-      var idx2 = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ], sparse: false });
-      assertEqual("hash", idx2.type);
+      var idx2 = collection.ensureIndex({ type: "persistent", unique: true, fields: [ "b", "c" ], sparse: false });
+      assertEqual("persistent", idx2.type);
       assertTrue(idx2.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], idx2.fields);
 
-      var idx3 = collection.ensureIndex({ type: "hash", unique: false, fields: [ "b", "c" ], sparse: false });
-      assertEqual("hash", idx3.type);
+      var idx3 = collection.ensureIndex({ type: "persistent", unique: false, fields: [ "b", "c" ], sparse: false });
+      assertEqual("persistent", idx3.type);
       assertFalse(idx3.unique);
       assertFalse(idx3.sparse);
       assertEqual([ "b", "c" ], idx3.fields);
 
       res = collection.indexes()[collection.indexes().length - 3];
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertTrue(res.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx1.id, res.id);
 
       res = collection.indexes()[collection.indexes().length - 2];
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertTrue(res.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx2.id, res.id);
 
       res = collection.indexes()[collection.indexes().length - 1];
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(idx3.sparse);
       assertEqual([ "b", "c" ], res.fields);
@@ -476,293 +476,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
+/// @brief test: ensure persistent on _rev
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashOnRev : function () {
+    testEnsurePersistentOnRev : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "_rev" ] });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "_rev" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_rev" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
-      assertFalse(res.unique);
-      assertFalse(res.sparse);
-      assertEqual([ "_rev" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureHashOnKey : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "_key" ] });
-      assertEqual("hash", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "_key" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("hash", res.type);
-      assertFalse(res.unique);
-      assertFalse(res.sparse);
-      assertEqual([ "_key" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-
-      var i = 0;
-      for (i = 0; i < 100; ++i) {
-        collection.insert({ _key: "test" + i, value: i });
-      }
-      for (i = 0; i < 100; ++i) {
-        var doc = collection.document("test" + i);
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureHashOnKeyCombined : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "_key", "value" ] });
-      assertEqual("hash", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "_key", "value" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("hash", res.type);
-      assertFalse(res.unique);
-      assertFalse(res.sparse);
-      assertEqual([ "_key", "value" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-
-      var i = 0;
-      for (i = 0; i < 100; ++i) {
-        collection.insert({ _key: "test" + i, value: i });
-      }
-      for (i = 0; i < 100; ++i) {
-        var doc = collection.document("test" + i);
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value);
-      }
-
-      var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
-      var st = db._createStatement({ query: query });
-
-      var found = false;
-      st.explain().plan.nodes.forEach(function(node) {
-        if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
-          found = true;
-        }
-      });
-      assertTrue(found);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ hash
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureHashFail : function () {
-      try {
-        collection.ensureIndex({ type: "hash" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplist : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a" ] });
-      assertEqual("skiplist", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "a" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
-      assertFalse(res.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "a" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSparseSkiplist : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
-      assertEqual("skiplist", idx.type);
-      assertFalse(idx.unique);
-      assertTrue(idx.sparse);
-      assertEqual([ "a" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
-      assertFalse(res.unique);
-      assertTrue(idx.sparse);
-      assertEqual([ "a" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureUniqueSkiplist : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ] });
-      assertEqual("skiplist", idx.type);
-      assertTrue(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "b", "c" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
-      assertTrue(res.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "b", "c" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSparseUniqueSkiplist : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ], sparse: true });
-      assertEqual("skiplist", idx.type);
-      assertTrue(idx.unique);
-      assertTrue(idx.sparse);
-      assertEqual([ "b", "c" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
-      assertTrue(res.unique);
-      assertTrue(idx.sparse);
-      assertEqual([ "b", "c" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSparseMultipleSkiplists : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx1 = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ], sparse: true });
-      assertEqual("skiplist", idx1.type);
-      assertTrue(idx1.unique);
-      assertTrue(idx1.sparse);
-      assertEqual([ "b", "c" ], idx1.fields);
-
-      var idx2 = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ], sparse: false });
-      assertEqual("skiplist", idx2.type);
-      assertTrue(idx2.unique);
-      assertFalse(idx2.sparse);
-      assertEqual([ "b", "c" ], idx2.fields);
-
-      var idx3 = collection.ensureIndex({ type: "skiplist", unique: false, fields: [ "b", "c" ], sparse: false });
-      assertEqual("skiplist", idx3.type);
-      assertFalse(idx3.unique);
-      assertFalse(idx3.sparse);
-      assertEqual([ "b", "c" ], idx3.fields);
-
-      res = collection.indexes()[collection.indexes().length - 3];
-      assertEqual("skiplist", res.type);
-      assertTrue(res.unique);
-      assertTrue(idx1.sparse);
-      assertEqual([ "b", "c" ], res.fields);
-      assertEqual(idx1.id, res.id);
-
-      res = collection.indexes()[collection.indexes().length - 2];
-      assertEqual("skiplist", res.type);
-      assertTrue(res.unique);
-      assertFalse(idx2.sparse);
-      assertEqual([ "b", "c" ], res.fields);
-      assertEqual(idx2.id, res.id);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-      assertEqual("skiplist", res.type);
-      assertFalse(res.unique);
-      assertFalse(idx3.sparse);
-      assertEqual([ "b", "c" ], res.fields);
-      assertEqual(idx3.id, res.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistOnRev : function () {
-      var res = collection.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_rev" ] });
-      assertEqual("skiplist", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "_rev" ], idx.fields);
-
-      res = collection.indexes()[collection.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_rev" ], res.fields);
@@ -775,7 +505,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           found = true;
         }
       });
@@ -783,23 +513,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure persistent on _key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistOnKey : function () {
+    testEnsurePersistentOnKey : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_key" ] });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "_key" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_key" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_key" ], res.fields);
@@ -822,7 +552,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue([ "skiplist", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'skiplist', 'primary' ]");
+          assertTrue([ "persistent", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'persistent', 'primary' ]");
           found = true;
         }
       });
@@ -830,23 +560,23 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure persistent on _key combined
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistOnKeyCombined : function () {
+    testEnsurePersistentOnKeyCombined : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_key", "value" ] });
-      assertEqual("skiplist", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "_key", "value" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_key", "value" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_key", "value" ], res.fields);
@@ -869,7 +599,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "skiplist");
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "persistent");
           found = true;
         }
       });
@@ -879,24 +609,38 @@ function ensureIndexSuite() {
       collection.update("test1", {value: 'othervalue'});
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure hash index on arrays
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure persistent fails without fields
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureUniqueHashOnArray : function () {
+    testEnsurePersistentFail : function () {
+      try {
+        collection.ensureIndex({ type: "persistent" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure unique persistent index on arrays
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureUniquePersistentOnArray : function () {
       var res = collection.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = collection.ensureIndex({ type: "hash", unique: true ,fields: [ "value[*]" ] });
-      assertEqual("hash", idx.type);
+      var idx = collection.ensureIndex({ type: "persistent", unique: true ,fields: [ "value[*]" ] });
+      assertEqual("persistent", idx.type);
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "value[*]" ], idx.fields);
 
       res = collection.indexes()[collection.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertTrue(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "value[*]" ], res.fields);
@@ -919,7 +663,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "hash" && node.indexes[0].fields[0] === "value[*]");
+          assertTrue(node.indexes[0].type === "persistent" && node.indexes[0].fields[0] === "value[*]");
           found = true;
         }
       });
@@ -932,26 +676,11 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure w/ single expanded field
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistFail : function () {
-      try {
-        collection.ensureIndex({ type: "skiplist" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureHashExpandedSingle : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]" ] });
+    testEnsurePersistentExpandedSingle : function () {
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a[*]" ] });
       assertEqual([ "a[*]" ], idx.fields);
     },
 
@@ -959,36 +688,36 @@ function ensureIndexSuite() {
 /// @brief test: ensure w/ multiple expanded fields
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashExpandedMulti : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b[*]" ] });
+    testEnsurePersistentExpandedMulti : function () {
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a[*]", "b[*]" ] });
       assertEqual([ "a[*]", "b[*]" ], idx.fields);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
+/// @brief test: ensure w/ mixed expanded fields
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashExpandedMixed : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b" ] });
+    testEnsurePersistentExpandedMixed : function () {
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a[*]", "b" ] });
       assertEqual([ "a[*]", "b" ], idx.fields);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
+/// @brief test: ensure w/ mixed expanded fields (reversed)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashExpandedMixed2 : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: [ "a", "b[*]" ] });
+    testEnsurePersistentExpandedMixed2 : function () {
+      var idx = collection.ensureIndex({ type: "persistent", fields: [ "a", "b[*]" ] });
       assertEqual([ "a", "b[*]" ], idx.fields);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ invalid field
+/// @brief test: ensure w/ invalid field (indexed access)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashExpandedInvalid : function () {
+    testEnsurePersistentExpandedInvalid : function () {
       try {
-        collection.ensureIndex({ type: "hash", fields: [ "a[0]" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "a[0]" ] });
         fail();
       }
       catch (err) {
@@ -997,12 +726,12 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ invalid field
+/// @brief test: ensure w/ invalid sub-field (indexed access)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureHashExpandedInvalidSub : function () {
+    testEnsurePersistentExpandedInvalidSub : function () {
       try {
-        collection.ensureIndex({ type: "hash", fields: [ "a[0].value" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "a[0].value" ] });
         fail();
       }
       catch (err) {
@@ -1011,90 +740,12 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
+/// @brief test: ensure w/ too many expanded fields in path
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistExpandedSingle : function () {
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]" ] });
-      assertEqual([ "a[*]" ], idx.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedMulti : function () {
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]", "b[*]" ] });
-      assertEqual([ "a[*]", "b[*]" ], idx.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedMixed : function () {
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]", "b" ] });
-      assertEqual([ "a[*]", "b" ], idx.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedMixed2 : function () {
-      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a", "b[*]" ] });
-      assertEqual([ "a", "b[*]" ], idx.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ invalid field
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedInvalid : function () {
+    testEnsurePersistentExpandedTooMany : function () {
       try {
-        collection.ensureIndex({ type: "skiplist", fields: [ "a[0]" ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ invalid field
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedInvalidSub : function () {
-      try {
-        collection.ensureIndex({ type: "skiplist", fields: [ "a[0].value" ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureHashExpandedTooMany : function () {
-      try {
-        collection.ensureIndex({ type: "hash", fields: [ "a[*].b[*]" ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ multiple expanded fields
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistExpandedTooMany : function () {
-      try {
-        collection.ensureIndex({ type: "skiplist", fields: [ "a[*].b[*]" ] });
+        collection.ensureIndex({ type: "persistent", fields: [ "a[*].b[*]" ] });
         fail();
       }
       catch (err) {
@@ -1134,56 +785,62 @@ function ensureIndexSuite() {
 /// @brief test: geo1 indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureGeo1 : function() {
-      let check = function(r, expected) {
-        assertEqual("object", typeof r);
-        assertTrue(r.hasOwnProperty("legacyPolygons"));
-        assertEqual(expected, r.legacyPolygons);
-        let i = collection.indexes();
-        let found = false;
-        for (let j = 0; j < i.length; ++j) {
-          if (i[j].id === r.id) {
-            found = true;
-            assertEqual(expected, r.legacyPolygons);
-          }
-        }
-        assertTrue(found);
-        assertTrue(collection.dropIndex(r.id));
-      };
-
-      check(collection.ensureIndex({ type: "geo1", fields: ["pos"] }), false);
-      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
-                                     legacyPolygons: true }), true);
-      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
-                                     legacyPolygons: false }), false);
+    testEnsureGeo1Reject : function () {
+      try {
+        collection.ensureIndex({ type: "geo1", fields: ["pos"] });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        collection.ensureIndex({
+          type: "geo1", fields: ["pos"],
+          legacyPolygons: true
+        });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        collection.ensureIndex({
+          type: "geo1", fields: ["pos"],
+          legacyPolygons: false
+        });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: geo2 indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureGeo2 : function() {
-      let check = function(r, expected) {
-        assertEqual("object", typeof r);
-        assertTrue(r.hasOwnProperty("legacyPolygons"));
-        assertEqual(expected, r.legacyPolygons);
-        let i = collection.indexes();
-        let found = false;
-        for (let j = 0; j < i.length; ++j) {
-          if (i[j].id === r.id) {
-            found = true;
-            assertEqual(expected, r.legacyPolygons);
-          }
-        }
-        assertTrue(found);
-        assertTrue(collection.dropIndex(r.id));
-      };
-
-      check(collection.ensureIndex({ type: "geo2", fields: ["pos"] }), false);
-      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
-                                     legacyPolygons: true }), true);
-      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
-                                     legacyPolygons: false }), false);
+    testEnsureGeo2Reject : function () {
+      try {
+        collection.ensureIndex({ type: "geo2", fields: ["pos"] });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        collection.ensureIndex({
+          type: "geo2", fields: ["pos"],
+          legacyPolygons: true
+        });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        collection.ensureIndex({
+          type: "geo2", fields: ["pos"],
+          legacyPolygons: false
+        });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
   };
@@ -1224,23 +881,23 @@ function ensureIndexEdgesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure persistent on _from
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistOnFrom : function () {
+    testEnsurePersistentOnFrom : function () {
       var res = edge.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_from" ] });
-      assertEqual("skiplist", idx.type);
+      var idx = edge.ensureIndex({ type: "persistent", fields: [ "_from" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_from" ], idx.fields);
 
       res = edge.indexes()[edge.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_from" ], res.fields);
@@ -1253,7 +910,7 @@ function ensureIndexEdgesSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           found = true;
         }
       });
@@ -1261,23 +918,23 @@ function ensureIndexEdgesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure persistent on _to
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistOnTo : function () {
+    testEnsurePersistentOnTo : function () {
       var res = edge.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_to" ] });
-      assertEqual("skiplist", idx.type);
+      var idx = edge.ensureIndex({ type: "persistent", fields: [ "_to" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_to" ], idx.fields);
 
       res = edge.indexes()[edge.indexes().length - 1];
 
-      assertEqual("skiplist", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_to" ], res.fields);
@@ -1290,7 +947,7 @@ function ensureIndexEdgesSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           found = true;
         }
       });
@@ -1298,23 +955,23 @@ function ensureIndexEdgesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
+/// @brief test: ensure persistent on _from and _to combined
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplistOnFromToCombinedHash : function () {
+    testEnsurePersistentOnFromToCombined : function () {
       var res = edge.indexes();
 
       assertEqual(1, res.length);
 
-      var idx = edge.ensureIndex({ type: "hash", fields: [ "_from", "_to" ] });
-      assertEqual("hash", idx.type);
+      var idx = edge.ensureIndex({ type: "persistent", fields: [ "_from", "_to" ] });
+      assertEqual("persistent", idx.type);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ "_from", "_to" ], idx.fields);
 
       res = edge.indexes()[edge.indexes().length - 1];
 
-      assertEqual("hash", res.type);
+      assertEqual("persistent", res.type);
       assertFalse(res.unique);
       assertFalse(res.sparse);
       assertEqual([ "_from", "_to" ], res.fields);
@@ -1329,46 +986,7 @@ function ensureIndexEdgesSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "hash");
-          found = true;
-        }
-      });
-      assertTrue(found);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ensure w/ skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureSkiplistOnFromToCombinedSkiplist : function () {
-      var res = edge.indexes();
-
-      assertEqual(1, res.length);
-
-      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_from", "_to" ] });
-      assertEqual("skiplist", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertEqual([ "_from", "_to" ], idx.fields);
-
-      res = edge.indexes()[edge.indexes().length - 1];
-
-      assertEqual("skiplist", res.type);
-      assertFalse(res.unique);
-      assertFalse(res.sparse);
-      assertEqual([ "_from", "_to" ], res.fields);
-
-      assertEqual(idx.id, res.id);
-
-      var query = "FOR doc IN " + edge.name() +
-                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
-                  "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
-      var st = db._createStatement({ query: query });
-
-      var found = false;
-      st.explain().plan.nodes.forEach(function(node) {
-        if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "skiplist");
+          assertTrue(node.indexes[0].type === "persistent");
           found = true;
         }
       });

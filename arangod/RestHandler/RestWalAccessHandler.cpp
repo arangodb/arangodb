@@ -36,7 +36,6 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -148,7 +147,15 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
   filter.includeSystem =
       _request->parsedValue("includeSystem", filter.includeSystem);
-  filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
+  {
+    bool found = false;
+    std::ignore = _request->value("includeFoxxQueues", found);
+    if (found) {
+      LOG_TOPIC("f1c3e", WARN, Logger::REQUESTS)
+          << "ignoring 'includeFoxxQueues' query parameter: it no longer "
+             "exists in API version 1 and above";
+    }
+  }
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -182,6 +189,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   return true;
 }
 
+// Mounted at /_api/wal (prefix)
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -190,16 +198,18 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!_context.isAdminUser()) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminWalAccess{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected GET /_api/wal/[tail|range|lastTick]");
     return RestStatus::DONE;
   }
 
@@ -217,13 +227,9 @@ RestStatus RestWalAccessHandler::execute() {
               _request->requestType() == RequestType::PUT ||
               _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
-  } else if (suffixes[0] == "open-transactions" &&
-             _request->requestType() == RequestType::GET) {
-    handleCommandDetermineOpenTransactions(wal);
   } else {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected GET /_api/wal/[tail|range|lastTick]");
   }
 
   return RestStatus::DONE;
@@ -309,7 +315,14 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  // If we got here, we are either on a DBServer (and thus anyway
+  // superuser), or we are on a single server and have passed the
+  // authorization. This means we are Admin in Classic or have
+  // AdminWalAccess in RBAC. But deep inside the WAL-tailing code, we
+  // sometimes do `loadCollection` and thus `useCollection` and then
+  // another check happens if we can read the collection. Therefore, we
+  // must escalate to superuser here:
+  ExecContextSuperuserScope escope;
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;
@@ -409,58 +422,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
         syncerId, clientId, clientInfo, filter.tickStart,
         replutils::BatchInfo::DefaultTimeoutForTailing);
   });
-}
-
-/// @brief deprecated. remove in future version
-void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
-    WalAccess const* wal) {
-  // determine start and end tick
-
-  std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
-  Result res = wal->tickRange(minMax);
-  if (res.fail()) {
-    generateError(res);
-    return;
-  }
-
-  bool found = false;
-  std::string const& value1 = _request->value("from", found);
-  if (found) {
-    minMax.first = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
-  }
-  // determine end tick for dump
-  std::string const& value2 = _request->value("to", found);
-  if (found) {
-    minMax.second = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-  if (minMax.first > minMax.second || minMax.second == 0) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid from/to values");
-    return;
-  }
-
-  // check whether a database was specified
-  WalAccess::Filter filter;
-  filter.tickStart = minMax.first;
-  filter.tickEnd = minMax.second;
-  if (!parseFilter(filter)) {
-    return;
-  }
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openArray();
-  builder.close();
-
-  _response->setContentType(rest::ContentType::DUMP);
-  if (res.fail()) {
-    generateError(res);
-  } else {
-    generateResult(ResponseCode::NO_CONTENT, std::move(buffer));
-
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded, "0");
-  }
 }
 
 auto RestVocbaseBaseHandler::makeSharedLogContextValue() const

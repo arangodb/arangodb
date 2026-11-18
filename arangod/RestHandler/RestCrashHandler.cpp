@@ -36,11 +36,13 @@ RestCrashHandler::RestCrashHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/crashes (prefix)
 futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   // Require admin access
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights for crash management operations");
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminCrashHandler{});
+      r.fail()) {
+    generateError(r);
     co_return;
   }
 

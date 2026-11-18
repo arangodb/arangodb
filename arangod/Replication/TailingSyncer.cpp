@@ -249,8 +249,8 @@ bool TailingSyncer::isExcludedCollection(
     return true;
   }
 
-  if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/ true,
-                                       _state.config._includeFoxxQueues)) {
+  if (TRI_ExcludeCollectionReplication(collectionName,
+                                       /*includeSystem*/ true)) {
     return true;
   }
 
@@ -313,7 +313,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     auto& server = _state.config._server;
-    auto& engine = server.getFeature<DatabaseFeature>().engine();
+    auto& engine = server.getFeature<StorageEngine>();
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
         methods::Databases::create(server, engine, ExecContext::current(), name,
@@ -839,7 +839,7 @@ Result TailingSyncer::truncateCollection(
       return res;
     }
 
-    OperationOptions opts(ExecContext::current());
+    OperationOptions opts;
     OperationResult opRes =
         trx.count(col->name(), transaction::CountType::kNormal, opts);
     if (opRes.ok() && opRes.slice().isNumber()) {

@@ -94,7 +94,7 @@ void GetByPrimaryKey::Thread::run() {
 
   RocksDBPrimaryIndex* primaryIndex = nullptr;
   for (auto const& idx : collection->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    if (idx->type() == IndexType::Primary) {
       primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
       break;
     }
@@ -117,8 +117,8 @@ void GetByPrimaryKey::Thread::run() {
       arangodb::RocksDBColumnFamilyManager::get(
           arangodb::RocksDBColumnFamilyManager::Family::PrimaryIndex);
 
-  auto& engine =
-      _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
+  auto& engine = static_cast<arangodb::RocksDBEngine&>(
+      _server.vocbase()->server().getFeature<arangodb::StorageEngine>());
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
   std::string temp;

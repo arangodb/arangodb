@@ -329,7 +329,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
     
     testVPackNoProjectionsButIndex : function () {
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
 
       let queries = [
         `FOR doc IN ${c.name()} FILTER doc.a == 1 RETURN doc`,
@@ -348,7 +348,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
 
     testVPackSingleFieldIndexNotCoveringProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
       
       let queries = [
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"], true ],
@@ -380,7 +380,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
     
     testVPackSingleFieldIndexCoveringProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.a`;
       let results = db._query(query).toArray();
@@ -394,7 +394,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
     
     testVPackSingleFieldIndexCoveringInProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a IN [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] RETURN doc.a`;
       let results = db._query(query).toArray();
@@ -408,7 +408,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
     
     testVPackSingleFieldUniqueIndexCoveringProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["b"], unique: true });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.b >= 0 RETURN doc.b`;
       let results = db._query(query).toArray();
@@ -422,7 +422,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
     
     testVPackMultipleFieldsIndexCoveringProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
       
       let queries = [
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.a`, ["a"] ],
@@ -448,7 +448,7 @@ function optimizerIndexOnlyVPackTestSuite () {
     },
 
     testVPackMultipleFieldsUniqueIndexCoveringProjection : function () {
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
       
       let queries = [
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.a`, ["a"] ],

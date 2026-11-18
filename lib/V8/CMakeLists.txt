@@ -22,14 +22,13 @@ target_link_libraries(arango_v8
   arango_basic_features
   arango_basic_logger
   arango_inspection
-  boost_boost
-  boost_system
   absl::flat_hash_set
   absl::synchronization
   arango_async
   v8_interface
   velocypack
   immer
+  Boost::hash2
 )
 target_include_directories(arango_v8
   PRIVATE
@@ -42,15 +41,4 @@ target_include_directories(arango_v8
 # Enterprise
 if(USE_ENTERPRISE)
   target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
-if(USE_V8)
-  add_library(arango_v8_no_deadline STATIC
-    v8-no-deadline.cpp)
-  target_link_libraries(arango_v8_no_deadline
-    arango
-    v8_interface
-    velocypack)
-  target_include_directories(arango_v8_no_deadline PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

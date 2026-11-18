@@ -34,7 +34,7 @@ if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
     sys.exit(0)
 
 # Some data:
-CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
+CATEGORYNAMES = ["Health", "AQL", "Transactions", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",

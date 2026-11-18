@@ -45,9 +45,16 @@
 namespace arangodb::aql {
 namespace {
 
-inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
-                          AqlValue const& a, size_t rowNumber,
-                          RegisterId::value_t col, SharedAqlItemBlockPtr& res) {
+// maps a payload pointer in the source block to the corresponding payload
+// pointer in the target block, so that values appearing in more than one cell
+// are copied over once and then aliased. keyed on the source pointer, because
+// that is what the lookups below have in hand.
+using ValueCopyCache =
+    arangodb::containers::FlatHashMap<void const*, void const*>;
+
+inline void copyValueOver(ValueCopyCache& cache, AqlValue const& a,
+                          size_t rowNumber, RegisterId::value_t col,
+                          SharedAqlItemBlockPtr& res) {
   if (a.requiresDestruction()) {
     auto it = cache.find(a.data());
 
@@ -59,9 +66,9 @@ inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
         b.destroy();
         throw;
       }
-      cache.emplace(b.data());
+      cache.emplace(a.data(), b.data());
     } else {
-      res->setValue(rowNumber, col, AqlValue(a, (*it)));
+      res->setValue(rowNumber, col, AqlValue(a, (*it).second));
     }
   } else {
     res->setValue(rowNumber, col, a);
@@ -493,8 +500,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
 
   auto const numModifiedRows = _maxModifiedRowIndex;
 
-  auto copyRows = [&](arangodb::containers::HashSet<void const*>& cache,
-                      auto type) {
+  auto copyRows = [&](ValueCopyCache& cache, auto type) {
     constexpr bool checkShadowRows =
         std::is_same_v<decltype(type), WithShadowRows>;
     cache.reserve(_valueCount.size());
@@ -506,8 +512,10 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a, (*it)));
+            // the stolen value moves into `res` as-is, so the target payload
+            // is the source payload
+            auto [it, inserted] = cache.emplace(a.data(), a.data());
+            res->setValue(row, col, AqlValue(a, (*it).second));
             if (inserted) {
               // otherwise, destroy this; we used a cached value.
               guard.steal();
@@ -528,7 +536,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     }
   };
 
-  arangodb::containers::HashSet<void const*> cache;
+  ValueCopyCache cache;
 
   if (hasShadowRows()) {
     // at least one shadow row exists. this is the slow path
@@ -585,7 +593,7 @@ auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
     numRows += to - from;
   }
 
-  arangodb::containers::HashSet<void const*> cache;
+  ValueCopyCache cache;
   cache.reserve(numRows * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _numRegisters)};
@@ -612,7 +620,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(
     RegisterCount newNumRegisters) const {
   TRI_ASSERT(_numRegisters <= newNumRegisters);
 
-  arangodb::containers::HashSet<void const*> cache;
+  ValueCopyCache cache;
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNumRegisters)};
   for (auto const& col : registers) {
     TRI_ASSERT(col.isRegularRegister() && col < _numRegisters);
@@ -630,7 +638,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
                                           size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  arangodb::containers::HashSet<void const*> cache;
+  ValueCopyCache cache;
   cache.reserve((to - from) * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _numRegisters)};

@@ -1,7 +1,6 @@
 add_library(arango_general_server STATIC
   Acceptor.cpp
   AcceptorTcp.cpp
-  AcceptorUnixDomain.cpp
   AsyncJobManager.cpp
   AuthenticationFeature.cpp
   AuthenticationOptionsProvider.cpp
@@ -25,13 +24,10 @@ add_library(arango_general_server STATIC
 target_link_libraries(arango_general_server
   PUBLIC
     arango_auth
-    arango_actions
-    arango_statistics
     arango_actor
     arango_basic_utils
-    arango_iresearch arango_v8
+    arango_iresearch
     arango::validation
-    arango_v8server
     rocksdb_interface
     velocypack
     immer)

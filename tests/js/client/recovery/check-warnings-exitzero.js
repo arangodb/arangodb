@@ -98,6 +98,10 @@ function recoverySuite () {
           // experimental feature
           return false;
         }
+        if (line.match(/\[6843e\].*obsolete option/)) {
+          // intentionally ignore obsolete option warnings
+          return false;
+        }
         return true;
       });
 

@@ -428,7 +428,10 @@ function ahuacatlListTestSuite() {
         [["foo", "bar", "baz", "one", "two", null, "three"], [["foo", "bar", "baz"], ["one", "two", null, "three"]]],
         [["two", "one", null, "three", "one", "two", null, "three"], [["two", "one", null, "three"], ["one", "two", null, "three"]]],
         [["two", "one", null, "three"], [["two", "one", null, "three"], ["one", "two", null, "three"], true]],
-        [["two", "one", null, "three", "four"], [["two", "one", null, "three"], ["one", "two", "four", null, "three"], true]]
+        [["two", "one", null, "three", "four"], [["two", "one", null, "three"], ["one", "two", "four", null, "three"], true]],
+        [[1, 2, 5], [[1, 2, 2, 5, 5], [], true]],
+        [[1, 2, 5], [[1, 2, 2, 5, 5], null, true]],
+        [null, ["", [1, 2, 2, 5, 5], true]]
       ];
 
       data.forEach(function (d) {
@@ -500,7 +503,7 @@ function ahuacatlListTestSuite() {
       }
 
       actual = getQueryResults("LET doc = DOCUMENT('nonexistantCollection/nonexistantDocument') RETURN append(doc.t,[1,2,2], true)");
-      assertEqual(actual[0], [1, 2, 2]);
+      assertEqual(actual[0], [1, 2]);
     },
 
     testAppendDocuments2: function () {

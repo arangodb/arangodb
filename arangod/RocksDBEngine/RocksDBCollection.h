@@ -23,9 +23,9 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "StorageEngine/LocalStorageProperties.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReadWriteMetrics.h"
-#include "VocBase/Identifiers/IndexId.h"
 
 #include <atomic>
 #include <memory>
@@ -51,7 +51,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(
-      LogicalCollection& collection, velocypack::Slice info,
+      LogicalCollection& collection, LocalStorageProperties const& storage,
       cache::Manager* cacheManager,
       std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();
@@ -59,7 +59,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& cb) override final;
 
-  Result updateProperties(velocypack::Slice slice) override;
+  Result setCacheEnabled(bool cacheEnabled) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -156,6 +156,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 OperationOptions const& options) override;
 
   bool cacheEnabled() const noexcept override;
+
+  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
+      std::string_view key) const override;
 
   bool hasDocuments() override;
 

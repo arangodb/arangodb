@@ -65,7 +65,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -285,10 +285,11 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   *crc = 0;
 
   while (true) {
-    size_t sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
-
+    size_t const sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
+    bool eof = false;
     if (sizeRead < sizeof(buffer)) {
-      if (feof(fin) == 0) {
+      eof = feof(fin) > 0;
+      if (!eof) {
         res = TRI_ERROR_FAILED;
         break;
       }
@@ -298,6 +299,9 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
       *crc = static_cast<uint32_t>(absl::ExtendCrc32c(
           absl::crc32c_t{*crc}, std::string_view{&buffer[0], sizeRead}));
     } else /* if (sizeRead <= 0) */ {
+      break;
+    }
+    if (eof) {
       break;
     }
   }

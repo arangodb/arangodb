@@ -12,4 +12,4 @@ target_link_libraries(arango_system_monitor_activities
   PUBLIC
     arango_basic_utils velocypack
     arango::validation rocksdb_interface immer arango_actor
-    arango_iresearch arango_v8)
+    arango_iresearch)

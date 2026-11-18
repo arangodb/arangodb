@@ -1,0 +1,510 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertFalse, assertEqual */
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// //////////////////////////////////////////////////////////////////////////////
+
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const isEnterprise = require("internal").isEnterprise();
+
+const isCollectionNode = (node) =>
+  node.type === "IndexNode" || node.type === "EnumerateCollectionNode";
+
+const assertDistributesTargetFollowingCollection = (plan) => {
+  plan.nodes.forEach((n, i) => {
+    if (n.type === "DistributeNode") {
+      assertEqual("RemoteNode", plan.nodes[i + 1].type);
+      assertTrue(isCollectionNode(plan.nodes[i + 2]));
+      assertEqual(n.collection, plan.nodes[i + 2].collection);
+    }
+  });
+};
+
+function optimizerUpgradeScatterToDistributeSuite() {
+
+  let col; // main collection, 3 shards
+  let col_dsl; // distribute shards like the main collection
+  let col_msk; // sharded, but unrelated collection with multiple shard keys
+  let col_msk_dsl; // distribute shards like the collection with multiple shard keys
+  let col_id;
+  let col_id_key;
+  let col_sat;
+  let col_edge; // edges pointing into the satellite collection
+  const viewName = "UnitTestsView_col";
+
+  return {
+    setUpAll: function () {
+      try { db._dropView(viewName); } catch (err) {}
+      db._drop("UnitTestsCollection_col_msk_dsl");
+      db._drop("UnitTestsCollection_col_msk");
+      db._drop("UnitTestsCollection_col_dsl");
+      db._drop("UnitTestsCollection_col");
+      db._drop("UnitTestsCollection_col_id");
+      db._drop("UnitTestsCollection_col_id_key");
+      db._drop("UnitTestsCollection_col_edge");
+      db._drop("UnitTestsCollection_col_sat");
+
+      col = db._create("UnitTestsCollection_col", { numberOfShards: 10});
+      col_dsl = db._create("UnitTestsCollection_col_dsl", { numberOfShards: 10, distributeShardsLike: "UnitTestsCollection_col" });
+
+      col_msk = db._create("UnitTestsCollection_col_msk", { numberOfShards: 3, shardKeys: ["shardKey", "shardKey2"] });
+      col_msk_dsl = db._create("UnitTestsCollection_col_msk_dsl", { numberOfShards: 3, shardKeys: ["shardKey", "shardKey2"], distributeShardsLike: "UnitTestsCollection_col_msk" });
+
+      col_id = db._create("UnitTestsCollection_col_id", { numberOfShards: 10});
+      col_id_key = db._create("UnitTestsCollection_col_id_key", { numberOfShards: 3, shardKeys: ["_key"]});
+
+      let docs = [];
+      let docs_no_key = [];
+      let docs_id = [];
+      let docs_id_key = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({
+          _key: "key-" + i,
+          foreign_key : "key-" + i,
+          shardKey: "shardKey-" + i,
+          foreign_shardKey: "shardKey-" + i,
+          shardKey2: "shardKey2-" + i,
+          foreign_shardKey2: "shardKey2-" + i,
+          value: i
+        });
+        docs_no_key.push({
+          foreign_key : "key-" + i,
+          shardKey: "shardKey-" + i,
+          foreign_shardKey: "shardKey-" + i,
+          shardKey2: "shardKey2-" + i,
+          foreign_shardKey2: "shardKey2-" + i,
+          value: i
+        });
+        docs_id.push({
+          _key: "key-" + i,
+          foreign_id: col_id.name()+ "/key-" + i,
+          value: i
+        });
+        docs_id_key.push({
+          _key: "key-" + i,
+          foreign_id: col_id_key.name()+ "/key-" + i,
+          value: i
+        });  
+      }
+      col.insert(docs);
+      col_dsl.insert(docs);
+      col_msk.insert(docs_no_key);
+      col_msk_dsl.insert(docs_no_key);
+      col_id.insert(docs_id);
+      col_id_key.insert(docs_id_key);
+
+      db._createView(viewName, "arangosearch", {links: {[col.name()]: {fields: {value: {}}}}});
+      db._query(`FOR d IN ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1`);
+
+      if (isEnterprise) {
+        col_sat = db._create("UnitTestsCollection_col_sat", {replicationFactor: "satellite"});
+        col_edge = db._createEdgeCollection("UnitTestsCollection_col_edge", {numberOfShards: 3});
+        let sat_docs = [];
+        let edges = [];
+        for (let i = 0; i < 10; ++i) {
+          sat_docs.push({_key: "sat-" + i, edge: "edge-" + i});
+          edges.push({_key: "edge-" + i, _from: col_sat.name() + "/sat-" + i, _to: col_sat.name() + "/sat-" + i});
+        }
+        col_sat.insert(sat_docs);
+        col_edge.insert(edges);
+      }
+    },
+
+    tearDownAll: function () {
+      db._dropView(viewName);
+      db._drop("UnitTestsCollection_col_msk_dsl");
+      db._drop("UnitTestsCollection_col_msk");
+      db._drop("UnitTestsCollection_col_dsl");
+      db._drop("UnitTestsCollection_col");
+      db._drop("UnitTestsCollection_col_id");
+      db._drop("UnitTestsCollection_col_id_key");
+      db._drop("UnitTestsCollection_col_edge");
+      db._drop("UnitTestsCollection_col_sat");
+    },
+
+    test_DefaultShardKey_Upgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col.name()}
+             FILTER doc2._key == doc1.foreign_key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col.count());
+    },
+
+    test_DefaultShardKey_FunctionOnOtherSide_Upgrade: function() {
+      let query =
+          `FOR i IN 0..${col.count()-1}
+            FOR doc2 IN ${col.name()}
+             FILTER doc2._key == CONCAT('key-', i)
+             RETURN doc2`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col.count());
+    },
+
+    test_MultipleShardKeys_Upgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2.shardKey == doc1.foreign_shardKey
+              AND doc2.shardKey2 == doc1.foreign_shardKey2
+             RETURN [doc1, doc2]`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col_msk.count());
+    },
+
+    test_MultipleShardKeys_NotAllUsed_NoUpgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2.shardKey == doc1.foreign_shardKey
+              AND doc2.value == doc1.value
+             RETURN [doc1, doc2]`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_NoAttributeAccess_Upgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col_msk.name()}
+              FILTER doc2.shardKey == "shardKey-12"
+               AND doc2.shardKey2 == "shardKey2-12"
+               AND doc2.value == doc1.value
+             RETURN [doc1, doc2]`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, 1);
+    },
+
+    test_MultipleAndBranches_AllShards_NoUpgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER (doc2.shardKey == doc1.foreign_shardKey
+              AND doc2.shardKey2 == doc1.foreign_shardKey2
+              AND doc2.value == 12) 
+              OR (doc2.shardKey == doc1.foreign_shardKey
+              AND doc2.shardKey2 == doc1.foreign_shardKey2
+              AND doc2.value == 15 AND doc2.foreign_key == "key-15")              
+             RETURN [doc1, doc2]`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_1: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1.foreign_id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col_id.count());
+    },
+
+   test_DefaultShardKey_Upgrade_id_2: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_3: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1.y
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_4: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_5: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_6: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_7: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1.y
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_8: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_9: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_10: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk_dsl.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_11: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk_dsl.name()}
+             FILTER doc2._key == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_12: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_13: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_14: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2._id == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_15: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_16: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1.shardKey
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_ConstantAndId_RestrictToSingleShard: function() {
+      const opts = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == "key-42" AND doc2._id == doc1.foreign_id
+             RETURN doc2._key`;
+      let plan = db._createStatement({query, options: opts}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertTrue(plan.rules.includes("restrict-to-single-shard"));
+      let result = db._query(query, {}, opts).toArray();
+      assertEqual(["key-42"], result);
+    },
+
+    test_ViewInOuterLoop_ViewScatterNotUpgraded: function() {
+      let query =
+          `FOR i IN 0..3
+            FOR v IN ${viewName} SEARCH v.value == i
+             FOR d IN ${col_id.name()} FILTER d._key == v.foreign_key
+              RETURN [i, d.value]`;
+      let result = db._query(query).toArray();
+      assertEqual([[0, 0], [1, 1], [2, 2], [3, 3]], result.sort((a, b) => a[0] - b[0]));
+      let plan = db._createStatement({query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertDistributesTargetFollowingCollection(plan);
+    },
+
+    test_ViewInSubquery_ViewScatterNotUpgraded: function() {
+      let query =
+          `FOR i IN 0..3
+            LET s = (
+             FOR v IN ${viewName} SEARCH v.value == i
+              FOR d IN ${col_id.name()} FILTER d._key == v.foreign_key
+               RETURN d.value)
+            RETURN [i, s]`;
+      let result = db._query(query).toArray();
+      assertEqual([[0, [0]], [1, [1]], [2, [2]], [3, [3]]], result.sort((a, b) => a[0] - b[0]));
+      let plan = db._createStatement({query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertDistributesTargetFollowingCollection(plan);
+    },
+
+    test_SatelliteJoinedIntoLaterSnippet_NoUpgrade: function() {
+      if (!isEnterprise) {
+        return;
+      }
+      // The first loop runs on the Coordinator, so remove-satellite-joins
+      // joins the satellite into the snippet of the edge loop after it. That
+      // snippet runs on the edge shards. Its first collection node is the
+      // satellite, and distributing by the satellite's shard key would send
+      // rows to the wrong servers.
+      const opts = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+      let query =
+          `FOR i IN 0..9
+            FOR v IN ${col_sat.name()} FILTER v._key == CONCAT("sat-", i)
+             FOR e IN ${col_edge.name()}
+              RETURN [v._key, e._key]`;
+      let plan = db._createStatement({query, options: opts}).explain().plan;
+      assertTrue(plan.rules.includes("remove-satellite-joins"));
+      let satIndex = plan.nodes.findIndex(n => isCollectionNode(n) && n.collection === col_sat.name());
+      assertTrue(plan.nodes[satIndex].isSatellite);
+      assertEqual(col_edge.name(), plan.nodes[satIndex + 1].collection);
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertEqual([], plan.nodes.filter(n => n.type === "DistributeNode"));
+      let result = db._query(query, {}, opts).toArray();
+      assertEqual(10 * col_edge.count(), result.length);
+    },
+
+    test_SatelliteJoinedIntoEarlierSnippet_Upgrade: function() {
+      if (!isEnterprise) {
+        return;
+      }
+      // The satellite is joined into the snippet of the first edge loop, so
+      // the Scatter in front of the second edge loop can be upgraded, even
+      // though the shard key value comes from the satellite.
+      const opts = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+      let query =
+          `FOR e1 IN ${col_edge.name()}
+            FOR v IN ${col_sat.name()} FILTER v._id == e1._from
+             FOR e2 IN ${col_edge.name()} FILTER e2._key == v.edge
+              RETURN [e1._key, v._key, e2._key]`;
+      let plan = db._createStatement({query, options: opts}).explain().plan;
+      assertTrue(plan.rules.includes("remove-satellite-joins"));
+      let satIndex = plan.nodes.findIndex(n => isCollectionNode(n) && n.collection === col_sat.name());
+      assertTrue(plan.nodes[satIndex].isSatellite);
+      assertEqual(col_edge.name(), plan.nodes[satIndex - 1].collection);
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let distributeIndexes = plan.nodes
+        .map((n, i) => n.type === "DistributeNode" ? i : -1)
+        .filter(i => i !== -1);
+      assertEqual(1, distributeIndexes.length);
+      let distributeIndex = distributeIndexes[0];
+      assertTrue(distributeIndex > satIndex);
+      assertEqual(col_edge.name(), plan.nodes[distributeIndex].collection);
+      assertEqual("RemoteNode", plan.nodes[distributeIndex + 1].type);
+      let e2Node = plan.nodes[distributeIndex + 2];
+      assertTrue(isCollectionNode(e2Node));
+      assertEqual(col_edge.name(), e2Node.collection);
+      assertFalse(e2Node.isSatellite);
+      let result = db._query(query, {}, opts).toArray();
+      assertEqual(col_edge.count(), result.length);
+      result.forEach(([e1, v, e2]) => {
+        assertEqual(e1, e2);
+        assertEqual(v.replace("sat-", "edge-"), e1);
+      });
+    }
+  };
+}
+
+jsunity.run(optimizerUpgradeScatterToDistributeSuite);
+return jsunity.done();

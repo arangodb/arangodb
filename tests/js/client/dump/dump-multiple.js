@@ -55,7 +55,7 @@ jsunity.run(function dump_single_testsuite() {
       removedSingleIndices: 1,
       removedModulo: 10,
       // testIndexes
-      indexesCount: 9,
+      indexesCount: 8,
     }),
     suite,
     "_multiple",
@@ -70,7 +70,6 @@ jsunity.run(function dump_single_testsuite() {
       // TODO: should we also have these tests in this scenario?
       "testAnalyzers",
       "testIndexAnalyzerCollection",
-      "testJobsAndQueues",
       "testReplicationFactor",
 
       // enterprise graph tests:

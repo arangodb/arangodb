@@ -1,0 +1,12 @@
+{
+  "name": "apitester",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ArangoDB API authorization test runner",
+  "scripts": {
+    "test": "node apitester.js"
+  },
+  "dependencies": {
+    "undici": "^7.0.0"
+  }
+}

@@ -61,7 +61,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -74,7 +74,6 @@
 #include "VocBase/LogicalView.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -224,7 +223,7 @@ struct IResearchExpressionFilterTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -234,7 +233,8 @@ struct IResearchExpressionFilterTest
       : server(
             std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""),
             nullptr),
-        engine(server) {
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -249,13 +249,9 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
-    databaseFeature.setEngineTesting(&engine);
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
-        databaseFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -328,7 +324,6 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

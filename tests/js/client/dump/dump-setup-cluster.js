@@ -48,8 +48,6 @@ const setup = require(base);
   setup.createSatelliteCollections();
   setup.createSatelliteGraphs();
   setup.createReplicationFactors();
-  setup.createJobs();
-  setup.createFoxx();
   setup.createAnalyzers();
 
   setup.createSmartGraphSingleServer();

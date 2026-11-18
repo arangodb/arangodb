@@ -52,30 +52,26 @@ struct MockVocbase : TRI_vocbase_t {
 
   explicit MockVocbase(application_features::ApplicationServer& server,
                        std::string const& name, std::uint64_t id)
-      : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
-                      createDatabaseInfo(server, name, id), storageEngine,
-                      dbProvider),
-        storageEngine(server) {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
-        &storageEngine);
-  }
+      : TRI_vocbase_t(
+            TRI_vocbase_t::mockConstruct, createDatabaseInfo(server, name, id),
+            server.getFeature<StorageEngine, StorageEngineMock>(), dbProvider),
+        storageEngine(server.getFeature<StorageEngine, StorageEngineMock>()) {}
 
   virtual ~MockVocbase() = default;
 
   auto registerLogicalCollection(std::string name, LogId logId) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("name", std::move(name));
-    builder.add("groupId", 1234);
-    builder.add("replicatedStateId", logId);
-    builder.close();
-    auto col =
-        std::make_shared<LogicalCollection>(*this, builder.slice(), false);
+    CollectionDescriptor descriptor;
+    descriptor.mutableProps.name = std::move(name);
+    descriptor.clusteringConstant.groupId = agency::CollectionGroupId{1234};
+    descriptor.clusteringConstant.replicatedStateId = logId;
+
+    auto col = std::make_shared<LogicalCollection>(*this, std::move(descriptor),
+                                                   false);
     storageEngine.registerCollection(*this, col);
     return col;
   }
 
-  StorageEngineMock storageEngine;
+  StorageEngineMock& storageEngine;
   ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> dbProvider;
 };
 

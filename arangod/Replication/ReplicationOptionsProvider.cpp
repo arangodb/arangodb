@@ -36,16 +36,6 @@ void ReplicationOptionsProvider::declareOptionsImpl(
       "--replication.auto-start",
       "Enable or disable the automatic start of replication appliers.", true);
 
-  opts->addOldOption("server.disable-replication-applier",
-                     "replication.auto-start");
-  opts->addOldOption("database.replication-applier", "replication.auto-start");
-
-  opts->addObsoleteOption(
-      "--replication.active-failover",
-      "Enable active-failover during asynchronous replication.", false);
-  opts->addOldOption("--replication.automatic-failover",
-                     "--replication.active-failover");
-
   opts->addOption(
       "--replication.max-parallel-tailing-invocations",
       "The maximum number of concurrently allowed WAL tailing invocations "

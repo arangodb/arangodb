@@ -33,16 +33,6 @@
 #include <string_view>
 #include <vector>
 
-namespace v8 {
-
-template<class T>
-class Local;
-template<class T>
-using Handle = Local<T>;
-class Value;
-class Isolate;
-
-}  // namespace v8
 namespace arangodb {
 
 class CollectionNameResolver;
@@ -332,6 +322,11 @@ struct AqlValue final {
   // construct range type
   AqlValue(int64_t low, int64_t high);
 
+  /// @brief take ownership of memory allocated by velocypack_malloc/malloc.
+  /// the caller must ensure the buffer is a valid VPack value of the given
+  /// length.
+  static AqlValue fromOwnedMallocSlice(uint8_t* data, size_t length);
+
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()
@@ -429,12 +424,6 @@ struct AqlValue final {
 
   /// @brief return the range value
   Range const* range() const;
-
-  /// @brief construct a V8 value as input for the expression execution in V8
-#ifdef USE_V8
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             velocypack::Options const*) const;
-#endif
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, velocypack::Builder&,

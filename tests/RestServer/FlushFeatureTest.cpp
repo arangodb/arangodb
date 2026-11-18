@@ -36,11 +36,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -56,19 +52,18 @@ class FlushFeatureTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
+  FlushFeatureTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            server),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -80,17 +75,10 @@ class FlushFeatureTest
                           false);  // required for V8DealerFeature::prepare()
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
-#ifdef USE_V8
-    features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(
-            server.getFeature<arangodb::metrics::MetricsFeature>()),
-        false);  // required for DatabaseFeature::createDatabase(...)
-#endif
 
     for (auto& f : features) {
       f.first.prepare();
@@ -104,8 +92,6 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {

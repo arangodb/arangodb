@@ -1,4 +1,5 @@
 jobProperties:
+    maven_cache: true
     container_suffix: '-spark:'
     second_repo: git@github.com:arangodb/arangodb-spark-datasource.git
     branch: main
@@ -9,12 +10,8 @@ tests:
     options:
       priority: 500
       type: single
-    args:
-      extremeVerbosity: true
 - spark_datasource:
     job: run-driver-tests
     options:
       priority: 500
       type: cluster
-    args:
-      extremeVerbosity: true

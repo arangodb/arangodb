@@ -63,26 +63,22 @@ function testSuite() {
   }, 'HS256');
 
   return {
-    testCanAccessAdminLogRw : function() {
+    testCanAccessAdminLogEntriesRw : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
-      let result = arango.GET("/_admin/log");
+      let result = arango.GET("/_admin/log/entries");
       assertTrue(result.error);
       assertEqual(403, result.code);
-      assertFalse(result.hasOwnProperty("topic"));
-      assertFalse(result.hasOwnProperty("level"));
-      assertFalse(result.hasOwnProperty("timestamp"));
-      assertFalse(result.hasOwnProperty("text"));
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
     },
 
-    testCanAccessAdminLogRo : function() {
+    testCanAccessAdminLogEntriesRo : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
-      let result = arango.GET("/_admin/log");
+      let result = arango.GET("/_admin/log/entries");
       assertTrue(result.error);
       assertEqual(403, result.code);
-      assertFalse(result.hasOwnProperty("topic"));
-      assertFalse(result.hasOwnProperty("level"));
-      assertFalse(result.hasOwnProperty("timestamp"));
-      assertFalse(result.hasOwnProperty("text"));
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
     },
 
     testCanAccessAdminLogLevelRw : function() {
@@ -113,9 +109,9 @@ function testSuite() {
       assertEqual(403, result.code);
     },
 
-    testCanAccessAdminLogJWT : function() {
+    testCanAccessAdminLogEntriesJWT : function() {
       let res = request.get({
-        url: IM.url + "/_admin/log",
+        url: IM.url + "/_admin/log/entries",
         auth: {
           bearer: jwt,
         }
@@ -124,10 +120,16 @@ function testSuite() {
       assertEqual(200, res.statusCode);
       assertTrue(res.hasOwnProperty("body"));
       let body = JSON.parse(res.body);
-      assertTrue(body.hasOwnProperty("topic"));
-      assertTrue(body.hasOwnProperty("level"));
-      assertTrue(body.hasOwnProperty("timestamp"));
-      assertTrue(body.hasOwnProperty("text"));
+      assertTrue(body.hasOwnProperty("total"));
+      assertTrue(body.hasOwnProperty("messages"));
+      assertTrue(Array.isArray(body.messages));
+      body.messages.forEach((message) => {
+        assertTrue(message.hasOwnProperty("id"));
+        assertTrue(message.hasOwnProperty("topic"));
+        assertTrue(message.hasOwnProperty("level"));
+        assertTrue(message.hasOwnProperty("date"));
+        assertTrue(message.hasOwnProperty("message"));
+      });
     },
 
     testCanAccessAdminLogLevelJWT : function() {

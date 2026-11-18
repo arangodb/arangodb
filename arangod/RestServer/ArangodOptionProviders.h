@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Actions/ActionOptionsProvider.h"
 #include "Agency/AgencyOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
@@ -32,14 +31,12 @@
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/EndpointOptionsProvider.h"
-#include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
+#include "RestServer/LegacyOptionsProvider.h"
 #include "RestServer/LogApiOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/LogRotateOptionsProvider.h"
-#include "RestServer/MaxMapCountOptionsProvider.h"
-#include "RestServer/NonceOptionsProvider.h"
 #include "RestServer/PrivilegeOptionsProvider.h"
 #include "RestServer/QueryRegistryOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
@@ -50,14 +47,11 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "Scheduler/SchedulerOptionsProvider.h"
-#include "Statistics/StatisticsOptionsProvider.h"
+#include "Ssl/FipsFeatureOptionsProvider.h"
 #include "SystemMonitor/Activities/OptionsProvider.h"
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 #include "Transaction/ManagerOptionsProvider.h"
-#include "V8/V8PlatformOptionsProvider.h"
-#include "V8/V8SecurityOptionsProvider.h"
-#include "V8Server/FoxxOptionsProvider.h"
-#include "VectorIndex/VectorIndexOptionsProvider.h"
+#include "VectorIndex/OptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditOptionsProvider.h"
@@ -66,12 +60,6 @@
 #include "Enterprise/RClone/RCloneOptionsProvider.h"
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
 #include "Enterprise/StorageEngine/HotBackupOptionsProvider.h"
-#endif
-
-#ifdef USE_V8
-#include "RestServer/FrontendOptionsProvider.h"
-#include "RestServer/ScriptOptionsProvider.h"
-#include "V8Server/V8DealerOptionsProvider.h"
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -87,7 +75,7 @@
 namespace arangodb {
 
 using ArangodOptionProviders = CoreOptionProviders<
-    ActionOptionsProvider, activities::OptionsProvider, AgencyOptionsProvider,
+    activities::OptionsProvider, AgencyOptionsProvider,
     ApiRecordingOptionsProvider, async_registry::OptionsProvider,
     AuthenticationOptionsProvider, bootstrap::BootstrapOptionsProvider,
     CacheFeatureOptionsProvider, check_version::CheckVersionOptionsProvider,
@@ -95,34 +83,27 @@ using ArangodOptionProviders = CoreOptionProviders<
     metrics::ClusterMetricsOptionsProvider, ConfigOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabaseOptionsProvider,
     DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-    EndpointOptionsProvider, FlushOptionsProvider,
-    fortune::FortuneOptionsProvider, FoxxOptionsProvider,
-    GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-    iresearch::IResearchOptionsProvider, LanguageOptionsProvider,
-    LogApiOptionsProvider, LogBufferOptionsProvider, LogRotateOptionsProvider,
-    MaintenanceOptionsProvider, MaxMapCountOptionsProvider,
+    EndpointOptionsProvider, FipsFeatureOptionsProvider,
+    fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
+    InitDatabaseOptionsProvider, iresearch::IResearchOptionsProvider,
+    LanguageOptionsProvider, LogApiOptionsProvider, LogBufferOptionsProvider,
+    LogRotateOptionsProvider, MaintenanceOptionsProvider,
     metrics::MetricsOptionsProvider, NetworkOptionsProvider,
-    NonceOptionsProvider, aql::OptimizerRulesOptionsProvider,
-    aql::QueryInfoLoggerOptionsProvider, PrivilegeOptionsProvider,
-    QueryRegistryOptionsProvider, replication2::ReplicatedLogOptionsProvider,
-    ReplicationOptionsProvider, ReplicationTimeoutOptionsProvider,
-    RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-    RocksDBOptionFeatureOptionsProvider, SchedulerOptionsProvider,
-    ServerOptionsProvider, security::ServerSecurityOptionsProvider,
-    SslServerOptionsProvider, statistics::StatisticsOptionsProvider,
+    aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
+    PrivilegeOptionsProvider, QueryRegistryOptionsProvider,
+    replication2::ReplicatedLogOptionsProvider, ReplicationOptionsProvider,
+    ReplicationTimeoutOptionsProvider, RocksDBEngineOptionsProvider,
+    RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+    SchedulerOptionsProvider, ServerOptionsProvider,
+    security::ServerSecurityOptionsProvider, SslServerOptionsProvider,
     TempOptionsProvider, TemporaryStorageOptionsProvider,
     transaction::ManagerOptionsProvider, TtlOptionsProvider,
-    UpgradeOptionsProvider, V8PlatformOptionsProvider,
-    V8SecurityOptionsProvider, vector_index::VectorIndexOptionsProvider
+    UpgradeOptionsProvider, vector_index::OptionsProvider, LegacyOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,
     HotBackupOptionsProvider, EncryptionOptionsProvider,
     SslServerEEOptionsProvider
-#endif
-#ifdef USE_V8
-    ,
-    FrontendOptionsProvider, ScriptOptionsProvider, V8DealerOptionsProvider
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,

@@ -2,7 +2,6 @@
 
 # manual pages
 set(MAN_NAMES
-  man1/arangobench.1
   man1/arangodump.1
   man1/arangoimport.1
   man1/arangorestore.1
@@ -10,7 +9,6 @@ set(MAN_NAMES
   man1/arangosh.1
   man8/rcarangod.8
   man8/arangod.8
-  man8/foxx-manager.8
   )
 
 set(MAN_FILES "") #empty list

@@ -23,7 +23,40 @@
 #include "RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/db.h>
+
+#include <limits>
+
 using namespace arangodb;
+
+namespace {
+// The timestamp that selects the latest version of every key, i.e. the state a
+// transaction without an explicit read timestamp observes.
+constexpr uint64_t kCurrentStateTimestamp =
+    std::numeric_limits<uint64_t>::max();
+}  // namespace
+
+RocksDBTransactionMethods::RocksDBTransactionMethods(
+    RocksDBTransactionState* state)
+    : _state(state) {
+  _udtReadTimestamp = rocksdb::EncodeU64Ts(
+      state->options().readTimestamp.value_or(kCurrentStateTimestamp),
+      &_udtReadTimestampStorage);
+}
+
+rocksdb::ReadOptions RocksDBTransactionMethods::withUdtReadTimestamp(
+    rocksdb::ReadOptions const& base, rocksdb::ColumnFamilyHandle* cf) const {
+  TRI_ASSERT(cf != nullptr);
+  if (cf->GetComparator()->timestamp_size() == 0) {
+    // Not a User-Defined Timestamp column family: a timestamp would be
+    // rejected, so read as-is.
+    return base;
+  }
+  rocksdb::ReadOptions ro = base;
+  ro.timestamp = &_udtReadTimestamp;
+  return ro;
+}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::size_t RocksDBTransactionMethods::countInBounds(

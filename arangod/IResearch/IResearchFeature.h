@@ -38,7 +38,6 @@
 namespace arangodb {
 struct Database;
 class DatabasePathFeature;
-struct IndexTypeFactory;
 namespace metrics {
 struct IRegistry;
 }  // namespace metrics
@@ -112,11 +111,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
                             IResearchOptions options);
   explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
+  ~IResearchFeature() override;
 
   void prepare() final;
   void start() final;
   void stop() final;
-  void unprepare() final;
 
   auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
@@ -130,9 +129,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
-
-  template<typename Engine>
-  IndexTypeFactory& factory();
 
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
@@ -182,9 +178,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 #ifdef USE_ENTERPRISE
   irs::IResourceManager& _columnsCacheMemoryUsed;
 #endif
-
-  std::shared_ptr<IndexTypeFactory> _clusterFactory;
-  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

@@ -92,7 +92,10 @@ class TransactionManager {
   std::atomic<State> _state;
 
   // note: can be a null pointer in unit tests
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Manager* _manager;
+#endif
 };
 
 };  // end namespace arangodb::cache

@@ -62,18 +62,16 @@ using namespace arangodb;
 // be "geojson" objects like polygons. Simplified a lot, the index then allows
 // to quickly find stuff which is "close to the indexed geo content" on earth.
 //
-// This works by configuring an "index factory" in
-// `arangod/Indexes/IndexFactor.cpp` via the `IndexFactory::emplace` method.
-// This is done in `arangod/RocksDBEngine/RocksDBIndexFactor.cpp` in the
-// constructor of `RocksDBIndexFactory` for RocksDB and in
-// `arangod/ClusterEngine/ClusterIndexFactor.cpp` in
-// `ClusterIndexFactory::linkIndexFactories` for the cluster engine.
-// These factories are implemented in the same file, for example
-// as `GeoIndexFactory` for RocksDB. This index factory produces then
-// an object of type `RocksDBGeoIndex` and this is responsible for
-// storing stuff in RocksDB for the indexed data. The corresponding
-// methods can be found in this file here. This is how we produce the
-// indexed data.
+// This works by an "index factory" that implements `createIndex()` for the
+// Geo/Geo1/Geo2 index types: `RocksDBIndexFactory` in
+// `arangod/RocksDBEngine/RocksDBIndexFactory.cpp` for RocksDB and
+// `ClusterIndexFactory` in `arangod/ClusterEngine/ClusterIndexFactory.cpp`
+// for the cluster engine. Each factory's own switch on `IndexType` picks
+// the right case for Geo/Geo1/Geo2. This index factory produces then an
+// object of type `RocksDBGeoIndex` and this is responsible for storing stuff
+// in RocksDB for the indexed data.
+// The corresponding methods can be found in this file here. This is how we
+// produce the indexed data.
 //
 // The `LogicalCollection` object knows about its indexes, and so the query
 // optimizer for AQL can know about them.
@@ -95,13 +93,14 @@ using namespace arangodb;
 //      FOR d IN coll
 //        FILTER GEO_INTERSECTS(obj, d.geo)
 //        RETURN d
-// In principle, there could also be:
-//  (4) Find everything in the database, which contains a given object:
+//  (4) Find everything in the database whose indexed geometry contains a
+//      given object (point, polygon, ...):
 //      FOR d IN coll
 //        FILTER GEO_CONTAINS(d.geo, obj)
 //        RETURN d
-//      but we do not support this. It will be executed by steam without
-//      using the geo index.
+//
+//  (Previously (4) was described as unsupported; the geo index optimizer and
+//   iterator now handle it using FilterType::IS_CONTAINED.)
 //
 // All of these can get a LIMIT clause and we can take advantage of this
 // knowledge when the LIMIT is given in the QueryParams. Furthermore,
@@ -270,6 +269,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -307,6 +308,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -486,6 +489,8 @@ class RDBCoveringIterator final : public IndexIterator {
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                (ft == geo::FilterType::IS_CONTAINED &&
+                 !test.contains(filter)) ||
                 (ft == geo::FilterType::INTERSECTS &&
                  !filter.intersects(test))) {
               result = false;
@@ -521,6 +526,8 @@ class RDBCoveringIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -754,12 +761,13 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   // First check if we can use the simpler method with a covering of the
   // target object:
-  // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
-  // restriction on the `GEO_DISTANCE` and no sorting of results by
-  // `GEO_DISTANCE`, we use the simpler method:
+  // If we have a `GEO_CONTAINS` / `GEO_INTERSECTS` / inverted `GEO_CONTAINS`
+  // clause but no restriction on the `GEO_DISTANCE` and no sorting of results
+  // by `GEO_DISTANCE`, we use the simpler method:
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
-       params.filterType == geo::FilterType::INTERSECTS) &&
+       params.filterType == geo::FilterType::INTERSECTS ||
+       params.filterType == geo::FilterType::IS_CONTAINED) &&
       !params.distanceRestricted) {
     LOG_TOPIC("54612", DEBUG, Logger::AQL)
         << "Using RDBCoveringIterator for geo index query: "
@@ -777,7 +785,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     // centroid is not in the circumcircle of our bounding box.
     TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
-  } else if (params.filterType == geo::FilterType::INTERSECTS) {
+  } else if (params.filterType == geo::FilterType::INTERSECTS ||
+             params.filterType == geo::FilterType::IS_CONTAINED) {
     // We need to set the origin still:
     S2LatLng ll(params.filterShape.centroid());
     params.origin = ll;

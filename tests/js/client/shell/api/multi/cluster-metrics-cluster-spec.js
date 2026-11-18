@@ -370,7 +370,7 @@ describe('_admin/metrics', () => {
 
     const loadMetrics = (role, idx) =>  {
       return IM.getInstancesRole(role)[idx].toThisInstance(() => {
-        const res = arango.GET_RAW('/_admin/metrics/v2');
+        const res = arango.GET_RAW('/_admin/metrics');
         expect(res.code).to.equal(200);
         return prometheusToJson(res.body);
       });
@@ -468,7 +468,7 @@ describe('_admin/metrics', () => {
          new ShardFollowerCountWatcher(9), new ShardOutOfSyncCountWatcher(0), new ShardNotReplicatedCountWatcher(0)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
+          db["UnitTestCollection"].ensureIndex({ type: "persistent", fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );

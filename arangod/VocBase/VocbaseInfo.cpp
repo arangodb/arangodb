@@ -406,7 +406,6 @@ VocbaseOptions getVocbaseOptions(
   }
 
   {
-    // simon: new API in 3.6 no need to check legacy "minReplicationFactor"
     VPackSlice writeConcernSlice = options.get(StaticStrings::WriteConcern);
     bool isNumber = (writeConcernSlice.isNumber() &&
                      writeConcernSlice.getNumber<int>() > 0);

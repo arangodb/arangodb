@@ -24,16 +24,20 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerOptions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Metrics/Counter.h"
+#include "Metrics/FixScale.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/GaugeCounterGuard.h"
+#include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/LogApiOptions.h"
 
@@ -45,6 +49,7 @@
 
 namespace arangodb {
 class RestServerThread;
+struct RequestTimingData;
 
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
@@ -67,16 +72,13 @@ class GeneralServerFeature final
 
   double keepAliveTimeout() const noexcept;
   bool handleContentEncodingForUnauthenticatedRequests() const noexcept;
-  bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
-  std::vector<std::string> trustedProxies() const;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
-  bool permanentRootRedirect() const noexcept;
-  std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
   std::string const& optionsApiPolicy() const noexcept;
   uint64_t compressResponseThreshold() const noexcept;
+  uint64_t maxDecompressedRequestBodySize() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
@@ -95,10 +97,26 @@ class GeneralServerFeature final
 
   void countHttpResponseCode(rest::ResponseCode code) noexcept;
 
+  void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
+
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
   [[nodiscard]] bool startedListening() const noexcept {
     return _options.startedListening;
+  }
+
+  [[nodiscard]] ConnectionTimeRecorder startConnection() noexcept {
+    return ConnectionTimeRecorder{_connectionDuration};
+  }
+
+  [[nodiscard]] auto addHttpConnection() {
+    return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
+  }
+
+  double httpConnections() const noexcept { return _connectionHttp.load(); }
+
+  ResourceMonitor& decompressionMemory() noexcept {
+    return _decompressionMemory;
   }
 
  private:
@@ -113,6 +131,8 @@ class GeneralServerFeature final
   // register one Counter per rest::ResponseCode enumerator, once
   void initResponseCodeCounters();
 
+  void countHttpRequestByMethod(rest::RequestType requestType) noexcept;
+
   GeneralServerOptions _options;
   LogApiOptions _logApiOptions;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
@@ -124,9 +144,36 @@ class GeneralServerFeature final
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
+  metrics::Histogram<metrics::FixScale<double>>& _histTotalTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histRequestTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histQueueTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histIoTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesReceived;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesSent;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesReceivedUser;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesSentUser;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
+  metrics::Counter& _httpReqsTotal;
+  metrics::Counter& _httpReqsSuperuser;
+  metrics::Counter& _httpReqsUser;
+  metrics::Counter& _httpReqsAsync;
+  metrics::Counter& _httpReqsDelete;
+  metrics::Counter& _httpReqsGet;
+  metrics::Counter& _httpReqsHead;
+  metrics::Counter& _httpReqsOptions;
+  metrics::Counter& _httpReqsPatch;
+  metrics::Counter& _httpReqsPost;
+  metrics::Counter& _httpReqsPut;
+  metrics::Counter& _httpReqsOther;
+
+  metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
+  metrics::Gauge<double>& _connectionHttp;
+
   metrics::MetricsFeature& _metricsFeature;
+
+  GlobalResourceMonitor _decompressionGlobal;
+  ResourceMonitor _decompressionMemory{_decompressionGlobal};
 };
 
 }  // namespace arangodb

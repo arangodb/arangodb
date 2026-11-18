@@ -31,16 +31,17 @@
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
+#include <vector>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
@@ -86,7 +87,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 81> kTypeNames{
+frozen::unordered_map<int, std::string_view, 90> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -171,6 +172,17 @@ frozen::unordered_map<int, std::string_view, 81> kTypeNames{
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
     {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
+    {static_cast<int>(NODE_TYPE_PATTERN_EDGE), "PATTERN edge"},
+    {static_cast<int>(NODE_TYPE_PATTERN_NODE_PATTERN), "pattern node pattern"},
+    {static_cast<int>(NODE_TYPE_PATTERN_SEGMENT), "pattern segment"},
+    {static_cast<int>(NODE_TYPE_PATTERN_LABEL), "pattern label"},
+    {static_cast<int>(NODE_TYPE_PATTERN_PATH_VARIABLE),
+     "pattern path variable"},
+    {static_cast<int>(NODE_TYPE_PATTERN_MATCH_EXPRESSION),
+     "pattern match expression"},
+    {static_cast<int>(NODE_TYPE_MATCH), "match"},
+    {static_cast<int>(NODE_TYPE_ARRAY_SPLICE), "array splice"},
+    {static_cast<int>(NODE_TYPE_OBJECT_SPLICE), "object splice"},
 };
 
 /// @brief names for AST node value types
@@ -204,7 +216,7 @@ int valueTypeOrder(VPackValueType type) noexcept {
 }
 
 /// @brief get the node type for inter-node comparisons
-VPackValueType getNodeCompareType(AstNode const* node) noexcept {
+VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   // quick translation array from an AST node value type to a VPack type
@@ -219,11 +231,14 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
   if (node->type == NODE_TYPE_VALUE) {
     return kValueTypes[node->value.type];
   }
-  if (node->type == NODE_TYPE_ARRAY) {
-    return VPackValueType::Array;
-  }
-  if (node->type == NODE_TYPE_OBJECT) {
-    return VPackValueType::Object;
+  if (node->type == NODE_TYPE_ARRAY || node->type == NODE_TYPE_OBJECT) {
+    // Only materializable literals are compared as values. isConstant() runs
+    // first, so dynamic keys are rejected before they are read as values.
+    if (node->isConstant() && node->valueHasVelocyPackRepresentation()) {
+      return (node->type == NODE_TYPE_ARRAY) ? VPackValueType::Array
+                                             : VPackValueType::Object;
+    }
+    return VPackValueType::Custom;
   }
 
   // All other node types are non-constant expressions compared structurally.
@@ -254,12 +269,43 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
+/// @brief compare array members positionally, longer array last on a tie
+/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
+template<bool resolveAttributeAccess>
+int compareArrayMembers(AstNode const* lhs, AstNode const* rhs,
+                        bool compareUtf8) {
+  size_t const numLhs = lhs->numMembers();
+  size_t const numRhs = rhs->numMembers();
+  size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
+
+  for (size_t i = 0; i < n; ++i) {
+    int res = compareAstNodes<resolveAttributeAccess>(
+        lhs->getMember(i), rhs->getMember(i), compareUtf8);
+    if (res != 0) {
+      return res;
+    }
+  }
+  if (numLhs < numRhs) {
+    return -1;
+  } else if (numLhs > numRhs) {
+    return 1;
+  }
+  return 0;
+}
+
 /// @brief compare two AST nodes whose top-level type maps to a non-Custom VPack
 /// type (scalar values, arrays, objects)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
                                bool compareUtf8, VPackValueType lType) {
+  // Null is also reported for an unresolved attribute access, where lhs and
+  // rhs may be nullptr.
+  TRI_ASSERT(lType == VPackValueType::Null ||
+             (lhs->isConstant() && lhs->valueHasVelocyPackRepresentation()));
+  TRI_ASSERT(lType == VPackValueType::Null ||
+             (rhs->isConstant() && rhs->valueHasVelocyPackRepresentation()));
+
   switch (lType) {
     case VPackValueType::Null: {
       return 0;
@@ -316,25 +362,8 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::Array: {
-      size_t const numLhs = lhs->numMembers();
-      size_t const numRhs = rhs->numMembers();
-      size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
-
-      for (size_t i = 0; i < n; ++i) {
-        int res = compareAstNodes<resolveAttributeAccess>(
-            lhs->getMember(i), rhs->getMember(i), compareUtf8);
-        if (res != 0) {
-          return res;
-        }
-      }
-      if (numLhs < numRhs) {
-        return -1;
-      } else if (numLhs > numRhs) {
-        return 1;
-      }
-      return 0;
-    }
+    case VPackValueType::Array:
+      return compareArrayMembers<resolveAttributeAccess>(lhs, rhs, compareUtf8);
 
     case VPackValueType::Object: {
       VPackBuilder builder;
@@ -363,7 +392,8 @@ int compareReference(AstNode const* lhs, AstNode const* rhs) noexcept {
   return (lhsVar->id == rhsVar->id) ? 0 : (lhsVar->id < rhsVar->id ? -1 : 1);
 }
 
-/// @brief compare two nodes' children positionally
+/// @brief compare two nodes' children positionally; they have to be identical
+/// as written i.e. the order matters
 int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
                            bool compareUtf8) {
   size_t lhsN = lhs->numMembers();
@@ -446,8 +476,9 @@ int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
   return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
 }
 
-/// @brief compare n-ary AND/OR nodes independent of child order
-int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+/// @brief compare OBJECT nodes when both sides have unique, non-computed keys
+int compareObject(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(!lhs->mustCheckUniqueness() && !rhs->mustCheckUniqueness());
   size_t lhsN = lhs->numMembers();
   size_t rhsN = rhs->numMembers();
   if (lhsN != rhsN) {
@@ -536,10 +567,20 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_REFERENCE:
       return compareReference(lhs, rhs);
     case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
       return compareNamedNode(lhs, rhs, compareUtf8);
+    case NODE_TYPE_ARRAY:
+      // Same ordering as for constant arrays.
+      return compareArrayMembers<false>(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OBJECT:
+      if (lhs->mustCheckUniqueness() || rhs->mustCheckUniqueness()) {
+        // a computed or duplicate key means order decides which value wins
+        return compareChildrenInOrder(lhs, rhs, compareUtf8);
+      }
+      return compareObject(lhs, rhs, compareUtf8);
     case NODE_TYPE_QUANTIFIER:
       return compareQuantifier(lhs, rhs, compareUtf8);
     case NODE_TYPE_FCALL:
@@ -548,16 +589,13 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_BINARY_OR:
       return compareCommutativeBinary(lhs, rhs, compareUtf8);
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-      return compareNary(lhs, rhs, compareUtf8);
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return compareInNin(lhs, rhs, compareUtf8);
     default:
+      // BINARY_AND/OR, NARY_AND/OR go here because the order matters for them
+      // i.e. `x.a AND x.b` is not equivalent to `x.b AND x.a` in AQL
       return compareChildrenInOrder(lhs, rhs, compareUtf8);
   }
 }
@@ -859,6 +897,15 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_WINDOW:
     case NODE_TYPE_ARRAY_FILTER:
     case NODE_TYPE_DESTRUCTURING:
+    case NODE_TYPE_PATTERN_LABEL:
+    case NODE_TYPE_PATTERN_EDGE:
+    case NODE_TYPE_PATTERN_SEGMENT:
+    case NODE_TYPE_PATTERN_NODE_PATTERN:
+    case NODE_TYPE_PATTERN_PATH_VARIABLE:
+    case NODE_TYPE_PATTERN_MATCH_EXPRESSION:
+    case NODE_TYPE_MATCH:
+    case NODE_TYPE_ARRAY_SPLICE:
+    case NODE_TYPE_OBJECT_SPLICE:
       break;
   }
 
@@ -1175,6 +1222,15 @@ void AstNode::setConstantFlags() noexcept {
   setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 }
 
+namespace {
+
+bool astNodeIsConstantObjectLiteral(AstNode const* node) noexcept {
+  return node != nullptr && node->type == NODE_TYPE_OBJECT &&
+         node->isConstant();
+}
+
+}  // namespace
+
 bool AstNode::valueHasVelocyPackRepresentation() const {
   switch (type) {
     case NODE_TYPE_VALUE:
@@ -1193,18 +1249,27 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return true;
     }
     case NODE_TYPE_OBJECT: {
-      // Is representable as VPack if all its members
-      // are representable as VPack
       size_t const n = numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          // Throws if we do not have member 0
+        if (member == nullptr) {
+          return false;
+        }
+
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
           auto value = member->getMember(0);
           TRI_ASSERT(value != nullptr);
           if (!value->valueHasVelocyPackRepresentation()) {
             return false;
           }
+        } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+          auto source = member->getMember(0);
+          TRI_ASSERT(source != nullptr);
+          if (!astNodeIsConstantObjectLiteral(source)) {
+            return false;
+          }
+        } else {
+          return false;
         }
       }
       return true;
@@ -1220,6 +1285,72 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       return false;
   }
 }
+
+namespace {
+
+struct ObjectVPackEntry {
+  std::string key;
+  AstNode const* valueNode{nullptr};
+  VPackBuilder valueBuilder;
+  bool hasValueNode{true};
+};
+
+void collectConstantObjectMemberToVPackEntries(
+    AstNode const* member,
+    containers::FlatHashMap<std::string, size_t>& keyToIndex,
+    std::vector<ObjectVPackEntry>& entries) {
+  if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+    std::string key(member->getStringView());
+    auto it = keyToIndex.find(key);
+
+    if (it == keyToIndex.end()) {
+      keyToIndex.emplace(key, entries.size());
+      entries.push_back({std::move(key), member->getMemberUnchecked(0),
+                         VPackBuilder(), true});
+      return;
+    }
+
+    entries[it->second].valueNode = member->getMemberUnchecked(0);
+    entries[it->second].hasValueNode = true;
+    return;
+  }
+
+  if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+    AstNode const* source = member->getMemberUnchecked(0);
+    TRI_ASSERT(source != nullptr);
+    TRI_ASSERT(source->isConstant());
+
+    if (source->type == NODE_TYPE_OBJECT) {
+      size_t const n = source->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        collectConstantObjectMemberToVPackEntries(source->getMemberUnchecked(i),
+                                                  keyToIndex, entries);
+      }
+      return;
+    }
+
+    // non-object constant splice: no-op (null, scalar, array, etc.)
+    return;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "unexpected object member type: " + std::to_string(member->type));
+}
+
+bool objectHasNonElementMember(AstNode const* node) noexcept {
+  TRI_ASSERT(node != nullptr);
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = node->getMemberUnchecked(i);
+    if (member != nullptr && member->type != NODE_TYPE_OBJECT_ELEMENT) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
 
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
@@ -1261,10 +1392,35 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    builder.openObject();
-
-    containers::FlatHashSet<std::string_view> keys;
     size_t const n = numMembers();
+
+    if (objectHasNonElementMember(this)) {
+      containers::FlatHashMap<std::string, size_t> keyToIndex;
+      std::vector<ObjectVPackEntry> entries;
+      entries.reserve(n);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          collectConstantObjectMemberToVPackEntries(member, keyToIndex,
+                                                    entries);
+        }
+      }
+
+      builder.openObject();
+      for (auto const& entry : entries) {
+        builder.add(VPackValue(entry.key));
+        if (entry.hasValueNode) {
+          entry.valueNode->toVelocyPackValue(builder);
+        } else {
+          builder.add(entry.valueBuilder.slice());
+        }
+      }
+      builder.close();
+      return;
+    }
+
+    builder.openObject();
 
     // only check for duplicate keys if we have more than a single attribute
     bool checkUniqueness = (n > 1);
@@ -1273,15 +1429,45 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       checkUniqueness = hasFlag(VALUE_CHECKUNIQUENESS);
     }
 
+    if (checkUniqueness) {
+      // Deduplicate keys while preserving the original member order. For
+      // duplicate keys the last occurrence wins (matching the runtime object
+      // construction in Expression::executeSimpleExpressionObject), but the
+      // surviving entry keeps the position of the key's first occurrence.
+      // NOTE: we must not iterate a hash map here to produce the output, as
+      // hash map iteration order does not match insertion order and is not
+      // stable across map instances, which would change the observable
+      // attribute order of the resulting object.
+      containers::FlatHashMap<std::string_view, size_t> keyToIndex;
+      std::vector<AstNode const*> elements;
+      keyToIndex.reserve(n);
+      elements.reserve(n);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+          auto [it, inserted] =
+              keyToIndex.emplace(member->getStringView(), elements.size());
+          if (inserted) {
+            elements.emplace_back(member);
+          } else {
+            elements[it->second] = member;
+          }
+        }
+      }
+
+      for (AstNode const* member : elements) {
+        builder.add(VPackValue(member->getStringView()));
+        member->getMember(0)->toVelocyPackValue(builder);
+      }
+
+      builder.close();
+      return;
+    }
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
-      if (member != nullptr) {
+      if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string_view key(member->getStringView());
-
-        if (checkUniqueness && !keys.emplace(key).second) {
-          // duplicate key, skip it
-          continue;
-        }
 
         builder.add(VPackValue(key));
         member->getMember(0)->toVelocyPackValue(builder);
@@ -2027,9 +2213,13 @@ bool AstNode::isConstant() const {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        if (!astNodeIsConstantObjectLiteral(member->getMember(0))) {
+          setFlag(DETERMINED_CONSTANT);
+          return false;
+        }
       } else {
         // definitely not const!
-        TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
         setFlag(DETERMINED_CONSTANT);
         return false;
       }
@@ -2169,9 +2359,11 @@ bool AstNode::mustCheckUniqueness() const {
           mustCheck = true;
           break;
         }
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        // dynamic key... we don't know the key yet, so there's no
-        // way around check it at runtime later
+
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                 member->type == NODE_TYPE_OBJECT_SPLICE) {
+        // dynamic key or object splice... we don't know the final shape yet, so
+        // there's no way around checking it at runtime later
         mustCheck = true;
         break;
       }
@@ -2380,6 +2572,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
                             member->getStringLength());
         buffer.push_back(':');
 
+        member->getMember(0)->stringify(buffer, failIfLong);
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        TRI_ASSERT(member->numMembers() == 1);
+        buffer.append("...");
         member->getMember(0)->stringify(buffer, failIfLong);
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 2);

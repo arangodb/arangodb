@@ -25,13 +25,17 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
-const executeExternal = internal.executeExternal;
+const {
+  sleep,
+  killExternal,
+  executeExternal,
+  getExternalSpawned,
+  SetGlobalExecutionDeadlineTo } = internal;
 const { versionHas } = require("@arangodb/test-helper");
 const isCov = versionHas('coverage');
 const isSan = versionHas('tsan') || versionHas('aulsan');
@@ -57,23 +61,24 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
     case 'restore':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangorestore.conf');
-      this.executable = pu.ARANGORESTORE_BIN;
+      this.configName = 'arangorestore.conf';
+      this.binName = 'ARANGORESTORE_BIN';
       this.logprefix = 'restore';
       break;
     case 'dump':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangodump.conf');
-      this.executable = pu.ARANGODUMP_BIN;
+      this.configName = 'arangodump.conf';
+      this.binName = 'ARANGODUMP_BIN';
       this.logprefix = 'dump';
       break;
     case 'import':
-      this.config.configuration = fs.join(pu.CONFIG_DIR, 'arangoimport.conf');
-      this.executable = pu.ARANGOIMPORT_BIN;
+      this.configName = 'arangoimport.conf';
+      this.binName = 'ARANGOIMPORT_BIN';
       this.logprefix = 'import';
       break;
     default:
       throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
   }
 
   setWhatToImport (what) {
@@ -274,12 +279,16 @@ class ConfigBuilder {
   disableContinue() {
     delete this.config['continue'];
   }
-  toArgv() { return internal.toArgv(this.config); }
+  // the binary set may change between runs (--oldSource upgrade tests)
+  toArgv() {
+    this.config.configuration = fs.join(pu.CONFIG_DIR, this.configName);
+    return internal.toArgv(this.config);
+  }
 
-  getExe() { return this.executable; }
+  getExe() { return pu[this.binName]; }
 
   print() {
-    print(this.executable);
+    print(this.getExe());
     print(this.config);
   }
 }
@@ -310,20 +319,24 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
+function makeArgsArangosh (options, instanceManager, force_jwt) {
   let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
-  if (options.hasOwnProperty('username')) {
-    args['server.username'] = options.username;
-  }
-  if (options.hasOwnProperty('password')) {
-    args['server.password'] = options.password;
-  }
 
+  if (force_jwt) {
+    args['server.jwt-token'] = instanceManager.JWT;
+  } else {
+    if (options.hasOwnProperty('username')) {
+      args['server.username'] = options.username;
+    }
+    if (options.hasOwnProperty('password')) {
+      args['server.password'] = options.password;
+    }
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -602,27 +615,33 @@ function joinFinishedBGShells(options, clients) {
   return done;
 }
 
+function isClientDone(client, status) {
+  if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
+    let IM = global.instanceManager;
+    client.done = true;
+    IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
+    if (client.status.exit === 0) {
+      client.failed = false;
+    } else {
+      status.success = false;
+      IM.options.cleanup = false;
+      client.failed = true;
+      client.message = readClientLogfile(client);
+    }
+    return true;
+  }
+  return false;
+}
 function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = clients.length;
-  let success = true;
+  let status = { success: true };
   clients.forEach(client => {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
-      client.done = true;
-      IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
-      if (client.status.exit === 0) {
-        client.failed = false;
-      } else {
-        success = false;
-        IM.options.cleanup = false;
-        client.failed = true;
-        client.message = readClientLogfile(client);
-      }
-    }
+    } else isClientDone(client, status);
   });
   internal.sleep(1);
   while (done > 0) {
@@ -646,14 +665,14 @@ function joinForceBGShells(options, clients) {
           } else {
             IM.options.cleanup = false;
             client.failed = true;
-            success = false;
+            status.success = false;
           }
         }
       }
     });
     internal.sleep(0.5);
   }
-  return done === 0 && success;
+  return done === 0 && status.success;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -734,8 +753,23 @@ function readRtaErrorLog(logFile) {
   return fnLines;
 }
 
+// version that created the data; the SUT gets upgraded, the data does not
+let rtaDataVersion;
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
-  let args = Object.assign(makeArgsArangosh(options), {
+  if (rtaDataVersion === undefined) {
+    if (pu.currentBinarySet !== 0) {
+      throw new Error('rta oldVersion captured after the binary switch');
+    }
+    rtaDataVersion = internal.db._version();
+  }
+  let args = Object.assign(makeArgsArangosh(
+    options, instanceManager,
+    // waitData needs JWT access for the _users collection;
+    // old arangosh (< 3.12.6) has no --server.jwt-token
+    (writeReadClean === 2 && instanceManager.options.cluster &&
+     !(options.oldSource !== undefined && pu.currentBinarySet === 0))
+  ), {
     'server.endpoint': instanceManager.findEndpoint(),
     'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
@@ -759,8 +793,11 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', true,
                        '--printTimeTableMeasurement', true,
                        '--progress', 'true',
-                       '--oldVersion', require('internal').db._version()
+                       '--oldVersion', rtaDataVersion
                      ]);
+  if (options.password) {
+    argv = argv.concat(['--passvoid', options.password]);
+  }
   if (options.rtaNegFilter !== '') {
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
@@ -774,9 +811,33 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.extremeVerbosity !== 'silence') {
     print(argv);
   }
-  
+  let ret;
   let timeout = (options.isInstrumented) ? 60 * 45 : 60 * 15;
-  return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+  SetGlobalExecutionDeadlineTo(timeout);
+  try {
+    ret = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    if (timeout) {
+      ret.status = false;
+    }
+  } catch (ex) {
+    timeout = SetGlobalExecutionDeadlineTo(0.0);
+    print(`${RED}${Date()}rtaMakedata(): caught exception during executing makedata: ${timeout?"timeout ":""}${ex}${RESET}`);
+    ret = {
+      status: false,
+      message: `failed to execute ${argv} by: ${ex} ${ex.stack}`
+    };
+    let running = getExternalSpawned();
+    running.forEach(process => {
+      // [0] is not there in argv, only in arguments.
+      if (process.arguments[0] === pu.ARANGOSH_BIN && (process.arguments.length -1) === argv.length) {
+        print(`${RED}${Date()} rtaMakedata(): identified my process, killing ${JSON.stringify(process)}${RESET}`);
+        let msg = killExternal(process.pid, 9);
+        ret.message += '\n' + msg;
+      }
+    });
+  }
+  return ret;
 }
 function rtaWaitShardsInSync(options, instanceManager) {
   let args = Object.assign(makeArgsArangosh(options), {
@@ -851,7 +912,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
+// / @brief runs arangobackup
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
@@ -884,30 +945,6 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   return pu.executeAndWait(pu.ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(pu.CONFIG_DIR, 'arangobench.conf'),
-    'log.foreground-tty': 'true',
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    'server.connection-timeout': 10 // 5s default
-  };
-
-  args = Object.assign(args, cmds);
-
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-    args['flatCommands'] = ['--quiet'];
-  }
-
-  return pu.executeAndWait(pu.ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
-}
-
 exports.makeArgs = {
   arangosh: makeArgsArangosh
 };
@@ -919,6 +956,7 @@ exports.run = {
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   spawnStressArangoshInBG: spawnStressArangoshInBG,
+  isClientDone: isClientDone,
   joinBGShells: joinBGShells,
   joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,
@@ -926,7 +964,6 @@ exports.run = {
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
-  arangoBenchmark: runArangoBenchmark,
   arangoBackup: runArangoBackup,
   rtaWaitShardsInSync: rtaWaitShardsInSync,
   rtaMakedata: rtaMakedata,
@@ -937,6 +974,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
+    'rtaRbacDir': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
     'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
@@ -949,6 +987,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
     '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
+    '   - `rtaRbacDir`: directory holding the RBAC scenario runner (default: tests/api/rbac/rta). Used by rta_makedata when --rbac names a sidecar URL',
     ''
   ]);
 };

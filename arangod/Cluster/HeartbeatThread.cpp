@@ -26,6 +26,7 @@
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,7 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/HealthData.h"
@@ -52,10 +52,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
+#include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
 #include <date/date.h>
@@ -70,7 +67,9 @@ namespace arangodb {
 class HeartbeatBackgroundJobThread : public Thread {
  public:
   explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
-      : Thread("Maintenance"),
+      // needs superuser permissions for DBServerAgencySync, which executes
+      // maintenance actions
+      : Thread("Maintenance", ExecContext::superuserAsShared()),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -203,7 +202,8 @@ HeartbeatThread::HeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry,
     std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
     double noHeartbeatDelayBeforeShutdown, metrics::IRegistry& metricsRegistry)
-    : arangodb::ServerThread(server, "Heartbeat"),
+    : arangodb::ServerThread(server, "Heartbeat",
+                             ExecContext::superuserAsShared()),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
@@ -360,6 +360,26 @@ void HeartbeatThread::run() {
       << "stopped heartbeat thread (" << role << ")";
 }
 
+namespace {
+
+/// @brief wait for an already scheduled getNewsFromAgency job to finish.
+/// The job runs in a scheduler thread and accesses objects owned by the
+/// ClusterFeature (e.g. the AgencyCache). The ClusterFeature tears those down
+/// once the HeartbeatThread has stopped, so the thread must not stop while the
+/// job is still in flight.
+void waitForScheduledGetNews(std::atomic<int> const& getNewsRunning) noexcept {
+  size_t counter = 0;
+  while (getNewsRunning.load(std::memory_order_seq_cst) != 0) {
+    if (++counter % 200 == 0) {
+      LOG_TOPIC("a3b7c", WARN, Logger::HEARTBEAT)
+          << "waiting for scheduled getNewsFromAgency job to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+}  // namespace
+
 void HeartbeatThread::getNewsFromAgencyForDBServer() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
@@ -484,6 +504,8 @@ void HeartbeatThread::runDBServer() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -554,12 +576,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path("Current/Version"),
-      AgencyCommHelper::path("Current/Foxxmaster"),
-      AgencyCommHelper::path("Current/FoxxmasterQueueupdate"),
       AgencyCommHelper::path("Plan/Version"),
       AgencyCommHelper::path("Readonly"), AgencyCommHelper::path("Shutdown"),
       AgencyCommHelper::path("Sync/UserVersion"),
-      AgencyCommHelper::path("Sync/FoxxQueueVersion"),
       AgencyCommHelper::path("Target/FailedServers"), "/.agency"});
   auto result = acb->slice();
   LOG_TOPIC("53262", DEBUG, Logger::HEARTBEAT)
@@ -589,42 +608,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       _server.beginShutdown();
     }
 
-    // mop: order is actually important here...FoxxmasterQueueupdate will
-    // be set only when somebody registers some new queue stuff (for example
-    // on a different coordinator than this one)... However when we are just
-    // about to become the new foxxmaster we must immediately refresh our
-    // queues this is done in ServerState...if queueupdate is set after
-    // foxxmaster the change will be reset again
-    VPackSlice foxxmasterQueueupdateSlice =
-        result[0].get(std::vector<std::string>(
-            {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
-
-    if (foxxmasterQueueupdateSlice.isBool() &&
-        foxxmasterQueueupdateSlice.getBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate(true);
-    }
-
-    VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Current", "Foxxmaster"}));
-
-    if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
-      ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
-    } else {
-      auto state = ServerState::instance();
-      VPackBuilder myIdBuilder;
-      myIdBuilder.add(VPackValue(state->getId()));
-
-      AgencyComm agency(server());
-
-      auto updateLeader = agency.casValue(
-          "/Current/Foxxmaster", foxxmasterSlice, myIdBuilder.slice(), 0, 10.0);
-      if (updateLeader.successful()) {
-        // We won the race we are the master
-        ServerState::instance()->setFoxxmaster(state->getId());
-      }
-      agency.increment("Current/Version");
-    }
-
     VPackSlice versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Plan", "Version"}));
 
@@ -652,11 +635,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
-
-#ifdef USE_V8
-    // handle global changes to Sync/FoxxQueueVersion
-    handleFoxxQueueVersionChange(result);
-#endif
 
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
@@ -698,8 +676,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     updateServerMode(readOnlySlice);
   }
 
-  // the Foxx stuff needs an updated list of coordinators
-  // and this is only updated when current version has changed
+  // this is only updated when current version has changed
   if (_invalidateCoordinators) {
     ci.invalidateCurrentCoordinators();
   }
@@ -735,33 +712,6 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
   }
 }
 
-#ifdef USE_V8
-void HeartbeatThread::handleFoxxQueueVersionChange(
-    VPackSlice foxxQueueVersion) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  VPackSlice slice = foxxQueueVersion[0].get(std::vector<std::string>(
-      {AgencyCommHelper::path(), "Sync", "FoxxQueueVersion"}));
-
-  if (slice.isInteger()) {
-    // there is a UserVersion
-    uint64_t version = 0;
-    try {
-      version = slice.getNumber<uint64_t>();
-    } catch (...) {
-    }
-
-    if (version > 0) {
-      // track the global foxx queues version from the agency. any
-      // coordinator can update this any time. the setQueueVersion
-      // method makes sure we are not going below a value that
-      // we have already seen.
-      server().getFeature<FoxxFeature>().setQueueVersion(version);
-    }
-  }
-}
-#endif
-
 void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   bool readOnly = false;
   if (readOnlySlice.isBoolean()) {
@@ -782,6 +732,8 @@ void HeartbeatThread::runCoordinator() {
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
+  auto waitForGetNews =
+      scopeGuard([&]() noexcept { waitForScheduledGetNews(*getNewsRunning); });
 
   while (!isStopping()) {
     try {
@@ -993,7 +945,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // database on one coordinator and then access the newly created
   // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
-    if (!options.value.isObject()) {
+    if (!options.value.isObject() ||
+        options.value.hasKey(StaticStrings::AttrIsBuilding)) {
       continue;
     }
 
@@ -1129,7 +1082,7 @@ void HeartbeatThread::sendServerStateAsync() {
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
-          server().getFeature<RocksDBEngine>().healthCheck();
+          server().getFeature<StorageEngine>().healthCheck();
       // intentionally dont transmit details so we can save a bit of traffic
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }

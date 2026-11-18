@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FlushSubscription.h"
 #include "RestServer/IFlushControl.h"
 

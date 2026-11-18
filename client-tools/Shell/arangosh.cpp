@@ -43,12 +43,7 @@ int main(int argc, char* argv[]) {
 
     auto options = std::make_shared<options::ProgramOptions>(
         argv[0], "Usage: " + context.binaryName() + " [<options>]",
-        "For more information use:", BIN_DIRECTORY
-#ifndef USE_V8
-        ,
-        arangodb::options::ParseJsOps::parseJS
-#endif
-    );
+        "For more information use:", BIN_DIRECTORY);
 
     ArangoshServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
 

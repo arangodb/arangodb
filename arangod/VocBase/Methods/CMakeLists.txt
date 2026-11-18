@@ -7,10 +7,3 @@ target_sources(arango_vocbase PRIVATE
   Upgrade.cpp
   UpgradeTasks.cpp
   Version.cpp)
-
-if (USE_V8) 
-  target_sources(arango_vocbase PRIVATE
-    AqlUserFunctions.cpp
-    Tasks.cpp
-    Transactions.cpp)
-endif()

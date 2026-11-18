@@ -23,14 +23,13 @@
 #include "ServerFeaturePhase.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "Statistics/StatisticsFeature.h"
-
 namespace arangodb {
 class SslServerFeature;
 }
@@ -46,9 +45,9 @@ ServerFeaturePhase::ServerFeaturePhase(
   startsAfter<HttpEndpointProvider>();
   startsAfter<GeneralServerFeature>();
   startsAfter<NetworkFeature>();
+  startsAfter<RbacFeature>();
   startsAfter<ServerFeature>();
   startsAfter<SslServerFeature>();
-  startsAfter<StatisticsFeature>();
   startsAfter<UpgradeFeature>();
 }
 }  // namespace arangodb::application_features

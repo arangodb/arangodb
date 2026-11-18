@@ -31,28 +31,14 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Sharding/ShardingFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/Methods/Collections.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -143,7 +129,7 @@ class IResearchLinkMetaTest
     auto sysvocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *sysvocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -1593,15 +1579,14 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
-  // missing analyzer (name only) inRecovery
+  // missing analyzer (name only) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty1\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2189,7 +2174,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
   }
 
-  // missing analyzer (full) inRecovery
+  // missing analyzer (full) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -2197,8 +2182,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2216,15 +2200,14 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
   }
 
-  // missing analyzer (full) inRecovery (ignore analyzer definition)
+  // missing analyzer (full) !isReady() (ignore analyzer definition)
   {
     auto json = VPackParser::fromJson(R"({
       "analyzerDefinitions": [ ],
       "analyzers": [ "missing3" ]
     })");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2235,15 +2218,14 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("analyzers.missing3", errorField);
   }
 
-  // missing analyzer definition inRecovery
+  // missing analyzer definition !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2275,15 +2257,14 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (name only) inRecovery
+  // existing analyzer (name only) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2302,11 +2283,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // complex definition inRecovery
+  // complex definition !isReady()
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2362,11 +2342,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
   }
 
-  // complex definition inRecovery
+  // complex definition !isReady()
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2480,7 +2459,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (full) inRecovery
+  // existing analyzer (full) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -2488,8 +2467,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2528,7 +2506,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch) inRecovery
+  // existing analyzer (definition mismatch) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -2536,8 +2514,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2556,7 +2533,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch) inRecovery
+  // existing analyzer (definition mismatch) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -2564,8 +2541,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -2730,7 +2706,7 @@ class IResearchLinkMetaTestNoSystem
     auto sysvocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *sysvocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -2784,15 +2760,14 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
-  // missing analyzer (name only) inRecovery
+  // missing analyzer (name only) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty1\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3329,7 +3304,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
   }
 
-  // missing analyzer (full) inRecovery
+  // missing analyzer (full) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -3337,8 +3312,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3356,7 +3330,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
   }
 
-  // missing analyzer (full) inRecovery (ignore analyzer definition)
+  // missing analyzer (full) !isReady() (ignore analyzer definition)
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -3364,8 +3338,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3376,15 +3349,14 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("analyzers.missing3", errorField);
   }
 
-  // missing analyzer definition inRecovery
+  // missing analyzer definition !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"missing3\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3416,15 +3388,14 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (name only) inRecovery
+  // existing analyzer (name only) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3443,11 +3414,10 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // complex definition inRecovery
+  // complex definition !isReady()
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3503,11 +3473,10 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
   }
 
-  // complex definition inRecovery
+  // complex definition !isReady()
   {
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3621,7 +3590,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (full) inRecovery
+  // existing analyzer (full) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -3629,8 +3598,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3669,7 +3637,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch) inRecovery
+  // existing analyzer (definition mismatch) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -3677,8 +3645,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3697,7 +3664,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch) inRecovery
+  // existing analyzer (definition mismatch) !isReady()
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -3705,8 +3672,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       \"analyzers\": [ \"empty\" ] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
     irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     };
@@ -3742,34 +3708,34 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   arangodb::iresearch::IResearchLinkMeta meta;
   auto json = arangodb::velocypack::Parser::fromJson(
-      R"({ 
-    "analyzerDefinitions": [ 
+      R"({
+    "analyzerDefinitions": [
       { "name": "empty", "type": "empty",
         "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
     "includeAllFields" : false,
     "trackListPositions" : false,
-    "fields" : { 
+    "fields" : {
       "abc": {},
       "foo" : {
-        "nested": { "bar":{}, 
+        "nested": { "bar":{},
                     "bas":{
                       "nested":{
                         "a":{"analyzers":["empty"]}, "b":{}, "c":{}
                        }
                     },
                     "kas":{
-                      "nested": { 
+                      "nested": {
                         "skas":{
                           "analyzers":["empty"],
                           "includeAllFields":true
                          }
                        }
                     }
-                  } 
+                  }
       },
       "bar" : {
-        "nested": { "c":{}, "d":{}} 
-      } 
+        "nested": { "c":{}, "d":{}}
+      }
     },
     "analyzers": [ "identity" ]
   })");
@@ -4001,9 +3967,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": false,
       "fields" : {
@@ -4044,9 +4010,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": true,
       "primaryKeyCache": true,
@@ -4088,9 +4054,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": true,
       "primaryKeyCache": false,
@@ -4243,12 +4209,12 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   auto json = VPackParser::fromJson(
       R"({
       "analyzerDefinitions": [
-         { "name": "geo", "type": "geojson", 
+         { "name": "geo", "type": "geojson",
            "properties": {
              "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
            "features": [ "frequency" ]},
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "fields" : {
         "nothot": {
@@ -4373,9 +4339,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":true,
       "includeAllFields":true,
@@ -4449,9 +4415,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":true,
       "includeAllFields":true,
@@ -4523,9 +4489,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":false,
       "includeAllFields":true,
@@ -4596,9 +4562,9 @@ TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":false,
       "includeAllFields":true,

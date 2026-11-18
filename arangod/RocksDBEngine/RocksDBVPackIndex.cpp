@@ -226,10 +226,12 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kDetect;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, _searchValues, format);
+    bool canProduceResults =
+        _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                  _indexIteratorOptions, _searchValues, format);
 
-    if (_format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
+    if (canProduceResults &&
+        _format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
         format == RocksDBVPackIndexSearchValueFormat::kIn) {
       reformatLookupCondition();
     }
@@ -240,6 +242,10 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     size_t newMemoryUsage = _searchValues.size();
     _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsage += newMemoryUsage;
+
+    if (!canProduceResults) {
+      return false;
+    }
 
     adjustIterator();
     return true;
@@ -357,8 +363,12 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kValuesOnly;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      return false;
+    }
+
     // note: we only support the simplified format when building index search
     // values! format must not have changed!
     TRI_ASSERT(format == RocksDBVPackIndexSearchValueFormat::kValuesOnly);
@@ -531,7 +541,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-template<bool unique, bool reverse, bool mustCheckBounds>
+template<bool unique, bool reverse>
 class RocksDBVPackIndexIterator final : public IndexIterator {
   friend class RocksDBVPackIndex;
   friend class RocksDBVPackIndexInIterator;
@@ -545,7 +555,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
@@ -610,8 +619,12 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format = _format;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      return false;
+    }
+
     // note: we support two formats when building index search values:
     // - a generic format that supports < > <= >= and ==
     // - a simplified format that only supports ==
@@ -776,7 +789,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
 
-    if (_iterator->Valid() && !outOfRange() && count > 0) {
+    if (_iterator->Valid() && count > 0) {
       do {
         TRI_ASSERT(_index->objectId() ==
                    RocksDBKey::objectId(_iterator->key()));
@@ -891,7 +904,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         ensureIterator();
         TRI_ASSERT(_iterator != nullptr);
 
-        if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+        if (limit == 0 || !_iterator->Valid()) {
           // No limit no data, or we are actually done. The last call should
           // have returned false
           TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -923,7 +936,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0) ||
+    if (!_iterator->Valid() || ADB_UNLIKELY(limit == 0) ||
         _limitPerLookupValue.value_or(UINT64_MAX) == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
@@ -1068,29 +1081,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         static_cast<uint64_t>(byteSize)};
   }
 
-  inline bool outOfRange() const {
-    // we can effectively disable the out-of-range checks for read-only
-    // transactions, as our Iterator is a snapshot-based iterator with a
-    // configured iterate_upper_bound/iterate_lower_bound value.
-    // this makes RocksDB filter out non-matching keys automatically.
-    // however, for a write transaction our Iterator is a rocksdb
-    // BaseDeltaIterator, which will merge the values from a snapshot iterator
-    // and the changes in the current transaction. here rocksdb will only apply
-    // the bounds checks for the base iterator (from the snapshot), but not for
-    // the delta iterator (from the current transaction), so we still have to
-    // carry out the checks ourselves.
-    if constexpr (mustCheckBounds) {
-      int res = _cmp->Compare(_iterator->key(), _rangeBound);
-      if constexpr (reverse) {
-        return res < 0;
-      } else {
-        return res > 0;
-      }
-    } else {
-      return false;
-    }
-  }
-
   void ensureIterator() {
     if (_iterator == nullptr) {
       // the RocksDB iterator _iterator is only built once during the
@@ -1105,30 +1095,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _iterator =
           mthds->NewIterator(_index->columnFamily(), [&](ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // note: iterate_lower_bound/iterate_upper_bound should only be
-            // set if the iterator is not supposed to check the bounds
-            // for every operation.
-            // when the iterator is a db snapshot-based iterator, it is ok
-            // to set iterate_lower_bound/iterate_upper_bound, because this
-            // is well supported by RocksDB.
-            // if the iterator is a multi-level iterator that merges data from
-            // the db snapshot with data from an ongoing in-memory transaction
-            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
-            // not properly support the bounds checking using
-            // iterate_lower_bound/ iterate_upper_bound. in this case we must
-            // avoid setting the bounds here and rely on our own bounds checking
-            // using the comparator. at least one underlying issue was fixed in
-            // RocksDB in version 8.8.0 via
-            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
-            // the issue once we have upgraded to RocksDB >= 8.8.0.
-            if constexpr (!mustCheckBounds) {
-              // we need to have a pointer to a slice for the upper bound
-              // so we need to assign the slice to an instance variable here
-              if constexpr (reverse) {
-                options.iterate_lower_bound = &_rangeBound;
-              } else {
-                options.iterate_upper_bound = &_rangeBound;
-              }
+            if constexpr (reverse) {
+              options.iterate_lower_bound = &_rangeBound;
+            } else {
+              options.iterate_upper_bound = &_rangeBound;
             }
             options.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });
@@ -1158,7 +1128,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _iterator->Next();
     }
 
-    return _iterator->Valid() && !outOfRange();
+    return _iterator->Valid();
   }
 
   // expected number of bytes that a RocksDB iterator will use.
@@ -1166,7 +1136,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
@@ -2099,7 +2068,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+    if (type() == IndexType::Persistent) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");
@@ -2274,30 +2243,16 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
   TRI_ASSERT(!bounds.empty());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
-  bool mustCheckBounds =
-      RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-          _collection.id(), readOwnWrites);
-
   if (unique()) {
     // unique index
     if (reverse) {
       // reverse version
-      if (mustCheckBounds) {
-        return std::make_unique<RocksDBVPackIndexIterator<true, true, true>>(
-            monitor, &_collection, trx, this, std::move(bounds),
-            withCache ? useCache() : nullptr, opts, readOwnWrites, format);
-      }
-      return std::make_unique<RocksDBVPackIndexIterator<true, true, false>>(
+      return std::make_unique<RocksDBVPackIndexIterator<true, true>>(
           monitor, &_collection, trx, this, std::move(bounds),
           withCache ? useCache() : nullptr, opts, readOwnWrites, format);
     }
     // forward version
-    if (mustCheckBounds) {
-      return std::make_unique<RocksDBVPackIndexIterator<true, false, true>>(
-          monitor, &_collection, trx, this, std::move(bounds),
-          withCache ? useCache() : nullptr, opts, readOwnWrites, format);
-    }
-    return std::make_unique<RocksDBVPackIndexIterator<true, false, false>>(
+    return std::make_unique<RocksDBVPackIndexIterator<true, false>>(
         monitor, &_collection, trx, this, std::move(bounds),
         withCache ? useCache() : nullptr, opts, readOwnWrites, format);
   }
@@ -2305,22 +2260,12 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
   // non-unique index
   if (reverse) {
     // reverse version
-    if (mustCheckBounds) {
-      return std::make_unique<RocksDBVPackIndexIterator<false, true, true>>(
-          monitor, &_collection, trx, this, std::move(bounds),
-          withCache ? useCache() : nullptr, opts, readOwnWrites, format);
-    }
-    return std::make_unique<RocksDBVPackIndexIterator<false, true, false>>(
+    return std::make_unique<RocksDBVPackIndexIterator<false, true>>(
         monitor, &_collection, trx, this, std::move(bounds),
         withCache ? useCache() : nullptr, opts, readOwnWrites, format);
   }
   // forward version
-  if (mustCheckBounds) {
-    return std::make_unique<RocksDBVPackIndexIterator<false, false, true>>(
-        monitor, &_collection, trx, this, std::move(bounds),
-        withCache ? useCache() : nullptr, opts, readOwnWrites, format);
-  }
-  return std::make_unique<RocksDBVPackIndexIterator<false, false, false>>(
+  return std::make_unique<RocksDBVPackIndexIterator<false, false>>(
       monitor, &_collection, trx, this, std::move(bounds),
       withCache ? useCache() : nullptr, opts, readOwnWrites, format);
 }
@@ -2393,14 +2338,6 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
-  TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-    // mmfiles failure point compat
-    // the hash index is a derived type of the vpack index...
-    if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   return SortedIndexAttributeMatcher::supportsFilterCondition(
       allIndexes, this, node, reference, itemsInIndex);
 }
@@ -2429,9 +2366,14 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   auto searchValues = ThreadLocalBuilderLeaser::lease();
   RocksDBVPackIndexSearchValueFormat format =
       RocksDBVPackIndexSearchValueFormat::kDetect;
-  buildSearchValues(monitor, trx, node, reference, opts, *searchValues, format);
+  bool canProduceResults = buildSearchValues(monitor, trx, node, reference,
+                                             opts, *searchValues, format);
   // format must have been set to something valid now.
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
+
+  if (!canProduceResults) {
+    return std::make_unique<EmptyIndexIterator>(&_collection, trx);
+  }
 
   VPackSlice searchSlice = searchValues->slice();
 
@@ -2439,12 +2381,6 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
 
   if (format == RocksDBVPackIndexSearchValueFormat::kIn) {
     // IN!
-    if (searchSlice.length() == 0 ||
-        (searchSlice.length() == 1 && searchSlice.at(0).isArray() &&
-         searchSlice.at(0).length() == 0)) {
-      // IN with no/invalid condition
-      return std::make_unique<EmptyIndexIterator>(&_collection, trx);
-    }
 
     // build the actual lookup iterator, which can only handle a single
     // equality lookup. however, we will then wrap this lookup iterator
@@ -2481,26 +2417,58 @@ void RocksDBVPackIndex::buildEmptySearchValues(
   result.close();
 }
 
-void RocksDBVPackIndex::buildSearchValues(
+bool RocksDBVPackIndex::isIdLookupOnKeyField(
+    size_t fieldIndex,
+    std::vector<basics::AttributeName> const& accessPath) const {
+  // cf. the corresponding rule in SortedIndexAttributeMatcher::accessFitsIndex
+  return fieldIndex < _fields.size() && _fields[fieldIndex].size() == 1 &&
+         _fields[fieldIndex][0].name == StaticStrings::KeyString &&
+         accessPath.size() == 1 &&
+         accessPath[0].name == StaticStrings::IdString;
+}
+
+bool RocksDBVPackIndex::tryAddIdLookupValue(transaction::Methods* trx,
+                                            aql::AstNode const* value,
+                                            VPackBuilder& searchValues) const {
+  if (value->isStringValue() && value->getStringLength() > 0) {
+    auto key = Index::extractKeyFromIdLookupValue(*trx, _collection,
+                                                  value->getStringView());
+    if (key.has_value()) {
+      searchValues.add(
+          VPackValuePair(key->data(), key->size(), VPackValueType::String));
+      return true;
+    }
+  }
+  return false;
+}
+
+bool RocksDBVPackIndex::addEqualityLookupValue(
+    transaction::Methods* trx, size_t fieldIndex,
+    std::vector<basics::AttributeName> const& accessPath,
+    aql::AstNode const* value, VPackBuilder& searchValues) const {
+  if (isIdLookupOnKeyField(fieldIndex, accessPath) && value->isConstant()) {
+    return tryAddIdLookupValue(trx, value, searchValues);
+  }
+
+  value->toVelocyPackValue(searchValues);
+  return true;
+}
+
+bool RocksDBVPackIndex::buildSearchValues(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
     RocksDBVPackIndexSearchValueFormat& format) const {
+  bool canProduceResults = true;
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
     buildEmptySearchValues(searchValues);
   } else {
-    buildSearchValuesInner(monitor, trx, node, reference, opts, searchValues,
-                           format);
+    canProduceResults = buildSearchValuesInner(monitor, trx, node, reference,
+                                               opts, searchValues, format);
   }
 
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -2509,9 +2477,10 @@ void RocksDBVPackIndex::buildSearchValues(
     // simple (values only) format!
     format = RocksDBVPackIndexSearchValueFormat::kValuesOnly;
   }
+  return canProduceResults;
 }
 
-void RocksDBVPackIndex::buildSearchValuesInner(
+bool RocksDBVPackIndex::buildSearchValuesInner(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
@@ -2575,7 +2544,11 @@ void RocksDBVPackIndex::buildSearchValuesInner(
 
     if (format == RocksDBVPackIndexSearchValueFormat::kValuesOnly) {
       TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      value->toVelocyPackValue(searchValues);
+      if (!addEqualityLookupValue(trx, usedFields, paramPair.second, value,
+                                  searchValues)) {
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
       continue;
     }
 
@@ -2585,12 +2558,6 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       searchValues.openObject(true);
       searchValues.add(VPackValue(StaticStrings::IndexEq));
       TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("HashIndex::permutationEQ") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -2603,19 +2570,12 @@ void RocksDBVPackIndex::buildSearchValuesInner(
         TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
       } else {
         if (!value->isArray() || value->numMembers() == 0) {
           // IN lookup value is not an array or empty. we will not
           // produce any result then
-          format = RocksDBVPackIndexSearchValueFormat::kIn;
           buildEmptySearchValues(searchValues);
-          return;
+          return false;
         }
 
         needNormalize = true;
@@ -2626,7 +2586,33 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       break;
     }
     // We have to add the value always, the key was added before
-    value->toVelocyPackValue(searchValues);
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (!addEqualityLookupValue(trx, usedFields, paramPair.second, value,
+                                  searchValues)) {
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
+    } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+               !isAttributeExpanded(usedFields) && value->isArray() &&
+               isIdLookupOnKeyField(usedFields, paramPair.second)) {
+      // translate the `_id` lookup values in the IN list into `_key`
+      // lookup values, omitting values that cannot match
+      size_t numAdded = 0;
+      searchValues.openArray();
+      for (size_t m = 0; m < value->numMembers(); ++m) {
+        if (tryAddIdLookupValue(trx, value->getMemberUnchecked(m),
+                                searchValues)) {
+          ++numAdded;
+        }
+      }
+      searchValues.close();
+      if (numAdded == 0) {
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
+    } else {
+      value->toVelocyPackValue(searchValues);
+    }
     searchValues.close();
   }
 
@@ -2718,6 +2704,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
                RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues);
     format = RocksDBVPackIndexSearchValueFormat::kIn;
   }
+
+  return true;
 }
 
 /// @brief Transform the list of search slices to search values.
@@ -2959,7 +2947,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   RocksDBVPackStreamOptions _options;
   VPackBuilder _builder;
-  VPackString _cache;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
   RocksDBKey _rocksdbKey;
@@ -3061,11 +3048,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     storeKey(key, RocksDBKey::indexedVPack(_iterator->key()));
     docId = load(projections);
     return true;
-  }
-
-  void cacheCurrentKey(std::span<VPackSlice> cache) override {
-    _cache = VPackString{RocksDBKey::indexedVPack(_iterator->key())};
-    storeKey(cache, _cache);
   }
 
   static void constructKey(VPackBuilder& builder,

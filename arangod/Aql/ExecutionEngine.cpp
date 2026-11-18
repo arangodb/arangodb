@@ -54,6 +54,9 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
+#include "ExecutionNode/IndexNode.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -779,13 +782,16 @@ async<void> ExecutionEngine::instantiateFromPlan(Query& query,
   if (arangodb::ServerState::isSingleServerOrCoordinator(role)) {
     ExecutionEngine::parallelizeTraversals(query, plan, aliases);
   }
-#endif
 
+  localizeSmartEdgeCollectionAccess(query, plan, aliases);
+#endif
   if (ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
-    plan.root()->flatWalk(inst, true);
+    //    LOG_DEVEL << "PLAN:";
+    // plan.show();
+    plan.root()->flatWalk(inst, ExecutionNode::FlattenType::INLINE_ALL);
 
     Result res = co_await inst.buildEngines();
     if (res.fail()) {
@@ -910,18 +916,17 @@ void ExecutionEngine::initializeConstValueBlock(
         [&, regPlan = plan.root()->getRegisterPlan(),
          block = mgr.getConstValueBlock()](Variable* var) {
           if (var->type() == Variable::Type::Const) {
-            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
-            if (reg.value() != RegisterId::maxRegisterId) {
+            RegisterId reg = regPlan->constVariableToRegisterId(var->id);
+            if (reg.isValid()) {
               TRI_ASSERT(reg.isConstRegister());
-              AqlValue value = var->constantValue();
-              TRI_ASSERT(!value.isNone());
-              // the constValueBlock takes ownership, so we have to create a
-              // copy here.
-              block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+              AqlValue owned = var->extractOwnedConstantValue();
+              block->emplaceValue(0, reg.value(), std::move(owned));
+              var->setConstantBlockReference(
+                  block->getValueReference(0, reg.value()).slice());
             }
           } else if (var->type() == Variable::Type::BindParameter) {
-            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
-            if (reg.value() != RegisterId::maxRegisterId) {
+            RegisterId reg = regPlan->constVariableToRegisterId(var->id);
+            if (reg.isValid()) {
               auto [slice, node] = bindParameters.get(var->bindParameterName());
               if (slice.isNone()) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING);

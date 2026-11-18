@@ -26,9 +26,8 @@
 const jsunity = require("jsunity");
 const { db, aql, errors } = require("@arangodb");
 const internal = require("internal");
-const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
 let IM = global.instanceManager;
-const {sleep, arango} = require('internal');
+const { sleep, arango } = require('internal');
 
 function QueryMetricsTestSuite() {
 
@@ -51,8 +50,8 @@ function QueryMetricsTestSuite() {
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
-    testFailingQuery : function () {
-      let st = db._createStatement({ query : "for i in" });
+    testFailingQuery: function () {
+      let st = db._createStatement({ query: "for i in" });
 
       try {
         st.parse();
@@ -71,15 +70,17 @@ function QueryMetricsTestSuite() {
 
       let queries = [];
       for (let i = 0; i < 100; ++i) {
-        let stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
-                                       options: { stream: true },
-                                       batchSize: 2});
+        let stmt = db._createStatement({
+          query: "FOR i IN 1..100 RETURN i",
+          options: { stream: true },
+          batchSize: 2
+        });
         queries.push(stmt.execute());
       }
       aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 100);
 
-      queries.forEach(function(cursor) {
+      queries.forEach(function (cursor) {
         for (let i = 1; i <= 100; ++i) {
           assertEqual(i, cursor.next());
           assertEqual(i !== 100, cursor.hasNext());
@@ -102,7 +103,7 @@ function QueryMetricsTestSuite() {
         let cursorsIds = [];
         // Launch queries
         for (let i = 0; i < numberOfRunningQueries; ++i) {
-          let res = arango.POST_RAW("/_api/cursor", JSON.stringify(data), {"x-arango-async": "store"});
+          let res = arango.POST_RAW("/_api/cursor", JSON.stringify(data), { "x-arango-async": "store" });
           assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
           cursorsIds.push(res.headers["x-arango-async-id"]);
         }
@@ -121,8 +122,8 @@ function QueryMetricsTestSuite() {
 
         IM.debugRemoveFailAt("Query::delayingExecutionPhase");
         // Some other background queries might be executing
-        assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries, 
-                   `Expected at least ${numberOfRunningQueries} running queries, but got ${aqlCurrentQueryMetric} after 10s timeout`);
+        assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries,
+          `Expected at least ${numberOfRunningQueries} running queries, but got ${aqlCurrentQueryMetric} after 10s timeout`);
 
         // Make sure that the queries are cleaned
         for (let i = 0; i < numberOfRunningQueries; ++i) {

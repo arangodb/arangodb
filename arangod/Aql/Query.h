@@ -47,19 +47,11 @@
 #include <optional>
 #include <vector>
 
-#ifdef USE_V8
-namespace v8 {
-class Isolate;
-}
-#endif
-
 namespace arangodb {
 
 class CollectionNameResolver;
+class ExecContext;
 class LogicalDataSource;
-#ifdef USE_V8
-class V8Executor;
-#endif
 
 template<typename>
 struct async;
@@ -80,9 +72,6 @@ struct ExecutionStats;
 struct QueryCacheResultEntry;
 class QueryList;
 struct QueryProfile;
-#ifdef USE_V8
-struct QueryResultV8;
-#endif
 class SharedQueryState;
 
 /// @brief an AQL query
@@ -202,12 +191,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
-#ifdef USE_V8
-  /// @brief execute an AQL query
-  /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate);
-#endif
-
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
@@ -233,25 +216,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   bool isModificationQuery() const noexcept final;
 
   bool isAsyncQuery() const noexcept final;
-
-  /// @brief enter a V8 executor
-  void enterV8Executor() final;
-
-  /// @brief exits a V8 executor
-  void exitV8Executor() final;
-
-  /// @brief check if the query has a V8 executor ready for use
-  bool hasEnteredV8Executor() const final {
-#ifdef USE_V8
-    return (_executorOwnedByExterior || _v8Executor != nullptr);
-#else
-    return false;
-#endif
-  }
-
-#ifdef USE_V8
-  void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
-#endif
 
   Result result() const;
 
@@ -420,11 +384,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
 
-#ifdef USE_V8
-  /// @brief the currently used V8 executor
-  V8Executor* _v8Executor;
-#endif
-
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
@@ -494,22 +453,17 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief user that started the query
   std::string _user;
 
+  /// @brief the ExecContext that was installed on the thread that created
+  /// this query. Used (in maintainer mode) to assert that the query executes
+  /// under the same identity it was created with, so that any spawn path
+  /// that fails to propagate the ExecContext fails loudly instead of
+  /// silently running as a different (or no) user.
+  std::shared_ptr<ExecContext const> _execContext;
+
   /// @brief optional plan cache key that was used to look up the query in the
   /// plan cache. this will be result for storing the query plan later in the
   /// cache
   std::optional<QueryPlanCache::Key> _planCacheKey;
-
-#ifdef USE_V8
-  /// @brief whether or not someone else has acquired a V8 executor for us
-  bool const _executorOwnedByExterior;
-
-  /// @brief set if we are inside a JS transaction
-  bool const _embeddedQuery;
-
-  /// @brief whether or not the transaction executor was registered
-  /// in a v8 executor
-  bool _registeredInV8Executor;
-#endif
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

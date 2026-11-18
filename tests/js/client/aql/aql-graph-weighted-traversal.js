@@ -34,12 +34,12 @@ function WeightedTraveralsTestSuite() {
     ];
 
     const edges = [
-      { _from: `${vName}/1`, _to: `${vName}/2`, weight: 1 },
-      { _from: `${vName}/2`, _to: `${vName}/3`, weight: 10 },
-      { _from: `${vName}/1`, _to: `${vName}/4`, weight: 1.5 },
-      { _from: `${vName}/4`, _to: `${vName}/6`, weight: 2 },
-      { _from: `${vName}/6`, _to: `${vName}/3`, weight: 0.5 },
-      { _from: `${vName}/3`, _to: `${vName}/5`, weight: 1 },
+      { _from: `${vName}/1`, _to: `${vName}/2`, weight: 1, "Data.Weight": 2, Data: { Weight: 20 } },
+      { _from: `${vName}/2`, _to: `${vName}/3`, weight: 10, "Data.Weight": 4, Data: { Weight: 40 } },
+      { _from: `${vName}/1`, _to: `${vName}/4`, weight: 1.5, "Data.Weight": 1, Data: { Weight: 10 } },
+      { _from: `${vName}/4`, _to: `${vName}/6`, weight: 2, "Data.Weight": 8, Data: { Weight: 80 } },
+      { _from: `${vName}/6`, _to: `${vName}/3`, weight: 0.5, "Data.Weight": 1, Data: { Weight: 1 } },
+      { _from: `${vName}/3`, _to: `${vName}/5`, weight: 1, "Data.Weight": 1, Data: { Weight: 1 } },
     ];
 
     db[vName].insert(vertexes);
@@ -89,6 +89,33 @@ function WeightedTraveralsTestSuite() {
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
+    },
+
+    testWeightAttributePath : function () {
+      const topLevelQueryString = `
+        FOR v, e, p IN 2 OUTBOUND "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {order: "weighted", weightAttribute: "Data.Weight"}
+          LIMIT 2
+          RETURN p.weights
+      `;
+
+      const topLevelQuerySingleArray = `
+        FOR v, e, p IN 2 OUTBOUND "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {order: "weighted", weightAttribute: ["Data.Weight"]}
+          LIMIT 2
+          RETURN p.weights
+      `;
+
+      const nestedQuery = `
+        FOR v, e, p IN 2 OUTBOUND "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {order: "weighted", weightAttribute: ["Data", "Weight"]}
+          LIMIT 2
+          RETURN p.weights
+      `;
+
+      assertEqual([[0, 2, 6], [0, 1, 9]], db._query(topLevelQueryString).toArray());
+      assertEqual([[0, 2, 6], [0, 1, 9]], db._query(topLevelQuerySingleArray).toArray());
+      assertEqual([[0, 20, 60], [0, 10, 90]], db._query(nestedQuery).toArray());
     },
 
     testShortestPath : function () {

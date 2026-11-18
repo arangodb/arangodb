@@ -1,0 +1,118 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "VectorIndex/Feature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Futures/Utilities.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Scheduler/SchedulerFeature.h"
+
+#include <faiss/utils/simd_levels.h>
+
+#include <chrono>
+#include <format>
+
+namespace arangodb {
+
+VectorIndexFeature::VectorIndexFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
+    : VectorIndexFeature(server, databaseFeature, VectorIndexFeatureOptions{}) {
+}
+
+VectorIndexFeature::VectorIndexFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, VectorIndexFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _databaseFeature{databaseFeature},
+      _options{std::move(options)} {
+  setOptional(false);
+  startsAfter<application_features::BasicFeaturePhaseServer>();
+}
+
+std::map<std::string, std::string> VectorIndexFeature::versionDetails() {
+  return {
+      {"faiss-simd-dynamic-dispatch",
+       faiss::SIMDConfig::has_dynamic_dispatch() ? "true" : "false"},
+      {"faiss-simd-level", faiss::SIMDConfig::get_level_name()},
+  };
+}
+
+bool VectorIndexFeature::shouldRunBuildManager() const {
+  if (!ServerState::instance()->isDBServer() &&
+      !ServerState::instance()->isSingleServer()) {
+    return false;
+  }
+  // Skip during transient startup modes that exit via _exit() without
+  // running destructors, which would leak the build manager's jthread.
+  if (_databaseFeature.checkVersion() || _databaseFeature.upgrade()) {
+    return false;
+  }
+  return true;
+}
+
+void VectorIndexFeature::start() {
+  if (!shouldRunBuildManager()) {
+    return;
+  }
+  TRI_ASSERT(faiss::SIMDConfig::has_dynamic_dispatch());
+  LOG_TOPIC("3f827", INFO, Logger::ENGINES) << std::format(
+      "faiss SIMD: dynamic dispatch {}, runtime level {}",
+      faiss::SIMDConfig::has_dynamic_dispatch() ? "enabled" : "disabled",
+      faiss::SIMDConfig::get_level_name());
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _buildManager.emplace(
+      _databaseFeature, server().getFeature<MaintenanceFeature>(),
+      server().getFeature<metrics::MetricsFeature>(),
+      *SchedulerFeature::SCHEDULER,
+      std::chrono::duration<double>(_options.buildRetryBackoffSecs));
+  _buildManager->start();
+}
+
+void VectorIndexFeature::beginShutdown() {
+  if (!_buildManager.has_value()) {
+    return;
+  }
+  _buildManager->beginShutdown();
+}
+
+void VectorIndexFeature::stop() {
+  if (!_buildManager.has_value()) {
+    return;
+  }
+  _buildManager->stop();
+}
+
+futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
+  if (!_buildManager.has_value()) {
+    // Build manager is not initialized (e.g. on Coordinator).
+    return futures::makeFuture(Result{});
+  }
+  return _buildManager->waitForIndexReady(indexId);
+}
+
+}  // namespace arangodb

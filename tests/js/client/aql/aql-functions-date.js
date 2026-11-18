@@ -3102,8 +3102,31 @@ function ahuacatlDateFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN DATE_ISO8601(DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value)))", { value: dt + "Z" });
       assertEqual([ dt + "Z" ], actual);
-    }
+    },
 
+    testDateSIGFPE: function() {
+      assertQueryWarningAndNull(errors.ERROR_NUMERIC_OVERFLOW.code, `RETURN DATE_ROUND("2000-01-01", 18014398509481984, "d")`);
+    },
+
+    testDateNegativeRound: function() {
+      const actual = getQueryResults(`
+        FOR date IN ["1969-12-30T20:17:30Z", "1969-12-31T20:17:40Z", "1970-01-01T22:00:00Z"]
+          COLLECT d = DATE_ROUND(date,1,"day")
+          AGGREGATE count = COUNT(1)
+          RETURN count`);
+      assertEqual([1,1,1], actual);
+    },
+
+    testDateISO8601NegativeOffsetMinutes: function() {
+      const actual = getQueryResults(`
+        FOR date IN ["2014-05-07T14:19:09.522-00:30", "2014-05-07T14:19:09.522+00:30", DATE_ISO8601("2014-05-07T14:19:09.522-03:30")]
+          RETURN DATE_ISO8601(date)`);
+      assertEqual(
+        [ '2014-05-07T14:49:09.522Z',
+          '2014-05-07T13:49:09.522Z',
+          '2014-05-07T17:49:09.522Z'],
+        actual);
+    },
   };
 }
 

@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/EncodingUtils.h"
+#include "Basics/Endian.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/fasthash.h"
 
@@ -54,6 +57,77 @@ constexpr char mediumString[] =
     "など独自のスタイルを構築していった。日本では初来日でいきなり武道館での公演"
     "を行うなど、爆発的な人気を誇ったが、英国ではなかなか人気が出ず、初期は典型"
     "的な「ビッグ・イン・ジャパン」状態であった。";
+
+constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
+
+// overwrite the declared uncompressed size (bytes 1-4, big endian)
+void setDeclaredSize(arangodb::basics::StringBuffer& compressed,
+                     uint32_t declaredSize) {
+  uint32_t encoded = arangodb::basics::hostToBig(declaredSize);
+  memcpy(compressed.begin() + 1, &encoded, sizeof(encoded));
+}
+
+ErrorCode lz4Uncompress(arangodb::basics::StringBuffer const& compressed,
+                        arangodb::basics::StringBuffer& uncompressed,
+                        size_t maxUncompressedSize =
+                            arangodb::encoding::defaultMaxUncompressedSize) {
+  return arangodb::encoding::lz4Uncompress(
+      reinterpret_cast<uint8_t const*>(compressed.data()), compressed.size(),
+      uncompressed, maxUncompressedSize);
+}
+
+ErrorCode lz4Compress(std::string_view input,
+                      arangodb::basics::StringBuffer& compressed) {
+  return arangodb::encoding::lz4Compress(
+      reinterpret_cast<uint8_t const*>(input.data()), input.size(), compressed);
+}
+
+// spans many 32 KiB accounting chunks, so the global counter really moves
+std::string const largeBody(1 << 20, 'x');
+
+// compresses body with each format and decodes it into a VPackBuffer,
+// the type the server uses for request payloads
+using Decoder = std::function<ErrorCode(std::string_view compressed,
+                                        VPackBuffer<uint8_t>& out,
+                                        ResourceUsageScope* scope)>;
+
+std::vector<std::pair<std::string, Decoder>> decoders(std::string_view body) {
+  auto bytes = [](std::string_view s) {
+    return reinterpret_cast<uint8_t const*>(s.data());
+  };
+  auto compressWith = [&](auto compress) {
+    basics::StringBuffer out(1024, false);
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, compress(bytes(body), body.size(), out));
+    return std::string(out.data(), out.size());
+  };
+  std::string gzip = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::gzipCompress(p, n, o); });
+  std::string deflate = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::zlibDeflate(p, n, o); });
+  std::string lz4 = compressWith(
+      [](auto p, auto n, auto& o) { return encoding::lz4Compress(p, n, o); });
+
+  return {
+      {"gzip",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::gzipUncompress(bytes(gzip), gzip.size(), out,
+                                         encoding::defaultMaxUncompressedSize,
+                                         scope);
+       }},
+      {"deflate",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::zlibInflate(bytes(deflate), deflate.size(), out,
+                                      encoding::defaultMaxUncompressedSize,
+                                      scope);
+       }},
+      {"lz4",
+       [=](auto, auto& out, auto* scope) {
+         return encoding::lz4Uncompress(bytes(lz4), lz4.size(), out,
+                                        encoding::defaultMaxUncompressedSize,
+                                        scope);
+       }},
+  };
+}
 }  // namespace
 
 TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
@@ -438,5 +512,159 @@ TEST(EncodingUtilsTest, testVPackBufferZlibInflateDeflate) {
     EXPECT_EQ(0, inflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
+  }
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4RoundTrip) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+
+  basics::StringBuffer uncompressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(compressed, uncompressed));
+
+  EXPECT_EQ(strlen(::shortString), uncompressed.size());
+  EXPECT_EQ(std::string_view(::shortString),
+            std::string_view(uncompressed.data(), uncompressed.size()));
+}
+
+// output larger than the buffer's initial ~157 bytes, as SimpleHttpResult has
+TEST(EncodingUtilsTest, testStringBufferLz4OutputExceedsInitialCapacity) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+  ASSERT_LT(compressed.size(), strlen(::mediumString));
+
+  basics::StringBuffer uncompressed(/*initializeMemory*/ false);
+  ASSERT_LT(uncompressed.capacity(), strlen(::mediumString));
+
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Uncompress(compressed, uncompressed));
+
+  EXPECT_EQ(strlen(::mediumString), uncompressed.size());
+  EXPECT_EQ(std::string_view(::mediumString),
+            std::string_view(uncompressed.data(), uncompressed.size()));
+}
+
+// reporting the claimed size instead of the real one would leak heap memory
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooLarge) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+  ::setDeclaredSize(compressed, 1024);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+// one byte over maxLz4UncompressedSize, rejected before anything is reserved
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeOverLimit) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+
+  size_t limit = strlen(::shortString);
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit + 1));
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT,
+            ::lz4Uncompress(compressed, uncompressed, limit));
+  EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  ::setDeclaredSize(compressed, static_cast<uint32_t>(limit));
+  EXPECT_EQ(TRI_ERROR_NO_ERROR,
+            ::lz4Uncompress(compressed, uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4DeclaredSizeTooSmall) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+  ::setDeclaredSize(compressed, 16);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+// valid header, corrupt block. the small declared size keeps the reserve small
+TEST(EncodingUtilsTest, testStringBufferLz4BrokenInput) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::shortString, compressed));
+  ::setDeclaredSize(compressed, 64);
+  memcpy(compressed.begin() + ::lz4HeaderLength, "not-valid-lz4-data", 18);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ::lz4Uncompress(compressed, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testStringBufferLz4TruncatedInput) {
+  basics::StringBuffer compressed;
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, ::lz4Compress(::mediumString, compressed));
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER,
+            encoding::lz4Uncompress(
+                reinterpret_cast<uint8_t const*>(compressed.data()),
+                compressed.size() / 2, uncompressed));
+  EXPECT_EQ(0, uncompressed.size());
+}
+
+// gzip and deflate stop once the output outgrows the limit, rather than
+// checking a declared size up front like lz4 does
+TEST(EncodingUtilsTest, testStringBufferGzipOutputOverLimit) {
+  basics::StringBuffer buffer(1024, true);
+  buffer.appendText(::mediumString);
+  ASSERT_EQ(TRI_ERROR_NO_ERROR, buffer.gzipCompress(false));
+
+  size_t limit = strlen(::mediumString);
+
+  basics::StringBuffer uncompressed;
+  EXPECT_EQ(
+      TRI_ERROR_RESOURCE_LIMIT,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit - 1));
+  EXPECT_EQ(0, uncompressed.size());
+
+  // the same payload decodes when the limit allows it
+  EXPECT_EQ(
+      TRI_ERROR_NO_ERROR,
+      encoding::gzipUncompress(reinterpret_cast<uint8_t const*>(buffer.data()),
+                               buffer.size(), uncompressed, limit));
+  EXPECT_EQ(limit, uncompressed.size());
+}
+
+TEST(EncodingUtilsTest, testUncompressRejectsBodyOverMemoryBudget) {
+  for (auto const& [name, decode] : decoders(::largeBody)) {
+    SCOPED_TRACE(name);
+    GlobalResourceMonitor global;
+    global.memoryLimit(256 * 1024);  // well below the 1 MiB body
+    ResourceMonitor monitor(global);
+    {
+      ResourceUsageScope scope(monitor);
+      VPackBuffer<uint8_t> out;
+      EXPECT_EQ(TRI_ERROR_OUT_OF_MEMORY, decode({}, out, &scope));
+      EXPECT_EQ(0, out.size());
+    }
+    // the partial reservation is gone once the scope is
+    EXPECT_EQ(0, global.current());
+  }
+}
+
+TEST(EncodingUtilsTest, testUncompressChargesMemoryBudgetForDecodedBody) {
+  for (auto const& [name, decode] : decoders(::largeBody)) {
+    SCOPED_TRACE(name);
+    GlobalResourceMonitor global;
+    global.memoryLimit(4 * 1024 * 1024);
+    ResourceMonitor monitor(global);
+    {
+      ResourceUsageScope scope(monitor);
+      VPackBuffer<uint8_t> out;
+      ASSERT_EQ(TRI_ERROR_NO_ERROR, decode({}, out, &scope));
+      EXPECT_EQ(::largeBody,
+                std::string_view(reinterpret_cast<char const*>(out.data()),
+                                 out.size()));
+      EXPECT_EQ(::largeBody.size(), scope.tracked());
+      EXPECT_GT(global.current(), 0);
+    }
+    EXPECT_EQ(0, global.current());
   }
 }

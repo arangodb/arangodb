@@ -50,14 +50,12 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
-      _usageLocked(false),
-      _exclusiveWrites(
-          trx->vocbase().engine<RocksDBEngine>().exclusiveWrites()) {}
+      _usageLocked(false) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {
   try {
     // cppcheck-suppress virtualCallInConstructor
-    releaseUsage();
+    releaseUsage();  // NOLINT(clang-analyzer-optin.cplusplus.VirtualCall)
   } catch (...) {
   }
 }
@@ -335,10 +333,6 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
 /// no other error occurred returns any other error code otherwise
 futures::Future<Result> RocksDBTransactionCollection::doLock(
     AccessMode::Type type) {
-  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
-    type = AccessMode::Type::EXCLUSIVE;
-  }
-
   if (!AccessMode::isWriteOrExclusive(type)) {
     // read operations do not require any locks in RocksDB
     _lockType = type;
@@ -405,10 +399,6 @@ futures::Future<Result> RocksDBTransactionCollection::doLock(
 
 /// @brief unlock a collection
 Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
-  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
-    type = AccessMode::Type::EXCLUSIVE;
-  }
-
   if (!AccessMode::isWriteOrExclusive(type) ||
       !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;

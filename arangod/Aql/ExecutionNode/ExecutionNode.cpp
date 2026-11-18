@@ -65,6 +65,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -75,6 +76,7 @@
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -158,8 +160,9 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
           length = node->numMembers();
         }
         if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
+          ast::RangeNode rangeNode(node);
+          auto low = rangeNode.getStart();
+          auto high = rangeNode.getEnd();
 
           if (low->isConstant() && high->isConstant() &&
               (low->isValueType(VALUE_TYPE_INT) ||
@@ -604,6 +607,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   if (isAsyncPrefetchEnabled()) {
     plan->getAst()->setContainsAsyncPrefetch();
   }
+
+  if (auto annotations = slice.get("annotations"); annotations.isObject()) {
+    for (auto [key, value] : VPackObjectIterator(annotations)) {
+      _annotations.emplace(key.copyString(), VPackString{value});
+    }
+  }
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -628,7 +637,8 @@ void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer,
+                                             FlattenType::INLINE_ASYNC);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -661,11 +671,14 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(
   other._depth = _depth;
   other._varUsageValid = _varUsageValid;
   other._isInSplicedSubquery = _isInSplicedSubquery;
+  other._isCallstackSplitEnabled = _isCallstackSplitEnabled;
 
   // point to current AST -> don't do deep copies.
   other._varsUsedLaterStack = _varsUsedLaterStack;
   other._varsValidStack = _varsValidStack;
   other._registerPlan = _registerPlan;
+
+  other._annotations = _annotations;
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -769,13 +782,19 @@ bool ExecutionNode::walkSubqueriesFirst(
 }
 
 bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                             bool onlyFlattenAsync) {
-  if (onlyFlattenAsync) {
-    return doWalk(worker, false, FlattenType::INLINE_ASYNC);
-  }
-  return doWalk(worker, false, FlattenType::INLINE_ALL);
+                             FlattenType ft) {
+  return doWalk(worker, false, ft);
 }
 
+/*
+ FlattenType::NONE : enumerate all paths, depth first through the execution DAG
+                     starting from this execution node in dependency direction
+                     (towards SINGLETON).
+ FlattenType::INLINE_ASYNC:
+ FlattenType::INLINE_ALL: enumerates dependencies of this execution node in a
+                          topoligical order.
+
+ */
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
                            bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
@@ -829,7 +848,8 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
-            ADB_PROD_ASSERT(!parallelStarter.empty());
+            ADB_PROD_ASSERT(!parallelStarter.empty())
+                << n->id() << " " << n->getTypeString();
             // If we are not INLINE_ALL, only flatten the MUTEX, which is the
             // counterpart of ASYNC
             auto& starter = parallelStarter.back();
@@ -849,6 +869,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
             }
           }
         }
+
         if (worker.done(n)) {
           nodes.pop_back();
           break;
@@ -880,7 +901,9 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
             // by the time this code was implemented only
             // GATHER nodes were allowed to have more than
             // one dependency, so all others indicated an issue on plan
-            TRI_ASSERT(n->getType() == GATHER);
+            TRI_ASSERT(n->getType() == GATHER)
+                << "unexpected multiple dependencies on node " << n->id() << " "
+                << n->getTypeString();
             if (flattenType == FlattenType::INLINE_ALL) {
               // Remember where we started the flattening process
               parallelStarter.emplace_back(n);
@@ -890,9 +913,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
               TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC);
               auto peek = n->getFirstDependency();
               if (peek->getType() == ASYNC) {
-                // Only Async nodes shall be flattened
-                // So yes we found the combination we want to falten here
-
+                // So yes we found the combination we want to flatten here
                 // Remember where we started the flattening process
                 parallelStarter.emplace_back(n);
                 // Add the next dependency to continue
@@ -1120,6 +1141,13 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
     builder.add("isCallstackSplitEnabled", VPackValue(true));
   }
 
+  if (!_annotations.empty()) {
+    VPackObjectBuilder guard(&builder, "annotations");
+    for (auto const& [name, value] : _annotations) {
+      builder.add(name, value.slice());
+    }
+  }
+
   TRI_ASSERT(builder.isOpenObject());
   doToVelocyPack(builder, flags);
 }
@@ -1153,13 +1181,11 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, Walke
     VarSet variablesUsedHere;
     ep->getVariablesUsedHere(variablesUsedHere);
     for (auto const& v : variablesUsedHere) {
-      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
-                << " ";
+      std::cout << ep->inputRegister(v) << " ";
     }
     std::cout << "regsSetHere: ";
     for (auto const& v : ep->getVariablesSetHere()) {
-      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
-                << " ";
+      std::cout << ep->outputRegister(v) << " ";
     }
     std::cout << "regsToClear: ";
     for (auto const& r : ep->getRegsToClear()) {
@@ -1298,8 +1324,46 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
-  return getRegisterPlan()->variableToRegisterId(variable);
+unsigned int ExecutionNode::inputDepth() const noexcept {
+  auto const* dependency = getFirstDependency();
+  // the SingletonNode has no input rows at all; report our own depth so that
+  // callers do not have to special-case it
+  TRI_ASSERT(dependency != nullptr || getType() == ExecutionNode::SINGLETON);
+  return dependency == nullptr ? _depth : dependency->_depth;
+}
+
+RegisterId ExecutionNode::outputRegister(Variable const* variable) const {
+  return getRegisterPlan()->resolverForDepth(_depth).resolve(*variable);
+}
+
+RegisterId ExecutionNode::inputRegister(Variable const* variable) const {
+  return getRegisterPlan()->resolverForDepth(inputDepth()).resolve(*variable);
+}
+
+RegisterId ExecutionNode::inputRegisterOrInvalid(
+    Variable const* variable) const noexcept {
+  if (variable == nullptr) {
+    return RegisterId::makeInvalid();
+  }
+  return getRegisterPlan()
+      ->resolverForDepth(inputDepth())
+      .tryResolve(variable->id);
+}
+
+RegisterId ExecutionNode::outputRegisterOrInvalid(
+    Variable const* variable) const noexcept {
+  if (variable == nullptr) {
+    return RegisterId::makeInvalid();
+  }
+  return getRegisterPlan()->resolverForDepth(_depth).tryResolve(variable->id);
+}
+
+RegisterResolver ExecutionNode::inputRegisterResolver() const noexcept {
+  return getRegisterPlan()->resolverForDepth(inputDepth());
+}
+
+RegisterResolver ExecutionNode::outputRegisterResolver() const noexcept {
+  return getRegisterPlan()->resolverForDepth(_depth);
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
@@ -1334,6 +1398,25 @@ auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
         _varsUsedLaterStack, _varsValidStack, getVariablesSetHere());
   }
   return _regsToKeepStack;
+}
+
+auto ExecutionNode::getAnnotation(std::string_view name) const noexcept
+    -> VPackSlice {
+  if (auto it = _annotations.find(name); it != _annotations.end()) {
+    return it->second;
+  }
+  return VPackSlice::nullSlice();
+}
+
+auto ExecutionNode::getAnnotatedString(std::string_view name) const noexcept
+    -> std::optional<std::string_view> {
+  if (auto it = _annotations.find(name); it != _annotations.end()) {
+    ADB_PROD_ASSERT(it->second.isString())
+        << "annotation `" << name << "` expected to be a string, found "
+        << it->second.typeName();
+    return it->second.stringView();
+  }
+  return std::nullopt;
 }
 
 RegisterCount ExecutionNode::getNrOutputRegisters() const {
@@ -1557,6 +1640,42 @@ bool ExecutionNode::isVarUsedLater(Variable const* variable) const noexcept {
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
 
+void ExecutionNode::setAnnotation(std::string name, VPackString value) {
+  _annotations.insert_or_assign(std::move(name), std::move(value));
+}
+
+void ExecutionNode::setAnnotation(std::string name, VPackSlice value) {
+  VPackString str{value};
+  setAnnotation(std::move(name), std::move(str));
+}
+
+void ExecutionNode::setAnnotation(std::string name, VPackValue value) {
+  VPackBuilder builder;
+  builder.add(value);
+  setAnnotation(std::move(name), builder.slice());
+}
+
+void ExecutionNode::setAnnotatedString(std::string name,
+                                       std::string_view value) {
+  setAnnotation(std::move(name), VPackValue(value));
+}
+
+void ExecutionNode::setAnnotatedFlag(std::string name, bool value) {
+  setAnnotation(std::move(name), VPackValue(value));
+}
+
+std::optional<bool> ExecutionNode::getAnnotatedFlag(
+    std::string_view name) const noexcept {
+  auto s = getAnnotation(name);
+  if (s.isNone() || s.isNull()) {
+    return std::nullopt;
+  }
+  ADB_PROD_ASSERT(s.isBool())
+      << "annotation `" << name << "` expected to be a flag, found "
+      << s.typeName();
+  return s.getBoolean();
+}
+
 void ExecutionNode::setId(ExecutionNodeId id) { _id = id; }
 
 void ExecutionNode::setRegsToClear(RegIdSet toClear) {
@@ -1565,14 +1684,6 @@ void ExecutionNode::setRegsToClear(RegIdSet toClear) {
 
 void ExecutionNode::setRegsToKeep(RegIdSetStack toKeep) {
   _regsToKeepStack = std::move(toKeep);
-}
-
-RegisterId ExecutionNode::variableToRegisterOptionalId(
-    Variable const* var) const {
-  if (var) {
-    return variableToRegisterId(var);
-  }
-  return RegisterId{RegisterId::maxRegisterId};
 }
 
 bool ExecutionNode::isIncreaseDepth() const {

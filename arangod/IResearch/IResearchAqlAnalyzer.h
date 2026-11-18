@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/CalculationQueryContext.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearchVPackTermAttribute.h"
 #include "StorageEngine/TransactionState.h"
@@ -46,7 +47,6 @@ namespace arangodb::aql {
 struct AstNode;
 class CalculationNode;
 class ExecutionPlan;
-class QueryContext;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
@@ -105,6 +105,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   explicit AqlAnalyzer(Options const& options);
 
+  ~AqlAnalyzer() final;
+
   irs::type_info::type_id type() const noexcept final {
     return irs::type<AqlAnalyzer>::id();
   }
@@ -117,6 +119,14 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   bool reset(std::string_view field) noexcept final;
 
  private:
+  // takes ownership of `value` and releases whatever _valueBuffer held before.
+  // the argument is evaluated before the old payload is freed, so the two may
+  // safely alias.
+  void resetValueBuffer(aql::AqlValue value) noexcept {
+    _valueBuffer.destroy();
+    _valueBuffer = value;
+  }
+
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
 
   friend bool tryOptimize(AqlAnalyzer* analyzer);
@@ -128,7 +138,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   Options _options;
   aql::AqlValue _valueBuffer;
-  std::unique_ptr<aql::QueryContext> _query;
+  std::unique_ptr<arangodb::aql::CalculationQueryContext> _query;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;

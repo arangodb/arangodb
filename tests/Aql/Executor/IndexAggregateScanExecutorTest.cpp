@@ -36,6 +36,7 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "Mocks/StorageEngineMock.h"
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
@@ -134,14 +135,6 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
     return LocalDocumentId{};
   }
 
-  void cacheCurrentKey(std::span<velocypack::Slice> keys) override {
-    size_t count = 0;
-    for (auto const& keyField : _keyFields) {
-      keys[count] = (*_current)[keyField];
-      count++;
-    }
-  }
-
   bool reset(std::span<velocypack::Slice> keys,
              std::span<velocypack::Slice> constants) override {
     _current = _values.begin();
@@ -224,9 +217,7 @@ class MockIndex : public Index {
         options.usedKeyFields, options.projectedFields, std::move(_values));
   }
   char const* typeName() const override { return "mock index"; }
-  IndexType type() const override {
-    return Index::IndexType::TRI_IDX_TYPE_UNKNOWN;
-  }
+  IndexType type() const override { return IndexType::Unknown; }
   bool canBeDropped() const override { return false; }
   bool isSorted() const override { return false; }
   bool isHidden() const override { return false; }
@@ -243,8 +234,7 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
  public:
   IndexAggregateScanExecutorTest()
       : vocbase{_server->getSystemDatabase()},
-        collection{LogicalCollection{
-            vocbase, velocypack::Slice::emptyObjectSlice(), true}} {}
+        collection{LogicalCollection{vocbase, CollectionDescriptor{}, true}} {}
   auto registerInfos(RegIdSet registers) -> RegisterInfos {
     return RegisterInfos{{},         // readable input registers
                          registers,  // writable output registers

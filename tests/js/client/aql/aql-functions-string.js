@@ -78,6 +78,18 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testRepeatSeparatorsCountTowardsOutputLimit: function () {
+      ['null', '""'].forEach((v) => {
+        const query = `RETURN REPEAT(${v}, 20000, REPEAT("x", 1024))`;
+        assertQueryWarningAndNull(errors.ERROR_RESOURCE_LIMIT.code, query);
+      });
+    },
+
+    testRepeatEmptyValueWithoutSeparatorIsEmpty: function () {
+      assertEqual([""], getQueryResults('RETURN REPEAT("", 1000000000000)'));
+      assertEqual([""], getQueryResults('RETURN REPEAT(null, 1000000000000, "")'));
+    },
+
     testRepeatInvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT(1)');
@@ -602,9 +614,9 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '[1,2,3,4]' ], getQueryResults("RETURN JSON_STRINGIFY([ 1, 2, 3, 4 ])"));
       assertEqual([ '[[1,2,3,4]]' ], getQueryResults("RETURN JSON_STRINGIFY([ [ 1, 2, 3, 4  ] ])"));
       assertEqual([ '{}' ], getQueryResults("RETURN JSON_STRINGIFY({ })"));
-      assertEqual([ '{"a":1,"b":2}' ], getQueryResults("RETURN JSON_STRINGIFY({ a: 1, b : 2     })"));
-      assertEqual([ '{"A":2,"a":1}' ], getQueryResults("RETURN JSON_STRINGIFY({ A: 2, a: 1 })"));
-      assertEqual([ '{"a":1,"b":"foo","c":null}' ], getQueryResults(`RETURN JSON_STRINGIFY({ "a": 1, "b": "foo", c: null })`));
+      assertEqual([ '{"a":1,"b":2}' ], getQueryResults("RETURN JSON_STRINGIFY({ a: 1, b : 2 })").map(v =>  JSON.stringify(JSON.parse(v), Object.keys(JSON.parse(v)).sort())));
+      assertEqual([ '{"A":2,"a":1}' ], getQueryResults( "RETURN JSON_STRINGIFY({ A: 2, a: 1 })").map(v => JSON.stringify( JSON.parse(v), Object.keys(JSON.parse(v)).sort())));
+      assertEqual([ '{"a":1,"b":"foo","c":null}' ], getQueryResults(`RETURN JSON_STRINGIFY({ "a": 1, "b": "foo", c: null })`).map(v => JSON.stringify( JSON.parse(v), Object.keys(JSON.parse(v)).sort())));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -648,6 +660,33 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ { a: 1, b: 2 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\" : 2     }')`));
       assertEqual([ { A: 2, a: 1 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"A\\": 2, \\"a\\": 1 }')`));
       assertEqual([ { a: 1, b: 'foo', c: null } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\": \\"foo\\", \\"c\\": null }')`));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23349
+    testJsonParseTopLevelFraction: function () {
+      assertEqual([ 0.3 ], getQueryResults("RETURN JSON_PARSE('0.3')"));
+      assertEqual([ [ true, true, true, true, true ] ], getQueryResults(
+        "RETURN [JSON_PARSE('0.3') == 0.3, JSON_PARSE('0.7') == 0.7, JSON_PARSE('0.1234567') == 0.1234567, " +
+        "JSON_PARSE('[0.3]')[0] == 0.3, JSON_PARSE('{\"a\": 0.3}').a == 0.3]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23386
+    testJsonParseExactlyRepresentableFractions: function () {
+      assertEqual([ [ 0.375, 0.015625 ] ], getQueryResults("RETURN [JSON_PARSE('0.375'), JSON_PARSE('0.015625')]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23386
+    testJsonParseIntegersBeyondUint64: function () {
+      assertEqual([ [ 391249510134149350000, 100000000000000010000 ] ],
+                  getQueryResults("RETURN [JSON_PARSE('391249510134149350000'), JSON_PARSE('100000000000000010000')]"));
+    },
+
+    // https://github.com/arangodb/arangodb/issues/23385
+    testJsonParseExponentIsStable: function () {
+      const actual = getQueryResults(
+        "FOR i IN 1..2000 LET a = JSON_PARSE('2.5e-3') LET b = JSON_PARSE('-3.5767597641555764e+16') " +
+        "FILTER a != 0.0025 OR b != -3.5767597641555764e+16 RETURN [i, a, b]");
+      assertEqual([], actual);
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -937,6 +976,13 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexMatchesValues: function () {
       [ 
+        ["", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["a", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["abc", "^[a-z0-9_-]{3,16}$", false, ["abc"] ],
+        ["", "^$", false, [""] ],
+        ["", "a*", false, [""] ],
+        ["", "(a)?b", false, null ],
+        ["", "", false, [""] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
         ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
@@ -1134,16 +1180,65 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test", "test", "test", "test")'); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS()'); 
       assertEqual([ -1 ], getQueryResults('RETURN CONTAINS("test", "test2", "test3")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, null)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS(4, 4)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ }, { })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ ], [ ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(3, null)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(null, null)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(4, 4)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS({ }, { })')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ ], [ ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(3, null)')); 
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that CONTAINS emits a warning for non-string inputs and
+// /        returns null
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsNonStringWarning: function () {
+      const warningCode = errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code;
+
+      const nonStringCases = [
+        'RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })',
+        'RETURN CONTAINS({ }, { })',
+        'RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])',
+        'RETURN CONTAINS([ 1, 2, 3 ], 2)',
+        'RETURN CONTAINS(4, 4)',
+        'RETURN CONTAINS(null, null)',
+        'RETURN CONTAINS("test2", 2)',
+        'RETURN CONTAINS(1234, "23")',
+        'RETURN CONTAINS(null, "yes")',
+        'RETURN CONTAINS(3, null)',
+      ];
+
+      nonStringCases.forEach(function (query) {
+        const data = db._query(query).data;
+        assertEqual([ null ], data.result, query);
+        assertEqual(1, data.extra.warnings.length, query);
+        assertEqual(warningCode, data.extra.warnings[0].code, query);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that CONTAINS does not emit a warning for string inputs
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsStringNoWarning: function () {
+      const stringCases = [
+        'RETURN CONTAINS("test2", "test")',
+        'RETURN CONTAINS("xxasdxx", "asd")',
+        'RETURN CONTAINS("test", "test2")',
+        'RETURN CONTAINS("test123", "")',
+        'RETURN CONTAINS("", "test123")',
+        'RETURN CONTAINS("test2", "test", true)',
+      ];
+
+      stringCases.forEach(function (query) {
+        const data = db._query(query).data;
+        assertEqual(0, data.extra.warnings.length, query);
+      });
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1171,11 +1266,14 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test contains false2
+// / @brief test contains with empty search string
 // //////////////////////////////////////////////////////////////////////////////
 
-    testContainsFalse2: function () {
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS("test123", "")'));
+    testContainsEmptySearch: function () {
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS("test123", "")'));
+      assertEqual([ 0 ], getQueryResults('RETURN CONTAINS("test123", "", true)'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS("", "")'));
+      assertEqual([ 0 ], getQueryResults('RETURN CONTAINS("", "", true)'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1201,6 +1299,32 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults(`RETURN CONTAINS("this is a test of this test", "this test", false)`));
       assertEqual([ -1 ], getQueryResults(`RETURN CONTAINS("this is a test of this test", "This", true)`));
       assertEqual([ false ], getQueryResults(`RETURN CONTAINS("this is a test of this test", "This", false)`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test contains indexed with multi-byte characters
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsIndexedMultiByte: function () {
+      assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("äb", "b", true)`));
+      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("äöü", "ü", true)`));
+      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("aäb", "b", true)`));
+      assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("€x", "x", true)`));
+      assertEqual([ 1 ], getQueryResults(`RETURN CONTAINS("a€b€", "€", true)`));
+      assertEqual([ 2 ], getQueryResults(`RETURN CONTAINS("😀x", "x", true)`));
+      assertEqual([ 4 ], getQueryResults(`RETURN CONTAINS("😀😀x", "x", true)`));
+      assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("😀😀x", "😀", true)`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test contains matches canonically equivalent characters
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsCanonicallyEquivalent: function () {
+      // e\u0301 and /u00e9 are both é encoded differently
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("caf\u00e9", "e\u0301", true)`));
+      assertEqual([ 3 ], getQueryResults(`RETURN CONTAINS("cafe\u0301", "\u00e9", true)`));
+      assertEqual([ -1 ], getQueryResults(`RETURN CONTAINS("cafe\u0301", "e", true)`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1332,6 +1456,29 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
         [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
         [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
+        [ '', '', 'foo', 'bar' ],
+        [ '', '', 'foo' ],
+        [ '', '', [ 'foo', 'baz' ], [ 'bar', 'qux' ] ],
+        [ '', '', { foo: 'bar' } ],
+        [ '', '', 'foo', 'bar', 1 ],
+        [ '_a_b_c_', 'abc', '', '_' ],
+        [ '_a_bc', 'abc', '', '_', 2 ],
+        [ '_a_b_c_', 'abc', [ '' ], [ '_' ] ],
+        [ '_a_b_c_', 'abc', { '': '_' } ],
+        [ '_a_bc', 'abc', { '': '_' }, 2 ],
+        [ '-ö-ü-', 'öü', '', '-' ],
+        [ 'x', '', '', 'x' ],
+        [ '_a-_c_', 'abc', [ 'b', '' ], [ '-', '_' ] ],
+        [ '<1><2>', 'baaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1><2>', 'baaaa', [ 'aaa', 'ba' ], [ '<2>', '<1>' ] ],
+        [ '<1><2>', 'abbbb', [ 'ab', 'bbb' ], [ '<1>', '<2>' ] ],
+        [ '<1><2>', 'baaaa', { 'ba': '<1>', 'aaa': '<2>' } ],
+        [ '<1><2>a', 'baaaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1><2><2>', 'baaaaaaa', [ 'ba', 'aaa' ], [ '<1>', '<2>' ] ],
+        [ '<1>b', 'bab', [ 'ba', 'ab' ], [ '<1>', '<2>' ] ],
+        [ 'xx', 'aaaaaa', 'aaa', 'x' ],
+        [ '123', 123, [ ], 'x' ],
+        [ '', null, 'n', 'x', 0 ],
       ];
 
       values.forEach(function (value) {
@@ -1347,6 +1494,17 @@ function ahuacatlStringFunctionsTestSuite () {
       });
     },
     
+    testSubstituteDuplicateEmptyKeyUsesLast: function () {
+      assertEqual([ '_a_b_c_' ], getQueryResults(`RETURN SUBSTITUTE('abc', { '': '-', '': '_' })`));
+    },
+
+    testSubstituteComputedValueUnchanged: function () {
+      const value = '0123456789abcdefghijklmnopqrstuvwxyz';
+      const expected = [ value + '1', value + '2' ];
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), 'x', 'y', 0)`));
+      assertEqual(expected, getQueryResults(`FOR i IN 1..2 RETURN SUBSTITUTE(CONCAT('${value}', i), [ ], 'y')`));
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////
@@ -1768,6 +1926,60 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first with a match shorter than the pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstMatchShorterThanPattern: function () {
+    // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
+    const decomposed = "\u1112\u1161\u11AB";
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("한", @s)`, { s: decomposed }));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("x한y", @s, 0, 1)`, { s: decomposed }));
+    // text has precomposed \u00e9 (1 unit), search is decomposed e\u0301 (2 units)
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_FIRST("caf\u00e9", "e\u0301", 0, 3)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN CONTAINS("한", @s, true)`, { s: decomposed }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1)`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 1, 1)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("aaaa", "aa", 4)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first and find_last with the largest end offset
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindMaxEndOffset: function () {
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("abc", "c", 0, 9223372036854775807)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("abc", "c", 1, 9223372036854775807)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 0, 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_first ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindFirstStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_FIRST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_FIRST("😀😀", "😀", 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find first function
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1885,6 +2097,61 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with a match shorter than the pattern
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastMatchShorterThanPattern: function () {
+    // precomposed U+D55C (1 UTF-16 unit) vs. its decomposed form (3 units)
+    const decomposed = "\u1112\u1161\u11AB";
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("한x한", @s)`, { s: decomposed }));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("x한y한", @s, 0, 1)`, { s: decomposed }));
+    // \u00e9 and e\u0301 are both represented as é
+    assertEqual([ 3 ], getQueryResults(`RETURN FIND_LAST(@t, @s, 0, 3)`, { t: "caf\u00e9", s: "e\u0301" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last with overlapping matches
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastOverlappingMatches: function () {
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaa", "aa")`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa")`));
+    assertEqual([ 1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 2)`));
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("aaaa", "aa", 3)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last terminates when a surrogate pair match exceeds end
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastSurrogatePairMatchPastEnd: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 0, 0)`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 0, 2)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a match starting before start inside a surrogate pair
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastStartInsideSurrogatePair: function () {
+    assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST("😀x", "😀", 1)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("😀😀", "😀", 1)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test find_last ignores a last match that only fits the end bound truncated
+// //////////////////////////////////////////////////////////////////////////////
+
+  testFindLastTruncatedMatchLength: function () {
+    // U+1D400 is a surrogate pair, U+FE0F a variation selector
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀", 0, 2)`));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST("𝐀𝐀", "𝐀")`));
+    assertEqual([ 0 ], getQueryResults(`RETURN FIND_LAST(@t, "a", 0, 2)`, { t: "a\uFE0Fa\uFE0F" }));
+    assertEqual([ 2 ], getQueryResults(`RETURN FIND_LAST(@t, "a")`, { t: "a\uFE0Fa\uFE0F" }));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test find_last function
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1910,6 +2177,62 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST('foo', 'bar', -1)`));
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST('foo', 'bar', 1, -1)`));
     assertEqual([ -1 ], getQueryResults(`RETURN FIND_LAST('foo', 'bar', 1, 0)`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartition: function () {
+    [
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-' ],
+      [ [ 'foo', '--', 'bar--baz' ], 'foo--bar--baz', '--' ],
+      [ [ '', 'foo', 'bar' ], 'foobar', 'foo' ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar' ],
+      [ [ 'foobar', '', '' ], 'foobar', 'baz' ],
+      [ [ 'möt', 'ör', 'head' ], 'mötörhead', 'ör' ],
+    ].forEach(function (v) {
+      assertEqual([ v[0] ], getQueryResults(`RETURN PARTITION(${JSON.stringify(v[1])}, ${JSON.stringify(v[2])})`));
+    });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function with occurrence parameter
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartitionOccurrence: function () {
+    [
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-', 1 ],
+      [ [ 'foo-bar', '-', 'baz' ], 'foo-bar-baz', '-', 2 ],
+      [ [ 'foo-bar', '-', 'baz' ], 'foo-bar-baz', '-', -1 ],
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-', -2 ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar', -1 ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar', 1 ],
+      [ [ 'foo-bar', '', '' ], 'foo-bar', '-', 5 ],
+      [ [ '', '', 'foo-bar' ], 'foo-bar', '-', -5 ],
+      [ [ 'foo-bar', '', '' ], 'foo-bar', ':', 5 ],
+      [ [ '', '', 'foo-bar' ], 'foo-bar', ':', -5 ]
+    ].forEach(function (v) {
+      assertEqual([ v[0] ], getQueryResults(`RETURN PARTITION(${JSON.stringify(v[1])}, ${JSON.stringify(v[2])}, ${v[3]})`));
+    });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartitionInvalid: function () {
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION()`);
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo')`);
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo', 'o', 1, 'extra')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION(123, 2)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION(null, 'x')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('test', null)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 2)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', '')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 'o')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 0)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 2.5)`);
   },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1968,7 +2291,7 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ '[1,2,3]yes' ], getQueryResults('RETURN CONCAT([ 1,2,3], "yes")'));
     assertEqual([ '[1,2,3]yes' ], getQueryResults('RETURN CONCAT([ 1 , 2, 3 ], "yes")'));
     assertEqual([ '{}yes' ], getQueryResults('RETURN CONCAT({ }, "yes")'));
-    assertEqual([ '{"a":"foo","b":2}yes' ], getQueryResults('RETURN CONCAT({ a: "foo", b: 2 }, "yes")'));
+    assertEqual([ '{"a":"foo","b":2}yes' ], getQueryResults('RETURN CONCAT({ a: "foo", b: 2 }, "yes")').map(v => JSON.stringify(JSON.parse(v.slice(0, -3)), Object.keys(JSON.parse(v.slice(0, -3))).sort()) + 'yes'));
     assertEqual([ '[1,"Quick"]["Brown"]falseFox' ], getQueryResults(`RETURN CONCAT([ 1, 'Quick' ], '', null, [ 'Brown' ], false, 'Fox')`));
   },
 
@@ -2135,8 +2458,7 @@ function ahuacatlStringFunctionsTestSuite () {
     assertEqual([ '[]' ], getQueryResults('RETURN LOWER([])'));
     assertEqual([ '[1,2,3]' ], getQueryResults('RETURN LOWER([1,2,3])'));
     assertEqual([ '{}' ], getQueryResults('RETURN LOWER({})'));
-    assertEqual([ '{"a":1,"b":2}' ], getQueryResults('RETURN LOWER({A:1,b:2})'));
-    assertEqual([ '{"a":1,"a":2,"b":3}' ], getQueryResults('RETURN LOWER({A:1,a:2,b:3})'));
+    assertEqual([ '{"a":1,"b":2}' ], getQueryResults('RETURN LOWER({A:1,b:2})').map(v => JSON.stringify(JSON.parse(v), Object.keys(JSON.parse(v)).sort())));
   },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2168,7 +2490,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '[]' ], getQueryResults('RETURN UPPER([])'));
       assertEqual([ '[1,2,3]' ], getQueryResults('RETURN UPPER([1,2,3])'));
       assertEqual([ '{}' ], getQueryResults('RETURN UPPER({})'));
-      assertEqual([ '{"A":1,"B":2}' ], getQueryResults('RETURN UPPER({a:1, b:2})'));
+      assertEqual([ '{"A":1,"B":2}' ], getQueryResults('RETURN UPPER({a:1, b:2})').map(v => JSON.stringify( JSON.parse(v), Object.keys(JSON.parse(v)).sort())));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2221,6 +2543,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "y" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", true)`));
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", [ ])`));
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", { })`));
+    },
+
+    testSubstringBytesLeftExtensionFromTheEndStaysInsideTheString: function () {
+      // the 64-byte string's head byte 0x80 looks like a UTF-8 continuation byte
+      const query = `FOR a IN [["abc", "${'x'.repeat(64)}"]] RETURN SUBSTRING_BYTES(a[0], 3, 0, 1)`;
+      assertEqual([ 'c' ], getQueryResults(query));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('a🤡', 5, 0, 1)`));
     },
 
     testSubstringBytes: function () {
@@ -2550,7 +2879,6 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ 'f79408e5ca998cd53faf44af31e6eb45' ], getQueryResults(`RETURN MD5([1,2])`));
       assertEqual([ '99914b932bd37a50b983c5e7c90ae93b' ], getQueryResults(`RETURN MD5({ })`));
       assertEqual([ '99914b932bd37a50b983c5e7c90ae93b' ], getQueryResults(`RETURN MD5({})`));
-      assertEqual([ '608de49a4600dbb5b173492759792e4a' ], getQueryResults(`RETURN MD5({a:1,b:2})`));
       assertEqual([ 'c7cb8c1df686c0219d540849efe3bce3' ], getQueryResults(`RETURN MD5('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]')`));
     },
 

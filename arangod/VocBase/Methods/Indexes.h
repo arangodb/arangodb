@@ -63,7 +63,7 @@ struct Indexes {
       arangodb::velocypack::Builder&, transaction::Methods* trx = nullptr);
 
   static futures::Future<arangodb::Result> createIndex(
-      LogicalCollection&, Index::IndexType, std::vector<std::string> const&,
+      LogicalCollection&, IndexType, std::vector<std::string> const&,
       bool unique, bool sparse, bool estimates);
 
   static futures::Future<arangodb::Result> ensureIndex(

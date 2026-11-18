@@ -50,7 +50,7 @@ function dealing_with_attribute_nameSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_an_empty_attribute_name: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = { "" : "a", "foo" : "b" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -65,34 +65,13 @@ function dealing_with_attribute_nameSuite () {
       assertTrue(doc.parsedBody.hasOwnProperty(('foo')));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // queries a document with an empty attribute ;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_queries_a_document_with_an_empty_attribute_name: function() {
-      let cmd = api + "?collection=" + cn;
-      let body = { "" : "a", "foo" : "b" };
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-
-      cmd = "/_api/simple/all";
-      body = { "collection" : cn };
-      doc = arango.PUT_RAW(cmd, body);
-
-      let documents = doc.parsedBody['result'];
-
-      assertEqual(documents.length, 1);
-      assertTrue(documents[0].hasOwnProperty(('')));
-      assertTrue(documents[0].hasOwnProperty(('foo')));
-    },
 
     ////////////////////////////////////////////////////////////////////////////////;
     // creates a document with reserved attribute names;
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_reserved_attribute_names: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = { "_rev" : "99", "foo" : "002", "_id" : "meow", "_from" : "a", "_to" : "b", "_test" : "c", "meow" : "d" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -120,7 +99,7 @@ function dealing_with_attribute_nameSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_nested_attribute_names: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = { "a" : "1", "b" : { "b" : "2" , "a" : "3", "": "4", "_key": "moetoer", "_from": "5", "_lol" : false, "c" : 6 } };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -150,7 +129,7 @@ function dealing_with_attribute_nameSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_duplicate_attribute_names: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = '{ "a" : "1", "b" : "2", "a" : "3" }';
       let doc = arango.POST_RAW(cmd, body);
 
@@ -167,7 +146,7 @@ function dealing_with_attribute_nameSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_nested_duplicate_attribute_names: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = '{ "a" : "1", "b" : { "b" : "2" , "c" : "3", "b": "4" } }';
       let doc = arango.POST_RAW(cmd, body);
 

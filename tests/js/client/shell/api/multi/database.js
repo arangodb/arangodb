@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
+/* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -69,8 +69,8 @@ function dealing_with_database_information_methodsSuite () {
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       assertEqual(doc.parsedBody["result"]["name"], "_system", doc);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertTrue(doc.parsedBody["result"]["isSystem"]);
+      assertUndefined(doc.parsedBody["result"]["path"]);
     }
   };
 }
@@ -300,15 +300,15 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(api + "/current");
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], "_system");
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertTrue(doc.parsedBody['result']["isSystem"]);
+      assertUndefined(doc.parsedBody['result']["path"]);
 
       //  retrieve information about new database;
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], name);
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertFalse(doc.parsedBody['result']["isSystem"]);
+      assertUndefined(doc.parsedBody['result']["path"]);
 
       doc = arango.DELETE_RAW(api + `/${name}`);
       assertEqual(doc.code, 200);
@@ -336,8 +336,8 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], name);
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertFalse(doc.parsedBody['result']["isSystem"]);
+      assertUndefined(doc.parsedBody['result']["path"]);
 
       //  retrieve information about user "admin";
       doc = arango.GET_RAW("/_db/_system/_api/user/admin");
@@ -378,8 +378,8 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody["result"]["name"], name);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertFalse(doc.parsedBody["result"]["isSystem"]);
+      assertUndefined(doc.parsedBody["result"]["path"]);
 
       //  retrieve information about user "admin";
       doc = arango.GET_RAW("/_db/_system/_api/user/admin");
@@ -429,8 +429,8 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody["result"]["name"], name);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertFalse(doc.parsedBody["result"]["isSystem"]);
+      assertUndefined(doc.parsedBody["result"]["path"]);
 
       doc = arango.DELETE_RAW(api + `/${name}`);
       assertEqual(doc.code, 200, doc);

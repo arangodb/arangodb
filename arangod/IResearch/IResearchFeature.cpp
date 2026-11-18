@@ -46,7 +46,6 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "IResearch/IResearchCommon.h"
@@ -54,6 +53,8 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOptionsProvider.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
+#include "IResearch/IResearchLinkDefinition.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
@@ -323,7 +324,7 @@ Result upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         TRI_ASSERT(index != nullptr);
-        if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        if (index->type() == IndexType::IResearchLink) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
           TRI_ASSERT(indexPtr != nullptr);
@@ -342,7 +343,7 @@ Result upgradeArangoSearchLinkCollectionName(
             if (auto* engine = dynamic_cast<RocksDBEngine*>(&vocbase.engine());
                 engine != nullptr) {
               auto builder = collection->toVelocyPackIgnore(
-                  {"path", "statusString"},
+                  {"path"},
                   LogicalDataSource::Serialization::PersistenceWithInProgress);
               auto res = engine->writeCreateCollectionMarker(
                   vocbase.id(), collection->id(), builder.slice(),
@@ -561,26 +562,6 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   // (filter expression, analyzer)
   // cannot be used in analyzers!
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
-}
-
-template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory,
-                           application_features::ApplicationServer& server) {
-  if (!server.hasFeature<T>()) {
-    return;
-  }
-  auto& engine = server.getFeature<T>();
-  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-  // TODO(MBkkt) remove std::string and update IndexFactory interface
-  auto r = engineFactory.emplace(
-      std::string{StaticStrings::ViewArangoSearchType}, factory);
-  if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        r.errorNumber(),
-        absl::StrCat("failure registering IResearch link factory with index "
-                     "factory from feature '",
-                     engine.name(), "': ", r.errorMessage()));
-  }
 }
 
 void registerFunctions(aql::AqlFunctionFeature& functions) {
@@ -844,11 +825,7 @@ IResearchFeature::IResearchFeature(
       _searchExecutionPool(
           metricsRegistry.add(arangodb_search_execution_threads_demand{})) {
   setOptional(true);
-#ifdef USE_V8
-  startsAfter<application_features::V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
 #ifdef USE_ENTERPRISE
@@ -857,6 +834,8 @@ IResearchFeature::IResearchFeature(
   manager.limit = _options.columnsCacheLimit;
 #endif
 }
+
+IResearchFeature::~IResearchFeature() = default;
 
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
@@ -939,8 +918,6 @@ void IResearchFeature::stop() {
   _searchExecutionPool.stop();
 }
 
-void IResearchFeature::unprepare() { TRI_ASSERT(isEnabled()); }
-
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
   std::filesystem::path path{dbPathFeature.directory()};
@@ -1016,6 +993,11 @@ bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
 }
 
 void IResearchFeature::registerRecoveryHelper() {
+  if (ServerState::instance()->isCoordinator()) {
+    // no local WAL to recover on coordinators
+    return;
+  }
+
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
@@ -1039,10 +1021,46 @@ void IResearchFeature::registerRecoveryHelper() {
 }
 
 void IResearchFeature::registerIndexFactory() {
-  _clusterFactory = IResearchLinkCoordinator::createFactory(server());
-  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
-  _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
-  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+  if (!server().hasFeature<StorageEngine>()) {
+    return;
+  }
+  auto& engine = server().getFeature<StorageEngine>();
+
+  auto addDefinition = [&]() {
+    auto r = engine.registerIndexDefinition(
+        StaticStrings::ViewArangoSearchType,
+        std::make_unique<IResearchLinkDefinition>(server()));
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch link definition with "
+                       "index type catalog from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
+  auto addInvertedDefinition = [&]() {
+    auto r = engine.registerIndexDefinition(
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+        std::make_unique<IResearchInvertedIndexDefinition>(server()));
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering IResearch inverted index "
+                       "definition with index type catalog from feature '",
+                       engine.name(), "': ", r.errorMessage()));
+    }
+  };
+
+  if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
+    engine.setLinkCreator(&createLinkCoordinator);
+    addDefinition();
+    addInvertedDefinition();
+  } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
+    engine.setLinkCreator(&createRocksDBLink);
+    addDefinition();
+    addInvertedDefinition();
+  }
 }
 
 #ifdef USE_ENTERPRISE
@@ -1065,17 +1083,5 @@ bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
   return _options.columnsCacheOnlyLeader;
 }
 #endif
-
-template<typename Engine>
-IndexTypeFactory& IResearchFeature::factory() {
-  if constexpr (std::is_same_v<Engine, ClusterEngine>) {
-    return *_clusterFactory;
-  } else {
-    static_assert(std::is_same_v<Engine, RocksDBEngine>);
-    return *_rocksDBFactory;
-  }
-}
-template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
-template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
 
 }  // namespace arangodb::iresearch

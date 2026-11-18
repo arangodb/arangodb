@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/CollectionDescriptors.h"
 #include "Metrics/MetricsFeature.h"
 #include <absl/strings/str_replace.h>
 
@@ -89,7 +90,7 @@ class QueryTestMulti
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -296,9 +297,9 @@ class QueryOptimization : public QueryTestMulti {
 
     // add collection_1
     {
-      auto collectionJson =
-          VPackParser::fromJson("{ \"name\": \"collection_1\" }");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      auto colDescriptor =
+          arangodb::tests::testCollectionDescriptor("collection_1");
+      logicalCollection1 = vocbase().createCollection(colDescriptor);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 

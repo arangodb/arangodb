@@ -150,37 +150,23 @@ class TestBuildVariantWorkflows:
 
         workflows = result["workflows"]
 
-        # Check non-sanitizer x64 workflow
+        # Check non-sanitizer x64 workflow (4.0 has no frontend build)
         x64_pr_jobs = workflows["x64-nightly"]["jobs"]
-        build_jobs = [
-            j for j in x64_pr_jobs if "compile-linux" in j or "build-frontend" in j
-        ]
         assert any(
             j["compile-linux"]["name"] == "build-x64"
-            for j in build_jobs
+            for j in x64_pr_jobs
             if "compile-linux" in j
         )
-        assert any(
-            j["build-frontend"]["name"] == "build-x64-frontend"
-            for j in build_jobs
-            if "build-frontend" in j
-        )
+        assert not any("build-frontend" in j for j in x64_pr_jobs)
 
         # Check TSAN x64 workflow
         x64_tsan_jobs = workflows["x64-nightly-tsan"]["jobs"]
-        build_jobs_tsan = [
-            j for j in x64_tsan_jobs if "compile-linux" in j or "build-frontend" in j
-        ]
         assert any(
             j["compile-linux"]["name"] == "build-x64-tsan"
-            for j in build_jobs_tsan
+            for j in x64_tsan_jobs
             if "compile-linux" in j
         )
-        assert any(
-            j["build-frontend"]["name"] == "build-x64-tsan-frontend"
-            for j in build_jobs_tsan
-            if "build-frontend" in j
-        )
+        assert not any("build-frontend" in j for j in x64_tsan_jobs)
 
     def test_workflows_have_independent_test_jobs(self):
         """Test that test jobs are created independently for each workflow."""
@@ -212,11 +198,11 @@ class TestBuildVariantWorkflows:
         # Test jobs should require their respective build jobs
         for job in x64_pr_test_jobs:
             requires = job["run-linux-tests"]["requires"]
-            assert "build-x64-frontend" in requires
+            assert requires == ["build-x64"]
 
         for job in x64_tsan_test_jobs:
             requires = job["run-linux-tests"]["requires"]
-            assert "build-x64-tsan-frontend" in requires
+            assert requires == ["build-x64-tsan"]
 
     def test_nightly_workflows_with_multiple_sanitizers(self):
         """Test that nightly builds work correctly with multiple sanitizers."""
@@ -358,3 +344,73 @@ class TestBuildVariantWorkflows:
             "instrumented_only_job" in j["run-linux-tests"]["name"]
             for j in tsan_test_jobs
         )
+
+
+class TestVariantSelection:
+    """Test which build variants the CLI flags select."""
+
+    @staticmethod
+    def base_args():
+        return dict(
+            tsan=False,
+            alubsan=False,
+            no_sanitizer=False,
+            coverage=False,
+            test_image="img",
+            arangosh_args="",
+            extra_args="",
+            gtest=False,
+            full=False,
+            clang_tidy=False,
+            replication_two=False,
+            create_test_docker_images="none",
+            create_preview_docker_images="none",
+            validate_only=False,
+            test_suite="",
+        )
+
+    def variants(self, **flags):
+        from generate_config import create_generator_config
+
+        return create_generator_config(**{**self.base_args(), **flags}).build_variants
+
+    def test_no_flags_build_only(self):
+        """All of without-instrumentation/with-tsan/with-alubsan off: compile the
+        non-instrumented build, but run no tests."""
+        from generate_config import create_generator_config
+
+        config = create_generator_config(**self.base_args())
+        assert config.build_variants == [BuildVariant.NORMAL]
+        assert config.build_only
+
+    def test_build_only_workflows_have_no_test_jobs(self):
+        from generate_config import create_generator_config
+
+        config = create_generator_config(
+            **{**self.base_args(), "create_test_docker_images": "alpine"}
+        )
+        gen = CircleCIGenerator(config, base_config={"version": 2.1})
+        test_def = TestBuildVariantWorkflows().create_test_def()
+        workflows = gen.generate([test_def])["workflows"]
+        assert sorted(workflows) == sorted(["x64-pr", "aarch64-pr", "test-docker-images"])
+        for arch in ("x64", "aarch64"):
+            job_types = {next(iter(j)) for j in workflows[f"{arch}-pr"]["jobs"]}
+            assert "compile-linux" in job_types
+            assert "run-linux-tests" not in job_types
+        names = [j[next(iter(j))]["name"] for j in workflows["x64-pr"]["jobs"]]
+        assert "build-x64" in names
+
+    def test_variant_flag_keeps_tests(self):
+        from generate_config import create_generator_config
+
+        for flags in ({"no_sanitizer": True}, {"tsan": True}):
+            config = create_generator_config(**{**self.base_args(), **flags})
+            assert not config.build_only
+
+    def test_flags_select_variants(self):
+        assert self.variants(no_sanitizer=True) == [BuildVariant.NORMAL]
+        assert self.variants(tsan=True) == [BuildVariant.TSAN]
+        assert self.variants(no_sanitizer=True, alubsan=True) == [
+            BuildVariant.NORMAL,
+            BuildVariant.ALUBSAN,
+        ]

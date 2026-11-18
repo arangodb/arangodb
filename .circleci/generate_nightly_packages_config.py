@@ -14,19 +14,26 @@ With --pr-run true the workflow is emitted as "nightly-packages-pr" instead
 of "nightly-packages": same job graph, but the run is recognizable as a PR
 test everywhere the workflow name shows up, and the publish job (which reads
 the pr-run pipeline parameter itself) degrades to a dry run.
+
+trigger-benchmarks (start the benchmarks pipeline after a successful
+publish) is kept only with --run-benchmarks-on-success true, outside
+pr-run and with the Ubuntu images built: a dry run publishes nothing, and
+without those images there is nothing to benchmark.
 """
 
 import argparse
 import sys
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import yaml
 
 WORKFLOW_NAME = "nightly-packages"
+TRIGGER_BENCHMARKS = "trigger-benchmarks"
 PR_WORKFLOW_NAME = "nightly-packages-pr"
 ARCHES = ("amd64", "arm64")
-PACKAGE_FORMATS = ("deb", "rpm", "tar")
-DOCKER_DISTROS = ("alpine", "deb")
+PACKAGE_FORMATS = ("tar",)
+DOCKER_IMAGES = ("core", "client-tools")
+FIPS_IMAGE = "core-fips"
 
 JobEntry = Union[str, Dict[str, Any]]
 
@@ -38,45 +45,67 @@ def parse_bool(value: str) -> bool:
 
 
 def disabled_jobs(
-    deb: bool,
-    rpm: bool,
     tar: bool,
-    alpine_image: bool,
-    deb_image: bool,
+    ubuntu_images: bool,
+    fips_image: bool,
     sign: bool,
     scan: bool,
     security: bool,
 ) -> Set[str]:
     """Workflow job names (workflow-level "name", not job type) to drop."""
-    formats = {"deb": deb, "rpm": rpm, "tar": tar}
     drop: Set[str] = set()
 
-    for fmt, enabled in formats.items():
-        if not enabled:
-            drop.update(f"{fmt}-enterprise-{arch}" for arch in ARCHES)
-        if not enabled or not security:
-            drop.update(f"security-check-{fmt}-{arch}" for arch in ARCHES)
+    if not tar:
+        drop.update(f"tar-enterprise-{arch}" for arch in ARCHES)
+    if not tar or not security:
+        drop.update(f"security-check-tar-{arch}" for arch in ARCHES)
 
-    # Each distro image has its own build-*-image flag, and every built
-    # image gets its own Trivy job.
-    distros = {"alpine": alpine_image, "deb": deb_image}
-    for distro, enabled in distros.items():
-        if not enabled:
-            drop.update(f"docker-enterprise-{distro}-{arch}" for arch in ARCHES)
-        if not enabled or not security:
+    # One docker job per architecture builds BOTH Ubuntu-based images
+    # (core-preview and client-tools-preview); each built image gets its
+    # own Trivy job.
+    if not ubuntu_images:
+        drop.update(f"docker-enterprise-{arch}" for arch in ARCHES)
+    for image in DOCKER_IMAGES:
+        if not ubuntu_images or not security:
             drop.update(
-                f"security-check-docker-{distro}-{arch}" for arch in ARCHES
+                f"security-check-docker-{image}-{arch}" for arch in ARCHES
             )
 
-    # scan/sign cover packages only; without any package format they would
-    # find nothing to work on.
-    any_packages = any(formats.values())
-    if not scan or not any_packages:
+    # The regular compiles feed the tarballs and the Ubuntu images; a
+    # FIPS-only run needs neither.
+    if not tar and not ubuntu_images:
+        drop.update(f"compile-enterprise-{arch}" for arch in ARCHES)
+
+    # The FIPS server image never reuses the regular build (FipsFeature is
+    # only compiled in with USE_FIPS): it has its own compile, docker job
+    # and Trivy job per architecture.
+    if not fips_image:
+        drop.update(f"compile-enterprise-fips-{arch}" for arch in ARCHES)
+        drop.update(f"docker-enterprise-fips-{arch}" for arch in ARCHES)
+    if not fips_image or not security:
+        drop.update(f"security-check-docker-{FIPS_IMAGE}-{arch}" for arch in ARCHES)
+
+    # scan/sign cover packages only; without the tarballs they would find
+    # nothing to work on.
+    if not scan or not tar:
         drop.add("scan-packages")
-    if not sign or not any_packages:
+    if not sign or not tar:
         drop.add("sign-packages")
 
     return drop
+
+
+def benchmarks_skip_reason(
+    run_benchmarks: bool, pr_run: bool, ubuntu_images: bool
+) -> Optional[str]:
+    """Why trigger-benchmarks is dropped, or None when it stays."""
+    if not run_benchmarks:
+        return "run-benchmarks-on-success is false"
+    if pr_run:
+        return "pr-run publishes nothing"
+    if not ubuntu_images:
+        return "build-ubuntu-images is false, no image to benchmark"
+    return None
 
 
 def entry_name(entry: JobEntry) -> str:
@@ -175,13 +204,26 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
     if "publish-nightly" not in known:
         raise ValueError("publish-nightly is missing from the workflow")
 
+    # The benchmarks run against what this nightly published, so their
+    # trigger must wait for a successful publish and nothing else.
+    for entry in workflow["jobs"]:
+        if entry_name(entry) != TRIGGER_BENCHMARKS:
+            continue
+        deps: List[JobEntry] = []
+        if isinstance(entry, dict):
+            [(_, job_config)] = entry.items()
+            deps = (job_config or {}).get("requires", [])
+        if len(deps) != 1 or dep_name(deps[0]) != "publish-nightly" or not blocks_on(deps[0]):
+            raise ValueError(
+                f"{TRIGGER_BENCHMARKS} must require exactly publish-nightly "
+                f"(success), got {deps}"
+            )
+
     # publish-nightly must gate on every artifact-producing job that is
     # still in the workflow — DIRECTLY, not only transitively through the
     # scan/sign/security jobs, which can all be disabled. Without this,
     # a gates-all-off run would let publish race the packaging jobs.
     artifact_prefixes = (
-        "deb-enterprise",
-        "rpm-enterprise",
         "tar-enterprise",
         "docker-enterprise",
     )
@@ -268,32 +310,50 @@ def check_workflow(config: Dict[str, Any], name: str = WORKFLOW_NAME) -> None:
             f"{expected}"
         )
 
+    # ... and the verdict file each docker scan job writes must carry the
+    # SAME item name: it is derived from the gate-item-image parameter,
+    # not the job name, and the two drifting apart deadlocks the publish
+    # ("no gate verdict recorded" — the image parameter's -preview suffix
+    # once leaked into the verdict names exactly this way).
+    for entry in workflow["jobs"]:
+        if not isinstance(entry, dict):
+            continue
+        [(job_type, job_config)] = entry.items()
+        if job_type != "security-check-docker-image":
+            continue
+        composed = (
+            "security-check-docker-"
+            f"{(job_config or {}).get('gate-item-image')}-"
+            f"{(job_config or {}).get('arch')}"
+        )
+        if composed != entry_name(entry):
+            raise ValueError(
+                f"{entry_name(entry)}: gate-item-image/arch compose the "
+                f"verdict item {composed!r}, which must match the job "
+                "name (publish-nightly waits for that exact verdict)"
+            )
+
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     if not any(
-        (
-            args.build_debian_packages,
-            args.build_rpm_packages,
-            args.build_tarballs,
-            args.build_alpine_images,
-            args.build_deb_images,
-        )
+        (args.build_tarballs, args.build_ubuntu_images, args.build_fips_image)
     ):
         raise ValueError(
-            "nothing selected: enable at least one of build-debian-packages, "
-            "build-rpm-packages, build-tarballs, build-alpine-images, "
-            "build-deb-images"
+            "nothing selected: enable at least one of build-tarballs, "
+            "build-ubuntu-images, build-fips-image"
         )
     drop = disabled_jobs(
-        deb=args.build_debian_packages,
-        rpm=args.build_rpm_packages,
         tar=args.build_tarballs,
-        alpine_image=args.build_alpine_images,
-        deb_image=args.build_deb_images,
+        ubuntu_images=args.build_ubuntu_images,
+        fips_image=args.build_fips_image,
         sign=args.sign_packages,
         scan=args.scan_viruses,
         security=args.security_check,
     )
+    if benchmarks_skip_reason(
+        args.run_benchmarks_on_success, args.pr_run, args.build_ubuntu_images
+    ):
+        drop.add(TRIGGER_BENCHMARKS)
     name = workflow_name(args.pr_run)
     if args.pr_run:
         base["workflows"][name] = base["workflows"].pop(WORKFLOW_NAME)
@@ -307,15 +367,14 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
     parser.add_argument("--base", required=True, help="path to base_nightly_packages.yml")
     parser.add_argument("-o", "--output", required=True, help="continuation config to write")
     for option in (
-        "build-debian-packages",
-        "build-rpm-packages",
         "build-tarballs",
-        "build-alpine-images",
-        "build-deb-images",
+        "build-ubuntu-images",
+        "build-fips-image",
         "sign-packages",
         "scan-viruses",
         "security-check",
         "pr-run",
+        "run-benchmarks-on-success",
     ):
         parser.add_argument(
             f"--{option}",
@@ -342,6 +401,11 @@ def main(argv: List[str]) -> int:
         entry_name(entry) for entry in config["workflows"][name]["jobs"]
     )
     print(f"Generated {args.output} with workflow {name} and jobs: {workflow_jobs}")
+    reason = benchmarks_skip_reason(
+        args.run_benchmarks_on_success, args.pr_run, args.build_ubuntu_images
+    )
+    if reason:
+        print(f"Not triggering benchmarks: {reason}")
     return 0
 
 

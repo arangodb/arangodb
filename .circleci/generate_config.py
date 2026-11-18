@@ -149,13 +149,15 @@ def create_generator_config(
     test_image: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
+    fips: bool = False,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -169,8 +171,10 @@ def create_generator_config(
     # Build list of requested build variants
     build_variants = []
 
-    if no_sanitizer or (not tsan and not alubsan and not coverage):
-        # Include non-instrumented build if explicitly requested or no variants specified
+    # No variant requested: compile the non-instrumented build only, without
+    # any tests.
+    build_only = not (no_sanitizer or tsan or alubsan or coverage)
+    if no_sanitizer or build_only:
         build_variants.append(BuildVariant.NORMAL)
     if tsan:
         build_variants.append(BuildVariant.TSAN)
@@ -179,22 +183,17 @@ def create_generator_config(
     if coverage:
         build_variants.append(BuildVariant.COVERAGE)
 
-    assert build_variants, "build_variants must not be empty (logic error)"
-
     # Create filter criteria
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
-        v8=not arangod_without_v8,
+        clang_tidy=clang_tidy,
         test_suite=test_suite,
     )
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
-    extra_args_list = TestArguments.parse_args_string(
-        extra_args or "",
-        add_skip_server_js=arangod_without_v8,
-    )
+    extra_args_list = TestArguments.parse_args_string(extra_args or "")
 
     test_execution = TestExecutionConfig(
         arangosh_args=arangosh_args_list,
@@ -205,6 +204,7 @@ def create_generator_config(
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
         create_test_docker_images=create_test_docker_images,
+        create_preview_docker_images=create_preview_docker_images,
         test_image=test_image,
     )
 
@@ -214,6 +214,8 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        fips=fips,
+        build_only=build_only,
     )
 
 
@@ -240,12 +242,20 @@ def create_generator_config(
 @click.option(
     "--no-sanitizer",
     is_flag=True,
-    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/"
+    "--coverage); without any of them only the non-instrumented build is "
+    "compiled, without tests",
 )
 @click.option(
     "--coverage",
     is_flag=True,
     help="Enable coverage build",
+)
+@click.option(
+    "--fips",
+    is_flag=True,
+    help="FIPS mode for all workflows: USE_FIPS builds, tests with "
+    "--server.fips-enable, -fips workflow names, FIPS server Docker images",
 )
 @click.option(
     "-t",
@@ -267,11 +277,6 @@ def create_generator_config(
     help="Additional arguments to append to testing.js",
 )
 @click.option(
-    "--arangod-without-v8",
-    is_flag=True,
-    help="Run without JavaScript (V8 disabled)",
-)
-@click.option(
     "--gtest",
     is_flag=True,
     help="Only run gtest tests",
@@ -282,6 +287,11 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
+    "--clang-tidy",
+    is_flag=True,
+    help="Schedule the clang-tidy job",
+)
+@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
@@ -289,10 +299,19 @@ def create_generator_config(
 )
 @click.option(
     "--create-test-docker-images",
-    type=click.Choice(["none", "alpine", "deb"]),
+    type=click.Choice(["none", "ubuntu"]),
     default="none",
-    help="Build and publish a multi-arch arangodb/enterprise-test Docker "
-    "image (Alpine- or Debian-based) to public ECR from the build results",
+    help="Build and publish the multi-arch arangodb/core-test and "
+    "arangodb/client-tools-test Docker images (maintainer mode, Ubuntu "
+    "26.04 based) to public ECR from the build results",
+)
+@click.option(
+    "--create-preview-docker-images",
+    type=click.Choice(["none", "ubuntu"]),
+    default="none",
+    help="Build and publish the multi-arch arangodb/core-preview and "
+    "arangodb/client-tools-preview Docker images (non-maintainer, "
+    "release-like; Ubuntu 26.04 based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",
@@ -311,15 +330,17 @@ def main(
     alubsan: bool,
     no_sanitizer: bool,
     coverage: bool,
+    fips: bool,
     test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
+    clang_tidy: bool,
     replication_two: bool,
     create_test_docker_images: str,
+    create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ):
@@ -349,13 +370,15 @@ def main(
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
-            arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
+            clang_tidy=clang_tidy,
             replication_two=replication_two,
             create_test_docker_images=create_test_docker_images,
+            create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
+            fips=fips,
         )
 
         # If validate-only, we're done

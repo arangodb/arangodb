@@ -34,8 +34,6 @@ namespace arangodb::iresearch {
 
 namespace {
 
-std::string const THREADS_PARAM("--arangosearch.threads");
-std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
 std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
 std::string const COMMIT_THREADS_IDLE_PARAM(
     "--arangosearch.commit-threads-idle");
@@ -75,49 +73,6 @@ const std::string IResearchOptionsProvider::CACHE_ONLY_LEADER{
 void IResearchOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options, IResearchOptions& opts) {
   options->addSection("arangosearch", "ArangoSearch feature");
-
-  options
-      ->addOption(THREADS_PARAM,
-                  "The exact number of threads to use for asynchronous "
-                  "tasks (0 = auto-detect).",
-                  new options::UInt32Parameter(&opts.threads))
-      .setDeprecatedIn(30705)
-      .setLongDescription(R"(From v3.7.5 onward, you should set the commit
-and consolidation thread counts separately via the following options instead:
-
-- `--arangosearch.commit-threads`
-- `--arangosearch.consolidation-threads`
-
-If either `--arangosearch.commit-threads` or
-`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
-`arangosearch.threads-limit` are ignored. If only the legacy options are set,
-then the commit and consolidation thread counts are calculated as follows:
-
-- Maximum: The smaller value out of `--arangosearch.threads` and
-  `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.)");
-
-  options
-      ->addOption(
-          THREADS_LIMIT_PARAM,
-          "The upper limit to the auto-detected number of threads to use "
-          "for asynchronous tasks (0 = use default).",
-          new options::UInt32Parameter(&opts.threadsLimit))
-      .setDeprecatedIn(30705)
-      .setLongDescription(R"(From v3.7.5 onward, you should set the commit
-and consolidation thread counts separately via the following options instead:
-
-- `--arangosearch.commit-threads`
-- `--arangosearch.consolidation-threads`
-
-If either `--arangosearch.commit-threads` or
-`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
-`arangosearch.threads-limit` are ignored. If only the legacy options are set,
-then the commit and consolidation thread counts are calculated as follows:
-
-- Maximum: The smaller value out of `--arangosearch.threads` and
-  `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.)");
 
   options
       ->addOption(
@@ -261,29 +216,12 @@ void IResearchOptionsProvider::validateOptionsImpl(
     }
   }
 
-  auto const& args = options->processingResult();
-  bool const threadsSet = args.touched(THREADS_PARAM);
-  bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
-  bool const commitThreadsSet = args.touched(COMMIT_THREADS_PARAM);
-  bool const consolidationThreadsSet =
-      args.touched(CONSOLIDATION_THREADS_PARAM);
-
   uint32_t threadsLimit = static_cast<uint32_t>(4 * NumberOfCores::getValue());
+  opts.commitThreads = computeThreadsCount(opts.commitThreads, threadsLimit, 6);
+  opts.consolidationThreads =
+      computeThreadsCount(opts.consolidationThreads, threadsLimit, 6);
 
-  if ((threadsLimitSet || threadsSet) && !commitThreadsSet &&
-      !consolidationThreadsSet) {
-    // backwards compatibility
-    threadsLimit = std::min(threadsLimit, opts.threadsLimit);
-    uint32_t const threads = computeThreadsCount(opts.threads, threadsLimit, 4);
-    opts.commitThreads = std::max(threads / 2, 1U);
-    opts.consolidationThreads = opts.commitThreads;
-  } else {
-    opts.commitThreads =
-        computeThreadsCount(opts.commitThreads, threadsLimit, 6);
-    opts.consolidationThreads =
-        computeThreadsCount(opts.consolidationThreads, threadsLimit, 6);
-  }
-
+  auto const& args = options->processingResult();
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
     opts.searchExecutionThreadsLimit =
         static_cast<uint32_t>(2 * NumberOfCores::getValue());

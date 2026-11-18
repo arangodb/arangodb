@@ -1,0 +1,38 @@
+{
+  "fixture": "legacy-geo",
+  "description": "Legacy geo1/geo2 index fixture for restore compatibility testing",
+  "arangodb_version": "built-from-source",
+  "git_branch": "chore/check-geo1-geo2-compatibility",
+  "git_commit": "d9e20bd46ac4b39a6091fbae5eb7c010896373b6",
+  "build_date": "2026-02-14",
+  "created_by": "Koichi Nakata",
+  "created_at": "2026-02-14",
+  "database": "LegacyGeoFixtureDB",
+  "collections": [
+    {
+      "name": "places",
+      "documents": 441,
+      "indexes": [
+        {
+          "type": "geo1",
+          "fields": ["loc"],
+          "geoJson": false
+        },
+        {
+          "type": "geo2",
+          "fields": ["lat", "lon"]
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "legacy_types_confirmed": true,
+    "geo_query_sanity_check": true
+  },
+  "dump_command": "./build-temp/bin/arangodump --server.endpoint tcp://127.0.0.1:8531 --server.database LegacyGeoFixtureDB",
+  "restore_expectation_new_versions": {
+    "index_type_after_restore": "geo",
+    "geo_queries_functional": true
+  },
+  "notes": "Fixture created from old branch build to preserve geo1/geo2 index types."
+}

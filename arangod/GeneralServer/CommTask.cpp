@@ -22,9 +22,10 @@
 
 #include "CommTask.h"
 
-#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
+#include "Basics/ApiVersion.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
@@ -36,22 +37,21 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "GeneralServer/RequestTimingData.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#endif
+
+#include <absl/strings/str_cat.h>
 
 #include <string_view>
 
@@ -60,35 +60,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-// some static URL path prefixes
-constexpr std::string_view pathPrefixApi("/_api/");
-constexpr std::string_view pathPrefixApiUser("/_api/user/");
-constexpr std::string_view pathPrefixApiToken("/_api/token/");
-constexpr std::string_view pathPrefixAdmin("/_admin/");
-constexpr std::string_view pathPrefixOpen("/_open/");
-constexpr std::string_view pathPrefixOpenAuth("/_open/auth");
-
-// The aardvark web UI serves a handful of static assets and harmless
-// metadata that must be reachable before the user has logged in (so the
-// UI itself can load and offer a login form). Unlike the rest of
-// /_admin/aardvark/, none of these need any database access, so they must
-// never be granted superuser rights - doing so previously allowed
-// unauthenticated AQL execution and other superuser-level operations via
-// any path merely prefixed with /_admin/aardvark/.
-constexpr std::string_view aardvarkIndexHtml("/_admin/aardvark/index.html");
-constexpr std::string_view aardvarkConfigJs("/_admin/aardvark/config.js");
-constexpr std::string_view aardvarkWhoAmI("/_admin/aardvark/whoAmI");
-constexpr std::string_view aardvarkStaticPrefix("/_admin/aardvark/static/");
-constexpr std::string_view aardvarkImgPrefix("/_admin/aardvark/img/");
-
-bool isPublicAardvarkPath(std::string_view path) {
-  return path == ::aardvarkIndexHtml || path == ::aardvarkConfigJs ||
-         path == ::aardvarkWhoAmI || path.starts_with(::aardvarkStaticPrefix) ||
-         path.starts_with(::aardvarkImgPrefix);
-}
-
-VocbasePtr lookupDatabaseFromRequest(
-    application_features::ApplicationServer& server, GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -96,14 +69,16 @@ VocbasePtr lookupDatabaseFromRequest(
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
-  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
   return databaseFeature.useDatabase(req.databaseName());
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(application_features::ApplicationServer& server,
+bool resolveRequestContext(DatabaseFeature& databaseFeature,
+                           AuthenticationFeature& authenticationFeature,
+                           RbacFeature& rbacFeature,
+                           ServerSecurityFeature& securityFeature,
                            GeneralRequest& req) {
-  auto vocbase = lookupDatabaseFromRequest(server, req);
+  auto vocbase = lookupDatabaseFromRequest(databaseFeature, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -112,12 +87,13 @@ bool resolveRequestContext(application_features::ApplicationServer& server,
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context = VocbaseContext::create(req, *vocbase.release());
+  // ExecContext takes ownership of the VocbasePtr and will release it on
+  // destruction
+  auto context = ExecContext::create(authenticationFeature, rbacFeature,
+                                     securityFeature, req, std::move(vocbase));
   if (!context) {
     return false;
   }
-  // the VocbaseContext is now responsible for releasing the vocbase
   req.setRequestContext(std::move(context));
 
   // the "true" means the request is the owner of the context
@@ -168,15 +144,16 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
+      // TODO change the type of _auth from a pointer to a reference
+      _auth(&server.server().getFeature<AuthenticationFeature>()),
+      _databaseFeature(server.server().getFeature<DatabaseFeature>()),
+      _rbacFeature(server.server().getFeature<RbacFeature>()),
+      _securityFeature(server.server().getFeature<ServerSecurityFeature>()),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(acquireConnectionStatistics()),
-      _auth(AuthenticationFeature::instance()),
+      _connectionStatistics(_generalServerFeature.startConnection()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics.SET_START();
 }
-
-CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
@@ -216,6 +193,33 @@ CommTask::Flow CommTask::prepareExecution(
            !ServerState::isDBServerId(_requestSource);
   });
 
+  // Everything below, including the ExecContext, reads the requested API
+  // version, so a request for an invalid one must not get any further.
+  if (!req.hasValidApiVersion()) {
+    sendErrorResponse(ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_HTTP_NOT_FOUND,
+                      absl::StrCat("invalid API version in path '",
+                                   req.requestPath(), "', valid prefixes are: ",
+                                   GeneralRequest::validApiVersionPrefixes()));
+    return Flow::Abort;
+  }
+
+  if (_isUserRequest) {
+    bool found = false;
+    std::string const& headerVersion =
+        req.header(StaticStrings::XArangoApiVersion, found);
+    if (found) {
+      if (auto res = api_version::checkRequestedApiVersion(
+              req.requestedApiVersion(), headerVersion);
+          res.fail()) {
+        sendErrorResponse(GeneralResponse::responseCode(res.errorNumber()),
+                          req.contentTypeResponse(), req.messageId(),
+                          res.errorNumber(), res.errorMessage());
+        return Flow::Abort;
+      }
+    }
+  }
+
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
@@ -245,7 +249,7 @@ CommTask::Flow CommTask::prepareExecution(
 
       // passed authentication!
       TRI_ASSERT(allowEarlyConnections);
-      if (path == "/_api/version" || path == "/_admin/version" ||
+      if (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           path.starts_with("/_admin/debug/") ||
 #endif
@@ -261,12 +265,11 @@ CommTask::Flow CommTask::prepareExecution(
     }
 
     case ServerState::Mode::MAINTENANCE: {
-      if (allowEarlyConnections &&
-          (path == "/_api/version" || path == "/_admin/version" ||
+      if (allowEarlyConnections && (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-           path.starts_with("/_admin/debug/") ||
+                                    path.starts_with("/_admin/debug/") ||
 #endif
-           path == "/_admin/status")) {
+                                    path == "/_admin/status")) {
         return Flow::Continue;
       }
 
@@ -293,9 +296,10 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(_server.server(),
+  if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
+                               _securityFeature,
                                req)) {  // false if db not found
-    if (_auth->isActive()) {
+    if (_auth->isActive() && !_auth->rbacEnabled()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
       if (req.authenticated()) {
@@ -335,24 +339,6 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
 
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-#ifdef USE_V8
-    auto& ff = _server.server().getFeature<FoxxFeature>();
-    bool foxxEnabled = ff.foxxEnabled();
-#else
-    constexpr bool foxxEnabled = false;
-#endif
-    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-                          path.starts_with(::pathPrefixApi) ||
-                          path.starts_with(::pathPrefixOpen))) {
-      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "access to Foxx apps is turned off on this instance");
-      return Flow::Abort;
-    }
-  }
-
   // Step 5: Update global HLC timestamp from authenticated requests
   if (req.authenticated()) {  // TODO only from superuser ??
     // check for an HLC time stamp only with auth
@@ -372,6 +358,11 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
+  if (auto version = res.apiVersion(); version.has_value()) {
+    res.setHeaderNC(StaticStrings::XArangoApiVersion,
+                    api_version::formatServedApiVersion(*version));
+  }
+
   if (this->_isUserRequest) {
     // CORS response handling - only needed on user facing coordinators
     // or single servers
@@ -443,6 +434,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
+  response->setApiVersion(request->requestedApiVersion());
 
   // store the message id for error handling
   uint64_t messageId = request->messageId();
@@ -470,19 +462,16 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder errorBuilder(buffer);
-  auto handler = factory->createHandler(server, std::move(request),
-                                        std::move(response), errorBuilder);
+  auto handler =
+      factory->createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
 
-    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       std::move(buffer));
+                       VPackBuffer<uint8_t>{});
     return;
   }
 
@@ -491,29 +480,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
-    handler->setRequestStatistics(stealRequestStatistics(messageId));
+    handler->setTimingData(stealTimingData(messageId));
     handleRequestStartup(std::move(handler));
-    return;
-  }
-
-  // forward to correct server if necessary
-  bool forwarded;
-  auto res = handler->forwardRequest(forwarded);
-  if (forwarded) {
-    requestStatistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), h(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(h->stealResponse(),
-                             self->stealRequestStatistics(messageId));
-        });
-    return;
-  }
-
-  if (res.hasValue() && res.waitAndGet().fail()) {
-    auto& r = res.waitAndGet();
-    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
-                      messageId, r.errorNumber(), r.errorMessage());
     return;
   }
 
@@ -522,9 +490,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::Item stats = stealRequestStatistics(messageId);
-    stats.SET_ASYNC();
-    handler->setRequestStatistics(std::move(stats));
+    RequestTimingData data = stealTimingData(messageId);
+    data.async = true;
+    handler->setTimingData(std::move(data));
     handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
@@ -550,14 +518,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
         // return the job id we just created
         resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-      sendResponse(std::move(resp), RequestStatistics::Item());
+      sendResponse(std::move(resp), RequestTimingData{});
     } else {
       sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType,
                         messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
-    handler->setRequestStatistics(stealRequestStatistics(messageId));
+    handler->setTimingData(stealTimingData(messageId));
     // handleRequestSync adds an error response
     handleRequestSync(std::move(handler));
   }
@@ -567,47 +535,48 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
   std::lock_guard guard{_statisticsMutex};
-  _statisticsMap.insert_or_assign(id, std::move(stat));
+  _statisticsMap.insert_or_assign(id, std::move(data));
 }
 
-ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
-  ConnectionStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = ConnectionStatistics::acquire();
-  }
-  return stat;
+RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
+  std::lock_guard lock{_statisticsMutex};
+  auto [it, _] = _statisticsMap.try_emplace(id, RequestTimingData{});
+  return it->second;
 }
 
-RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
-  RequestStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = RequestStatistics::acquire();
-  }
-
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-  return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
-}
-
-RequestStatistics::Item const& CommTask::requestStatistics(uint64_t id) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
+RequestTimingData& CommTask::timingData(uint64_t id) {
+  std::lock_guard guard{_statisticsMutex};
   return _statisticsMap[id];
 }
 
-RequestStatistics::Item CommTask::stealRequestStatistics(uint64_t id) {
-  RequestStatistics::Item result;
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  auto iter = _statisticsMap.find(id);
-  if (iter != _statisticsMap.end()) {
-    result = std::move(iter->second);
-    _statisticsMap.erase(iter);
+RequestTimingData CommTask::stealTimingData(uint64_t id) {
+  std::lock_guard guard{_statisticsMutex};
+  auto it = _statisticsMap.find(id);
+  if (it == _statisticsMap.end()) {
+    return RequestTimingData{};  // inactive, no-op
   }
-
+  RequestTimingData result = std::move(it->second);
+  _statisticsMap.erase(it);
   return result;
+}
+
+namespace arangodb {
+void finalizeTimingData(application_features::ApplicationServer& server,
+                        RequestTimingData& data) {
+  if (data.readStart != RequestTimingData::time_point{} &&
+      (data.async || data.writeEnd != RequestTimingData::time_point{})) {
+    if (server.hasFeature<GeneralServerFeature>()) {
+      server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
+          data);
+    }
+  }
+}
+}  // namespace arangodb
+
+void CommTask::finalizeTimingData(RequestTimingData& data) {
+  arangodb::finalizeTimingData(_server.server(), data);
 }
 
 /// @brief send error response including response body
@@ -620,7 +589,7 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
     if (!buffer.empty()) {
       resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
-    sendResponse(std::move(resp), this->stealRequestStatistics(mid));
+    sendResponse(std::move(resp), this->stealTimingData(mid));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -690,8 +659,7 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskEnd();
     try {
       // Pass the response to the io context
-      self->sendResponse(handler->stealResponse(),
-                         handler->stealRequestStatistics());
+      self->sendResponse(handler->stealResponse(), handler->stealTimingData());
     } catch (...) {
       LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
           << "got an exception while sending response, closing connection";
@@ -713,7 +681,6 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       << "Handling request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -729,7 +696,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(),
-                           handler->stealRequestStatistics());
+                           handler->stealTimingData());
       } catch (...) {
         LOG_TOPIC("fc834", WARN, Logger::REQUESTS)
             << "got an exception while sending response, closing connection";
@@ -763,7 +730,6 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       << "Handling async request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
       << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
-  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
@@ -819,86 +785,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
   }
 
-  bool userAuthenticated = req.authenticated();
-  Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
-
-  auto vc = basics::downCast<VocbaseContext>(req.requestContext());
-  TRI_ASSERT(vc != nullptr);
-  // deny access to database with NONE
-  if (result == Flow::Continue &&
-      vc->databaseAuthLevel() == auth::Level::NONE) {
-    result = Flow::Abort;
-    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
-        << "Access forbidden to " << path;
-  }
-
-  // we need to check for some special cases, where users may be allowed
-  // to proceed even unauthorized
-  if (result == Flow::Abort) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    // check if we need to run authentication for this type of
-    // endpoint
-    ConnectionInfo const& ci = req.connectionInfo();
-
-    if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !_auth->authenticationUnixSockets()) {
-      // no authentication required for unix domain socket connections
-      result = Flow::Continue;
-    }
-#endif
-
-    if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          result = Flow::Continue;
-          vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
-
-    if (result == Flow::Abort) {
-      std::string const& username = req.user();
-
-      if (path == "/" || ::isPublicAardvarkPath(path)) {
-        // These paths only ever serve static UI assets or harmless
-        // metadata, so they are always callable without prior
-        // authentication, and - unlike the other exceptions below - must
-        // NOT be escalated to superuser, since that would grant full
-        // (including AQL) access regardless of the caller's actual
-        // permissions.
-        result = Flow::Continue;
-      } else if (path.starts_with(::pathPrefixOpenAuth) ||
-                 path == "/_admin/server/availability") {
-        // mop: these paths are always callable...they will be able to check
-        // req.user when it could be validated
-        result = Flow::Continue;
-        vc->forceSuperuser();
-      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
-        // allow authenticated users to access cluster/endpoints
-        result = Flow::Continue;
-        // vc->forceReadOnly();
-      } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(std::string{::pathPrefixApiUser} + username +
-                                  '/')) {
-        // simon: unauthorized users should be able to call
-        // `/_api/user/<name>` to check their passwords
-        result = Flow::Continue;
-        vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
-        result = Flow::Continue;
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
-        result = Flow::Continue;
-      }
-    }
-  }
-
-  return result;
+  return Flow::Continue;
 }
 
 /// deny credentialed requests or not (only CORS)
@@ -974,7 +861,7 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   }
 
   // discard request and send response
-  sendResponse(std::move(resp), stealRequestStatistics(req->messageId()));
+  sendResponse(std::move(resp), stealTimingData(req->messageId()));
 }
 
 auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
@@ -1065,47 +952,47 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
 
+    ResourceUsageScope scope(_generalServerFeature.decompressionMemory());
+    VPackBuffer<uint8_t> dst;
+    size_t const maxSize =
+        _generalServerFeature.maxDecompressedRequestBodySize();
+
+    ErrorCode r = TRI_ERROR_NO_ERROR;
+    std::string_view name;
     if (encoding == StaticStrings::EncodingGzip) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
-          r != TRI_ERROR_NO_ERROR) {
-        return {
-            r,
-            "a decoding error occurred while handling Content-Encoding: gzip"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
-      return {};
+      name = "gzip";
+      r = arangodb::encoding::gzipUncompress(src, len, dst, maxSize, &scope);
     } else if (encoding == StaticStrings::EncodingDeflate) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::zlibInflate(src, len, dst);
-          r != TRI_ERROR_NO_ERROR) {
-        return {r,
-                "a decoding error occurred while handling Content-Encoding: "
-                "deflate"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
-      return {};
+      name = "deflate";
+      r = arangodb::encoding::zlibInflate(src, len, dst, maxSize, &scope);
     } else if (encoding == StaticStrings::EncodingArangoLz4) {
-      VPackBuffer<uint8_t> dst;
-      if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
-          r != TRI_ERROR_NO_ERROR) {
-        return {
-            r,
-            "a decoding error occurred while handling Content-Encoding: lz4"};
-      }
-      req.setPayload(std::move(dst));
-      // as we have decoded, remove the encoding header.
-      // this prevents duplicate decoding
-      req.removeHeader(header);
+      name = "lz4";
+      r = arangodb::encoding::lz4Uncompress(src, len, dst, maxSize, &scope);
+    } else {
+      // unknown encoding. let it through without modifying the request body.
       return {};
     }
-    // unknown encoding. let it through without modifying the request body.
+
+    if (r == TRI_ERROR_RESOURCE_LIMIT) {
+      return {r, absl::StrCat("decompressed size of Content-Encoding: ", name,
+                              " body exceeds the allowed maximum")};
+    }
+    if (r == TRI_ERROR_OUT_OF_MEMORY) {
+      return {r, absl::StrCat("not enough memory to decompress the "
+                              "Content-Encoding: ",
+                              name, " body right now; try again later")};
+    }
+    if (r != TRI_ERROR_NO_ERROR) {
+      return {r, absl::StrCat("a decoding error occurred while handling "
+                              "Content-Encoding: ",
+                              name)};
+    }
+
+    req.setPayload(std::move(dst));
+    req.setPayloadMemory(std::move(scope));
+    // as we have decoded, remove the encoding header.
+    // this prevents duplicate decoding
+    req.removeHeader(header);
     return {};
   };
 
@@ -1122,4 +1009,16 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
     return decode(StaticStrings::ContentEncoding, val);
   }
   return {};
+}
+
+rest::ResponseCode CommTask::contentEncodingErrorCode(
+    Result const& res) noexcept {
+  if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
+    return rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE;
+  }
+  if (res.is(TRI_ERROR_OUT_OF_MEMORY)) {
+    // temporary shortage on the server, the client may retry
+    return rest::ResponseCode::SERVICE_UNAVAILABLE;
+  }
+  return rest::ResponseCode::BAD;
 }

@@ -176,7 +176,6 @@ class TestRequirements:
         None  # Include/exclude for instrumented builds (TSAN/ALUBSAN/COVERAGE)
     )
     coverage: Optional[bool] = None  # Include/exclude for coverage builds only
-    v8: Optional[bool] = None  # Include/exclude for v8 builds
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     @classmethod
@@ -202,8 +201,6 @@ class TestRequirements:
             kwargs["instrumentation"] = data["instrumentation"]
         if "coverage" in data:
             kwargs["coverage"] = data["coverage"]
-        if "v8" in data:
-            kwargs["v8"] = data["v8"]
 
         # Handle arch field
         if "arch" in data and data["arch"] is not None:
@@ -226,7 +223,6 @@ class TestRequirements:
                 full=self.full,
                 instrumentation=self.instrumentation,
                 coverage=self.coverage,
-                v8=self.v8,
                 architecture=self.architecture,
             )
 
@@ -237,7 +233,6 @@ class TestRequirements:
             full=merge_field(override.full, self.full),
             instrumentation=merge_field(override.instrumentation, self.instrumentation),
             coverage=merge_field(override.coverage, self.coverage),
-            v8=merge_field(override.v8, self.v8),
             architecture=merge_field(override.architecture, self.architecture),
         )
 
@@ -392,7 +387,7 @@ class TestArguments:
     arangosh_args: List[str] = field(default_factory=list)
 
     @staticmethod
-    def parse_args_string(args_str: str, add_skip_server_js: bool = False) -> List[str]:
+    def parse_args_string(args_str: str) -> List[str]:
         """
         Parse extra arguments string into list.
 
@@ -402,7 +397,6 @@ class TestArguments:
 
         Args:
             args_str: Space-separated argument string, or "A" for empty
-            add_skip_server_js: Whether to add --skipServerJS flag
 
         Returns:
             List of argument strings
@@ -414,9 +408,6 @@ class TestArguments:
             if args_str[0] in [" ", "A"]:
                 args_str = args_str[1:]
             args = args_str.split(" ") if args_str else []
-
-        if add_skip_server_js:
-            args.extend(["--skipServerJS", "true"])
 
         return args
 
@@ -563,6 +554,7 @@ class RepositoryConfig:
     git_branch: Optional[str] = None
     init_command: Optional[str] = None
     container_suffix: Optional[str] = None  # Docker image suffix (e.g., '-js:')
+    maven_cache: bool = False  # cache ~/.m2/repository between runs
 
     def __post_init__(self):
         """Validate repository configuration."""
@@ -585,6 +577,7 @@ class RepositoryConfig:
             git_branch=data.get("git_branch"),
             init_command=data.get("init_command"),
             container_suffix=data.get("container_suffix"),
+            maven_cache=data.get("maven_cache", False),
         )
 
 
@@ -894,6 +887,7 @@ class TestDefinitionFile:
                     "git_branch": job_properties.get("branch"),
                     "init_command": job_properties.get("init_command"),
                     "container_suffix": job_properties.get("container_suffix"),
+                    "maven_cache": job_properties.get("maven_cache", False),
                 }
 
             # Parse the tests list

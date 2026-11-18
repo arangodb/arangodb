@@ -27,6 +27,7 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
+#include "Basics/ICancellationToken.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"
@@ -59,7 +60,7 @@ namespace aql {
 class Ast;
 
 /// @brief an AQL query basic interface
-class QueryContext {
+class QueryContext : public arangodb::ICancellationToken {
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
@@ -140,7 +141,7 @@ class QueryContext {
 
   virtual transaction::Methods& trxForOptimization() = 0;
 
-  virtual bool killed() const = 0;
+  bool killed() const override = 0;
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
@@ -154,12 +155,6 @@ class QueryContext {
 
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
-
-  virtual void enterV8Executor();
-
-  virtual void exitV8Executor() {}
-
-  virtual bool hasEnteredV8Executor() const { return false; }
 
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally

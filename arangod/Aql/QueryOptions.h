@@ -59,6 +59,8 @@ struct QueryOptions {
     return traversalProfile;
   }
 
+  bool isMatchStatementEnabled() const { return !enableMatchStatement.empty(); }
+
   // memory limit threshold value for query
   size_t memoryLimit;
 
@@ -146,6 +148,8 @@ struct QueryOptions {
 
   transaction::Options transactionOptions;
 
+  std::string enableMatchStatement;
+
   // Initial values for the default* statics below. These constexpr values
   // can be used for inline member initialization to avoid static initialization
   // order issues.
@@ -175,6 +179,7 @@ struct QueryOptions {
   static double defaultTtl;
   static bool defaultFailOnWarning;
   static bool allowMemoryLimitOverride;
+  static std::string defaultEnableMatchStatement;
 };
 
 }  // namespace aql

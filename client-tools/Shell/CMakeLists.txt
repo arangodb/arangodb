@@ -9,12 +9,11 @@ add_library(arango_shell STATIC
 target_link_libraries(arango_shell
   arango_basic_utils
   ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
   fuerte
 )
 
 target_link_libraries(arango_shell v8_interface)
+target_link_libraries(arango_shell clienttools_utils)
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 
@@ -44,8 +43,6 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_basic_http_client
   fuerte
   ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
   arango_shell
   arangoimport_utils
   clienttools_utils
@@ -77,15 +74,6 @@ if (NOT USE_PRECOMPILED_V8)
 endif ()
 
 add_dependencies(${BIN_ARANGOSH} man)
-
-################################################################################
-## foxx-manager
-################################################################################
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  foxx-manager)
-
-install_config(foxx-manager)
 
 ################################################################################
 ## arangoinspect

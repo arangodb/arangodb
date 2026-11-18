@@ -46,8 +46,6 @@ int upgradeRestart() {
 void UpgradeOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     UpgradeFeatureOptions& opts) {
-  options->addOldOption("upgrade", "database.auto-upgrade");
-
   options
       ->addOption("--database.auto-upgrade",
                   "Perform a database upgrade if necessary.",

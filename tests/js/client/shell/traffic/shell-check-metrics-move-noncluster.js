@@ -25,13 +25,31 @@
 
 const jsunity = require('jsunity');
 const console = require('console');
-const db = require('internal').db;
+const internal = require('internal');
+const db = internal.db;
 let IM = global.instanceManager;
 
 function getStats() {
-  let s = arango.GET("/_admin/statistics?sync=true");
-  return {bytesReceived: s.client.bytesReceived.sum,
-          bytesSent: s.client.bytesSent.sum};
+  const res = arango.GET_RAW("/_admin/metrics");
+  assertEqual(200, res.code, "GET /_admin/metrics should return 200");
+  const body = typeof res.body === 'string' ? res.body : String(res.body);
+  return {
+    bytesReceived: internal.parsePrometheusMetric(body, "arangodb_client_connection_statistics_bytes_received_sum") || 0,
+    bytesSent: internal.parsePrometheusMetric(body, "arangodb_client_connection_statistics_bytes_sent_sum") || 0
+  };
+}
+
+// Wait for metrics to reflect recent traffic since the metrics API has no sync mechanism
+function waitForMetricsAggregation(condition, maxWaitMs) {
+  maxWaitMs = maxWaitMs || 15000;
+  const stepMs = 250;
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    if (condition()) {
+      return;
+    }
+    internal.sleep(stepMs / 1000);
+  }
 }
 
 function checkMetricsMoveSuite() {
@@ -45,21 +63,21 @@ function checkMetricsMoveSuite() {
       // turn off request/response compression
       arango.compressTransfer(false);
     },
-    
+
     tearDownAll: function () {
       // restore previous default
       arango.compressTransfer(compressTransfer);
     },
-    
+
     testByProtocol: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
       // sure that nothing happens. In a single server, this is OK, 
       // only our own requests should arrive at the server.
       let metricsToCompare = ["arangodb_request_body_size_http1_count",
-                              "arangodb_request_body_size_http1_sum",
-                              "arangodb_request_body_size_http2_count",
-                              "arangodb_request_body_size_http2_sum"];
+        "arangodb_request_body_size_http1_sum",
+        "arangodb_request_body_size_http2_count",
+        "arangodb_request_body_size_http2_sum"];
       let metricsBefore = IM.getMetric(metricsToCompare);
       // Do a few requests:
       for (let i = 0; i < 10; ++i) {
@@ -100,10 +118,10 @@ function checkMetricsMoveSuite() {
       let c = db._create(cn);
       try {
         let s = "abc";
-        for (let i = 0; i < 10; ++i) { 
-          s = s + s; 
+        for (let i = 0; i < 10; ++i) {
+          s = s + s;
         }
-        let k = c.insert({Hallo:s})._key;
+        let k = c.insert({ Hallo: s })._key;
 
         let stats = getStats();
         let count = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
@@ -115,6 +133,12 @@ function checkMetricsMoveSuite() {
           let res = arango.GET_RAW(`/_api/document/${cn}/${k}`);
           assertEqual(200, res.code);
         }
+
+        waitForMetricsAggregation(function () {
+          let s2 = getStats();
+          let c2 = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
+          return (s2.bytesSent - stats.bytesSent > 3000000 && c2 - count >= 1000);
+        });
 
         let stats2 = getStats();
         let count2 = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
@@ -133,7 +157,7 @@ function checkMetricsMoveSuite() {
         db._drop(cn);
       }
     },
-    
+
     testIngressByProtocolTraffic: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
@@ -143,8 +167,8 @@ function checkMetricsMoveSuite() {
       let c = db._create(cn);
       try {
         let s = "abc";
-        for (let i = 0; i < 10; ++i) { 
-          s = s + s; 
+        for (let i = 0; i < 10; ++i) {
+          s = s + s;
         }
 
         let stats = getStats();
@@ -154,9 +178,15 @@ function checkMetricsMoveSuite() {
 
         // Do a few requests:
         for (let i = 0; i < 1000; ++i) {
-          let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo:i, s:s});
+          let res = arango.POST_RAW(`/_api/document/${cn}`, { Hallo: i, s: s });
           assertEqual(202, res.code);
         }
+
+        waitForMetricsAggregation(function () {
+          let s2 = getStats();
+          let c2 = IM.getMetric("arangodb_client_connection_statistics_bytes_received_count");
+          return (s2.bytesReceived - stats.bytesReceived > 3000000 && c2 - count >= 1000);
+        });
 
         let stats2 = getStats();
         let count2 = IM.getMetric("arangodb_client_connection_statistics_bytes_received_count");
@@ -175,7 +205,7 @@ function checkMetricsMoveSuite() {
         db._drop(cn);
       }
     },
-    
+
     testIngressHeadersByProtocolTraffic: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
@@ -185,15 +215,20 @@ function checkMetricsMoveSuite() {
 
       // Do a few requests:
       const headers = {
-        "x-arango-foo-bar-baz-this-is-a-long-and-useless-header" : Array(1000).join("x"),
-        "x-arango-foo-bar-baz-this-is-another-long-and-useless-header" : Array(1000).join("y"),
-        "x-arango-foo-bar-baz-this-is-a-third-long-and-useless-header" : Array(1000).join("z")
+        "x-arango-foo-bar-baz-this-is-a-long-and-useless-header": Array(1000).join("x"),
+        "x-arango-foo-bar-baz-this-is-another-long-and-useless-header": Array(1000).join("y"),
+        "x-arango-foo-bar-baz-this-is-a-third-long-and-useless-header": Array(1000).join("z")
       };
 
       for (let i = 0; i < 1000; ++i) {
         let res = arango.GET_RAW(`/_api/version`, headers);
         assertEqual(200, res.code);
       }
+
+      waitForMetricsAggregation(function () {
+        let s2 = getStats();
+        return (s2.bytesReceived - stats.bytesReceived > 3000000);
+      });
 
       let stats2 = getStats();
 

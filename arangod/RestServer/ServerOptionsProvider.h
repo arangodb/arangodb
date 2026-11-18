@@ -32,7 +32,7 @@ struct ServerOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ServerFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ServerFeatureOptions& options);
+                           ServerFeatureOptions& options) {}
 };
 
 }  // namespace arangodb

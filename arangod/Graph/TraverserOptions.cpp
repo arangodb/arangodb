@@ -32,6 +32,7 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -78,13 +79,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     } else if (tmp == StaticStrings::GraphQueryOrderDFS) {
       mode = Order::DFS;
     }
-  } else {
-    bool useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
-    if (useBreadthFirst) {
-      mode = Order::BFS;
-    }
   }
-
   useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
 
   TRI_ASSERT(!useNeighbors || isUseBreadthFirst());
@@ -118,7 +113,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
 
-  weightAttribute = VPackHelper::getStringValue(obj, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(obj);
   defaultWeight = VPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
   if (defaultWeight < 0.) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
@@ -222,14 +217,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "Bad mode parameter value");
     }
-  } else {
-    read = info.get("bfs");
-    if (read.isBoolean()) {
-      bool useBreadthFirst = read.getBool();
-      if (useBreadthFirst) {
-        mode = Order::BFS;
-      }
-    }
   }
 
   read = info.get("neighbors");
@@ -277,7 +264,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                      "The options require a uniqueEdges");
   }
 
-  weightAttribute = VPackHelper::getStringValue(info, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(info);
   defaultWeight =
       VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
   if (defaultWeight < 0.) {
@@ -487,7 +474,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
-  builder.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(builder, weightAttribute);
   builder.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!vertexCollections.empty()) {
@@ -588,7 +575,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       break;
   }
 
-  result.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(result, weightAttribute);
   result.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!_depthLookupInfo.empty()) {
@@ -731,12 +718,12 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 void TraverserOptions::initializeIndexConditions(
-    aql::Ast* ast, aql::VarInfoMap const& varInfo,
+    aql::Ast* ast, aql::RegisterResolver const& registers,
     aql::Variable const* indexVariable) {
-  BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
+  BaseOptions::initializeIndexConditions(ast, registers, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {
     for (auto& info : infos) {
-      info.initializeNonConstExpressions(ast, varInfo, indexVariable);
+      info.initializeNonConstExpressions(ast, registers, indexVariable);
     }
   }
 }

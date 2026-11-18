@@ -1,7 +1,0 @@
-etc/arangodb/arangosh.conf
-etc/arangodb/foxx-manager.conf
-usr/bin/arangosh
-usr/bin/foxx-manager
-usr/share/arangodb/js/common
-usr/share/arangodb/js/client
-usr/share/arangodb/js/node

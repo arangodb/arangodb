@@ -114,7 +114,9 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ user: username }).user);
+        var doc = c.firstExample({ user: username });
+        assertTrue(doc !== null, "Document not found for user: " + username);
+        assertEqual(username, doc.user);
       }
     },
 
@@ -127,7 +129,9 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
 
       try {
         users.save(username, passwd);
@@ -147,7 +151,9 @@ function UsersSuite () {
       var passwd = "";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +164,9 @@ function UsersSuite () {
       var username = "users-1";
 
       users.save(username);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +185,9 @@ function UsersSuite () {
 
       usernames.forEach(function(username) {
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ user: username }).user);
+        var doc = c.firstExample({ user: username });
+        assertTrue(doc !== null, "Document not found for user: " + username);
+        assertEqual(username, doc.user);
       });
     },
 
@@ -191,10 +201,14 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ user: username }).user);
+        var doc1 = c.firstExample({ user: username });
+        assertTrue(doc1 !== null, "Document not found for user: " + username);
+        assertEqual(username, doc1.user);
         var d2 = users.replace(username, passwd + "xxx");
 
-        assertEqual(username, c.firstExample({ user: username }).user);
+        var doc2 = c.firstExample({ user: username });
+        assertTrue(doc2 !== null, "Document not found for user: " + username);
+        assertEqual(username, doc2.user);
         assertEqual(username, d2.user);
       }
     },
@@ -223,7 +237,9 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ user: username }).user);
+        var doc = c.firstExample({ user: username });
+        assertTrue(doc !== null, "Document not found for user: " + username);
+        assertEqual(username, doc.user);
         users.remove(username);
       }
     },
@@ -259,7 +275,9 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
       
       [ "foo", "bar", "baz", "w", "wx", "_system" ].forEach(function(type) {
         try {
@@ -281,7 +299,9 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
 
       users.grantDatabase(username, "_system", "rw");
       // cannot really test something here as grantDatabase() does not return anything
@@ -327,7 +347,9 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
 
       users.grantDatabase(username, "_system", "rw");
       // cannot really test something here as grantDatabase() does not return anything
@@ -353,7 +375,9 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      var doc = c.firstExample({ user: username });
+      assertTrue(doc !== null, "Document not found for user: " + username);
+      assertEqual(username, doc.user);
 
       users.grantDatabase(username, "_system", "rw");
       // cannot really test something here as grantDatabase() does not return anything

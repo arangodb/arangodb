@@ -27,11 +27,6 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMA
 set(ARANGODB_DB_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/${CMAKE_PROJECT_NAME}")
 FILE(MAKE_DIRECTORY ${ARANGODB_DB_DIRECTORY})
 
-# apps
-set(ARANGODB_APPS_DIRECTORY "/var/lib/${CMAKE_PROJECT_NAME}-apps")
-set(ARANGODB_FULL_APPS_DIRECTORY "${PROJECT_BINARY_DIR}${ARANGODB_APPS_DIRECTORY}")
-FILE(MAKE_DIRECTORY "${ARANGODB_FULL_APPS_DIRECTORY}")
-
 # logs
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
@@ -69,84 +64,13 @@ add_custom_target (love
 
 include(InstallArangoDBJSClient)
 
-if(USE_V8)
-  ################################################################################
-  ### @brief install server-side JavaScript files
-  ################################################################################
-
-  # Test-only server modules are stripped from non-maintainer (release)
-  # installs; see the matching block in InstallArangoDBJSClient.cmake.
-  # (@arangodb/foxx/mocha and @arangodb/foxx/test-utils stay: they implement
-  # the runtime "foxx test" feature. statistics-helper stays: used by the
-  # aardvark statistics API.)
-  set(ARANGODB_JS_SERVER_TEST_EXCLUDES "")
-  if (NOT USE_MAINTAINER_MODE)
-    set(ARANGODB_JS_SERVER_TEST_EXCLUDES
-      REGEX "^.*/js/server/modules/@arangodb/(test-helper|aql-helper)\\.js$" EXCLUDE)
-  endif ()
-
-  # js/apps/system/_admin/aardvark/APP/manifest.json list files must be included
-  install(
-    DIRECTORY
-      ${PROJECT_SOURCE_DIR}/js/actions
-      ${PROJECT_SOURCE_DIR}/js/apps
-      ${PROJECT_SOURCE_DIR}/js/server
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-    REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
-    REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
-    REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
-    REGEX       "^.*/.bin"                                   EXCLUDE
-    ${ARANGODB_JS_SERVER_TEST_EXCLUDES}
-  )
-
-  if(USE_FRONTEND)
-    set(APP_FILES
-      "frontend/img"
-      "react/build"
-    )
-
-    set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
-    set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
-
-    foreach (file ${APP_FILES})
-        get_filename_component(parent ${file} DIRECTORY)
-        if(IS_DIRECTORY ${app_files_source_dir}/${file})
-          install(
-            DIRECTORY
-              ${app_files_source_dir}/${file}
-            DESTINATION
-              ${app_files_target_dir}/${parent}
-            )
-        else()
-          install(
-            FILES
-              ${app_files_source_dir}/${file}
-            DESTINATION
-              ${app_files_target_dir}/${parent}
-          )
-        endif()
-    endforeach()
-  endif()
-
-  # JS_SHA1SUM.txt is generated at install time over the installed tree; see
-  # cmake/GenerateJsSha1Sum.cmake (declared last in the top-level CMakeLists).
-
-  if (USE_ENTERPRISE)
-    install(
-      DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
-      DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-      REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
-    )
-  endif ()
-endif()
-
 ################################################################################
 ### @brief install log directory
 ################################################################################
 
 install(
   DIRECTORY
-    ${PROJECT_BINARY_DIR}/var/log/arangodb3
+    ${PROJECT_BINARY_DIR}/var/log/arangodb4
   DESTINATION
     ${CMAKE_INSTALL_LOCALSTATEDIR}/log
 )
@@ -163,17 +87,6 @@ install(
 )
 
 ################################################################################
-### @brief install apps directory
-################################################################################
-
-install(
-  DIRECTORY
-    ${ARANGODB_FULL_APPS_DIRECTORY}
-  DESTINATION
-    ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
-)
-
-################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
 
@@ -182,9 +95,9 @@ set(IS_SYSTEMD_INSTALL 0)
 
 if (UNIX)
   if (${USE_ENTERPRISE})
-    set(SERVICE_NAME "arangodb3e")
+    set(SERVICE_NAME "arangodb4e")
   else ()
-    set(SERVICE_NAME "arangodb3")
+    set(SERVICE_NAME "arangodb4")
   endif ()
 
   # use pkgconfig for systemd detection
@@ -215,12 +128,12 @@ if (UNIX)
 
       # configure and install systemd service
       configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-        ${PROJECT_BINARY_DIR}/arangodb3.service
+        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb4.service.in
+        ${PROJECT_BINARY_DIR}/arangodb4.service
         NEWLINE_STYLE UNIX
       )
       install(
-        FILES ${PROJECT_BINARY_DIR}/arangodb3.service
+        FILES ${PROJECT_BINARY_DIR}/arangodb4.service
         DESTINATION ${SYSTEMD_UNIT_DIR}/
         RENAME ${SERVICE_NAME}.service
       )

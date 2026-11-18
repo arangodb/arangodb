@@ -154,7 +154,7 @@ function optimizerRuleTestSuite () {
     },
 
     testActiveWithIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
 
       let queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
@@ -173,7 +173,7 @@ function optimizerRuleTestSuite () {
     },
 
     testActiveWithIndexMultiple : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
 
       let queries = [
         "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar",
@@ -226,7 +226,7 @@ function optimizerRuleTestSuite () {
     },
 
     testResultsWithIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
 
       var queries = [
         [ "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1", [ 1 ] ],
@@ -245,7 +245,7 @@ function optimizerRuleTestSuite () {
     },
 
     testResultsWithIndexMultiple : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["foo.bar"] });
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
 
       let queries = [
         [ "FOR doc IN @@cn FILTER doc.foo.bar == 1 RETURN doc.foo.bar", [ 1 ] ],
@@ -264,7 +264,7 @@ function optimizerRuleTestSuite () {
     },
 
     testJoin : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
 
       let queries = [
         "FOR doc1 IN @@cn FOR doc2 IN @@cn FILTER doc1.value == doc2._key RETURN [doc1._key, doc2._key]",

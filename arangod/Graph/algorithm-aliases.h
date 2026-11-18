@@ -24,7 +24,6 @@
 
 #include "Graph/Enumerators/OneSidedEnumerator.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
 #include "Graph/Enumerators/WeightedShortestPathEnumerator.h"
 #include "Graph/Enumerators/YenEnumerator.h"
 
@@ -53,10 +52,6 @@ using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     PathValidator<Provider, PathStore<typename Provider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template<class Provider>
-using TwoSidedEnumeratorWithProviderWeighted =
-    WeightedTwoSidedEnumerator<Provider>;
-
 // SHORTEST_PATH implementation
 template<class Provider>
 using ShortestPathEnumerator = TwoSidedEnumerator<
@@ -83,10 +78,6 @@ using KPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 template<class Provider>
 using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
-// K_SHORTEST_PATHS implementation
-template<class Provider>
-using KShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
-
 // Yen's algorithm implementation:
 template<class Provider>
 using YenEnumeratorWithProvider =
@@ -98,11 +89,6 @@ template<class Provider>
 using WeightedYenEnumeratorWithProvider =
     YenEnumerator<Provider, WeightedShortestPathEnumeratorAlias<Provider>,
                   true /* IsWeighted */>;
-
-// WEIGHTED_K_SHORTEST_PATHS implementation
-template<class Provider>
-using WeightedKShortestPathsEnumerator =
-    TwoSidedEnumeratorWithProviderWeighted<Provider>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>

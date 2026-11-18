@@ -112,7 +112,7 @@ struct RocksDBOptionFeatureOptions {
   std::string blockCacheType;
   std::string checksumType;
   std::string compactionStyle;
-  uint32_t formatVersion = 0;
+  uint32_t formatVersion = 6;
   bool optimizeFiltersForMemory = false;
   bool enableIndexCompression = false;
   bool useJemallocAllocator = false;
@@ -139,7 +139,6 @@ struct RocksDBOptionFeatureOptions {
   bool limitOpenFilesAtStartup = false;
   bool allowFAllocate = false;
   bool enableBlobGarbageCollection = false;
-  bool exclusiveWrites = false;
   bool minWriteBufferNumberToMergeTouched = false;
   bool partitionFilesForDocumentsCf = false;
   bool partitionFilesForPrimaryIndexCf = false;

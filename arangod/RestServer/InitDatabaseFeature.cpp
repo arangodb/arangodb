@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
@@ -41,7 +42,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "RestServer/InitDatabaseOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -71,6 +71,9 @@ InitDatabaseFeature::InitDatabaseFeature(
 
   if (_options.initDatabase || _options.restoreAdmin) {
     server.forceDisableFeatures(_nonServerFeatures);
+    if (server.hasFeature<AgencyFeature>()) {
+      server.forceDisableFeatures<AgencyFeature>();
+    }
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
     // we can turn off all warnings about environment here, because they

@@ -640,6 +640,12 @@ void insertDistributeInputCalculation(ExecutionPlan& plan) {
         };
         break;
       }
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX: {
+        // This should come from upgradeScatterToDistributeRule which already
+        // inserted a calculation
+        continue;
+      }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -666,8 +672,8 @@ void insertDistributeInputCalculation(ExecutionPlan& plan) {
       // guaranteed to be an object with a _key attribute, so we don't need to
       // do anything.
       if (!createKeys || collection->usesDefaultSharding()) {
-        // no need to insert an extra calculation node in this case.
-        return;
+        // no need to insert an extra calculation node for this DistributeNode.
+        continue;
       }
       // in case we have a collection that is not sharded by _key,
       // the keys need to be created/validated by the coordinator.

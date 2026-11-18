@@ -245,15 +245,11 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
+    this->groupValues[i].erase();
     AqlValueGuard guard{val, true};
-
-    auto memUsage = val.memoryUsage();
+    infos.resourceUsageScope().decrease(val.memoryUsage());
 
     output.moveValueInto(it.first, _lastInputRow, &guard);
-    // ownership of value is transferred into res
-    this->groupValues[i].erase();
-
-    infos.resourceUsageScope().decrease(memUsage);
     ++i;
   }
 
@@ -331,6 +327,8 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(
             output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        // Already reported. fullCount fast-forward must not count it again.
+        _haveSeenData = true;
       }
       break;
     }
@@ -455,6 +453,9 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         if (_infos.getGroupRegisters().empty()) {
           // by definition we need to emit one collect row
           clientCall.didSkip(1);
+          // The row was already skipped. Do not count it again during
+          // the subsequent fullCount fast-forward.
+          _haveSeenData = true;
         }
       } else {
         if (_currentGroup.isValid()) {

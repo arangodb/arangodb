@@ -28,11 +28,11 @@
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Rest/GeneralResponse.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <atomic>
 #include <concepts>
@@ -56,8 +56,8 @@ class Future;
 template<typename>
 struct async;
 
+class AuthenticationFeature;
 class GeneralRequest;
-class RequestStatistics;
 class Result;
 
 enum class RestStatus { DONE, WAITING };
@@ -103,12 +103,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return _server;
   }
 
-  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
-      const noexcept {
-    return _statistics;
+  [[nodiscard]] RequestTimingData const& timingData() const noexcept {
+    return _timingData;
   }
-  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
-  void setRequestStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestTimingData stealTimingData();
+  void setTimingData(RequestTimingData&& data);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
@@ -170,6 +169,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
+  // checks if the HTTP method is allowed and generates an error if not
+  bool isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed);
+
+  // checks if collection name is a numeric collection id
+  // and generates an error if so
+  bool rejectNumericCollectionId(std::string_view cname);
+
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,
@@ -189,6 +195,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// @brief Executes the RestHandler
   auto executeEngine() -> async<void>;
   void compressResponse();
+
+  enum class AuthenticationGrant { DENIED, GRANTED, GRANTED_EARLY };
+  virtual async<AuthenticationGrant> checkUserAuthentication() const;
+  virtual async<Result> checkApiVersionAccess() const;
+  virtual async<Result> checkDatabaseAccess() const;
 
   // The ValueBuilder, as it is, is unsuitable for composition. By composition,
   // I mean, for example, creating a builder in the base class with certain
@@ -219,10 +230,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  RequestStatistics::Item _statistics;
+  RequestTimingData _timingData;
 
  private:
   mutable std::mutex _executionMutex;
+
+  async<void> handleAuthorizationChecks();
 
  protected:
   // TODO Move this in a separate header, side-by-side with SuspensionCounter?

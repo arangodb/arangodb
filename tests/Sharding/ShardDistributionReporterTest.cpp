@@ -41,7 +41,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
@@ -122,7 +121,7 @@ class ShardDistributionReporterTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
@@ -167,7 +166,7 @@ class ShardDistributionReporterTest
 
   ShardDistributionReporterTest()
       : server(nullptr, nullptr),
-        engine(server),
+        engine(server.addFeature<StorageEngine, StorageEngineMock>()),
         ci(infoMock.get()),
         cicInst(infoCurrentMock.get()),
         cic(&cicInst, [](CollectionInfoCurrent*) {}),
@@ -193,14 +192,10 @@ class ShardDistributionReporterTest
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
         dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            dbFeature,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -216,8 +211,9 @@ class ShardDistributionReporterTest
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server), engine);
-    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
-                                                        true);
+    col = std::make_unique<arangodb::LogicalCollection>(
+        *vocbase, arangodb::CollectionDescriptor::fromVelocyPack(json->slice()),
+        true);
 
     col->setShardMap(shards);
 

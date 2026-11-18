@@ -24,6 +24,7 @@ target_sources(arango_aql PRIVATE
   MoveFiltersIntoEnumerate.cpp
   MoveFiltersUp.cpp
   OptimizeCount.cpp
+  OptimizeJoinOrder.cpp
   OptimizePaths.cpp
   OptimizeProjections.cpp
   OptimizeSubqueries.cpp
@@ -33,6 +34,7 @@ target_sources(arango_aql PRIVATE
   PushDownLateMaterialization.cpp
   PushFilterIntoEnumerateNear.cpp
   PushLimitIntoIndex.cpp
+  ReduceExtractionToProjection.cpp
   RemoveCollectVariables.cpp
   RemoveDataModificationOutVariables.cpp
   RemoveFiltersCoveredByIndex.cpp
@@ -40,6 +42,7 @@ target_sources(arango_aql PRIVATE
   RemoveRedundantCalculations.cpp
   RemoveRedundantOr.cpp
   RemoveRedundantSorts.cpp
+  RemoveSortRand.cpp
   RemoveTraversalPathVariable.cpp
   RemoveUnnecessaryCalculations.cpp
   RemoveUnnecessaryFilters.cpp
@@ -49,7 +52,6 @@ target_sources(arango_aql PRIVATE
   ReplaceEqualAttributeAccess.cpp
   ReplaceLastAccessOnGraphPath.cpp
   ReplaceLikeWithRange.cpp
-  ReplaceNearWithinFulltext.cpp
   ReplaceOrWithIn.cpp
   RestrictToSingleShard.cpp
   ScatterInCluster.cpp
@@ -62,8 +64,11 @@ target_sources(arango_aql PRIVATE
   SubstituteClusterMultipleDocumentOperations.cpp
   SubstituteClusterSingleDocumentOperations.cpp
   UndistributeRemoveAfterEnumColl.cpp
+  UpgradeScatterToDistribute.cpp
   UseIndexForCollect.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
   UseVectorIndex.cpp
 )
+
+add_subdirectory(OptimizeJoinOrder)

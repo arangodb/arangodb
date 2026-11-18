@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
 #include "Metrics/LogScale.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "Utils/Thread.h"
 
 #include <chrono>
 #include <condition_variable>

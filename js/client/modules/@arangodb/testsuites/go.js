@@ -25,17 +25,23 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'go_driver': 'go client driver test',
+  'go_driver': 'go client driver test (driver version defaults based on ArangoDB version)',
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
+  '   - `goVersion`: go-driver subdirectory under gosource (`v2` or `v3`); defaults to v3 on ArangoDB 4.0+ and v2 on 3.12.*',
   '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
 const internal = require('internal');
 
-const executeExternal = internal.executeExternal;
-const statusExternal = internal.statusExternal;
+const {
+  SetGlobalExecutionDeadlineTo,
+  IsDeadlineReached,
+  executeExternal,
+  statusExternal,
+  killExternal,
+} = internal;
 
 /* Modules: */
 const _ = require('lodash');
@@ -51,19 +57,42 @@ const path = require('path');
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
-// const RESET = require('internal').COLORS.COLOR_RESET;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
   'go_driver': []
 };
 
+const allowedGoVersions = ['v2', 'v3'];
+
+function defaultGoVersionFromArango () {
+  const version = String(internal.version || '');
+  const match = /^(\d+)\./.exec(version);
+  if (match === null) {
+    throw new Error(`Unable to determine go-driver version from ArangoDB version '${version}'`);
+  }
+  const major = parseInt(match[1], 10);
+  return (major >= 4) ? 'v3' : 'v2';
+}
+
+function resolveGoVersion(options) {
+  const goVersion = options.goVersion;
+  if (allowedGoVersions.indexOf(goVersion) === -1) {
+    throw new Error(`Invalid goVersion '${goVersion}', expected v2 or v3`);
+  }
+  return goVersion;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
 function goDriver (options) {
+  const goVersion = resolveGoVersion(options);
+  options.goVersion = goVersion;
+  print(`go_driver using go-driver ${goVersion} (ArangoDB ${internal.version})`);
   class runGoTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
       let opts = {};
@@ -79,7 +108,6 @@ function goDriver (options) {
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
-      opts.extraArgs['vector-index'] = true;
       opts['arangodConfig'] = 'arangod-auth.conf';
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
@@ -87,7 +115,7 @@ function goDriver (options) {
     runOneTest(file) {    
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
-      let jwt = this.instanceManager.JWT; 
+      let jwt = this.instanceManager.jwt_secret; 
       if (jwt) {
         process.env['TEST_JWTSECRET'] = jwt;
       }
@@ -105,8 +133,8 @@ function goDriver (options) {
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
       process.env['ENABLE_VECTOR_INDEX'] = 'true';
-      if (this.instanceManager.JWT) {
-        process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
+      if (this.instanceManager.jwt_secret) {
+        process.env['TEST_JWTSECRET'] = this.instanceManager.jwt_secret;
       }
       let args = ['test', '-json', '-tags', 'auth', './tests'];
       if (options.cluster || options.isInstrumented) {
@@ -129,122 +157,146 @@ function goDriver (options) {
         print(process.env);
         print(args);
       }
-      let start = Date();
-      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
-      // let alljsonLines = []
-      let b = '';
       let results = {};
-      let status = true;
-      let rc = {};
-      let count = 0;
-      do {
-        let buf = fs.readPipe(res.pid);
-        b += buf;
-        while ((buf.length === 1023) || count === 0) {
-          count += 1;
-          let lineStart = 0;
-          let maxBuffer = b.length;
-          for (let j = 0; j < maxBuffer; j++) {
-            if (b[j] === '\n') { // \n
-              // OK, we've got a complete line. lets parse it.
-              let oldLineStart = lineStart;
-              const line = b.slice(lineStart, j);
-              lineStart = j + 1;
-              try {
-                let item = JSON.parse(line);
-                if (this.options.extremeVerbosity) {
-                  print(item);
-                }
-                // alljsonLines.push(item)
-                // print(item)
-                let testcase = 'WARN';
-                if (item.hasOwnProperty('Test')) {
-                  testcase = item.Test;
-                } else if (item.hasOwnProperty('Output')) {
-                  if (item.Output === 'PASS\n') {
-                    // this is the final PASS, ignore it.
-                    print(item.Output);
-                    continue;
-                  } else if (item.Output.substring(0, 3) === 'ok '){
-                    print(item.Output);
-                    continue;
-                  } else {
-                    status = false;
+      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      let res;
+      try {
+        let start = Date();
+        res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
+        // let alljsonLines = []
+        let b = '';
+        let status = true;
+        let rc = {};
+        let count = 0;
+        do {
+          let buf = fs.readPipe(res.pid);
+          b += buf;
+          while ((buf.length === 1023) || count === 0) {
+            IsDeadlineReached();
+            count += 1;
+            let lineStart = 0;
+            let maxBuffer = b.length;
+            for (let j = 0; j < maxBuffer; j++) {
+              if (b[j] === '\n') { // \n
+                // OK, we've got a complete line. lets parse it.
+                let oldLineStart = lineStart;
+                const line = b.slice(lineStart, j);
+                lineStart = j + 1;
+                try {
+                  let item = JSON.parse(line);
+                  if (this.options.extremeVerbosity) {
+                    print(item);
                   }
-                }
-                if (!results.hasOwnProperty(testcase)) {
-                  results[testcase] = {
-                    "setUpDuration": 0,
-                    "tearDownDuration": 0,
-                    "status": testcase !== 'WARN',
-                    "duration": 0,
-                    "message": ''
-                  };
-                }
-                let thiscase = results[testcase];
-                switch(item.Action) {
-                case 'start':
-                  break;
-                case 'fail':
+                  // alljsonLines.push(item)
+                  // print(item)
+                  let testcase = 'WARN';
+                  if (item.hasOwnProperty('Test')) {
+                    testcase = item.Test;
+                  } else if (item.hasOwnProperty('Output')) {
+                    if (item.Output === 'PASS\n') {
+                      // this is the final PASS, ignore it.
+                      print(item.Output);
+                      continue;
+                    } else if (item.Output.substring(0, 3) === 'ok '){
+                      print(item.Output);
+                      continue;
+                    } else {
+                      status = false;
+                    }
+                  }
+                  if (!results.hasOwnProperty(testcase)) {
+                    results[testcase] = {
+                      "setUpDuration": 0,
+                      "tearDownDuration": 0,
+                      "status": testcase !== 'WARN',
+                      "duration": 0,
+                      "message": ''
+                    };
+                  }
+                  let thiscase = results[testcase];
+                  switch(item.Action) {
+                  case 'start':
+                    break;
+                  case 'fail':
+                    status = false;
+                    thiscase.status = false;
+                    thiscase.duration = item.Elapsed;
+                    break;
+                  case 'pause':
+                    thiscase.message += `${item.Time} => PAUSE\n`;
+                    break;
+                  case 'cont':
+                    thiscase.message += `${item.Time} => Continue!\n`;
+                    break;
+                  case 'output':
+                    thiscase.message += item.Output;
+                    print(item.Time + " - " + item.Output.replace(/^\s+|\s+$/g, ''));
+                    break;
+                  case 'pass':
+                    thiscase.status = true;
+                    thiscase.duration = item.Elapsed * 1000; // s -> ms
+                    break;
+                  case 'build-output':
+                  case 'build-fail':
+                    print(`ERROR: ${item.Output}`);
+                    break;
+                  case 'run':
+                    // nothing interesting to see here...
+                    break;
+                  case 'skip':
+                    thiscase.status = true;
+                    break;
+                  default:
+                    status = false;
+                    print("Don't know what to do with this line! " + line);
+                    break;
+                  }
+                } catch (x) {
+                  print(x);
+                  print(x.stack);
                   status = false;
-                  thiscase.status = false;
-                  thiscase.duration = item.Elapsed;
-                  break;
-                case 'pause':
-                  thiscase.message += `${item.Time} => PAUSE\n`;
-                  break;
-                case 'cont':
-                  thiscase.message += `${item.Time} => Continue!\n`;
-                  break;
-                case 'output':
-                  thiscase.message += item.Output;
-                  print(item.Time + " - " + item.Output.replace(/^\s+|\s+$/g, ''));
-                  break;
-                case 'pass':
-                  thiscase.status = true;
-                  thiscase.duration = item.Elapsed * 1000; // s -> ms
-                  break;
-                case 'build-output':
-                case 'build-fail':
-                  print(`ERROR: ${item.Output}`);
-                  break;
-                case 'run':
-                  // nothing interesting to see here...
-                  break;
-                case 'skip':
-                  thiscase.status = true;
-                  break;
-                default:
-                  status = false;
-                  print("Don't know what to do with this line! " + line);
-                  break;
+                  print("Error while parsing line? - " + x);
+                  print("offending Line: " + line);
+                  // doesn't seem to be a good idea: lineStart = oldLineStart;
                 }
-              } catch (x) {
-                print(x);
-                print(x.stack);
-                status = false;
-                print("Error while parsing line? - " + x);
-                print("offending Line: " + line);
-                // doesn't seem to be a good idea: lineStart = oldLineStart;
               }
             }
+            b = b.slice(lineStart, b.length);
+            buf = fs.readPipe(res.pid);
+            b += buf;
           }
-          b = b.slice(lineStart, b.length);
-          buf = fs.readPipe(res.pid);
-          b += buf;
+          rc = statusExternal(res.pid);
+          if (rc.status === 'NOT-FOUND') {
+            break;
+          }
+        } while (rc.status === 'RUNNING');
+        if (rc.exit !== 0) {
+          status = false;
         }
-        rc = statusExternal(res.pid);
-        if (rc.status === 'NOT-FOUND') {
-          break;
+        // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
+        results['timeout'] = false;
+        results['status'] = status;
+        results['message'] = '';
+      } catch (ex) {
+        let timeout = SetGlobalExecutionDeadlineTo(0.0);
+        let killResult = '';
+        if (res && res.pid !== undefined) {
+          try {
+            killResult = killExternal(res.pid);
+          } catch (ignore) {
+          }
         }
-      } while (rc.status === 'RUNNING');
-      if (rc.exit !== 0) {
-        status = false;
+        let msg = `testrun has thrown ${ex.message} \n ${ex.stack} ${killResult}`;
+        print(`${RED}${msg}${RESET}`);
+        return {
+          timeout: timeout,
+          status: false,
+          failed: 1,
+          stack: ex.stack,
+          message: msg
+        };
       }
-      // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
-      results['timeout'] = false;
-      results['status'] = status;
-      results['message'] = '';
+      SetGlobalExecutionDeadlineTo(0.0);
       return results;
     }
   }
@@ -266,6 +318,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoObject(opts, {
     'goOptions': '',
     'gosource': '../go-driver',
+    'goVersion': defaultGoVersionFromArango(),
   });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

@@ -31,7 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -49,8 +49,7 @@ using namespace arangodb::options;
 
 void LoggerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
-  opts->addOldOption("log.tty", "log.foreground-tty");
-  opts->addOldOption("log.escape", "log.escape-control-chars");
+  opts->addSection("log", "logging");
 
   opts->addOption("--log",
                   "Set the topic-specific log level, using `--log level` "
@@ -62,8 +61,6 @@ void LoggerOptionsProvider::declareOptionsImpl(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
-
-  opts->addSection("log", "logging");
 
   opts->addOption(
       "--log.color", "Use colors for TTY logging.",
@@ -297,24 +294,6 @@ The default value is 128 MB, which is very high and should effectively mean
 downwards-compatibility with previous arangod versions, which did not restrict
 the maximum size of log messages.)");
 
-  opts->addOption("--log.use-local-time",
-                  "Use the local timezone instead of UTC.",
-                  new BooleanParameter(&options.useLocalTime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format local-datestring` instead.)");
-
-  opts->addOption("--log.use-microtime",
-                  "Use Unix timestamps in seconds with microsecond precision.",
-                  new BooleanParameter(&options.useMicrotime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format timestamp-micros` instead.)");
-
   opts->addOption("--log.time-format", "The time format to use in logs.",
                   new DiscreteValuesParameter<StringParameter>(
                       &options.timeFormatString,
@@ -450,13 +429,6 @@ If you set this option to `auto`, the hostname is automatically determined.)");
       new BooleanParameter(&options.threadName),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  opts->addOption("--log.performance",
-                  "Shortcut for `--log.level performance=trace`.",
-                  new BooleanParameter(&options.performance),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500);
-
   opts->addOption(
       "--log.foreground-tty", "Also log to TTY if backgrounded.",
       new BooleanParameter(&options.foregroundTty),
@@ -495,11 +467,6 @@ full, log entries are written synchronously until the queue has space again.)");
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&options.logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  opts->addObsoleteOption("log.content-filter", "", true);
-  opts->addObsoleteOption("log.source-filter", "", true);
-  opts->addObsoleteOption("log.application", "", true);
-  opts->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerOptionsProvider::processOptionsImpl(
@@ -519,10 +486,6 @@ void LoggerOptionsProvider::validateOptionsImpl(
     }
 
     options.output.push_back(definition);
-  }
-
-  if (options.performance) {
-    options.levels.push_back("performance=trace");
   }
 
   if (opts->processingResult().touched("log.time-format") &&
@@ -594,9 +557,10 @@ void LoggerOptionsProvider::validateOptionsImpl(
   }
 #endif
 
+  // replace $PID with current process id in filenames
   for (auto& output : options.output) {
-    output = StringUtils::replace(output, "$PID",
-                                  std::to_string(Thread::currentProcessId()));
+    output = StringUtils::replace(
+        output, "$PID", std::to_string(BasicThread::currentProcessId()));
   }
 }
 

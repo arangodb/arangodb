@@ -58,7 +58,6 @@ function CollectionDocumentSuiteBabies() {
 
     tearDown: function () {
       if (collection) {
-        collection.unload();
         collection.drop();
         collection = null;
       }
@@ -958,8 +957,6 @@ function CollectionDocumentSuiteReturnStuff() {
       collection = db._create(cn, {
         waitForSync: false
       });
-
-      collection.load();
     },
 
     ////////////////////////////////////////////////////////////////////////////////

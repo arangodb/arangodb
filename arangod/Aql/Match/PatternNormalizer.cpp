@@ -1,0 +1,421 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Aql/Match/PatternNormalizer.h"
+
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Match/MatchOptions.h"
+#include "Aql/Collection.h"
+#include "Aql/Collections.h"
+#include "Aql/QueryContext.h"
+#include "Aql/TypedAstNodes.h"
+#include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
+
+#include <absl/strings/str_cat.h>
+
+#include <cmath>
+#include <cstdint>
+
+namespace arangodb::aql::match {
+namespace {
+
+// Constant LET expressions are evaluated before planning, so non-document
+// bindings appear as values, objects, or arrays rather than variable
+// references.
+bool isNonDocumentVertexReference(AstNodeType type) noexcept {
+  return type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT ||
+         type == NODE_TYPE_ARRAY;
+}
+
+[[noreturn]] void throwNonDocumentVertexReference() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                 "MATCH vertex reference must be a document");
+}
+
+uint64_t checkDepthValue(AstNode const* node) {
+  if (node == nullptr || !node->isNumericValue()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  double const v = node->getDoubleValue();
+  if (v > static_cast<double>(INT64_MAX)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
+  double intpart;
+  if (std::modf(v, &intpart) != 0.0 || v < 0.0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  return static_cast<uint64_t>(v);
+}
+
+}  // namespace
+
+PatternNormalizer::PatternNormalizer(Ast& ast) noexcept : _ast{ast} {}
+
+NormalizedStatement PatternNormalizer::normalize(
+    ast::MatchNode matchNode) const {
+  NormalizedStatement statement;
+  statement.options = MatchOptions::fromAstNode(matchNode.options());
+  statement.patterns.reserve(matchNode.numPatterns());
+
+  for (size_t i = 0; i < matchNode.numPatterns(); ++i) {
+    statement.patterns.push_back(normalizePattern(matchNode.pattern(i)));
+  }
+
+  return statement;
+}
+
+NormalizedPattern PatternNormalizer::normalizePattern(
+    ast::PatternMatchExpression matchExpr) const {
+  NormalizedPattern pattern;
+  pattern.pathVariable = nullptr;
+  bool hasStart = false;
+
+  for (size_t i = 0; i < matchExpr.numMembers(); ++i) {
+    AstNode const* member = matchExpr.getMember(i);
+
+    switch (member->type) {
+      case NODE_TYPE_PATTERN_PATH_VARIABLE:
+        if (pattern.pathVariable != nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "multiple path variables in match expression");
+        }
+        pattern.pathVariable = static_cast<Variable const*>(member->getData());
+        break;
+
+      case NODE_TYPE_PATTERN_NODE_PATTERN:
+      case NODE_TYPE_REFERENCE:
+        if (hasStart) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "multiple start nodes in match "
+                                         "expression");
+        }
+        pattern.start = normalizeStartElement(*member);
+        hasStart = true;
+        break;
+
+      case NODE_TYPE_PATTERN_SEGMENT:
+        pattern.segments.push_back(normalizeSegment(*member));
+        break;
+
+      default:
+        if (isNonDocumentVertexReference(member->type)) {
+          throwNonDocumentVertexReference();
+        }
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected match expression member");
+    }
+  }
+
+  if (!hasStart) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "match expression without start node");
+  }
+
+  rejectPathVariableSelfReferences(pattern);
+
+  return pattern;
+}
+
+void PatternNormalizer::rejectPathVariableSelfReferences(
+    NormalizedPattern const& pattern) const {
+  if (pattern.pathVariable == nullptr) {
+    return;
+  }
+
+  auto const rejectIfReferencesPath =
+      [&](std::optional<ExpressionRef> const& filter) {
+        if (!filter.has_value() || filter->node == nullptr) {
+          return;
+        }
+        if (Ast::countReferences(filter->node, pattern.pathVariable) > 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_PARSE,
+              absl::StrCat("MATCH path variable '", pattern.pathVariable->name,
+                           "' cannot be referenced in its own pattern WHERE "
+                           "expression"));
+        }
+      };
+
+  auto const rejectElementFilters = [&](PatternElement const& element) {
+    if (element.kind != PatternElement::Kind::kVertex ||
+        !element.vertex.has_value()) {
+      return;
+    }
+    rejectIfReferencesPath(element.vertex->filter);
+  };
+
+  rejectElementFilters(pattern.start);
+  for (auto const& segment : pattern.segments) {
+    rejectIfReferencesPath(segment.edge.filter);
+    rejectElementFilters(segment.target);
+  }
+}
+
+PatternElement PatternNormalizer::normalizeStartElement(
+    AstNode const& node) const {
+  if (node.type == NODE_TYPE_REFERENCE) {
+    PatternElement element;
+    element.kind = PatternElement::Kind::kVariableReference;
+    element.variableReference = static_cast<Variable const*>(node.getData());
+    return element;
+  }
+
+  // Same constant-folded binding, but on a later vertex such as
+  // MATCH (a :vc) -[e :ec]-> (x).
+  if (isNonDocumentVertexReference(node.type)) {
+    throwNonDocumentVertexReference();
+  }
+
+  TRI_ASSERT(node.type == NODE_TYPE_PATTERN_NODE_PATTERN);
+  PatternElement element;
+  element.kind = PatternElement::Kind::kVertex;
+  element.vertex = normalizeVertex(node);
+  return element;
+}
+
+NormalizedSegment PatternNormalizer::normalizeSegment(
+    AstNode const& segment) const {
+  ast::PatternSegment typed{&segment};
+
+  NormalizedSegment result;
+  result.edge = normalizeEdge(*typed.getEdge().get());
+  result.target = normalizeStartElement(*typed.getNode());
+  return result;
+}
+
+NormalizedVertex PatternNormalizer::normalizeVertex(
+    AstNode const& nodePattern) const {
+  ast::PatternNodePattern typed{&nodePattern};
+
+  NormalizedVertex vertex;
+  vertex.variable = typed.getOutVariable();
+
+  AstNode const* label = typed.getLabels();
+  if (label == nullptr || label->type == NODE_TYPE_VALUE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "match vertex without collection label");
+  }
+  vertex.collection = normalizeDataSource(*label, TRI_COL_TYPE_DOCUMENT);
+  vertex.properties = normalizeProperties(typed.getProperties());
+  vertex.filter = normalizeFilter(typed.getFilter());
+  vertex.projection = normalizeProjection(typed.getProjection());
+  return vertex;
+}
+
+NormalizedEdge PatternNormalizer::normalizeEdge(AstNode const& edge) const {
+  ast::PatternEdge typed{&edge};
+
+  NormalizedEdge result;
+  result.variable = typed.getOutVariable();
+  AstNode const* collectionsNode = typed.getCollections();
+  result.collections =
+      normalizeDataSourceList(collectionsNode, TRI_COL_TYPE_EDGE);
+  if (collectionsNode != nullptr && collectionsNode->type == NODE_TYPE_ARRAY) {
+    result.collectionAstNodes.reserve(collectionsNode->numMembers());
+    for (size_t i = 0; i < collectionsNode->numMembers(); ++i) {
+      result.collectionAstNodes.push_back(collectionsNode->getMember(i));
+    }
+  }
+  if (result.collections.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "match edge without collection label");
+  }
+  result.properties = normalizeProperties(typed.getProperties());
+  result.filter = normalizeFilter(typed.getFilter());
+  result.direction = normalizeDirection(typed.getDirection());
+  result.range = normalizeRange(typed.getRange());
+  result.projection = normalizeProjection(typed.getProjection());
+  return result;
+}
+
+DataSource PatternNormalizer::normalizeDataSource(
+    AstNode const& node, TRI_col_type_e expectedType) const {
+  switch (node.type) {
+    case NODE_TYPE_COLLECTION:
+      requireCollectionType(node.getStringView(), expectedType);
+      return DataSource::collection(std::string(node.getStringView()));
+    case NODE_TYPE_PARAMETER_DATASOURCE:
+      return DataSource::bindParameter(std::string(node.getStringView()));
+    case NODE_TYPE_VIEW:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+          absl::StrCat("MATCH label '", node.getStringView(),
+                       "' is a view; labels must name a collection"));
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "unexpected data source node in match pattern normalization");
+  }
+}
+
+void PatternNormalizer::requireCollectionType(
+    std::string_view name, TRI_col_type_e expectedType) const {
+  auto const* collection = _ast.query().collections().get(name);
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                     ": ", name));
+  }
+  if (collection->type() == expectedType) {
+    return;
+  }
+
+  if (expectedType == TRI_COL_TYPE_EDGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+        absl::StrCat(
+            "MATCH edge label '", name,
+            "' is a document collection; expecting an edge collection"));
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+      absl::StrCat("MATCH vertex label '", name,
+                   "' is an edge collection; expecting a document collection"));
+}
+
+std::vector<DataSource> PatternNormalizer::normalizeDataSourceList(
+    AstNode const* node, TRI_col_type_e expectedType) const {
+  std::vector<DataSource> collections;
+  if (node == nullptr || node->type == NODE_TYPE_VALUE) {
+    return collections;
+  }
+
+  TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
+  collections.reserve(node->numMembers());
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    collections.push_back(
+        normalizeDataSource(*node->getMember(i), expectedType));
+  }
+  return collections;
+}
+
+std::vector<PropertyConstraint> PatternNormalizer::normalizeProperties(
+    AstNode const* node) const {
+  std::vector<PropertyConstraint> properties;
+  if (node == nullptr || node->type == NODE_TYPE_NOP) {
+    return properties;
+  }
+
+  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+  properties.reserve(node->numMembers());
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    AstNode const* member = node->getMember(i);
+    TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+    properties.push_back(PropertyConstraint{
+        std::string(member->getStringView()), {member->getMember(0)}});
+  }
+  return properties;
+}
+
+std::optional<ExpressionRef> PatternNormalizer::normalizeFilter(
+    AstNode const* node) const {
+  if (node == nullptr || node->type == NODE_TYPE_NOP) {
+    return std::nullopt;
+  }
+  return ExpressionRef{node};
+}
+
+std::optional<Projection> PatternNormalizer::normalizeProjection(
+    AstNode const* node) const {
+  if (node == nullptr || node->type == NODE_TYPE_NOP) {
+    return std::nullopt;
+  }
+
+  TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
+  Projection projection;
+  projection.items.reserve(node->numMembers());
+
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    AstNode const* item = node->getMemberUnchecked(i);
+    if (item->type == NODE_TYPE_OBJECT_ELEMENT) {
+      // Alias: name = <expression>. Expression remains Ast-owned.
+      projection.items.push_back(ProjectionItem::alias(
+          std::string(item->getStringView()), {item->getMember(0)}));
+    } else if (item->type == NODE_TYPE_ARRAY) {
+      // Unquoted keep path: ARRAY of path segments (nested when size > 1).
+      // e.g. profile.name → {"profile","name"}
+      std::vector<std::string> path;
+      path.reserve(item->numMembers());
+      for (size_t j = 0; j < item->numMembers(); ++j) {
+        AstNode const* part = item->getMemberUnchecked(j);
+        TRI_ASSERT(part->isStringValue());
+        path.emplace_back(part->getString());
+      }
+      projection.items.push_back(ProjectionItem::keepPath(std::move(path)));
+    } else if (item->type == NODE_TYPE_VALUE && item->isStringValue()) {
+      // Quoted literal keep: single top-level key (dots are not hierarchy).
+      // e.g. "profile.name" → {"profile.name"}
+      projection.items.push_back(
+          ProjectionItem::keepLiteral(std::string(item->getStringView())));
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unexpected match projection item");
+    }
+  }
+
+  return projection;
+}
+
+EdgeDirection PatternNormalizer::normalizeDirection(AstNode const* node) const {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_VALUE);
+
+  switch (node->getIntValue()) {
+    case 1:
+      return EdgeDirection::kInbound;
+    case 2:
+      return EdgeDirection::kOutbound;
+    case 3:
+      return EdgeDirection::kAny;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid direction for match expression");
+  }
+}
+
+PathRange PatternNormalizer::normalizeRange(AstNode const* node) const {
+  if (node == nullptr || node->type == NODE_TYPE_NOP) {
+    return PathRange::defaultFixedOne();
+  }
+
+  TRI_ASSERT(node->type == NODE_TYPE_RANGE);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  uint64_t const minDepth = checkDepthValue(node->getMember(0));
+  uint64_t const maxDepth = checkDepthValue(node->getMember(1));
+  if (maxDepth < minDepth) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  return PathRange::bounded(minDepth, maxDepth);
+}
+
+}  // namespace arangodb::aql::match

@@ -83,7 +83,7 @@ add_executable(
 
 set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+# required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests-iresearch PRIVATE -fno-devirtualize)
 endif()
@@ -95,12 +95,11 @@ target_link_libraries(arangodbtests-iresearch
   arango_cluster_engine
   arango_rocksdb
   arangoserver
-  boost_boost
 )
 
-if (USE_V8)
-  target_link_libraries(arangodbtests-iresearch arango_v8server)
-endif ()
+if(USE_JEMALLOC)
+  target_link_libraries(arangodbtests-iresearch jemalloc)
+endif()
 
 if (USE_JEMALLOC)
   target_link_libraries(arangodbtests-iresearch jemalloc)
@@ -118,11 +117,4 @@ target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
 
-if (USE_V8) 
-  target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
-    ${V8_INTERNAL_INCLUDE_DIR})
-endif ()
-
-
 target_link_libraries(arangodbtests-iresearch v8_interface)
-

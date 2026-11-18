@@ -27,7 +27,6 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "Transaction/OperationOrigin.h"
 
 #include <atomic>
 
@@ -100,7 +99,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   /// @brief hide building indexes, except the vector index which stays visible
   /// through its build phases
   bool isHidden() const override {
-    return _wrapped->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX;
+    return _wrapped->type() != IndexType::Vector;
   }
 
   bool inProgress() const override {

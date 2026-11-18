@@ -149,7 +149,7 @@ RocksDBOptionFeatureOptions::RocksDBOptionFeatureOptions() {
   blockCacheType = std::string{kBlockCacheTypeLRU};
   checksumType = std::string{kChecksumTypeXXHash64};
   compactionStyle = std::string{kCompactionStyleLevel};
-  formatVersion = 5;
+  formatVersion = 6;
   enableIndexCompression = rocksDBTableOptionsDefaults.enable_index_compression;
   reserveTableBuilderMemory = true;
   reserveTableReaderMemory = true;

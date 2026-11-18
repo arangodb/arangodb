@@ -34,7 +34,7 @@ const jsunity = require('jsunity');
 function testSuite() {
   return {
     testApiGet : function() {
-      let res = arango.GET("/_admin/log");
+      let res = arango.GET("/_admin/log/entries");
       assertTrue(res.error);
       assertEqual(403, res.code);
     },
@@ -52,7 +52,7 @@ function testSuite() {
     },
     
     testApiDelete : function() {
-      let res = arango.DELETE("/_admin/log");
+      let res = arango.DELETE("/_admin/log/entries");
       assertTrue(res.error);
       assertEqual(403, res.code);
     },

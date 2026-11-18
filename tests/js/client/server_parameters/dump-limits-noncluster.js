@@ -266,6 +266,62 @@ function testSuite() {
       }
     },
 
+    testDumpWithZeroPrefetchCount: function() {
+      // 0 would leave the prefetch queue without a single slot, so nothing
+      // could ever be handed over and the dump would stall. The lower bound
+      // clamp has to lift it to a usable size.
+      let config = {
+        docsPerBatch: 1000,
+        prefetchCount: 0,
+        parallelism: 2,
+        shards: [collections[0]],
+      };
+      let res = dump.start(config);
+      assertEqual(201, res.code, res);
+
+      let id = res.headers["x-arango-dump-id"];
+      try {
+        assertMatch(/^dump-\d+$/, id);
+
+        res = dump.next(id, 1, null);
+        assertEqual(200, res.code, res);
+        let docs = res.body.toString().split("\n").filter((l) => l !== "");
+        assertTrue(docs.length > 0, {docs: docs.length});
+      } finally {
+        dump.delete(id);
+      }
+    },
+
+    testDumpWithExcessivePrefetchCount: function() {
+      // the prefetch queue is allocated upfront from this value, so the upper
+      // bound clamp has to bring it down to a sane size for the dump to start.
+      let config = {
+        docsPerBatch: 1000,
+        prefetchCount: Math.pow(2, 50),
+        parallelism: 2,
+        shards: [collections[0]],
+      };
+      let res = dump.start(config);
+      assertEqual(201, res.code, res);
+
+      let id = res.headers["x-arango-dump-id"];
+      try {
+        assertMatch(/^dump-\d+$/, id);
+
+        // the clamped value must be a working queue size and not something
+        // degenerate such as 0, which would make the dump stall
+        res = dump.next(id, 1, null);
+        assertEqual(200, res.code, res);
+        let docs = res.body.toString().split("\n").filter((l) => l !== "");
+        assertTrue(docs.length > 0, {docs: docs.length});
+        docs.forEach((line) => {
+          assertMatch(/^testmann\d+$/, JSON.parse(line).value1);
+        });
+      } finally {
+        dump.delete(id);
+      }
+    },
+
   };
 }
 

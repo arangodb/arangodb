@@ -7,6 +7,7 @@ add_library(arango_graph STATIC
   ShortestPathOptions.cpp
   PathType.cpp
   TraverserOptions.cpp
+  WeightAttributeHelper.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/CallbackGuard.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/ServerDefaults.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/TraverserEngine.cpp
@@ -18,7 +19,7 @@ target_link_libraries(arango_graph
   arango_aql
   arango_cache
   arango_vocbase
-  boost_boost)
+  Boost::range)
 
 target_include_directories(arango_graph PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

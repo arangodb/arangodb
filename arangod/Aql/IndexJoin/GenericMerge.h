@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/IndexJoinStrategy.h"
+#include "Aql/IndexStreamKeyStore.h"
 
 namespace arangodb::aql {
 
@@ -90,6 +91,7 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::vector<DocIdType> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
+  IndexStreamKeyStore<SliceType> currentKeyStore;
   std::span<SliceType> projectionsSpan;
 
   IndexMinHeap minHeap;
@@ -147,8 +149,11 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     IndexStreamData const& left, IndexStreamData const& right) {
-  if (!left.exhausted && right.exhausted) {
-    return std::weak_ordering::less;
+  // an exhausted stream sorts after all other streams
+  if (left.exhausted || right.exhausted) {
+    return left.exhausted == right.exhausted ? std::weak_ordering::equivalent
+           : left.exhausted                  ? std::weak_ordering::greater
+                                             : std::weak_ordering::less;
   }
 
   return cmp(left._position, right._position);
@@ -375,7 +380,7 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
   }
-  indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
+  currentKeyStore.update(indexes.rbegin()->_position, currentKeySet);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>

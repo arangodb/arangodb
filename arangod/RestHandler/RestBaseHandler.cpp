@@ -26,7 +26,6 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
-#include "Utils/ExecContext.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -37,7 +36,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
 
-using namespace arangodb;
+namespace arangodb {
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -45,30 +45,6 @@ RestBaseHandler::RestBaseHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
-
-bool RestBaseHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
-bool RestBaseHandler::isSelfUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return false;
-}
-
-bool RestBaseHandler::canAccessUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return isAdminUser();
-}
 
 // parses the body as VelocyPack
 velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
@@ -258,6 +234,11 @@ auto RestBaseHandler::tryForwarding() -> async<bool> {
   options.timeout = network::Timeout(30.0);
   options.database = _request->databaseName();
   options.parameters = _request->parameters();
+  TRI_ASSERT(_request->hasValidApiVersion());
+  if (not _request->hasValidApiVersion()) {
+    co_return false;
+  }
+  options.apiVersion = _request->requestedApiVersion();
 
   auto f = network::sendRequestRetry(
       pool, "server:" + serverId, fuerte::RestVerb::Get,
@@ -307,3 +288,5 @@ template void RestBaseHandler::writeResult<VPackSlice&>(VPackSlice& payload,
                                                         VPackOptions const&);
 template void RestBaseHandler::writeResult<VPackSlice const&>(
     VPackSlice const& payload, VPackOptions const&);
+
+}  // namespace arangodb

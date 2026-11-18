@@ -58,7 +58,8 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ "$AUTOUPGRADE" == "1" ];then
+if [[ "$AUTOUPGRADE" == "1" || "$AUTOUPGRADE" == "true" ]]; then
+  AUTOUPGRADE="1"
   echo "-- Using autoupgrade procedure"
 fi
 
@@ -104,9 +105,9 @@ else
     echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
     exit
   fi
-  echo $JWT_SECRET > cluster/jwt.secret
+  echo "$JWT_SECRET" > cluster/jwt.secret
   AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
-  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s "$JWT_SECRET" -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then
@@ -117,7 +118,7 @@ else
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
+  SSLKEYFILE="--tls.keyfile etc/testing/server.pem"
   CURL="curl --insecure $CURL_AUTHENTICATION -s -f -X GET https:"
 else
   SSLKEYFILE=""
@@ -153,7 +154,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
       --agency.compaction-keep-size $KEEP 
       --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE 
       --agency.my-address $TRANSPORT://$ADDRESS:$PORT
-      --agency.pool-size $NRAGENTS 
       --agency.size $NRAGENTS 
       --agency.supervision true 
       --agency.supervision-frequency $SFRE 
@@ -236,16 +236,10 @@ start() {
       --log.file cluster/$PORT.log 
       --log.level $LOG_LEVEL 
       --log.thread true
-      --javascript.startup-directory $SRC_DIR/js 
-      --javascript.module-directory $SRC_DIR/enterprise/js 
-      --javascript.app-path cluster/apps$PORT 
       --log.force-direct false 
       --log.level $LOG_LEVEL_CLUSTER
       --server.descriptors-minimum 0
-      --javascript.allow-admin-execute true
       --http.trusted-origin all
-      --database.check-version false
-      --database.upgrade-check false
       --experimental-vector-index true
       --rocksdb.enable-statistics true
       --network.compression-method lz4

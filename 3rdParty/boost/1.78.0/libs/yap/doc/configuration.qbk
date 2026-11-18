@@ -1,8 +1,0 @@
-[section Configuration]
-
-_no_constexpr_if_m_ is a macro that indicates whether the compiler has support
-for constexpr if.  It defaults to no.  Define it to be a nonzero value if your
-compiler has constexpr if support.  Note that this is a temporary hack; this
-should eventually be a Boost-wide macro.
-
-[endsect]

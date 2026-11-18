@@ -66,6 +66,7 @@ ERROR_HTTP_GATEWAY_TIMEOUT,504,"gateway timeout","Will be raised when a service 
 
 ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation of a JSON object is corrupt."
 ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised when the URL contains superfluous suffices."
+ERROR_HTTP_API_VERSION_MISMATCH,602,"API version mismatch","Will be raised when the API version requested via the x-arango-api-version header is not compatible with the API version the server serves."
 
 ################################################################################
 ## Internal ArangoDB storage errors
@@ -253,10 +254,10 @@ ERROR_QUERY_VECTOR_INDEX_NOT_READY,1555,"vector index not ready","The vector ind
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
 ERROR_QUERY_ARRAY_EXPECTED,1563,"array expected","Will be raised when a non-array operand is used for an operation that expects an array argument operand."
+ERROR_QUERY_OBJECT_EXPECTED,1564,"object expected","Will be raised when a non-object operand is used in an object splice operation."
 ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1568,"collection '%s' used as expression operand","Will be raised when a collection is used as an operand in an AQL expression."
 ERROR_QUERY_FAIL_CALLED,1569,"FAIL(%s) called","Will be raised when the function FAIL() is called from inside a query."
 ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
-ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
 ERROR_QUERY_INVALID_DATE_VALUE,1572,"invalid date value","Will be raised when a value cannot be converted to a date."
 ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL query contains more than one data-modifying operation."
 ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
@@ -287,6 +288,7 @@ ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expressio
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evaluate to true"
 
 ERROR_QUERY_WINDOW_AFTER_MODIFICATION,1595,"window operation after data-modification","Will be raised when a window node is created after a data-modification operation."
+ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE,1596,"attribute '%s' was excluded by MATCH projection on variable '%s'","Will be raised when a query accesses an attribute that was not kept by a MATCH projection."
 
 ################################################################################
 ## ArangoDB cursor errors
@@ -395,26 +397,6 @@ ERROR_WAS_ERLAUBE,2019,"was erlaube?!","Will be raised if was erlaube?!"
 ################################################################################
 
 ERROR_INTERNAL_AQL,2200,"General internal AQL error","Internal error during AQL execution"
-
-################################################################################
-## Foxx management errors
-################################################################################
-
-ERROR_MALFORMED_MANIFEST_FILE,3000,"failed to parse manifest file","The service manifest file is not well-formed JSON."
-ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The service manifest contains invalid values."
-ERROR_SERVICE_FILES_MISSING,3002,"service files missing","The service folder or bundle does not exist on this server."
-ERROR_SERVICE_FILES_OUTDATED,3003,"service files outdated","The local service bundle does not match the checksum in the database."
-ERROR_INVALID_FOXX_OPTIONS,3004,"service options are invalid","The service options contain invalid values."
-ERROR_INVALID_MOUNTPOINT,3007,"invalid mountpath","The service mountpath contains invalid characters."
-ERROR_SERVICE_NOT_FOUND,3009,"service not found","No service found at the given mountpath."
-ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"service needs configuration","The service is missing configuration or dependencies."
-ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"service already exists","A service already exists at the given mountpath."
-ERROR_SERVICE_MANIFEST_NOT_FOUND,3012,"missing manifest file","The service directory does not contain a manifest file."
-ERROR_SERVICE_OPTIONS_MALFORMED,3013,"failed to parse service options","The service options are not well-formed JSON."
-ERROR_SERVICE_SOURCE_NOT_FOUND,3014,"source path not found","The source path does not match a file or directory."
-ERROR_SERVICE_SOURCE_ERROR,3015,"error resolving source","The source path could not be resolved."
-ERROR_SERVICE_UNKNOWN_SCRIPT,3016,"unknown script","The service does not have a script with this name."
-ERROR_SERVICE_API_DISABLED,3099,"service api disabled","The API for managing Foxx services has been disabled on this server."
 
 ################################################################################
 ## JavaScript module loader errors

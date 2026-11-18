@@ -23,7 +23,6 @@
 #include "./MockGraphProvider.h"
 #include "Graph/Enumerators/OneSidedEnumerator.cpp"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
-#include "Graph/Enumerators/WeightedTwoSidedEnumerator.cpp"
 #include "Graph/Enumerators/WeightedShortestPathEnumerator.cpp"
 #include "Graph/PathManagement/PathResult.cpp"
 #include "Graph/PathManagement/PathStore.cpp"
@@ -53,8 +52,6 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     MockGraphProvider,
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<MockGraphProvider>;
 
 template class ::arangodb::graph::WeightedShortestPathEnumerator<
     MockGraphProvider>;

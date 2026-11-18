@@ -26,9 +26,8 @@
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 
 namespace arangodb::aql {
 
@@ -38,11 +37,7 @@ AqlFunctionFeature::AqlFunctionFeature(
     application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<application_features::V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   startsAfter<AqlFeature>();
 }
 
@@ -194,6 +189,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_FIRST", ".,.|.,.", flags, &functions::FindFirst});
   add({"FIND_LAST", ".,.|.,.", flags, &functions::FindLast});
   add({"SPLIT", ".|.,.", flags, &functions::Split});
+  add({"PARTITION", ".,.|.", flags, &functions::Partition});
   add({"SUBSTITUTE", ".,.|.,.", flags, &functions::Substitute});
   add({"IPV4_TO_NUMBER", ".", flags, &functions::IpV4ToNumber});
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
@@ -310,6 +306,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"RANGE", ".,.|.", flags, &functions::Range});
   add({"UNION", ".,.|+", flags, &functions::Union});
   add({"UNION_DISTINCT", ".,.|+", flags, &functions::UnionDistinct});
+  add({"UNION_DISTINCT_STABLE", ".,.|+", flags,
+       &functions::UnionDistinctStable});
   add({"MINUS", ".,.|+", flags, &functions::Minus});
   add({"OUTERSECTION", ".,.|+", flags, &functions::Outersection});
   add({"INTERSECTION", ".,.|+", flags, &functions::Intersection});
@@ -420,7 +418,6 @@ void AqlFunctionFeature::addGeoFunctions() {
 
   // geo functions
   add({"DISTANCE", ".,.,.,.", flags, &functions::Distance});
-  add({"IS_IN_POLYGON", ".,.|.", flags, &functions::IsInPolygon});
   add({"GEO_DISTANCE", ".,.|.", flags, &functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.", flags, &functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", flags, &functions::GeoIntersects});
@@ -512,12 +509,6 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &functions::ShardId});
 
-  // only function without a C++ implementation. not usable in analyzers
-#ifdef USE_V8
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable),
-       nullptr});
-#endif
-
   // the following functions are not eligible to run on DB servers and not
   // in analyzers
   auto validationFlags = Function::makeFlags(FF::None);
@@ -568,19 +559,6 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),
        &functions::Warn});  // not deterministic and not cacheable
 
-  // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-/index-based subqueries. they are all
-  // marked as deterministic and cacheable here as they are just
-  // placeholders for collection/index accesses nowaways.
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster,
@@ -595,24 +573,23 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
 
-  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-    add({"APPROX_NEAR_COSINE", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearCosine});
-    add({"APPROX_NEAR_L2", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearL2});
+  add({"APPROX_NEAR_COSINE", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearCosine});
+  add({"APPROX_NEAR_L2", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL2});
 
-    add({"APPROX_NEAR_INNER_PRODUCT", ".,.|.",
-         Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                             FF::CanRunOnDBServerCluster,
-                             FF::CanRunOnDBServerOneShard),
-         &functions::ApproxNearL2});
-  }
+  add({"APPROX_NEAR_INNER_PRODUCT", ".,.|.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL2});
+
 #ifdef USE_ENTERPRISE
   add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,

@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Basics/EncodingUtils.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -33,16 +35,15 @@ struct GeneralServerOptions {
   bool startedListening = false;
   bool allowEarlyConnections = false;
   bool handleContentEncodingForUnauthenticatedRequests = false;
-  bool proxyCheck = true;
   bool returnQueueTimeHeader = true;
-  bool permanentRootRedirect = true;
+  uint64_t numIoThreads;  // initialized in ctor
   uint64_t compressResponseThreshold = 0;
-  std::vector<std::string> trustedProxies;
+  uint64_t maxDecompressedRequestBodySize =
+      arangodb::encoding::defaultMaxUncompressedSize;
+  uint64_t decompressedRequestBodyGlobalMemoryLimit = 0;
   std::vector<std::string> accessControlAllowOrigins;
-  std::string redirectRootTo = "/_admin/aardvark/index.html";
   std::string supportInfoApiPolicy = "admin";
   std::string optionsApiPolicy = "jwt";
-  uint64_t numIoThreads;  // initialized in ctor
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::vector<std::string> failurePoints;

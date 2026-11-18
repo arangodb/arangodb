@@ -496,7 +496,7 @@ ErrorCode V8ShellFeature::runShell(
   v8::Context::Scope context_scope{context};
 
   bool promptError;
-  setup(context, true, positionals, &promptError);
+  setup(context, console.shouldConnect(), positionals, &promptError);
 
   V8LineEditor v8LineEditor(
       _isolate, context, console.useHistory() ? "." + _name + ".history" : "");
@@ -723,6 +723,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 bool V8ShellFeature::runString(std::vector<std::string> const& strings,
                                std::vector<std::string> const& positionals) {
   v8::Locker locker{_isolate};
+  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   v8::Isolate::Scope isolate_scope(_isolate);
   v8::HandleScope handle_scope(_isolate);
@@ -732,7 +733,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  setup(context, console.shouldConnect(), positionals);
 
   bool ok = true;
   for (auto const& script : strings) {
@@ -757,7 +758,6 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     }
   }
 
-  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   console.flushLog();
 
   return ok;

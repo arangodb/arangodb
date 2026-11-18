@@ -171,8 +171,7 @@ containers::HashSet<size_t> collectOverlappingMembersForIndex(
           result.first == variable) {
         auto const mayRemove = [&] {
           if (auto ty = index->type();
-              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
-              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+              ty == IndexType::MDI || ty == IndexType::MDIPrefixed) {
             // For an MDI all fields are equal, and we are allowed to drop
             // conditions for non-null on every attribute in the sparse case.
             return true;

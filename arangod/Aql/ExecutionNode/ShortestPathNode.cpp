@@ -26,13 +26,14 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/GetBestIndexHandleForFilterCondition.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 
 #include <absl/strings/str_cat.h>
@@ -77,19 +78,13 @@ static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(node->targetInVariable())};
     } else {
       return InputVertex{node->getTargetVertex()};
     }
   } else {
     if (node->usesStartInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
+      return InputVertex{node->inputRegister(node->startInVariable())};
     } else {
       return InputVertex{node->getStartVertex()};
     }
@@ -285,42 +280,34 @@ std::pair<RegIdSet, typename ShortestPathExecutorInfos<
                         ShortestPathEnumeratorType>::RegisterMapping>
 ShortestPathNode::_buildOutputRegisters() const {
   auto outputRegisters = RegIdSet{};
-  auto& varInfo = getRegisterPlan()->varInfo;
 
   typename ShortestPathExecutorInfos<
       ShortestPathEnumeratorType>::RegisterMapping outputRegisterMapping;
   if (isVertexOutVariableUsedLater()) {
-    auto it = varInfo.find(vertexOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
+    auto const reg = outputRegister(vertexOutVariable());
     outputRegisterMapping.try_emplace(
         ShortestPathExecutorInfos<
             ShortestPathEnumeratorType>::OutputName::VERTEX,
-        it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
+        reg);
+    outputRegisters.emplace(reg);
   }
   if (isEdgeOutVariableUsedLater()) {
-    auto it = varInfo.find(edgeOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
+    auto const reg = outputRegister(edgeOutVariable());
     outputRegisterMapping.try_emplace(
         ShortestPathExecutorInfos<ShortestPathEnumeratorType>::OutputName::EDGE,
-        it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
+        reg);
+    outputRegisters.emplace(reg);
   }
   return std::make_pair(outputRegisters, outputRegisterMapping);
 };
 
 RegIdSet ShortestPathNode::buildVariableInformation() const {
   auto inputRegisters = RegIdSet();
-  auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
-    auto it = varInfo.find(startInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters.emplace(it->second.registerId);
+    inputRegisters.emplace(inputRegister(startInVariable()));
   }
   if (usesTargetInVariable()) {
-    auto it = varInfo.find(targetInVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    inputRegisters.emplace(it->second.registerId);
+    inputRegisters.emplace(inputRegister(targetInVariable()));
   }
   return inputRegisters;
 }
@@ -384,13 +371,12 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
               return previousWeight + defaultWeight;
             });
       } else {
-        std::string weightAttribute = opts->getWeightAttribute();
+        auto const& weightAttribute = opts->getWeightAttribute();
         forwardProviderOptions.setWeightEdgeCallback(
             [weightAttribute = weightAttribute, defaultWeight](
                 double previousWeight, VPackSlice edge) -> double {
               auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
+                  getEdgeWeight(edge, weightAttribute, defaultWeight);
               if (weight < 0.) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
               }
@@ -401,8 +387,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             [weightAttribute = weightAttribute, defaultWeight](
                 double previousWeight, VPackSlice edge) -> double {
               auto const weight =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                      edge, weightAttribute, defaultWeight);
+                  getEdgeWeight(edge, weightAttribute, defaultWeight);
               if (weight < 0.) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
               }
@@ -691,7 +676,7 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
         _edgeColls[i]->name(), IndexHint::BaseDepth);
 
     auto& trx = plan()->getAst()->query().trxForOptimization();
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+    bool res = aql::optimizer::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
         itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ true);

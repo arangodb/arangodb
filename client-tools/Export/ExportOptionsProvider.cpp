@@ -182,7 +182,7 @@ void ExportOptionsProvider::validateOptionsImpl(
       opts.customQueryBindVarsBuilder =
           VPackParser::fromJson(opts.customQueryBindVars);
     } catch (...) {
-      LOG_TOPIC("bafc2", FATAL, arangodb::Logger::BENCH)
+      LOG_TOPIC("bafc2", FATAL, arangodb::Logger::CONFIG)
           << "For flag '--custom-query-bindvars " << opts.customQueryBindVars
           << "': invalid JSON format.";
       FATAL_ERROR_EXIT();

@@ -81,9 +81,6 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] bool hasFailedOperations() const noexcept override;
 
-  [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
-                                             ReadOwnWrites readOwnWrites) const;
-
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 
@@ -95,6 +92,9 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief return wrapper around rocksdb transaction
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;
+
+  Result setTimeTravelWriteTimestamp(DataSourceId collectionId,
+                                     std::uint64_t timestamp) final override;
 
   [[nodiscard]] static RocksDBTransactionState* toState(
       transaction::Methods* trx);

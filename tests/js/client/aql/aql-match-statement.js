@@ -1,0 +1,1846 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertTrue, assertFalse, print, fail */
+
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+"use strict";
+
+const jsunity = require("jsunity");
+const {aql, db, errors} = require("@arangodb");
+
+function aqlMatchStatementTestSuite() {
+
+    const database = "UnitTestsAqlMatchStatement";
+    const options = { matchStatement: "experimental" };
+
+    // Run a one-hop `RETURN [v, e, w]` MATCH, assert every row's endpoints are
+    // the edge's own _from/_to, and return the matched edge ids sorted. Checking
+    // the bindings matters as much as the edge set: a lowering that filtered
+    // correctly but bound `w` to the wrong document would pass an edges-only
+    // assertion.
+    const edgeIds = function (query) {
+        const rows = db._query(query, {}, options).toArray();
+        for (const [v, e, w] of rows) {
+            assertEqual(v._id, e._from, e._id);
+            assertEqual(w._id, e._to, e._id);
+        }
+        return rows.map((x) => x[1]._id).sort();
+    };
+
+    const assertBoundEdgeRejected = function (query) {
+        try {
+            db._query(query, {}, options);
+            fail();
+        } catch (err) {
+            assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            assertEqual(err.errorMessage, "MATCH edge variable 'e' is already bound");
+        }
+    };
+
+    const assertRejected = function (query, bindVars, error, message) {
+        try {
+            db._query(query, bindVars, options);
+            fail();
+        } catch (err) {
+            assertEqual(err.errorNum, error.code, err.errorMessage);
+            if (message !== undefined) {
+                assertEqual(err.errorMessage, message);
+            }
+        }
+    };
+
+    return {
+
+        setUpAll: function () {
+            db._createDatabase(database);
+            db._useDatabase(database);
+
+            db._create("vc");
+            for (let i = 0; i < 100; i++) {
+                db.vc.save({
+                    _key: `v${i}`,
+                    i,
+                    j: i % 5,
+                    profile: {name: `user${i}`, age: i % 40},
+                    a: {b: {c: i, d: i + 100}},
+                    "profile.name": `literal${i}`
+                });
+            }
+
+            db._createEdgeCollection("ec");
+            for (let i = 0; i < 50; i++) {
+                db.ec.save({
+                    _key: `e${i}`,
+                    i,
+                    j: i % 10,
+                    meta: {since: i},
+                    _from: `vc/v${2 * i}`,
+                    _to: `vc/v${2 * i + 1}`
+                });
+            }
+
+            db._createEdgeCollection("ec2");
+            for (let i = 50; i < 60; i++) {
+                db.ec2.save({_key: `e2${i}`, _from: `vc/v${i}`, _to: `vc/v${i + 1}`});
+            }
+
+            db._createEdgeCollection("ec_loops");
+            for (let i = 0; i < 10; i++) {
+                db.ec_loops.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i}`});
+                db.ec_loops.save({_key: `e${i + 10}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i + 1}`});
+            }
+
+            db._createEdgeCollection("ec_paths");
+            for (let i = 0; i < 20; i++) {
+                for (let j = 0; j < 4; j++) {
+                    db.ec_paths.save({_key: `e${i}_${j}`, i, j, _from: `vc/v${5*i + j}`, _to: `vc/v${5*i + j + 1}`});
+                }
+            }
+
+            // A second vertex collection reachable from vc, so a target label can
+            // be shown to *exclude* a vertex: ec_cross leaves vc, ec_loops stays
+            // inside it.
+            db._create("vc_other");
+            for (let i = 0; i < 10; i++) {
+                db.vc_other.save({_key: `o${i}`, i});
+            }
+            db._createEdgeCollection("ec_cross");
+            for (let i = 0; i < 10; i++) {
+                db.ec_cross.save({_key: `x${i}`, _from: `vc/v${i}`, _to: `vc_other/o${i}`});
+            }
+
+            db._createView("vw", "arangosearch", {});
+        },
+
+        tearDownAll: function () {
+            db._useDatabase("_system");
+            db._dropDatabase(database);
+        },
+
+        testDisabledByDefault: function () {
+            try {
+                // check that by default the match statement is disabled
+                db._query('MATCH (v : vc)');
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
+            }
+        },
+
+        testInvalidOptionValue: function () {
+            try {
+                // check that by default the match statement is disabled
+                db._query('MATCH (v : vc)', {}, {matchStatement: "invalid"});
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_BAD_PARAMETER.code);
+            }
+        },
+
+        testMatchOptionsEmpty: function () {
+            const result = db._query(
+                "MATCH (v :vc) OPTIONS {} RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+        },
+
+        testMatchOptionsEmptyAfterEdgePattern: function () {
+            const result = db._query(
+                "MATCH (a :vc)-[:ec]->(b :vc) OPTIONS {} RETURN b",
+                {},
+                options
+            ).toArray();
+            assertTrue(result.length > 0);
+        },
+
+        testMatchOptionsUnknownField: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc) OPTIONS {foo: 123} RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(
+                    err.errorNum,
+                    errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code
+                );
+            }
+        },
+
+        testMatchOptionsNonObjectNumber: function () {
+            try {
+                db._query("MATCH (v :vc) OPTIONS 123 RETURN v", {}, options);
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testMatchOptionsNonObjectArray: function () {
+            try {
+                db._query("MATCH (v :vc) OPTIONS [] RETURN v", {}, options);
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testMatchOptionsDuplicate: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc) OPTIONS {} OPTIONS {} RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testSelectVertices: function () {
+            const result = db._query("MATCH (v :vc) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 100);
+            const ids = new Set(result.map(v => v._id));
+            assertEqual(ids.size, 100);
+        },
+
+        testSelectVerticesWithProperties: function () {
+            const result = db._query("MATCH (v :vc {j: 0}) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 20);
+            const ids = new Set(result.filter(v => v.j === 0).map(v => v._id));
+            assertEqual(ids.size, 20);
+        },
+
+        testSelectVerticesWithWhereClause: function () {
+            const result = db._query("MATCH (v :vc WHERE v.i % 5 == 0) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 20);
+            const ids = new Set(result.filter(v => v.j === 0).map(v => v._id));
+            assertEqual(ids.size, 20);
+        },
+
+        testSelectVerticesWithPropertiesAndWhereClause: function () {
+            const result = db._query("MATCH (v :vc {j: 0} WHERE v.i % 10 == 0) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 10);
+            const ids = new Set(result.filter(v => v.j === 0 && v.i % 10 === 0).map(v => v._id));
+            assertEqual(ids.size, 10);
+        },
+
+        testSelectVerticesWithProjection: function () {
+            const result = db._query("MATCH (v :vc RETURN i) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("_rev"));
+            }
+        },
+
+        testSelectVerticesWithMultipleProjections: function () {
+            const result = db._query("MATCH (v :vc RETURN i, j) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertTrue(v.hasOwnProperty("j"));
+                assertEqual(v.j, v.i % 5);
+                assertFalse(v.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectVerticesWithQuotedProjection: function () {
+            const result = db._query('MATCH (v :vc RETURN "i") RETURN v', {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithMissingProjectionAttribute: function () {
+            const result = db._query("MATCH (v :vc RETURN missingAttr) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("missingAttr"));
+                assertEqual(v.missingAttr, null);
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testExcludedProjectionAttributeAccessWarns: function () {
+            const cursor = db._query("MATCH (v :vc RETURN _key) RETURN v.j", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("j"));
+            assertTrue(warnings[0].message.includes("v"));
+        },
+
+        testKeptProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query("MATCH (v :vc RETURN i) RETURN v.i", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "number");
+            }
+        },
+
+        testExcludedNestedProjectionAttributeAccessWarns: function () {
+            // Deep access under an excluded top-level key warns once on the
+            // shortest excluded prefix ("profile"), not on every nested segment.
+            const cursor = db._query(
+                "MATCH (v :vc RETURN i) RETURN v.profile.a.b.c", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("profile"));
+            assertFalse(warnings[0].message.includes("profile.a"));
+            assertTrue(warnings[0].message.includes("v"));
+        },
+
+        testKeptNestedProjectionAttributeAccessDoesNotWarn: function () {
+            // Keeping the parent object covers nested reads such as v.profile.a.b.c.
+            const cursor = db._query(
+                "MATCH (v :vc RETURN profile) RETURN v.profile.a.b.c", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+        },
+
+        testKeptNestedPathPrefixAccessDoesNotWarn: function () {
+            // Keeping profile.a.b.c also allows reading parent prefixes (v.profile).
+            const cursor = db._query(
+                "MATCH (v :vc RETURN profile.a.b.c) RETURN v.profile", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 100);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(value !== null && typeof value === "object");
+                assertTrue(value.hasOwnProperty("a"));
+            }
+        },
+
+        testExcludedEdgeProjectionAttributeAccessWarns: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.j", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("j"));
+            assertTrue(warnings[0].message.includes("e"));
+        },
+
+        testKeptEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.i", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "number");
+            }
+        },
+
+        testMandatoryEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            // Edge projections always keep _id/_from/_to.
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e._from", {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertTrue(typeof value === "string");
+                assertTrue(value.startsWith("vc/"));
+            }
+        },
+
+        testExcludedNestedEdgeProjectionAttributeAccessWarns: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e.meta.a.b.c",
+                {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+            const warnings = cursor.getExtra().warnings;
+            assertEqual(1, warnings.length);
+            assertEqual(errors.ERROR_QUERY_MATCH_EXCLUDED_ATTRIBUTE.code, warnings[0].code);
+            assertTrue(warnings[0].message.includes("meta"));
+            assertFalse(warnings[0].message.includes("meta.a"));
+            assertTrue(warnings[0].message.includes("e"));
+        },
+
+        testKeptNestedEdgeProjectionAttributeAccessDoesNotWarn: function () {
+            const cursor = db._query(
+                "MATCH (u :vc)-[e :ec RETURN meta]->(v :vc) RETURN e.meta.a.b.c",
+                {}, options);
+            const result = cursor.toArray();
+            assertEqual(result.length, 50);
+            assertEqual(0, cursor.getExtra().warnings.length);
+            for (const value of result) {
+                assertEqual(value, null);
+            }
+        },
+
+        testSelectVerticesWithSystemAttributeProjection: function () {
+            const result = db._query("MATCH (v :vc RETURN _key, i) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("_key"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertEqual(v._id, `vc/${v._key}`);
+                assertFalse(v.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithProjectionAndProperties: function () {
+            const result = db._query("MATCH (v :vc {j: 0} RETURN i) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 20);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertEqual(v.i % 5, 0);
+                assertFalse(v.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithProjectionAndWhereClause: function () {
+            // WHERE may access attributes that are not projected on the bound variable.
+            const result = db._query("MATCH (v :vc WHERE v.j == 0 RETURN i) RETURN v", {}, options).toArray();
+            assertEqual(result.length, 20);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertEqual(v.i % 5, 0);
+                assertFalse(v.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithProjectionPropertiesAndWhereClause: function () {
+            const result = db._query(
+                "MATCH (v :vc {j: 0} WHERE v.i % 10 == 0 RETURN i, j) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 10);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertEqual(v.j, 0);
+                assertEqual(v.i % 10, 0);
+                assertFalse(v.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdges: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypes: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec | ec2 ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 60);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertTrue(e._id.startsWith("ec/") || e._id.startsWith("ec2/"));
+            }
+        },
+
+        // Several edge collections force the segment to be lowered to a
+        // traversal instead of a collection enumeration; the target vertex's
+        // constraints must survive that lowering. Each case is cross-checked
+        // against the single-collection spelling, which uses the other lowering.
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexProperties: function () {
+            // single edge collection => join lowering, used here as the oracle
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec ]-> (w :vc {i: 51}) RETURN [v, e, w]"), ["ec/e25"]);
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]"), ["ec2/e250"]);
+
+            // several edge collections => traversal lowering
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            // the target binding is the constrained vertex itself, not merely
+            // the right edge set
+            const rows = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51}) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(rows.length, 2);
+            for (const [v, e, w] of rows) {
+                assertEqual(w._id, "vc/v51");
+                assertEqual(w.i, 51);
+            }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexWhereClause: function () {
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 51) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            const rows = db._query("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 51) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(rows.length, 2);
+            for (const [v, e, w] of rows) {
+                assertEqual(w._id, "vc/v51");
+            }
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexPropertiesAndWhereClause: function () {
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 1) RETURN [v, e, w]"),
+                        ["ec/e25", "ec2/e250"]);
+
+            // same vertex, contradictory WHERE
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 51} WHERE w.j == 2) RETURN [v, e, w]"), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndUnsatisfiableTargetVertexFilter: function () {
+            // no vertex has i == 999, so neither spelling may return a row
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc {i: 999}) RETURN [v, e, w]"), []);
+            assertEqual(edgeIds("MATCH (v :vc) -[ e :ec|ec2 ]-> (w :vc WHERE w.i == 999) RETURN [v, e, w]"), []);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndBothVertexFilters: function () {
+            // start-vertex constraints already worked; assert they compose with
+            // the target-vertex ones rather than replacing them. ec_loops holds
+            // both a self-loop v3->v3 and the step v3->v4, so only the target
+            // constraint can separate them -- a start-only filter would keep both.
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 4}) RETURN [v, e, w]"),
+                        ["ec_loops/e13"]);
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc {i: 3}) RETURN [v, e, w]"),
+                        ["ec_loops/e3"]);
+
+            // target unconstrained beyond its collection: v3 has exactly these two
+            assertEqual(edgeIds("MATCH (v :vc {i: 3}) -[ e :ec_loops|ec2 ]-> (w :vc) RETURN [v, e, w]"),
+                        ["ec_loops/e13", "ec_loops/e3"]);
+        },
+
+        testSelectEdgesWithMultipleEdgeTypesAndTargetVertexCollection: function () {
+            // ec_loops stays inside vc, ec_cross leaves it for vc_other. Multiple
+            // edge collections force the traversal lowering, where the target
+            // label is the only thing keeping each half out of the other result.
+            //
+            // The traversal can reach vc_other, so every query here must declare
+            // both vertex collections with WITH. A cluster rejects the query
+            // otherwise ("collection not known to traversal"); a single server
+            // does not, so omitting it fails only in CI.
+            const q = "WITH vc, vc_other MATCH (v :vc) -[ e :ec_loops|ec_cross ]-> ";
+
+            const inside = edgeIds(q + "(w :vc) RETURN [v, e, w]");
+            assertEqual(inside.length, 20);
+            assertTrue(inside.every((id) => id.startsWith("ec_loops/")), JSON.stringify(inside));
+
+            const crossing = edgeIds(q + "(w :vc_other) RETURN [v, e, w]");
+            assertEqual(crossing.length, 10);
+            assertTrue(crossing.every((id) => id.startsWith("ec_cross/")), JSON.stringify(crossing));
+
+            // target label and property constraint compose
+            assertEqual(edgeIds(q + "(w :vc_other {i: 3}) RETURN [v, e, w]"), ["ec_cross/x3"]);
+        },
+
+        testSelectEdgesWithCollectionBindParameterMultipleEdgeTypes: function () {
+            const result = db._query("MATCH (v :vc) -[ e :@@ec1 | @@ec2 ]-> (w :vc) RETURN [v, e, w]",
+                { "@ec1": "ec", "@ec2": "ec2" }, options).toArray();
+            assertEqual(result.length, 60);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectEdgesWithThreeEdgeTypes: function () {
+            // union over 3 edge collections == sum of the individual counts (disjoint)
+            const q3 = "MATCH (v :vc) -[ e :ec|ec2|ec_loops ]-> (w :vc) RETURN e._id";
+            const three = db._query(q3, {}, options).toArray();
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nLoops = db._query("MATCH (v :vc) -[ e :ec_loops ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(three.length, nEc + nEc2 + nLoops);
+            const prefixes = new Set(three.map((id) => id.split("/")[0]));
+            assertTrue(prefixes.has("ec") && prefixes.has("ec2") && prefixes.has("ec_loops"),
+                       JSON.stringify([...prefixes]));
+        },
+
+        testSelectAnyEdgesWithMultipleEdgeTypes: function () {
+            // any-direction multi-type union == sum of the individual any-direction counts
+            const union = db._query("MATCH (v :vc) -[ e :ec|ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(union, nEc + nEc2);
+        },
+
+        testSelectInboundEdges: function () {
+            const result = db._query("MATCH (v :vc) <-[ e :ec ]- (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._to);
+                assertEqual(w._id, e._from);
+            }
+        },
+
+        testSelectAnyEdges: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const [v, e, w] of result) {
+                assertTrue([e._from, e._to].includes(v._id));
+                assertTrue([e._from, e._to].includes(w._id));
+            }
+        },
+
+        testDoubleEndedEdgesError: function () {
+            try {
+                const result = db._query("MATCH (v :vc) <-[ e :ec ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testSelectEdgesWithCollectionBindParameterEdgeType: function () {
+            const result = db._query("MATCH (v :vc) -[ e : @@ec ]-> (w :vc) RETURN [v, e, w]", {"@ec": "ec"}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectVerticesWithCollectionBindParameterLabel: function () {
+            const result = db._query("MATCH (v : @@vc) RETURN v", {"@vc": "vc"}, options).toArray();
+            assertEqual(result.length, 100);
+            const ids = new Set(result.map(v => v._id));
+            assertEqual(ids.size, 100);
+        },
+
+        testSelectWithCollectionBindParametersForLabelsAndEdgeType: function () {
+            const result = db._query("MATCH (v :@@vc) -[ e : @@ec ]-> (w :@@vc) RETURN [v, e, w]", {"@vc": "vc", "@ec": "ec"}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectEdgesWithMissingCollectionBindParameterEdgeType: function () {
+            try {
+                db._query("MATCH (v :vc) -[ e : @@ec ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
+            }
+        },
+
+        testValueBindParameterRejectedAsEdgeType: function () {
+            // a value bind parameter (@name) is not accepted as an edge type;
+            // only a collection bind parameter (@@name) is. parsing fails.
+            try {
+                db._query("MATCH (v :vc) -[ e : @ec ]-> (w :vc) RETURN [v, e, w]", {ec: "ec"}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testValueBindParameterRejectedAsVertexLabel: function () {
+            try {
+                db._query("MATCH (v : @vc) RETURN v", {vc: "vc"}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testSelectEdgesWithProperties: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec {j: 0}]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 5);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertEqual(e.j, 0);
+            }
+        },
+
+        testSelectEdgesWithWhereClause: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec WHERE e.i % 10 == 0]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 5);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertEqual(e.j, 0);
+            }
+        },
+
+        testSelectEdgesWithProjection: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithProjectionAndWhere: function () {
+            // WHERE may access attributes that are not projected on the bound variable.
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 5);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        // COR-960: multi-collection one-hop and variable-length segments must
+        // apply edge/target projections the same way as the single-collection
+        // join lowering.
+        testSelectEdgesWithProjectionMultipleEdgeTypes: function () {
+            const single = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            // ec2 edges have no `j`, so WHERE e.j == 0 keeps the result set
+            // identical to the single-collection query.
+            const multi = db._query(
+                "MATCH (u :vc)-[e :ec|ec2 WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(multi.length, single.length);
+            assertEqual(multi.length, 5);
+
+            for (const e of multi) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("_key"));
+                assertFalse(e.hasOwnProperty("_rev"));
+            }
+        },
+
+        testSelectTargetVertexWithProjectionMultipleEdgeTypes: function () {
+            const single = db._query(
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            const multi = db._query(
+                "MATCH (u :vc)-[e :ec|ec2 WHERE e.j == 0]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(multi.length, single.length);
+            assertEqual(multi.length, 5);
+
+            for (const v of multi) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("_rev"));
+            }
+        },
+
+        testSelectTargetVertexWithProjectionVariableLength: function () {
+            const fixed = db._query(
+                "MATCH (u :vc)-[e :ec]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            const ranged = db._query(
+                "MATCH (u :vc)-[e :ec * 1..1 ]->(v :vc RETURN i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(ranged.length, fixed.length);
+            assertEqual(ranged.length, 50);
+
+            for (const v of ranged) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("_rev"));
+            }
+        },
+
+        testMatchPathVariableWithEdgeProjection: function () {
+            const result = db._query(
+                "MATCH p = (v :vc) -[ e :ec RETURN i ]-> (w :vc) RETURN p",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+                assertTrue(edges[0].hasOwnProperty("i"));
+                assertFalse(edges[0].hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithAlias: function () {
+            // Flatten / alias: expression is evaluated in normal query scope,
+            // so the projected variable must be referenced explicitly (v.i).
+            const result = db._query(
+                "MATCH (v :vc RETURN j, idx = v.i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("j"));
+                assertTrue(v.hasOwnProperty("idx"));
+                assertEqual(v.idx % 5, v.j);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectVerticesWithCrossVariableAlias: function () {
+            // Alias expressions may reference other already-bound pattern vars.
+            // Projection is on w so v and e are in scope when parsing the expr.
+            const result = db._query(
+                "MATCH (v :vc)-[e :ec]->(w :vc RETURN j, total = v.i + w.i) RETURN [v, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, w] of result) {
+                // v is full document (no projection); w is projected
+                assertTrue(v.hasOwnProperty("i"));
+                assertTrue(w.hasOwnProperty("_id"));
+                assertTrue(w.hasOwnProperty("j"));
+                assertTrue(w.hasOwnProperty("total"));
+                // fixture: edges connect vc/v{2k} -> vc/v{2k+1}
+                assertEqual(w.total, v.i + (v.i + 1));
+                assertFalse(w.hasOwnProperty("i"));
+                assertFalse(w.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithAlias: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN j, num = e.i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("j"));
+                assertTrue(e.hasOwnProperty("num"));
+                assertEqual(e.num % 10, e.j);
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithAliasReferencingVertex: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN fromI = u.i, edgeI = e.i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("fromI"));
+                assertTrue(e.hasOwnProperty("edgeI"));
+                // fixture: edge i connects vc/v{2i} -> vc/v{2i+1}
+                assertEqual(e.fromI, 2 * e.edgeI);
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        testMatchPathVariableWithAlias: function () {
+            const result = db._query(
+                "MATCH p = (v :vc RETURN idx = v.i) -[ e :ec RETURN num = e.i ]-> (w :vc) RETURN p",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+                assertTrue(vertices[0].hasOwnProperty("idx"));
+                assertFalse(vertices[0].hasOwnProperty("i"));
+                assertTrue(edges[0].hasOwnProperty("num"));
+                assertFalse(edges[0].hasOwnProperty("i"));
+            }
+        },
+
+        testSelectEdgesWithVertexProjections: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i) -[ e :ec ]-> (w :vc RETURN i, j) RETURN [v, e, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
+
+                assertTrue(e.hasOwnProperty("_key"));
+                assertTrue(e.hasOwnProperty("j"));
+
+                assertTrue(w.hasOwnProperty("i"));
+                assertTrue(w.hasOwnProperty("j"));
+                assertFalse(w.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithLeftVertexProjectionOnly: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i) -[ e :ec ]-> (w :vc) RETURN [v, e, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertTrue(w.hasOwnProperty("j"));
+                assertTrue(w.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectEdgesWithRightVertexProjectionOnly: function () {
+            const result = db._query(
+                "MATCH (v :vc) -[ e :ec ]-> (w :vc RETURN i) RETURN [v, e, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+                assertTrue(v.hasOwnProperty("j"));
+                assertTrue(v.hasOwnProperty("_key"));
+                assertTrue(w.hasOwnProperty("i"));
+                assertFalse(w.hasOwnProperty("j"));
+                assertFalse(w.hasOwnProperty("_key"));
+            }
+        },
+
+        testSelectInboundEdgesWithVertexProjections: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i) <-[ e :ec ]- (w :vc RETURN j) RETURN [v, e, w]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._to);
+                assertEqual(w._id, e._from);
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertTrue(w.hasOwnProperty("j"));
+                assertFalse(w.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectEdgeLoops: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec_loops ]-> (v) RETURN [v, e]", {}, options).toArray();
+            assertEqual(result.length, 10);
+
+            for (const [v, e] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(v._id, e._to);
+            }
+        },
+
+        testSelectEdgeLoopsWithVertexProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i) -[ e :ec_loops ]-> (v) RETURN [v, e]",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 10);
+
+            for (const [v, e] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(v._id, e._to);
+                assertTrue(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertTrue(e.hasOwnProperty("j"));
+            }
+        },
+
+        testEmptyVertexProjectionParseError: function () {
+            try {
+                db._query("MATCH (v :vc RETURN) RETURN v", {}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testMatchPathVariable: function () {
+            const result = db._query("MATCH p = (v :vc) -[ e :ec ]-> (w :vc) RETURN p", {}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+            }
+        },
+
+        testMatchPathVariableWithVertexProjections: function () {
+            const result = db._query(
+                "MATCH p = (v :vc RETURN i) -[ e :ec ]-> (w :vc RETURN j) RETURN p",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+
+                assertTrue(vertices[0].hasOwnProperty("i"));
+                assertFalse(vertices[0].hasOwnProperty("j"));
+                assertTrue(vertices[1].hasOwnProperty("j"));
+                assertFalse(vertices[1].hasOwnProperty("i"));
+                assertTrue(edges[0].hasOwnProperty("j"));
+            }
+        },
+
+        testMatchPaths: function () {
+            const query = `
+                MATCH p = (v_0 :vc) -[ :ec_paths ]-> (v_1 :vc) 
+                                    -[ :ec_paths ]-> (v_2 :vc) 
+                                    -[ :ec_paths ]-> (v_3 :vc) 
+                                    -[ :ec_paths ]-> (v_4 :vc) 
+                RETURN p
+            `;
+            const result = db._query(query, {}, options).toArray();
+            assertEqual(result.length, 100 / 5);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 4);
+                assertEqual(vertices.length, 5);
+                for (let i = 0; i < 4; i++) {
+                    assertEqual(edges[i]._from, vertices[i]._id);
+                    assertEqual(edges[i]._to, vertices[i+1]._id);
+                }
+            }
+        },
+
+        testMatchPathsWithVars: function () {
+            const query = `
+                FOR v_0 IN vc
+                MATCH p = (v_0) -[ :ec_paths ]-> (v_1 :vc)
+                                -[ :ec_paths ]-> (v_2 :vc)
+                                -[ :ec_paths ]-> (v_3 :vc)
+                                -[ :ec_paths ]-> (v_4 :vc)
+                RETURN p
+            `;
+            const result = db._query(query, {}, options).toArray();
+            assertEqual(result.length, 100 / 5);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 4);
+                assertEqual(vertices.length, 5);
+                for (let i = 0; i < 4; i++) {
+                    assertEqual(edges[i]._from, vertices[i]._id);
+                    assertEqual(edges[i]._to, vertices[i+1]._id);
+                }
+            }
+        },
+
+        testSelectVerticesWithNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.name.startsWith("user"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("profile.name"));
+            }
+        },
+
+        testSelectVerticesWithDeepNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b.c) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertEqual(typeof v.a.b.c, "number");
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithSiblingNestedProjections: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, profile.age) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.hasOwnProperty("age"));
+                assertEqual(typeof v.profile.age, "number");
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithSharedNestedParent: function () {
+            // RETURN a.b.c, a.b.d → one shared a.b object with both leaves.
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b.c, a.b.d) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("a"));
+                assertTrue(v.a.hasOwnProperty("b"));
+                assertEqual(typeof v.a.b.c, "number");
+                assertEqual(v.a.b.d, v.a.b.c + 100);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithFlatAndNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN i, profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("i"));
+                assertEqual(typeof v.i, "number");
+                assertEqual(v.profile.name, `user${v.i}`);
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+            }
+        },
+
+        testSelectEdgesWithNestedProjection: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN meta.since]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(e.hasOwnProperty("_id"));
+                assertTrue(e.hasOwnProperty("_from"));
+                assertTrue(e.hasOwnProperty("_to"));
+                assertTrue(e.hasOwnProperty("meta"));
+                assertEqual(typeof e.meta.since, "number");
+                assertFalse(e.hasOwnProperty("i"));
+                assertFalse(e.hasOwnProperty("j"));
+            }
+        },
+
+        testSelectVerticesWithAliasUnchangedByNested: function () {
+            // Aliasing stays flat even when the RHS walks a nested path.
+            const result = db._query(
+                "MATCH (v :vc RETURN name = v.profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("name"));
+                assertTrue(v.name.startsWith("user"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithNestedAndAliasComposition: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, label = v.i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertEqual(v.profile.name, `user${v.label}`);
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithQuotedDottedProjection: function () {
+            // Quoted "profile.name" is a single literal key, not nested hierarchy.
+            const result = db._query(
+                'MATCH (v :vc RETURN "profile.name") RETURN v',
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile.name"));
+                assertTrue(v["profile.name"].startsWith("literal"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithMissingNestedProjection: function () {
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.missingAttr) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertEqual(v.profile.missingAttr, null);
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapKeepsShorter: function () {
+            // profile subsumes profile.name — emit the whole profile object.
+            const result = db._query(
+                "MATCH (v :vc RETURN profile, profile.name) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(v.profile.hasOwnProperty("name"));
+                assertTrue(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapKeepsShorterDeep: function () {
+            // RETURN a.b, a.b.c.d → keep only a.b (shorter prefix wins).
+            const result = db._query(
+                "MATCH (v :vc RETURN a.b, a.b.c.d) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("a"));
+                assertTrue(v.a.hasOwnProperty("b"));
+                // Whole a.b object kept (both c and d leaves), not only a.b.c.d.
+                assertEqual(typeof v.a.b.c, "number");
+                assertEqual(v.a.b.d, v.a.b.c + 100);
+                assertFalse(v.hasOwnProperty("i"));
+                assertFalse(v.hasOwnProperty("profile"));
+            }
+        },
+
+        testSelectVerticesWithPrefixOverlapNestedLeaf: function () {
+            // RETURN profile.name, profile.name.first → just profile.name.
+            const result = db._query(
+                "MATCH (v :vc RETURN profile.name, profile.name.first) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(v.hasOwnProperty("_id"));
+                assertTrue(v.hasOwnProperty("profile"));
+                assertTrue(typeof v.profile.name === "string");
+                assertTrue(v.profile.name.startsWith("user"));
+                assertFalse(v.profile.hasOwnProperty("age"));
+                assertFalse(v.hasOwnProperty("i"));
+            }
+        },
+
+        testProjectionIgnoresNestedSystemAttributePath: function () {
+            // Nested keeps under system attrs must not overwrite scalar _id.
+            const result = db._query(
+                "MATCH (v :vc RETURN _id.foo, i) RETURN v",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 100);
+
+            for (const v of result) {
+                assertTrue(typeof v._id === "string");
+                assertTrue(v._id.startsWith("vc/"));
+                assertEqual(typeof v.i, "number");
+                assertFalse(v.hasOwnProperty("foo"));
+            }
+        },
+
+        testEdgeProjectionIgnoresNestedSystemAttributePath: function () {
+            const result = db._query(
+                "MATCH (u :vc)-[e :ec RETURN _from.x, i]->(v :vc) RETURN e",
+                {},
+                options
+            ).toArray();
+            assertEqual(result.length, 50);
+
+            for (const e of result) {
+                assertTrue(typeof e._id === "string");
+                assertTrue(typeof e._from === "string");
+                assertTrue(typeof e._to === "string");
+                assertTrue(e._from.startsWith("vc/"));
+                assertEqual(typeof e.i, "number");
+                assertFalse(e.hasOwnProperty("x"));
+            }
+        },
+
+        testProjectionAliasCollidesWithBareKeep: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN i, i = v.j) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testProjectionAliasCollidesWithNestedKeepRoot: function () {
+            // Nested keep claims top-level key "profile"; alias must not reuse it.
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN profile.name, profile = v.i) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testProjectionDuplicateAliasNames: function () {
+            try {
+                db._query(
+                    "MATCH (v :vc RETURN a = v.i, a = v.j) RETURN v",
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        // COR-1049: filters/constraints on externally defined MATCH references
+        testRejectReferenceWithWhereFilter: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x WHERE x.i > 100)
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testRejectReferenceWithAttributeConstraint: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x { name: "alice" })
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testRejectReferenceWithLabelAndWhere: function () {
+            try {
+                db._query(
+                    `LET x = DOCUMENT("vc/v1")
+                     MATCH (x :vc WHERE x.i > 100)
+                     RETURN x._key`,
+                    {},
+                    options
+                );
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+            }
+        },
+
+        testAllowBareReferenceVertex: function () {
+            const result = db._query(
+                `LET x = DOCUMENT("vc/v1")
+                 MATCH (x)
+                 RETURN x._key`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testRejectUnboundVertexWithoutLabel: function () {
+            const message = "MATCH vertex variable 'v' needs a label or has to be bound earlier";
+            assertRejected("MATCH (v) RETURN v", {}, errors.ERROR_QUERY_PARSE, message);
+            assertRejected(
+                "MATCH (a :vc) -[e :ec]-> (v) RETURN v",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                message);
+        },
+
+        // COR-1219: a constant LET is folded into the pattern, so a
+        // non-document binding must be a parse error rather than internal
+        // error 4.
+        testRejectNonDocumentVertexReference: function () {
+            const message = "MATCH vertex reference must be a document";
+            const queries = [
+                "LET x = null MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 1 MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = 'abc' MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = true MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = { _key: 'v0' } MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = [1] MATCH (x) -[e :ec]-> (y :vc) RETURN y",
+                "LET x = null MATCH (y :vc) -[e :ec]-> (x) RETURN y",
+                "LET x = null MATCH (y :vc), (x) RETURN y",
+            ];
+            for (const query of queries) {
+                assertRejected(query, {}, errors.ERROR_QUERY_PARSE, message);
+            }
+        },
+
+        testAllowDocumentVertexReference: function () {
+            const result = db._query(
+                `LET x = DOCUMENT("vc/v0")
+                 MATCH (x) -[e :ec]-> (y :vc)
+                 RETURN y._key`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testAllowNormalVertexWithAttributeConstraint: function () {
+            const result = db._query(
+                "MATCH (x :vc {i: 1}) RETURN x._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testAllowNormalVertexWithWhereFilter: function () {
+            const result = db._query(
+                "MATCH (x :vc WHERE x.i == 1) RETURN x._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(result, ["v1"]);
+        },
+
+        testRejectEdgeBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectEdgeWithLabelBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e :ec]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectVariableLengthEdgeBoundOutsideMatch: function () {
+            assertBoundEdgeRejected(
+                `FOR e IN ec FILTER e._key == "e0"
+                 MATCH (v :vc) -[e :ec * 1..2]-> (w :vc)
+                 RETURN [v._key, w._key]`);
+        },
+
+        testRejectEdgeBoundEarlierInSamePattern: function () {
+            assertBoundEdgeRejected(
+                `MATCH (u :vc) -[e :ec]-> (v :vc) -[e :ec]-> (w :vc)
+                 RETURN [u._key, v._key, w._key]`);
+        },
+
+        testRejectEdgeBoundInEarlierCommaPattern: function () {
+            assertBoundEdgeRejected(
+                `MATCH (u :vc) -[e :ec]-> (v :vc), (v) -[e :ec]-> (w :vc)
+                 RETURN [u._key, v._key, w._key]`);
+        },
+
+        testAllowBoundVertexAsTarget: function () {
+            const result = db._query(
+                `FOR x IN vc FILTER x._key == "v1"
+                 MATCH (v :vc) -[e :ec]-> (x)
+                 RETURN [v._key, e._key, x._key]`,
+                {},
+                options
+            ).toArray();
+            assertEqual(result, [["v0", "e0", "v1"]]);
+        },
+
+        testRejectViewAsVertexLabel: function () {
+            assertRejected("MATCH (v :vw) RETURN v", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsVertexLabelBindParameter: function () {
+            assertRejected("MATCH (v :@@c) RETURN v", {"@c": "vw"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vw]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewInEdgeLabelList: function () {
+            assertRejected("MATCH (v :vc) -[e :ec|vw]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectViewAsVariableLengthEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vw * 1..2]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+                "MATCH label 'vw' is a view; labels must name a collection");
+        },
+
+        testRejectEdgeCollectionAsVertexLabel: function () {
+            assertRejected("MATCH (e :ec) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsVertexLabelBindParameter: function () {
+            assertRejected("MATCH (e :@@c) RETURN e", {"@c": "ec"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsTargetVertexLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :ec]-> (w :ec) RETURN w", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectEdgeCollectionAsVariableLengthTargetVertexLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :ec * 1..2]-> (w :ec) RETURN w", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH vertex label 'ec' is an edge collection; expecting a document collection");
+        },
+
+        testRejectDocumentCollectionAsEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vc]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionAsEdgeLabelBindParameter: function () {
+            assertRejected("MATCH (v :vc) -[e :@@c]-> (w :vc) RETURN e", {"@c": "vc"},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionInEdgeLabelList: function () {
+            assertRejected("MATCH (v :vc) -[e :ec|vc]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectDocumentCollectionAsVariableLengthEdgeLabel: function () {
+            assertRejected("MATCH (v :vc) -[e :vc * 1..2]-> (w :vc) RETURN e", {},
+                errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                "MATCH edge label 'vc' is a document collection; expecting an edge collection");
+        },
+
+        testRejectArrayLiteralAsLabel: function () {
+            assertRejected("MATCH (v :[1, 2]) RETURN v", {},
+                errors.ERROR_QUERY_PARSE);
+        },
+
+        testRejectSubqueryAsLabel: function () {
+            assertRejected("MATCH (v :(FOR d IN vc RETURN d)) RETURN v", {},
+                errors.ERROR_QUERY_PARSE);
+        },
+
+        testRejectLetVariableAsVertexLabel: function () {
+            assertRejected("LET arr = [1, 2] MATCH (v :arr) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'arr' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectSubqueryVariableAsVertexLabel: function () {
+            assertRejected("LET sq = (FOR d IN vc RETURN d) MATCH (v :sq) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'sq' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectForVariableAsVertexLabel: function () {
+            assertRejected("FOR d IN vc MATCH (v :d) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'd' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectVariableShadowingCollectionAsVertexLabel: function () {
+            assertRejected("LET vc = [1] MATCH (v :vc) RETURN v", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'vc' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectEarlierPatternVariableAsVertexLabel: function () {
+            assertRejected("MATCH (a :vc) -[e :ec]-> (w :a) RETURN w", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'a' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectLetVariableAsEdgeLabel: function () {
+            assertRejected("LET arr = [1, 2] MATCH (v :vc) -[e :ec|arr]-> (w :vc) RETURN e", {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'arr' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectOwnVertexVariableAsLabel: function () {
+            assertRejected(`MATCH (vc :vc {_key: "v0"}) RETURN vc._key`, {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'vc' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectOwnEdgeVariableAsLabel: function () {
+            assertRejected(`MATCH (v :vc) -[ec :ec]-> (w :vc) RETURN ec`, {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH label 'ec' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        // The path variable is produced only after all pattern-level WHERE
+        // conditions have been evaluated. Referencing it from its own pattern
+        // therefore creates an invalid variable dependency. Reject such
+        // references independently of optimizer rules.
+        testRejectPathVariableSelfReferenceInWhere: function () {
+            const query =
+                "MATCH p = (a:vc WHERE p.vertices[0]._key == 'v0') RETURN a._key";
+            const message =
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression";
+            const assertRejectedWith = function (queryOptions) {
+                try {
+                    db._query(query, {}, queryOptions);
+                    fail();
+                } catch (err) {
+                    assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code, err.errorMessage);
+                    assertEqual(err.errorMessage, message);
+                }
+            };
+            assertRejectedWith(options);
+            assertRejectedWith({
+                matchStatement: "experimental",
+                optimizer: { rules: ["-all"] }
+            });
+        },
+
+        testRejectPathVariableSelfReferenceOnTargetWhere: function () {
+            assertRejected(
+                "MATCH p = (a:vc) -[e:ec]-> (b:vc WHERE p.vertices[1]._key == 'v1') RETURN b._key",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression");
+        },
+
+        testRejectPathVariableSelfReferenceOnEdgeWhere: function () {
+            assertRejected(
+                "MATCH p = (a:vc) -[e:ec WHERE p.edges[0]._key == 'e0']-> (b:vc) RETURN a._key",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "MATCH path variable 'p' cannot be referenced in its own pattern WHERE expression");
+        },
+
+        testAllowPathVariableReferenceAfterPattern: function () {
+            const result = db._query(
+                "MATCH p = (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc) " +
+                "FILTER p.vertices[0]._key == 'v0' RETURN a._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
+        },
+
+        testAllowWhereWithoutPathVariable: function () {
+            const result = db._query(
+                "MATCH (a:vc WHERE a._key == 'v0') RETURN a._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
+        },
+
+        testAllowPriorPathVariableInLaterPatternWhere: function () {
+            // p is constructed by the first comma-separated pattern before the
+            // second pattern's WHERE runs, so referencing p there is valid.
+            const result = db._query(
+                "MATCH p = (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc), " +
+                "(c:vc WHERE c._key == p.vertices[0]._key) RETURN c._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
+        },
+
+    };
+}
+
+jsunity.run(aqlMatchStatementTestSuite);
+
+return jsunity.done();
+

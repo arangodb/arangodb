@@ -82,6 +82,8 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
+  void setNumberOfShards(size_t numShards);
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -97,7 +99,7 @@ class ScatterNode : public ExecutionNode {
 
  private:
   std::vector<std::string> _clients;
-
+  std::optional<size_t> _maybeNumberOfShards;
   ScatterType _type;
 };
 

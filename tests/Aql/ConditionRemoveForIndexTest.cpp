@@ -78,8 +78,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
   Variable* _d{_ast->variables()->createTemporaryVariable()};
   Variable* _e{_ast->variables()->createTemporaryVariable()};
   TRI_vocbase_t& _vocbase{_server.getSystemDatabase()};
-  LogicalCollection _collection{_vocbase, velocypack::Slice::emptyObjectSlice(),
-                                true};
+  LogicalCollection _collection{_vocbase, CollectionDescriptor{}, true};
 
   std::shared_ptr<arangodb::Index> makePersistent(
       std::vector<std::string_view> fieldNames, bool sparse = false) {
@@ -91,9 +90,8 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
                                                  /*allowExpansion*/ false);
       fields.push_back(std::move(parsed));
     }
-    return std::make_shared<MockIndex>(
-        _collection, std::move(fields), sparse,
-        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX);
+    return std::make_shared<MockIndex>(_collection, std::move(fields), sparse,
+                                       IndexType::Persistent);
   }
 
   std::shared_ptr<arangodb::Index> makeMdiSparse(
@@ -107,8 +105,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
       fields.push_back(std::move(parsed));
     }
     return std::make_shared<MockIndex>(_collection, std::move(fields),
-                                       /*sparse*/ true,
-                                       arangodb::Index::TRI_IDX_TYPE_MDI_INDEX);
+                                       /*sparse*/ true, IndexType::MDI);
   }
 
   // Builds an IN_RANGE(v.attr, low, high, includeLow, includeHigh) AST node.

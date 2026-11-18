@@ -26,13 +26,15 @@
 
 #include "Cache/ICacheManagerProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/ISortingPolicy.h"
-#include "VectorIndex/IVectorIndexProvider.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb::tests {
 
@@ -40,10 +42,6 @@ struct MockDatabasePathProvider : IDatabasePathProvider {
   MOCK_METHOD(std::string const&, directory, (), (const, override));
   MOCK_METHOD(std::string, subdirectoryName, (std::string const&),
               (const, override));
-};
-
-struct MockVectorIndexProvider : IVectorIndexProvider {
-  MOCK_METHOD(bool, isVectorIndexEnabled, (), (const, noexcept, override));
 };
 
 struct MockFlushControl : IFlushControl {
@@ -59,7 +57,7 @@ struct MockDumpLimitsProvider : IDumpLimitsProvider {
               (const, noexcept, override));
 };
 
-struct MockDatabaseProvider : IDatabaseProvider {
+struct MockDatabaseProvider : IDatabaseProvider, IDatabaseBootstrap {
   MOCK_METHOD(void, notifyDdlChange, (char const*), (override));
   MOCK_METHOD(VocbasePtr, useDatabase, (std::string_view), (const, override));
   MOCK_METHOD(VocbasePtr, useDatabase, (TRI_voc_tick_t), (const, override));
@@ -73,6 +71,8 @@ struct MockDatabaseProvider : IDatabaseProvider {
               (const, noexcept, override));
   MOCK_METHOD(bool, extendedNames, (), (const, noexcept, override));
   MOCK_METHOD(void, extendedNames, (bool), (noexcept, override));
+  MOCK_METHOD(void, recoveryDone, (), (override));
+  MOCK_METHOD(void, bootstrapDatabases, (velocypack::Slice), (override));
 };
 
 struct MockCacheManagerProvider : ICacheManagerProvider {

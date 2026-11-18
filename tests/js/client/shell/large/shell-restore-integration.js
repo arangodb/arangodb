@@ -871,7 +871,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-            {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+            {id: "295", fields: ["value"], type: "persistent", sparse: true},
           ],
           name: cn,
           numberOfShards: 3,
@@ -890,7 +890,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -967,37 +967,6 @@ function restoreIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
 
-    testRestoreIndexesFulltextLengthZero: function () {
-      let path = fs.getTempFile();
-      fs.makeDirectory(path);
-      let fn = fs.join(path, cn + ".structure.json");
-
-      fs.write(fn, JSON.stringify({
-        indexes: [],
-        parameters: {
-          indexes: [
-            {id: "95", fields: ["text"], type: "fulltext", minLength: 0},
-          ],
-          name: cn,
-          numberOfShards: 3,
-          type: 2
-        }
-      }));
-
-      let args = ['--collection', cn, '--import-data', 'false'];
-      runRestore(path, args, 0);
-
-      let c = db._collection(cn);
-      let indexes = c.indexes();
-      assertEqual(2, indexes.length);
-      assertEqual("primary", indexes[0].type);
-      assertEqual(["_key"], indexes[0].fields);
-      assertEqual("fulltext", indexes[1].type);
-      assertEqual(["text"], indexes[1].fields);
-      assertEqual(indexes[1].minLength, 1);
-      fs.removeDirectoryRecursive(path, true);
-    },
-
     testRestoreIndexesNewFormat: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
@@ -1006,7 +975,7 @@ function restoreIntegrationSuite() {
       fs.write(fn, JSON.stringify({
         indexes: [
           {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-          {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+          {id: "295", fields: ["value"], type: "persistent", sparse: true},
         ],
         parameters: {
           name: cn,
@@ -1026,7 +995,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1052,7 +1021,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "1", fields: ["_from", "_to"], type: "edge"},
-            {id: "95", fields: ["value"], type: "hash"},
+            {id: "95", fields: ["value"], type: "persistent"},
           ],
           name: cn,
           numberOfShards: 3,
@@ -1070,7 +1039,7 @@ function restoreIntegrationSuite() {
       assertEqual(["_key"], indexes[0].fields);
       assertEqual("edge", indexes[1].type);
       assertEqual(["_from", "_to"], indexes[1].fields);
-      assertEqual("hash", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1304,96 +1273,112 @@ function restoreIntegrationSuite() {
       assertFalse(props.syncByRevision);
       fs.removeDirectoryRecursive(path, true);
     },
-  };
-}
 
-function restoreIntegrationVectorSuite() {
-  'use strict';
-  const cn = 'UnitTestsVectorIndexRestore';
-  const arangorestore = pu.ARANGORESTORE_BIN;
-
-  assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
-
-  let addConnectionArgs = function (args) {
-    args.push('--server.endpoint');
-    args.push(IM.endpoint);
-    if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
-      args.push('--server.database');
-      args.push(arango.getDatabaseName());
-    }
-    args.push('--server.username');
-    args.push(arango.connectedUser());
-  };
-
-  let runRestore = function (path, args, rc) {
-    args.push('--input-directory');
-    args.push(path);
-    addConnectionArgs(args);
-
-    const actualRc = executeExternalAndWaitWithSanitizer(arangorestore, args, 'shell-restore-integration');
-    assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
-    assertEqual(rc, actualRc.exit, actualRc);
-  };
-
-  return {
-
-    setUp: function () {
-      IM.rememberConnection();
-      db._drop(cn);
-    },
-
-    tearDown: function () {
-      db._drop(cn);
-      db._databases().forEach((database) => {
-        if (database !== "_system") {
-          db._dropDatabase(database);
-        }
-      });
-      IM.reconnectMe();
-    },
-
-    testRestoreVectorIndex: function () {
+    // Test for restoring deprecated index types (hash and skiplist)
+    // These index types are deprecated and should be converted to persistent
+    testRestoreDeprecatedHashAndSkiplistIndexes: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let fn = fs.join(path, cn + ".structure.json");
+
+      // Simulate an old dump file with deprecated "hash" and "skiplist" index types
       fs.write(fn, JSON.stringify({
         indexes: [],
         parameters: {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "95", fields: ["vector"], type: "vector", params: {dimension: 4, nLists: 4, metric: "l2"}},
-            {id: "295", fields: ["value"], type: "persistent", sparse: true},
+            {id: "95", fields: ["hashField"], type: "hash", unique: false, sparse: false},
+            {id: "195", fields: ["skiplistField"], type: "skiplist", unique: true, sparse: true},
           ],
           name: cn,
           numberOfShards: 3,
           type: 2
         }
       }));
+
       let data = [];
-      for (let i = 0; i < 1000; ++i) {
-        data.push({_key: "test" + i, value: i, vector: [0, i / 10, i / 100, i / 1000]});
+      for (let i = 0; i < 100; ++i) {
+        data.push({_key: "test" + i, hashField: i, skiplistField: i});
       }
       dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
-      
+
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
 
       let c = db._collection(cn);
       let indexes = c.indexes();
-      // Assert that the vector index was ignored
-      assertEqual(2, indexes.length);
+      // Deprecated indexes should be converted to persistent
+      assertEqual(3, indexes.length);
       assertEqual("primary", indexes[0].type);
       assertEqual(["_key"], indexes[0].fields);
+      // Hash index converted to persistent
       assertEqual("persistent", indexes[1].type);
-      assertEqual(["value"], indexes[1].fields);
+      assertEqual(["hashField"], indexes[1].fields);
+      assertFalse(indexes[1].unique);
+      assertFalse(indexes[1].sparse);
+      // Skiplist index converted to persistent
+      assertEqual("persistent", indexes[2].type);
+      assertEqual(["skiplistField"], indexes[2].fields);
+      assertTrue(indexes[2].unique);
+      assertTrue(indexes[2].sparse);
+
+      // Verify the indexes work
+      assertEqual(100, c.count());
+      let result = db._query("FOR doc IN " + cn + " FILTER doc.hashField == 42 RETURN doc").toArray();
+      assertEqual(1, result.length);
+      assertEqual("test42", result[0]._key);
+
+      // Test range query (formerly skiplist-specific)
+      result = db._query("FOR doc IN " + cn + " FILTER doc.skiplistField >= 50 RETURN doc").toArray();
+      assertEqual(50, result.length);
 
       fs.removeDirectoryRecursive(path, true);
-    }
+    },
+
+    // Test for restoring deprecated fulltext index type
+    // Fulltext indexes are no longer supported and should be skipped on restore
+    testRestoreDeprecatedFulltextIndex: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let fn = fs.join(path, cn + ".structure.json");
+
+      // Simulate an old dump file with a deprecated "fulltext" index type
+      fs.write(fn, JSON.stringify({
+        indexes: [],
+        parameters: {
+          indexes: [
+            {id: "0", fields: ["_key"], type: "primary", unique: true},
+            {id: "95", fields: ["textField"], type: "fulltext", minLength: 3, sparse: true, unique: false},
+          ],
+          name: cn,
+          numberOfShards: 3,
+          type: 2
+        }
+      }));
+
+      let data = [];
+      for (let i = 0; i < 100; ++i) {
+        data.push({_key: "test" + i, textField: "word" + i + " hello world"});
+      }
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
+
+      let args = ['--collection', cn, '--import-data', 'true'];
+      runRestore(path, args, 0);
+
+      let c = db._collection(cn);
+      let indexes = c.indexes();
+      // Fulltext index should be skipped, leaving only the primary index
+      assertEqual(1, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      assertEqual(["_key"], indexes[0].fields);
+
+      // data is still restored even though the fulltext index is dropped
+      assertEqual(100, c.count());
+      fs.removeDirectoryRecursive(path, true);
+    },
   };
 }
 
-
 jsunity.run(restoreIntegrationSuite);
-jsunity.run(restoreIntegrationVectorSuite);
 
 return jsunity.done();

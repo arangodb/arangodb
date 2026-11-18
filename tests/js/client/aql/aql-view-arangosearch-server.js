@@ -54,7 +54,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      IM.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('PersistentIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       let i;
@@ -172,8 +172,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       }          
 
       // add another index (to make it fail after arangosearch insert passed) 
-      // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      // index will be placed after arangosearch due to failpoint 'PersistentIndexAlwaysLast'
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
       
       // single operation insert (will fail on unique index)
       try {
@@ -232,7 +232,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      IM.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('PersistentIndexAlwaysLast');
     },
 
     testViewWithInterruptedUpdates : function() {
@@ -244,7 +244,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      IM.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('PersistentIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
@@ -330,8 +330,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         }
       }
       // add another index (to make it fail after arangosearch update passed) 
-      // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      // index will be placed after arangosearch due to failpoint 'PersistentIndexAlwaysLast'
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
 
       let docsUpdateIds = [];
       let docsUpdateData = [];
@@ -350,7 +350,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       }
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      IM.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('PersistentIndexAlwaysLast');
     },
 
     testViewWithInterruptedRemoves : function() {
@@ -362,7 +362,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      IM.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('PersistentIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
@@ -449,8 +449,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       }       
 
       // add another index (to make it fail after arangosearch remove passed)
-      // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      // index will be placed after arangosearch due to failpoint 'PersistentIndexAlwaysLast'
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
       let docsRemoveIds = [];
       docsRemoveIds.push(docs[2]._id);
       docsRemoveIds.push(docs[3]._id);
@@ -468,7 +468,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      IM.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('PersistentIndexAlwaysLast');
     },
     testViewLinkCreationHint : function() {
       if (!IM.debugCanUseFailAt()) {

@@ -29,16 +29,16 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
-#include <s2/base/integral_types.h>
+#include "IndexType.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
 namespace arangodb {
+class IndexTypeCatalog;
 class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
@@ -50,7 +50,7 @@ struct IndexStreamOptions;
 struct IndexDistinctScanOptions;
 
 namespace vector {
-struct UserVectorIndexDefinition;
+struct UserDefinition;
 }  // namespace vector
 
 using StoredValues = std::vector<std::vector<basics::AttributeName>>;
@@ -97,28 +97,6 @@ class Index {
 
   static std::vector<std::vector<basics::AttributeName>> const
       emptyCoveredFields;
-
-  /// @brief index types
-  enum IndexType {
-    TRI_IDX_TYPE_UNKNOWN = 0,
-    TRI_IDX_TYPE_PRIMARY_INDEX,
-    TRI_IDX_TYPE_GEO_INDEX,
-    TRI_IDX_TYPE_GEO1_INDEX,
-    TRI_IDX_TYPE_GEO2_INDEX,
-    TRI_IDX_TYPE_HASH_INDEX,
-    TRI_IDX_TYPE_EDGE_INDEX,
-    TRI_IDX_TYPE_FULLTEXT_INDEX,
-    TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_TTL_INDEX,
-    TRI_IDX_TYPE_PERSISTENT_INDEX,
-    TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX,
-    TRI_IDX_TYPE_MDI_INDEX,
-    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX,
-    TRI_IDX_TYPE_VECTOR_INDEX,
-  };
 
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -211,6 +189,13 @@ class Index {
   /// coveringIndexPosition value in it.
   virtual bool covers(aql::Projections& projections) const;
 
+  /// @brief translates an `_id` lookup value into a `_key` lookup value,
+  /// returning std::nullopt if the value cannot refer to a document of
+  /// `collection`
+  static std::optional<std::string_view> extractKeyFromIdLookupValue(
+      transaction::Methods& trx, LogicalCollection const& collection,
+      std::string_view id);
+
   virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
     return _fields.size();
   }
@@ -245,10 +230,8 @@ class Index {
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
-    return (type == TRI_IDX_TYPE_HASH_INDEX ||
-            type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
-            type == TRI_IDX_TYPE_INVERTED_INDEX);
+    return (type == IndexType::Hash || type == IndexType::Skiplist ||
+            type == IndexType::Persistent || type == IndexType::Inverted);
   }
 
   virtual IndexType type() const = 0;
@@ -277,7 +260,7 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool compare(StorageEngine&, velocypack::Slice const& lhs,
+  static bool compare(IndexTypeCatalog const&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs, std::string const& dbname);
 
   static void normalizeFilterCosts(Index::FilterCosts& costs,
@@ -450,8 +433,7 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
-      const;
+  virtual vector::UserDefinition const& getVectorIndexDefinition() const;
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.

@@ -36,13 +36,13 @@ var ERRORS = arangodb.errors;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ExclusiveSuite () {
+function ExclusiveSuite() {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
   var cn2 = "UnitTestsExclusiveCollection2"; // used for communication
   var c1, c2;
-  let joinShells = function(shells) {
+  let joinShells = function (shells) {
     let count = 0;
-    while (ct.run.joinFinishedBGShells(IM.options, shells) !== 0){
+    while (ct.run.joinFinishedBGShells(IM.options, shells) !== 0) {
       if (count > 60) {
         ct.run.joinForceBGShells(IM.options, shells);
         throw new Error("sub-shells did not get ready on time");
@@ -51,58 +51,58 @@ function ExclusiveSuite () {
       sleep(1);
       print('.');
     }
-  };      
+  };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflict : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function() {
+    testExclusiveExpectConflict: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         let db = require('internal').db;
         let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
-              
+
         while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
-        
+
         let trx = db._createTransaction({
           collections: {
             write: [args.cn1, args.cn2],
-            exclusive: [ ]
+            exclusive: []
           }
         });
         let ct1 = trx.collection(args.cn1);
         let ct2 = trx.collection(args.cn2);
         for (let i = 0; i < 10000; ++i) {
-          ct1.update("XXX", { name : "runner1" });
+          ct1.update("XXX", { name: "runner1" });
         }
         ct2.update("runner1", { value: true });
         print('committing spawned');
         trx.commit();
       };
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
         sleep(0.02);
@@ -111,13 +111,13 @@ function ExclusiveSuite () {
         let trx = db._createTransaction({
           collections: {
             write: [cn1, cn2],
-            exclusive: [ ]
+            exclusive: []
           }
         });
         let ct1 = trx.collection(cn1);
         let ct2 = trx.collection(cn2);
         for (let i = 0; i < 10000; ++i) {
-          ct1.update("XXX", { name : "runner2" });
+          ct1.update("XXX", { name: "runner2" });
         }
         ct2.update("runner2", { value: true });
         print('commiting local');
@@ -131,14 +131,14 @@ function ExclusiveSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertNotEqual(docs[0].value, docs[1].value);
     },
 
-    testExclusiveExpectNoConflict : function () {
+    testExclusiveExpectNoConflict: function () {
       assertEqual(0, c2.count());
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function() {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         let db = require("internal").db;
         let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
@@ -154,13 +154,13 @@ function ExclusiveSuite () {
         let ct1 = trx.collection(args.cn1);
         let ct2 = trx.collection(args.cn2);
         for (let i = 0; i < 10000; ++i) {
-          ct1.update("XXX", { name : "runner1" });
+          ct1.update("XXX", { name: "runner1" });
         }
         ct2.update("runner1", { value: true });
         trx.commit();
       };
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
 
       c2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
@@ -175,7 +175,7 @@ function ExclusiveSuite () {
       let ct1 = trx.collection(cn1);
       let ct2 = trx.collection(cn2);
       for (let i = 0; i < 10000; ++i) {
-        ct1.update("XXX", { name : "runner2" });
+        ct1.update("XXX", { name: "runner2" });
       }
       ct2.update("runner2", { value: true });
       trx.commit();
@@ -183,14 +183,14 @@ function ExclusiveSuite () {
       joinShells(shells);
       // both transactions should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     },
 
-    testExclusiveExpectConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function() {
+    testExclusiveExpectConflictAQL: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         var arangodb = require("@arangodb");
         var ERRORS = arangodb.errors;
         let db = require("internal").db;
@@ -201,19 +201,19 @@ function ExclusiveSuite () {
         }
         try {
           for (let i = 0; i < 1000; ++i) {
-            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@cn", {'@cn': args.cn1});
+            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@cn", { '@cn': args.cn1 });
           }
           c2.update("runner1", { value: true });
         } catch (err) {
           print('error with spawned queries');
           if (ERRORS.ERROR_ARANGO_CONFLICT.code !== err.errorNum) {
-            throw(err);
+            throw (err);
           }
         }
       };
-      
+
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
 
       try {
         c2.insert({ _key: "runner2", value: false });
@@ -221,7 +221,7 @@ function ExclusiveSuite () {
           require("internal").sleep(0.02);
         }
         for (let i = 0; i < 10000; i++) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@cn", {'@cn': cn1});
+          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@cn", { '@cn': cn1 });
         }
         c2.update("runner2", { value: true });
       } catch (err) {
@@ -233,13 +233,13 @@ function ExclusiveSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertNotEqual(docs[0].value, docs[1].value);
     },
-    
-    testExclusiveExpectNoConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function() {
+
+    testExclusiveExpectNoConflictAQL: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         let db = require("internal").db;
         let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
@@ -248,14 +248,14 @@ function ExclusiveSuite () {
         }
         print('spawned start');
         for (let i = 0; i < 1000; ++i) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@col OPTIONS { exclusive: true }", {"@col": args.cn1});
+          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@col OPTIONS { exclusive: true }", { "@col": args.cn1 });
         }
         print('spawned done');
         c2.update("runner1", { value: true });
       };
-      
+
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
 
       c2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
@@ -263,7 +263,7 @@ function ExclusiveSuite () {
       }
       print('local start');
       for (let i = 0; i < 10000; i++) {
-        db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@col OPTIONS { exclusive: true }", {"@col": cn1});
+        db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@col OPTIONS { exclusive: true }", { "@col": cn1 });
       }
       print('local done');
       c2.update("runner2", { value: true });
@@ -272,11 +272,11 @@ function ExclusiveSuite () {
 
       // both set of queries should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     }
-  
+
   };
 }
 

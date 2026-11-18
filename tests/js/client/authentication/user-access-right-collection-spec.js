@@ -155,7 +155,11 @@ describe('User Rights Management', () => {
                   try {
                     db._drop(testColName);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (dbLevel['rw'].has(name) && colLevel['ro'].has(name)) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
                   expect(rootTestCollection()).to.equal(true, `${name} was able to drop a collection with insufficent rights`);
                 }

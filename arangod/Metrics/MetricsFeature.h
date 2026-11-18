@@ -41,8 +41,6 @@
 
 namespace arangodb {
 class QueryRegistryFeature;
-class StatisticsFeature;
-class DatabaseFeature;
 class ClusterFeature;
 }  // namespace arangodb
 namespace arangodb::metrics {
@@ -57,13 +55,10 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  explicit MetricsFeature(
+  MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
@@ -72,9 +67,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
@@ -140,15 +132,11 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   LazyApplicationFeatureReference<QueryRegistryFeature>
       _lazyQueryRegistryFeatureRef;
-  LazyApplicationFeatureReference<StatisticsFeature> _lazyStatisticsFeatureRef;
-  LazyApplicationFeatureReference<DatabaseFeature> _lazyDatabaseFeatureRef;
   LazyApplicationFeatureReference<ClusterMetricsFeature>
       _lazyClusterMetricsFeatureRef;
   LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
 
   QueryRegistryFeature* _queryRegistryFeature = nullptr;
-  StatisticsFeature* _statisticsFeature = nullptr;
-  DatabaseFeature* _databaseFeature = nullptr;
   ClusterMetricsFeature* _clusterMetricsFeature = nullptr;
   ClusterFeature* _clusterFeature = nullptr;
 

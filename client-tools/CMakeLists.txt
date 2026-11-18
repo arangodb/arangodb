@@ -17,7 +17,6 @@ else()
   add_definitions("-DTEST_VIRTUAL=")
 endif()
 
-add_subdirectory(Benchmark)
 add_subdirectory(Backup)
 add_subdirectory(Dump)
 add_subdirectory(Export)
@@ -32,7 +31,6 @@ add_custom_target(client-tools
             arangoexport
             arangoimport
             arangorestore
-            arangobench
             arangovpack)
 
 add_dependencies(client-tools arangosh)

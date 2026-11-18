@@ -253,10 +253,12 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
       .setCall(call)
       .expectOutput(
           {0, 1},
+          // COR-527: "a" + 1 is string concatenation -> "a1" (was numeric 1).
           MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
-                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
-                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+                           RowBuilder<2>{R"("a")", R"("a1")"},
+                           RowBuilder<2>{2, 3}, RowBuilder<2>{3, 4},
+                           RowBuilder<2>{4, 5}, RowBuilder<2>{5, 6},
+                           RowBuilder<2>{6, 7}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -304,8 +306,10 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
       .setCall(call)
       .expectOutput(
           {0, 1},
+          // COR-527: "a" + 1 is string concatenation -> "a1" (was numeric 1).
           MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+                           RowBuilder<2>{R"("a")", R"("a1")"},
+                           RowBuilder<2>{2, 3}})
       .allowAnyOutputOrder(false)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -330,42 +334,15 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
       .setCall(call)
       .expectOutput(
           {0, 1},
+          // COR-527: "a" + 1 is string concatenation -> "a1" (was numeric 1).
           MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+                           RowBuilder<2>{R"("a")", R"("a1")"},
+                           RowBuilder<2>{2, 3}})
       .allowAnyOutputOrder(false)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
       .run(true);
 }
-
-#ifdef USE_V8
-// Could be fixed and enabled if one enabled the V8 engine
-TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
-  AqlCall call{};
-  ExecutionStats stats{};
-
-  makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(
-          std::move(registerInfos), buildInfos())
-      .setInputValue(MatrixBuilder<2>{
-          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
-          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
-          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
-          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
-      .setInputSplitType(getSplit())
-      .setCall(call)
-      .expectOutput(
-          {0, 1},
-          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
-                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
-                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
-                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
-      .allowAnyOutputOrder(false)
-      .expectSkipped(0)
-      .expectedState(ExecutionState::DONE)
-      .run(true);
-}
-#endif
 
 }  // namespace aql
 }  // namespace tests

@@ -35,6 +35,7 @@ RestOptionsHandler::RestOptionsHandler(
     GeneralResponse* response)
     : RestOptionsBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/options (exact)
 RestStatus RestOptionsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     // only HTTP GET allowed

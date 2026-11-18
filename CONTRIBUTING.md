@@ -137,6 +137,43 @@ To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
     ./utils/eslint.sh
 
+### clang-tidy
+
+clang-tidy can be run on-demand with the wrapper script `./utils/clang-tidy.sh`,
+or along with a build by setting `USE_CLANG_TIDY=On`:
+
+#### On demand
+
+This requires `clang-tidy-22`, `run-clang-tidy-22` and `jq` in PATH. It also
+needs an existing build directory; defaulting to `./build/`, which can be
+overridden with `--build` or `-B`. The script passes clang-tidy the GCC
+installation that `clang++-22` selects, so that both parse the same C++ standard
+library headers (see [Building Locally](#building-locally)).
+
+    ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
+    ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
+    ./utils/clang-tidy.sh --fix <files>      # apply clang-tidy's fixes in place
+
+With no arguments it checks the sources locally modified vs. `HEAD` in both the
+main and the enterprise repository (same selection as `./scripts/clang-format.sh`).
+
+To scan the whole codebase, pass the source roots:
+
+    ./utils/clang-tidy.sh \
+      arangod lib client-tools enterprise
+
+#### As part of the build
+
+Configure `cmake` with `-DUSE_CLANG_TIDY=On` to run clang-tidy on every
+first-party translation unit as it compiles. It is `Off` by default.
+
+This covers `arangod`, `lib` (including `lib/iresearch`), `client-tools` and
+`enterprise`; vendored `3rdParty` code is excluded.
+
+clang-tidy runs in addition to the compilation, and can increase the total build
+time significantly. Any partial recompile will also run clang-tidy on the same
+set of translation units.
+
 ### Adding startup options
 
 Startup option example with explanations:
@@ -269,9 +306,6 @@ SELinux enabled distribitons need `:z` added to the to the volume path: `-v $(pw
 
 In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
-The port mapping is for accessing the web interface in case you want to run a
-development server for working on the frontend.
-
 In the fish shell of the container, run the following commands for a release-like
 build using the officially supported version of the Clang compiler
 (also see the [`VERSIONS`](VERSIONS)):
@@ -282,8 +316,8 @@ build using the officially supported version of the Clang compiler
 
 For a debug build, you can use the `community-developer` preset instead.
 
-The default target CPU architecture is `sandybridge` for the x86-64 platform and
-`graviton1` for 64-bit ARM chips. You can specify a different architecture to
+The default target CPU architecture is `haswell` for the x86-64 platform and
+`graviton2` for 64-bit ARM chips. You can specify a different architecture to
 enable more optimizations or to limit the compiler to the available instructions
 for a particular architecture:
 
@@ -295,7 +329,7 @@ On ARM, disable the `USE_LIBUNWIND` option:
 
 To build specific targets instead of all, you can specify them like shown below:
 
-    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangobench arangovpack frontend
+    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangovpack
 
 You can find the output files at `build-presets/<preset-name>/`,
 with the compiled executables in the `bin/` subfolder.
@@ -309,16 +343,46 @@ It copies the needed files to a folder called `install`.
 It may fail if you only built a subset of the targets.
 The folder is organized following the Linux directory structure, with the
 server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
-configuration files in `usr/etc/arangodb3/`, and so on.
+configuration files in `usr/etc/arangodb4/`, and so on.
 
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
+### Building with FIPS support
+
+The `USE_FIPS` CMake option, set by the `pr-x64-fips` and `pr-arm64-fips`
+presets, builds an `arangod` that can use the OpenSSL FIPS provider. Such a
+build links glibc dynamically instead of statically, because OpenSSL loads the
+provider (`fips.so`) at runtime. The build container provides the provider of
+OpenSSL 3.1.2 at `/opt/lib/ossl-modules/fips.so`.
+
+The startup option `--server.fips-enable true` makes the server load the
+provider from `/opt/lib/ossl-modules/`, with the configuration
+`/opt/ssl/fips-only.cnf`, which includes `/opt/ssl/fipsmodule.cnf`. To set
+these up in the build container:
+
+    mkdir -p /opt/ssl
+    cp scripts/docker/deploy/fips-only.cnf /opt/ssl/
+    openssl fipsinstall -module /opt/lib/ossl-modules/fips.so -out /opt/ssl/fipsmodule.cnf
+
+Builds without `USE_FIPS` refuse to start with `--server.fips-enable`. The
+`arangodb/core-fips-preview` Docker image, which the nightly pipeline builds
+when its `build-fips-image` parameter is set, does this setup in its entrypoint
+and enables the option.
+
+To run a CircleCI test pipeline in FIPS mode, trigger it with `use-fips: true`:
+every workflow (including sanitizer builds) is then compiled with `USE_FIPS`,
+the tests start the servers with `--server.fips-enable`, and the workflow names
+carry `-fips` (e.g. `x64-fips-pr-tsan`). The test image always contains the
+provider and its configuration. Docker images requested in such a pipeline are
+`arangodb/core-fips-test` / `arangodb/core-fips-preview`, while the client-tools
+image still comes from a regular, fully static build.
+
 ### Building Locally
 
 Debian-based Linux is recommended. Dependencies:
-- `clang-19`
-- `libomp-19-dev`
+- `clang-22`
+- `libomp-22-dev`
 - `liblapack-dev`
 - `libopenblas-dev`
 - `cmake` (at least 3.21)
@@ -327,78 +391,28 @@ Debian-based Linux is recommended. Dependencies:
 - `bison`
 - `flex`
 
+The code is compiled as C++26 (`CXX_STANDARD` in [`VERSIONS`](VERSIONS)), which
+is why a recent C++ standard library such as `libstdc++-14-dev` is required.
+
+Clang uses the C++ standard library of the newest GCC installation it finds.
+The build image pins it to GCC 14 (`GCC_LINUX` in [`VERSIONS`](VERSIONS)), as
+Ubuntu 26.04 defaults to GCC 15, with `--gcc-install-dir` in the `clang.cfg` and
+`clang++.cfg` files next to the clang binary. To do the same on a system with a
+newer GCC:
+
+    GCC_DIR=/usr/lib/gcc/$(uname -m)-linux-gnu/14
+    CLANG_DIR=$(dirname "$(readlink -f "$(command -v clang-22)")")
+    echo "--gcc-install-dir=$GCC_DIR" | sudo tee "$CLANG_DIR/clang.cfg" "$CLANG_DIR/clang++.cfg"
+
+`clang++-22 -v -x c++ /dev/null -fsyntax-only` shows which installation clang
+selects.
+
 Dependencies for a Fedora-based distribution:
 ```
-dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
+dnf install clang-22 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
 ```
 
 After installing, follow the general build steps above.
-
-### Building the Web Interface
-
-The web interface is also known as the Web UI, frontend, or _Aardvark_.
-Building ArangoDB also builds the frontend unless `-DUSE_FRONTEND=Off` was
-specified when configuring CMake or if the `frontend` target was left out for
-the build.
-
-To build the web interface via CMake, you can run the following commands:
-
-    cmake --preset community
-    cmake --build --preset community --target frontend
-
-To remove all installed Node.js modules and start a clean installation, run:
-
-    cmake --build --preset community --target frontend_clean
-
-You can also build the frontend manually without CMake.
-[Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/) need to be
-installed.
-
-    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    yarn install
-    yarn build
-
-To run a development server, go to `js/apps/system/_admin/aardvark/APP/react`
-and run the following command:
-
-    yarn start
-
-It should start your browser and open the web interface at `http://localhost:3000`.
-Changes to any frontend source files trigger an automatic re-build and reload
-the browser tab. If you use the build container, make sure to start it with a
-port mapping for the development server.
-
-#### Cross Origin Policy (CORS) error
-
-Our front-end development server currently runs on port:`3000`, while the backend
-runs on port:`8529` respectively. This implies that when the front-end sends a
-request to the backend would result in Cross-Origin-Policy security checks which
-recently got enforced by some browsers for security reasons. Until recently, we
-never had reports of CORS errors when running both the backend and front-end dev
-servers independently, however, we recently confirmed that this error occurs in
-(Chrome version 98.0.4758.102 and Firefox version 96.0.1).
-
-In case you run into CORS errors while running the development server, here is a quick fix:
-
-Simply stop your already running backend process with the command below:
-
-```bash
-cmd + c
-```
-
-Then restart `arangodb` server with the command below:
-
-```bash
-./build-presets/<preset-name>/bin/arangod ../Arango --http.trusted-origin '*'
-```
-
-Note:
-
-a: `./build-presets/<preset-name>/bin/arangod`: represents the location of `arangodb` binaries in your machine.
-
-b: `../Arango`: is the database directory where the data will be stored.
-
-c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
 #### NPM Dependencies
 
@@ -480,10 +494,6 @@ the following commands in a terminal:
 7. When the docs building finishes successfully, you can find the `api-docs.json`
    files in `site/data/<version>/`.
 
-8. Copy the respective `api-docs.json` file into the ArangoDB working copy or
-   installation folder under `js/apps/system/_admin/aardvark/APP/api-docs.json`
-   and refresh the web interface.
-
 ---
 
 ## Running
@@ -522,30 +532,6 @@ Mode:
 ---
 
 ## Debugging
-
-### Runtime
-
-- start arangod with `--console` to get a debug console
-- Cheapen startup for valgrind: `--server.rest-server false`
-
-### Startup
-
-Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript. A
-sample version to help working with the arangod rescue console may look like
-that:
-
-    internal = require("internal");
-    fs = require("fs");
-    db = internal.db;
-    time = internal.time;
-    timed = function (cb) {
-      let s = time();
-      cb();
-      return time() - s;
-    };
-    print = internal.print;
-
-_Hint_: You shouldn't lean on these variables in your Foxx services.
 
 ### Debugging AQL execution blocks
 
@@ -727,19 +713,19 @@ Edit `/etc/security/limits.conf` to contain:
 arangodb        -       core            infinity
 ```
 
-Edit the systemd unit file `/lib/systemd/system/arangodb3.service` (USE infinity!!!):
+Edit the systemd unit file `/lib/systemd/system/arangodb4.service` (USE infinity!!!):
 
 ```
 ## setting for core files
 # Any dir that is writable by the user running arangod
-WorkingDirectory=/var/lib/arangodb3
+WorkingDirectory=/var/lib/arangodb4
 # core limit - set this to infinity to enable cores
 LimitCORE=0
 ```
 
 Enable new systemd settings:
 
-`systemctl daemon-reload && systemctl restart arangodb3.service`
+`systemctl daemon-reload && systemctl restart arangodb4.service`
 
 Enable suid process dumping:
 
@@ -988,15 +974,6 @@ Running the same testsuite twice with different and shared parameters would look
 
     ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"http":true,"suffix":"http"}]'
 
-
-#### Running Foxx Tests with a Fake Foxx Repo
-
-Since downloading Foxx apps from GitHub can be cumbersome with shaky DSL and
-DoS'ed GitHub, we can fake it like this:
-
-    export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'tests/js/server/shell/shell-foxx-manager-spec.js'
-
 ### Running jsUnity Tests
 
 Assume that you have a test file containing:
@@ -1075,13 +1052,73 @@ The `rta_makedata` testsuite can be invoked with:
 - `--cluster false` - to be ran on a single server setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
-These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
+These combinations are also engaged via [tests.yml](tests/tests.yml).
 
 Invoke it like this:
 
     ./scripts/unittest rta_makedata --cluster true
 
 (you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
+
+### Invoking MakeData, CheckData, WaitData against your local build
+
+The wrapper scripts in [scripts](scripts/)
+run the [makedata framework](#makedata--checkdata-suite) against a server you
+started yourself, e.g. a debug build you are working on or running in `gdb`.
+They pass the same arguments as the `rta_makedata` testsuite does, without
+letting `scripts/unittest` start and stop its own instances:
+
+- `scripts/makedata` - create the test data
+- `scripts/checkdata` - verify the test data is (still) there
+- `scripts/waitdata` - wait for the test data to become available, i.e. after a failover
+- `scripts/cleardata` - remove the test data again, so makedata can be run once more
+
+They pick up `build/bin/arangosh` and the `js/` directory of the source tree
+they live in (or the one a symlink to them lives in); use `--build <dir>` for a
+different build directory.
+
+Start a local debug single server without authentication:
+
+    ./build/bin/arangod --server.endpoint tcp://127.0.0.1:8529 \
+                        --server.authentication false \
+                        ../arangodb-data-makedata
+
+Then run a full create / check / clear cycle against it:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529
+
+To work on a single hook, filter the suites in `3rdParty/rta-makedata/test_data/makedata_suites`
+with a comma separated list; `--skip` filters the other way round:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+
+Use a database of its own instead of `_system` by passing its name as the first
+argument; its name should start with `system_`:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+
+Against a local cluster started with `scripts/startLocalCluster`, point them at the Coordinator:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 --minReplicationFactor 2
+    ./scripts/waitdata  --server.endpoint tcp://127.0.0.1:8530
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530
+
+`--one-shard` creates and checks a OneShard database, just like `--forceOneShard` in the testsuite;
+pass it to every script of the cycle:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+
+Options with a `.` in their name (`--server.endpoint`, `--server.password`, `--log.level`, ...)
+go to arangosh, all others to the javascript file; `--server.password` is also passed on as `--passvoid`.
+Unless `--oldVersion` is given, the version of the server is used for it.
+
+- `--help` lists the wrapper options and all options of the respective javascript file, without contacting a server
+- `--dry-run` prints the arangosh command line instead of running it
 
 ### Driver tests
 
@@ -1095,6 +1132,8 @@ Pre-requisites:
 Once this is completed, you may run it like this:
 
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
+
+`go_driver` defaults to **v3** on ArangoDB 4.0+ and **v2** on 3.12.*. Pass `--goVersion v2` or `--goVersion v3` to override. On ArangoDB 4.0, CI uses `go-v2.yml` and `go-v3.yml` to run both driver versions.
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an additional parameter we pass `-timeout 100m` to the driver test.
@@ -1214,7 +1253,6 @@ Debugging a storage engine:
        gdb --args ./build/bin/arangod \
            --console \
            --foxx.queues false \
-           --server.statistics false \
            --server.endpoint http+tcp://0.0.0.0:7777 \
            ../arangodb-data-rocksdb
     (gdb) catch throw

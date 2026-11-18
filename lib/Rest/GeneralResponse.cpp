@@ -285,6 +285,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
 
   switch (static_cast<int>(code)) {
     case static_cast<int>(TRI_ERROR_HTTP_CORRUPTED_JSON):
+    case static_cast<int>(TRI_ERROR_HTTP_API_VERSION_MISMATCH):
     case static_cast<int>(TRI_ERROR_BAD_PARAMETER):
     case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID):
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD):
@@ -315,6 +316,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_DIVISION_BY_ZERO):
     case static_cast<int>(TRI_ERROR_QUERY_ARRAY_EXPECTED):
+    case static_cast<int>(TRI_ERROR_QUERY_OBJECT_EXPECTED):
     case static_cast<int>(TRI_ERROR_QUERY_FAIL_CALLED):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
@@ -378,6 +380,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_HTTP_UNAUTHORIZED):
       return ResponseCode::UNAUTHORIZED;
 
+    case static_cast<int>(TRI_ERROR_HTTP_FORBIDDEN):
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
     case static_cast<int>(TRI_ERROR_FORBIDDEN):
@@ -394,7 +397,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CURSOR_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_QUERY_GEO_INDEX_MISSING):
-    case static_cast<int>(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING):
     case static_cast<int>(TRI_ERROR_QUERY_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_USER_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_TRANSACTION_NOT_FOUND):

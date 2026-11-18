@@ -424,9 +424,7 @@ function dumpIntegrationSuite() {
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
-      checkStructureFile(tree, path, true, "_apps");
       checkDataFile(tree, path, /*split*/ false, false, true, cn);
-      checkDataFile(tree, path, /*split*/ false, false, true, "_apps");
       fs.removeDirectoryRecursive(path, true);
     },
     

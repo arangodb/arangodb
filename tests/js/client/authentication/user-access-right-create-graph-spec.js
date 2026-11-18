@@ -196,11 +196,7 @@ describe('User Rights Management', () => {
                     'to': [ testVertexColName ]
                   }]);
                 } catch (e) {
-                  if (dbLevel['ro'].has(name) && !colLevel['none'].has(name)) {
-                    expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
-                  } else {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
-                  }
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                 }
                 expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
               }

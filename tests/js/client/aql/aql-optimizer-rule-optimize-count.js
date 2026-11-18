@@ -42,8 +42,8 @@ function optimizerRuleTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "hash", fields: ["value1"] });
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       c.ensureIndex({ type: "persistent", fields: ["value5", "value4[*]"] });
     },
 
@@ -181,6 +181,25 @@ function optimizerRuleTestSuite () {
         }
         result = db._query(query[0], null, opts).toArray();
         assertEqual(query[1], result, query);
+      });
+    },
+
+    testCollectInSubquery : function () {
+      let queries = [
+        ["RETURN LENGTH(FOR doc IN " + cn + " COLLECT WITH COUNT INTO cnt FILTER cnt == 5000 RETURN true)", [ 1 ] ],
+        ["RETURN COUNT(FOR doc IN " + cn + " COLLECT WITH COUNT INTO cnt FILTER cnt == 5000 RETURN true)", [ 1 ] ],
+        ["RETURN LENGTH(FOR doc IN " + cn + " COLLECT WITH COUNT INTO cnt FILTER cnt == 1 RETURN true)", [ 0 ] ],
+        ["RETURN LENGTH(FOR doc IN " + cn + " COLLECT WITH COUNT INTO cnt RETURN cnt)", [ 1 ] ],
+        ["RETURN LENGTH(FOR doc IN " + cn + " COLLECT AGGREGATE m = MAX(1) RETURN m)", [ 1 ] ],
+        ["FOR i IN 1..3 RETURN LENGTH(FOR doc IN " + cn + " FILTER doc.value2 == i COLLECT WITH COUNT INTO cnt FILTER cnt == 1000 RETURN true)", [ 1, 1, 1 ] ],
+        ["FOR i IN 1..3 RETURN LENGTH(FOR doc IN " + cn + " FILTER doc.value2 == i COLLECT WITH COUNT INTO cnt FILTER cnt == 1 RETURN true)", [ 0, 0, 0 ] ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = db._query(query[0]).toArray();
+        assertEqual(query[1], result, query);
+        result = db._createStatement(query[0]).explain();
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 

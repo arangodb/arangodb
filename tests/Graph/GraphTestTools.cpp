@@ -34,9 +34,8 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
@@ -50,7 +49,9 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
+GraphTestSetup::GraphTestSetup()
+    : server(nullptr, nullptr),
+      engine(server.addFeature<StorageEngine, StorageEngineMock>()) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   arangodb::ClusterEngine::Mocking = true;
   arangodb::RandomGenerator::initialize(
@@ -59,18 +60,16 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   // setup required application features
   auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   features.emplace_back(metrics, false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(
-      server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
+      server.addFeature<arangodb::transaction::ManagerFeature>(metrics, engine),
+      false);
   auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
   features.emplace_back(databaseFeature, false);
-  databaseFeature.setEngineTesting(&engine);
   features.emplace_back(
       server.addFeature<arangodb::QueryRegistryFeature>(
           server.getFeature<arangodb::metrics::MetricsFeature>()),
@@ -88,7 +87,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(
       server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
   features.emplace_back(
-      server.addFeature<arangodb::VectorIndexFeature>(databaseFeature), true);
+      server.addFeature<arangodb::VectorIndexFeature>(databaseFeature), false);
 
   for (auto& f : features) {
     f.first.prepare();
@@ -108,7 +107,6 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
 GraphTestSetup::~GraphTestSetup() {
   system.reset();                       // destroy before reseting the 'ENGINE'
   arangodb::AqlFeature(server).stop();  // unset singleton instance
-  server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
   // destroy application features
   for (auto& f : features) {
@@ -129,7 +127,7 @@ std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
   TRI_ASSERT(coll != nullptr);    // no edge collection of this name
   TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
   for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
-    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (idx->type() == IndexType::Edge) {
       return idx;
     }
   }

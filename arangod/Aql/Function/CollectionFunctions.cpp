@@ -83,7 +83,8 @@ AqlValue functions::Collections(ExpressionContext* exprCtx, AstNode const&,
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+    if (exec.canUseCollection(vocbase.name(), coll->name(), AccessLevel::Read)
+            .fail()) {
       continue;
     }
 
@@ -179,7 +180,7 @@ AqlValue functions::CollectionCount(ExpressionContext* expressionContext,
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   OperationResult res =
       trx->count(collectionName, transaction::CountType::kNormal, options);
   if (res.fail()) {

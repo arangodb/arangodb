@@ -54,6 +54,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/UniformCharacter.h"
+#include "Ssl/FipsFeature.h"
 #include "Ssl/ssl-helper.h"
 
 #include <nghttp2/nghttp2.h>
@@ -70,6 +71,7 @@ SslServerFeature::SslServerFeature(
     application_features::ApplicationServer& server, SslServerOptions options)
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
+  startsAfter<FipsFeature>();
 }
 
 void SslServerFeature::prepare() {
@@ -78,7 +80,7 @@ void SslServerFeature::prepare() {
 
   if (!_options.cipherList.empty()) {
     LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
-        << "using SSL cipher-list '" << _options.cipherList << "'";
+        << "using TLS cipher-list '" << _options.cipherList << "'";
   }
 
   UniformCharacter r(
@@ -95,7 +97,7 @@ void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_options.keyfile.empty()) {
     LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
-        << "no value specified for '--ssl.keyfile'";
+        << "no value specified for '--tls.keyfile'";
     FATAL_ERROR_EXIT();
   }
 
@@ -103,17 +105,17 @@ void SslServerFeature::verifySslOptions() {
   // cppcheck-suppress unsignedLessThanZero
   if (_options.sslProtocol <= SSL_UNKNOWN || _options.sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
-        << "invalid SSL protocol version specified. Please use a valid "
-           "value for '--ssl.protocol'";
+        << "invalid TLS protocol version specified. Please use a valid "
+           "value for '--tls.protocol'";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
-      << "using SSL protocol version '"
+      << "using TLS protocol version '"
       << protocolName(SslProtocol(_options.sslProtocol)) << "'";
   if (!std::filesystem::exists(_options.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
-        << "unable to find SSL keyfile '" << _options.keyfile << "'";
+        << "unable to find TLS keyfile '" << _options.keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -505,18 +507,6 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
 #ifdef SSL_OP_TLS_ROLLBACK_BUG
   if (opts & SSL_OP_TLS_ROLLBACK_BUG) {
     result.append(", SSL_OP_TLS_ROLLBACK_BUG");
-  }
-#endif
-
-#ifdef SSL_OP_NO_SSLv2
-  if (opts & SSL_OP_NO_SSLv2) {
-    result.append(", SSL_OP_NO_SSLv2");
-  }
-#endif
-
-#ifdef SSL_OP_NO_SSLv3
-  if (opts & SSL_OP_NO_SSLv3) {
-    result.append(", SSL_OP_NO_SSLv3");
   }
 #endif
 

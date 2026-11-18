@@ -26,7 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Definition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -55,7 +55,7 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-class VectorIndexTrainingSampler;
+class TrainingSampler;
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
@@ -93,7 +93,7 @@ class VectorIndexTrainer {
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
       TrainedData const& data);
 
-  std::shared_ptr<faiss::IndexIVF> createFaissIndex(
+  ResultT<std::shared_ptr<faiss::IndexIVF>> createFaissIndex(
       std::size_t resolvedNLists) const;
 
   /// Run the full training pipeline:
@@ -117,10 +117,11 @@ class VectorIndexTrainer {
   /// Sparse+scaling post-iteration step: recompute reservoir capacity from
   /// the actual valid-vector count, shrink the sampler, and release the
   /// freed bytes from the resource monitor.
-  Result shrinkReservoirForSparseScaling(
-      std::size_t validSeen, std::size_t reservoirCapacity,
-      std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-      VectorIndexTrainingSampler& sampler) const;
+  Result shrinkReservoirForSparseScaling(std::size_t validSeen,
+                                         std::size_t reservoirCapacity,
+                                         std::uint64_t expectedReservoirBytes,
+                                         ResourceUsageScope& memScope,
+                                         TrainingSampler& sampler) const;
 
   RocksDBVectorIndex const& _index;
   ResourceMonitor& _resourceMonitor;
@@ -142,7 +143,7 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
+  Result persistVectorIndexMetadata(Metadata const& metadata);
 
   RocksDBVectorIndex& _index;
   ResourceMonitor& _resourceMonitor;

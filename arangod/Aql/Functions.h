@@ -81,6 +81,8 @@ template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
                     AqlValue const& value);
 
+void throwIfKilled(ExpressionContext const* context);
+
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>
 void stringify(velocypack::Options const* vopts, T& buffer,
@@ -152,6 +154,8 @@ AqlValue RTrim(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Split(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
+AqlValue Partition(arangodb::aql::ExpressionContext*, AstNode const&,
+                   VPackFunctionParametersView);
 AqlValue Like(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
 AqlValue RegexMatches(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -360,6 +364,8 @@ AqlValue Union(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue UnionDistinct(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
+AqlValue UnionDistinctStable(arangodb::aql::ExpressionContext*, AstNode const&,
+                             VPackFunctionParametersView);
 AqlValue Intersection(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue Outersection(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -380,8 +386,6 @@ AqlValue GeoEquals(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue GeoArea(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
-AqlValue IsInPolygon(arangodb::aql::ExpressionContext*, AstNode const&,
-                     VPackFunctionParametersView);
 AqlValue GeoPoint(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue GeoMultiPoint(arangodb::aql::ExpressionContext*, AstNode const&,

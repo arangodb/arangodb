@@ -75,6 +75,60 @@ TEST_F(ValidateInspectorTest,
   }
 }
 
+TEST_F(ValidateInspectorTest,
+       validate_checks_invariant_regardless_of_condition) {
+  {  // skipped field, invariant violated
+    ConditionalWithInvariant c{.version = 1, .newField = 0};
+    auto result = inspector.apply(c);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("newField", result.path());
+  }
+  {  // skipped field, the member's own value satisfies the invariant
+    ConditionalWithInvariant c{.version = 1, .newField = 5};
+    auto result = inspector.apply(c);
+    ASSERT_TRUE(result.ok()) << result.error();
+  }
+  {  // processed field, invariant violated
+    ConditionalWithInvariant c{.version = 2, .newField = 0};
+    auto result = inspector.apply(c);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("newField", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_checks_inner_invariants_of_skipped_field) {
+  ConditionalNested c{.version = 1, .inner = {.i = 0, .s = "x"}};
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("inner.i", result.path());
+}
+
+TEST_F(ValidateInspectorTest, validate_also_checks_the_inactive_alternative) {
+  // Conditions do not apply here, so both alternatives sharing an attribute
+  // name are validated - the inactive one must hold a valid value too.
+  AlternativeFields a{.useId = true, .id = 7, .name = ""};
+  auto result = inspector.apply(a);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("target", result.path());
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_does_not_apply_fallback_to_skipped_field) {
+  // Loading applies the fallback before checking the invariant, so the same
+  // object loads fine. Validation must not modify the object to "fix" it.
+  ConditionalFallbackAndInvariant c{.version = 1, .newField = 0};
+  auto result = inspector.apply(c);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("newField", result.path());
+  EXPECT_EQ(0, c.newField);
+}
+
 TEST_F(ValidateInspectorTest, validate_object_with_object_invariant) {
   ObjectInvariant o{.i = 42, .s = ""};
   auto result = inspector.apply(o);

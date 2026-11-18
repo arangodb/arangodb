@@ -78,7 +78,7 @@ void performRequests(fu::ProtocolType pt) {
   // http 1.1 connection is broken after timeout, others must still work
   ASSERT_EQ(connection->state(), fu::Connection::State::Connected);
 
-  req = fu::createRequest(fu::RestVerb::Post, "/_api/version");
+  req = fu::createRequest(fu::RestVerb::Get, "/_api/version");
   wg->add();
   connection->sendRequest(std::move(req),
                           [wg](fu::Error e, std::unique_ptr<fu::Request> req,
@@ -92,7 +92,7 @@ void performRequests(fu::ProtocolType pt) {
                               auto version = slice.get("version").copyString();
                               auto server = slice.get("server").copyString();
                               ASSERT_EQ(server, "arango");
-                              ASSERT_EQ(version[0], '3');  // major version
+                              ASSERT_EQ(version[0], '4');  // major version
                             }
                           });
   wg->wait();
@@ -101,7 +101,11 @@ void performRequests(fu::ProtocolType pt) {
     // should not fail
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::seconds(60));
-
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+    req->timeout(std::chrono::seconds(300));
+#elif __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+    req->timeout(std::chrono::seconds(300));
+#endif
     wg->add();
     connection->sendRequest(std::move(req),
                             [wg](fu::Error e, std::unique_ptr<fu::Request> req,

@@ -39,7 +39,6 @@ import sys
 
 EXECUTABLES = [
     "arangod",
-    "arangobench",
     "arangodump",
     "arangoexport",
     "arangoimport",

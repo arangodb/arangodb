@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango */
+/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, internal */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,13 +25,14 @@
 
 const jsunity = require('jsunity');
 const isCluster = require("internal").isCluster();
+const { assertEndpointGetOnly } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 function supportInfoApiSuite() {
   'use strict';
 
-  let validateHost = function(host) {
+  let validateHost = function (host) {
     assertTrue(host.hasOwnProperty("maintenance"));
     assertEqual("boolean", typeof host.maintenance);
     assertFalse(host.maintenance);
@@ -51,7 +52,7 @@ function supportInfoApiSuite() {
     assertEqual("number", typeof host.processStats.numberOfThreads);
     assertEqual("number", typeof host.processStats.virtualSize);
     assertEqual("number", typeof host.processStats.residentSetSize);
-    
+
     if (host.hasOwnProperty("cpuStats")) {
       // cpuStats is not present on all OSes
       assertEqual("number", typeof host.cpuStats.userPercent);
@@ -79,7 +80,7 @@ function supportInfoApiSuite() {
         assertTrue(res.deployment.hasOwnProperty("servers"));
         Object.keys(res.deployment.servers).forEach((server) => {
           let host = res.deployment.servers[server];
-      
+
           assertTrue(host.hasOwnProperty("id"));
           assertTrue(host.hasOwnProperty("alias"));
           assertTrue(host.hasOwnProperty("endpoint"));
@@ -121,6 +122,11 @@ function supportInfoApiSuite() {
         assertTrue(res.parsedBody.host.role === "PRIMARY");
         validateHost(res.parsedBody.host);
       });
+    },
+
+    testSupportInfoOnlyAcceptsGet: function () {
+      let url = "/_admin/support-info";
+      assertEndpointGetOnly(url);
     },
   };
 }

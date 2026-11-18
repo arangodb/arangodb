@@ -61,9 +61,9 @@ class RestAdminLogHandler : public RestBaseHandler {
   }
 
  private:
-  arangodb::Result verifyPermitted();
+  arangodb::Result verifyPermitted(RequestType const type);
   void clearLogs();
-  auto reportLogs(bool newFormat) -> async<void>;
+  auto reportLogs() -> async<void>;
   auto handleLogLevel() -> async<void>;
   auto handleLogWrite() -> async<void>;
   void handleLogStructuredParams();

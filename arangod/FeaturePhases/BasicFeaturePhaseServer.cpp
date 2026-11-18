@@ -31,7 +31,6 @@
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/NonceFeature.h"
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/SupervisorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -62,7 +61,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(
   startsAfter<EnvironmentFeature>();
   startsAfter<LanguageFeature>();
   startsAfter<MaxMapCountFeature>();
-  startsAfter<NonceFeature>();
   startsAfter<PrivilegeFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ShardingFeature>();

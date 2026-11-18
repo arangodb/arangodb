@@ -146,7 +146,8 @@ function AuthSuite() {
       }
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(404, result.code);
+      // User deleted, thus unauthenticated
+      assertEqual(401, result.code);
     },
 
     testApiNonExistingUserRW: function () {
@@ -1196,11 +1197,9 @@ function UnauthorizedAccesSuite() {
       assertFalse(res.parsedBody.hasOwnProperty("errorMessage"));
       assertEqual(res.parsedBody.result.name, "dbTest2");
       res = arango.GET_RAW("/_db/dbTest3/_api/database/current");
-      assertEqual(401, res.code);
-      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+      assertEqual(403, res.code);
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
       assertEqual(401, res.code);
-      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
     },
   };
 }
@@ -1481,7 +1480,7 @@ function JwtAllowedPathsSuite() {
       const jwt = makeJwt(undefined);
       const res = getWithJwt(deniedUrl, jwt);
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 403);
     },
 
     // ---- allowed_paths absent ----------------------------------------------
@@ -1498,7 +1497,7 @@ function JwtAllowedPathsSuite() {
     testNoAllowedPathsUserForbidden: function () {
       const jwt = makeJwt(undefined);
       const res = getWithJwt(deniedUrl, jwt);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 403);
     },
 
     // ---- allowed_paths includes the requested path -------------------------
@@ -1515,7 +1514,7 @@ function JwtAllowedPathsSuite() {
     testAllowedPathsIncludesPathUserForbidden: function () {
       const jwt = makeJwt([testApiPath]);
       const res = getWithJwt(deniedUrl, jwt);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 403);
     },
 
     // ---- allowed_paths excludes the requested path -------------------------

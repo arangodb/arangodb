@@ -10,12 +10,14 @@ version: 2.1
 # Disabled jobs therefore never occupy an executor at all.
 #
 # Produces for the enterprise edition, on x86_64 and arm64:
-#   - DEB packages (server, -client, -dbg)        [build-debian-packages]
-#   - RPM packages (server, client, debuginfo)    [build-rpm-packages]
 #   - TAR.GZ bundles (server, client)             [build-tarballs]
-#   - Docker images + multi-arch manifests
-#     (Alpine [build-alpine-images] and Ubuntu [build-deb-images] based;
-#     Ubuntu tags carry -deb)
+#   - Docker images + multi-arch manifests        [build-ubuntu-images]
+#     (Ubuntu 26.04 based, always TWO images: arangodb/core-preview —
+#     the server only, no client tools — and arangodb/client-tools-preview
+#     — the client tools only)
+#   - FIPS image arangodb/core-fips-preview     [build-fips-image]
+#     (off by default; built from its own USE_FIPS compile, tagged and
+#     published like the two above)
 #
 # Build flow (packaging scripts live in scripts/packaging/):
 #   prepare-nightly     derives the nightly version files and creates
@@ -24,14 +26,19 @@ version: 2.1
 #                       resolved once by the setup job)
 #   compile-nightly     static release build via the "nightly-package-{x64,arm64}" CMake
 #                       preset + make install + starter/rclone download;
-#                       the install tree is shared with all packaging jobs
-#   build-*-package     one job per package format and architecture, all
-#                       running inside the regular Ubuntu build image (which
-#                       also carries debhelper/rpmbuild/clamav)
+#                       the install tree is shared with all packaging jobs;
+#                       [build-fips-image] adds a FIPS compile per arch
+#                       ("nightly-package-{x64,arm64}-fips": USE_FIPS, glibc
+#                       linked dynamically) that only feeds the FIPS image
+#   build-package       one TAR.GZ packaging job per architecture, running
+#                       inside the regular Ubuntu build image (which also
+#                       carries clamav)
 #   build-nightly-docker-image
-#                       one job per distro (Alpine/Ubuntu) and arch;
-#                       builds the image and exports it via "docker save"
-#                       into the workspace (no push here)
+#                       one job per arch; builds BOTH Ubuntu-based images
+#                       (core-preview and client-tools-preview) and exports
+#                       them via "docker save" into the workspace (no push
+#                       here); [build-fips-image] adds one more job per arch
+#                       for arangodb/core-fips-preview, from the FIPS compile
 #   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
 #                       database is cached in ${CLAMAV_BUCKET} (S3, from the
 #                       clamav-aws-bucket context); one <file>.clamav report
@@ -90,9 +97,8 @@ version: 2.1
 #                       objectfiles archive [sign-packages]; keys come from a
 #                       sparse checkout of the private arangodb-helper/
 #                       package-signing repo (.gnupg4, the current key home),
-#                       fetched with the same SSH key as enterprise. No
-#                       embedded deb/rpm signing: that belongs to apt/yum
-#                       repository builds, which nightlies are not
+#                       fetched with the same SSH key as enterprise;
+#                       detached signatures only
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs when
 #                       every selected job succeeded, with the single
 #                       exception of the security-check jobs, whose
@@ -109,9 +115,11 @@ version: 2.1
 #                       possible. Pushes to docker.io (always) and
 #                       gcr.io/gcr-for-testing [push-images-to-gcr-also].
 #                       Afterwards <major.minor>/Docker/ gets one
-#                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
-#                       publish report per image (pushed refs + digests) with
-#                       the per-arch Trivy reports next to it.
+#                       arangodb_<image>_<VERSION>.txt publish report per
+#                       image name (core-preview and client-tools-preview,
+#                       plus core-fips-preview with [build-fips-image]; pushed
+#                       refs + digests) with the per-arch Trivy reports
+#                       next to it.
 #                       [pr-run] degrades this job to a dry run: staging is
 #                       uploaded and verified, then discarded; no Docker
 #                       pushes, no promotion, no index upload — the workflow
@@ -123,17 +131,24 @@ version: 2.1
 # that actually run.
 #
 # Docker tag scheme (scripts/ci/helpers.bash: set_nightly_version → find_arangodb_version):
-#   per-arch:  arangodb/enterprise-preview:<VERSION>-<ARCH>              e.g. 3.12.10-nightly.20260702-amd64
-#   manifests: arangodb/enterprise-preview:<VERSION>                     e.g. 3.12.10-nightly.20260702
-#              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly         e.g. 3.12-nightly
-#              arangodb/enterprise-preview:devel-nightly                 (only when the tree was "devel")
+#   (identical for every image name: arangodb/core-preview,
+#   arangodb/client-tools-preview and, with [build-fips-image],
+#   arangodb/core-fips-preview; <IMAGE> below stands for any of them)
+#   per-arch:  arangodb/<IMAGE>:<VERSION>-<ARCH>              e.g. 4.0.0-nightly.20260727-amd64
+#   manifests: arangodb/<IMAGE>:<VERSION>                     e.g. 4.0.0-nightly.20260727
+#              arangodb/<IMAGE>:<MAJOR_MINOR>-nightly         e.g. 4.0-nightly
+#              arangodb/<IMAGE>:<MAJOR>-nightly               e.g. 4-nightly
+#              arangodb/<IMAGE>:devel-nightly                 (only when the tree was "devel")
 #   Every manifest references the dated per-arch images directly; no
 #   rolling per-arch tags are pushed.
-#   The Ubuntu images insert -deb after the version part and before the
-#   arch suffix, e.g. 3.12.10-nightly.20260702-deb-amd64, and form
-#   <TAG>-deb manifests, e.g. 3.12-nightly-deb. Alpine stays suffix-less.
 #
 # Required environment (contexts / project settings):
+#   project env settings:           GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY_B64
+#                                   (arango-ci-checkout GitHub App, contents:read
+#                                   on public repos only; github-auth turns them
+#                                   into a 1h token so clones are not subject to
+#                                   GitHub's unauthenticated download limits;
+#                                   absent = anonymous clones as before)
 #   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 #                                   (same values as the sccache bucket's) and
 #                                   CLAMAV_BUCKET (S3 bucket caching the
@@ -180,10 +195,10 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  # Exact pin: a floating orb range silently changes what the nightly
-  # security checks flag. 1.2.0 is the floor: 1.1.2's kev-epss-check fails
-  # closed on a clean report and fails open on an empty threshold.
-  trivy-scan: arangodb/trivy-scan@1.2.0
+  # Floats on 1.x so each orb release reaches the nightly without a bump
+  # PR, which also means a new 1.x can change what the security checks
+  # flag. A breaking orb change ships as 2.0 and needs a change here.
+  trivy-scan: arangodb/trivy-scan@1
 
 parameters:
   enterprise-branch:
@@ -200,28 +215,20 @@ parameters:
     description: "Nightly date (YYYYMMDD), pinned once by the setup config so all jobs derive the same version even when the workflow runs across midnight. Cannot be set at trigger time (the setup config does not declare it)."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-f7032bef0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-a8978021"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
-  build-debian-packages:
-    type: boolean
-    default: true
-    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
-  build-rpm-packages:
-    type: boolean
-    default: true
-    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
   build-tarballs:
     type: boolean
     default: true
-    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
-  build-alpine-images:
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64 (the only package format of 4.0)."
+  build-ubuntu-images:
     type: boolean
     default: true
-    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
-  build-deb-images:
+    description: "Build the Ubuntu-based (26.04) Docker images (per architecture: amd64 and arm64), always producing TWO images: arangodb/core-preview (server only, no client tools) and arangodb/client-tools-preview (client tools only); the publish job pushes them and creates their multi-arch manifests at the end."
+  build-fips-image:
     type: boolean
-    default: true
-    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
+    default: false
+    description: "Also build the FIPS server image arangodb/core-fips-preview (amd64 and arm64; server only, no client-tools counterpart) from its own compile with the nightly-package-{x64,arm64}-fips CMake presets (USE_FIPS: glibc linked dynamically so OpenSSL can load its FIPS provider), plus the FIPS provider from the build image. Scanned, published and tagged like the other images."
   push-images-to-gcr-also:
     type: boolean
     default: true
@@ -247,15 +254,72 @@ parameters:
     type: boolean
     default: false
     description: "TEST run for a GitHub PR — NOT a real nightly. The generator renames the workflow to nightly-packages-pr; every selected job runs, but publish-nightly degrades to a dry run: packages are staged to GCS and the staging tree is verified, then discarded instead of promoted; Docker images are loaded and tagged but never pushed; no manifests, no live Docker/ reports, no index upload. The reports are still produced and stored as job artifacts."
+  run-benchmarks-on-success:
+    type: boolean
+    default: false
+    description: "Once publish-nightly has succeeded, trigger the benchmarks pipeline (benchmarks.yml) on this branch with the parameters of the former benchmark schedule (benchmark=ann, build-arango=false) plus run-origin=nightly (workflow ann-benchmark-docker-nightly), run against the arangodb/core-preview image this nightly just published (exact version tag). Meant to be set by the scheduled nightly triggers. Has no effect on pr-run pipelines (nothing is published) or without build-ubuntu-images (no image to benchmark): the config generator drops the trigger-benchmarks job then."
 
 commands:
+  github-auth:
+    # Anonymous clones from the runners' shared egress IP trip GitHub's limit on
+    # unauthenticated downloads (CI outage 2026-09-02/03). The arango-ci-checkout
+    # GitHub App (contents:read, public repos only) supplies a 1h token; without
+    # credentials or on any failure the job clones anonymously, as before.
+    # Always paired with github-auth-clear after the clone.
+    steps:
+      - run:
+          name: Authenticate git against GitHub
+          command: |
+            set +x
+            if git config --global --get http.https://github.com/.extraheader >/dev/null 2>&1; then
+              exit 0
+            fi
+            if [ -z "${GITHUB_APP_ID:-}" ] || [ -z "${GITHUB_APP_PRIVATE_KEY_B64:-}" ]; then
+              echo "WARNING: GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_B64 not set, cloning anonymously" >&2
+              exit 0
+            fi
+            KEY="$(mktemp)"
+            trap 'rm -f "$KEY"' EXIT
+            printf '%s' "$GITHUB_APP_PRIVATE_KEY_B64" | base64 -d > "$KEY"
+            b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+            NOW=$(date +%s)
+            JWT="$(printf '{"alg":"RS256","typ":"JWT"}' | b64url).$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((NOW-60))" "$((NOW+540))" "$GITHUB_APP_ID" | b64url)"
+            JWT="$JWT.$(printf '%s' "$JWT" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)" || JWT=""
+            INST=""
+            TOKEN=""
+            if [ -n "$JWT" ]; then
+              INST=$(curl -sSf -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                       https://api.github.com/orgs/arangodb/installation | jq -r '.id // empty') || INST=""
+            fi
+            if [ -n "$INST" ]; then
+              TOKEN=$(curl -sSf -X POST -H "Authorization: Bearer $JWT" -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/app/installations/$INST/access_tokens" | jq -r '.token // empty') || TOKEN=""
+            fi
+            if [ -z "$TOKEN" ]; then
+              echo "WARNING: no GitHub App token obtained, cloning anonymously" >&2
+              exit 0
+            fi
+            git config --global http.https://github.com/.extraheader \
+              "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+            echo "git authenticated against github.com as GitHub App installation $INST (token valid 1h)"
+
+  github-auth-clear:
+    # Drop the token header again once the clones it was set for are done, so a
+    # job running past the token's hour never fails on an expired header where
+    # an anonymous request would have worked.
+    steps:
+      - run:
+          name: Forget GitHub token
+          command: git config --global --unset-all http.https://github.com/.extraheader || true
+
   checkout-arangodb:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE, a few MB
-    # instead of the full tree; prepare-nightly and publish-nightly need
-    # .circleci/ for the waiver file.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
     parameters:
       destination:
         type: string
@@ -266,6 +330,7 @@ commands:
         type: boolean
         default: false
     steps:
+      - github-auth
       - run:
           name: Checkout ArangoDB
           command: |
@@ -289,6 +354,7 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
+      - github-auth-clear
 
   checkout-enterprise:
     # The exact commit was resolved ONCE by the setup job and is passed in
@@ -664,6 +730,7 @@ jobs:
             echo "${ARANGODB_VERSION_MAJOR_MINOR}" > /tmp/nightly/nightly-major-minor.txt
 
             echo "${ARANGODB_VERSION_MAJOR_MINOR}-nightly" > /tmp/nightly/rolling-tags.txt
+            echo "${ARANGODB_VERSION_MAJOR}-nightly"      >> /tmp/nightly/rolling-tags.txt
             if [ "${ORIG_RELEASE_TYPE}" = "devel" ]; then
               echo "devel-nightly" >> /tmp/nightly/rolling-tags.txt
             fi
@@ -863,11 +930,18 @@ jobs:
     # happens later, during packaging (client tools only).
     # All build options live in the "nightly-package-{x64,arm64}" CMake presets;
     # only toolchain/image specific paths are passed on the command line.
+    # With fips, the FIPS build for arangodb/core-fips-preview instead
+    # ("nightly-package-{x64,arm64}-fips": USE_FIPS, glibc linked
+    # dynamically): no object-files archive (that one belongs to the static
+    # packages), and the install tree is published as enterprise-fips.
     parameters:
       arch:
         type: string        # amd64 | arm64
       preset:
-        type: string        # nightly-package-x64 | nightly-package-arm64
+        type: string        # nightly-package-{x64,arm64}[-fips]
+      fips:
+        type: boolean
+        default: false
       resource-class:
         type: string
     docker:
@@ -925,53 +999,59 @@ jobs:
           name: Download starter and rclone
           command: |
             ARCH=<< parameters.arch >> EDITION=enterprise scripts/packaging/fetch-aux-binaries.sh
-      - run:
-          name: Pack object files (static-linking compliance)
-          command: |
-            # Enterprise only. The archive is persisted with the packages, so it is scanned,
-            # signed, and published like any other nightly artifact.
-            # The version comes from CMakeLists.txt, which the
-            # set-nightly-version step of this job already patched with the
-            # setup-pinned nightly date.
-            export BUILD_DIR=build-presets/<< parameters.preset >>
-            export PACKAGES_OUT=/tmp/nightly/objectfiles/<< parameters.arch >>
-            scripts/packaging/pack-object-files.sh
-      - run:
-          name: Verify object-files archive relinks
-          no_output_timeout: 30m
-          command: |
-            # Run the generated scripts/link_executables.sh against the
-            # just-packed archive so the relink promise (LGPL compliance)
-            # is proven for every nightly, on both architectures.
-            VERIFY_DIR="$(mktemp -d)"
-            trap 'rm -rf "${VERIFY_DIR}"' EXIT
-            tar -xzf /tmp/nightly/objectfiles/<< parameters.arch >>/arangodb3e-linux-object_files_*.tar.gz \
-              -C "${VERIFY_DIR}"
-            cd "${VERIFY_DIR}"
-            bash scripts/link_executables.sh
-            for exe in arangod arangobench arangodump arangorestore arangosh \
-                       arangovpack arangoexport arangoimport arangobackup; do
-              if [ ! -x "build/bin/${exe}" ]; then
-                echo "relink verification: build/bin/${exe} was not produced" >&2
-                exit 1
-              fi
-              file -b "build/bin/${exe}" | grep -q "statically linked" || {
-                echo "relink verification: ${exe} is not statically linked" >&2
-                exit 1
-              }
-            done
-            build/bin/arangosh --version | head -1
-            build/bin/arangod --version | head -1
-            echo "relink verification OK: all executables rebuilt from the published object files"
-      - persist_to_workspace:
-          root: /tmp/nightly
-          paths:
-            - objectfiles/<< parameters.arch >>
-      # Like install.tar.gz, the objectfiles archive is also kept as a
-      # CircleCI job artifact for easy download from a finished job.
-      - store_artifacts:
-          path: /tmp/nightly/objectfiles/<< parameters.arch >>
-          destination: objectfiles/<< parameters.arch >>
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - run:
+                name: Pack object files (static-linking compliance)
+                command: |
+                  # Enterprise only. The archive is persisted with the packages, so it is scanned,
+                  # signed, and published like any other nightly artifact.
+                  # The version comes from CMakeLists.txt, which the
+                  # set-nightly-version step of this job already patched with the
+                  # setup-pinned nightly date.
+                  export BUILD_DIR=build-presets/<< parameters.preset >>
+                  export PACKAGES_OUT=/tmp/nightly/objectfiles/<< parameters.arch >>
+                  scripts/packaging/pack-object-files.sh
+            - run:
+                name: Verify object-files archive relinks
+                no_output_timeout: 30m
+                command: |
+                  # Run the generated scripts/link_executables.sh against the
+                  # just-packed archive so the relink promise (LGPL compliance)
+                  # is proven for every nightly, on both architectures.
+                  VERIFY_DIR="$(mktemp -d)"
+                  trap 'rm -rf "${VERIFY_DIR}"' EXIT
+                  tar -xzf /tmp/nightly/objectfiles/<< parameters.arch >>/arangodb4e-linux-object_files_*.tar.gz \
+                    -C "${VERIFY_DIR}"
+                  cd "${VERIFY_DIR}"
+                  bash scripts/link_executables.sh
+                  for exe in arangod arangodump arangorestore arangosh \
+                             arangovpack arangoexport arangoimport arangobackup; do
+                    if [ ! -x "build/bin/${exe}" ]; then
+                      echo "relink verification: build/bin/${exe} was not produced" >&2
+                      exit 1
+                    fi
+                    file -b "build/bin/${exe}" | grep -q "statically linked" || {
+                      echo "relink verification: ${exe} is not statically linked" >&2
+                      exit 1
+                    }
+                  done
+                  # sed reads the whole stream, unlike "| head -1", which closes
+                  # the pipe early and SIGPIPEs the still-writing binary - the
+                  # step shell runs with -o pipefail, so that 141 fails the step
+                  build/bin/arangosh --version | sed -n 1p
+                  build/bin/arangod --version | sed -n 1p
+                  echo "relink verification OK: all executables rebuilt from the published object files"
+            - persist_to_workspace:
+                root: /tmp/nightly
+                paths:
+                  - objectfiles/<< parameters.arch >>
+            # Like install.tar.gz, the objectfiles archive is also kept as a
+            # CircleCI job artifact for easy download from a finished job.
+            - store_artifacts:
+                path: /tmp/nightly/objectfiles/<< parameters.arch >>
+                destination: objectfiles/<< parameters.arch >>
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -981,23 +1061,28 @@ jobs:
           name: Create install.tar.gz
           command: |
             tar -czf install.tar.gz -C build/install ./
-      - upload-build-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise
+      # The FIPS install tree gets its own name, so it can never replace
+      # the regular one the packages and the other images are built from.
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - upload-build-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise
+      - when:
+          condition: << parameters.fips >>
+          steps:
+            - upload-build-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise-fips
 
   # ── Packages (DEB / RPM / TAR.GZ) ────────────────────────────────────────────
   build-package:
-    # Builds one package format from the install tree, executed directly
-    # inside the build image, which also carries the packaging toolchain:
-    #   deb  "debian/rules binary" with the templates from
-    #        scripts/packaging/debian/
-    #   rpm  rpmbuild with the spec from scripts/packaging/rpm/
-    #   tar  server + client tar.gz bundles with the launcher wrappers
-    #        from scripts/packaging/binForTarGz/
+    # Builds the TAR.GZ bundles (the only 4.0 package format) from the
+    # install tree, executed directly inside the build image: server +
+    # client tar.gz with the launcher wrappers from
+    # scripts/packaging/binForTarGz/.
     parameters:
-      format:
-        type: enum
-        enum: ["deb", "rpm", "tar"]
       arch:
         type: string
       resource-class:
@@ -1018,38 +1103,37 @@ jobs:
           edition: enterprise
       - extract-install-tree
       - run:
-          name: Build << parameters.format >> packages
+          name: Build tar packages
           command: |
             export EDITION=enterprise
             export PACKAGE_STRIP=ExceptArangod
             export ARCH=<< parameters.arch >>
             export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
-            case "<< parameters.format >>" in
-              deb) scripts/packaging/build-deb.sh ;;
-              rpm) scripts/packaging/build-rpm.sh ;;
-              tar) scripts/packaging/build-targz.sh ;;
-            esac
+            scripts/packaging/build-targz.sh
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
             - packages/<< parameters.arch >>
       - store_artifacts:
           path: /tmp/nightly/packages/<< parameters.arch >>
-          destination: packages/<< parameters.format >>/<< parameters.arch >>
+          destination: packages/tar/<< parameters.arch >>
 
   # ── Docker images ─────────────────────────────────────────────────────────────
   build-nightly-docker-image:
-    # Builds one nightly image (Alpine or Ubuntu based) and exports it via
-    # "docker save" into the workspace. Nothing is pushed here;
-    # publish-nightly pushes. Tag scheme: the Ubuntu images insert -deb
-    # between version and arch suffix (e.g. 3.12.10-nightly.20260708-deb-amd64).
+    # Builds BOTH Ubuntu-based nightly images for one architecture —
+    # arangodb/core-preview (server only, no client tools) and
+    # arangodb/client-tools-preview (client tools only, pruned from the
+    # same install tree the way build-targz.sh builds the client bundle) —
+    # and exports them via "docker save" into the workspace. Nothing is
+    # pushed here; publish-nightly pushes.
+    # With fips, builds only the FIPS server image arangodb/core-fips-preview
+    # (USE_FIPS=1) from the FIPS compile's install tree.
     parameters:
       arch:
         type: string        # amd64 | arm64
-      distro:
-        type: enum
-        enum: ["alpine", "deb"]
-        default: "alpine"
+      fips:
+        type: boolean
+        default: false
       resource-class:
         type: string
     docker:
@@ -1067,9 +1151,18 @@ jobs:
       # self-hosted runners (attach_workspace_from_s3) is not available;
       # install.tar.gz is taken from the compile job's CircleCI artifact
       # instead (CIRCLECI_TOKEN from the circleci-token context).
-      - download-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - download-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise
+      - when:
+          condition: << parameters.fips >>
+          steps:
+            - download-artifact:
+                arch: << parameters.arch >>
+                edition: enterprise-fips
       - run:
           name: Prepare install directory for Docker build
           command: |
@@ -1089,84 +1182,159 @@ jobs:
             /home/circleci/project/scripts/packaging/strip-install-tree.sh \
               /home/circleci/project/scripts/docker/deploy/install
       - run:
-          name: Build and export Docker image
+          name: Prune install trees for Docker images
+          command: |
+            # The client image ships the same tree as the TAR.GZ client
+            # bundle (build-targz.sh): client tools present, server bits
+            # removed — no arangod, no starter, no server-side JS, no
+            # server config/data/service files.
+            set -eu
+            cd /home/circleci/project/scripts/docker/deploy
+            cp -a install install-client
+            rm -rf install-client/usr/sbin \
+                   install-client/usr/bin/arangodb \
+                   install-client/usr/share/arangodb4/js/server \
+                   install-client/usr/share/arangodb4/arangodb-update-db \
+                   install-client/var
+            # Keep the client-tool configs in /etc/arangodb4; drop only the
+            # server-side ones.
+            rm -f install-client/etc/arangodb4/arangod.conf \
+                  install-client/etc/arangodb4/arango-init-database.conf \
+                  install-client/etc/arangodb4/arango-secure-installation.conf
+            find install-client/usr/share/man -type f \
+              \( -name 'arangod.8' -o -name 'arangodb.8' -o -name 'arango-dfdb.8' -o -name 'rcarangod.8' \) \
+              -delete 2>/dev/null || true
+            # The server image ships no client tools (they live in the
+            # client-tools image, mirroring the TAR.GZ server bundle):
+            # remove the binaries, their configs, man pages and the JS tree
+            # (client-tools-only since 4.0 — arangod has no server-side JS).
+            # Keep the starter (usr/bin/arangodb), rclone, ICU data and
+            # tzdata under usr/share/arangodb4.
+            for tool in arangobackup arangodump arangoexport arangoimport \
+                        arangoinspect arangorestore arangosh arangovpack; do
+              rm -f install/usr/bin/"${tool}" \
+                    install/etc/arangodb4/"${tool}".conf
+            done
+            rm -rf install/usr/share/man/man1 \
+                   install/usr/share/arangodb4/js
+      - run:
+          name: Build and export Docker images
           command: |
             set -x
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            IMAGE="arangodb/enterprise-preview"
 
-            DISTRO="<< parameters.distro >>"
-            SUFFIX=""
-            if [ "${DISTRO}" != "alpine" ]; then
-              SUFFIX="-${DISTRO}"
-            fi
             if [ "<< parameters.arch >>" = "arm64" ]; then
               TAG_ARCH="arm64v8"
             else
               TAG_ARCH="<< parameters.arch >>"
             fi
-            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
 
             cd /home/circleci/project/scripts/docker/deploy
-
-            docker build \
-              --platform "linux/<< parameters.arch >>" \
-              --build-arg arch=<< parameters.arch >> \
-              --no-cache \
-              --pull \
-              -t "${VERSION_TAG}" \
-              --file deploy-${DISTRO}.dockerfile .
-
             mkdir -p /tmp/nightly/docker
-            docker save -o /tmp/nightly/docker/enterprise-preview-${DISTRO}-<< parameters.arch >>.tar "${VERSION_TAG}"
+
+            if [ "<< parameters.fips >>" = "true" ]; then
+              IMAGE_NAMES=(core-fips-preview)
+            else
+              IMAGE_NAMES=(core-preview client-tools-preview)
+            fi
+            for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+              if [ "${IMAGE_NAME}" = "client-tools-preview" ]; then
+                DOCKERFILE=deploy-ubuntu-client.dockerfile
+              else
+                DOCKERFILE=deploy-ubuntu.dockerfile
+              fi
+              EXTRA_ARGS=()
+              if [ "${IMAGE_NAME}" = "core-fips-preview" ]; then
+                # The FIPS provider is copied out of the build image.
+                EXTRA_ARGS=(--build-arg USE_FIPS=1 --build-arg "ARANGO_BUILD_IMAGE=<< pipeline.parameters.build-docker-image >>")
+              fi
+              VERSION_TAG="arangodb/${IMAGE_NAME}:${VERSION}-${TAG_ARCH}"
+
+              docker build \
+                --platform "linux/<< parameters.arch >>" \
+                --build-arg arch=<< parameters.arch >> \
+                "${EXTRA_ARGS[@]}" \
+                --no-cache \
+                --pull \
+                -t "${VERSION_TAG}" \
+                --file "${DOCKERFILE}" .
+
+              if [ "${IMAGE_NAME}" = "core-fips-preview" ]; then
+                # USE_FIPS links glibc dynamically, so every shared library
+                # arangod needs has to be in the image.
+                if docker run --rm --platform "linux/<< parameters.arch >>" --entrypoint ldd \
+                     "${VERSION_TAG}" /usr/sbin/arangod | grep 'not found'; then
+                  echo "arangod in ${VERSION_TAG} misses the shared libraries listed above" >&2
+                  exit 1
+                fi
+              fi
+
+              docker save -o /tmp/nightly/docker/${IMAGE_NAME}-<< parameters.arch >>.tar "${VERSION_TAG}"
+            done
       - run:
           name: Write image build report
           command: |
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            IMAGE="arangodb/enterprise-preview"
-            DISTRO="<< parameters.distro >>"
-            SUFFIX=""
-            if [ "${DISTRO}" != "alpine" ]; then
-              SUFFIX="-${DISTRO}"
-            fi
             if [ "<< parameters.arch >>" = "arm64" ]; then
               TAG_ARCH="arm64v8"
             else
               TAG_ARCH="<< parameters.arch >>"
             fi
-            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
             mkdir -p /tmp/reports
-            {
-              echo "ArangoDB nightly Docker image build report"
-              echo "=========================================="
-              echo "Image:     ${VERSION_TAG}"
-              echo "Distro:    ${DISTRO}"
-              echo "Platform:  linux/<< parameters.arch >>"
-              echo "Image ID:  $(docker image inspect --format '{{.Id}}' "${VERSION_TAG}")"
-              echo "Created:   $(docker image inspect --format '{{.Created}}' "${VERSION_TAG}")"
-              echo "Size:      $(docker image inspect --format '{{.Size}}' "${VERSION_TAG}") bytes"
-              echo "Built by:  ${CIRCLE_BUILD_URL}"
-              echo
-              echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
-              echo "  ${VERSION_TAG}"
-              echo
-              echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
-              echo "  ${IMAGE}:${VERSION}${SUFFIX}"
-              while read -r ROLLING_TAG; do
-                echo "  ${IMAGE}:${ROLLING_TAG}${SUFFIX}"
-              done < /tmp/nightly/rolling-tags.txt
-              echo
-              echo "Source revisions:"
-              sed -n 's/^\(VERSION\|Community\|Enterprise\|Starter\|Rclone\): */  \1: /p' /tmp/nightly/sourceInfo.log
-            } > /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
-            cat /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
+            if [ "<< parameters.fips >>" = "true" ]; then
+              IMAGE_NAMES=(core-fips-preview)
+            else
+              IMAGE_NAMES=(core-preview client-tools-preview)
+            fi
+            for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+              IMAGE="arangodb/${IMAGE_NAME}"
+              VERSION_TAG="${IMAGE}:${VERSION}-${TAG_ARCH}"
+              {
+                echo "ArangoDB nightly Docker image build report"
+                echo "=========================================="
+                echo "Image:     ${VERSION_TAG}"
+                echo "Base:      ubuntu:26.04"
+                if [ "${IMAGE_NAME}" = "core-fips-preview" ]; then
+                  echo "FIPS:      arangod built with USE_FIPS, OpenSSL FIPS provider in /opt/lib/ossl-modules"
+                fi
+                echo "Platform:  linux/<< parameters.arch >>"
+                echo "Image ID:  $(docker image inspect --format '{{.Id}}' "${VERSION_TAG}")"
+                echo "Created:   $(docker image inspect --format '{{.Created}}' "${VERSION_TAG}")"
+                echo "Size:      $(docker image inspect --format '{{.Size}}' "${VERSION_TAG}") bytes"
+                echo "Built by:  ${CIRCLE_BUILD_URL}"
+                echo
+                echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
+                echo "  ${VERSION_TAG}"
+                echo
+                echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
+                echo "  ${IMAGE}:${VERSION}"
+                while read -r ROLLING_TAG; do
+                  echo "  ${IMAGE}:${ROLLING_TAG}"
+                done < /tmp/nightly/rolling-tags.txt
+                echo
+                echo "Source revisions:"
+                sed -n 's/^\(VERSION\|Community\|Enterprise\|Starter\|Rclone\): */  \1: /p' /tmp/nightly/sourceInfo.log
+              } > /tmp/reports/docker-image-${IMAGE_NAME}-<< parameters.arch >>.txt
+              cat /tmp/reports/docker-image-${IMAGE_NAME}-<< parameters.arch >>.txt
+            done
       - store_artifacts:
           path: /tmp/reports
           destination: reports
-      - persist_to_workspace:
-          root: /tmp/nightly
-          paths:
-            - docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar
+      - unless:
+          condition: << parameters.fips >>
+          steps:
+            - persist_to_workspace:
+                root: /tmp/nightly
+                paths:
+                  - docker/core-preview-<< parameters.arch >>.tar
+                  - docker/client-tools-preview-<< parameters.arch >>.tar
+      - when:
+          condition: << parameters.fips >>
+          steps:
+            - persist_to_workspace:
+                root: /tmp/nightly
+                paths:
+                  - docker/core-fips-preview-<< parameters.arch >>.tar
 
   # ── ClamAV scan ──────────────────────────────────────────────────────────────
   scan-packages:
@@ -1260,15 +1428,11 @@ jobs:
   # save_cache/restore_cache, which the self-hosted runner classes do not
   # support (the same reason the ClamAV database lives in S3).
   security-check-package:
-    # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
-    # one format+arch are extracted first and the extracted contents are
-    # rootfs-scanned (CVEs in bundled dependencies INCLUDING compiled Go
-    # binaries — fs mode reads lockfiles only and misses them — plus
-    # committed secrets).
+    # Trivy does not look inside .tar.gz files, so the packages of one arch
+    # are extracted first and the extracted contents are rootfs-scanned
+    # (CVEs in bundled dependencies INCLUDING compiled Go binaries — fs
+    # mode reads lockfiles only and misses them — plus committed secrets).
     parameters:
-      target:
-        type: enum
-        enum: ["deb", "rpm", "tar"]
       arch:
         type: string
     docker:
@@ -1282,47 +1446,27 @@ jobs:
       - attach_workspace:
           at: /tmp/nightly
       - run:
-          name: Extract << parameters.target >> packages for scanning
+          name: Extract tar packages for scanning
           command: |
             set -eu
             SRC=/tmp/nightly/packages/<< parameters.arch >>
             OUT=/tmp/scan-root
             mkdir -p "${OUT}"
             FOUND=0
-            case "<< parameters.target >>" in
-              deb)
-                for f in "${SRC}"/*.deb; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  dpkg-deb -x "$f" "${OUT}/$(basename "$f")"
-                done
-                ;;
-              rpm)
-                for f in "${SRC}"/*.rpm; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  d="${OUT}/$(basename "$f")"
-                  mkdir -p "$d"
-                  (cd "$d" && rpm2cpio "$f" | cpio -idm --quiet)
-                done
-                ;;
-              tar)
-                for f in "${SRC}"/*.tar.gz; do
-                  [ -e "$f" ] || continue
-                  FOUND=1
-                  # Full basename (incl. .tar.gz), so the per-package report
-                  # names derived from these directories match the published
-                  # package files exactly, like for deb/rpm.
-                  d="${OUT}/$(basename "$f")"
-                  mkdir -p "$d"
-                  tar -xzf "$f" -C "$d"
-                done
-                ;;
-            esac
-            # No files while this format is enabled means a broken workspace,
+            for f in "${SRC}"/*.tar.gz; do
+              [ -e "$f" ] || continue
+              FOUND=1
+              # Full basename (incl. .tar.gz), so the per-package report
+              # names derived from these directories match the published
+              # package files exactly.
+              d="${OUT}/$(basename "$f")"
+              mkdir -p "$d"
+              tar -xzf "$f" -C "$d"
+            done
+            # No files while tarballs are enabled means a broken workspace,
             # not a clean scan — fail loudly instead of false-passing.
             if [ "${FOUND}" = "0" ]; then
-              echo "No << parameters.target >> packages found in ${SRC}" >&2
+              echo "No tar packages found in ${SRC}" >&2
               exit 1
             fi
       # Report-only; gate-trivy-findings decides. report-severity keeps
@@ -1345,7 +1489,7 @@ jobs:
           # ones); the PER-PACKAGE SBOMs below are rendered from that
           # report. The combined file itself is not stored — per-package is
           # the deliverable shape.
-          sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
+          sbom-output: /tmp/tar-<< parameters.arch >>.sbom.cdx.json
       # KEV/EPSS over the full-band report: a KEV-listed MEDIUM sits below
       # every CVSS band, and BOD 26-04 keys deadlines on KEV (EPSS is
       # complementary, not mandated). Report-only: arming it would let a
@@ -1503,24 +1647,39 @@ jobs:
           paths:
             - trivy-reports/<< parameters.arch >>
       - gate-trivy-findings:
-          item: << parameters.target >>-<< parameters.arch >>
+          item: tar-<< parameters.arch >>
 
   security-check-docker-image:
-    # Loads one exported per-arch image (per distro) into the remote Docker
-    # daemon and scans it before publish-nightly is allowed to push it
-    # anywhere. Findings red this job but do not stop the push; a scan
+    # Loads one exported per-arch image (per image name) into the remote
+    # Docker daemon and scans it before publish-nightly is allowed to push
+    # it anywhere. Findings red this job but do not stop the push; a scan
     # that fails to deliver its report, EOL base OS included, still does.
     parameters:
       arch:
         type: string
-      distro:
+      image:
         type: enum
-        enum: ["alpine", "deb"]
-        default: "alpine"
+        enum: ["core-preview", "client-tools-preview", "core-fips-preview"]
+      gate-item-image:
+        # The image part of the gate verdict item, matching the job's
+        # workflow name (security-check-docker-<gate-item-image>-<arch>):
+        # publish-nightly's expected-gate-items list is pinned to the job
+        # names by the config generator, and the image parameter's
+        # -preview suffix must not leak into the verdict file names.
+        type: enum
+        enum: ["core", "client-tools", "core-fips"]
+      # Per-image scan-target assertions: without them an empty scan gates
+      # green. The two images have disjoint contents, so each names its own
+      # expected targets (plus the unnamed OS package database, which
+      # min-targets accounts for).
+      expect-targets:
+        type: string
+      min-targets:
+        type: integer
     docker:
       - image: cimg/base:current
-    # medium suffices: the image is Alpine-sized and the daemon runs on the
-    # separate remote-docker VM anyway.
+    # medium suffices: the daemon runs on the separate remote-docker VM
+    # anyway, and the Ubuntu base adds little next to the binaries.
     resource_class: medium
     steps:
       - attach_workspace:
@@ -1532,27 +1691,24 @@ jobs:
             set -eu
             # Orb parameters are static, so the dynamically versioned tag is
             # re-tagged to a fixed reference the scan step can name.
-            LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
-            docker tag "${LOADED}" nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
+            LOADED="$(docker load -i /tmp/nightly/docker/<< parameters.image >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
+            docker tag "${LOADED}" nightly-security-scan:<< parameters.image >>-<< parameters.arch >>
       # Report-only over ALL severities; gate-trivy-findings below decides
       # once the reports are delivered. Only the EOL base-OS check fails
       # the scan step itself, independently of security-check-fail-level,
       # and so still blocks the publish.
       - trivy-scan/scan:
           scan-type: image
-          image-ref: nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
-          # Same report/gate split as the package scans.
+          image-ref: nightly-security-scan:<< parameters.image >>-<< parameters.arch >>
+          # Same report/gate severity split as the package scans.
           severity: "CRITICAL,HIGH"
           report-severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          expect-targets: << parameters.expect-targets >>
+          min-targets: << parameters.min-targets >>
           fail-on-findings: false
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
-          # Package-scan targets plus the OS package database (unnamed: it
-          # embeds the re-tag and distro release); min-targets catches its
-          # loss.
-          expect-targets: "Node.js,usr/bin/arangodb,usr/sbin/rclone-arangodb"
-          min-targets: 4
           # Setting sbom-output makes the scan run with --list-all-pkgs so
           # the JSON report carries the FULL package inventory. The
           # published SBOMs are NOT this file: they are rendered in the
@@ -1576,8 +1732,8 @@ jobs:
           command: |
             set -eu
             # The report pair is named after the pushed per-arch image
-            # reference (arangodb/enterprise-preview:<VERSION>[-<distro>]-
-            # <amd64|arm64v8>, with / and : mapped to _), so on
+            # reference (arangodb/<image>:<VERSION>-<amd64|arm64v8>,
+            # with / and : mapped to _), so on
             # download.arangodb.com it reads as "the scan of exactly this
             # image". publish-nightly puts these into the Docker/ directory
             # of the nightly tree, next to the per-image publish reports —
@@ -1594,17 +1750,12 @@ jobs:
                   -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            if [ "<< parameters.distro >>" = "alpine" ]; then
-              SUFFIX=""
-            else
-              SUFFIX="-<< parameters.distro >>"
-            fi
             case "<< parameters.arch >>" in
               amd64) TAG_ARCH="amd64" ;;
               arm64) TAG_ARCH="arm64v8" ;;
             esac
-            IMAGE_REF="arangodb/enterprise-preview:${VERSION}${SUFFIX}-${TAG_ARCH}"
-            NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
+            IMAGE_REF="arangodb/<< parameters.image >>:${VERSION}-${TAG_ARCH}"
+            NAME="arangodb_<< parameters.image >>_${VERSION}-${TAG_ARCH}"
             OUT=/tmp/nightly/trivy-reports/docker
             mkdir -p "${OUT}"
             STAGE_FAILED=0
@@ -1680,7 +1831,7 @@ jobs:
           paths:
             - trivy-reports/docker
       - gate-trivy-findings:
-          item: docker-<< parameters.distro >>-<< parameters.arch >>
+          item: docker-<< parameters.gate-item-image >>-<< parameters.arch >>
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
@@ -1889,9 +2040,7 @@ jobs:
       - run:
           name: Stage packages and sourceInfo in GCS (not yet visible)
           command: |
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               echo "No packages selected, skipping GCS staging"
               exit 0
             fi
@@ -1907,7 +2056,7 @@ jobs:
             # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus
             # sourceInfo.(log|json) at the <major.minor>/ level next to
             # Linux/ (identical for both arches, so published once instead
-            # of per arch dir) and the arangodb3e-<VERSION>.txt package
+            # of per arch dir) and the arangodb4e-<VERSION>.txt package
             # publish report inside Linux/, next to the arch dirs.
             TOP=/tmp/stage/${PACKAGES}
             STAGE=${TOP}/Linux
@@ -1940,7 +2089,7 @@ jobs:
 
             # The packages section (per-arch FILE/SIZE/SHA256 tables) is
             # written once and shared: it goes into the published
-            # arangodb3e-<VERSION>.txt here and into the combined
+            # arangodb4e-<VERSION>.txt here and into the combined
             # nightly-publish-report.txt in the final report step.
             # Supplemental files (.asc, .clamav, .trivy.*, .sbom.*) are
             # published too but not listed (excluded by the globs).
@@ -1951,9 +2100,7 @@ jobs:
               for arch in amd64 arm64; do
                 printf '\n%s:\n' "${GCS_ARCH[$arch]}"
                 printf '  %-84s %9s  %s\n' "FILE" "SIZE (MB)" "SHA256"
-                for f in /tmp/nightly/packages/${arch}/*.deb \
-                         /tmp/nightly/packages/${arch}/*.rpm \
-                         /tmp/nightly/packages/${arch}/*.tar.gz \
+                for f in /tmp/nightly/packages/${arch}/*.tar.gz \
                          /tmp/nightly/objectfiles/${arch}/*.tar.gz; do
                   [ -e "$f" ] || continue
                   SIZE_MB="$(awk -v b="$(stat -c%s "$f")" 'BEGIN{printf "%.1f", b/1048576}')"
@@ -1971,7 +2118,7 @@ jobs:
               cat /tmp/gate-status-line.txt
               echo
               cat "${SECTION}"
-            } > "${STAGE}/arangodb3e-${VERSION}.txt"
+            } > "${STAGE}/arangodb4e-${VERSION}.txt"
 
             upload() {
               local arch_dir="$1"
@@ -1987,7 +2134,7 @@ jobs:
             # all promoted to the live tree by the commit step's recursive
             # rsync like everything else.
             upload_top() {
-              gsutil -m cp "${STAGE}/arangodb3e-${VERSION}.txt" \
+              gsutil -m cp "${STAGE}/arangodb4e-${VERSION}.txt" \
                 "${STAGE_GCS}/${PACKAGES}/Linux/" && \
               gsutil -m cp "${TOP}/sourceInfo.log" "${TOP}/sourceInfo.json" \
                 "${STAGE_GCS}/${PACKAGES}/"
@@ -2002,25 +2149,33 @@ jobs:
             # workspace artifacts) but never logs in or pushes.
             PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/docker-publish-report.txt
-            # Alpine is the suffix-less default image; Ubuntu images
-            # carry -deb between version and arch.
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ ${#DISTROS[@]} -eq 0 ]; then
+            # Both Ubuntu-based images (core-preview: server only;
+            # client-tools-preview: client tools only) share one
+            # pipeline parameter and one tag scheme (suffix-less); the
+            # FIPS server image (core-fips-preview) has its own parameter and
+            # the same tag scheme.
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
+              IMAGES+=("core-fips-preview")
+            fi
+            if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, nothing was pushed." > "${REPORT}"
               echo "Docker images not selected, skipping push"
               exit 0
             fi
             # Uploads all image blobs under the dated per-arch tags (e.g.
-            # 3.12.10-nightly.20260702-amd64), which no user consumes.
+            # 4.0.0-nightly.20260727-amd64), which no user consumes.
             # Nothing that users pull changes until the commit step updates
             # the multi-arch manifests.
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-            # The image is always arangodb/enterprise-preview; the registry
-            # prefix selects where it is pushed (docker.io always, GCR when
+            # The image names are always arangodb/core-preview and
+            # arangodb/client-tools-preview (plus arangodb/core-fips-preview with
+            # build-fips-image); the registry prefix selects
+            # where they are pushed (docker.io always, GCR when
             # push-images-to-gcr-also is set).
-            IMAGE="arangodb/enterprise-preview"
             REG_PREFIXES=("docker.io/")
 
             if [ "${PR_RUN}" = "true" ]; then
@@ -2041,13 +2196,11 @@ jobs:
               REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
             fi
 
-            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
-
             {
               echo "ArangoDB nightly Docker publish report"
               echo "======================================"
               echo "Version:    ${VERSION}"
-              echo "Distros:    ${DISTROS[*]}"
+              echo "Images:     ${IMAGES[*]}"
               echo "Registries: ${REG_PREFIXES[*]}"
               echo "Workflow:   ${CIRCLE_WORKFLOW_ID}"
               if [ "${PR_RUN}" = "true" ]; then
@@ -2060,29 +2213,29 @@ jobs:
             set -x
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
-            for DISTRO in "${DISTROS[@]}"; do
-              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-amd64.tar
-              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-arm64.tar
+            for IMG in "${IMAGES[@]}"; do
+              docker load -i /tmp/nightly/docker/${IMG}-amd64.tar
+              docker load -i /tmp/nightly/docker/${IMG}-arm64.tar
             done
 
             # Next to the combined report, the pushed refs are also collected
-            # per distro (/tmp/docker-stage-<distro>.txt): the "Publish
+            # per image (/tmp/docker-stage-<image>.txt): the "Publish
             # per-image Docker reports" step folds them into the per-image
             # <image>.txt reports in the Docker/ directory.
-            for DISTRO in "${DISTROS[@]}"; do
-              SUFFIX="$(distro_suffix "${DISTRO}")"
-              FRAG="/tmp/docker-stage-${DISTRO}.txt"
+            for IMG in "${IMAGES[@]}"; do
+              IMAGE="arangodb/${IMG}"
+              FRAG="/tmp/docker-stage-${IMG}.txt"
               : > "${FRAG}"
               for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                 REPO="${REG_PREFIX}${IMAGE}"
                 for TAG_ARCH in amd64 arm64v8; do
-                  docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
+                  docker tag "${IMAGE}:${VERSION}-${TAG_ARCH}" "${REPO}:${VERSION}-${TAG_ARCH}"
                   if [ "${PR_RUN}" = "true" ]; then
                     DIGEST="pr-run: not pushed"
                   else
-                    DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                    DIGEST="$(retry docker push "${REPO}:${VERSION}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
                   fi
-                  LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
+                  LINE="  ${REPO}:${VERSION}-${TAG_ARCH} (${DIGEST})"
                   echo "${LINE}" >> "${REPORT}"
                   echo "${LINE}" >> "${FRAG}"
                 done
@@ -2105,9 +2258,7 @@ jobs:
 
             PR_RUN="<< pipeline.parameters.pr-run >>"
             PACKAGES_SELECTED=true
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               PACKAGES_SELECTED=false
             fi
 
@@ -2123,7 +2274,7 @@ jobs:
               # at least one package file of some format.
               STAGE_LISTING="$(gsutil ls -r "${STAGE_GCS}/${PACKAGES}/Linux" 2>/dev/null || true)"
               for arch_dir in x86_64 aarch64; do
-                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.(deb|rpm|tar\.gz)$" > /dev/null; then
+                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.tar\.gz$" > /dev/null; then
                   echo "Staging tree ${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir} contains no package files; refusing to promote over the live tree."
                   echo "The stage step probably did not complete — investigate and rerun from failed."
                   exit 1
@@ -2162,56 +2313,58 @@ jobs:
               fi
             fi
 
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ "${PR_RUN}" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
+              IMAGES+=("core-fips-preview")
+            fi
+            if [ "${PR_RUN}" = "true" ] && [ ${#IMAGES[@]} -gt 0 ]; then
               # dry run: the dated per-arch tags were never pushed, so there
               # is nothing to assemble manifests from. Write the report
-              # placeholders (the per-image reports step cats the per-distro
+              # placeholders (the per-image reports step cats the per-image
               # fragments) and skip the manifest block below.
               REPORT=/tmp/docker-publish-report.txt
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
               echo "  (pr-run: not created - the dated per-arch tags were never pushed)" >> "${REPORT}"
-              for DISTRO in "${DISTROS[@]}"; do
-                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${DISTRO}.txt"
+              for IMG in "${IMAGES[@]}"; do
+                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${IMG}.txt"
               done
-              DISTROS=()
+              IMAGES=()
             fi
-            if [ ${#DISTROS[@]} -gt 0 ]; then
+            if [ ${#IMAGES[@]} -gt 0 ]; then
               set -x
               VERSION="$(cat /tmp/nightly/nightly-version.txt)"
-              # Rolling tags from prepare-nightly: <major.minor>-nightly, plus
-              # devel-nightly when the tree was a devel tree.
+              # Rolling tags from prepare-nightly: <major.minor>-nightly and
+              # <major>-nightly, plus devel-nightly when the tree was a
+              # devel tree.
               mapfile -t ROLLING_TAGS < /tmp/nightly/rolling-tags.txt
-              IMAGE="arangodb/enterprise-preview"
               REG_PREFIXES=("docker.io/")
               if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
                 REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
               fi
-
-              distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
 
               # No rolling per-arch tags: every manifest (dated and rolling)
               # references the dated per-arch images pushed in the stage
               # phase directly.
               REPORT=/tmp/docker-publish-report.txt
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
-              # As in the stage step, the refs are also collected per distro
-              # (/tmp/docker-commit-<distro>.txt) for the per-image reports.
-              for DISTRO in "${DISTROS[@]}"; do
-                SUFFIX="$(distro_suffix "${DISTRO}")"
-                FRAG="/tmp/docker-commit-${DISTRO}.txt"
+              # As in the stage step, the refs are also collected per image
+              # (/tmp/docker-commit-<image>.txt) for the per-image reports.
+              for IMG in "${IMAGES[@]}"; do
+                IMAGE="arangodb/${IMG}"
+                FRAG="/tmp/docker-commit-${IMG}.txt"
                 : > "${FRAG}"
                 for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                   REPO="${REG_PREFIX}${IMAGE}"
                   for MANIFEST_TAG in "${VERSION}" "${ROLLING_TAGS[@]}"; do
-                    docker manifest rm "${REPO}:${MANIFEST_TAG}${SUFFIX}" 2>/dev/null || true
-                    retry docker manifest create "${REPO}:${MANIFEST_TAG}${SUFFIX}" \
-                      --amend "${REPO}:${VERSION}${SUFFIX}-amd64" \
-                      --amend "${REPO}:${VERSION}${SUFFIX}-arm64v8"
-                    DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}${SUFFIX}" | tail -1)"
-                    LINE="  ${REPO}:${MANIFEST_TAG}${SUFFIX} (${DIGEST})"
+                    docker manifest rm "${REPO}:${MANIFEST_TAG}" 2>/dev/null || true
+                    retry docker manifest create "${REPO}:${MANIFEST_TAG}" \
+                      --amend "${REPO}:${VERSION}-amd64" \
+                      --amend "${REPO}:${VERSION}-arm64v8"
+                    DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}" | tail -1)"
+                    LINE="  ${REPO}:${MANIFEST_TAG} (${DIGEST})"
                     echo "${LINE}" >> "${REPORT}"
                     echo "${LINE}" >> "${FRAG}"
                   done
@@ -2231,7 +2384,8 @@ jobs:
           name: Publish per-image Docker reports (Docker/ directory)
           command: |
             # One <image>.txt per published image name — arangodb/
-            # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
+            # {core,client-tools,core-fips}-preview:<VERSION> (the FIPS
+            # one with build-fips-image) with / and : mapped to
             # _ — carrying that image's slice of nightly-publish-report.txt:
             # the dated per-arch pushes and the multi-arch manifest tags,
             # each with digests. The per-arch Trivy scan reports and SBOMs
@@ -2247,10 +2401,14 @@ jobs:
             OUT=/tmp/docker-reports
             mkdir -p "${OUT}"
 
-            DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ ${#DISTROS[@]} -eq 0 ]; then
+            IMAGES=()
+            if [ "<< pipeline.parameters.build-ubuntu-images >>" = "true" ]; then
+              IMAGES=("core-preview" "client-tools-preview")
+            fi
+            if [ "<< pipeline.parameters.build-fips-image >>" = "true" ]; then
+              IMAGES+=("core-fips-preview")
+            fi
+            if [ ${#IMAGES[@]} -eq 0 ]; then
               echo "Docker images not selected, skipping Docker reports"
               exit 0
             fi
@@ -2259,16 +2417,16 @@ jobs:
             PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
             DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
 
-            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
-
-            for DISTRO in "${DISTROS[@]}"; do
-              SUFFIX="$(distro_suffix "${DISTRO}")"
-              NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}"
+            for IMG in "${IMAGES[@]}"; do
+              NAME="arangodb_${IMG}_${VERSION}"
               {
                 echo "ArangoDB nightly Docker image publish report"
                 echo "============================================"
-                echo "Image:     arangodb/enterprise-preview:${VERSION}${SUFFIX}"
-                echo "Base:      ${DISTRO}"
+                echo "Image:     arangodb/${IMG}:${VERSION}"
+                echo "Base:      ubuntu:26.04"
+                if [ "${IMG}" = "core-fips-preview" ]; then
+                  echo "FIPS:      arangod built with USE_FIPS, OpenSSL FIPS provider in /opt/lib/ossl-modules"
+                fi
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
                 if [ "${PR_RUN}" = "true" ]; then
@@ -2277,10 +2435,10 @@ jobs:
                 cat /tmp/gate-status-line.txt
                 echo
                 echo "Dated per-arch tags (stage phase):"
-                cat "/tmp/docker-stage-${DISTRO}.txt"
+                cat "/tmp/docker-stage-${IMG}.txt"
                 echo
                 echo "Multi-arch manifest tags (what users pull):"
-                cat "/tmp/docker-commit-${DISTRO}.txt"
+                cat "/tmp/docker-commit-${IMG}.txt"
               } > "${OUT}/${NAME}.txt"
             done
 
@@ -2313,7 +2471,7 @@ jobs:
             # Everything this run published: the packages (incl. the
             # objectfiles archives) with size and SHA256 — the section
             # written by the stage step, which is also published standalone
-            # as <major.minor>/Linux/arangodb3e-<VERSION>.txt — and the Docker
+            # as <major.minor>/Linux/arangodb4e-<VERSION>.txt — and the Docker
             # refs collected by the stage/commit steps. Supplemental files
             # (.asc, .clamav, .trivy.*, .sbom.*) are published too but not
             # listed.
@@ -2354,11 +2512,9 @@ jobs:
             # Created unconditionally so the store_artifacts step below
             # always has a path to store.
             mkdir -p /tmp/nightly-index
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-alpine-images >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-deb-images >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-ubuntu-images >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-fips-image >>" = "false" ]; then
               echo "Nothing was published to GCS, skipping index regeneration"
               exit 0
             fi
@@ -2385,13 +2541,103 @@ jobs:
           path: /tmp/nightly-index
           destination: reports/nightly-index
 
+  trigger-benchmarks:
+    # Starts the benchmarks pipeline (benchmarks.yml) on this branch as an
+    # API-triggered pipeline, with the parameters the benchmark schedules
+    # used to pass, against the exact image this nightly just published,
+    # and run-origin=nightly (workflow ann-benchmark-docker-nightly).
+    # In the workflow only with run-benchmarks-on-success, outside pr-run
+    # and with build-ubuntu-images (generate_nightly_packages_config.py
+    # drops it otherwise), and it requires publish-nightly, so it runs only
+    # after a successful real publish.
+    #
+    # The version comes from prepare-nightly's sourceInfo.json artifact
+    # (a few bytes via the API) rather than attach_workspace, which would
+    # restore every upstream layer (object files, Docker image tarballs,
+    # packages) onto this small executor just to read one line.
+    #
+    # Needs the circleci-token context (CIRCLECI_TOKEN).
+    parameters:
+      benchmarks-definition-id:
+        # Project Settings -> Project Setup -> "benchmarks" pipeline.
+        type: string
+        default: "c2f6e37d-47eb-4ea0-81f1-7da9eef23c2f"
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Trigger the benchmarks pipeline
+          command: |
+            set -euo pipefail
+            # Belt and braces: the generator never emits this job for pr-run.
+            if [ "<< pipeline.parameters.pr-run >>" = "true" ]; then
+              echo "ERROR: pr-run published nothing; not triggering benchmarks" >&2
+              exit 1
+            fi
+            API="https://circleci.com/api/v2"
+            auth_get() {
+              curl -sS --fail --retry 3 -H "Circle-Token: ${CIRCLECI_TOKEN}" "$@"
+            }
+            # prepare-nightly's job number in this workflow (paginated list).
+            JOB_NUMBER=""
+            PAGE=""
+            while :; do
+              RESP="$(auth_get "${API}/workflow/${CIRCLE_WORKFLOW_ID}/job${PAGE:+?page-token=${PAGE}}")"
+              JOB_NUMBER="$(printf '%s' "${RESP}" | jq -r '.items[] | select(.name == "prepare-nightly") | .job_number // empty')"
+              PAGE="$(printf '%s' "${RESP}" | jq -r '.next_page_token // empty')"
+              if [ -n "${JOB_NUMBER}" ] || [ -z "${PAGE}" ]; then
+                break
+              fi
+            done
+            if [ -z "${JOB_NUMBER}" ]; then
+              echo "ERROR: prepare-nightly not found in workflow ${CIRCLE_WORKFLOW_ID}" >&2
+              exit 1
+            fi
+            SOURCE_INFO_URL="$(auth_get "${API}/project/gh/arangodb/arangodb/${JOB_NUMBER}/artifacts" \
+              | jq -r '.items[] | select(.path == "sourceInfo.json") | .url' | head -n1)"
+            if [ -z "${SOURCE_INFO_URL}" ]; then
+              echo "ERROR: prepare-nightly (job ${JOB_NUMBER}) has no sourceInfo.json artifact" >&2
+              exit 1
+            fi
+            VERSION="$(auth_get -L "${SOURCE_INFO_URL}" | jq -r '.VERSION // empty')"
+            if [ -z "${VERSION}" ] || [ "${VERSION}" = "N/A" ]; then
+              echo "ERROR: no VERSION in sourceInfo.json of prepare-nightly (job ${JOB_NUMBER})" >&2
+              exit 1
+            fi
+            BRANCH="<< pipeline.git.branch >>"
+            IMAGE="arangodb/core-preview:${VERSION}"
+            BODY="$(jq -n \
+              --arg def "<< parameters.benchmarks-definition-id >>" \
+              --arg branch "${BRANCH}" \
+              --arg image "${IMAGE}" \
+              '{definition_id: $def,
+                config: {branch: $branch},
+                checkout: {branch: $branch},
+                parameters: {benchmark: "ann", "build-arango": false,
+                             "run-origin": "nightly",
+                             "arango-image": $image, "enterprise-branch": $branch}}')"
+            echo "Triggering benchmarks on ${BRANCH} against ${IMAGE}:"
+            echo "${BODY}"
+            HTTP="$(curl -sS --retry 3 -o /tmp/benchmarks-trigger.json -w '%{http_code}' \
+              -X POST \
+              -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "${BODY}" \
+              "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline/run")"
+            cat /tmp/benchmarks-trigger.json; echo
+            if [ "${HTTP}" != "201" ]; then
+              echo "ERROR: benchmarks pipeline was not created (HTTP ${HTTP})" >&2
+              exit 1
+            fi
+
 workflows:
   nightly-packages:
     jobs:
       - prepare-nightly:
           name: prepare-nightly
 
-      # ── x64 enterprise ───────────────────────────────────────────────────
+      # ── x64 enterprise ─────────────────────────────────────────────────────────────────────
       - compile-nightly:
           name: compile-enterprise-amd64
           arch: amd64
@@ -2401,43 +2647,19 @@ workflows:
           requires: [prepare-nightly]
 
       - build-package:
-          name: deb-enterprise-amd64
-          format: deb
-          arch: amd64
-          resource-class: arangodb/large-amd64
-          requires: [compile-enterprise-amd64]
-
-      - build-package:
-          name: rpm-enterprise-amd64
-          format: rpm
-          arch: amd64
-          resource-class: arangodb/large-amd64
-          requires: [compile-enterprise-amd64]
-
-      - build-package:
           name: tar-enterprise-amd64
-          format: tar
           arch: amd64
           resource-class: arangodb/large-amd64
           requires: [compile-enterprise-amd64]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-alpine-amd64
+          name: docker-enterprise-amd64
           arch: amd64
-          distro: alpine
           resource-class: large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-amd64]
 
-      - build-nightly-docker-image:
-          name: docker-enterprise-deb-amd64
-          arch: amd64
-          distro: deb
-          resource-class: large
-          context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-amd64]
-
-      # ── ARM64 enterprise ─────────────────────────────────────────────────────
+      # ── ARM64 enterprise ─────────────────────────────────────────────────────────────────
       - compile-nightly:
           name: compile-enterprise-arm64
           arch: arm64
@@ -2447,52 +2669,59 @@ workflows:
           requires: [prepare-nightly]
 
       - build-package:
-          name: deb-enterprise-arm64
-          format: deb
-          arch: arm64
-          resource-class: arangodb/large-arm64
-          requires: [compile-enterprise-arm64]
-
-      - build-package:
-          name: rpm-enterprise-arm64
-          format: rpm
-          arch: arm64
-          resource-class: arangodb/large-arm64
-          requires: [compile-enterprise-arm64]
-
-      - build-package:
           name: tar-enterprise-arm64
-          format: tar
           arch: arm64
           resource-class: arangodb/large-arm64
           requires: [compile-enterprise-arm64]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-alpine-arm64
+          name: docker-enterprise-arm64
           arch: arm64
-          distro: alpine
           resource-class: arm.large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-arm64]
+
+      # ── FIPS server image (build-fips-image) ─────────────────────────────────────────
+      - compile-nightly:
+          name: compile-enterprise-fips-amd64
+          arch: amd64
+          preset: nightly-package-x64-fips
+          fips: true
+          resource-class: arangodb/xlarge-amd64
+          context: [ sccache-aws-bucket ]
+          requires: [prepare-nightly]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-deb-arm64
+          name: docker-enterprise-fips-amd64
+          arch: amd64
+          fips: true
+          resource-class: large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
+          requires: [compile-enterprise-fips-amd64]
+
+      - compile-nightly:
+          name: compile-enterprise-fips-arm64
           arch: arm64
-          distro: deb
+          preset: nightly-package-arm64-fips
+          fips: true
+          resource-class: arangodb/xlarge-arm64
+          context: [ sccache-aws-bucket ]
+          requires: [prepare-nightly]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-fips-arm64
+          arch: arm64
+          fips: true
           resource-class: arm.large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-arm64]
+          requires: [compile-enterprise-fips-arm64]
 
-      # ── Scan, sign, publish ──────────────────────────────────────────────────
+      # ── Scan, sign, publish ───────────────────────────────────────────────────────────────
       - scan-packages:
           context: [ clamav-aws-bucket ]
           resource-class: arangodb/large-amd64
           requires:
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
 
       - sign-packages:
@@ -2502,73 +2731,73 @@ workflows:
           context: [ coredb-nightly-packages ]
           resource-class: arangodb/large-amd64
           requires:
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
 
       # ── Trivy security gates: one per published item ─────────────────────────
       - security-check-package:
-          name: security-check-deb-amd64
-          target: deb
-          arch: amd64
-          requires: [deb-enterprise-amd64]
-
-      - security-check-package:
-          name: security-check-rpm-amd64
-          target: rpm
-          arch: amd64
-          requires: [rpm-enterprise-amd64]
-
-      - security-check-package:
           name: security-check-tar-amd64
-          target: tar
           arch: amd64
           requires: [tar-enterprise-amd64]
 
       - security-check-package:
-          name: security-check-deb-arm64
-          target: deb
-          arch: arm64
-          requires: [deb-enterprise-arm64]
-
-      - security-check-package:
-          name: security-check-rpm-arm64
-          target: rpm
-          arch: arm64
-          requires: [rpm-enterprise-arm64]
-
-      - security-check-package:
           name: security-check-tar-arm64
-          target: tar
           arch: arm64
           requires: [tar-enterprise-arm64]
 
       - security-check-docker-image:
-          name: security-check-docker-alpine-amd64
+          name: security-check-docker-core-amd64
           arch: amd64
-          distro: alpine
-          requires: [docker-enterprise-alpine-amd64]
+          image: core-preview
+          gate-item-image: core
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
+          requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
-          name: security-check-docker-deb-amd64
+          name: security-check-docker-client-tools-amd64
           arch: amd64
-          distro: deb
-          requires: [docker-enterprise-deb-amd64]
+          image: client-tools-preview
+          gate-item-image: client-tools
+          expect-targets: "Node.js"
+          min-targets: 2
+          requires: [docker-enterprise-amd64]
 
       - security-check-docker-image:
-          name: security-check-docker-alpine-arm64
+          name: security-check-docker-core-arm64
           arch: arm64
-          distro: alpine
-          requires: [docker-enterprise-alpine-arm64]
+          image: core-preview
+          gate-item-image: core
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
+          requires: [docker-enterprise-arm64]
 
       - security-check-docker-image:
-          name: security-check-docker-deb-arm64
+          name: security-check-docker-client-tools-arm64
           arch: arm64
-          distro: deb
-          requires: [docker-enterprise-deb-arm64]
+          image: client-tools-preview
+          gate-item-image: client-tools
+          expect-targets: "Node.js"
+          min-targets: 2
+          requires: [docker-enterprise-arm64]
+
+      - security-check-docker-image:
+          name: security-check-docker-core-fips-amd64
+          arch: amd64
+          image: core-fips-preview
+          gate-item-image: core-fips
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
+          requires: [docker-enterprise-fips-amd64]
+
+      - security-check-docker-image:
+          name: security-check-docker-core-fips-arm64
+          arch: arm64
+          image: core-fips-preview
+          gate-item-image: core-fips
+          expect-targets: "usr/bin/arangodb,usr/sbin/rclone-arangodb"
+          min-targets: 3
+          requires: [docker-enterprise-fips-arm64]
 
       - publish-nightly:
           context: [ coredb-nightly-packages ]
@@ -2576,20 +2805,16 @@ workflows:
           # generator prunes this list together with the jobs and rejects
           # any drift between the two.
           expected-gate-items: >-
-            deb-amd64 rpm-amd64 tar-amd64
-            deb-arm64 rpm-arm64 tar-arm64
-            docker-alpine-amd64 docker-deb-amd64
-            docker-alpine-arm64 docker-deb-arm64
+            tar-amd64 tar-arm64
+            docker-core-amd64 docker-client-tools-amd64
+            docker-core-arm64 docker-client-tools-arm64
+            docker-core-fips-amd64 docker-core-fips-arm64
           requires:
             # The packaging jobs are required DIRECTLY, not only transitively
             # via the scan/sign/security gates: all three gates can be
             # disabled by pipeline parameters, and publish must still wait
             # for the packages themselves.
-            - deb-enterprise-amd64
-            - rpm-enterprise-amd64
             - tar-enterprise-amd64
-            - deb-enterprise-arm64
-            - rpm-enterprise-arm64
             - tar-enterprise-arm64
             - scan-packages
             - sign-packages
@@ -2602,37 +2827,38 @@ workflows:
             # which still blocks. Deliberately not "canceled": that means
             # the workflow is being torn down, and publish must not run
             # on a half-built workspace.
-            - security-check-deb-amd64:
-                - success
-                - failed
-            - security-check-rpm-amd64:
-                - success
-                - failed
             - security-check-tar-amd64:
-                - success
-                - failed
-            - security-check-deb-arm64:
-                - success
-                - failed
-            - security-check-rpm-arm64:
                 - success
                 - failed
             - security-check-tar-arm64:
                 - success
                 - failed
-            - security-check-docker-alpine-amd64:
+            - security-check-docker-core-amd64:
                 - success
                 - failed
-            - security-check-docker-deb-amd64:
+            - security-check-docker-client-tools-amd64:
                 - success
                 - failed
-            - security-check-docker-alpine-arm64:
+            - security-check-docker-core-arm64:
                 - success
                 - failed
-            - security-check-docker-deb-arm64:
+            - security-check-docker-client-tools-arm64:
                 - success
                 - failed
-            - docker-enterprise-alpine-amd64
-            - docker-enterprise-deb-amd64
-            - docker-enterprise-alpine-arm64
-            - docker-enterprise-deb-arm64
+            - security-check-docker-core-fips-amd64:
+                - success
+                - failed
+            - security-check-docker-core-fips-arm64:
+                - success
+                - failed
+            - docker-enterprise-amd64
+            - docker-enterprise-arm64
+            - docker-enterprise-fips-amd64
+            - docker-enterprise-fips-arm64
+
+      # Only with run-benchmarks-on-success, outside pr-run and with the
+      # Ubuntu images built; the config generator drops it otherwise.
+      - trigger-benchmarks:
+          context: [ circleci-token ]
+          requires:
+            - publish-nightly

@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Auth/Common.h"
+#include "Auth/Permissions.h"
 #include "Basics/Result.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -31,6 +32,8 @@
 
 #include <velocypack/Buffer.h>
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -70,11 +73,6 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   Result appendVPack(velocypack::Builder& build, Serialization ctx,
                      bool safe) const final;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the current view is granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  bool canUse(auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition
@@ -126,6 +124,11 @@ class LogicalView : public LogicalDataSource {
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief names of all collections currently linked to this view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual std::vector<std::string> linkedCollectionNames() const;
 
   [[nodiscard]] virtual bool isBuilding() const { return false; }
 

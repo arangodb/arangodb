@@ -1,0 +1,9 @@
+@include arangod
+
+[server]
+
+[log]
+level = error
+
+[database]
+restore-admin = true

@@ -111,8 +111,9 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
                 TRI_ASSERT(value->isStringValue());
                 if (isDisabled()) {
                   // disableIndex vs. indexHint is contradicting...
-                  ExecutionPlan::invalidOptionAttribute(query, "contradicting",
-                                                        "FOR", name);
+                  ExecutionPlan::invalidOptionAttribute(
+                      query, "contradicting", "FOR",
+                      StaticStrings::IndexHintOption);
                 }
                 if (!std::holds_alternative<SimpleContents>(_hint)) {
                   // reset to simple type
@@ -145,8 +146,9 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
               // disableIndex: true. this will disable all index hints
               if (!empty()) {
                 // disableIndex vs. indexHint is contradicting...
-                ExecutionPlan::invalidOptionAttribute(query, "contradicting",
-                                                      "FOR", name);
+                ExecutionPlan::invalidOptionAttribute(
+                    query, "contradicting", "FOR",
+                    StaticStrings::IndexHintOption);
               }
               _hint = Disabled{};
               TRI_ASSERT(empty());

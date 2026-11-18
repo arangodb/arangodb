@@ -343,7 +343,7 @@ function ahuacatlProfilerTestSuite() {
       }
       col.ensureIndex(indexMeta);
       col.insert({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "persistent", fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -403,7 +403,7 @@ function ahuacatlProfilerTestSuite() {
       }
       col.ensureIndex(indexMeta);
       col.insert({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "persistent", fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -474,7 +474,7 @@ function ahuacatlProfilerTestSuite() {
       }
       col.ensureIndex(indexMeta);
       col.insert({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "persistent", fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -511,7 +511,7 @@ function ahuacatlProfilerTestSuite() {
       }
       col.ensureIndex(indexMeta);
       col.insert({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "persistent", fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));

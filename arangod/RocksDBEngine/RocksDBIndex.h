@@ -27,6 +27,7 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/TruncateGuard.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <rocksdb/status.h>
@@ -53,15 +54,6 @@ class LogicalCollection;
 class RocksDBEngine;
 class RocksDBMethods;
 struct OperationOptions;
-
-// TODO could be interface if it will be necessary
-struct TruncateGuard {
-  struct UnlockDeleter {
-    void operator()(std::mutex* mutex) { mutex->unlock(); }
-  };
-  using Ptr = std::unique_ptr<std::mutex, UnlockDeleter>;
-  Ptr mutex;
-};
 
 class RocksDBIndex : public Index {
  protected:
@@ -164,7 +156,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+  static RocksDBKeyBounds getBounds(IndexType type, uint64_t objectId,
                                     bool unique);
 
   /// @brief get index estimator, optional

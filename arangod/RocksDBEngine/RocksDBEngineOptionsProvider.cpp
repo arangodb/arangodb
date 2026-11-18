@@ -270,10 +270,6 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
 
-  opts->addObsoleteOption("--rocksdb.edge-cache",
-                          "Whether to use the in-memory cache for edges",
-                          false);
-
   opts->addOption("--rocksdb.verify-sst",
                   "Verify the validity of .sst files present in the "
                   "`engine-rocksdb` directory on startup.",
@@ -387,8 +383,7 @@ Only use this option for testing purposes! It is bad for performance and
 disables a few features like parallel index generation!)");
 #endif
 
-  // TODO: consider moving this option to --rocksdb.export-read-write-metrics
-  opts->addOption("--server.export-read-write-metrics",
+  opts->addOption("--rocksdb.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
                   new BooleanParameter(&options.exportReadWriteMetrics),
                   arangodb::options::makeFlags(
@@ -397,7 +392,7 @@ disables a few features like parallel index generation!)");
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Enabling this option exposes the following
-additional metrics via the `GET /_admin/metrics/v2` endpoint:
+additional metrics via the `GET /_admin/metrics` endpoint:
 
 - `arangodb_document_writes_total`
 - `arangodb_document_writes_replication_total`
@@ -410,6 +405,10 @@ additional metrics via the `GET /_admin/metrics/v2` endpoint:
 - `arangodb_collection_truncates_replication_total`
 - `arangodb_collection_truncate_time`
 )");
+
+  opts->addOldOption("--server.export-read-write-metrics",
+                     "--rocksdb.export-read-write-metrics");
+
 #ifdef USE_ENTERPRISE
   enterprise::RocksDBEngineEEOptionsProvider::declareOptions(opts,
                                                              options.eeOptions);

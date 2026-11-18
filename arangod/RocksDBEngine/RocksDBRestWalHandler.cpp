@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
-
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterAdminOperations.h"
@@ -29,7 +29,6 @@
 #include "Cluster/ServerState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -42,6 +41,7 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(
     GeneralResponse* response, StorageEngine* engine)
     : RestBaseHandler(server, request, response), _engine(engine) {}
 
+// Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
@@ -53,19 +53,9 @@ RestStatus RocksDBRestWalHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   std::string const& operation = suffixes[0];
-  if (operation == "transactions") {
-    if (type == rest::RequestType::GET) {
-      transactions();
-      return RestStatus::DONE;
-    }
-  } else if (operation == "flush") {
+  if (operation == "flush") {
     if (type == rest::RequestType::PUT) {
       flush();
-      return RestStatus::DONE;
-    }
-  } else if (operation == "properties") {
-    if (type == rest::RequestType::GET || type == rest::RequestType::PUT) {
-      properties();
       return RestStatus::DONE;
     }
   } else if (operation == "wait_for_estimator_sync") {
@@ -76,9 +66,10 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce a cluster info dump");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
       return RestStatus::DONE;
     }
 #endif
@@ -86,6 +77,28 @@ RestStatus RocksDBRestWalHandler::execute() {
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (operation == "recovery_start_sequence") {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "system level access is needed for this API");
+      return RestStatus::DONE;
+    }
+#else
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWalAccess{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+#endif
+    VPackBuilder builder;
+    auto* engine = dynamic_cast<RocksDBEngine*>(_engine);
+    builder.add(VPackValue(engine->recoveryStartSequence()));
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+#endif
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
@@ -95,12 +108,6 @@ RestStatus RocksDBRestWalHandler::execute() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
-}
-
-void RocksDBRestWalHandler::properties() {
-  // not supported on rocksdb
-  generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::flush() {
@@ -149,14 +156,4 @@ void RocksDBRestWalHandler::flush() {
   }
   generateResult(rest::ResponseCode::OK,
                  arangodb::velocypack::Slice::emptyObjectSlice());
-}
-
-void RocksDBRestWalHandler::transactions() {
-  transaction::Manager* mngr = transaction::ManagerFeature::manager();
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
-  builder.close();
-  generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

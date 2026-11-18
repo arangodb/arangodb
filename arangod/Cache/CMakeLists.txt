@@ -21,8 +21,7 @@ add_library(arango_cache STATIC
 
 target_link_libraries(arango_cache
   arango
-  arango::validation
-  boost_system)
+  arango::validation)
 
 target_include_directories(arango_cache PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

@@ -55,58 +55,6 @@ def genJsFile(errors):
 
   return out
 
-# generate NSIS implementation file from errors
-def genNSISFile(errors, filename):
-
-  impl = """
-!include "LogicLib.nsh"
-"""
-  for e in errors:
-    impl += """!define ARANGO_%s %s
-""" % (
-  e[0],
-  e[1]
-  )
-
-  impl +="""
-!macro printExitCode exitCode Message DetailMessage
-  Push "${exitCode}"
-  Push "${Message}"
-  Push "${DetailMessage}"
-  Call printExitCode
-!macroend
-Function printExitCode
-pop $3
-pop $2
-pop $1
-${Switch} $1\n
-"""
-  # print individual errors
-  for e in errors:
-    impl += """
-  ${Case} %s # %s
-    MessageBox MB_ICONEXCLAMATION '$2:$\\r$\\n>> %s <<$\\r$\\n"%s"$\\r$\\n$3'
-  ${Break}
-""" % (
-  e[1],
-  e[0],
-  e[2],
-  e[3]
-  )
-
-  impl = impl + """
-  ${Default}
-    MessageBox MB_ICONEXCLAMATION '$2:$\\r$\\nUnknown exit code $1!'
-    ; Will be returned if the recovery fails
-  ${Break}
-
-${EndSwitch}
-FunctionEnd
-"""
-
-  return impl.replace("\r", "\r\n")
-
-
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "// Exit codes and meanings\n"\
@@ -174,8 +122,6 @@ if extension == ".js":
   out = genJsFile(errorsList)
 elif extension == ".h":
   out = genCHeaderFile(errorsList)
-elif extension == ".nsh":
-  out = genNSISFile(errorsList, filename)
 else:
   print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)

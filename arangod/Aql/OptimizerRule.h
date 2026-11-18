@@ -98,8 +98,6 @@ struct OptimizerRule {
 
     // "Pass 1": moving nodes "up" (potentially outside loops):
     // ========================================================
-    replaceNearWithinFulltext,
-
     inlineSubqueriesRule,
 
     replaceLikeWithRange,
@@ -148,6 +146,8 @@ struct OptimizerRule {
     // ======================================================
 
     interchangeAdjacentEnumerationsRule,
+
+    optimizeJoinOrder,
 
     // replace attribute accesses that are equal due to a filter statement
     // with the same value. This might enable other optimizations later on.
@@ -288,6 +288,8 @@ struct OptimizerRule {
 
 #ifdef USE_ENTERPRISE
     smartJoinsRule,
+
+    smartJoinSmartEdgeRule,
 #endif
 
     // make operations on sharded collections use scatter / gather / remote
@@ -340,6 +342,11 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
+
+    // keeps track of the used shardKeys of an out variable
+    // and if all shardKeys are used it tries to upgrade the corresponding
+    // ScatterNode to a DistribeNode.
+    upgradeScatterToDistributeRule,
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
@@ -448,6 +455,7 @@ struct OptimizerRule {
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
 
+  static_assert(moveFiltersIntoEnumerateRule < upgradeScatterToDistributeRule);
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   static_assert(moveCalculationsUpRule < applySortLimitRule,

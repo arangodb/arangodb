@@ -66,15 +66,16 @@ void ClientOptionsProvider::declareOptionsImpl(
 
   char const* endpointHelp;
   if (isArangosh) {
+    // this option is only available in arangosh
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://.";
+        "server endpoint, otherwise http+tcp://.";
   } else {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://";
+        "server endpoint, otherwise http+tcp://";
   }
 
   auto& opt = opts->addOption(
@@ -93,10 +94,15 @@ arangosh without connecting to a server.)");
       "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "
-      "Literal @ need to be escaped as @@.",
+      "Literal @ need to be escaped as @@.\n"
+      "The credentials are exchanged for a JWT via /_open/auth, which is "
+      "renewed automatically before it expires (see "
+      "--server.jwt-renewal-threshold). If the server does not issue tokens, "
+      "HTTP basic authentication is used.",
       new StringParameter(&options.password));
 
   if (isArangosh) {
+    // this option is only available in arangosh
     opts->addOption("--server.force-json",
                     "Force to not use VelocyPack for easier debugging.",
                     new BooleanParameter(&options.forceJson),
@@ -105,6 +111,8 @@ arangosh without connecting to a server.)");
   }
 
   if (options.allowJwtSecret) {
+    // currently the option is only present for arangosh, but none
+    // of the other client tools
     opts->addOption(
         "--server.ask-jwt-secret",
         "If enabled, you are prompted for a JWT secret. This option is not "
@@ -134,7 +142,9 @@ arangosh without connecting to a server.)");
         "option is not compatible with --server.ask-jwt-secret, "
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
         "If specified, it is used for all connections - even if a new "
-        "connection to another server is created.",
+        "connection to another server is created. A token with an expiry is "
+        "renewed automatically before it expires (see "
+        "--server.jwt-renewal-threshold).",
         new StringParameter(&options.jwtToken));
   }
 
@@ -149,10 +159,14 @@ arangosh without connecting to a server.)");
   opts->addOption(
       "--server.jwt-renewal-threshold",
       "The time (in seconds) before JWT token expiry to trigger "
-      "automatic renewal. Default is 300 seconds (5 minutes).",
-      new DoubleParameter(&options.jwtRenewalThreshold),
+      "automatic renewal. Default is 300 seconds (5 minutes). With 0, a "
+      "renewal is only attempted once the token has expired.",
+      new DoubleParameter(&options.jwtRenewalThreshold, /*base*/ 1.0,
+                          /*minValue*/ 0.0),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
+  // note: the max-packet-size is used for all client tools that use the
+  // SimpleHttpClient. fuerte does not use this
   opts->addOption(
       "--server.max-packet-size",
       "The maximum packet size (in bytes) for client/server communication.",
@@ -161,15 +175,12 @@ arangosh without connecting to a server.)");
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   opts->addSection("tls", "TLS communication");
-  opts->addOldOption("--tls.protocol", "--ssl.protocol");
-#endif
-
-  opts->addSection("ssl", "SSL communication");
-  opts->addOption("--ssl.protocol", availableSslProtocolsDescription(),
+  opts->addOldOption("--ssl.protocol", "--tls.protocol");
+  opts->addOption("--tls.protocol", availableSslProtocolsDescription(),
                   new DiscreteValuesParameter<UInt64Parameter>(
                       &options.sslProtocol, sslProtocols));
+
   opts->addOption(
           "--compress-transfer",
           "Compress data for transport between " + basename + " and server.",
@@ -196,19 +207,18 @@ Using the value `0` disables the automatic request compression.)");
 
 void ClientOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClientFeatureOptions& options) {
-  if (options.sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
-        << "SSLv2 is not supported any longer because of security "
-           "vulnerabilities in this protocol";
-    FATAL_ERROR_EXIT();
-  }
-
   if (options.endpoints.size() > options.maxNumEndpoints) {
+    // this is the case if we have more endpoints than allowed.
+    // in versions before 3.9, it was allowed to specify `--server.endpoint`
+    // multiple times, and if this was done, only the last provided endpoint
+    // was used. to keep backward-compatibility, we now emulate this
+    // behavior here.
     TRI_ASSERT(options.maxNumEndpoints == 1);
     std::string selectedEndpoint = options.endpoints.back();
     options.endpoints = {std::move(selectedEndpoint)};
   }
 
+  // if a username is specified explicitly, assume authentication is desired
   if (opts->processingResult().touched("server.username")) {
     options.authentication = true;
   }

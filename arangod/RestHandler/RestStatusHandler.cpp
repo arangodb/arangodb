@@ -45,7 +45,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -63,15 +62,19 @@ RestStatusHandler::RestStatusHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engine(server.getFeature<DatabaseFeature>().engine()) {}
+      _engine(server.getFeature<StorageEngine>()) {}
 
+// Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
 
-  if (!security.canAccessHardenedApi()) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMonitoring{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(r);
     return RestStatus::DONE;
   }
 
@@ -80,8 +83,26 @@ RestStatus RestStatusHandler::execute() {
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
   } else {
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     return executeStandard(security);
   }
+}
+
+async<RestHandler::AuthenticationGrant>
+RestStatusHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
 }
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
@@ -99,14 +120,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 #else
   result.add("license", VPackValue("community"));
 #endif
-
-  auto& serverFeature = server().getFeature<ServerFeature>();
-  result.add(
-      "mode",
-      VPackValue(serverFeature
-                     .operationModeString()));  // to be deprecated - 3.3 compat
-  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
-  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
 
   std::string host = ServerState::instance()->getHost();
 
@@ -138,9 +151,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
@@ -163,7 +173,9 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.close();
 
     if (!isStartup) {
-      auto* agent = server().getFeature<AgencyFeature>().agent();
+      auto* agent = server().hasFeature<AgencyFeature>()
+                        ? server().getFeature<AgencyFeature>().agent()
+                        : nullptr;
 
       if (agent != nullptr) {
         result.add("agent", VPackValue(VPackValueType::Object));
@@ -177,17 +189,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.close();
       }
 
-      if (serverState->isCoordinator()) {
-        result.add("coordinator", VPackValue(VPackValueType::Object));
-
-        result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
-        result.add("isFoxxmaster", VPackValue(serverState->isFoxxmaster()));
-
-        result.close();
-      }
-
       auto manager = AsyncAgencyCommManager::INSTANCE.get();
-
       if (manager != nullptr) {
         result.add("agency", VPackValue(VPackValueType::Object));
 

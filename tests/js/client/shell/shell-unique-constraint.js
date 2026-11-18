@@ -52,8 +52,7 @@ function UniqueConstraintSuite() {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  tearDown : function () {
-    collection.unload();
+    tearDown: function () {
     collection.drop();
     internal.wait(0.0);
     collection = null;
@@ -64,19 +63,19 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationUniqueConstraint : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(true, idx.unique);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
 
       assertEqual(id, idx.id);
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(true, idx.unique);
       assertEqual(["a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
@@ -87,18 +86,18 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationPermutedUniqueConstraint : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertTrue(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureIndex({ type: "hash", fields: ["b", "a"], unique: true });
+      idx = collection.ensureIndex({ type: "persistent", fields: ["b", "a"], unique: true });
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertTrue(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertNotEqual(id, idx.id);
@@ -110,9 +109,9 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureIndex({ type: "hash", fields: ["b", "a"], unique: true, sparse: true });
+      var idx = collection.ensureIndex({ type: "persistent", fields: ["b", "a"], unique: true, sparse: true });
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(true, idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertEqual(true, idx.isNewlyCreated);

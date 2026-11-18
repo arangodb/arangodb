@@ -44,6 +44,7 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
         auto it = _vars.find(variable);
         if (it == _vars.end()) {
           TRI_ASSERT(false);
+          mustDestroy = false;
           return AqlValue(AqlValueHintNull());
         }
         mustDestroy = doCopy;
@@ -88,7 +89,8 @@ NoVarExpressionContext::NoVarExpressionContext(transaction::Methods& trx,
 
 AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
                                                   bool /*doCopy*/,
-                                                  bool& /*mustDestroy*/) const {
+                                                  bool& mustDestroy) const {
+  mustDestroy = false;
   return AqlValue(AqlValueHintNull());
 }
 

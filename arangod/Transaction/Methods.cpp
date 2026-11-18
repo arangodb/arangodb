@@ -129,6 +129,8 @@ BatchOptions buildBatchOptions(OperationOptions const& options,
                                TRI_voc_document_operation_e opType,
                                bool isDBServer) {
   BatchOptions batchOptions;
+  batchOptions.runInternalValidators =
+      options.isSynchronousReplicationFrom.empty();
 
   if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
     if (isDBServer) {
@@ -454,6 +456,16 @@ struct GenericProcessor {
       co_return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
+    static_assert(Derived::accessMode() == AccessMode::Type::READ ||
+                  Derived::accessMode() == AccessMode::Type::WRITE);
+    if constexpr (Derived::accessMode() == AccessMode::Type::WRITE) {
+      auto res =
+          co_await methods.state()->performIntermediateCommitIfRequired(cid);
+      if (res.fail()) {
+        co_return res;
+      }
+    }
+
     try {
       co_return Derived(methods, *trxColl, *collection, value, options,
                         std::forward<Args>(args)...);
@@ -638,7 +650,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
             _indexesSnapshot.hasSecondaryIndex() || options.returnOld ||
-            !options.versionAttribute.empty()),
+            !options.versionAttribute.empty() ||
+            // time travel retains the previous version and stamps its _expired,
+            // which means rewriting its full body - a _key-only stub won't do
+            collection.timeTravelEnabled()),
         _replicationVersion(collection.replicationVersion()) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
@@ -756,7 +771,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
 
     auto resDocs = this->_resultBuilder.steal();
-    auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       StorageEngine& engine = this->_collection.vocbase().engine();
@@ -794,11 +808,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                                      std::move(options), std::move(errs));
             });
       }
-
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          this->_methods.state()->performIntermediateCommitIfRequired(
-              this->_collection.id());
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -806,13 +815,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       resDocs->clear();
     }
 
-    return std::move(intermediateCommit)
-        .thenValue([options = this->_options,
-                    errorCounter = std::move(errorCounter),
-                    resDocs = std::move(resDocs)](auto&& res) mutable {
-          return OperationResult(res, std::move(resDocs), options,
-                                 std::move(errorCounter));
-        });
+    return OperationResult(std::move(res), std::move(resDocs), this->_options,
+                           std::move(errorCounter));
   }
 
  protected:
@@ -839,6 +843,54 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
+  // Time travel: hand the transaction the timestamp this operation writes at.
+  // Must run before the document key is locked - the engine validates
+  // write-write conflicts against that timestamp while taking the lock. A no-op
+  // on collections without time travel.
+  Result prepareTimeTravelWrite(velocypack::Slice value) {
+    if (!this->_collection.timeTravelEnabled()) {
+      return {};
+    }
+    auto timestamp = timeTravelWriteTimestamp(value);
+    if (timestamp.fail()) {
+      return timestamp.result();
+    }
+    _timeTravelWriteTimestamp = timestamp.get();
+    return this->_methods.state()->setTimeTravelWriteTimestamp(
+        this->_collection.id(), _timeTravelWriteTimestamp);
+  }
+
+  // Time travel: the key lock also rejects a write whose timestamp is not
+  // strictly newer than the current version - validation reads at
+  // `timestamp - 1`, so an existing later version trips it - and rocksdb
+  // reports that as a write-write conflict. For a user-supplied timestamp that
+  // is bad input rather than contention: retrying would never help. Turn it
+  // into a precise error, and leave genuine conflicts alone.
+  Result diagnoseTimeTravelConflict(std::string_view key, Result conflict) {
+    TRI_ASSERT(this->_collection.timeTravelEnabled());
+    TRI_ASSERT(conflict.is(TRI_ERROR_ARANGO_CONFLICT));
+    TRI_ASSERT(_timeTravelWriteTimestamp != 0);
+
+    auto existing =
+        this->_collection.getPhysical()->currentVersionTimestamp(key);
+    if (existing.fail() || !existing.get().has_value() ||
+        existing.get().value() < _timeTravelWriteTimestamp) {
+      // the current version really is older than what we are writing, so the
+      // conflict came from a concurrent writer after all
+      return conflict;
+    }
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat("'", StaticStrings::Created,
+                               "' must be newer than the current version of '",
+                               key, "' (", existing.get().value(), "), but is ",
+                               _timeTravelWriteTimestamp)};
+  }
+
+  // Time travel: the timestamp the value currently being processed writes at,
+  // as handed to the transaction by prepareTimeTravelWrite(). 0 when the
+  // collection has no time travel.
+  std::uint64_t _timeTravelWriteTimestamp = 0;
+
   // whether or not we need to read the previous document version
   bool _needToFetchOldDocument;
   // whether we use replication 1 or 2
@@ -1145,12 +1197,11 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
         return {TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE};
       }
 
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      res = this->_collection.validate(
-          _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
-          this->_methods.transactionContextPtr()->getVPackOptions());
+      if (_batchOptions.runInternalValidators) {
+        res = this->_collection.validate(
+            _batchOptions.schema, newDocumentBuilder.slice(), previousDocument,
+            this->_methods.transactionContextPtr()->getVPackOptions());
+      }
 
       if (res.ok()) {
         if (isUpdate) {
@@ -1245,6 +1296,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     }
 
+    if (auto r = this->prepareTimeTravelWrite(value); r.fail()) {
+      return r;
+    }
+
     std::pair<LocalDocumentId, RevisionId> lookupResult;
     auto res = _collection.getPhysical()->lookupKeyForUpdate(&_methods, key,
                                                              lookupResult);
@@ -1271,6 +1326,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res = this->diagnoseTimeTravelConflict(key, std::move(res));
+      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
@@ -1437,10 +1496,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
 #else
       constexpr bool isMock = false;
 #endif
-      // note: schema can be a nullptr here, but we need to call validate()
-      // anyway. the reason is that validate() does not only perform schema
-      // validation, but also some validation for SmartGraph data
-      if (!isMock) {
+      if (!isMock && _batchOptions.runInternalValidators) {
         res = _collection.validate(
             _batchOptions.schema, _newDocumentBuilder->slice(),
             _methods.transactionContextPtr()->getVPackOptions());
@@ -1503,10 +1559,19 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     // be single document operations. We need to have a lock here already.
     TRI_ASSERT(_methods.isLocked(&_collection, AccessMode::Type::WRITE));
 
+    if (auto r = this->prepareTimeTravelWrite(newValue); r.fail()) {
+      return r;
+    }
+
     std::pair<LocalDocumentId, RevisionId> lookupResult;
     Result res = _collection.getPhysical()->lookupKeyForUpdate(
         &_methods, key.stringView(), lookupResult);
     if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          _collection.timeTravelEnabled()) {
+        res =
+            this->diagnoseTimeTravelConflict(key.stringView(), std::move(res));
+      }
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
@@ -1620,10 +1685,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     *p++ = 0xf3;  // custom type for _id
 
     if (_methods.state()->isDBServer() && !_collection.system()) {
-      // db server in cluster, note: the local collections _statistics,
-      // _statisticsRaw and _statistics15 (which are the only system
-      // collections)
-      // must not be treated as shards but as local collections
+      // db server in cluster
       encoding::storeNumber<uint64_t>(p, _collection.planId().id(),
                                       sizeof(uint64_t));
     } else {
@@ -1789,7 +1851,7 @@ Methods::Methods(std::shared_ptr<Context> ctx, Options const& options)
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 
-  setUsername(ExecContext::current().user());
+  setUsername(std::string{ExecContext::current().user()});
 }
 
 Methods::Methods(std::shared_ptr<Context> ctx,
@@ -3051,7 +3113,10 @@ futures::Future<OperationResult> Methods::countCoordinatorHelper(
         // ourselves.
         DatabaseFeature& databaseFeature =
             vocbase().server().getFeature<DatabaseFeature>();
-        // post a refresh operation onto the scheduler, with LOW priority
+        // post a refresh operation onto the scheduler, with LOW priority.
+        // note: the scheduler captures the current ExecContext,
+        // so the refresh below runs on behalf of the user whose count
+        // request bumped the cache expiry.
         SchedulerFeature::SCHEDULER->queue(
             RequestLane::CLIENT_SLOW,
             [&databaseFeature, databaseName = collinfo->vocbase().name(),
@@ -3082,7 +3147,7 @@ futures::Future<OperationResult> Methods::countCoordinatorHelper(
                 if (res.fail()) {
                   co_return;
                 }
-                OperationOptions options(ExecContext::current());
+                OperationOptions options;
                 auto opResult = co_await trx->countAsync(
                     collectionName, CountType::kNormal, options);
                 if (opResult.result.fail()) {
@@ -3388,10 +3453,12 @@ Result Methods::resolveId(char const* handle, size_t length,
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
     TransactionCollection& transactionCollection,
-    std::shared_ptr<const std::vector<ServerID>> const& followerList,
+    std::shared_ptr<const std::vector<ServerID>> const followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation, std::string_view userName) {
-  auto const& collection = transactionCollection.collection();
+  // copy the shared_ptr to keep it alive across suspend/resume of this
+  // coroutine
+  auto const collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -3402,7 +3469,7 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
-  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+  TRI_IF_FAILURE("replicateOperations::skip") { co_return Result(); }
 
   // index cache refilling...
   bool const refill = std::invoke([&]() {
@@ -3459,12 +3526,11 @@ Future<Result> Methods::replicateOperations(
     // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
-    // TODO This shouldn't be synchronous
-    auto replicationRes = replicationFut.waitAndGet();
+    auto replicationRes = co_await std::move(replicationFut);
     if (replicationRes.fail()) {
-      return replicationRes.result();
+      co_return replicationRes.result();
     }
-    return performIntermediateCommitIfRequired(collection->id());
+    co_return co_await performIntermediateCommitIfRequired(collection->id());
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3622,148 +3688,146 @@ Future<Result> Methods::replicateOperations(
         std::format("Database {} deleted during transaction {}",
                     vocbase().name(), tid().id()));
   }
-  auto cb = [followerList, startTimeReplication, opName, collection, count,
-             vocbase = std::move(vocbasePtr), state = _state](
-                std::vector<futures::Try<network::Response>>&& responses)
-      -> futures::Future<Result> {
-    auto duration = std::chrono::steady_clock::now() - startTimeReplication;
-    auto& replMetrics =
-        vocbase->server().getFeature<ReplicationMetricsFeature>();
-    replMetrics.synchronousOpsTotal() += 1;
-    replMetrics.synchronousTimeTotal() +=
-        std::chrono::nanoseconds(duration).count();
 
-    bool didRefuse = false;
-    // We drop all followers that were not successful:
-    for (size_t i = 0; i < followerList->size(); ++i) {
-      network::Response const& resp = responses[i].get();
-      ServerID const& follower = (*followerList)[i];
+  // keep the shared_ptr alive
+  auto state = _state;
 
-      std::string replicationFailureReason;
-      if (resp.error == fuerte::Error::NoError) {
-        if (resp.statusCode() == fuerte::StatusAccepted ||
-            resp.statusCode() == fuerte::StatusCreated ||
-            resp.statusCode() == fuerte::StatusOK) {
-          bool found;
-          std::string const& errors = resp.response().header.metaByKey(
-              StaticStrings::ErrorCodes, found);
-          if (found) {
-            replicationFailureReason =
-                absl::StrCat("got error header from follower: ", errors);
-          }
+  auto responses = co_await futures::collectAll(std::move(futures));
 
-        } else {
-          auto r = resp.combinedResult();
+  auto duration = std::chrono::steady_clock::now() - startTimeReplication;
+  auto& replMetrics =
+      vocbasePtr->server().getFeature<ReplicationMetricsFeature>();
+  replMetrics.synchronousOpsTotal() += 1;
+  replMetrics.synchronousTimeTotal() +=
+      std::chrono::nanoseconds(duration).count();
 
-          // Special case if the follower has already aborted the transaction.
-          // This can happen if a query fails and causes the leaders to abort
-          // the transaction on the followers. However, if the followers have
-          // transactions that are shared with leaders of other shards and one
-          // of those leaders has not yet seen the error, then it will happily
-          // continue to replicate to that follower. But if the follower has
-          // already aborted the transaction, then it will reject the
-          // replication request. In this case we do not want to drop the
-          // follower, but simply return the error and abort our local
-          // transaction.
-          if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
-              state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
-            return r;
-          }
+  bool didRefuse = false;
+  // We drop all followers that were not successful:
+  for (size_t i = 0; i < followerList->size(); ++i) {
+    network::Response const& resp = responses[i].get();
+    ServerID const& follower = (*followerList)[i];
 
-          bool followerRefused =
-              r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
-          didRefuse = didRefuse || followerRefused;
-
+    std::string replicationFailureReason;
+    if (resp.error == fuerte::Error::NoError) {
+      if (resp.statusCode() == fuerte::StatusAccepted ||
+          resp.statusCode() == fuerte::StatusCreated ||
+          resp.statusCode() == fuerte::StatusOK) {
+        bool found;
+        std::string const& errors =
+            resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
+        if (found) {
           replicationFailureReason =
-              absl::StrCat("got error from follower: ", r.errorMessage());
-
-          if (followerRefused) {
-            ++vocbase->server()
-                  .getFeature<ClusterFeature>()
-                  .followersRefusedCounter();
-
-            LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-                << "synchronous replication of " << opName << " operation: "
-                << "follower " << follower << " for shard "
-                << collection->vocbase().name() << "/" << collection->name()
-                << " refused the operation: " << r.errorMessage();
-          }
+              absl::StrCat("got error header from follower: ", errors);
         }
+
       } else {
-        replicationFailureReason = "no response from follower";
-      }
+        auto r = resp.combinedResult();
 
-      TRI_IF_FAILURE("replicateOperationsDropFollower") {
-        replicationFailureReason = "intentional debug error";
-      }
+        // Special case if the follower has already aborted the transaction.
+        // This can happen if a query fails and causes the leaders to abort
+        // the transaction on the followers. However, if the followers have
+        // transactions that are shared with leaders of other shards and one
+        // of those leaders has not yet seen the error, then it will happily
+        // continue to replicate to that follower. But if the follower has
+        // already aborted the transaction, then it will reject the
+        // replication request. In this case we do not want to drop the
+        // follower, but simply return the error and abort our local
+        // transaction.
+        if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+            state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
+          co_return r;
+        }
 
-      if (!replicationFailureReason.empty()) {
-        if (!vocbase->server().isStopping()) {
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication of " << opName << " operation "
-              << "(" << count << " doc(s)): "
-              << "dropping follower " << follower << " for shard "
-              << collection->vocbase().name() << "/" << collection->name()
-              << ": failure reason: " << replicationFailureReason
-              << ", http response code: " << (int)resp.statusCode()
-              << ", error message: " << resp.combinedResult().errorMessage();
+        bool followerRefused =
+            r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        didRefuse = didRefuse || followerRefused;
 
-          Result res = collection->followers()->remove(follower);
-          // intentionally do NOT remove the follower from the list of
-          // known servers here. if we do, we will not be able to
-          // send the commit/abort to the follower later. However, we
-          // still need to send the commit/abort to the follower at
-          // transaction end, because the follower may be responsbile
-          // for _other_ shards as well.
-          // it does not matter if we later commit the writes of the shard
-          // from which we just removed the follower, because the follower
-          // is now dropped and will try to get back in sync anyway, so
-          // it will run the full shard synchronization process.
-          if (res.fail()) {
-            LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-                << "synchronous replication of " << opName << " operation: "
-                << "could not drop follower " << follower << " for shard "
-                << collection->vocbase().name() << "/" << collection->name()
-                << ": " << res.errorMessage();
+        replicationFailureReason =
+            absl::StrCat("got error from follower: ", r.errorMessage());
 
-            // Note: it is safe here to exit the loop early. We are losing the
-            // leadership here. No matter what happens next, the Current entry
-            // in the agency is rewritten and thus replication is restarted
-            // from the new leader. There is no need to keep trying to drop
-            // followers at this point.
+        if (followerRefused) {
+          ++vocbasePtr->server()
+                .getFeature<ClusterFeature>()
+                .followersRefusedCounter();
 
-            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-              // In this case, we know that we are not or no longer
-              // the leader for this shard. Therefore we need to
-              // send a code which let's the coordinator retry.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-            } else {
-              // In this case, some other error occurred and we
-              // most likely are still the proper leader, so
-              // the error needs to be reported and the local
-              // transaction must be rolled back.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-            }
-          }
-        } else {
-          LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
+          LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
               << "follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
-              << " stopped as we're shutting down";
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+              << " refused the operation: " << r.errorMessage();
         }
       }
+    } else {
+      replicationFailureReason = "no response from follower";
     }
 
-    if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-    } else {
-      // execute a deferred intermediate commit, if required.
-      return state->performIntermediateCommitIfRequired(collection->id());
+    TRI_IF_FAILURE("replicateOperationsDropFollower") {
+      replicationFailureReason = "intentional debug error";
     }
-  };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+
+    if (!replicationFailureReason.empty()) {
+      if (!vocbasePtr->server().isStopping()) {
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation "
+            << "(" << count << " doc(s)): "
+            << "dropping follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << ": failure reason: " << replicationFailureReason
+            << ", http response code: " << (int)resp.statusCode()
+            << ", error message: " << resp.combinedResult().errorMessage();
+
+        Result res = collection->followers()->remove(follower);
+        // intentionally do NOT remove the follower from the list of
+        // known servers here. if we do, we will not be able to
+        // send the commit/abort to the follower later. However, we
+        // still need to send the commit/abort to the follower at
+        // transaction end, because the follower may be responsbile
+        // for _other_ shards as well.
+        // it does not matter if we later commit the writes of the shard
+        // from which we just removed the follower, because the follower
+        // is now dropped and will try to get back in sync anyway, so
+        // it will run the full shard synchronization process.
+        if (res.fail()) {
+          LOG_TOPIC("db473", ERR, Logger::REPLICATION)
+              << "synchronous replication of " << opName << " operation: "
+              << "could not drop follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << ": " << res.errorMessage();
+
+          // Note: it is safe here to exit the loop early. We are losing the
+          // leadership here. No matter what happens next, the Current entry
+          // in the agency is rewritten and thus replication is restarted
+          // from the new leader. There is no need to keep trying to drop
+          // followers at this point.
+
+          if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+            // In this case, we know that we are not or no longer
+            // the leader for this shard. Therefore we need to
+            // send a code which let's the coordinator retry.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          } else {
+            // In this case, some other error occurred and we
+            // most likely are still the proper leader, so
+            // the error needs to be reported and the local
+            // transaction must be rolled back.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          }
+        }
+      } else {
+        LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation: "
+            << "follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << " stopped as we're shutting down";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+    }
+  }
+
+  if (didRefuse) {  // case (1), caller may abort this transaction
+    co_return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+  }
+  co_return Result{};
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
@@ -3777,7 +3841,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
 
   if (!_state->isReadOnlyTransaction()) {
     auto const& exec = ExecContext::current();
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled();
     if (exec.isCanceled() || cancelRW) {
       co_return Result(TRI_ERROR_ARANGO_READ_ONLY,
                        "server is in read-only mode");

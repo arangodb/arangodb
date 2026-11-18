@@ -37,11 +37,11 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillThread.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -76,7 +76,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
   // we want to be late in the startup sequence
   startsAfter<BootstrapFeature>();
   startsAfter<DatabaseFeature>();
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
 
   // default value must be at least 1, as the minimum allowed value is also 1.
   TRI_ASSERT(_options.maxConcurrentIndexFillTasks >= 1);
@@ -168,8 +168,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // get names of all databases
-  for (auto const& database :
-       methods::Databases::list(_databaseFeature, _clusterFeature, "")) {
+  for (auto const& database : methods::Databases::list(
+           _databaseFeature, _clusterFeature, /* onlyCurrentUser = */ false)) {
     try {
       DatabaseGuard guard(_databaseFeature, database);
 

@@ -57,18 +57,6 @@ void NetworkOptionsProvider::declareOptionsImpl(
       "communication.",
       new BooleanParameter(&opts.verifyHosts));
 
-  std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
-
-  // starting with 3.9, we will hard-code the protocol for cluster-internal
-  // communication
-  options
-      ->addOption(
-          "--network.protocol",
-          "The network protocol to use for cluster-internal communication.",
-          new DiscreteValuesParameter<StringParameter>(&opts.protocol, protos),
-          options::makeDefaultFlags(options::Flags::Uncommon))
-      .setDeprecatedIn(30900);
-
   options
       ->addOption("--network.max-requests-in-flight",
                   "The number of internal requests that can be in "

@@ -1,9 +1,9 @@
 # Arguments used through multiple build stages
-ARG COMPILER_VERSION=13
-ARG CLANG_VERSION=19
+ARG COMPILER_VERSION=14
+ARG CLANG_VERSION=22
 
 # First rebuild glibc with a special option and provide some .deb files:
-FROM ubuntu:24.04 AS glibcdebs
+FROM ubuntu:26.04 AS glibcdebs
 
 COPY ./static /static
 RUN /static/prepare.sh
@@ -12,18 +12,18 @@ RUN /static/rebuild_glibc.sh
 # Now prepare a standard Ubuntu image and install the provided .deb files
 # for glibc as a preparation:
 
-FROM ubuntu:24.04 AS prepare
+FROM ubuntu:26.04 AS prepare
 
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
     apt-get install -y \
       software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
-      vim exuberant-ctags gdb fish psmisc sudo debhelper debconf jq libdb-dev \
-      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
+      vim exuberant-ctags gdb fish psmisc sudo jq libdb-dev \
+      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
-      rpm debugedit dwz elfutils clamav cpio \
+      clamav \
   && rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 COPY --from=glibcdebs /root/debs /debs
@@ -31,7 +31,7 @@ RUN dpkg -i /debs/*.deb
 
 # Now build V8:
 
-#FROM ubuntu:24.04 AS v81
+#FROM ubuntu:26.04 AS v81
 #
 #COPY ./tools/build_v8.sh /tools/build_v8.sh
 #RUN /tools/build_v8.sh
@@ -42,7 +42,7 @@ RUN dpkg -i /debs/*.deb
 #RUN /tools/install_v8.sh
 
 # Build OpenMP static library
-FROM ubuntu:24.04 AS openmp
+FROM ubuntu:26.04 AS openmp
 
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
@@ -74,7 +74,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch 
+RUN git apply /diff_llvm.patch
 
 WORKDIR build
 
@@ -85,40 +85,19 @@ RUN cmake -G Ninja -DLLVM_ENABLE_PROJECTS="clang;openmp" -DCMAKE_C_COMPILER=clan
   mkdir -p /opt/omp && cp ./lib/libomp.so.5 /opt/omp/libomp.a
 
 
-FROM prepare AS nodejs
-# yarn for UI build:
-ARG NODE_VERSION="22.22.3"
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-  export NVM_DIR="$HOME/.nvm" &&\
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" && \
-  nvm install ${NODE_VERSION} && \
-  nvm use ${NODE_VERSION} && \
-  node --version && \
-  npm install -g yarn && \
-  ln -s /root/.nvm/versions/node/v${NODE_VERSION}/bin/* /usr/local/bin/
-
-
-FROM nodejs AS node_modules
-
-RUN cd / ; git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb && \
-  cd /arangodb && git sparse-checkout set --no-cone js/apps/system/_admin/aardvark/APP/react && \
-  git checkout && \
-  cd /arangodb/js/apps/system/_admin/aardvark/APP/react && yarn install && mv node_modules / && \
-  cd / && rm -rf /arangodb && tar -cvJf /root/node_modules.tar.xz node_modules && rm -rf /node_modules
 
 # Finally, build the actual build image based on the above preparation:
 
-FROM nodejs
+FROM prepare
 
 LABEL org.opencontainers.image.authors="Max Neunhoeffer <max@arango.ai>"
 
 ARG ARCH="x86_64"
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
-ARG SCCACHE_VERSION="0.10.0"
+ARG SCCACHE_VERSION="0.19.0"
 
-# We provide gcc 13.2.0 as well as clang 19 (latest) from LLVM
+# We provide gcc 14.3.0 as well as clang 22 (latest) from LLVM
 
 ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
@@ -132,11 +111,27 @@ RUN curl -o- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.g
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update --fix-missing && \
-  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
+  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} libgfortran-${COMPILER_VERSION}-dev \
     clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
     libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
-    libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev findutils && \
+    libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev findutils clang-tidy-${CLANG_VERSION} && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
+
+# 26.04's default GCC (pulled in by build-essential) is 15, and clang uses the
+# newest GCC installation it finds for libstdc++, libgcc and libgfortran. Pin it
+# to GCC ${COMPILER_VERSION}, the one this image installs libgfortran for, via
+# clang's default config files next to the clang binary; fail if it doesn't take.
+RUN GCC_DIR="$(dirname "$(gcc-${COMPILER_VERSION} -print-libgcc-file-name)")" && \
+    CLANG_DIR="$(dirname "$(readlink -f "$(command -v clang-${CLANG_VERSION})")")" && \
+    for driver in clang clang++; do \
+      echo "--gcc-install-dir=${GCC_DIR}" > "${CLANG_DIR}/${driver}.cfg"; \
+    done && \
+    clang++-${CLANG_VERSION} -v -x c++ /dev/null -fsyntax-only 2>&1 | \
+      grep -q "Selected GCC installation: ${GCC_DIR}$"
+
+# make clang-tidy-VERSION available as clang-tidy standalone
+RUN ln -s $(which clang-tidy-${CLANG_VERSION}) /usr/local/bin/clang-tidy
+RUN ln -s $(which run-clang-tidy-${CLANG_VERSION}.py) /usr/local/bin/run-clang-tidy.py
 
 # sccache for cloud compiler cache:
 
@@ -148,14 +143,14 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
 #COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
 
 # Fetch libomp
-COPY --from=openmp /opt/omp /opt/omp 
+COPY --from=openmp /opt/omp /opt/omp
 
-# Build openssl and openldap libraries in specific versions and with static
+# Build the openssl library in a specific version and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "7" ]
+RUN [ "/tools/install.sh", "3.5", "9" ]
 
 COPY ./scripts /scripts
 
@@ -169,7 +164,6 @@ RUN LC_ALL="C" update-ccache-symlinks
 
 RUN git config --global --add safe.directory '*'
 
-COPY --from=node_modules /root/node_modules.tar.xz /node_modules.tar.xz
 
 RUN pip3 install awscli py7zr psutil cppcheck-junit lcov_cobertura --break-system-packages
 

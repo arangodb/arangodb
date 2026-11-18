@@ -27,7 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
@@ -44,6 +44,7 @@ RestDatabaseHandler::RestDatabaseHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/database (prefix)
 RestStatus RestDatabaseHandler::execute() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
@@ -59,6 +60,22 @@ RestStatus RestDatabaseHandler::execute() {
 
     return RestStatus::DONE;
   }
+}
+
+async<Result> RestDatabaseHandler::checkDatabaseAccess() const {
+  constexpr std::string_view pathApiDatabaseUser("/_api/database/user");
+
+  auto const& path = _request->requestPath();
+
+  if (_request->authenticated() && path == pathApiDatabaseUser) {
+    // This is the route the UI uses to list the databases a user has access to,
+    // directly after login to bring up a dialog to let the user choose a
+    // database. Therefore, we must allow this, even if the user has no access
+    // to the _system database.
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkDatabaseAccess();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -79,14 +96,18 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(server(), std::string());
+        names =
+            methods::Databases::list(server(), /* onlyCurrentUser = */ false);
       }
     } else if (suffixes[0] == "user") {
-      if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
-        res.reset(TRI_ERROR_FORBIDDEN);
-      } else {
-        names = methods::Databases::list(server(), _request->user());
-      }
+      // When we get here, we usually are either authenticated or authentication
+      // is disabled, so no need to check further.
+      // Earlier versions than 3.12.10 however, did an additional check for
+      // the case that --server.authentication-unix-sockets=false
+      // and some request comes in via the unix domain socket. We have decided
+      // to get rid of this check here, since the code without "user" suffix
+      // has never been separately checked.
+      names = methods::Databases::list(server(), /* onlyCurrentUser = */ true);
     }
 
     // return database names in sorted order
@@ -148,7 +169,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  auto& engine = server().getFeature<StorageEngine>();
   Result res = methods::Databases::create(server(), engine, _context, dbName,
                                           users, options);
   if (res.ok()) {
@@ -182,6 +203,7 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
+
   Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {

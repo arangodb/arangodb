@@ -29,12 +29,15 @@
 #include "Assertions/ProdAssert.h"
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/IDatabaseBootstrap.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "VocBase/Properties/CollectionStorageProperties.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -45,12 +48,14 @@ using namespace arangodb;
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
-                             std::type_index registration,
-                             std::unique_ptr<IndexFactory>&& indexFactory,
-                             IDatabaseProvider& databaseProvider)
-    : ApplicationFeature{server, registration, featureName},
+                             IDatabaseProvider& databaseProvider,
+                             IDatabaseBootstrap& databaseBootstrap,
+                             IndexFactoryCreator createIndexFactory)
+    : ApplicationFeature{server, typeid(StorageEngine), featureName},
       _databaseProvider(databaseProvider),
-      _indexFactory(std::move(indexFactory)),
+      _databaseBootstrap(databaseBootstrap),
+      _indexTypeCatalog(std::make_unique<IndexTypeCatalog>(server)),
+      _indexFactory(createIndexFactory(*_indexTypeCatalog)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
@@ -64,8 +69,10 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<ViewTypesFeature>();
 }
 
-void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
-                                                  VPackSlice) {}
+uint64_t StorageEngine::resolveObjectId(
+    CollectionStorageProperties const& storage) const {
+  return storage.objectId;
+}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
@@ -80,9 +87,7 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
-bool StorageEngine::inRecovery() {
-  return recoveryState() < RecoveryState::DONE;
-}
+bool StorageEngine::isReady() { return engineState() == EngineState::kRunning; }
 
 void StorageEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,
@@ -93,11 +98,27 @@ void StorageEngine::scheduleFullIndexRefill(std::string const& database,
 
 void StorageEngine::syncIndexCaches() {}
 
+StorageEngine::~StorageEngine() = default;
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
   TRI_ASSERT(_indexFactory.get() != nullptr);
   return *_indexFactory;
+}
+
+void StorageEngine::setLinkCreator(IndexFactory::LinkCreator creator) {
+  TRI_ASSERT(_indexFactory.get() != nullptr);
+  _indexFactory->setLinkCreator(std::move(creator));
+}
+
+IndexTypeCatalog const& StorageEngine::indexTypeCatalog() const noexcept {
+  return *_indexTypeCatalog;
+}
+
+Result StorageEngine::registerIndexDefinition(
+    std::string_view name, std::unique_ptr<IndexDefinition> definition) {
+  return _indexTypeCatalog->add(name, std::move(definition));
 }
 
 void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
@@ -153,12 +174,6 @@ void StorageEngine::registerReplicatedState(
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
-
-void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
-
-#ifdef USE_V8
-void StorageEngine::addV8Functions() {}
-#endif
 
 TransactionStatistics& StorageEngine::transactionStatistics() noexcept {
   ADB_PROD_ASSERT(_transactionStatistics != nullptr)

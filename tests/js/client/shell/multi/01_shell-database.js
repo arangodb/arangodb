@@ -253,45 +253,6 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-    testExecuteTransaction1 : function () {
-      if (!IM.options.skipServerJS) {
-        var result = internal.db._executeTransaction({
-          collections: { },
-          action: function (params) {
-            return params.v1 + params.v2;
-          },
-          params: {
-            "v1": 1,
-            "v2": 2
-          }
-        });
-
-        assertEqual(3, result);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-    testExecuteTransaction2 : function () {
-      if (!IM.options.skipServerJS) {
-        var result = internal.db._executeTransaction({
-          collections: { },
-          action: "function () { return params.v1[0] - params.v1[1]; }",
-          params: {
-            "v1": [ 10, 4 ],
-          }
-        });
-
-        assertEqual(6, result);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test _databases function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -814,9 +775,73 @@ function DatabaseWriteConcernSuite () {
   };
 }
 
+function DatabaseBuildingSuite () {
+  const agency = IM.agencyMgr;
+  const coordinators = IM.arangods.filter(server => server.instanceRole === 'coordinator');
+  const dn = "UnitTestsDatabaseCreationSuite";
+  const databasePath = "Plan/Databases/" + dn;
+  const collectionsPath = "Plan/Collections/" + dn;
+
+  function setPlanDatabase(entry) {
+    agency.write([[{
+      ['/arango/' + databasePath]: {op: 'set', new: entry},
+      '/arango/Plan/Version': {op: 'increment'}
+    }]]);
+  }
+
+  return {
+    tearDown : function () {
+      try {
+        db._dropDatabase(dn);
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+    testDeleteBuildingDatabase : function () {
+      const coordinator = coordinators[0];
+      coordinator.toThisInstance(() => {
+        assertTrue(db._createDatabase(dn));
+        const original = agency.getAt(databasePath);
+        const collections = agency.getAt(collectionsPath);
+        const building = Object.assign({}, original, {
+          isBuilding: true,
+          coordinator: coordinator.id,
+          coordinatorRebootId: agency.getAt('Current/ServersKnown/' + coordinator.id + '/rebootId')
+        });
+
+        try {
+          // Mark an already completed database with `isBuilding`.
+          setPlanDatabase(building);
+          assertEqual(building, agency.getAt(databasePath));
+          let error;
+          try {
+            db._dropDatabase(dn);
+          } catch (err) {
+            error = err;
+          }
+          assertTrue(error !== undefined, "Dropping a building database must fail");
+          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code, error.errorNum);
+          assertEqual(building, agency.getAt(databasePath));
+          assertEqual(collections, agency.getAt(collectionsPath));
+        } finally {
+          // Don't restore the original database entry if it was deleted.
+          if (agency.getAt(databasePath) !== undefined) {
+            setPlanDatabase(original);
+          }
+        }
+
+        assertTrue(db._dropDatabase(dn));
+        assertEqual(undefined, agency.getAt(databasePath));
+      });
+    },
+  };
+}
+
 jsunity.run(DatabaseSuite);
 if (internal.isCluster()) {
   jsunity.run(DatabaseWriteConcernSuite);
+  jsunity.run(DatabaseBuildingSuite);
 }
 
 return jsunity.done();

@@ -67,10 +67,24 @@ RestDocumentStateHandler::RestDocumentStateHandler(
   _options.customTypeHandler = _customTypeHandler.get();
 }
 
+// Mounted at /_api/document-state (prefix, only when replication2 is enabled
+// and in cluster mode)
 RestStatus RestDocumentStateHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+  auto const type = _request->requestType();
+  if (type == RequestType::GET) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminReadReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+  } else {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminWriteReplicatedLog{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
   }
 
   auto methods = replication2::DocumentStateMethods::createInstance(_vocbase);

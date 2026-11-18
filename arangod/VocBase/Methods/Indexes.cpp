@@ -29,16 +29,11 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
@@ -48,17 +43,11 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "Transaction/V8Context.h"
-#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
-#ifdef USE_V8
-#include "V8Server/v8-collection.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -318,8 +307,7 @@ futures::Future<arangodb::Result> Indexes::getAll(
               arangodb::velocypack::Value(id));
 
     auto type = index.get(arangodb::StaticStrings::IndexType);
-    if (mergeEdgeIdxs &&
-        Index::type(type.copyString()) == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (mergeEdgeIdxs && Index::type(type.copyString()) == IndexType::Edge) {
       VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
 
@@ -489,16 +477,21 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   });
 
-  // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    auth::Level lvl = exec.databaseAuthLevel();
-    bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
-    bool canRead = exec.canUseCollection(collection.name(), auth::Level::RO);
-    if ((create && (lvl != auth::Level::RW || !canModify)) ||
-        (lvl == auth::Level::NONE || !canRead)) {
+  if (create) {
+    if (auto r =
+            exec.canCreateIndex(collection.vocbase().name(), collection.name());
+        r.fail()) {
       ensureIndexResult = TRI_ERROR_FORBIDDEN;
-      co_return Result(TRI_ERROR_FORBIDDEN);
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+    }
+  } else {
+    if (auto r = exec.canUseCollection(collection.vocbase().name(),
+                                       collection.name(), AccessLevel::Read);
+        r.fail()) {
+      // Needed for backwards compatibility!
+      ensureIndexResult = TRI_ERROR_FORBIDDEN;
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
     }
   }
 
@@ -538,35 +531,53 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
       auto isUnique =
           indexDef.get(arangodb::StaticStrings::IndexUnique).isTrue();
 
-      /* the following combinations of shardKeys and indexKeys are allowed/not
-       allowed:
-
-       shardKeys     indexKeys
-       a             a            ok
-       a             b        not ok
-       a             a b          ok
-       a b             a      not ok
-       a b             b      not ok
-       a b           a b          ok
-       a b           a b c        ok
-       a b c           a b    not ok
-       a b c         a b c        ok
-       */
-
-      if (isUnique && collection.numberOfShards() > 1) {
-        // unique index, now check if fields and shard keys match
-
-        std::vector<std::string> const& shardKeys = collection.shardKeys();
+      if (isUnique) {
         std::unordered_set<std::string_view> indexKeys =
             extractRelevantKeysForSharding(indexDef);
 
-        // all shard-keys must be covered by the index
-        for (auto& it : shardKeys) {
-          if (indexKeys.find(it) == indexKeys.end()) {
+        if (collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) {
+          // A unique index can
+          // only be enforced if the indexed attributes pin a document
+          // to a single shard in each of them. That holds for _key (and hence
+          // _id), which encodes both smart values, and for _from and _to
+          // together.
+          if (!indexKeys.contains(StaticStrings::KeyString) &&
+              !indexKeys.contains(StaticStrings::IdString) &&
+              !(indexKeys.contains(StaticStrings::FromString) &&
+                indexKeys.contains(StaticStrings::ToString))) {
             ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
             co_return Result(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                             absl::StrCat("shard key '", it,
-                                          "' must be present in unique index"));
+                             "a unique index on a smart edge collection must "
+                             "contain either '_key', '_id', or both '_from' "
+                             "and '_to' in its fields");
+          }
+        } else if (collection.numberOfShards() > 1) {
+          // unique index, now check if fields and shard keys match
+
+          /* the following combinations of shardKeys and indexKeys are
+           allowed/not allowed:
+
+           shardKeys     indexKeys
+           a             a            ok
+           a             b        not ok
+           a             a b          ok
+           a b             a      not ok
+           a b             b      not ok
+           a b           a b          ok
+           a b           a b c        ok
+           a b c           a b    not ok
+           a b c         a b c        ok
+           */
+
+          // all shard-keys must be covered by the index
+          for (auto const& it : collection.shardKeys()) {
+            if (!indexKeys.contains(it)) {
+              ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
+              co_return Result(
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  absl::StrCat("shard key '", it,
+                               "' must be present in unique index"));
+            }
           }
         }
       }
@@ -635,7 +646,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
 }
 
 futures::Future<arangodb::Result> Indexes::createIndex(
-    LogicalCollection& coll, Index::IndexType type,
+    LogicalCollection& coll, IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
     bool estimates) {
   VPackBuilder props;
@@ -752,13 +763,18 @@ auto constexpr getHandle = [](LogicalCollection& collection,
 futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
                                                 velocypack::Slice indexArg) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        TRI_ERROR_FORBIDDEN);
-      co_return {TRI_ERROR_FORBIDDEN};
-    }
+  if (exec.canUseDatabase(collection.vocbase().name(),
+                          DatabaseAccessLevel::Write)
+          .fail() ||
+      exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                            AccessLevel::WriteMeta)
+          .fail()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      TRI_ERROR_FORBIDDEN);
+    co_return {TRI_ERROR_FORBIDDEN,
+               absl::StrCat("insufficient permissions (meta data) to drop "
+                            "index on collection '",
+                            collection.name(), "'")};
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -779,13 +795,19 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
 futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
                                                 IndexId indexId) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        TRI_ERROR_FORBIDDEN);
-      co_return {TRI_ERROR_FORBIDDEN};
-    }
+  // FIXME: canUseCollection
+  if (exec.canUseDatabase(collection.vocbase().name(),
+                          DatabaseAccessLevel::Write)
+          .fail() ||
+      exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                            AccessLevel::WriteMeta)
+          .fail()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      TRI_ERROR_FORBIDDEN);
+    co_return {TRI_ERROR_FORBIDDEN,
+               absl::StrCat("insufficient permissions (meta data) to drop "
+                            "index on collection '",
+                            collection.name(), "'")};
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -824,16 +846,9 @@ std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
   auto origin = transaction::OperationOriginREST{::moduleName};
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
-#ifdef USE_V8
-  return std::make_unique<SingleCollectionTransaction>(
-      transaction::V8Context::createWhenRequired(collection.vocbase(), origin,
-                                                 false),
-      collection, AccessMode::Type::EXCLUSIVE, trxOpts);
-#else
   return std::make_unique<SingleCollectionTransaction>(
       transaction::StandaloneContext::create(collection.vocbase(), origin),
       collection, AccessMode::Type::EXCLUSIVE, trxOpts);
-#endif
 }
 
 template<typename IndexSpec>
@@ -852,13 +867,13 @@ requires std::is_same_v<IndexSpec, IndexId> or
   auto trx = createTrxForDrop(col);
 
   auto beginRes = co_await trx->beginAsync();
-  auto& collection = *trx->documentCollection();
 
   if (!beginRes.ok()) {
-    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+    events::DropIndex(col.vocbase().name(), col.name(), "",
                       beginRes.errorNumber());
     co_return beginRes;
   }
+  auto& collection = *trx->documentCollection();
 
   auto indexIdRes = co_await std::invoke(
       overload{

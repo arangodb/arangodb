@@ -27,20 +27,22 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <absl/strings/escaping.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cstring>
 
 #include <llhttp.h>
@@ -78,7 +80,7 @@ struct H2Response : public HttpResponse {
       : HttpResponse(code, mid, nullptr,
                      rest::ResponseCompressionType::kUnset) {}
 
-  RequestStatistics::Item statistics;
+  RequestTimingData timingData;
 };
 
 template<SocketType T>
@@ -93,7 +95,10 @@ template<SocketType T>
   }
 
   int32_t const sid = frame->hd.stream_id;
-  me->acquireRequestStatistics(sid).SET_READ_START(TRI_microtime());
+  auto& td = me->acquireTimingData(sid);
+  if (td.readStart == RequestTimingData::time_point{}) {
+    td.readStart = RequestTimingData::now();
+  }
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
@@ -174,7 +179,7 @@ template<SocketType T>
             << me;
 
         Stream* strm = me->findStream(sid);
-        if (strm) {
+        if (strm && !strm->bodyLimitExceeded) {
           me->processStream(*strm);
         }
       }
@@ -198,6 +203,24 @@ template<SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
+    // auth only runs at END_STREAM, so cap the body as it arrives
+    size_t maxBodySize = CommTask::MaximalBodySize;
+    TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {
+      // lets tests trigger the limit without sending a 1GB body
+      maxBodySize = 16;
+    }
+    bool const overLimit = strm->bodySize + len > maxBodySize ||
+                           me->_bufferedBodyBytes + len > maxBodySize;
+    if (overLimit) {
+      LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the allowed size, resetting the stream";
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    }
+    strm->bodySize += len;
+    me->_bufferedBodyBytes += len;
     strm->request->appendBody(reinterpret_cast<char const*>(data), len);
   }
 
@@ -206,6 +229,15 @@ template<SocketType T>
   // the caller of this function is a C function, which doesn't know
   // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
+}
+
+template<SocketType T>
+void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
+  if (strm.bodySize != 0) {
+    TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
+    _bufferedBodyBytes -= strm.bodySize;
+    strm.bodySize = 0;
+  }
 }
 
 template<SocketType T>
@@ -220,9 +252,12 @@ template<SocketType T>
     if (strm.response) {
       auto* h2Response = dynamic_cast<H2Response*>(strm.response.get());
       if (h2Response != nullptr) {
-        h2Response->statistics.SET_WRITE_END();
+        auto& td = h2Response->timingData;
+        td.writeEnd = RequestTimingData::now();
+        me->finalizeTimingData(h2Response->timingData);
       }
     }
+    me->releaseBufferedBody(strm);
     me->_streams.erase(it);
   }
 
@@ -276,7 +311,7 @@ template<SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  this->_connectionStatistics.SET_HTTP();
+  this->_connectionHttp = this->_generalServerFeature.addHttpConnection();
   this->_generalServerFeature.countHttp2Connection();
   initNgHttp2Session();
 }
@@ -288,6 +323,10 @@ H2CommTask<T>::~H2CommTask() noexcept {
   if (!_streams.empty()) {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
+    // nghttp2_session_del does not fire on_stream_close, so release the rest
+    for (auto& [sid, strm] : _streams) {
+      releaseBufferedBody(strm);
+    }
   }
   HttpResponse* res = nullptr;
   while (_responses.pop(res)) {
@@ -475,20 +514,19 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   size_t parsedBytes = 0;
-  for (auto const& buffer : this->_protocol->buffer.data()) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
+  auto const buffer = this->_protocol->buffer.data();
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
-      LOG_TOPIC("43942", INFO, Logger::REQUESTS)
-          << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
-          << rv << ")";
-      this->close(ec);
-      return false;  // stop read loop
-    }
-
-    parsedBytes += static_cast<size_t>(rv);
+  auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+  if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
+    LOG_TOPIC("43942", INFO, Logger::REQUESTS)
+        << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
+        << rv << ")";
+    this->close(ec);
+    return false;  // stop read loop
   }
+
+  parsedBytes += static_cast<size_t>(rv);
 
   TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
   // Remove consumed data from receive buffer.
@@ -580,6 +618,8 @@ void H2CommTask<T>::processStream(Stream& stream) {
     stream.mustSendAuthHeader = true;
   }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+  // release before the try, so a throw during dispatch still frees the budget
+  releaseBufferedBody(stream);
 
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
@@ -635,11 +675,11 @@ void H2CommTask<T>::processRequest(Stream& stream,
   // store origin header for later use
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
-  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
-  stat.SET_REQUEST_TYPE(req->requestType());
-  stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
-  stat.SET_READ_END();
-  stat.SET_WRITE_START();
+  auto& td = this->timingData(messageId);
+  td.requestType = req->requestType();
+  td.receivedBytes += stream.headerBuffSize + req->body().size();
+  td.readEnd = RequestTimingData::now();
+  td.writeStart = RequestTimingData::now();
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -654,7 +694,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    stat.SET_SUPERUSER();
+    td.superuser = true;
   }
 
   // first check whether we allow the request to continue
@@ -665,8 +705,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*req); res.fail()) {
-    this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                            1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
+    this->sendErrorResponse(this->contentEncodingErrorCode(res),
+                            req->contentTypeResponse(), messageId,
+                            res.errorNumber(), res.errorMessage());
     return;
   }
 
@@ -679,7 +720,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
 template<SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
-                                 RequestStatistics::Item stat) {
+                                 RequestTimingData data) {
   DTraceH2CommTaskSendResponse((size_t)this);
 
   unsigned n = _numProcessing.fetch_sub(1, std::memory_order_relaxed);
@@ -716,12 +757,12 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       //      <<
       //      GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
       << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode())
-      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
-      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
+      << "\"," << Logger::FIXED(data.elapsedSinceReadStart(), 6) << ","
+      << Logger::FIXED(data.elapsedWhileQueued(), 6);
 
   auto* h2Response = dynamic_cast<H2Response*>(tmp);
   if (h2Response != nullptr) {
-    h2Response->statistics = std::move(stat);
+    h2Response->timingData = std::move(data);
   }
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max
@@ -774,7 +815,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
           << "response with message id '" << streamId
           << "' has no H2 stream on server";
-      return;
+      continue;  // Need to keep going for the rest of the responses, since
+                 // they might be for other streams!
     }
     strm->response = std::move(guard);
     auto& res = *response;
@@ -908,7 +950,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     // try if upcasting works, and only if so, treat it as HTTP/2.
     auto* h2Response = dynamic_cast<H2Response*>(&res);
     if (h2Response != nullptr) {
-      h2Response->statistics.ADD_SENT_BYTES(res.bodySize());
+      h2Response->timingData.sentBytes += res.bodySize();
     }
 
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
@@ -1044,6 +1086,5 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-template class arangodb::rest::H2CommTask<SocketType::Unix>;
 
 }  // namespace arangodb::rest

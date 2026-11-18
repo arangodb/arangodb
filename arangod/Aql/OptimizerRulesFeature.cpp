@@ -57,6 +57,7 @@
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/ReduceExtractionToProjection.h"
 #include "Aql/Optimizer/Rule/RemoveCollectVariables.h"
 #include "Aql/Optimizer/Rule/RemoveDataModificationOutVariables.h"
 #include "Aql/Optimizer/Rule/RemoveFiltersCoveredByIndex.h"
@@ -64,6 +65,7 @@
 #include "Aql/Optimizer/Rule/RemoveRedundantCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantOr.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantSorts.h"
+#include "Aql/Optimizer/Rule/RemoveSortRand.h"
 #include "Aql/Optimizer/Rule/RemoveTraversalPathVariable.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
@@ -73,7 +75,6 @@
 #include "Aql/Optimizer/Rule/ReplaceEqualAttributeAccess.h"
 #include "Aql/Optimizer/Rule/ReplaceLastAccessOnGraphPath.h"
 #include "Aql/Optimizer/Rule/ReplaceLikeWithRange.h"
-#include "Aql/Optimizer/Rule/ReplaceNearWithinFulltext.h"
 #include "Aql/Optimizer/Rule/ReplaceOrWithIn.h"
 #include "Aql/Optimizer/Rule/RestrictToSingleShard.h"
 #include "Aql/Optimizer/Rule/ScatterInCluster.h"
@@ -85,6 +86,7 @@
 #include "Aql/Optimizer/Rule/SubstituteClusterMultipleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/SubstituteClusterSingleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
+#include "Aql/Optimizer/Rule/UpgradeScatterToDistribute.h"
 #include "Aql/Optimizer/Rule/UseIndexForCollect.h"
 #include "Aql/Optimizer/Rule/UseIndexForSort.h"
 #include "Aql/Optimizer/Rule/UseIndexes.h"
@@ -97,6 +99,7 @@
 #include "Enterprise/Aql/Optimizer/Rule/RemoveSatelliteJoins.h"
 #include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
 #include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/SmartJoinSmartEdge.h"
 #include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
 #include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
 #include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
@@ -104,13 +107,11 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Optimizer/Rule/OptimizeJoinOrder.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
 
@@ -130,12 +131,7 @@ OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server,
     : application_features::ApplicationFeature{server, *this},
       _options(std::move(options)) {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
-
   startsAfter<AqlFeature>();
 }
 
@@ -214,12 +210,6 @@ void OptimizerRulesFeature::addRules() {
   // lower level values mean earlier rule execution
 
   // note that levels must be unique
-
-  registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
-               OptimizerRule::replaceNearWithinFulltext,
-               OptimizerRule::makeFlags(),
-               R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
   registerRule("replace-like-with-range", replaceLikeWithRangeRule,
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
@@ -328,6 +318,17 @@ optimizations.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
+
+  // Constructs the join graph only for now. Does not reorder joins yet.
+  // Disabled by default. Can be enabled via
+  // `{ optimizer: { rules: ["+optimize-join-order"] } }`
+  registerRule(
+      "optimize-join-order", optimizeJoinOrder,
+      OptimizerRule::optimizeJoinOrder,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Detect adjacent `FOR` loops that are joined by equijoin conditions and
+build the corresponding join graph, as a basis for (in-future) cost-based join reordering.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.
@@ -676,6 +677,14 @@ down calculations to a DB-Server.)");
                R"(Reduce inter-node joins to server-local joins.
 This rule is only employed when joining two collections with identical sharding
 setup via their shard keys.)");
+
+  registerRule("smart-join-smart-edge", smartJoinSmartEdgeRule,
+               OptimizerRule::smartJoinSmartEdgeRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly),
+               R"(Similar to smart-joins, reduce inter-node joins to
+server-local joins using knowledge about smart edge data distribution.)");
 #endif
 
   // distribute operations in cluster
@@ -684,6 +693,14 @@ setup via their shard keys.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
 and `RemoteNode` are inserted into a distributed query plan.)");
+
+  // distribute operations in cluster
+  registerRule(
+      "upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
+      OptimizerRule::upgradeScatterToDistributeRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace ScatterNodes by DistributeNodes together with a calculation of the distribute key if the key is known.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
@@ -793,8 +810,8 @@ data modification node) only affects a single shard.
 
 This optimization can be applied for queries that access a collection only once
 in the query, and that do not use traversals, shortest path queries, and that
-do not access collection data dynamically using the `DOCUMENT()`, `FULLTEXT()`,
-`NEAR()` or `WITHIN()` AQL functions. Additionally, the optimizer can only
+do not access collection data dynamically using the `DOCUMENT()`
+AQL functions. Additionally, the optimizer can only
 apply this optimization if it can safely determine the values of all the
 collection's shard keys from the query, and when the shard keys are covered by
 a single index (this is always true if the shard key is the default `_key`).)");
@@ -949,9 +966,6 @@ to perform a real search repeatedly if the results can be cached in a bitset.)")
 referenced in the query. This can be a consequence of applying other
 optimizations)");
 
-  // add the storage-engine specific rules
-  addStorageEngineRules();
-
   // Splice subqueries
   //
   // ***CAUTION***
@@ -1001,6 +1015,32 @@ the index.)");
 next batch while processing the current batch, allowing parts of the query to
 run in parallel. This is only possible for certain operations in a query.)");
 
+  // remove SORT RAND() LIMIT 1 if appropriate
+  registerRule(
+      "remove-sort-rand-limit-1", removeSortRandRule,
+      OptimizerRule::removeSortRandRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
+into `EnumerateCollectionNode`.
+
+The RocksDB storage engine doesn't allow to seek random documents efficiently.
+This optimization picks a pseudo-random document based on a limited number of
+seeks within the collection's key range, selecting a random start key in the
+key range, and then going a few steps before or after that.)");
+
+  // simplify an EnumerationCollectionNode that fetches an entire document to a
+  // projection of this document
+  registerRule(
+      "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
+      OptimizerRule::reduceExtractionToProjectionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Modify `EnumerationCollectionNode` and `IndexNode` that would have
+extracted entire documents to only return a projection of each document.
+
+Projections are limited to at most 5 different document attributes by default.
+The maximum number of projected attributes can optionally be adjusted by
+setting the `maxProjections` hint for an AQL `FOR` operation.)");
+
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
             [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
@@ -1011,11 +1051,6 @@ run in parallel. This is only possible for certain operations in a query.)");
   // make the rules database read-only from now on
   _fixed = true;
 #endif
-}
-
-void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
-  engine.addOptimizerRules(*this);
 }
 
 /// @brief translate a list of rule ids into rule names

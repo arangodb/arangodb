@@ -11,5 +11,3 @@
 /etc/ @arangodb/team-qa
 /tests/test-definitions.txt @arangodb/team-qa
 
-# `team-frontend` ownership
-/js/apps/system/_admin/aardvark/APP/ @arangodb/team-frontend

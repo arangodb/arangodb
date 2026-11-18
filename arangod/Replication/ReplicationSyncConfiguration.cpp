@@ -69,7 +69,6 @@ ReplicationSyncConfiguration::ReplicationSyncConfiguration(
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
-      _includeFoxxQueues(false),
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {}
@@ -99,7 +98,6 @@ ReplicationSyncConfiguration& ReplicationSyncConfiguration::operator=(
   _adaptivePolling = other._adaptivePolling;
   _autoResync = other._autoResync;
   _includeSystem = other._includeSystem;
-  _includeFoxxQueues = other._includeFoxxQueues;
   _incremental = other._incremental;
   _verbose = other._verbose;
   _restrictType = other._restrictType;
@@ -136,7 +134,6 @@ void ReplicationSyncConfiguration::reset() {
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
-  _includeFoxxQueues = false;
   _incremental = false;
   _verbose = false;
   _restrictType = RestrictType::None;
@@ -254,11 +251,6 @@ ReplicationSyncConfiguration ReplicationSyncConfiguration::fromVelocyPack(
   value = slice.get("includeSystem");
   if (value.isBoolean()) {
     configuration._includeSystem = value.getBoolean();
-  }
-
-  value = slice.get("includeFoxxQueues");
-  if (value.isBoolean()) {
-    configuration._includeFoxxQueues = value.getBoolean();
   }
 
   value = slice.get("verbose");

@@ -53,6 +53,7 @@ RestImportHandler::RestImportHandler(
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
+// Mounted at /_api/import (prefix)
 auto RestImportHandler::executeAsync() -> futures::Future<futures::Unit> {
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;
@@ -374,7 +375,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromJson(
   }
 
   if (overwrite) {
-    OperationOptions truncateOpts(_context);
+    OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
     std::ignore = co_await trx.truncateAsync(collectionName, truncateOpts);
@@ -786,7 +787,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
   }
 
   if (overwrite) {
-    OperationOptions truncateOpts(_context);
+    OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
     std::ignore = co_await trx.truncateAsync(collectionName, truncateOpts);
@@ -1092,7 +1093,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
 }
 
 OperationOptions RestImportHandler::buildOperationOptions() const {
-  OperationOptions opOptions(_context);
+  OperationOptions opOptions;
 
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);

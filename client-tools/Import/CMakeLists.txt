@@ -22,8 +22,6 @@ target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/cli
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
   arango_shell
   arangoimport_utils
   clienttools_utils
@@ -44,9 +42,3 @@ add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 add_dependencies(${BIN_ARANGOIMPORT} iculegacy_build)
 
 add_dependencies(${BIN_ARANGOIMPORT} man)
-
-install_command_alias(${BIN_ARANGOIMPORT}
-  ${CMAKE_INSTALL_BINDIR}
-  arangoimp
-)
-

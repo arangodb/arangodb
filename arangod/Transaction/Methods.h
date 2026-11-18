@@ -424,7 +424,7 @@ class Methods {
 
   Future<Result> replicateOperations(
       TransactionCollection& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
+      std::shared_ptr<const std::vector<std::string>> followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,
       TRI_voc_document_operation_e operation, std::string_view userName);

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <vector>
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/Ast.h"
@@ -70,7 +71,8 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, double defaultWeight,
-      std::string weightAttribute, arangodb::aql::QueryContext& query,
+      std::vector<std::string> weightAttribute,
+      arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
@@ -89,7 +91,8 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, double defaultWeight,
-      std::string weightAttribute, arangodb::aql::QueryContext& query,
+      std::vector<std::string> weightAttribute,
+      arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
@@ -131,7 +134,7 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::Order order,
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,
       traverser::TraverserOptions::UniquenessLevel uniqueEdges,
-      double defaultWeight, std::string const& weightAttribute,
+      double defaultWeight, std::vector<std::string> const& weightAttribute,
       arangodb::aql::QueryContext& query,
       arangodb::graph::SingleServerBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -142,7 +145,7 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::Order order,
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,
       traverser::TraverserOptions::UniquenessLevel uniqueEdges,
-      double defaultWeight, std::string const& weightAttribute,
+      double defaultWeight, std::vector<std::string> const& weightAttribute,
       arangodb::aql::QueryContext& query,
       arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -175,7 +178,7 @@ class TraversalExecutorInfos {
   traverser::TraverserOptions::UniquenessLevel _uniqueEdges;
   traverser::TraverserOptions::Order _order;
   double _defaultWeight;
-  std::string _weightAttribute;
+  std::vector<std::string> _weightAttribute;
   arangodb::aql::QueryContext& _query;
   transaction::Methods _trx;
 };

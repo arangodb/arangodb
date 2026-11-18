@@ -11,12 +11,11 @@
       - BackupNoAuthSysTests
       - BackupNoAuthNoSysTests
       - arangosh
-      - arangobench
       - permissions
       - paths_server
       - version
       - shell_client_large
-      - shell_server_only
+      - legacy
 
 # Single Server Replication Tests
 - replication_shell:
@@ -78,16 +77,6 @@
       type: cluster
       buckets: 8
       size: small
-    args:
-      extremeVerbosity: true
-
-- recovery_server:
-    options:
-      priority: 2000
-      buckets: 2
-      parallelity: 3
-      size: small
-      type: single
 
 - shell_api_multi_permissions:
     options:
@@ -158,29 +147,16 @@
           args:
             http: true
             suffix: http
-      - hot_backup:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_views:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_aql:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_smart_graphs:
-          args:
-            extraArgs:experimental-vector-index: true
-      - hot_backup_el_cheapo:
-          args:
-            extraArgs:experimental-vector-index: true
+      - hot_backup
+      - hot_backup_views
+      - hot_backup_aql
+      - hot_backup_smart_graphs
+      - hot_backup_el_cheapo
 
 - shell_client_aql:
     options:
       priority: 250
       type: single
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - shell_client_aql_large:
     options:
@@ -189,9 +165,6 @@
       suffix: _large
       buckets: 2
       parallelity: 6
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
 
 - gtest_iresearch:
     options:
@@ -209,7 +182,15 @@
       type: single
     requires:
       coverage: false
-
+- gtest_rbac_integration:
+    options:
+      type: single
+      size: small
+    job: run-linux-tests-with-smocker
+    suites:
+      - gtest_rbac_integration
+    requires:
+      coverage: false
 # without coverage this is fast enough:
 - rta_makedata:
     options:
@@ -232,6 +213,22 @@
             forceOneShard: true
             makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
+- rta_makedata_rbac:
+    job: run-rbac-tests
+    suites:
+      - rta_makedata
+    options:
+      type: single
+      size: medium
+      timeLimit: 5400
+    requires:
+      coverage: false
+      v8: true
+      arch: x64
+    args:
+      test: 050,100,400,500,580,607,612
+      oneTestTimeout: 5350
+
 # with coverage we need to have several jobs:
 - rta_makedata:
     options:
@@ -275,7 +272,7 @@
     args:
       dumpAgencyOnError: true
 
-- arangobench_deadlock_audit:
+- deadlock_audit_secrets:
     options:
       priority: 1000
       type: mixed
@@ -283,10 +280,6 @@
       parallelity: 6
     suites:
       - deadlock:
-          args:
-            dumpAgencyOnError: true
-            cluster: true
-      - arangobench:
           args:
             dumpAgencyOnError: true
             cluster: true
@@ -412,8 +405,6 @@
       buckets: 4
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client_aql_large:
     options:
       priority: 1000
@@ -424,8 +415,6 @@
       parallelity: 6
     args:
       dumpAgencyOnError: true
-      # TODO: BTS-2283
-      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500
@@ -491,7 +480,6 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:vector-index: true
     suites:
       - hot_backup
       - hot_backup_views
@@ -610,7 +598,6 @@
       size: large
       parallelity: 5
     args:
-      extremeVerbosity: true
       dumpAgencyOnError: true
 
 # Full Tests Single Server
@@ -628,7 +615,6 @@
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
 - shell_fuzzer:
     options:
       type: single
@@ -641,7 +627,6 @@
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
 - authentication_parameters:
     options:
       type: single
@@ -652,12 +637,6 @@
     options:
       type: single
       priority: 1000
-    requires:
-      full: true
-- foxx_manager:
-    options:
-      type: single
-      priority: 500
     requires:
       full: true
 - queryCacheAuthorization:
@@ -717,6 +696,14 @@
     options:
       type: cluster
       priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- wal_cleanup:
+    options:
+      type: cluster
+      priority: 2500
     requires:
       full: true
     args:

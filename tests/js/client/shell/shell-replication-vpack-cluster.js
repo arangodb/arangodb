@@ -84,11 +84,11 @@ function replicationSuite() {
     testReplication: function() {
       // First insert 10000 documents using AQL to ensure that their
       // representation of the numbers is double:
-      db._query(`FOR i IN 0..4999 INSERT { value: i+1 } INTO ${cn}`);
+      db._query(`FOR i IN 0..4999 INSERT { value: i+1.0 } INTO ${cn}`);
       let c = db._collection(cn);
       c.properties({replicationFactor:2});
       for (let i = 0; i < 1000; ++i) {
-        db._query(`FOR j in ${i*10}..${i*10+9} INSERT { value: j+1 } INTO ${cn}`);
+        db._query(`FOR j in ${i*10}..${i*10+9} INSERT { value: j+1.0 } INTO ${cn}`);
       }
       waitForShardsInSync(cn, 120, 1);
 

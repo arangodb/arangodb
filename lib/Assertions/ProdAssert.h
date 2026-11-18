@@ -22,6 +22,9 @@
 
 #pragma once
 
+#include "AssertionLogger.h"
+#include "Basics/system-compiler.h"
+
 // Ensures that the macro ADB_PROD_ASSERT is defined. There are two possible
 // modes
 //
@@ -34,11 +37,9 @@
 //   the string that can follow ADB_ASSERT is not evaluated if the assertion
 //   does not fail.
 
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include "AssertionConditionalLogger.h"
-
-#include "Basics/system-compiler.h"
 
 // Always evaluates expr, even if the assertion does not fail
 #define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                          \
@@ -48,11 +49,6 @@
           .withCondition(expr)
 
 #else  // Production
-
-#include "AssertionLogger.h"
-#include "Basics/system-compiler.h"
-
-#include "Basics/system-compiler.h"
 
 #define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                              \
   (ADB_LIKELY(expr))                                                           \

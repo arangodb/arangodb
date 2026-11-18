@@ -39,21 +39,18 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<ActionFeature>(),
-               ArangodServer::id<AgencyFeature>(),
+    std::array{ArangodServer::id<AgencyFeature>(),
                ArangodServer::id<ClusterFeature>(),
 #ifdef ARANGODB_HAVE_FORK
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
-               ArangodServer::id<FoxxFeature>(),
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
-               ArangodServer::id<SslServerFeature>(),
-               ArangodServer::id<StatisticsFeature>()};
+               ArangodServer::id<SslServerFeature>()};
 
 }  // namespace
 
@@ -141,29 +138,20 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ClusterFeaturePhase>();
   _server.addFeature<DatabaseFeaturePhase>();
   _server.addFeature<FinalFeaturePhase>();
-#ifdef USE_V8
-  _server.addFeature<FoxxFeaturePhase>();
-#endif
   _server.addFeature<GreetingsFeaturePhase>(std::false_type{});
   _server.addFeature<ServerFeaturePhase>();
-#ifdef USE_V8
-  _server.addFeature<V8FeaturePhase>();
-#endif
 
   // Features
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
-      LazyApplicationFeatureReference<StatisticsFeature>(_server),
-      LazyApplicationFeatureReference<DatabaseFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
-  _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
   _server.addFeature<async_registry::Feature>();
-  _server.addFeature<AuthenticationFeature>();
+  auto& authenticationFeature = _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<BumpFileDescriptorsFeature>();
@@ -176,9 +164,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
   _server.addFeature<ConfigFeature>();
-#ifdef USE_V8
-  _server.addFeature<ConsoleFeature>();
-#endif
   _server.addFeature<CpuUsageFeature>();
   auto& databasePath = _server.addFeature<DatabasePathFeature>();
   auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
@@ -187,10 +172,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<FileSystemFeature>();
   auto& flush = _server.addFeature<FlushFeature>(metrics);
   _server.addFeature<FortuneFeature>();
-#ifdef USE_V8
-  _server.addFeature<FoxxFeature>();
-  _server.addFeature<FrontendFeature>();
-#endif
   _server.addFeature<GeneralServerFeature>(metrics);
   _server.addFeature<GreetingsFeature>();
   _server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
@@ -204,8 +185,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
-  _server.addFeature<NonceFeature>();
-  _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();
   _server.addFeature<QueryRegistryFeature>(metrics);
   _server.addFeature<RandomFeature>();
@@ -218,31 +197,19 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _server.addFeature<ProcessEnvironmentFeature>(name);
 #endif
-#ifdef USE_V8
-  _server.addFeature<ScriptFeature>(&result);
-#endif
   _server.addFeature<ServerFeature>(&result);
   _server.addFeature<ServerIdFeature>();
   _server.addFeature<ServerSecurityFeature>();
   _server.addFeature<ShardingFeature>();
   _server.addFeature<SharedPRNGFeature>();
   _server.addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
-  _server.addFeature<StatisticsFeature>(metrics);
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
   _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
-  _server.addFeature<transaction::ManagerFeature>(metrics);
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();
   _server.addFeature<aql::OptimizerRulesFeature>();
@@ -250,8 +217,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
   _server.addFeature<RocksDBOptionFeature>();
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -265,12 +230,13 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  _server.addFeature<RocksDBEngine>(
+  auto& engine = _server.addFeature<StorageEngine, RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
+  _server.addFeature<transaction::ManagerFeature>(metrics, engine);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

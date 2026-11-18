@@ -32,9 +32,6 @@
 #include <string_view>
 #include <unordered_map>
 
-#ifdef USE_V8
-#include <v8.h>
-#endif
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -111,17 +108,6 @@ class Expression {
   /// @brief get expression type as string
   std::string_view typeString();
 
-  // @brief invoke JavaScript aql functions with args as param.
-#ifdef USE_V8
-  static AqlValue invokeV8Function(ExpressionContext& expressionContext,
-                                   std::string const& jsName,
-                                   v8::Isolate* isolate,
-                                   std::string const& ucInvokeFN,
-                                   char const* AFN, bool rethrowV8Exception,
-                                   size_t callArgs, v8::Handle<v8::Value>* args,
-                                   bool& mustDestroy);
-#endif
-
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)
   bool isAttributeAccess() const;
@@ -162,6 +148,12 @@ class Expression {
 
   // prepare the expression for execution
   void prepareForExecution();
+
+  /// @brief for constant JSON expressions, transfer the prepared buffer to an
+  /// AqlValue without copying. memory usage remains tracked on the query's
+  /// resource monitor and will be accounted to the variable via
+  /// Variable::setConstantValue().
+  AqlValue stealConstantValue();
 
  private:
   // free the internal data structures
@@ -273,6 +265,10 @@ class Expression {
                                                          AstNode const*,
                                                          bool& mustDestroy);
 
+  // AT LEAST only accepts non-negative integers; anything else just warns
+  static int64_t sanitizeAtLeastValue(ExpressionContext& ctx,
+                                      AqlValue const& value);
+
   // execute an expression of type SIMPLE with TERNARY
   static AqlValue executeSimpleExpressionTernary(ExpressionContext& ctx,
                                                  AstNode const*,
@@ -287,6 +283,10 @@ class Expression {
   static AqlValue executeSimpleExpressionIterator(ExpressionContext& ctx,
                                                   AstNode const*,
                                                   bool& mustDestroy);
+
+  /// @brief binary + as string concatenation (AQL stringification rules)
+  static AqlValue executeSimpleExpressionBinaryPlusStringConcat(
+      ExpressionContext& ctx, AqlValue const& lhs, AqlValue const& rhs);
 
   // execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   static AqlValue executeSimpleExpressionArithmetic(ExpressionContext& ctx,

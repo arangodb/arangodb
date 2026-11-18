@@ -42,9 +42,6 @@ class RocksDBRestWalHandler : public RestBaseHandler {
 
  private:
   void flush();
-  void transactions();
-  void properties();
-
   StorageEngine* _engine;
 };
 }  // namespace arangodb

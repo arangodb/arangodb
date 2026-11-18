@@ -37,27 +37,6 @@ void ServerSecurityOptionsProvider::declareOptionsImpl(
       "Lock down REST APIs that reveal version information or server "
       "internals for non-admin users.",
       new BooleanParameter(&opts.hardenedRestApi));
-
-  options->addOption("--foxx.api",
-                     "Whether to enable the Foxx management REST APIs.",
-                     new BooleanParameter(&opts.enableFoxxApi),
-                     makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                               Flags::OnSingle));
-
-  options->addOption("--foxx.store",
-                     "Whether to enable the Foxx store in the web interface.",
-                     new BooleanParameter(&opts.enableFoxxStore),
-                     makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                               Flags::OnSingle));
-
-  options
-      ->addOption(
-          "--foxx.allow-install-from-remote",
-          "Allow installing Foxx apps from remote URLs other than GitHub.",
-          new BooleanParameter(&opts.foxxAllowInstallFromRemote),
-          makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                    Flags::OnSingle))
-      .setIntroducedIn(30805);
 }
 
 }  // namespace arangodb::security

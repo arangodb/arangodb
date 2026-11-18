@@ -29,6 +29,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 
 #include <velocypack/Collection.h>
 
@@ -67,9 +68,10 @@ auto MaintenanceActionExecutor::executeCreateCollection(
   }
   std::shared_ptr<LogicalCollection> col;
   auto res = basics::catchToResult([&]() -> Result {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     return methods::Collections::createShard(
-        _vocbase, options, shard, collectionType, properties.slice(), col);
+        _vocbase, options, shard, collectionType,
+        CollectionDescriptor::fromVelocyPack(properties.slice()), col);
   });
 
   LOG_CTX("ef1bc", DEBUG, _loggerContext)
@@ -100,7 +102,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
     velocypack::SharedSlice properties) noexcept -> Result {
   auto res =
       basics::catchToResult([&col, properties = std::move(properties)]() {
-        OperationOptions options(ExecContext::current());
+        OperationOptions options;
         return methods::Collections::updateProperties(*col, properties.slice(),
                                                       options)
             .waitAndGet();

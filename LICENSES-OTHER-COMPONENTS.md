@@ -7,7 +7,6 @@
     + [Node core modules](#node-core-modules)
     + [Bundled NPM modules](#bundled-npm-modules)
     + [Backend libraries](#backend-libraries)
-    + [Frontend libraries](#frontend-libraries)
 
 # Other Licenses
 
@@ -26,8 +25,8 @@
 ### Boost
 
 * Name: Boost
-* Version: 1.78.0
-* Date: 2021-12-08 03:45:00
+* Version: 1.92.0
+* Date: 2026-08-12 13:41:00
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
@@ -68,12 +67,22 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.2
-* Date: 2026-05-22
-* Project Home:https://github.com/facebookresearch/faiss/
+* Version: 1.16.0
+* Date: 2026-11-09
+* Project Home:https://github.com/facebookresearch/faiss
 * License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
+
+### fast_float
+
+* Name: fast_float
+* Version: 8.3.1
+* Date: 2026-10-04 16:26:59Z
+* Project Home: https://github.com/fastfloat/fast_float
+* License: https://raw.githubusercontent.com/fastfloat/fast_float/main/LICENSE-MIT
+* License Name: MIT License (or Apache License 2.0, or Boost Software License 1.0)
+* License Id: MIT OR Apache-2.0 OR BSL-1.0
 
 ### fasthash
 
@@ -138,8 +147,8 @@ _Enterprise Edition only_
 #### glibc
 
 * Name: glibc
-* Version: 2.39.0
-* Date: 2024-01-31
+* Version: 2.43
+* Date: 2026-01-23
 * Project Home: https://www.gnu.org/software/libc
 * License: https://www.gnu.org/licenses/lgpl-3.0.html
 * License Name: GNU Lesser General Public License
@@ -395,11 +404,25 @@ _Enterprise Edition only_
 ### OpenSSL
 
 * Name: OpenSSL
-* Version: 1.1.1
-* Date: 2021-08-24
-* License: https://spdx.org/licenses/OpenSSL.html
-* License Name: Apache Style License
-* License Id: OpenSSL
+* Version: 3.5.9
+* Date: 2026-09-29
+* Project Home: https://www.openssl.org/
+* License: https://github.com/openssl/openssl/blob/master/LICENSE.txt
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
+#### OpenSSL FIPS provider
+
+_Only shipped with FIPS-enabled distributions, such as the
+`arangodb/core-fips-preview` Docker image, as the separate module `fips.so`_
+
+* Name: OpenSSL FIPS provider
+* Version: 3.1.2
+* Date: 2023-08-01
+* Project Home: https://www.openssl.org/
+* License: https://github.com/openssl/openssl/blob/master/LICENSE.txt
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 ### RocksDB
 
@@ -494,8 +517,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### OpenMP implementation by LLVM
 
 * Name: OpenMP
-* Version: 16.0.6
-* Date: 2023-06-14
+* Version: 22.1.8
+* Date: 2026-06-16
 * Project Home: https://github.com/llvm/llvm-project
 * License: https://github.com/llvm/llvm-project/blob/main/LICENSE.TXT
 * License Name: Apache License 2.0
@@ -504,20 +527,31 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### LAPACK
 
 * Name: LAPACK
-* Version: 3.10.0
-* Date: 2021-06-28
+* Version: 3.12.1
+* Date: 2025-01-08
 * Project Home: https://www.netlib.org/lapack/
 * License: https://www.netlib.org/lapack/LICENSE.txt
 * License Comment: The license used for the software is the modified BSD license
 
+### OpenBLAS
+
+* Name: OpenBLAS
+* Version: 0.3.32
+* Date: 2026-03-23
+* Project Home: https://www.openblas.net/
+* License: https://github.com/OpenMathLib/OpenBLAS/blob/develop/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
 ### Fortran
 
-* Name: gfortran
-* Version: 11.4.0
-* Date: 2023-05-29
+* Name: libgfortran (GNU Fortran runtime library)
+* Version: 14.3.0
+* Date: 2025-05-23
 * Project Home: https://gcc.gnu.org/wiki/GFortran
-* License: https://moinmo.in/GPL
-* License Id: GPLv2
+* License: https://www.gnu.org/licenses/gcc-exception-3.1.html
+* License Name: GNU General Public License v3.0 or later with GCC Runtime Library exception 3.1
+* License Id: GPL-3.0-or-later WITH GCC-exception-3.1
 
 ## Programs
 
@@ -653,298 +687,16 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-### Frontend libraries
-
-#### Ace
-
-* Name: ace
-* Version: 2010
-* GitHub: https://github.com/ajaxorg/ace
-* License: https://raw.githubusercontent.com/ajaxorg/ace/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### Animate.css
-
-* Name: animate.css
-* Version: 2015
-* GitHub: https://github.com/daneden/animate.css
-* License: https://raw.githubusercontent.com/daneden/animate.css/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### Backbone.js
-
-* Name: backbone.js
-* Version: 2016
-* Project Home: http://backbonejs.org
-* GitHub: https://github.com/jashkenas/backbone
-* License: https://raw.githubusercontent.com/jashkenas/backbone/master/LICENSE
-* License Comment: free as-is license
-
-#### Bootstrap
-
-* Name: bootstrap
-* Version: 2015
-* Project Home: http://getbootstrap.com
-* GitHub: https://github.com/twbs/bootstrap
-* License: https://raw.githubusercontent.com/twbs/bootstrap/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### D3
-
-* Name: D3.js
-* Version: 2016
-* Project Home: http://d3js.org
-* GitHub: https://github.com/mbostock/d3
-* License: https://raw.githubusercontent.com/mbostock/d3/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### dygraph
-
-* Name: dygraph
-* Version: 2018
-* Project Home: http://dygraphs.com
-* GitHub: https://github.com/danvk/dygraphs
-* License: https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt
-* License Comment: free as-is license
-
-#### jQuery
-
-* Name: jquery
-* Version: 2.1.0
-* Project Home: http://jquery.com
-* GitHub: https://github.com/jquery/jquery
-* License: https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt
-* License Comment: free as-is license
-
-#### jQuery Contextmenu
-
-* Name: jquery.contextmenu
-* Version: 2015
-* GitHub: https://github.com/swisnl/jQuery-contextMenu
-* License: https://raw.githubusercontent.com/swisnl/jQuery-contextMenu/master/README.md
-  under "License"
-* License Name: MIT License
-* License Id: MIT
-
-#### jQuery Form
-
-* Name: jquery.form
-* Version: 2015
-* GitHub: https://github.com/malsup/form/
-* License: https://raw.githubusercontent.com/malsup/form/master/README.md
-  under "Copyright and License"
-* License Name: MIT License
-* License Id: MIT
-* License Comment: This project is dual licensed under the LGPLv2.1 (or later) or MIT licenses
-
-#### jQuery Hotkeys
-
-* Name: jquery.hotkeys
-* Version: 2015
-* GitHub: https://github.com/jeresig/jquery.hotkeys
-* License: https://raw.githubusercontent.com/jeresig/jquery.hotkeys/master/jquery.hotkeys.js
-* License Name: MIT License
-* License Id: MIT
-* License Comment: Dual licensed under the MIT or GPL Version 2 licenses.
-
-#### jQuery Snippet
-
-* Name: jquery.snippet
-* Version: 2015
-* Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
-* License: see https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/
-  in "Notes, section 5"
-* License Name: MIT License
-* License Id: MIT
-* License Line: 5.) This script is released under the MIT license and is completely open to modification and redistribution.
-
-#### jQuery Strftime
-
-* Name: strftime
-* Version: 2015
-* GitHub: https://github.com/samsonjs/strftime
-* License: https://raw.githubusercontent.com/samsonjs/strftime/master/Readme.md
-  under "License"
-* License Name: MIT License
-* License Id: MIT
-
-#### jQuery Textfill
-
-* Name: jquery.textfill
-* Version: 2015
-* GitHub: https://github.com/jquery-textfill/jquery-textfill
-* License: https://raw.githubusercontent.com/jquery-textfill/jquery-textfill/master/COPYING.md
-* License Name: MIT License
-* License Id: MIT
-
-#### jQuery UI
-
-* Name: jquery-ui
-* Version: 1.9.2
-* Project Home: http://jqueryui.com
-* GitHub: https://github.com/jquery/jquery-ui
-* License: https://raw.githubusercontent.com/jquery/jquery-ui/master/LICENSE.txt
-* License Comment: MIT-style License
-
-#### jQuery UploadFile
-
-* Name: jquery.uploadfile
-* Version: 2015
-* GitHub: https://github.com/hayageek/jquery-upload-file/
-* License: https://raw.githubusercontent.com/hayageek/jquery-upload-file/master/MIT-License.txt
-* License Name: MIT License
-* License Id: MIT
-
-#### jsoneditor.js
-
-* Name: jsoneditor
-* Version: 2018
-* GitHub: https://github.com/josdejong/jsoneditor/
-* License: https://raw.githubusercontent.com/josdejong/jsoneditor/master/package.json
-* License Name: Apache License 2.0
-* License Id: Apache-2.0
-
-#### Moment.js
-
-* Name: moment
-* Version: 2
-* GitHub: https://github.com/moment/moment/
-* License: https://raw.githubusercontent.com/moment/moment/develop/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### nvd3
-
-* Name: nvd3
-* Version: 2016
-* GitHub: https://github.com/novus/nvd3
-* License: https://raw.githubusercontent.com/novus/nvd3/master/package.json
-* License Name: Apache License 2.0
-* License Id: Apache-2.0
-
-#### Noty
-
-* Name: noty
-* Version: 2015
-* GitHub: https://github.com/needim/noty/
-* License: https://raw.githubusercontent.com/needim/noty/master/LICENSE.txt
-* License Name: MIT License
-* License Id: MIT
-
-#### Numeral.js
-
-* Name: numeral.js
-* Version: 1.5.3
-* GitHub: https://github.com/adamwdraper/Numeral-js
-* License: https://raw.githubusercontent.com/adamwdraper/Numeral-js/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### prettyBytes.js
-
-* Name: pretty-bytes.js
-* Version: 2016
-* GitHub: https://github.com/sindresorhus/pretty-bytes
-* License: https://raw.githubusercontent.com/sindresorhus/pretty-bytes/master/license
-* License Name: MIT License
-* License Id: MIT
-
-#### select2
-
-* Name: select2
-* Version: 3.4.5
-* GitHub: https://github.com/select2/select2
-* License: https://raw.githubusercontent.com/select2/select2/master/LICENSE.md
-* License Name: MIT License
-* License Id: MIT
-
-#### sigma.js
-
-* Name: sigma.js
-* Version: 2016
-* GitHub: https://github.com/jacomyal/sigma.js
-* License: https://raw.githubusercontent.com/jacomyal/sigma.js/master/LICENSE.txt
-* License Name: MIT License
-* License Id: MIT
-
-#### Swagger UI
-
-* Name: swagger-ui
-* Version: 5.4.1
-* Project Home: http://swagger.io
-* GitHub: https://github.com/swagger-api/swagger-ui
-* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
-* License Name: Apache License 2.0
-* License Id: Apache-2.0
-
-#### tippyjs.js
-
-* Name: tippyjs
-* Version: 2017
-* GitHub: https://github.com/atomiks/tippyjs
-* License: https://raw.githubusercontent.com/atomiks/tippyjs/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### wheelnav.js
-
-* Name: wheelnav
-* Version: 2016
-* GitHub: https://github.com/softwaretailoring/wheelnav
-* License: https://raw.githubusercontent.com/softwaretailoring/wheelnav/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### jquery-csv
-
-* Name: jquery.csv
-* Version: 2012
-* GitHub: https://github.com/evanplaice/jquery-csv
-* License: https://raw.githubusercontent.com/evanplaice/jquery-csv/master/LICENSE
-* License Name: MIT License
-* License Id: MIT
-
-#### Leaflet.js
-
-* Name: leaflet
-* Version: 1.3.3
-* GitHub: https://github.com/Leaflet/Leaflet
-* License: https://raw.githubusercontent.com/Leaflet/Leaflet/master/LICENSE
-* License Name: BSD 2-clause "Simplified" License
-* License Id: BSD-2-Clause
-
-#### Stamen
-
-* Name: stamen
-* Version: 1.3.0
-* GitHub: https://github.com/stamen/maps.stamen.com
-* License: https://raw.githubusercontent.com/stamen/maps.stamen.com/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### randomColor
-
-* Name: randomColor
-* Version: 0.4.0
-* GitHub: https://github.com/davidmerfield/randomColor
-* License: https://raw.githubusercontent.com/davidmerfield/randomColor/0.4.0/LICENSE.md
-* License Name: MIT License
-* License Id: MIT
-
 ### Bundled NPM modules
 
-#### @hapi/hoek
+#### @isaacs/nonrecursive-glob-match
 
-* Name: @hapi/hoek
-* Version: 8.5.1
-* Project Home: <https://github.com/hapijs/hoek>
-* License: <https://raw.githubusercontent.com/hapijs/hoek/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
+* Name: @isaacs/nonrecursive-glob-match
+* Version: 1.1.0
+* Project Home: <https://github.com/isaacs/nonrecursive-glob-match>
+* License: <https://raw.githubusercontent.com/isaacs/nonrecursive-glob-match/main/LICENSE.md>
+* License Name: BlueOak-1.0.0
+* License Id: BlueOak-1.0.0
 
 #### @sinonjs/commons
 
@@ -1084,7 +836,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.9
+* Version: 5.0.12
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
@@ -1263,7 +1015,7 @@ License Id: -
 #### fast-uri
 
 * Name: fast-uri
-* Version: 3.1.5
+* Version: 3.1.9
 * Project Home: <https://github.com/fastify/fast-uri>
 * License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
 * License Name: BSD-style 3-Clause License
@@ -1404,15 +1156,6 @@ License Id: -
 * License Name: MIT License
 * License Id: MIT
 
-#### isemail
-
-* Name: isemail
-* Version: 3.2.0
-* Project Home: <https://github.com/hapijs/isemail>
-* License: <https://raw.githubusercontent.com/hapijs/isemail/master/LICENSE>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
-
 #### iterall
 
 * Name: iterall
@@ -1421,24 +1164,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/leebyron/iterall/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
-
-#### joi
-
-* Name: joi
-* Version: 14.3.1
-* Project Home: <https://github.com/hapijs/joi>
-* License: <https://raw.githubusercontent.com/hapijs/joi/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
-
-#### joi-to-json-schema
-
-* Name: joi-to-json-schema
-* Version: 4.0.1
-* Project Home: <https://github.com/lightsofapollo/joi-to-json-schema>
-* License: <https://github.com/lightsofapollo/joi-to-json-schema#license>
-* License Name: Apache 2 License
-* License Id: Apache2
 
 #### js-tokens
 
@@ -1452,7 +1177,7 @@ License Id: -
 #### js-yaml
 
 * Name: js-yaml
-* Version: 4.3.1
+* Version: 4.3.2
 * Project Home: <https://github.com/nodeca/js-yaml>
 * License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
@@ -1515,7 +1240,7 @@ License Id: -
 #### minimatch
 
 * Name: minimatch
-* Version: 10.2.5
+* Version: 11.0.5
 * Project Home: <https://github.com/isaacs/minimatch>
 * License: <https://raw.githubusercontent.com/isaacs/minimatch/main/LICENSE.md>
 * License Name: BlueOak-1.0.0
@@ -1575,19 +1300,10 @@ License Id: -
 * License Name: Apache 2 License
 * License Id: Apache-2.0
 
-#### punycode
-
-* Name: punycode
-* Version: 2.3.0
-* Project Home: <https://mths.be/punycode>
-* License: <https://raw.githubusercontent.com/mathiasbynens/punycode.js/refs/heads/main/LICENSE-MIT.txt>
-* License Name: MIT License
-* License Id: MIT
-
 #### qs
 
 * Name: qs
-* Version: 6.15.2
+* Version: 6.16.1
 * Project Home: <https://github.com/ljharb/qs>
 * License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
 * License Name: BSD-style 3-Clause License
@@ -1754,15 +1470,6 @@ License Id: -
 * License: <https://raw.githubusercontent.com/component/toidentifier/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
-
-#### topo
-
-* Name: topo
-* Version: 3.0.3
-* Project Home: <https://github.com/hapijs/topo>
-* License: <https://raw.githubusercontent.com/hapijs/topo/master/LICENSE.md>
-* License Name: BSD-style 3-Clause License
-* License Id: BSD-3-Clause
 
 #### type-detect
 

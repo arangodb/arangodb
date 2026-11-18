@@ -23,6 +23,7 @@
 #include "GraphNode.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/Collections.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
@@ -35,6 +36,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -157,8 +159,7 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   TRI_ASSERT(node->isIntValue() || node->type == NODE_TYPE_DIRECTION);
   AstNode const* dirNode = node;
   if (node->type == NODE_TYPE_DIRECTION) {
-    TRI_ASSERT(node->numMembers() == 2);
-    dirNode = node->getMember(0);
+    dirNode = ast::DirectionNode(node).getDirection();
   }
   TRI_ASSERT(dirNode->isIntValue());
   return uint64ToDirection(dirNode->getIntValue());
@@ -209,13 +210,14 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto col = graph->getMember(i);
+      AstNode const* col = graph->getMember(i);
       TRI_edge_direction_e dir = TRI_EDGE_ANY;
 
       if (col->type == NODE_TYPE_DIRECTION) {
         // We have a collection with special direction.
-        dir = parseDirection(col->getMember(0));
-        col = col->getMember(1);
+        ast::DirectionNode directionNode(col);
+        dir = parseDirection(directionNode.getDirection());
+        col = directionNode.getSteps();
       } else {
         dir = _defaultDirection;
       }
@@ -613,6 +615,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _edgeAliases(other._edgeAliases),
       _defaultDirection(other._defaultDirection),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
@@ -752,6 +755,7 @@ void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
   clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
+  clone._edgeAliases = _edgeAliases;
 
   // Optimized Out Variables
   clone._optimizedOutVariables = _optimizedOutVariables;
@@ -1098,8 +1102,10 @@ graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 void GraphNode::initializeIndexConditions() const {
   // We need to prepare the variable accesses before we ask the index nodes.
   // Those are located on the options, and need to be partially executed.
+  // the non-constant parts of the index conditions are evaluated against this
+  // node's input rows
   options()->initializeIndexConditions(
-      plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+      plan()->getAst(), inputRegisterResolver(), getTemporaryVariable());
 }
 
 void GraphNode::setVertexProjections(Projections projections) {

@@ -27,10 +27,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
 #include "RestServer/IDatabasePathProvider.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -122,7 +122,7 @@ TemporaryStorageFeature::TemporaryStorageFeature(
       _options(std::move(options)),
       _cleanedUpDirectory(false),
       _databasePathProvider(databasePathProvider) {
-  startsAfter<RocksDBEngine>();
+  startsAfter<StorageEngine>();
   startsAfter<DatabasePathFeature>();
 
   if (!canBeUsed() || ServerState::instance()->isAgent()) {
@@ -131,7 +131,8 @@ TemporaryStorageFeature::TemporaryStorageFeature(
 
   // replace $PID with current process id
   _options.basePath = basics::StringUtils::replace(
-      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+      _options.basePath, "$PID",
+      std::to_string(BasicThread::currentProcessId()));
 
   // configure defaults for query options
   aql::QueryOptions::defaultSpillOverThresholdNumRows =
@@ -207,8 +208,7 @@ void TemporaryStorageFeature::start() {
       std::make_unique<StorageUsageTracker>(_options.maxDiskCapacity);
 
   auto backend = std::make_unique<RocksDBTempStorage>(
-      _options.basePath, *_usageTracker, _options.useEncryption,
-      _options.allowHWAcceleration);
+      _options.basePath, *_usageTracker, _options.useEncryption);
 
   Result res = backend->init();
   if (res.fail()) {

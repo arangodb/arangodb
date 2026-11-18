@@ -26,12 +26,13 @@
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/debugging.h"
+#include "Aql/TypedAstNodes.h"
 
 #include <string>
 
 namespace arangodb::aql {
 
-LazyConditions::LazyConditions(Ast& ast) : _ast(ast), _forceInlineRequests(0) {}
+LazyConditions::LazyConditions(Ast& ast) : _ast(ast) {}
 
 /// @brief push a condition onto the stack
 void LazyConditions::push(AstNode* condition, bool negated) {
@@ -55,25 +56,25 @@ LazyConditions::Conditions const& LazyConditions::peek() const {
 LazyConditions::Conditions& LazyConditions::peek() { return _stack; }
 
 bool LazyConditions::forceInline() const noexcept {
-  return _forceInlineRequests > 0;
+  return !_inlineBarriers.empty();
 }
 
-void LazyConditions::pushForceInline() noexcept { ++_forceInlineRequests; }
+void LazyConditions::pushForceInline() {
+  _inlineBarriers.push_back(_stack.size());
+}
 
 void LazyConditions::popForceInline() noexcept {
-  TRI_ASSERT(_forceInlineRequests > 0);
-  --_forceInlineRequests;
+  TRI_ASSERT(!_inlineBarriers.empty());
+  _inlineBarriers.pop_back();
+}
+
+size_t LazyConditions::numExtractableConditions() const noexcept {
+  return _inlineBarriers.empty() ? _stack.size() : _inlineBarriers.front();
 }
 
 void LazyConditions::flushAssignments() {
-  if (forceInline()) {
-    return;
-  }
-
-  size_t i = 0;
-  for (auto& it : _stack) {
-    TRI_ASSERT(!forceInline());
-
+  for (size_t i = 0; i < numExtractableConditions(); ++i) {
+    auto& it = _stack[i];
     if (it.variableNode == nullptr) {
       std::string variableName = _ast.variables()->nextName();
 
@@ -119,9 +120,7 @@ void LazyConditions::flushAssignments() {
         _ast.addOperation(letNode);
 
         TRI_ASSERT(letNode->type == NODE_TYPE_LET);
-        Variable const* variable =
-            static_cast<Variable const*>(letNode->getMember(0)->getData());
-
+        Variable const* variable = ast::LetNode(letNode).getVariable();
         it.variableNode = _ast.createNodeReference(variable);
         TRI_ASSERT(it.variableNode->type == NODE_TYPE_REFERENCE);
 
@@ -160,21 +159,16 @@ void LazyConditions::flushAssignments() {
         it.condition = it.variableNode;
       }
     }
-
-    ++i;
   }
 }
 
 void LazyConditions::flushFilters() const {
-  if (forceInline()) {
-    return;
-  }
-
   // build an AND-combined FILTER condition with all conditions that we have
   // accumulated
   AstNode* filterCondition = nullptr;
-  for (auto const& it : _stack) {
-    TRI_ASSERT(!forceInline());
+  for (size_t i = 0; i < numExtractableConditions();
+       ++i) {  // only entries before `[*` of an array expansion
+    auto const& it = _stack[i];
     TRI_ASSERT(it.variableNode != nullptr);
     TRI_ASSERT(it.variableNode->type == NODE_TYPE_REFERENCE);
 

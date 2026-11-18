@@ -27,22 +27,19 @@ add_library(arango_rest_server STATIC
   FileDescriptorsFeature.cpp
   FileDescriptorsOptionsProvider.cpp
   FlushFeature.cpp
-  FlushOptionsProvider.cpp
   FortuneFeature.cpp
   FortuneOptionsProvider.cpp
   IOHeartbeatThread.cpp
   InitDatabaseFeature.cpp
   InitDatabaseOptionsProvider.cpp
   LanguageCheckFeature.cpp
+  LegacyOptionsProvider.cpp
   LockfileFeature.cpp
   LogApiOptionsProvider.cpp
   LogBufferFeature.cpp
   LogBufferOptionsProvider.cpp
   LogRotateOptionsProvider.cpp
   MaxMapCountFeature.cpp
-  MaxMapCountOptionsProvider.cpp
-  NonceFeature.cpp
-  NonceOptionsProvider.cpp
   ApiRecordingFeature.cpp
   ApiRecordingOptionsProvider.cpp
   PrivilegeFeature.cpp
@@ -66,30 +63,15 @@ add_library(arango_rest_server STATIC
   TtlProperties.cpp
   UpgradeFeature.cpp
   UpgradeOptionsProvider.cpp
-  ViewTypesFeature.cpp
-  VocbaseContext.cpp)
-
-if(USE_V8)
-  target_sources(arango_rest_server PRIVATE
-    ConsoleFeature.cpp
-    ConsoleThread.cpp
-    FrontendFeature.cpp
-    FrontendOptionsProvider.cpp
-    ScriptFeature.cpp
-    ScriptOptionsProvider.cpp)
-endif()
+  ViewTypesFeature.cpp)
 
 target_link_libraries(arango_rest_server
   PUBLIC
     arango_auth
-    arango_actions
     arango_actor
     arango_basic_utils
-    arango_statistics
     arango_iresearch
     arango::validation
-    arango_v8
-    arango_v8server
     rocksdb_interface
     immer
     velocypack)

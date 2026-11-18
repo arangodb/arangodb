@@ -61,6 +61,9 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   size_t cryptedLength;
 
   if (hashMethod == "sha1") {
+    LOG_TOPIC("4c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA1 should be retired, it will be deprecated in one of the future "
+           "releases";
     arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
     cryptedLength = 20;
   } else if (hashMethod == "sha512") {
@@ -73,11 +76,15 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
     arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
     cryptedLength = 32;
   } else if (hashMethod == "sha224") {
+    LOG_TOPIC("5c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA224 should be retired, it will be deprecated in one of the "
+           "future releases";
     arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
     cryptedLength = 28;
   } else if (hashMethod == "md5") {
-    arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 16;
+    LOG_TOPIC("6c13c", ERR, arangodb::Logger::AUTHENTICATION)
+        << "MD5 is deprecated and cannot not be used anymore!";
+    return TRI_ERROR_BAD_PARAMETER;
   } else {
     // invalid algorithm...
     LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
@@ -684,7 +691,7 @@ bool auth::User::removeCollection(std::string const& dbname,
 }
 
 // Resolve the access level for this database.
-auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::configuredDBAuthLevel(std::string_view dbname) const {
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     // found specific grant
@@ -707,7 +714,8 @@ auth::Level auth::User::configuredCollectionAuthLevel(
   return auth::Level::UNDEFINED;
 }
 
-auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
+  // Will not return Level::UNDEFINED!
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
@@ -727,7 +735,8 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
-auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
+/// Must not return Level::UNDEFINED!
+auth::Level auth::User::collectionAuthLevel(std::string_view dbname,
                                             std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
@@ -741,10 +750,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     if (dbname == StaticStrings::SystemDatabase &&
         cname == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (cname == StaticStrings::QueuesCollection) {
-      return auth::Level::RO;
-    } else if (cname == StaticStrings::FrontendCollection) {
-      return auth::Level::RW;
     }
     return databaseAuthLevel(dbname);
   }
@@ -752,19 +757,20 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   auth::Level lvl = auth::Level::NONE;
   if (dbname != "*") {
     // skip special rules for wildcard
-    auto it = _dbAccess.find(dbname);
+    auto it =
+        _dbAccess.find(std::string(dbname));  // FIXME: std::string-Wicklung
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       auto pair = it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
-        return pair->second;  // found specific collection grant
+        return std::max(pair->second, lvl);  // found specific collection grant
       } else if (cname == "*") {
         // skip special rules for wildcard
         return auth::Level::NONE;
       }
 
       // Fallback step 1.
-      lvl = it->second._databaseAuthLevel;
+      lvl = std::max(it->second._databaseAuthLevel, lvl);
       pair = it->second._collectionAccess.find("*");
       if (pair != it->second._collectionAccess.end()) {
         // found wildcard collection grant, take better default

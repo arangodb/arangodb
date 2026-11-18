@@ -157,11 +157,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
     std::size_t fieldNum = idx->fields().size();
-    bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
-                  supportLegacy;
-    bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX &&
-                  supportLegacy;
-    bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    bool isGeo1 = idx->type() == IndexType::Geo1 && supportLegacy;
+    bool isGeo2 = idx->type() == IndexType::Geo2 && supportLegacy;
+    bool isGeo = idx->type() == IndexType::Geo;
 
     if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
       // check access paths of attributes in ast and those in index match
@@ -241,8 +239,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   // check for suitiable indexes
   for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
-    bool isGeo =
-        idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    bool isGeo = idx->type() == IndexType::Geo;
     if (isGeo && idx->fields().size() == 1) {  // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {
@@ -372,16 +369,28 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
     return false;
   }
 
-  AstNode* arg = fargs->getMemberUnchecked(1);
-  if (geoFuncArgCheck(plan, arg, /*legacy*/ true, info)) {
-    TRI_ASSERT(contains || intersect);
-    info.filterMode =
+  AstNode* arg0 = fargs->getMemberUnchecked(0);
+  AstNode* arg1 = fargs->getMemberUnchecked(1);
+
+  geo::FilterType filterMode = geo::FilterType::NONE;
+  AstNode* filterExpr = nullptr;
+
+  if (geoFuncArgCheck(plan, arg1, /*legacy*/ true, info)) {
+    filterMode =
         contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
-    info.filterExpr = fargs->getMemberUnchecked(0);
-    TRI_ASSERT(info.index);
-    return true;
+    filterExpr = arg0;
+  } else if (geoFuncArgCheck(plan, arg0, /*legacy*/ true, info)) {
+    filterMode =
+        contains ? geo::FilterType::IS_CONTAINED : geo::FilterType::INTERSECTS;
+    filterExpr = arg1;
+  } else {
+    return false;
   }
-  return false;
+
+  info.filterMode = filterMode;
+  info.filterExpr = filterExpr;
+  TRI_ASSERT(info.index);
+  return true;
 }
 
 // checks if a node contanis a geo index function a valid operator
@@ -610,16 +619,25 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     TRI_ASSERT(info.filterExpr);
     TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeVar));
 
-    AstNode* args = ast->createNodeArray(2);
-    args->addMember(info.filterExpr);
-    addLocationArg(args);
-    if (info.filterMode == geo::FilterType::CONTAINS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
-    } else if (info.filterMode == geo::FilterType::INTERSECTS) {
+    if (info.filterMode == geo::FilterType::IS_CONTAINED) {
+      AstNode* swapped = ast->createNodeArray(2);
+      addLocationArg(swapped);
+      swapped->addMember(info.filterExpr);
       cond->andCombine(
-          ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
+          ast->createNodeFunctionCall("GEO_CONTAINS", swapped, true));
     } else {
-      TRI_ASSERT(false);
+      AstNode* args = ast->createNodeArray(2);
+      args->addMember(info.filterExpr);
+      addLocationArg(args);
+      if (info.filterMode == geo::FilterType::CONTAINS) {
+        cond->andCombine(
+            ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
+      } else if (info.filterMode == geo::FilterType::INTERSECTS) {
+        cond->andCombine(
+            ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
+      } else {
+        TRI_ASSERT(false);
+      }
     }
   }
 
@@ -748,9 +766,8 @@ void geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {
             auto idxType = idx->type();
-            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+            if ((idxType != IndexType::Geo1) && (idxType != IndexType::Geo2) &&
+                (idxType != IndexType::Geo)) {
               mustRespectIdxHint = true;
             } else {
               info.index = idx;

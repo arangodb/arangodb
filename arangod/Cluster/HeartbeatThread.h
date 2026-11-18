@@ -22,14 +22,15 @@
 
 #pragma once
 
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Metrics/Fwd.h"
+#include "Utils/Thread.h"
 
 #include <velocypack/Slice.h>
 
@@ -178,12 +179,6 @@ class HeartbeatThread : public ServerThread,
 
   // handle changes of user version (Sync/UserVersion)
   void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
-
-#ifdef USE_V8
-  // handle changes of foxx queue version (Sync/FoxxQueueVersion)
-  void handleFoxxQueueVersionChange(
-      arangodb::velocypack::Slice foxxQueueVersion);
-#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice

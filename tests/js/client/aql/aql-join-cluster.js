@@ -143,7 +143,7 @@ function ahuacatlClusterJoinKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryDifferentCollectionsKey : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn2 });
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     },
@@ -153,7 +153,7 @@ function ahuacatlClusterJoinKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryDifferentCollectionsNonKey : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn2 });
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     },
@@ -163,7 +163,7 @@ function ahuacatlClusterJoinKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubquerySameCollectionKey : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn1 }); // same collection
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     },
@@ -173,7 +173,7 @@ function ahuacatlClusterJoinKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubquerySameCollectionNonKey : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn1 }); // same collection
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     }
@@ -268,7 +268,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryDifferentCollectionsNonKeyJNKS : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn2 });
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     },
@@ -278,7 +278,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubquerySameCollectionNonKeyJNKS : function () {
-      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+      var actual = db._query("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET `match` = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN `match`", { "@cn1": cn1, "@cn2": cn1 }); // same collection
       let res = actual.toArray().sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], res);
     }

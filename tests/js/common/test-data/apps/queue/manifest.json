@@ -1,8 +1,0 @@
-{
-  "main": "index.js",
-  "scripts": {
-    "setup": "setup.js",
-    "teardown": "teardown.js",
-    "job": "job.js"
-  }
-}

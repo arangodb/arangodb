@@ -87,11 +87,15 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
   }
 };
 
-TEST_F(CollectionMutablePropertiesTest, test_requires_some_input) {
+TEST_F(CollectionMutablePropertiesTest, test_empty_input) {
+  // NOTE: Inspect() parses an empty body and leaves `name` empty,
+  // but applyDefaultsAndValidate() rejects it, which is tested in the
+  // CreateCollectionRequestTest.
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   auto testee = parse(body.slice());
-  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
+  ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
+  EXPECT_TRUE(testee->name.empty());
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
@@ -110,12 +114,11 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
   EXPECT_TRUE(testee->computedValues.slice().isNull());
   EXPECT_FALSE(testee->schema.has_value());
   EXPECT_FALSE(testee->cacheEnabled);
-  EXPECT_TRUE(testee->supportsRBAC);  // default is true
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
-  // The empty string
-  __HELPER_assertParsingThrows(name, "");
+  // NOTE: Inspect() parses the empty string, but applyDefaultsAndValidate()
+  // rejects it, which is tested in the CreateCollectionRequestTest.
 
   // Non String types
   __HELPER_assertParsingThrows(name, 0);
@@ -127,55 +130,6 @@ TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
   GenerateFailsOnDouble(name);
   GenerateFailsOnArray(name);
   GenerateFailsOnObject(name);
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_supportsRBAC_default_is_true) {
-  std::string colName = "test";
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    body.add("name", VPackValue(colName));
-  }
-  auto testee = parse(body.slice());
-  ASSERT_TRUE(testee.ok());
-  EXPECT_TRUE(testee->supportsRBAC);
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_supportsRBAC_can_be_set_to_false) {
-  auto body = createMinimumBodyWithOneValue("supportsRBAC", false);
-  auto testee = parse(body.slice());
-  ASSERT_TRUE(testee.ok());
-  EXPECT_FALSE(testee->supportsRBAC);
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_supportsRBAC_can_be_set_to_true) {
-  auto body = createMinimumBodyWithOneValue("supportsRBAC", true);
-  auto testee = parse(body.slice());
-  ASSERT_TRUE(testee.ok());
-  EXPECT_TRUE(testee->supportsRBAC);
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_supportsRBAC_serialization) {
-  CollectionMutableProperties props;
-  props.name = "testCollection";
-  props.supportsRBAC = false;
-
-  auto serialized = serialize(props);
-  auto slice = serialized.slice();
-
-  ASSERT_TRUE(slice.isObject());
-  ASSERT_TRUE(slice.hasKey("supportsRBAC"));
-  EXPECT_FALSE(slice.get("supportsRBAC").getBool());
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_supportsRBAC_invalid_types) {
-  // Non-boolean types should fail
-  __HELPER_assertParsingThrows(supportsRBAC, 0);
-  __HELPER_assertParsingThrows(supportsRBAC, 1);
-  __HELPER_assertParsingThrows(supportsRBAC, "true");
-  __HELPER_assertParsingThrows(supportsRBAC, "false");
-  __HELPER_assertParsingThrows(supportsRBAC, VPackSlice::emptyArraySlice());
-  __HELPER_assertParsingThrows(supportsRBAC, VPackSlice::emptyObjectSlice());
 }
 
 }  // namespace arangodb::tests

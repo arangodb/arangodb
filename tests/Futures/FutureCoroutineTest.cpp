@@ -1,6 +1,11 @@
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Async/WaitTypes.h"
+#include "Auth/Common.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 #include "Futures/Future.h"
+#include "Mocks/ExecContextFactory.h"
 
 #include <condition_variable>
 #include <coroutine>
@@ -14,85 +19,6 @@ using namespace arangodb;
 using namespace arangodb::futures;
 
 namespace {
-struct WaitSlot {
-  void resume() {
-    ready = true;
-    _continuation.resume();
-  }
-
-  void await() {}
-
-  std::coroutine_handle<> _continuation;
-
-  bool await_ready() { return ready; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> continuation) {
-    _continuation = continuation;
-  }
-
-  void stop() {}
-
-  bool ready = false;
-};
-
-struct NoWait {
-  void resume() {}
-  void await() {}
-
-  auto operator co_await() { return std::suspend_never{}; }
-  void stop() {}
-};
-
-struct ConcurrentNoWait {
-  void resume() {}
-  void await() {
-    await_suspend(std::noop_coroutine());
-    _thread.join();
-  }
-
-  bool await_ready() { return false; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> handle) {
-    {
-      std::unique_lock guard(_mutex);
-      _coro.emplace_back(handle);
-    }
-    _cv.notify_one();
-  }
-  ConcurrentNoWait()
-      : _thread([&] {
-          bool stopping = false;
-          while (true) {
-            std::coroutine_handle<> handle;
-            {
-              std::unique_lock guard(_mutex);
-              if (_coro.empty() && stopping) {
-                break;
-              }
-              _cv.wait(guard, [&] { return !_coro.empty(); });
-              handle = _coro.front();
-              _coro.pop_front();
-            }
-            if (handle == std::noop_coroutine()) {
-              stopping = true;
-            }
-            handle.resume();
-          }
-        }) {}
-
-  auto stop() -> void {
-    if (_thread.joinable()) {
-      await_suspend(std::noop_coroutine());
-      _thread.join();
-    }
-  }
-
-  std::mutex _mutex;
-  std::condition_variable_any _cv;
-  std::deque<std::coroutine_handle<>> _coro;
-
-  std::jthread _thread;
-};
 
 auto expect_all_promises_in_state(arangodb::async_registry::State state,
                                   uint number_of_promises) {
@@ -124,7 +50,8 @@ struct FutureTest : ::testing::Test {
   WaitType wait;
 };
 
-using MyTypes = ::testing::Types<NoWait, WaitSlot, ConcurrentNoWait>;
+using MyTypes = ::testing::Types<async_tests::NoWait, async_tests::WaitSlot,
+                                 async_tests::ConcurrentNoWait>;
 TYPED_TEST_SUITE(FutureTest, MyTypes);
 
 TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
@@ -134,9 +61,17 @@ TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
       co_return 12;
     }();
 
-    if (std::is_same<decltype(this->wait), WaitSlot>()) {
+    if constexpr (std::is_same<decltype(this->wait), async_tests::WaitSlot>()) {
+      // for WaitSlot fn is currently suspended
       expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
                                    1);
+    } else if constexpr (std::is_same<decltype(this->wait),
+                                      async_tests::NoWait>()) {
+      // for NoWait fn already finished
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    } else {
+      // for ConcurrentNoWait both can happen, we don't know for sure here
     }
 
     this->wait.resume();
@@ -144,7 +79,7 @@ TYPED_TEST(FutureTest, promises_in_async_registry_know_their_state) {
 
     expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 1);
   }
-  expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+  expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 0);
 }
 
 namespace {
@@ -190,10 +125,6 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{promise->id});
 
       co_await std::move(fn);
-      awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{promise->id});
 
       co_return;
     };
@@ -211,17 +142,6 @@ TYPED_TEST(
                 arangodb::async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn);
-
-      awaited_promise = find_promise_by_name("awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{waiter_promise->id});
-
-      // waiter did not change
-      waiter_promise = find_promise_by_name("waiter_fn");
-      EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
-          waiter_promise->requester));
 
       co_return;
     };
@@ -255,15 +175,36 @@ TYPED_TEST(FutureTest,
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
-          waiter_promise->requester));
+      if (awaited_promise.has_value()) {
+        // nobody has co_awaited fn yet, so its requester is still the thread
+        EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
+            awaited_promise->requester));
+      }
 
       co_await std::move(fn);
 
+      // The registry entry of fn is owned by its SharedState, which is deleted
+      // as soon as the coroutine frame (Promise side) and the Future inside
+      // the awaitable temporary (consumer side) have both detached.
       awaited_promise = find_promise_by_name("awaited_fn");
-      EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_EQ(awaited_promise->requester,
-                arangodb::async_registry::Requester{waiter_promise->id});
+      if constexpr (std::is_same<TypeParam, async_tests::WaitSlot>::value) {
+        // fn resolves inside its own callback, which resumes this coroutine
+        // synchronously: the SharedState is still attached while we run here
+        EXPECT_TRUE(awaited_promise.has_value());
+      } else if constexpr (std::is_same<TypeParam,
+                                        async_tests::NoWait>::value) {
+        // fn already finished before this coroutine started, so only the
+        // Future kept its SharedState alive. That Future died with the
+        // awaitable temporary at the end of the co_await expression.
+        EXPECT_FALSE(awaited_promise.has_value());
+      }
+      // ConcurrentNoWait: either of the above, depending on whether the worker
+      // thread finished fn before the co_await. Whenever the entry is still
+      // visible, its requester must have been updated by the co_await.
+      if (awaited_promise.has_value()) {
+        EXPECT_EQ(awaited_promise->requester,
+                  arangodb::async_registry::Requester{waiter_promise->id});
+      }
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
@@ -282,41 +223,54 @@ TYPED_TEST(FutureTest,
   this->wait.await();
 }
 
-struct ExecContext_Waiting : public arangodb::ExecContext {
-  ExecContext_Waiting()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Waiting",
-                              "", arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_Calling : public arangodb::ExecContext {
-  ExecContext_Calling()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Calling",
-                              "", arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_Begin : public arangodb::ExecContext {
-  ExecContext_Begin()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "Begin", "",
-                              arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
-struct ExecContext_End : public arangodb::ExecContext {
-  ExecContext_End()
-      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                              arangodb::ExecContext::Type::Default, "End", "",
-                              arangodb::auth::Level::RW,
-                              arangodb::auth::Level::NONE, true) {}
-};
+// COR-822: transaction::Methods::replicateOperations co_awaits the follower
+// responses (whose futures are fulfilled on a network or scheduler thread)
+// and performs an intermediate commit after resuming. The commit guard in
+// RocksDBTrxBaseMethods::doCommitImpl reads
+// ExecContext::current().isCanceled(); with a plain .thenValue continuation
+// it would run on the fulfilling thread and observe the Superuser fallback
+// (whose _canceled is always false) instead of the initiator's context. This
+// test asserts the property the coroutine conversion relies on: resumption
+// replays the initiator's ExecContext -- in particular for ConcurrentNoWait,
+// where the resumption happens on a foreign thread without any ExecContext --
+// so a cancellation of the initiating request is observed by the commit
+// guard.
+TYPED_TEST(FutureTest, canceled_initiator_context_is_replayed_after_resume) {
+  auto ctx = arangodb::tests::mocks::makeClassicExecContext(
+      "initiator", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope scope(ctx.execContext);
+  ctx.execContext->cancel();
+
+  auto guardResult = [&]() -> Future<Result> {
+    co_await this->wait;
+    // this mirrors the commit guard in RocksDBTrxBaseMethods::doCommitImpl
+    auto const& exec = ExecContext::current();
+    EXPECT_EQ(exec.user(), "initiator");
+    if (exec.isCanceled()) {
+      co_return Result(TRI_ERROR_ARANGO_READ_ONLY);
+    }
+    co_return Result();
+  }();
+
+  this->wait.resume();
+  this->wait.await();
+
+  ASSERT_TRUE(guardResult.isReady());
+  EXPECT_EQ(std::move(guardResult).waitAndGet().errorNumber(),
+            TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
-  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  auto ctxBegin = arangodb::tests::mocks::makeClassicExecContext(
+      "Begin", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope exec(ctxBegin.execContext);
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
   auto waiting_coro = [&]() -> Future<Unit> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    auto ctxWaiting = arangodb::tests::mocks::makeClassicExecContext(
+        "Waiting", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    ExecContextScope exec(ctxWaiting.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
     co_await this->wait;
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
@@ -331,7 +285,9 @@ TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
 
   auto calling_coro = [&]() -> Future<Unit> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    auto ctxCalling = arangodb::tests::mocks::makeClassicExecContext(
+        "Calling", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    ExecContextScope exec(ctxCalling.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Calling");
     co_await std::move(waiting_coro);
     EXPECT_EQ(ExecContext::current().user(), "Calling");
@@ -344,7 +300,9 @@ TYPED_TEST(FutureTest, execution_context_is_local_to_coroutine) {
   std::ignore = calling_coro();
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  auto ctxEnd = arangodb::tests::mocks::makeClassicExecContext(
+      "End", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  ExecContextScope new_exec(ctxEnd.execContext);
   EXPECT_EQ(ExecContext::current().user(), "End");
 
   this->wait.resume();

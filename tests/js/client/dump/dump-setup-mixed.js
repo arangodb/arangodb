@@ -39,13 +39,10 @@ const setup = require(base);
   setup.createExtendedName();
   setup.createComputedValues();
   setup.createStrings();
-  setup.createTransactional();
   setup.createPersistent();
   setup.createView();
   setup.createSearch();
   setup.createInvertedIndex();
-  setup.createJobs();
-  setup.createFoxx();
   setup.createAnalyzers();
 
   setup.createSmartGraph();

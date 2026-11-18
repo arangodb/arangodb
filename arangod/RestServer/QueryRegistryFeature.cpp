@@ -29,7 +29,6 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -123,11 +122,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
       _queryPlanCacheMemoryUsage(
           metricsRegistry.add(arangodb_aql_query_plan_cache_memory_usage{})) {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _options.queryCacheMaxResultsCount = properties.maxResultsCount;

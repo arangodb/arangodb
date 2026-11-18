@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Range.h"
+#include "Aql/RangeSpec.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
@@ -39,6 +40,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -197,47 +201,76 @@ AqlValue functions::Pop(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function APPEND
 AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
-  // cppcheck-suppress variableScope
-  static char const* AFN = "APPEND";
-
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
+
   AqlValue const& list =
       aql::functions::extractFunctionParameterValue(parameters, 0);
+
   AqlValue const& toAppend =
       aql::functions::extractFunctionParameterValue(parameters, 1);
 
-  if (toAppend.isNull(true)) {
-    return list.clone();
-  }
-
-  AqlValueMaterializer toAppendMaterializer(vopts);
-  VPackSlice t = toAppendMaterializer.slice(toAppend);
-
-  if (t.isArray() && t.length() == 0) {
-    return list.clone();
-  }
-
   bool unique = false;
   if (parameters.size() == 3) {
-    AqlValue const& a =
-        aql::functions::extractFunctionParameterValue(parameters, 2);
-    unique = a.toBoolean();
+    unique = aql::functions::extractFunctionParameterValue(parameters, 2)
+                 .toBoolean();
   }
 
-  AqlValueMaterializer materializer(vopts);
-  VPackSlice l = materializer.slice(list);
+  AqlValueMaterializer listMaterializer(vopts);
+  AqlValueMaterializer appendMaterializer(vopts);
 
-  if (l.isNull()) {
-    return toAppend.clone();
-  }
+  VPackSlice l = listMaterializer.slice(list);
+  VPackSlice t = appendMaterializer.slice(toAppend);
 
-  if (!l.isArray()) {
+  static char const* AFN = "APPEND";
+  if (!l.isArray() && !l.isNull()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
+  // Non-unique append path
+  if (!unique) {
+    // nothing to append
+    if (toAppend.isNull(true) && (list.isNull(true) || list.isArray())) {
+      return list.clone();
+    }
+
+    // append array is empty
+    if (t.isArray() && t.length() == 0) {
+      return list.clone();
+    }
+
+    // list is null and append value is an array
+    if (l.isNull() && t.isArray()) {
+      return toAppend.clone();
+    }
+
+    auto builder = ThreadLocalBuilderLeaser::lease();
+    builder->openArray();
+
+    // append original list
+    if (l.isArray()) {
+      for (VPackSlice it : VPackArrayIterator(l)) {
+        builder->add(it);
+      }
+    }
+
+    // append second parameter
+    if (t.isArray()) {
+      for (VPackSlice it : VPackArrayIterator(t)) {
+        builder->add(it);
+      }
+    } else if (!toAppend.isNull(true)) {
+      builder->add(t);
+    }
+
+    builder->close();
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  // Unique append path
   auto options = trx->transactionContextPtr()->getVPackOptions();
+
   containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
                           basics::VelocyPackHelper::VPackEqual>
       added(11, basics::VelocyPackHelper::VPackHash(),
@@ -246,26 +279,28 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
 
-  for (VPackSlice it : VPackArrayIterator(l)) {
-    if (!unique || added.insert(it).second) {
-      builder->add(it);
-    }
-  }
-
-  AqlValueMaterializer materializer2(vopts);
-  VPackSlice slice = materializer2.slice(toAppend);
-
-  if (!slice.isArray()) {
-    if (!unique || added.find(slice) == added.end()) {
-      builder->add(slice);
-    }
-  } else {
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      if (!unique || added.insert(it).second) {
+  // append original list with deduplication
+  if (l.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(l)) {
+      if (added.insert(it).second) {
         builder->add(it);
       }
     }
   }
+
+  // append second parameter with deduplication
+  if (t.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(t)) {
+      if (added.insert(it).second) {
+        builder->add(it);
+      }
+    }
+  } else if (!toAppend.isNull(true)) {
+    if (added.insert(t).second) {
+      builder->add(t);
+    }
+  }
+
   builder->close();
   return AqlValue(builder->slice(), builder->size());
 }
@@ -721,30 +756,18 @@ AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(left.toInt64(), right.toInt64());
   }
 
-  double step = stepValue.toDouble();
-
-  if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+  auto spec = functions::makeRangeSpec(from, to, stepValue.toDouble());
+  if (!spec) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
+  Range::throwIfTooBigForMaterialization(spec->count);
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray(true);
-  if (step < 0.0 && to <= from) {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((from - to) / -step));
-    for (; from >= to; from += step) {
-      builder->add(VPackValue(from));
-    }
-  } else {
-    TRI_ASSERT(step != 0.0);
-    Range::throwIfTooBigForMaterialization(
-        static_cast<uint64_t>((to - from) / step));
-    for (; from <= to; from += step) {
-      builder->add(VPackValue(from));
-    }
+  for (uint64_t i = 0; i < spec->count; ++i) {
+    builder->add(VPackValue(spec->at(i)));
   }
   builder->close();
   return AqlValue(builder->slice(), builder->size());
@@ -1013,6 +1036,58 @@ AqlValue functions::UnionDistinct(ExpressionContext* expressionContext,
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
+/// @brief function UNION_DISTINCT_STABLE
+AqlValue functions::UnionDistinctStable(
+    ExpressionContext* expressionContext, AstNode const&,
+    VPackFunctionParametersView parameters) {
+  static char const* AFN = "UNION_DISTINCT_STABLE";
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  size_t const n = parameters.size();
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(vopts));
+
+  auto builder = ThreadLocalBuilderLeaser::lease();
+  builder->openArray();
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue const& value =
+        aql::functions::extractFunctionParameterValue(parameters, i);
+
+    if (!value.isArray()) {
+      // not an array
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    materializers.emplace_back(vopts);
+    VPackSlice slice = materializers.back().slice(value);
+    for (VPackSlice v : VPackArrayIterator(slice)) {
+      v = v.resolveExternal();
+      if (values.emplace(v).second) {
+        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        builder->add(v);
+      }
+    }
+  }
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  builder->close();
 
   return AqlValue(builder->slice(), builder->size());
 }
@@ -1303,8 +1378,8 @@ AqlValue functions::Minus(ExpressionContext* expressionContext, AstNode const&,
     it.next();
   }
 
-  // Iterate through all following parameters and delete found elements from the
-  // map
+  // Iterate through all following parameters and delete found elements from
+  // the map
   for (size_t k = 1; k < parameters.size(); ++k) {
     AqlValue const& next =
         aql::functions::extractFunctionParameterValue(parameters, k);

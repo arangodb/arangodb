@@ -142,28 +142,14 @@ function kShortestPathsDifficultTreesLeftRightSuite() {
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}'
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-            RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(1, res.length);
         startTime = new Date();
         res = db._query(`
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             RETURN p`).toArray();
-        print("Runtime legacy weighted:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(1, res.length);
       } finally {
         E.remove(edgeKey);
@@ -185,28 +171,14 @@ function kShortestPathsDifficultTreesLeftRightSuite() {
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}'
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-            RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(1, res.length);
         startTime = new Date();
         res = db._query(`
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             RETURN p`).toArray();
-        print("Runtime legacy weighted:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(1, res.length);
       } finally {
         E.remove(edgeKey);
@@ -228,28 +200,14 @@ function kShortestPathsDifficultTreesLeftRightSuite() {
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}'
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-            RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(1, res.length);
         startTime = new Date();
         res = db._query(`
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             RETURN p`).toArray();
-        print("Runtime legacy weighted:", new Date() - startTime);
-        assertEqual(1, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(1, res.length);
       } finally {
         E.remove(edgeKey);
@@ -285,33 +243,15 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
             GRAPH '${graphName}' LIMIT 3
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(3, res.length);
         startTime = new Date();
         res = db._query(`
           FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
+            GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             LIMIT 3
             RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
-        assertEqual(3, res.length);
-        // We do not do the following one, since it takes an awful lot of 
-        // time. We just keep the code here for completeness.
-        //startTime = new Date();
-        //res = db._query(`
-        //  FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-        //    GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
-        //    LIMIT 3
-        //    RETURN p`).toArray();
-        //print("Runtime legacy weighted:", new Date() - startTime);
-        //assertEqual(3, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            LIMIT 3
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(3, res.length);
       } finally {
         E.remove(edgeKey);
@@ -334,15 +274,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
             GRAPH '${graphName}'
             LIMIT 3
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
-        assertEqual(3, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-            LIMIT 3
-            RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(3, res.length);
         startTime = new Date();
         res = db._query(`
@@ -350,15 +282,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
             GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             LIMIT 3
             RETURN p`).toArray();
-        print("Runtime legacy weighted:", new Date() - startTime);
-        assertEqual(3, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            LIMIT 3
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(3, res.length);
       } finally {
         E.remove(edgeKey);
@@ -381,15 +305,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
             GRAPH '${graphName}'
             LIMIT 3
             RETURN p`).toArray();
-        print("Runtime legacy:", new Date() - startTime);
-        assertEqual(3, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-            LIMIT 3
-            RETURN p`).toArray();
-        print("Runtime yen:", new Date() - startTime);
+        print("Runtime:", new Date() - startTime);
         assertEqual(3, res.length);
         startTime = new Date();
         res = db._query(`
@@ -397,15 +313,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
             GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
             LIMIT 3
             RETURN p`).toArray();
-        print("Runtime legacy weighted:", new Date() - startTime);
-        assertEqual(3, res.length);
-        startTime = new Date();
-        res = db._query(`
-          FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-            GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-            LIMIT 3
-            RETURN p`).toArray();
-        print("Runtime yen weighted:", new Date() - startTime);
+        print("Runtime weighted:", new Date() - startTime);
         assertEqual(3, res.length);
       } finally {
         E.remove(edgeKey);
@@ -419,15 +327,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
           GRAPH '${graphName}'
           LIMIT 3
           RETURN p`).toArray();
-      print("Runtime legacy:", new Date() - startTime);
-      assertEqual(0, res.length);
-      startTime = new Date();
-      res = db._query(`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-          GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
-          LIMIT 3
-          RETURN p`).toArray();
-      print("Runtime yen:", new Date() - startTime);
+      print("Runtime:", new Date() - startTime);
       assertEqual(0, res.length);
       startTime = new Date();
       res = db._query(`
@@ -435,15 +335,7 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
           GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
           LIMIT 3
           RETURN p`).toArray();
-      print("Runtime legacy weighted:", new Date() - startTime);
-      assertEqual(0, res.length);
-      startTime = new Date();
-      res = db._query(`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
-          GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
-          LIMIT 3
-          RETURN p`).toArray();
-      print("Runtime yen weighted:", new Date() - startTime);
+      print("Runtime weighted:", new Date() - startTime);
       assertEqual(0, res.length);
     },
 

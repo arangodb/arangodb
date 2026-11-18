@@ -35,16 +35,16 @@ let download = require('internal').download;
 let endpoint = instanceManager.url;
 
 const waitForHeartbeat = function () {
-  internal.wait(3 * heartbeatInterval, false); 
+  internal.wait(3 * heartbeatInterval, false);
 };
 
-const setReadOnlyAndGetDBServer = function() {
+const setReadOnlyAndGetDBServer = function () {
   let res = arango.GET('/_admin/cluster/health');
-  let servers = Object.keys(res.Health).filter(function(s) {
+  let servers = Object.keys(res.Health).filter(function (s) {
     return s.match(/^PRMR/);
   });
 
-  let resp = arango.PUT('/_admin/server/mode', {mode: 'readonly'});
+  let resp = arango.PUT('/_admin/server/mode', { mode: 'readonly' });
   expect(resp.code).to.equal(200);
   waitForHeartbeat();
 
@@ -52,33 +52,33 @@ const setReadOnlyAndGetDBServer = function() {
 };
 
 // this only tests the http api...there is a separate readonly test
-describe('Readonly mode api', function() {
-  afterEach(function() {
+describe('Readonly mode api', function () {
+  afterEach(function () {
     // restore default server mode
-    arango.PUT('/_admin/server/mode', {mode: 'default'});
+    arango.PUT('/_admin/server/mode', { mode: 'default' });
     waitForHeartbeat();
   });
 
-  after(function() {
+  after(function () {
     // wait for heartbeats so the "default" server mode has a chance to be picked up by all db servers
     // before we go on with other tests
     waitForHeartbeat();
   });
 
-  it('outputs its current mode', function() {
+  it('outputs its current mode', function () {
     let resp = arango.GET('/_admin/server/mode');
     expect(resp.code).to.equal(200);
     expect(resp).to.have.property('mode', 'default');
   });
 
-  it('can switch to readonly', function() {
-    let resp = arango.PUT('/_admin/server/mode', {mode: 'readonly'});
+  it('can switch to readonly', function () {
+    let resp = arango.PUT('/_admin/server/mode', { mode: 'readonly' });
     expect(resp.code).to.equal(200);
     waitForHeartbeat();
     expect(resp).to.have.property('mode', 'readonly');
   });
 
-  it('throws an error when not passing an object', function() {
+  it('throws an error when not passing an object', function () {
     let set = arango.PUT('/_admin/server/mode', 'readonly');
     expect(set.code).to.equal(400);
     waitForHeartbeat();
@@ -87,8 +87,8 @@ describe('Readonly mode api', function() {
     expect(resp).to.have.property('mode', 'default');
   });
 
-  it('throws an error when passing an unknown mode', function() {
-    let set = arango.PUT('/_admin/server/mode', {mode: 'testi'});
+  it('throws an error when passing an unknown mode', function () {
+    let set = arango.PUT('/_admin/server/mode', { mode: 'testi' });
     expect(set.code).to.equal(400);
     waitForHeartbeat();
 
@@ -96,26 +96,26 @@ describe('Readonly mode api', function() {
     expect(resp).to.have.property('mode', 'default');
   });
 
-  it('the heartbeat should set readonly mode for all cluster nodes', function() {
-    let resp = arango.PUT('/_admin/server/mode', {mode: 'readonly'});
+  it('the heartbeat should set readonly mode for all cluster nodes', function () {
+    let resp = arango.PUT('/_admin/server/mode', { mode: 'readonly' });
     expect(resp.code).to.equal(200);
     waitForHeartbeat();
 
     let res = instanceManager.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
-    .every(arangod => {
-      //Left as a download() because it does not execute.
-      let resp = download(arangod.url + '/_admin/server/mode');
-      if (resp.code === 503) {
-        // called on a follower
-        expect(resp.headers).to.have.property('x-arango-endpoint');
-      } else {
-        let body = JSON.parse(resp.body);
-        expect(body).to.have.property('mode', 'readonly');
-      }
-    });
+      .every(arangod => {
+        //Left as a download() because it does not execute.
+        let resp = download(arangod.url + '/_admin/server/mode');
+        if (resp.code === 503) {
+          // called on a follower
+          expect(resp.headers).to.have.property('x-arango-endpoint');
+        } else {
+          let body = JSON.parse(resp.body);
+          expect(body).to.have.property('mode', 'readonly');
+        }
+      });
   });
 
-  it('can still access cluster/health API when readonly', function() {
+  it('can still access cluster/health API when readonly', function () {
     if (!isCluster) {
       return;
     }
@@ -126,7 +126,7 @@ describe('Readonly mode api', function() {
     expect(resp).to.have.property('Health');
   });
 
-  it('can still access cluster/nodeVersion API when readonly', function() {
+  it('can still access cluster/nodeVersion API when readonly', function () {
     if (!isCluster) {
       return;
     }
@@ -136,7 +136,7 @@ describe('Readonly mode api', function() {
     expect(resp.code).to.equal(200);
   });
 
-  it('can still access cluster/nodeEngine API when readonly', function() {
+  it('can still access cluster/nodeEngine API when readonly', function () {
     if (!isCluster) {
       return;
     }
@@ -146,18 +146,20 @@ describe('Readonly mode api', function() {
     expect(resp.code).to.equal(200);
   });
 
-  it('can still access cluster/nodeStatistics API when readonly', function() {
+  it('can still access cluster metrics by serverId when readonly', function () {
     if (!isCluster) {
       return;
     }
 
     let server = setReadOnlyAndGetDBServer();
-    let resp = arango.GET_RAW('/_admin/cluster/nodeStatistics?ServerID=' + server);
+    let resp = arango.GET_RAW('/_admin/metrics?serverId=' + server);
     expect(resp.code).to.equal(200);
+    const body = typeof resp.body === 'string' ? resp.body : String(resp.body);
+    expect(body).to.include('arangodb_server_statistics_server_uptime_total');
   });
 
-  it('cannot create a database when readonly', function() {
-    let resp = arango.PUT('/_admin/server/mode', {mode: 'readonly'});
+  it('cannot create a database when readonly', function () {
+    let resp = arango.PUT('/_admin/server/mode', { mode: 'readonly' });
     expect(resp.code).to.equal(200);
     waitForHeartbeat();
 

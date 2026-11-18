@@ -23,6 +23,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RocksDBIncrementalSync.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadLocalLeaser.h"
@@ -149,7 +150,7 @@ Result removeKeysOutsideRange(
   // range
   auto index = coll->lookupIndex(
       IndexId::primary());  // RocksDBCollection->primaryIndex() is private
-  TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(index->type() == IndexType::Primary);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   RocksDBKey key(ThreadLocalStringLeaser::lease());
@@ -623,13 +624,15 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
         Result res;
         if (mustInsert) {
-          res = trx->insert(collectionName, it, options).result;
+          res = basics::catchToResult(
+              [&] { return trx->insert(collectionName, it, options).result; });
 
           if (res.ok()) {
             ++stats.numDocsInserted;
           }
         } else {
-          res = trx->replace(collectionName, it, options).result;
+          res = basics::catchToResult(
+              [&] { return trx->replace(collectionName, it, options).result; });
           // do NOT count up stats.numDocsInserted, as this will influence the
           // persisted document count later!!
         }
@@ -652,7 +655,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           res.reset(errorNumber,
                     basics::StringUtils::concatT(TRI_errno_string(errorNumber),
                                                  ": ", res.errorMessage()));
-          return res;
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
 
         // unique constraint violation!
@@ -661,7 +664,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         // errorMessage() is this case contains the conflicting key
         auto inner = removeConflict(res.errorMessage());
         if (inner.fail()) {
-          return res;
+          return replutils::documentInsertError(std::move(res), collectionName);
         }
       }
     }

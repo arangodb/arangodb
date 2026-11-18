@@ -23,10 +23,9 @@
 #include "TempOptionsProvider.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "Basics/BasicThread.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #include <filesystem>
 
@@ -36,8 +35,6 @@ using namespace arangodb::options;
 
 void TempOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, TempFeatureOptions& opts) {
-  options->addOldOption("temp-path", "temp.path");
-
   options->addSection("temp", "temporary files");
 
   options
@@ -60,7 +57,7 @@ void TempOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, TempFeatureOptions& opts) {
   if (!opts.path.empty()) {
     opts.path = basics::StringUtils::replace(
-        opts.path, "$PID", std::to_string(Thread::currentProcessId()));
+        opts.path, "$PID", std::to_string(BasicThread::currentProcessId()));
     opts.path = std::filesystem::absolute(opts.path).string();
   }
 }

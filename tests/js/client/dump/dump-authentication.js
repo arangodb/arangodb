@@ -49,16 +49,12 @@ jsunity.run(function dump_single_testsuite() {
       "testIndexes",
       "testTruncated",
       "testStrings",
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
       "testPersistent",
       "testView",
       "testSearch",
       "testInvertedIndex",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
-      "testJobsAndQueues",
       "testComputedValues",
 
       // cluster tests:

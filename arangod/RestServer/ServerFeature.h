@@ -23,7 +23,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "GeneralServer/OperationMode.h"
 #include "RestServer/ServerFeatureOptions.h"
 
 namespace arangodb {
@@ -39,8 +38,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Server"; }
 
-  static std::string operationModeString(OperationMode mode);
-
   ServerFeature(application_features::ApplicationServer& server, int* result,
                 ServerFeatureOptions options);
   ServerFeature(application_features::ApplicationServer& server, int* result);
@@ -49,18 +46,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
-
-  OperationMode operationMode() const { return _options.operationMode; }
-
-  std::string operationModeString() const {
-    return operationModeString(operationMode());
-  }
-
-  std::vector<std::string> const& scripts() const { return _options.scripts; }
-
-  bool isConsoleMode() const {
-    return (operationMode() == OperationMode::MODE_CONSOLE);
-  }
 
  private:
   void waitForHeartbeat();

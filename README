@@ -65,8 +65,7 @@ as an **Enterprise Edition** for commercial use and without a dataset size limit
 - **Fast access to your data**: Fine-tune your queries with a variety of index
   types for optimal performance. ArangoDB is written in C++ and can handle even
   very large datasets efficiently.
-- Easy to use **web interface** and **command-line tools** for interaction
-  with the server.
+- Easy to use **command-line tools** for interaction with the server.
 
 ### Scalability Features
 

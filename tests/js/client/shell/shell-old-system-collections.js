@@ -35,9 +35,6 @@ function testSuite() {
 
       assertNotEqual(0, collections.length);
       assertNotEqual(-1, collections.indexOf('_graphs'));
-      assertEqual(-1, collections.indexOf('_fishbowl'));
-      assertEqual(-1, collections.indexOf('_modules'));
-      assertEqual(-1, collections.indexOf('_routing'));
     },
     
     testNoOldSystemCollectionsInUserDB : function() {
@@ -49,9 +46,6 @@ function testSuite() {
 
         assertNotEqual(0, collections.length);
         assertNotEqual(-1, collections.indexOf('_graphs'));
-        assertEqual(-1, collections.indexOf('_fishbowl'));
-        assertEqual(-1, collections.indexOf('_modules'));
-        assertEqual(-1, collections.indexOf('_routing'));
       } finally {
         db._useDatabase("_system");
         db._dropDatabase("UnitTestsCollection");

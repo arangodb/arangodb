@@ -43,8 +43,7 @@ using EN = ExecutionNode;
 namespace {
 
 bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
-  if (auto type = indexHandle->type();
-      type == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+  if (auto type = indexHandle->type(); type == IndexType::Inverted) {
     LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
              << "index type explicitly excluded.";
     return false;
@@ -120,6 +119,15 @@ void batchMaterializeDocumentsRule(Optimizer* opt,
                  << indexNode->estimateCost().estimatedNrItems << ")";
         continue;
       }
+    }
+
+    auto flag =
+        indexNode->getAnnotatedFlag("smart-edge-smart-join/do-not-materialize");
+    if (flag.has_value() && *flag == true) {
+      LOG_RULE << "INDEX " << indexNode->id()
+               << " is inserted by smart-join-smart-edge and does not support "
+                  "late materialisation";
+      continue;
     }
 
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();

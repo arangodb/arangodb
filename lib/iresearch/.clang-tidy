@@ -1,38 +1,19 @@
-Checks: '*,
-         -altera-*,
-         -android-*,
-         -google-objc-*,
-         -linuxkernel-*,
-         -llvmlibc-*,
-         -mpi-*,
-         -objc-*,
-         -openmp-*,
-         -fuchsia-trailing-return,
-         -fuchsia-default-arguments-*,
-         -fuchsia-overloaded-operator,
-         -readability-identifier-length,
-         -readability-suspicious-call-argument,
-         -readability-function-cognitive-complexity,
-         -cppcoreguidelines-owning-memory,
-         -cppcoreguidelines-avoid-c-arrays,
-         -cppcoreguidelines-avoid-do-while,
-         -cppcoreguidelines-avoid-magic-numbers,
-         -cppcoreguidelines-pro-type-union-access,
-         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-         -cppcoreguidelines-pro-bounds-constant-array-index,
-         -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-         -modernize-use-nodiscard,
-         -modernize-avoid-c-arrays,
-         -modernize-use-trailing-return-type,
-         -hicpp-avoid-c-arrays,
-         -hicpp-no-array-decay,
-         -bugprone-easily-swappable-parameters,
-         -llvm-header-guard,
-         -cert-err58-cpp,
-         -google-build-using-namespace'
+# clang-tidy configuration for iresearch.
+#
+# iresearch was developed as a standalone third-party library and still follows
+# a different code style (snake_case identifiers, etc.). Historically it shipped
+# its own comprehensive config here (Checks: '*' with WarningsAsErrors: '*'),
+# which produces ~14k findings on this tree -- far too many to serve as a build
+# gate, and mostly from checks we intentionally do not run elsewhere.
+#
+# Now, iresearch inherits the repository-root .clang-tidy.
+#
+# InheritParentConfig makes the options here layer on top of the root config.
+InheritParentConfig: true
 
-WarningsAsErrors: '*'
-
+# iresearch's historical identifier-naming scheme (snake_case).
+# These are currently dormant, as the root config does not (yet) enable
+# readability-identifier-naming.
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase

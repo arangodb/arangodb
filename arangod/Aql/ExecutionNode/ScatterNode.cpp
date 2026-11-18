@@ -127,13 +127,19 @@ void ScatterNode::addClient(DistributeConsumerNode const& client) {
   // We cannot add the same distributeId twice, data is delivered exactly once
   // for each id
   TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) ==
-             _clients.end());
+             _clients.end())
+      << "distId " << distId << " already exists";
   _clients.emplace_back(distId);
+}
+
+void ScatterNode::setNumberOfShards(size_t const numShards) {
+  _maybeNumberOfShards = numShards;
 }
 
 /// @brief estimateCost
 CostEstimate ScatterNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
+  estimate.estimatedCost +=
+      estimate.estimatedNrItems * _maybeNumberOfShards.value_or(0);
   return estimate;
 }

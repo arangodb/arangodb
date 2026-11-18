@@ -21,63 +21,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ApiVersion.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
 #include "RestVersionHandler.h"
 
 #include <velocypack/Builder.h>
 
-#include <algorithm>
-#include <vector>
+#include <span>
+#include <string_view>
 
-using namespace arangodb;
+namespace arangodb {
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static void addApiVersions(VPackBuilder& result) {
-  // Collect all supported versions and sort in descending order
-  std::vector<uint32_t> versions;
-  for (size_t i = 0; i < api_version::numSupportedApiVersions(); ++i) {
-    versions.push_back(api_version::supportedApiVersions[i]);
-  }
-  std::sort(versions.begin(), versions.end(), std::greater<uint32_t>());
+namespace {
 
-  // Add apiVersions array
-  result.add("apiVersions", VPackValue(VPackValueType::Array));
-  for (uint32_t version : versions) {
-    result.add(VPackValue("v" + std::to_string(version)));
-  }
-  result.close();
-
-  // Collect deprecated versions and sort in descending order
-  std::vector<uint32_t> deprecatedVersions;
-  constexpr size_t numDeprecated =
-      sizeof(api_version::deprecatedApiVersions) /
-      sizeof(api_version::deprecatedApiVersions[0]);
-  for (size_t i = 0; i < numDeprecated; ++i) {
-    deprecatedVersions.push_back(api_version::deprecatedApiVersions[i]);
-  }
-  std::sort(deprecatedVersions.begin(), deprecatedVersions.end(),
-            std::greater<uint32_t>());
-
-  // Add deprecatedApiVersions array
-  result.add("deprecatedApiVersions", VPackValue(VPackValueType::Array));
-  for (uint32_t version : deprecatedVersions) {
-    result.add(VPackValue("v" + std::to_string(version)));
+// Emits the full served versions newest first. The tables are compile-time
+// constants kept in ascending order (see the static_asserts in ApiVersion.h),
+// hence the reverse iteration
+void addVersionArray(VPackBuilder& result, std::string_view name,
+                     std::span<ApiVersion const> versions) {
+  result.add(name, VPackValue(VPackValueType::Array));
+  for (auto it = versions.rbegin(); it != versions.rend(); ++it) {
+    result.add(VPackValue(api_version::formatServedApiVersion(*it)));
   }
   result.close();
 }
 
+void addApiVersions(VPackBuilder& result) {
+  addVersionArray(result, "apiVersions", api_version::supportedApiVersions);
+  addVersionArray(result, "deprecatedApiVersions",
+                  api_version::deprecatedApiVersions);
+}
+
+}  // namespace
+
 static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+                              VPackBuilder& result,
+                              ApiVersion requestedApiVersion) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
-  auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",
@@ -100,9 +86,35 @@ RestVersionHandler::RestVersionHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+async<RestHandler::AuthenticationGrant>
+RestVersionHandler::checkUserAuthentication() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()  // with JWT can also be authenticated
+        ? AuthenticationGrant::GRANTED_EARLY
+        : AuthenticationGrant::DENIED;
+  }
+
+  co_return co_await RestBaseHandler::checkUserAuthentication();
+}
+
+async<Result> RestVersionHandler::checkApiVersionAccess() const {
+  auto version = request()->requestedApiVersion();
+  if (version == api_version::defaultApiVersion) {
+    // default api-version is always allowed
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkApiVersionAccess();
+}
+
 void RestVersionHandler::getVersion(
     application_features::ApplicationServer& server, bool allowInfo,
-    bool includeDetails, VPackBuilder& result, uint32_t requestedApiVersion) {
+    bool includeDetails, VPackBuilder& result, ApiVersion requestedApiVersion) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
@@ -111,31 +123,33 @@ void RestVersionHandler::getVersion(
   result.add("license", VPackValue("community"));
 #endif
 
-  if (allowInfo) {
-    result.add("version", VPackValue(ARANGODB_VERSION));
+  result.add("version", VPackValue(ARANGODB_VERSION));
 
-    if (includeDetails) {
-      addVersionDetails(server, result);
-    }
+  if (allowInfo && includeDetails) {
+    addVersionDetails(server, result, requestedApiVersion);
   }
 
   // Add API version information (both in short and long form)
   addApiVersions(result);
 
   // Add the requested API version that was used to call this handler
-  result.add("requestedApiVersion",
-             VPackValue("v" + std::to_string(requestedApiVersion)));
+  result.add("requestedApiVersion", VPackValue(to_string(requestedApiVersion)));
 
   result.close();
 }
 
+// Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  bool const allowInfo = security.canAccessHardenedApi();
+  bool const allowInfo =
+      ExecContext::current()
+          .canUseHardenedAction(auth::perms::AdminMonitoringInternal{})
+          .ok();
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result,
              _request->requestedApiVersion());
@@ -146,3 +160,5 @@ RestStatus RestVersionHandler::execute() {
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }
+
+}  // namespace arangodb

@@ -189,47 +189,11 @@ function optimizerCollectMethodsTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief expect hash COLLECT
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    testHashedWithNonSortedIndex : function () {
-      c.ensureIndex({ type: "hash", fields: [ "group" ] });
-      c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
-      
-      const queries = [
-                     [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500, false],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10, true],
-                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500, true ],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10, true ],
-                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500, true ]
-                     ];
-      
-      queries.forEach(function(query) {
-          let plan = db._createStatement(query[0]).explain().plan;
-          let aggregateNodes = 0;
-          let sortNodes = 0;
-          plan.nodes.map(function(node) {
-            if (node.type === "CollectNode") {
-              ++aggregateNodes;
-              assertFalse(query[2] && node.collectOptions.method !== "sorted");
-              assertEqual(query[2] ? "sorted" : "hash",
-                         node.collectOptions.method, query[0]);
-            }
-            if (node.type === "SortNode") {
-              ++sortNodes;
-            }
-          });
-
-          assertEqual(isCluster ? 2 : 1, aggregateNodes);
-          assertEqual(query[2] ? 0 : 1, sortNodes);
-          
-          let results = db._query(query[0]);
-          let res = results.toArray();
-          assertEqual(query[1], res.length);
-       });
-    },
+    // NOTE: testHashedWithNonSortedIndex was removed because hash indexes are
+    // deprecated in ArangoDB 4.0 and cannot be created anymore. The test was
+    // specifically testing optimizer behavior with non-sorted (hash) indexes,
+    // which is no longer a valid scenario. The testSortedIndex test covers
+    // COLLECT optimization with persistent (sorted) indexes.
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expect sorted COLLECT
@@ -606,7 +570,39 @@ function optimizerCollectMethodsTestSuite () {
       const res = db._query(query).toArray();
       assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
     },
-  
+
+    // A sorted COLLECT can only reuse a preceding SORT if the group
+    // variables are its leading sort keys. Otherwise rows with the same
+    // group values are not adjacent and the optimizer must add its own SORT.
+    testSortedCollectWithPrecedingSortOnOtherAttributes : function () {
+      const queries = [
+        // group variable is not the first sort key
+        { collect: "SORT j.value, j.group COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: true },
+        { collect: "SORT j.haxe DESC, j.group COLLECT g = j.group", ret: "g", newSort: true },
+        // group variables are not the leading sort keys
+        { collect: "SORT j.haxe, j.group, j.value COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: true },
+        // group variables are the leading sort keys, in any order and direction
+        { collect: "SORT j.group DESC, j.value COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: false },
+        { collect: "SORT j.value DESC, j.group COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: false },
+      ];
+
+      const normalize = (rows) => rows.map((r) => JSON.stringify(r)).sort();
+
+      queries.forEach(function(q) {
+        const expected = db._query(`FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "hash" } RETURN ${q.ret}`).toArray();
+        const query = `FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "sorted" } RETURN ${q.ret}`;
+
+        if (!isCluster) {
+          const nodes = db._createStatement(query).explain().plan.nodes;
+          const sortNodes = nodes.filter((n) => n.type === "SortNode");
+          assertEqual(q.newSort ? 2 : 1, sortNodes.length, query);
+        }
+
+        const actual = db._query(query).toArray();
+        assertEqual(normalize(expected), normalize(actual), query);
+      });
+    },
+
   };
 }
 

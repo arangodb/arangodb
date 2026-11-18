@@ -142,7 +142,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           auto& resp = it.get();
           auto res = resp.combinedResult();
           if (res.fail()) {
-            LOG_TOPIC("4800b", WARN, Logger::STATISTICS)
+            LOG_TOPIC("4800b", WARN, Logger::FIXME)
                 << "Failed to get server info: " << res.errorMessage();
           } else {
             auto slice = resp.slice();
@@ -248,7 +248,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   if (!ServerState::instance()->isCoordinator()) {
     result.add("engineStats", VPackValue(VPackValueType::Object));
     VPackBuilder stats;
-    StorageEngine& engine = databaseFeature.engine();
+    StorageEngine& engine =
+        databaseFeature.server().getFeature<StorageEngine>();
     engine.getStatistics(stats);
     auto names = {
         // edge cache

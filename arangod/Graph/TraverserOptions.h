@@ -23,10 +23,12 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/RegisterResolver.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -94,7 +96,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
-  std::string weightAttribute;
+  std::vector<std::string> weightAttribute;
 
   double defaultWeight;
 
@@ -200,7 +202,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto isSatelliteLeader() const -> bool;
 
-  void initializeIndexConditions(aql::Ast* ast, aql::VarInfoMap const& varInfo,
+  void initializeIndexConditions(aql::Ast* ast,
+                                 aql::RegisterResolver const& registers,
                                  aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;

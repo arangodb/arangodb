@@ -38,7 +38,18 @@ let didRegex = /^([0-9a-zA-Z]+)\/([0-9a-zA-Z\-_]+)/;
 // error handling;
 ////////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
+  let cn = "UnitTestsCollectionBasics";
+  let cid;
   return {
+    setUpAll: function() {
+      db._drop(cn);
+      cid = db._create(cn);
+    },
+
+    tearDownAll: function() {
+      db._drop(cn);
+    },
+
     test_returns_an_error_if_collection_idenifier_is_missing: function() {
       let cmd = "/_api/document";
       let body = "{}";
@@ -51,20 +62,8 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_the_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document?collection=123456";
-      let body = "{}";
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
-
     test_returns_an_error_if_the_collection_name_is_unknown: function() {
-      let cmd = "/_api/document?collection=unknown_collection";
+      let cmd = "/_api/document/unknown_collection";
       let body = "{}";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -76,67 +75,94 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ 1 : 2 }";
+      let doc = arango.POST_RAW(cmd, body);
 
-      try {
-        let cmd = `/_api/document?collection=${id._id}`;
-        let body = "{ 1 : 2 }";
-        let doc = arango.POST_RAW(cmd, body);
-        
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-        
-        assertEqual(db[cn].count(), 0);
-      } finally {
-        db._drop(cn);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+
+      assertEqual(db[cn].count(), 0);
     },
 
     test_returns_an_error_if_an_object_sub_attribute_in_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ \"foo\" : { \"bar\" : \"baz\", \"blue\" : moo } }";
+      let doc = arango.POST_RAW(cmd, body);
 
-      try {
-        let cmd = `/_api/document?collection=${id._id}`;
-        let body = "{ \"foo\" : { \"bar\" : \"baz\", \"blue\" : moo } }";
-        let doc = arango.POST_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
 
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertEqual(db[cn].count(), 0);
-      } finally {
-        db._drop(cn);
-      }
+      assertEqual(db[cn].count(), 0);
     },
 
     test_returns_an_error_if_an_array_attribute_in_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
-      try {
-        let cmd = `/_api/document?collection=${id._id}`;
-        let body = "{ \"foo\" : [ 1, 2, \"bar\", moo ] }";
-        let doc = arango.POST_RAW(cmd, body);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ \"foo\" : [ 1, 2, \"bar\", moo ] }";
+      let doc = arango.POST_RAW(cmd, body);
 
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
 
-        assertEqual(db[cn].count(), 0);
+      assertEqual(db[cn].count(), 0);
+    },
 
-      } finally {
-        db._drop(cn);
-      }
-    }
+    test_post_with_collection_query_param_is_rejected: function () {
+      const res = arango.POST_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
+
+    test_put_with_collection_query_param_is_rejected: function () {
+      const res = arango.PUT_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
+
+    test_patch_with_collection_query_param_is_rejected: function () {
+      const res = arango.PATCH_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
+
+    test_post_with_numeric_collection_id_is_rejected: function () {
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.POST_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
+
+    test_put_with_numeric_collection_id_is_rejected: function () {
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.PUT_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
+
+    test_patch_with_numeric_collection_id_is_rejected: function () {
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.PATCH_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+    },
   };
 }
 
@@ -147,7 +173,8 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
     setUp: function() {
-      let cid = db._create(cn, { waitForSync: true } );
+      db._drop(cn);
+      db._create(cn, { waitForSync: true } );
     },
 
     tearDown: function() {
@@ -155,7 +182,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_document__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -187,7 +214,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_document__setting_compatibility_header__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -219,8 +246,8 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_document_complex_body__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
-      let body = { "Hallo" : "Wo\"rld" };
+      let cmd = `/_api/document/${cn}`;
+      let body = { "Hallo": "Wo\"rld" };
       let doc = arango.POST_RAW(cmd, body, {});
 
       assertEqual(doc.code, 201);
@@ -258,7 +285,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_document_complex_body__setting_compatibility_header__waitForSyncEQtrue_: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"Wo\\\"rld\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -297,7 +324,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_umlaut_document__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -336,7 +363,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_umlaut_document__setting_compatibility_header__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -376,7 +403,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_not_normalized_umlaut_document__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"Grüß Gott.\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -416,7 +443,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
     },
 
     test_creating_a_new_not_normalized_umlaut_document__setting_compatibility_header__waitForSyncEQtrue: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"Grüß Gott.\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -465,7 +492,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
 
       arango.DELETE(`/_api/document/${cn}/${key}`);
 
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "some stuff" : "goes here", "_key" : key };
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -499,7 +526,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
 
       arango.DELETE(`/_api/document/${cn}/${key}`);
 
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "some stuff" : "goes here", "_key" : key };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -533,7 +560,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
 
       arango.DELETE(`/_api/document/${cn}/${key}`);
 
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "some stuff" : "goes here", "_key" : key };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -558,7 +585,8 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   return {
     setUp: function() {
-      let cid = db._create(cn);
+      db._drop(cn);
+      db._create(cn);
     },
 
     tearDown: function() {
@@ -566,7 +594,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__waitForsync_EQ_False: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -598,7 +626,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__setting_compatibility_header__waitForsync_EQ_False: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -630,7 +658,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__waitForSync_URL_param_EQ_false: function() {
-      let cmd = `/_api/document?collection=${cn}&waitForSync=false`;
+      let cmd = `/_api/document/${cn}?waitForSync=false`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -662,7 +690,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__waitForSync_URL_param_EQ_false__setting_compatibility_header: function() {
-      let cmd = `/_api/document?collection=${cn}&waitForSync=false`;
+      let cmd = `/_api/document/${cn}?waitForSync=false`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -694,7 +722,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__waitForSync_URL_param_EQ_true: function() {
-      let cmd = `/_api/document?collection=${cn}&waitForSync=true`;
+      let cmd = `/_api/document/${cn}?waitForSync=true`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -726,7 +754,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document__waitForSync_URL_param_EQ_true__setting_compatibility_header: function() {
-      let cmd = `/_api/document?collection=${cn}&waitForSync=true`;
+      let cmd = `/_api/document/${cn}?waitForSync=true`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -758,7 +786,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document_with_duplicate_attribute_names: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"a\" : 1, \"a\": 2 }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -770,7 +798,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
     },
 
     test_creating_a_new_document_with_duplicate_attribute_names_in_nested_object: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"outer\" : { \"a\" : 1, \"a\": 2 } }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -790,6 +818,7 @@ function known_collection_nameSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
     setUp: function() {
+      db._drop(cn);
       db._create(cn, { waitForSync: true});
     },
 
@@ -798,7 +827,7 @@ function known_collection_nameSuite () {
     },
 
     test_creating_a_new_document: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -830,7 +859,7 @@ function known_collection_nameSuite () {
     },
 
     test_creating_a_new_document__setting_compatibility_header: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -874,7 +903,7 @@ function unknown_collection_nameSuite () {
     },
 
     test_returns_an_error_if_collection_is_unknown: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -896,6 +925,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
   let cid;
   return {
     setUp: function() {
+      db._drop(cn);
       cid = db._create(cn);
     },
 
@@ -904,7 +934,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
     },
 
     test_replace_a_document_by__key: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -933,7 +963,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&waitForSync=false&returnOld=true`;
+      cmd = `/_api/document/${cn}?overwriteMode=replace&waitForSync=false&returnOld=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -959,7 +989,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
     },
 
     test_replace_a_document_by__key__return_new___old: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -988,7 +1018,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document/${cn}?overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -1024,7 +1054,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
     },
 
     test_replace_documents_by__key: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body, {});
 
@@ -1053,7 +1083,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document/${cn}?overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `[{ "_key" : "${key}",  "Hallo" : "ULF" }, { "_key" : "${key}",  "Hallo" : "ULFINE" }]`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 

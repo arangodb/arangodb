@@ -48,7 +48,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -78,6 +78,8 @@ static VPackValue const VP_SET("set");
 
 static std::string_view const PRIMARY("primary");
 static std::string_view const EDGE("edge");
+static std::string_view const HASH("hash");
+static std::string_view const SKIPLIST("skiplist");
 
 namespace {
 
@@ -185,6 +187,13 @@ static VPackBuilder compareIndexes(
       std::string planIdWithColl = shname + "/" + planIdS;
       indis.emplace(planIdWithColl);
 
+      // Deprecated index types are converted by the upgrade task.
+      // Skip them here so maintenance does not try to recreate or
+      // drop them while the coordinator migration is in progress.
+      if (ptype == HASH || ptype == SKIPLIST) {
+        continue;
+      }
+
       // See, if we already have an index with the id given in the Plan:
       bool found = false;
       if (local.isArray()) {
@@ -214,7 +223,8 @@ static VPackBuilder compareIndexes(
             // should be fine. However, for robustness sake, we compare,
             // if the local index found actually has the right properties,
             // if not, we schedule a dropIndex action:
-            if (!arangodb::Index::compare(engine, pindex, lindex, dbname)) {
+            if (!arangodb::Index::compare(engine.indexTypeCatalog(), pindex,
+                                          lindex, dbname)) {
               // To achieve this, we remove the long version of the ID
               // from the indis set. This way, the local index will be
               // dropped further down in handleLocalShard:
@@ -1189,7 +1199,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     TRI_ASSERT(ServerState::instance()->isDBServer() ||
                ServerState::instance()->isSingleServer())
         << "executePlan only runs on DBServer or single-server";
-    auto& engine = feature.server().getFeature<RocksDBEngine>();
+    auto& engine = feature.server().getFeature<StorageEngine>();
     diffPlanLocal(engine, plan, planIndex, current, currentIndex, dirty, local,
                   serverId, errors, makeDirty, callNotify, actions,
                   shardActionMap, localLogs, localShardIdToLogId);

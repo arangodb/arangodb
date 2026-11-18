@@ -122,8 +122,8 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: false, indexHint: 'primary' } RETURN 1"],
 
         // invalid combinations of indexHint and disableIndex
-        [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "disableIndex"],
-        [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "indexHint"],
         [prefix + "{ disableIndex: true, indexHint: 'primary' } RETURN 1", "indexHint"],
       ];
 
@@ -173,13 +173,13 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
     testTraversal: function () {
       const prefix = "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/test' " + cn + "Edge OPTIONS ";
       const queries = [
-        [prefix + "{ bfs: false } RETURN 1"],
-        [prefix + "{ bfs: true } RETURN 1"],
         [prefix + "{ order: 'bfs' } RETURN 1"],
         [prefix + "{ order: 'dfs' } RETURN 1"],
         [prefix + "{ order: 'weighted' } RETURN 1"],
         [prefix + "{ defaultWeight: 17 } RETURN 1"],
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
         [prefix + "{ uniqueVertices: 'path' } RETURN 1"],
         [prefix + "{ uniqueVertices: 'none' } RETURN 1"],
         [prefix + "{ parallelism: 4 } RETURN 1"],
@@ -188,10 +188,9 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
         [prefix + "{ defaultWeight: true } RETURN 1", "defaultWeight"],
-        [prefix + "{ weightAttribute: ['testi'] } RETURN 1", "weightAttribute"],
+        [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
         [prefix + "{ uniqueVertices: true } RETURN 1", "uniqueVertices"],
         [prefix + "{ uniqueEdges: true } RETURN 1", "uniqueEdges"],
-        [prefix + "{ bfs: true, order: 'bfs' } RETURN 1", "order"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
@@ -217,9 +216,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       const prefix = "FOR p IN OUTBOUND SHORTEST_PATH '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
       const queries = [
         [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+        [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
         [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
         [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+        [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
         [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -245,9 +247,12 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         const prefix = "FOR p IN OUTBOUND " + type + " '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
         const queries = [
           [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi'] } RETURN 1"],
+          [prefix + "{ weightAttribute: ['testi', 'nested'] } RETURN 1"],
           [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
 
           [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+          [prefix + "{ weightAttribute: [['testi']] } RETURN 1", "weightAttribute"],
           [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
           [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
           [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
@@ -276,7 +281,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ method: 'hash' } RETURN x"],
         [prefix + "{ disableIndex: true } RETURN x"],
 
-        [prefix + "{ method: 'foxx' } RETURN x", "method"],
         [prefix + "{ waitForSync: false } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN x", "waitForSync"],
@@ -302,7 +306,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ skipDocumentValidation: true }"],
         [prefix + "{ keepNull: true }"],
         [prefix + "{ mergeObjects: true }"],
-        [prefix + "{ overwrite: true }"],
         [prefix + "{ overwriteMode: 'ignore' }"],
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
@@ -332,7 +335,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ skipDocumentValidation: true }"],
         [prefix + "{ keepNull: true }"],
         [prefix + "{ mergeObjects: true }"],
-        [prefix + "{ overwrite: true }"],
         [prefix + "{ overwriteMode: 'ignore' }"],
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
@@ -362,7 +364,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ skipDocumentValidation: true }"],
         [prefix + "{ keepNull: true }"],
         [prefix + "{ mergeObjects: true }"],
-        [prefix + "{ overwrite: true }"],
         [prefix + "{ overwriteMode: 'ignore' }"],
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
@@ -392,7 +393,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ skipDocumentValidation: true }"],
         [prefix + "{ keepNull: true }"],
         [prefix + "{ mergeObjects: true }"],
-        [prefix + "{ overwrite: true }"],
         [prefix + "{ overwriteMode: 'ignore' }"],
         [prefix + "{ ignoreRevs: true }"],
         [prefix + "{ exclusive: true }"],
@@ -428,7 +428,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ skipDocumentValidation: true, readOwnWrites: false }"],
         [prefix + "{ keepNull: true, readOwnWrites: false }"],
         [prefix + "{ mergeObjects: true, readOwnWrites: false }"],
-        [prefix + "{ overwrite: true, readOwnWrites: false }"],
         [prefix + "{ overwriteMode: 'ignore', readOwnWrites: false }"],
         [prefix + "{ ignoreRevs: true, readOwnWrites: false }"],
         [prefix + "{ exclusive: true, readOwnWrites: false }"],
@@ -444,6 +443,28 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       ];
 
       checkQueries("UPSERT", queries);
+    },
+
+    testOverwriteOptionThrows: function () {
+      // overwrite: true is actively refused (not just a warning) because the
+      // option has been removed; verify explain() throws with ERROR_BAD_PARAMETER
+      const queries = [
+        "FOR doc IN " + cn + " INSERT {'value': 1} INTO " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " UPDATE doc WITH {'value': 1} IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " REPLACE doc WITH {'value': 1} IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " REMOVE doc IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " UPSERT { value: 1 } INSERT { value: 1 } UPDATE { value: OLD.value + 1 } IN " + cn + " OPTIONS { overwrite: true }",
+      ];
+
+      queries.forEach((query) => {
+        try {
+          db._createStatement(query).explain();
+          fail("expected exception for overwrite option");
+        } catch (err) {
+          assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum, query);
+          assertMatch(/overwrite/, err.errorMessage, query);
+        }
+      });
     },
 
     testUpsertWithIndexHint: function () {

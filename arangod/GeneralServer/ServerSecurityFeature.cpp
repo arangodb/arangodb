@@ -24,7 +24,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,36 +41,6 @@ ServerSecurityFeature::ServerSecurityFeature(
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void ServerSecurityFeature::disableFoxxApi() noexcept {
-  _options.enableFoxxApi = false;
-}
-
-bool ServerSecurityFeature::isFoxxApiDisabled() const noexcept {
-  return !_options.enableFoxxApi;
-}
-
-bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
-  return !_options.enableFoxxStore || !_options.enableFoxxApi;
-}
-
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
-}
-
-bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
-  bool allowAccess = !isRestApiHardened();
-
-  if (!allowAccess) {
-    ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser()) {
-      // also allow access if there is not authentication
-      // enabled or when the user is an administrator
-      allowAccess = true;
-    }
-  }
-  return allowAccess;
-}
-
-bool ServerSecurityFeature::foxxAllowInstallFromRemote() const noexcept {
-  return _options.foxxAllowInstallFromRemote;
 }

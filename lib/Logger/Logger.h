@@ -173,7 +173,6 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
-  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic COMMUNICATION;
@@ -198,10 +197,8 @@ class Logger {
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
-  static LogTopic SECURITY;
   static LogTopic SSL;
   static LogTopic STARTUP;
-  static LogTopic STATISTICS;
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;

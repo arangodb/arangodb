@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 
 #include "search/scorers.hpp"
-#include "utils/misc.hpp"
 
 #include <velocypack/Parser.h>
 
@@ -48,12 +47,11 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -273,7 +271,7 @@ class IResearchOrderTest
       public arangodb::tests::IResearchLogSuppressor {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
@@ -282,19 +280,16 @@ class IResearchOrderTest
       : server(
             std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""),
             nullptr),
-        engine(server) {
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     arangodb::tests::init();
 
     // setup required application features
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(dbFeature, false);  // required for calculationVocbase
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
-        dbFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -351,7 +346,6 @@ class IResearchOrderTest
     arangodb::aql::AqlFunctionFeature(server)
         .unprepare();                     // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -745,218 +739,6 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   }
 }
 
-#ifdef USE_V8
-TEST_F(IResearchOrderTest, test_FCallUser) {
-  // function
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d) RETURN d";
-
-    std::array expected{dummy_scorer::make(std::string_view{})};
-
-    assertOrderSuccess(server, engine, query, expected);
-  }
-
-  // function string scorer arg (expecting string)
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    dummy_scorer::validateArgs = [](std::string_view args) -> bool {
-      EXPECT_TRUE((std::string_view("[\"abc\"]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-  }
-
-  // function string scorer arg (expecting jSON)
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    bool valid = true;
-
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&valid,
-                                  &attempt](std::string_view args) -> bool {
-      attempt++;
-      return valid == (args == "[\"abc\"]");
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE((valid));
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function string jSON scorer arg (expecting string)
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
-        "\\\"def\\\"}\") RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&attempt](std::string_view args) -> bool {
-      attempt++;
-      EXPECT_TRUE(
-          (std::string_view("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function string jSON scorer arg (expecting jSON)
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
-        "\\\"def\\\"}\") RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    bool valid = true;
-
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&valid,
-                                  &attempt](std::string_view args) -> bool {
-      attempt++;
-      valid = std::string_view("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args;
-      return valid;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE((valid));
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function raw jSON scorer arg
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, {\"abc\": "
-        "\"def\"}) RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&attempt](std::string_view args) -> bool {
-      ++attempt;
-      EXPECT_TRUE((std::string_view("[{\"abc\":\"def\"}]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function 2 string scorer args
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"def\") "
-        "RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&attempt](std::string_view args) -> bool {
-      ++attempt;
-      EXPECT_TRUE((std::string_view("[\"abc\",\"def\"]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function string+jSON(string) scorer args
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", "
-        "\"{\\\"def\\\": \\\"ghi\\\"}\") RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&attempt](std::string_view args) -> bool {
-      ++attempt;
-      EXPECT_TRUE((std::string_view(
-                       "[\"abc\",\"{\\\"def\\\": \\\"ghi\\\"}\"]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function string+jSON(raw) scorer args
-  {
-    auto validateOrig = dummy_scorer::validateArgs;
-    irs::Finally restore = [&validateOrig]() noexcept {
-      dummy_scorer::validateArgs = validateOrig;
-    };
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", {\"def\": "
-        "\"ghi\"}) RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    size_t attempt = 0;
-    dummy_scorer::validateArgs = [&attempt](std::string_view args) -> bool {
-      ++attempt;
-      EXPECT_TRUE((std::string_view("[\"abc\",{\"def\":\"ghi\"}]") == args));
-      return true;
-    };
-    assertOrderSuccess(server, engine, query, expected);
-    EXPECT_TRUE(1 == attempt);
-  }
-
-  // function ASC
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d) ASC RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    assertOrderSuccess(server, engine, query, expected);
-  }
-
-  // function DESC
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC RETURN d";
-    std::array expected{dummy_scorer::make(std::string_view{})};
-    assertOrderSuccess(server, engine, query, expected);
-  }
-
-  // invalid function (no 1st parameter output variable reference)
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf() RETURN d";
-
-    assertOrderFail(server, engine, query);
-  }
-
-  // invalid function (not an iResearch function)
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::invalid(d) DESC RETURN d";
-
-    assertOrderFail(server, engine, query);
-  }
-}
-#endif
-
 TEST_F(IResearchOrderTest, test_StringValue) {
   // simple field
   {
@@ -996,31 +778,3 @@ TEST_F(IResearchOrderTest, test_StringValue) {
     assertOrderFail(server, engine, query);
   }
 }
-
-#ifdef USE_V8
-TEST_F(IResearchOrderTest, test_order) {
-  // test mutiple sort
-  {
-    std::string query =
-        "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC, tfidf(d) "
-        "RETURN d";
-    std::array expected{
-        dummy_scorer::make(std::string_view{}),
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
-                          std::string_view{})};
-
-    assertOrderSuccess(server, engine, query, expected);
-  }
-
-  // invalid field
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace(
-        "a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
-    std::string query =
-        "LET a=1 FOR d IN collection FILTER '1' SORT a RETURN d";
-
-    assertOrderFail(server, engine, query, &ctx);
-  }
-}
-#endif

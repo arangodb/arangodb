@@ -25,13 +25,6 @@
 #include <ostream>
 #include <string>
 
-#include "Basics/operating-system.h"
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WS2tcpip.h>
-#include <WinSock2.h>
-#endif
-
 #include "Basics/socket-utils.h"
 
 namespace arangodb {
@@ -40,7 +33,7 @@ class Endpoint {
  public:
   enum class EndpointType { SERVER, CLIENT };
   enum class EncryptionType { NONE = 0, SSL };
-  enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };
+  enum class DomainType { UNKNOWN = 0, IPV4, IPV6, SRV };
 
  protected:
   Endpoint(DomainType, EndpointType, EncryptionType, std::string const&, int);
@@ -114,7 +107,6 @@ auto inspect(Inspector& f, Endpoint::DomainType& x) {
   return f.enumeration(x).values(Endpoint::DomainType::SRV, "SRV",    //
                                  Endpoint::DomainType::IPV4, "IPV4",  //
                                  Endpoint::DomainType::IPV6, "IPV6",  //
-                                 Endpoint::DomainType::UNIX, "UNIX",  //
                                  Endpoint::DomainType::UNKNOWN, "UNKNOWN");
 }
 

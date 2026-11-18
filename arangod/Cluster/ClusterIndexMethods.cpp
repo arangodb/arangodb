@@ -42,6 +42,7 @@
 #include "Logger/LogMacros.h"
 #include "Indexes/Index.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"
@@ -386,11 +387,10 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
     }
 
     if (idSlice.isEqualString(idString)) {
-      Index::IndexType type =
+      IndexType type =
           Index::type(indexSlice.get(StaticStrings::IndexType).copyString());
 
-      if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      if (type == IndexType::Primary || type == IndexType::Edge) {
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -611,10 +611,9 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
     }
 
     if (idSlice.isEqualString(idString)) {
-      Index::IndexType type = Index::type(typeSlice.copyString());
+      IndexType type = Index::type(typeSlice.copyString());
 
-      if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      if (type == IndexType::Primary || type == IndexType::Edge) {
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -795,7 +794,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   VPackSlice indexes = collectionFromTarget.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::compare(engine, index, other,
+    if (arangodb::Index::compare(engine.indexTypeCatalog(), index, other,
                                  collection.vocbase().name())) {
       VPackBuilder resultBuilder;
       {  // found an existing index... Copy over all elements in slice.
@@ -1002,7 +1001,7 @@ Result ensureIndexCoordinatorInner(
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::compare(engine, slice, other,
+    if (arangodb::Index::compare(engine.indexTypeCatalog(), slice, other,
                                  collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
@@ -1067,7 +1066,7 @@ Result ensureIndexCoordinatorInner(
                 auto const indexType = Index::type(
                     arangodb::basics::VelocyPackHelper::getStringView(
                         v, StaticStrings::IndexType, ""));
-                if (indexType != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+                if (indexType != IndexType::Vector) {
                   auto msg = extractErrorMessage(shard.key.stringView(), v);
                   auto errNum =
                       arangodb::basics::VelocyPackHelper::getNumericValue<

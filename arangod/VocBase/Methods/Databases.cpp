@@ -28,8 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -39,19 +37,11 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
-#ifdef USE_V8
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-utils.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/V8Executor.h"
-#include "VocBase/Methods/Tasks.h"
-#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -60,11 +50,7 @@
 
 #include <absl/strings/str_cat.h>
 
-#ifdef USE_V8
-#include <v8.h>
-#endif
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -72,19 +58,19 @@ using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
 std::vector<std::string> Databases::list(
-    application_features::ApplicationServer& server, std::string const& user) {
+    application_features::ApplicationServer& server, bool onlyCurrentUser) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
 
   return list(server.getFeature<DatabaseFeature>(),
-              &server.getFeature<ClusterFeature>(), user);
+              &server.getFeature<ClusterFeature>(), onlyCurrentUser);
 }
 
 std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
                                          ClusterFeature* clusterFeature,
-                                         std::string const& user) {
-  if (user.empty()) {
+                                         bool onlyCurrentUser) {
+  if (!onlyCurrentUser) {
     if (ServerState::instance()->isCoordinator()) {
       ADB_PROD_ASSERT(clusterFeature != nullptr);
       ClusterInfo& ci = clusterFeature->clusterInfo();
@@ -95,87 +81,8 @@ std::vector<std::string> Databases::list(DatabaseFeature& databaseFeature,
     }
   } else {
     // slow path for user case
-    return databaseFeature.getDatabaseNamesForUser(user);
+    return databaseFeature.getDatabaseNamesForCurrentUser();
   }
-}
-
-Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] = cache.read(std::vector<std::string>{
-        AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
-    auto res = acb->slice();
-
-    if (!res.isArray()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-          << "rest database handler: no agency communication";
-      return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "agency cache empty");
-    }
-
-    VPackSlice value = res[0].get<std::string>(
-        {AgencyCommHelper::path(), "Plan", "Databases", vocbase->name()});
-    if (value.isObject() && value.hasKey(StaticStrings::DataSourceName)) {
-      std::string name = value.get(StaticStrings::DataSourceName).copyString();
-
-      VPackObjectBuilder b(&result);
-      result.add(StaticStrings::DataSourceName, VPackValue(name));
-      VPackSlice s = value.get(StaticStrings::DataSourceId);
-      if (s.isString()) {
-        result.add(StaticStrings::DataSourceId, s);
-      } else if (s.isNumber()) {
-        result.add(StaticStrings::DataSourceId,
-                   VPackValue(std::to_string(s.getUInt())));
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected type for 'id' attribute");
-      }
-      result.add(StaticStrings::DataSourceSystem,
-                 VPackValue(NameValidator::isSystemName(name)));
-      result.add("path", VPackValue("none"));
-    }
-  } else {
-    VPackObjectBuilder b(&result);
-    result.add(StaticStrings::DataSourceName, VPackValue(vocbase->name()));
-    result.add(StaticStrings::DataSourceId,
-               VPackValue(std::to_string(vocbase->id())));
-    result.add(StaticStrings::DataSourceSystem,
-               VPackValue(vocbase->isSystem()));
-    result.add("path", VPackValue(vocbase->path()));
-  }
-  return Result();
-}
-
-// Grant permissions on newly created database to current user
-// to be able to run the upgrade script
-Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
-  Result res;
-
-  if (um != nullptr) {
-    ExecContext const& exec = ExecContext::current();
-    // If the current user is empty (which happens if a Maintenance job
-    // called us, or when authentication is off), granting rights
-    // will fail. We hence ignore it here, but issue a warning below
-    if (!exec.isAdminUser()) {
-      res = um->updateUser(
-          exec.user(),
-          [&](auth::User& entry) {
-            entry.grantDatabase(info.getName(), auth::Level::RW);
-            entry.grantCollection(info.getName(), "*", auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::Yes);
-      return res;
-    }
-
-    LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-        << "current ExecContext's user() is empty. "
-        << "Database will be created without any user having permissions";
-  }
-
-  return res;
 }
 
 // Create database on cluster;
@@ -257,11 +164,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
-
   LOG_TOPIC("54323", DEBUG, Logger::CLUSTER)
       << "createDatabase on coordinator: have granted current user for "
          "database: "
@@ -270,7 +172,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.engine(),
+  TRI_vocbase_t vocbase(std::move(tempInfo),
+                        info.server().getFeature<StorageEngine>(),
                         databaseFeature);
 
   // Now create *all* system collections for the database,
@@ -339,11 +242,6 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
 
-  Result res = grantCurrentUser(info);
-  if (!res.ok()) {
-    return res;
-  }
-
   VPackBuilder userBuilder;
   info.UsersToVelocyPack(userBuilder);
   UpgradeResult upgradeRes =
@@ -357,14 +255,9 @@ Result Databases::create(application_features::ApplicationServer& server,
                          std::string const& dbName, velocypack::Slice users,
                          velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
-    Result res;
-
-    // Only admin users are permitted to create databases
-    if (!exec.isAdminUser()) {
-      return res.reset(TRI_ERROR_FORBIDDEN);
-    }
-    if (ServerState::readOnly() && !exec.isSuperuser()) {
-      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
+    if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
+      events::CreateDatabase(dbName, r, exec);
+      return r;
     }
 
     bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
@@ -387,7 +280,7 @@ Result Databases::create(application_features::ApplicationServer& server,
       createInfo.strictValidation(false);
     }
 
-    res = createInfo.load(dbName, options, users);
+    auto res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
       return res;
@@ -501,73 +394,14 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (exec.systemAuthLevel() != auth::Level::RW) {
-    events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return TRI_ERROR_FORBIDDEN;
+
+  if (auto r = exec.canDropDatabase(dbName); r.fail()) {
+    events::DropDatabase(dbName, r, exec);
+    return r;
   }
 
   Result res;
   auto& server = systemVocbase->server();
-#ifdef USE_V8
-  if (server.hasFeature<V8DealerFeature>() &&
-      server.isEnabled<V8DealerFeature>()) {
-    constexpr std::string_view dropError = "Error when dropping database: ";
-    V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
-    try {
-      JavaScriptSecurityContext securityContext =
-          JavaScriptSecurityContext::createInternalContext();
-
-      V8ConditionalExecutorGuard guard(systemVocbase, securityContext);
-
-      if (guard.isolate() == nullptr) {
-        events::DropDatabase(dbName, res, exec);
-        return res;
-      }
-
-      Task::removeTasksForDatabase(dbName);
-
-      res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
-        v8::HandleScope scope(isolate);
-
-        // clear collections in cache object
-        TRI_ClearObjectCacheV8(isolate);
-
-        Result res;
-
-        if (ServerState::instance()->isCoordinator()) {
-          // If we are a coordinator in a cluster, we have to behave
-          // differently:
-          auto& df = server.getFeature<DatabaseFeature>();
-          res = ::dropDBCoordinator(df, dbName);
-        } else {
-          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
-
-          if (res.fail()) {
-            events::DropDatabase(dbName, res, exec);
-            return res;
-          }
-
-          // run the garbage collection in case the database held some objects
-          // which can now be freed
-          TRI_RunGarbageCollectionV8(isolate, 0.1);
-        }
-        return res;
-      });
-
-      dealer.addGlobalExecutorMethod(
-          GlobalExecutorMethods::MethodType::kReloadRouting);
-    } catch (basics::Exception const& ex) {
-      events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
-      return Result(ex.code(), absl::StrCat(dropError, ex.message()));
-    } catch (std::exception const& ex) {
-      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, absl::StrCat(dropError, ex.what()));
-    } catch (...) {
-      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, dropError);
-    }
-  } else
-#endif
   {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:

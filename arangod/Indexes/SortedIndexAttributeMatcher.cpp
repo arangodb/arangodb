@@ -97,6 +97,51 @@ std::tuple<size_t, size_t, double, double> analyzeConditions(
 
 }  // namespace
 
+namespace {
+
+// whether an access to `_id` can be answered by index field `i`, which
+// must be a single-attribute `_key` field; the lookup values are then
+// translated via Index::extractKeyFromIdLookupValue. the primary index
+// accepts all operators (legacy behavior); persistent indexes are
+// restricted to == and IN, as range comparisons on `_id` must not be
+// mapped onto `_key` ordering.
+bool idLookupSupportedViaKeyField(
+    Index const* idx, size_t i,
+    std::vector<basics::AttributeName> const& attribute,
+    aql::AstNode const* op) {
+  if (attribute.size() != 1 || attribute[0].shouldExpand ||
+      attribute[0].name != StaticStrings::IdString) {
+    return false;
+  }
+  if (idx->fields()[i].size() != 1 || idx->isAttributeExpanded(i) ||
+      idx->fields()[i][0].name != StaticStrings::KeyString) {
+    return false;
+  }
+  switch (idx->type()) {
+    case IndexType::Primary:
+      return true;
+    case IndexType::Persistent:
+      return op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN;
+    default:
+      return false;
+  }
+}
+
+// same, for any field of the index
+bool idLookupSupportedViaKeyField(
+    Index const* idx, std::vector<basics::AttributeName> const& attribute,
+    aql::AstNode const* op) {
+  for (size_t i = 0; i < idx->fields().size(); ++i) {
+    if (idLookupSupportedViaKeyField(idx, i, attribute, op)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx,            // index
     arangodb::aql::AstNode const* access,  // attribute access
@@ -121,10 +166,9 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
   std::pair<arangodb::aql::Variable const*,
             std::vector<arangodb::basics::AttributeName>>
       attributeData;
-  bool const isPrimaryIndex =
-      idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+  bool const isPrimaryIndex = idx->type() == IndexType::Primary;
 
-  if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX &&
+  if (idx->type() == IndexType::TTL &&
       (!other->isConstant() ||
        !(other->isIntValue() || other->isDoubleValue()))) {
     // TTL index can only be used for numeric lookup values, no date strings or
@@ -157,7 +201,8 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
         attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second) &&
-        idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
+        (idx->attributeMatches(attributeData.second, isPrimaryIndex) ||
+         ::idLookupSupportedViaKeyField(idx, attributeData.second, op))) {
       // doc.value IN 'value'
       // can use this index
     } else if (other->isAttributeAccessForVariable(attributeData) &&
@@ -188,23 +233,15 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     bool match = arangodb::basics::AttributeName::isIdentical(idx->fields()[i],
                                                               fieldNames, true);
 
-    // make exception for primary index as we do not need to match "_key, _id"
-    // but can go directly for "_id"
-    if (!match && isPrimaryIndex && i == 0 &&
-        fieldNames[i].name == StaticStrings::IdString) {
-      match = true;
+    // an access to `_id` also matches an index field that is `_key`
+    if (!match) {
+      match = ::idLookupSupportedViaKeyField(idx, i, fieldNames, op);
     }
 
     if (match) {
       // mark ith attribute as being covered
       found[i].emplace_back(op);
       TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("HashIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -475,16 +512,6 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
 arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  // mmfiles failure compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   arangodb::containers::FlatHashMap<size_t,
                                     std::vector<arangodb::aql::AstNode const*>>
       found;

@@ -75,9 +75,16 @@ enum AstPropertyFlag : AstPropertiesFlagsType {
   NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
 };
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+struct AstObjectSpliceFoldingTestHelper;
+#endif
+
 /// @brief the AST
 class Ast {
   friend class Condition;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  friend struct AstObjectSpliceFoldingTestHelper;
+#endif
 
  public:
   Ast(Ast const&) = delete;
@@ -356,6 +363,17 @@ class Ast {
   AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
                                       AstNode const*);
 
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
+  AstNode* createNodeArrayLikeOperator(AstNode const* lhs,
+                                       AstNode const* pattern,
+                                       AstNode const* quantifier, bool negate);
+
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~
+  /// expressions
+  AstNode* createNodeArrayRegexOperator(AstNode const* lhs,
+                                        AstNode const* pattern,
+                                        AstNode const* quantifier, bool negate);
+
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
                                AstNode const*, AstNode const*, AstNode const*);
@@ -456,6 +474,34 @@ class Ast {
 
   /// @brief create an AST n-ary operator
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
+
+  AstNode* createPatternLabel(std::string_view label);
+  AstNode* createPatternLabelAnd(AstNode const* left, AstNode const* right);
+  AstNode* createPatternEdge(AstNode const* outVariable, AstNode const* label,
+                             AstNode const* properties,
+                             AstNode const* filterExpression,
+                             AstNode const* rangeExpression, bool isInbound,
+                             bool isOutbound,
+                             AstNode const* projections = nullptr);
+  AstNode* createPatternNodePattern(AstNode const* outVariable,
+                                    AstNode const* labels,
+                                    AstNode const* properties,
+                                    AstNode const* filterExpression,
+                                    AstNode const* projections);
+
+  AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
+  AstNode* createPatternPathVariable(std::string_view variable);
+  AstNode* createPatternOutVariable(std::string_view name);
+  AstNode* createPatternEdgeVariable(std::string_view name);
+  AstNode* createPatternVertexReference(std::string_view name);
+  AstNode* createNodeMatch();
+  AstNode* createNodeMatchExpr();
+  AstNode* createNodeVariableOrReference(std::string_view name);
+
+  AstNode* createNodeArraySplice(AstNode const* in);
+
+  /// @brief create an AST object splice node (object spread: ...expr)
+  AstNode* createNodeObjectSplice(AstNode const* in);
 
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
@@ -609,6 +655,8 @@ class Ast {
       std::string_view name);
 
  private:
+  void rejectVariableAsPatternLabel(AstNode const* label) const;
+
   /// @brief replace a bind parameter with its value equivalent.
   AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);
 
@@ -637,7 +685,9 @@ class Ast {
                                             AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
-  AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
+  AstNode* optimizeBinaryOperatorArithmetic(transaction::Methods&,
+                                            AqlFunctionsInternalCache&,
+                                            AstNode*);
 
   /// @brief optimizes the ternary operator
   AstNode* optimizeTernaryOperator(AstNode*);
@@ -665,7 +715,17 @@ class Ast {
   AstNode* optimizeFor(AstNode*);
 
   /// @brief optimizes an object literal or an object expression
-  AstNode* optimizeObject(AstNode*);
+  AstNode* optimizeObject(transaction::Methods&, AqlFunctionsInternalCache&,
+                          AstNode*);
+
+  /// @brief flatten object literal splices into the parent object
+  AstNode* flattenObjectLiteralSplices(AstNode* node);
+
+  /// @brief flatten object literal member values
+  void flattenObjectLiteralMemberValues(AstNode* node);
+
+  /// @brief clear optimization flags on object literals and object expressions
+  void clearObjectOptimizationFlags(AstNode* node);
 
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);

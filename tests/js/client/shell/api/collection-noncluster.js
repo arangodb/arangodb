@@ -56,7 +56,6 @@ function dealing_with_collectionsSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       let r1 = doc.parsedBody['revision'];
       assertEqual(typeof r1, 'string');
       assertNotEqual(r1, "");
@@ -66,7 +65,7 @@ function dealing_with_collectionsSuite () {
 
       // create a new document;
       let body = { "test" : 1 };
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch checksum again;
       doc = arango.GET_RAW(cmd);
@@ -85,7 +84,7 @@ function dealing_with_collectionsSuite () {
       assertNotEqual(c2, c1);
 
       // create another document;
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch checksum again;
       doc = arango.GET_RAW(cmd);
@@ -171,7 +170,6 @@ function propertiesSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertTrue(doc.parsedBody['waitForSync']);
       assertNotEqual(doc.parsedBody['objectId'], 0);
       assertEqual(doc.parsedBody['keyOptions']['type'], "autoincrement");
@@ -218,7 +216,6 @@ function renamingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn2);
-      assertEqual(doc.parsedBody['status'], 3);
 
       assertEqual(db[cn2].count(), 10);
 
@@ -235,7 +232,6 @@ function renamingSuite () {
       assertEqual(doc.code, 200);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['name'], cn2);
-      assertEqual(doc.parsedBody['status'], 3);
     },
 
     test_rename_a_collection_by_identifier_with_conflict: function() {
@@ -284,7 +280,6 @@ function renamingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn2);
-      assertEqual(doc.parsedBody['status'], 3);
 
       cmd = api + "/" + cn;
       doc = arango.GET_RAW(cmd);
@@ -299,7 +294,6 @@ function renamingSuite () {
       assertEqual(doc.code, 200);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['name'], cn2);
-      assertEqual(doc.parsedBody['status'], 3);
     },
 
     test_rename_a_new_born_collection_by_identifier_with_conflict: function() {

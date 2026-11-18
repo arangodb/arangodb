@@ -167,6 +167,25 @@ void verifyDocumentStructure(velocypack::Slice document,
 #endif
 }
 
+// Time travel: build the superseded form of `doc`, i.e. the same document with
+// its (until now null) _expired stamped with the timestamp of the operation
+// that replaced it. Every other attribute is copied verbatim, including the
+// Custom-typed _id.
+void buildExpiredVersion(velocypack::Slice doc, uint64_t expired,
+                         velocypack::Builder& builder) {
+  TRI_ASSERT(doc.get(StaticStrings::Expired).isNull());
+  builder.openObject();
+  for (auto it : VPackObjectIterator(doc, true)) {
+    auto key = it.key.stringView();
+    if (key == StaticStrings::Expired) {
+      builder.add(key, VPackValue(expired));
+    } else {
+      builder.add(key, it.value);
+    }
+  }
+  builder.close();
+}
+
 LocalDocumentId generateDocumentId(LogicalCollection const& collection,
                                    RevisionId revisionId) {
   bool useRev = collection.usesRevisionsAsDocumentIds();
@@ -302,6 +321,14 @@ size_t getParallelism(velocypack::Slice slice) {
       IndexFactory::kDefaultParallelism);
 }
 
+// A cache is meaningless without a manager, and is never built for system
+// collections, for coordinator stubs, or on a coordinator at all.
+bool canEnableCache(cache::Manager const* cacheManager,
+                    LogicalCollection const& collection) {
+  return cacheManager != nullptr && !collection.system() &&
+         !collection.isAStub() && !ServerState::instance()->isCoordinator();
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -310,20 +337,17 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(
-    LogicalCollection& collection, velocypack::Slice info,
+    LogicalCollection& collection, LocalStorageProperties const& storage,
     cache::Manager* cacheManager,
     std::optional<RocksDBReadWriteMetrics>& readWriteMetrics)
-    : RocksDBMetaCollection(collection, info),
+    : RocksDBMetaCollection(collection, storage),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _readWriteMetrics(readWriteMetrics),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)) {
+      _cacheEnabled(canEnableCache(cacheManager, collection) &&
+                    storage.cacheEnabled) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -376,7 +400,7 @@ void RocksDBCollection::freeMemory() noexcept {
 
       // Abort any in-progress vector index build via the coordinator
       // TODO (jbajic) Lets trigger the abort via the coordinator
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (idx->type() == IndexType::Primary) {
         // we keep the primary index object around, because it can
         // be referred to by the collection object with a pointer.
         ++it;
@@ -395,18 +419,13 @@ void RocksDBCollection::freeMemory() noexcept {
   engine.removeCollectionMapping(objectId());
 }
 
-Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  bool cacheEnabled = _cacheManager != nullptr &&
-                      !_logicalCollection.system() &&
-                      !_logicalCollection.isAStub() &&
-                      !ServerState::instance()->isCoordinator() &&
-                      basics::VelocyPackHelper::getBooleanValue(
-                          slice, StaticStrings::CacheEnabled,
-                          _cacheEnabled.load(std::memory_order_relaxed));
-  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
-  primaryIndex()->setCacheEnabled(cacheEnabled);
+Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
+  bool enable =
+      canEnableCache(_cacheManager, _logicalCollection) && cacheEnabled;
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(enable);
 
-  if (cacheEnabled) {
+  if (enable) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
@@ -414,8 +433,9 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
     destroyCache();
     primaryIndex()->destroyCache();
   }
-
   // nothing else to do
+  // Changes to immutable properties are simply ignored here. This could be
+  // unexpected - we should consider returning an error instead.
   return {};
 }
 
@@ -439,7 +459,7 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   // update tick value and _primaryIndex member
   TRI_ASSERT(idx != nullptr);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id().id()));
-  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (idx->type() == IndexType::Primary) {
     TRI_ASSERT(idx->id().isPrimary());
     _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
   }
@@ -476,7 +496,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 
     if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
       // We already have this index.
-      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+      if (existingIdx->type() == IndexType::TTL) {
         // special handling for TTL indexes
         // if there is exactly the same index present, we return it
         if (!existingIdx->matchesDefinition(info)) {
@@ -532,8 +552,8 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
   }
 
   // we cannot persist primary or edge indexes
-  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  TRI_ASSERT(newIdx->type() != IndexType::Primary);
+  TRI_ASSERT(newIdx->type() != IndexType::Edge);
 
   // cleanup newly instantiated object
   auto indexCleanup = ScopeGuard([&newIdx]() noexcept {
@@ -553,7 +573,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
         getParallelism(info));
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
       key.constructCollection(vocbase.id(), _logicalCollection.id());
@@ -598,11 +618,11 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 4. fill index
-    // Vector index creation is handled by the VectorIndexBuildManager,
+    // Vector index creation is handled by the BuildManager,
     // so we skip the filling here.
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    if (buildIdx->type() != IndexType::Vector) {
       if (inBackground) {
         {
           RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -655,10 +675,10 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 6. persist in rocksdb
-    if (!engine.inRecovery()) {
+    if (engine.isReady()) {
       // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
-          {"path", "statusString"},
+          {"path"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
       newIdx->toVelocyPack(indexInfo,
@@ -693,11 +713,10 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(engine.isReady());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
-      {"path", "statusString"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
+      {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
   // log this event in the WAL and in the collection meta-data
   return engine.writeCreateCollectionMarker(  // write marker
       _logicalCollection.vocbase().id(),      // vocbase id
@@ -897,10 +916,6 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
 
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(objectId());
-  rocksdb::Comparator const* cmp =
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents)
-          ->GetComparator();
   rocksdb::Slice end = documentBounds.end();
 
   // avoid OOM error for truncate by committing earlier
@@ -963,18 +978,14 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
   constexpr bool readOwnWrites = false;
   auto iter =
       mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
-        if (!mthds->iteratorMustCheckBounds(
-                readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no)) {
-          ro.iterate_upper_bound = &end;
-        }
+        ro.iterate_upper_bound = &end;
         // we are going to blow away all data anyway. no need to blow up the
         // cache
         ro.fill_cache = false;
         ro.readOwnWrites = readOwnWrites;
         TRI_ASSERT(ro.snapshot);
       });
-  for (iter->Seek(documentBounds.start());
-       iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
+  for (iter->Seek(documentBounds.start()); iter->Valid(); iter->Next()) {
     TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
     VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
     TRI_ASSERT(document.isObject());
@@ -1317,6 +1328,12 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
                         previousDocument, options, previousRevisionId);
 }
 
+ResultT<std::optional<std::uint64_t>>
+RocksDBCollection::currentVersionTimestamp(std::string_view key) const {
+  TRI_ASSERT(_logicalCollection.timeTravelEnabled());
+  return primaryIndex()->currentVersionTimestamp(key);
+}
+
 bool RocksDBCollection::cacheEnabled() const noexcept {
   return _cacheEnabled.load(std::memory_order_relaxed);
 }
@@ -1387,9 +1404,8 @@ void RocksDBCollection::figuresSpecific(
 
       for (auto const& it : indexes) {
         auto type = it->type();
-        if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
-            type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
-            type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
+        if (type == IndexType::Unknown || type == IndexType::IResearchLink ||
+            type == IndexType::NoAccess) {
           continue;
         }
 
@@ -1400,39 +1416,39 @@ void RocksDBCollection::figuresSpecific(
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
-          case Index::TRI_IDX_TYPE_INVERTED_INDEX: {
+          case IndexType::Inverted: {
             auto snapshot =
                 basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*rix)
                     .snapshot();
             count = snapshot.getDirectoryReader().live_docs_count();
           } break;
-          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case IndexType::Primary:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_GEO_INDEX:
-          case Index::TRI_IDX_TYPE_GEO1_INDEX:
-          case Index::TRI_IDX_TYPE_GEO2_INDEX:
+          case IndexType::Geo:
+          case IndexType::Geo1:
+          case IndexType::Geo2:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::GeoIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_ZKD_INDEX:
-          case Index::TRI_IDX_TYPE_MDI_INDEX:
+          case IndexType::Zkd:
+          case IndexType::MDI:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::MdiIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+          case IndexType::MDIPrefixed:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::MdiVPackIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_HASH_INDEX:
-          case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-          case Index::TRI_IDX_TYPE_TTL_INDEX:
-          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+          case IndexType::Hash:
+          case IndexType::Skiplist:
+          case IndexType::TTL:
+          case IndexType::Persistent:
             if (it->unique()) {
               count = rocksutils::countKeyRange(
                   db,
@@ -1444,17 +1460,17 @@ void RocksDBCollection::figuresSpecific(
                   snapshot, true);
             }
             break;
-          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+          case IndexType::Edge:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), snapshot,
                 false);
             break;
-          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+          case IndexType::Fulltext:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
                 true);
             break;
-          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+          case IndexType::Vector:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
                 snapshot, true);
@@ -1494,7 +1510,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
+  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1812,7 +1828,18 @@ Result RocksDBCollection::modifyDocument(
   TRI_ASSERT(objectId() != 0);
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
+  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
+
+  // Time travel: the new version's _created is the timestamp that expires the
+  // version it supersedes. The transaction already learned it before taking the
+  // key lock (see PhysicalCollection::setTimeTravelWriteTimestamp), so here it
+  // is only read back out of the body.
+  uint64_t writeTimestamp = 0;
+  if (_logicalCollection.timeTravelEnabled()) {
+    VPackSlice created = newDoc.get(StaticStrings::Created);
+    TRI_ASSERT(created.isNumber());
+    writeTimestamp = created.getNumber<uint64_t>();
+  }
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1865,10 +1892,27 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  rocksdb::Status s =
-      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
-                              RocksDBColumnFamilyManager::Family::Documents),
-                          key);
+  auto* documentsCf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+
+  rocksdb::Status s = std::invoke([&]() {
+    if (_logicalCollection.timeTravelEnabled()) {
+      // Time travel: the superseded version is kept so earlier read timestamps
+      // can still resolve it, and is rewritten in place with the timestamp that
+      // expired it. Its key holds the old LocalDocumentId, which the new
+      // version does not share, so this rewrites exactly one entry and never
+      // collides with the PutUntracked of the new version below.
+      auto expiredVersion = ThreadLocalBuilderLeaser::lease();
+      TRI_ASSERT(writeTimestamp != 0);
+      buildExpiredVersion(oldDoc, writeTimestamp, *expiredVersion);
+      VPackSlice expired = expiredVersion->slice();
+      return mthds->PutUntracked(
+          documentsCf, key,
+          rocksdb::Slice(expired.startAs<char>(), expired.byteSize()));
+    } else {
+      return mthds->SingleDelete(documentsCf, key);
+    }
+  });
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&newDoc](result::Error& err) {
@@ -1879,7 +1923,7 @@ Result RocksDBCollection::modifyDocument(
     return res;
   }
 
-  // we have successfully removed a value from the WBWI. after this, we
+  // we have successfully changed a value in the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
 
@@ -1998,7 +2042,12 @@ Result RocksDBCollection::modifyDocument(
 
     res = savepoint.finish(newRevisionId);
     if (res.ok()) {
-      state->trackRemove(_logicalCollection.id(), oldRevisionId);
+      // Time travel: the previous version is retained in the Documents family,
+      // so it stays part of the revision tree - removing it becomes the job of
+      // the (not yet implemented) history GC.
+      if (!_logicalCollection.timeTravelEnabled()) {
+        state->trackRemove(_logicalCollection.id(), oldRevisionId);
+      }
       state->trackInsert(_logicalCollection.id(), newRevisionId);
     }
   }

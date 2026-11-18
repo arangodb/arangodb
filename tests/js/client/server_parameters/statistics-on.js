@@ -25,9 +25,11 @@
 
 if (getOptions === true) {
   return {
-    'server.statistics': "true"
+    'server.statistics': "true",
+    "server.authentication": false
   };
 }
+
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
@@ -41,7 +43,7 @@ function getHttpResponseCodeMetric(code) {
   let res = arango.GET_RAW("/_admin/metrics/v2");
   assertEqual(200, res.code);
   let pattern = new RegExp(
-      "^" + HTTP_RESPONSE_CODE_METRIC + '\\{[^}]*code="' + code + '"[^}]*\\}\\s+([0-9.]+)');
+    "^" + HTTP_RESPONSE_CODE_METRIC + '\\{[^}]*code="' + code + '"[^}]*\\}\\s+([0-9.]+)');
   let lines = String(res.body).split("\n");
   for (let line of lines) {
     let match = line.match(pattern);
@@ -54,45 +56,54 @@ function getHttpResponseCodeMetric(code) {
 
 function testSuite() {
   return {
-    testStatisticApi : function() {
-      let value = arango.GET("/_admin/statistics");
-      assertTrue(value.hasOwnProperty("time"));
-      assertTrue(value.hasOwnProperty("enabled"));
-      assertTrue(value.hasOwnProperty("server"));
-      assertTrue(value.hasOwnProperty("system"));
-      assertTrue(value.enabled);
+    testMetricsApiWhenStatisticsOn: function () {
+      const res = arango.GET_RAW("/_admin/metrics");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200");
+      const body = typeof res.body === 'string' ? res.body : String(res.body);
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain uptime");
+      const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
+      assertTrue(typeof uptime === 'number' && !Number.isNaN(uptime) && uptime >= 0,
+        "uptime should be present and non-negative");
+
+      assertTrue(uptime > 0, "Statistics should be uptime > 0");
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain server statistics");
+      assertTrue(uptime !== undefined && uptime >= 0, "server-equivalent: server uptime should be valid");
+
+      assertTrue(body.indexOf('arangodb_process_statistics_resident_set_size') !== -1,
+        "Response should contain process/system statistics");
+      const residentSetSize = internal.parsePrometheusMetric(body, 'arangodb_process_statistics_resident_set_size');
+      assertTrue(residentSetSize !== undefined && residentSetSize >= 0,
+        "At least one process statistic should be present and valid");
+
+      assertTrue(body.indexOf('arangodb_http_request_statistics_total_requests_total') !== -1,
+        "Response should contain http request statistics");
     },
 
-    testMetricsAlwaysThere : function() {
+    testMetricsAlwaysThere: function () {
       let value = IM.getMetric("arangodb_process_statistics_resident_set_size");
       assertTrue(value > 0, value);
-      
+
       value = IM.getMetric("arangodb_server_statistics_server_uptime_total");
       assertTrue(value > 0, value);
     },
 
-    testHttpMetrics : function() {
+    testHttpMetrics: function () {
       let oldValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
-      // statistics aggregation on server may take a short while - wait for it
-      let newValue;
-      let tries = 0;
-      while (++tries < 4 * 10) {
-        newValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
-        if (newValue - oldValue >= 10) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
+      let newValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
       assertTrue(newValue - oldValue >= 10, { oldValue, newValue });
     },
 
-    testHttpResponseCodeMetrics : function() {
+    testHttpResponseCodeMetrics: function () {
       let old200 = getHttpResponseCodeMetric("200");
       for (let i = 0; i < 5; ++i) {
-        let res =request.get(global.instanceManager.url + "/_api/version");
+        let res = request.get(global.instanceManager.url + "/_api/version");
         assertEqual(200, res.statusCode);
       }
 
@@ -109,7 +120,7 @@ function testSuite() {
 
       let old404 = getHttpResponseCodeMetric("404");
       for (let i = 0; i < 3; ++i) {
-        let res = request.get(global.instanceManager.url + 
+        let res = request.get(global.instanceManager.url +
           "/_api/nonexistent_route_for_http_response_code_metric_test");
         assertEqual(404, res.statusCode);
       }
@@ -125,33 +136,19 @@ function testSuite() {
       }
       assertTrue(new404 - old404 >= 3, { old404, new404 });
     },
-    
-    testStatisticsHistory : function() {
-      let count;
-      let tries = 0;
-      // wait until some document has been written into statistics collection
-      while (++tries < 4 * 30) {
-        count = db._statisticsRaw.count();
-        if (count > 0) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
-      assertTrue(count > 0, { count });
-    },
 
-    testMemoryUsageMetrics : function() {
+    testMemoryUsageMetrics: function () {
       // metric values should never be 0 if statistics are enabled
       const connectionsBefore = IM.getMetric("arangodb_connection_statistics_memory_usage");
       assertNotEqual(0, connectionsBefore);
       const requestsBefore = IM.getMetric("arangodb_request_statistics_memory_usage");
       assertNotEqual(0, requestsBefore);
-      
+
       // issue some random requests to the server
       for (let i = 0; i < 10; ++i) {
-         arango.GET_RAW("/_admin/metrics");
+        arango.GET_RAW("/_admin/metrics");
       }
-      
+
       // metrics values shouldn't have changed, because the statistics memory
       // is allocated at startup and shouldn't grow under normal circumstances
       assertEqual(connectionsBefore, IM.getMetric("arangodb_connection_statistics_memory_usage"));

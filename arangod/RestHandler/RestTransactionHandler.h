@@ -29,10 +29,7 @@
 
 namespace arangodb {
 
-class V8Executor;
-
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
-  V8Executor* _v8Context;
   basics::ReadWriteLock _lock;
 
  public:
@@ -55,8 +52,5 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> executeAbort();
   void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
-
-  /// start a legacy JS transaction
-  void executeJSTransaction();
 };
 }  // namespace arangodb

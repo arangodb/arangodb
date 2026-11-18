@@ -23,49 +23,52 @@
 #include "RestHandler.h"
 
 #include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
+#include "Agency/RestAgencyHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Auth/TokenCache.h"
-#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/coro-helper.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/RequestStatistics.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/RegistryGlobalVariable.h"
 
-#include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
+#include <Ssl/jwt.h>
 #include <absl/strings/str_cat.h>
-#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
-#include <unordered_map>
 
-using namespace arangodb;
+#include <algorithm>
+#include <initializer_list>
+
+namespace arangodb::rest {
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
     : _request(request),
       _response(response),
       _server(server),
-      _statistics(),
+      _timingData(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
@@ -80,10 +83,16 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 }
 
 RestHandler::~RestHandler() {
+  if (_timingData.readStart != RequestTimingData::time_point{}) {
+    // An async path doesn't call stealTimingData, so we need to finalize it
+    // here. RestHandler is destroyed as soon as the execution is finished.
+    arangodb::finalizeTimingData(_server, _timingData);
+  }
+
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
-               RequestPriority::LOW);
+    TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+    TRI_ASSERT(PriorityRequestLane(_lane) == RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
@@ -117,15 +126,6 @@ RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
     _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (!found) {
-      // header not found, but for requests to root and to /_admin/aardvark/ we
-      // are still increasing the priority
-      auto const& requestPath = _request->requestPath();
-      if (requestPath == "/" || requestPath.starts_with("/_admin/aardvark/")) {
-        found = true;
-      }
-    }
 
     if (found) {
       _lane = RequestLane::CLIENT_UI;
@@ -167,11 +167,14 @@ RequestLane RestHandler::determineRequestLane() {
 
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _statistics.SET_QUEUE_START(
-      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  _timingData.queueStart = RequestTimingData::now();
+  _timingData.queueSize =
+      SchedulerFeature::SCHEDULER->queueStatistics()._queued;
 }
 
-void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
+void RestHandler::trackQueueEnd() noexcept {
+  _timingData.queueEnd = RequestTimingData::now();
+}
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
@@ -185,7 +188,7 @@ void RestHandler::trackTaskStart() noexcept {
 
 void RestHandler::trackTaskEnd() noexcept {
   // the queueing time in seconds
-  double queueTime = _statistics.ELAPSED_WHILE_QUEUED();
+  double queueTime = _timingData.elapsedWhileQueued();
 
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
@@ -212,22 +215,30 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
+  auto headers = request()->headers();
+  headers.insert_or_assign(StaticStrings::Authorization,
+                           "SENSITIVE_DETAILS_HIDDEN");
+
   _activity = activities::make<arangodb::rest::RestHandlerActivity>(
       RestHandlerActivityData{
           .handler = name(),           //
           .url = _request->fullUrl(),  //
           .method = std::string{GeneralRequest::translateMethod(
               _request->requestType())},  //
-          .headers = request()->headers(),
+          .headers = std::move(headers),
           .connectionInfo = request()->connectionInfo()});
 }
 
-RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
-  return std::move(_statistics);
+RequestTimingData RestHandler::stealTimingData() {
+  // We need to use exchange here instead of move to avoid a copy of the
+  // time_point. time_point is a trivial type, so it will be copied even when
+  // moved. Destructor of RestHandler will check if readStart != time_point() to
+  // determine whether or not to finalize.
+  return std::exchange(_timingData, RequestTimingData{});
 }
 
-void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
-  _statistics = std::move(stat);
+void RestHandler::setTimingData(RequestTimingData&& data) {
+  _timingData = std::move(data);
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
@@ -239,8 +250,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  ExecContextScope scope(_request->requestContext());
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -265,9 +275,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return futures::makeFuture(
+        Result(TRI_ERROR_SHUTTING_DOWN, "shutting down server"));
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
@@ -294,8 +303,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
-                            auth->tokenCache().jwtSecret(), username));
+            "bearer " + auth::generateUserToken(auth->tokenCache().jwtSecret(),
+                                                username));
       }
     }
   }
@@ -428,13 +437,56 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto fail = [&]() {
     TRI_ASSERT(_state == HandlerState::FAILED);
-    _statistics.SET_REQUEST_END();
-    // Callback may stealStatistics!
+    _timingData.requestEnd = RequestTimingData::now();
+    // Callback may stealTimingData!
     _sendResponseCallback(this);
 
     shutdownExecute(false);
   };
 
+  try {
+    co_await handleAuthorizationChecks();
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `handleAuthorizationChecks`: ",
+                     exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
+
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
+  // forward to correct server if necessary
+  bool forwarded;
+  try {
+    auto res = forwardRequest(forwarded);
+    if (forwarded) {
+      _timingData.superuser = true;
+      std::ignore = co_await std::move(res);
+      // Request response already set by the forwarding logic!
+      _sendResponseCallback(this);
+      co_return;
+    }
+
+    if (res.hasValue()) {
+      Result r = co_await std::move(res);
+      if (r.fail()) {
+        generateError(r);
+        _sendResponseCallback(this);
+        co_return;
+      }
+    }
+
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `forwardRequest`: ", exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
@@ -451,7 +503,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   }
 
   TRI_ASSERT(_state == HandlerState::FINALIZE);
-  _statistics.SET_REQUEST_END();
+  _timingData.requestEnd = RequestTimingData::now();
 
   // shutdownExecute is noexcept
   shutdownExecute(true);  // may not be moved down
@@ -460,7 +512,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
   // compress response if required
   compressResponse();
-  // Callback may stealStatistics!
+  // Callback may stealTimingData!
   _sendResponseCallback(this);
 }
 
@@ -470,7 +522,8 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
-  _statistics.SET_REQUEST_START_END();
+  _timingData.requestStart = RequestTimingData::now();
+  _timingData.requestEnd = _timingData.requestStart;
 
   if (_canceled) {
     _state = HandlerState::FAILED;
@@ -496,8 +549,7 @@ bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  TRI_ASSERT(ExecContext::currentAsShared() == _request->requestContext());
 
   try {
     co_await executeAsync();
@@ -668,6 +720,106 @@ void RestHandler::compressResponse() {
   }
 }
 
+async<RestHandler::AuthenticationGrant> RestHandler::checkUserAuthentication()
+    const {
+  auto const* const auth = AuthenticationFeature::instance();
+  ADB_PROD_ASSERT(auth != nullptr);
+  if (!auth->isActive()) {
+    co_return AuthenticationGrant::GRANTED_EARLY;
+  }
+
+  if (request()->authenticated()) {
+    if (auth->rbacEnabled() && request()->authenticationMethod() ==
+                                   rest::AuthenticationMethod::BASIC) {
+      // When RBAC is enabled, HTTP basic authentication is no longer
+      // accepted for regular endpoints, because the external RBAC service
+      // can only authorize requests that carry a JWT. Handlers that must
+      // remain reachable via basic auth regardless (e.g. RestAuthHandler,
+      // mounted at /_open/auth, which issues the JWT in the first place)
+      // override checkUserAuthentication() and never reach this check.
+      co_return AuthenticationGrant::DENIED;
+    }
+    co_return AuthenticationGrant::GRANTED;
+  }
+
+  co_return AuthenticationGrant::DENIED;
+}
+
+async<Result> RestHandler::checkApiVersionAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto res = ec->canUseApiVersion(request()->requestedApiVersion());
+  if (res.fail()) {
+    LOG_TOPIC("3b1a7", TRACE, Logger::AUTHORIZATION)
+        << "API version forbidden for " << request()->requestPath();
+  }
+  co_return res;
+}
+
+async<Result> RestHandler::checkDatabaseAccess() const {
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
+  auto canUseDB =
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read);
+  if (canUseDB.ok()) {
+    co_return Result{};
+  }
+
+  LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+      << "Access forbidden to " << request()->requestPath();
+  co_return canUseDB;
+}
+
+async<void> RestHandler::handleAuthorizationChecks() {
+  auto auth = co_await checkUserAuthentication();
+  if (auth == AuthenticationGrant::GRANTED_EARLY) {
+    co_return;
+  }
+
+  if (auth == AuthenticationGrant::DENIED) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "User not authenticated");
+    co_return;
+  }
+
+  // Authentication succeeded (AuthenticationGrant::GRANTED), so the request
+  // must carry an ExecContext for the authorization checks below. Any route
+  // that continues execution should have resolved a request context by now
+  // (see CommTask::prepareExecution). The allow-listed early paths served
+  // during STARTUP/MAINTENANCE do not, but their handlers return GRANTED_EARLY
+  // above and never reach this point.
+  //
+  // However, there's a race:
+  // When the CommTask checks the mode during request processing while it's
+  // STARTUP or MAINTENANCE, there's no vocbase nor ExecContext.
+  // If the mode changes to DEFAULT before checkUserAuthentication() is called
+  // (take, for example, `RestStatusHandler::checkUserAuthentication()`),
+  // it can return GRANTED rather than GRANTED_EARLY.
+  // But the following calls to `checkApiVersionAccess()` and
+  // `checkDatabaseAccess()` require an ExecContext.
+  //
+  // This is a temporary band-aid so we answer with a 500 rather than crashing
+  // in that situation. A proper fix will be implemented soon.
+  if (request()->requestContext() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Missing ExecContext");
+  }
+
+  if (auto res = co_await checkApiVersionAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+    co_return;
+  }
+
+  if (auto res = co_await checkDatabaseAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
@@ -689,8 +841,32 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
+bool RestHandler::isAllowedHttpMethod(
+    std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true;
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  TRI_ASSERT(!cname.empty());
+  if (std::all_of(cname.begin(), cname.end(),
+                  [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
+  return false;
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                 protected
+// methods
 // -----------------------------------------------------------------------------
 
 void RestHandler::resetResponse(rest::ResponseCode code) {
@@ -698,8 +874,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() instead
-// of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute()
+// instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
   TRI_ASSERT(state != RestStatus::WAITING);
@@ -712,8 +888,13 @@ RestStatus RestHandler::execute() {
 }
 
 void RestHandler::runHandler(
-    std::function<void(rest::RestHandler*)> responseCallback) {
+    std::function<void(RestHandler*)> responseCallback) {
   _sendResponseCallback = std::move(responseCallback);
+
+  // set the scope for the state machine. note that the following
+  // .thenFinal does not automatically inherit the scope; but it does
+  // not need it, either.
+  auto scope = ExecContextScope(_request->requestContext());
 
   runHandlerStateMachine().
       // Swallow all exceptions. It would be desirable to guarantee no
@@ -722,7 +903,7 @@ void RestHandler::runHandler(
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();
-        } catch (basics::Exception const& exception) {
+        } catch (Exception const& exception) {
           LOG_TOPIC("e0b25", ERR, Logger::FIXME)
               << "Uncaught exception in RestHandler " << self->name() << ": "
               << "[" << exception.code() << "] " << exception.message()
@@ -745,3 +926,5 @@ void RestHandler::runHandler(
         }
       });
 }
+
+}  // namespace arangodb::rest

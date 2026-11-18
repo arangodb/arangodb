@@ -29,12 +29,19 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
+#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
+#include "Indexes/IndexTypeCatalog.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#endif
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
@@ -125,10 +132,10 @@ std::string defaultIndexName(VPackSlice const& slice) {
   auto type = arangodb::Index::type(
       slice.get(arangodb::StaticStrings::IndexType).stringView());
 
-  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (type == arangodb::IndexType::Primary) {
     return arangodb::StaticStrings::IndexNamePrimary;
   }
-  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (type == arangodb::IndexType::Edge) {
     auto fields = slice.get(arangodb::StaticStrings::IndexFields);
     TRI_ASSERT(fields.isArray());
     auto firstField = fields.at(0);
@@ -364,7 +371,7 @@ void Index::validateFields(VPackSlice slice) {
   std::string_view type =
       slice.get(arangodb::StaticStrings::IndexType).stringView();
   auto allowExpansion = Index::allowExpansion(Index::type(type));
-  auto const fieldIsObject = TRI_IDX_TYPE_INVERTED_INDEX == Index::type(type);
+  auto const fieldIsObject = IndexType::Inverted == Index::type(type);
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
   if (!fields.isArray()) {
@@ -391,105 +398,105 @@ void Index::validateFields(VPackSlice slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(std::string_view type) {
+IndexType Index::type(std::string_view type) {
   if (type == "primary") {
-    return TRI_IDX_TYPE_PRIMARY_INDEX;
+    return IndexType::Primary;
   }
   if (type == "edge") {
-    return TRI_IDX_TYPE_EDGE_INDEX;
+    return IndexType::Edge;
   }
   if (type == "hash") {
-    return TRI_IDX_TYPE_HASH_INDEX;
+    return IndexType::Hash;
   }
   if (type == "skiplist") {
-    return TRI_IDX_TYPE_SKIPLIST_INDEX;
+    return IndexType::Skiplist;
   }
   if (type == "ttl") {
-    return TRI_IDX_TYPE_TTL_INDEX;
+    return IndexType::TTL;
   }
   if (type == "persistent" || type == "rocksdb") {
-    return TRI_IDX_TYPE_PERSISTENT_INDEX;
+    return IndexType::Persistent;
   }
   if (type == "fulltext") {
-    return TRI_IDX_TYPE_FULLTEXT_INDEX;
+    return IndexType::Fulltext;
   }
   if (type == "geo") {
-    return TRI_IDX_TYPE_GEO_INDEX;
+    return IndexType::Geo;
   }
   if (type == "geo1") {
-    return TRI_IDX_TYPE_GEO1_INDEX;
+    return IndexType::Geo1;
   }
   if (type == "geo2") {
-    return TRI_IDX_TYPE_GEO2_INDEX;
+    return IndexType::Geo2;
   }
   if (type == "mdi") {
-    return TRI_IDX_TYPE_MDI_INDEX;
+    return IndexType::MDI;
   }
   if (type == "zkd") {
-    return TRI_IDX_TYPE_ZKD_INDEX;
+    return IndexType::Zkd;
   }
   if (type == "mdi-prefixed") {
-    return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
+    return IndexType::MDIPrefixed;
   }
   if (type == iresearch::StaticStrings::ViewArangoSearchType) {
-    return TRI_IDX_TYPE_IRESEARCH_LINK;
+    return IndexType::IResearchLink;
   }
   if (type == "noaccess") {
-    return TRI_IDX_TYPE_NO_ACCESS_INDEX;
+    return IndexType::NoAccess;
   }
   if (type == arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE) {
-    return TRI_IDX_TYPE_INVERTED_INDEX;
+    return IndexType::Inverted;
   }
   if (type == "vector") {
-    return TRI_IDX_TYPE_VECTOR_INDEX;
+    return IndexType::Vector;
   }
-  return TRI_IDX_TYPE_UNKNOWN;
+  return IndexType::Unknown;
 }
 
 bool Index::onlyHintForced(IndexType type) {
   // inverted index is eventually consistent, so usage must be explicilty
   // permitted by the user
-  return type == TRI_IDX_TYPE_INVERTED_INDEX;
+  return type == IndexType::Inverted;
 }
 
 /// @brief return the name of an index type
-char const* Index::oldtypeName(Index::IndexType type) {
+char const* Index::oldtypeName(IndexType type) {
   switch (type) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case IndexType::Primary:
       return "primary";
-    case TRI_IDX_TYPE_EDGE_INDEX:
+    case IndexType::Edge:
       return "edge";
-    case TRI_IDX_TYPE_HASH_INDEX:
+    case IndexType::Hash:
       return "hash";
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case IndexType::Skiplist:
       return "skiplist";
-    case TRI_IDX_TYPE_TTL_INDEX:
+    case IndexType::TTL:
       return "ttl";
-    case TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case IndexType::Persistent:
       return "persistent";
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case IndexType::Fulltext:
       return "fulltext";
-    case TRI_IDX_TYPE_GEO1_INDEX:
+    case IndexType::Geo1:
       return "geo1";
-    case TRI_IDX_TYPE_GEO2_INDEX:
+    case IndexType::Geo2:
       return "geo2";
-    case TRI_IDX_TYPE_GEO_INDEX:
+    case IndexType::Geo:
       return "geo";
-    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case IndexType::IResearchLink:
       return iresearch::StaticStrings::ViewArangoSearchType.data();
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case IndexType::NoAccess:
       return "noaccess";
-    case TRI_IDX_TYPE_ZKD_INDEX:
+    case IndexType::Zkd:
       return "zkd";
-    case TRI_IDX_TYPE_MDI_INDEX:
+    case IndexType::MDI:
       return "mdi";
-    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+    case IndexType::MDIPrefixed:
       return "mdi-prefixed";
-    case TRI_IDX_TYPE_INVERTED_INDEX:
+    case IndexType::Inverted:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
-    case TRI_IDX_TYPE_VECTOR_INDEX:
+    case IndexType::Vector:
       return "vector";
-    case TRI_IDX_TYPE_UNKNOWN: {
+    case IndexType::Unknown: {
     }
   }
 
@@ -567,28 +574,9 @@ bool Index::compareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(IndexTypeCatalog const& catalog, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto normalizeType = [](VPackSlice s) -> std::string_view {
-    TRI_ASSERT(s.isString());
-    // "zkd" is the old naming for "mdi", so we have to treat these
-    // two type names as identical.
-    if (s.stringView() == "zkd") {
-      return "mdi";
-    }
-    return s.stringView();
-  };
-
-  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
-  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
-
-  if (lhsType != rhsType) {
-    return false;
-  }
-
-  return engine.indexFactory()
-      .factory(std::string{lhsType})
-      .equal(lhs, rhs, dbname);
+  return catalog.equal(lhs, rhs, dbname);
 }
 
 /// @brief return a contextual string for logging
@@ -826,6 +814,11 @@ bool Index::canUseConditionPart(
     aql::AstNode const* op, aql::Variable const* reference,
     containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
+  if (!access->isDeterministic() || !other->isDeterministic()) {
+    // we can only use deterministic values in index lookups; we should not look
+    // up index for non-deterministic values such as RAND()
+    return false;
+  }
   if (_sparse) {
     if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
@@ -980,9 +973,32 @@ bool Index::covers(aql::Projections& projections) const {
   auto const& covered = coveredFields();
 
   for (size_t i = 0; i < n; ++i) {
+    // top-level `_id` and `_key` are interchangeable for covering purposes:
+    // covered `_id` entries physically store the key value (cf.
+    // transaction::extractAttributeValues), and the covering producers in
+    // Projections.cpp rebuild `_id` projections from a covered key value
+    // via makeIdFromParts
+    bool const isKeyOrIdProjection =
+        projections[i].type == aql::AttributeNamePath::Type::IdAttribute ||
+        projections[i].type == aql::AttributeNamePath::Type::KeyAttribute;
+    TRI_ASSERT(!isKeyOrIdProjection || projections[i].path.size() == 1);
+
     bool found = false;
     for (size_t j = 0; j < covered.size(); ++j) {
       auto const& field = covered[j];
+
+      if (isKeyOrIdProjection) {
+        if (field.size() == 1 && !field[0].shouldExpand &&
+            (field[0].name == StaticStrings::KeyString ||
+             field[0].name == StaticStrings::IdString)) {
+          projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
+          projections[i].coveringIndexCutoff = 1;
+          found = true;
+          break;
+        }
+        continue;
+      }
+
       size_t k = 0;
       for (auto const& part : field) {
         if (part.shouldExpand) {
@@ -1017,14 +1033,68 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
+std::optional<std::string_view> Index::extractKeyFromIdLookupValue(
+    transaction::Methods& trx, LogicalCollection const& collection,
+    std::string_view id) {
+  char const* key = nullptr;
+  size_t outLength = 0;
+  std::shared_ptr<LogicalCollection> resolved;
+  Result res = trx.resolveId(id.data(), id.size(), resolved, key, outLength);
+
+  if (!res.ok()) {
+    return std::nullopt;
+  }
+
+  TRI_ASSERT(resolved != nullptr);
+  TRI_ASSERT(key != nullptr);
+
+  if (!ServerState::instance()->isRunningInCluster()) {
+    if (resolved->id() != collection.id()) {
+      // the id value is syntactically correct, but refers to a different
+      // collection, using local collection id
+      return std::nullopt;
+    }
+    return std::string_view(key, outLength);
+  }
+
+#ifdef USE_ENTERPRISE
+  if (resolved->isSmart() && resolved->type() == TRI_COL_TYPE_EDGE) {
+    auto c =
+        dynamic_cast<VirtualClusterSmartEdgeCollection const*>(resolved.get());
+    if (c == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+
+    if (!c->isDisjoint() && (collection.planId() != c->getLocalCid() &&
+                             collection.planId() != c->getFromCid() &&
+                             collection.planId() != c->getToCid())) {
+      // invalid planId
+      return std::nullopt;
+    } else if (c->isDisjoint() && collection.planId() != c->getLocalCid()) {
+      // invalid planId
+      return std::nullopt;
+    }
+    return std::string_view(key, outLength);
+  }
+#endif
+
+  if (resolved->planId() != collection.planId()) {
+    // the id value is syntactically correct, but refers to a different
+    // collection, using cluster collection id
+    return std::nullopt;
+  }
+
+  return std::string_view(key, outLength);
+}
+
 bool Index::canWarmup() const noexcept { return false; }
 
 bool Index::isVectorIndexReady() const noexcept { return false; }
 
 bool Index::isLinearScanEnabled() const noexcept { return false; }
 
-vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition()
-    const {
+vector::UserDefinition const& Index::getVectorIndexDefinition() const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
@@ -1175,8 +1245,7 @@ void Index::normalizeFilterCosts(Index::FilterCosts& costs, Index const* idx,
     costs.estimatedCosts *= 0.995 - 0.05 * (numFieldsToConsider - 1);
   }
 
-  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (idx->type() == IndexType::Primary || idx->type() == IndexType::Edge) {
     // primary and edge index have faster lookups due to very fast
     // comparators
     costs.estimatedCosts *= 0.9;

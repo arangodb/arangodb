@@ -31,14 +31,15 @@
 
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/directories.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/RestartAction.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Rest/Version.h"
+#include "Utils/ExecContext.h"
+#include "VectorIndex/Feature.h"
 
 using namespace arangodb;
 
@@ -73,6 +74,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
            }
          },
          {}});
+
+    // Everything the application server runs on this thread -- feature
+    // preparation and start (including recovery, upgrade, and bootstrap),
+    // the wait loop, and shutdown -- acts on behalf of the server itself,
+    // not on behalf of any user, and must therefore run as Superuser.
+    ExecContextSuperuserScope superuserScope;
 
     try {
       server.run(argc, argv);
@@ -129,6 +136,7 @@ int main(int argc, char* argv[]) {
   auto workdir = std::filesystem::current_path();
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
+  rest::Version::Values.merge(VectorIndexFeature::versionDetails());
 
   arangodb::restartAction = nullptr;
 

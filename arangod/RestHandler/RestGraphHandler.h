@@ -24,9 +24,8 @@
 
 #include <optional>
 
-#include "Actions/RestActionHandler.h"
 #include "Graph/GraphManager.h"
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 

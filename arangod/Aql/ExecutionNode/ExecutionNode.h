@@ -64,10 +64,12 @@
 #include "Aql/IndexHint.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SortElement.h"
+#include "Aql/RegisterResolver.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
+#include "velocypack/String.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -351,7 +353,9 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
-  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
+  enum class FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
+
+  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, FlattenType);
 
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
@@ -495,6 +499,84 @@ class ExecutionNode {
 
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
+  /// @brief read an annotation. Returns a none-slice if the annotation is not
+  /// found. Probably you want to use some typed alternatives.
+  auto getAnnotation(std::string_view) const noexcept -> VPackSlice;
+
+  /// @brief returns the string stored for the given annotation. Returns nullopt
+  /// if no such annotation exists. It's a hard error if no string value
+  /// was found.
+  auto getAnnotatedString(std::string_view) const noexcept
+      -> std::optional<std::string_view>;
+
+  /// @brief returns the number stored for the given annotation. Returns nullopt
+  /// if no such annotation exists. It's a hard error if no numeric value
+  /// was found.
+  template<std::integral T>
+  auto getAnnotatedNumber(std::string_view name) const noexcept
+      -> std::optional<T> {
+    auto s = getAnnotation(name);
+    if (s.isNone()) {
+      return std::nullopt;
+    }
+    ADB_PROD_ASSERT(s.isNumber<T>())
+        << "annotation `" << name << "` expected to be a number, found "
+        << s.typeName();
+    return s.getNumericValue<T>();
+  }
+
+  auto getAnnotatedFlag(std::string_view name) const noexcept
+      -> std::optional<bool>;
+
+  /// @brief sets an annotation with the given name and value. An existing
+  /// annotation with the same name is overwritten.
+  void setAnnotation(std::string name, VPackString value);
+  void setAnnotation(std::string name, VPackSlice value);
+  void setAnnotation(std::string name, VPackValue value);
+
+  /// @brief sets an annotation with the given name and integral value.
+  /// An existing annotation with the same name is overwritten.
+  template<std::integral T>
+  void setAnnotatedNumber(std::string name, T value) {
+    setAnnotation(std::move(name), VPackValue(value));
+  }
+
+  /// @brief sets an annotation with the given name and string value.
+  /// An existing annotation with the same name is overwritten.
+  void setAnnotatedString(std::string name, std::string_view value);
+
+  /// @brief sets an annotation with the given name and boolean value.
+  /// An existing annotation with the same name is overwritten.
+  void setAnnotatedFlag(std::string name, bool value);
+
+  /// @brief The depth of the rows this node reads, i.e. the depth of its
+  /// first dependency. Equal to getDepth() unless this node begins a new
+  /// block shape (isIncreaseDepth()).
+  unsigned int inputDepth() const noexcept;
+
+  /// @brief Register holding `variable` in the rows this node WRITES.
+  /// Use this for the variables in getVariablesSetHere(), i.e. for everything
+  /// the executor writes to an OutputAqlItemRow.
+  RegisterId outputRegister(Variable const* variable) const;
+
+  /// @brief Register holding `variable` in the rows this node READS.
+  /// Use this for everything the executor reads off an InputAqlItemRow.
+  RegisterId inputRegister(Variable const* variable) const;
+
+  /// @brief Like inputRegister(), but returns an invalid RegisterId instead of
+  /// asserting when `variable` is a nullptr or has no register.
+  RegisterId inputRegisterOrInvalid(Variable const* variable) const noexcept;
+
+  /// @brief Like outputRegister(), but returns an invalid RegisterId instead
+  /// of asserting when `variable` is a nullptr or has no register.
+  RegisterId outputRegisterOrInvalid(Variable const* variable) const noexcept;
+
+  /// @brief Resolvers bound to the input/output row shape of this node, for
+  /// code that resolves variables later than createBlock() e.g. during
+  /// execution. Prefer resolving here and passing RegisterIds down.
+  RegisterResolver inputRegisterResolver() const noexcept;
+  RegisterResolver outputRegisterResolver() const noexcept;
+
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
@@ -512,10 +594,6 @@ class ExecutionNode {
   /// @brief factory for sort elements, used by SortNode and GatherNode
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               velocypack::Slice slice, std::string_view which);
-
-  RegisterId variableToRegisterId(Variable const*) const;
-
-  RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
   RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
                                     RegIdSet writableOutputRegisters) const;
@@ -581,11 +659,13 @@ class ExecutionNode {
   /// variable usage in the plan.
   RegIdSetStack _regsToKeepStack;
 
+  /// @brief contains node metadata information that is produced and consumed
+  /// by different parts of the optimizer or query engine.
+  absl::flat_hash_map<std::string, VPackString> _annotations;
+
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
-
-  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
 
  private:
   bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,

@@ -171,12 +171,8 @@ function uniqueIndexSuite() {
       internal.db._drop(cn);
     },
 
-    testUniqueHashIndexes : function () {
-      runTest("hash");
-    },
-
-    testUniqueSkiplistIndexes : function () {
-      runTest("skiplist");
+    testUniquePersistentIndexes : function () {
+      runTest("persistent");
     }
 
   };

@@ -768,6 +768,27 @@ function VPackIndexInRearmingSuite (unique) {
         }
       }
     },
+
+    testVPackLookupBySingleAttributeUsingInNonArrayValuesRearm : function () {
+      const q = `FOR v IN [["001"], "nope", null, [], {}, "002", 2, ["002", "003"], true] FOR doc IN ${cn} FILTER doc.value1 IN v RETURN [v, doc.value1]`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+      // an IN value that is not an array, or is an empty array, matches
+      // nothing, whatever the previous lookup matched
+      let results = db._query(q, null, opts).toArray();
+      assertEqual([
+        [["001"], "001"],
+        [["002", "003"], "002"],
+        [["002", "003"], "003"],
+      ], results);
+    },
     
   };
 }

@@ -35,7 +35,6 @@
 #include "Basics/application-exit.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -52,16 +51,13 @@
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
+#include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -115,15 +111,10 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 DatabaseManagerThread::DatabaseManagerThread(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, StorageEngine& engine)
-    : ServerThread(server, "DatabaseManager"),
+    // engine-level cleanup of dropped databases, no ExecContext required
+    : ServerThread(server, "DatabaseManager", nullptr),
       _databaseFeature(databaseFeature),
-      _engine(engine)
-#ifdef USE_V8
-      ,
-      _dealer(server.getFeature<V8DealerFeature>())
-#endif
-{
-}
+      _engine(engine) {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
@@ -169,11 +160,7 @@ void DatabaseManagerThread::run() {
         iresearch::cleanupDatabase(*database);
 
         auto* queryRegistry = QueryRegistryFeature::registry();
-#ifdef USE_V8
-        if (_dealer.isEnabled() || queryRegistry != nullptr) {
-#else
         if (queryRegistry != nullptr) {
-#endif
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
           std::lock_guard lockCreate{_databaseFeature._databaseCreateLock};
@@ -181,11 +168,6 @@ void DatabaseManagerThread::run() {
           auto* same = _databaseFeature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
-#ifdef USE_V8
-            if (_dealer.isEnabled()) {
-              _dealer.cleanupDatabase(*database);
-            }
-#endif
             if (queryRegistry != nullptr) {
               queryRegistry->destroy(database->name());
             }
@@ -277,8 +259,6 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
@@ -287,41 +267,11 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), *this,
-      /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()),
+      server().getFeature<StorageEngine>(), *this, /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
-    dealer.verifyAppPaths();
-  }
-#endif
-
-  // scan all databases
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-
-  TRI_ASSERT(builder.slice().isArray());
-
-  auto res = iterateDatabases(builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
-        << "could not iterate over all databases: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  // Update metadata metrics after databases are loaded
-  updateMetadataMetrics();
-
-  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
-    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
-
   // start database manager thread
   _databaseManager =
       std::make_unique<DatabaseManagerThread>(server(), *this, *_engine);
@@ -376,6 +326,24 @@ void DatabaseFeature::stop() {
   // i am here for debugging only.
   static TRI_vocbase_t* currentVocbase = nullptr;
 #endif
+
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
+  // delete the database manager thread
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
+
+    while (_databaseManager->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
 
   // turn off query cache and flush it
   aql::QueryCacheProperties p{
@@ -461,24 +429,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // delete the IO checker thread
-  if (_ioHeartbeatThread != nullptr) {
-    _ioHeartbeatThread->beginShutdown();
-
-    while (_ioHeartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
-  // delete the database manager thread
-  if (_databaseManager != nullptr) {
-    _databaseManager->beginShutdown();
-
-    while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  }
-
   try {
     closeDroppedDatabases();
   } catch (...) {
@@ -499,23 +449,11 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (_engine == nullptr) {
-    // engine not injected by test code, inject it now
-#endif
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ce = server().getFeature<ClusterEngine>();
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.disable();
-      ce.setActualEngine(&rocksdb);
-      _engine = &ce;
-    } else {
-      auto& rocksdb = server().getFeature<RocksDBEngine>();
-      rocksdb.enable();
-      _engine = &rocksdb;
-    }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  }
+  _engine = &server().getFeature<StorageEngine>();
+#ifdef USE_V8
+  _dealer = server().hasFeature<V8DealerFeature>()
+                ? &server().getFeature<V8DealerFeature>()
+                : nullptr;
 #endif
 
   // need this to make calculation analyzer available in database links
@@ -528,11 +466,32 @@ void DatabaseFeature::prepare() {
   }
 }
 
+void DatabaseFeature::bootstrapDatabases(velocypack::Slice databases) {
+  TRI_ASSERT(databases.isArray());
+
+  auto res = iterateDatabases(databases);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
+        << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
+    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void DatabaseFeature::recoveryDone() {
-  TRI_ASSERT(!_engine->inRecovery());
+  TRI_ASSERT(_engine->isReady());
 
   // '_pendingRecoveryCallbacks' will not change because
-  // !StorageEngine.inRecovery()
+  // StorageEngine.isReady()
   // It's single active thread before recovery done,
   // so we could use general purpose thread pool for this
   std::vector<futures::Future<Result>> futures;
@@ -559,8 +518,8 @@ void DatabaseFeature::recoveryDone() {
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  if (!_engine->inRecovery()) {
-    return callback();  // if no engine then can't be in recovery
+  if (_engine->isReady()) {
+    return callback();  // engine ready, execute immediately
   }
 
   // do not need a lock since single-thread access during recovery
@@ -627,19 +586,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     vocbase = _engine->createDatabase(std::move(info));
     TRI_ASSERT(vocbase != nullptr);
 
-    if (!ServerState::instance()->isCoordinator()) {
-#ifdef USE_V8
-      auto& dealer = server().getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        auto r = dealer.createDatabase(name, std::to_string(dbId), true);
-        if (r != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(r);
-        }
-      }
-#endif
-    }
-
-    if (!_engine->inRecovery()) {
+    if (_engine->isReady()) {
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);
@@ -658,7 +605,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!_engine->inRecovery()) {
+  if (_engine->isReady()) {
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
@@ -847,11 +794,10 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   return names;
 }
 
-std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
-    std::string const& username) {
+std::vector<std::string> DatabaseFeature::getDatabaseNamesForCurrentUser() {
   std::vector<std::string> names;
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auto& exec = ExecContext::current();
   {
     auto databases = _databases.load();
 
@@ -862,12 +808,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive() && af->userManager() != nullptr) {
-        auto level = af->userManager()->databaseAuthLevel(
-            username, vocbase->name(), false);
-        if (level == auth::Level::NONE) {  // hide dbs without access
-          continue;
-        }
+      if (exec.canSeeDatabase(vocbase->name()).fail()) {
+        continue;
       }
 
       names.emplace_back(vocbase->name());
@@ -1033,10 +975,6 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-#endif
-
   auto r = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
@@ -1064,15 +1002,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     }
 
     auto name = it.get("name").stringView();
-#ifdef USE_V8
-    if (dealer.isEnabled()) {
-      auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer.createDatabase(name, id, false);
-      if (r != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-    }
-#endif
 
     // open the database and scan collections in it
 

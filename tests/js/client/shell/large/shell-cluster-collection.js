@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/*jshint globalstrict:false, strict:false, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -88,7 +88,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
@@ -125,7 +124,6 @@ function ClusterCollectionSuite () {
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
         } finally {
@@ -139,21 +137,19 @@ function ClusterCollectionSuite () {
 /// writeConcern is equally set to replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactor : function () {
+    testCreateValidWriteConcern : function () {
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 1; i < 3; i++) {
         try {
           const c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
-            minReplicationFactor: i
+            writeConcern: i
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
-          assertEqual(i, c.properties().minReplicationFactor);
           assertEqual(i, c.properties().writeConcern);
         } finally {
           db._drop("UnitTestsClusterCrud");
@@ -166,21 +162,19 @@ function ClusterCollectionSuite () {
 /// writeConcern is set to replicationFactor - 1
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorSmaller : function () {
+    testCreateValidWriteConcernSmaller : function () {
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 2; i < 3; i++) {
         try {
           const c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
-            minReplicationFactor: i - 1
+            writeConcern: i - 1
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
-          assertEqual(i - 1, c.properties().minReplicationFactor);
           assertEqual(i - 1, c.properties().writeConcern);
         } finally {
           db._drop("UnitTestsClusterCrud");
@@ -193,17 +187,15 @@ function ClusterCollectionSuite () {
 /// set to 2. Then decrease both to 1 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorThenDecrease : function () {
+    testCreateValidWriteConcernThenDecrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
         writeConcern: 2
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
-      assertEqual(2, c.properties().minReplicationFactor); // deprecated
       assertEqual(2, c.properties().writeConcern);
 
       db._collection("UnitTestsClusterCrud").properties({
@@ -213,7 +205,6 @@ function ClusterCollectionSuite () {
 
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(1, c.properties().replicationFactor);
-      assertEqual(1, c.properties().minReplicationFactor); // deprecated
       assertEqual(1, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
@@ -224,17 +215,15 @@ function ClusterCollectionSuite () {
 /// set to 1. Then increase both to 2 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorThenIncrease : function () {
+    testCreateValidWriteConcernThenIncrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 1,
         writeConcern: 1
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(1, c.properties().replicationFactor);
-      assertEqual(1, c.properties().minReplicationFactor);
       assertEqual(1, c.properties().writeConcern);
 
       db._collection("UnitTestsClusterCrud").properties({
@@ -244,7 +233,6 @@ function ClusterCollectionSuite () {
 
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(2, c.properties().replicationFactor);
-      assertEqual(2, c.properties().minReplicationFactor);
       assertEqual(2, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
@@ -255,23 +243,21 @@ function ClusterCollectionSuite () {
 /// set to 2. Then increase both to 3 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidMinReplicationFactorThenIncrease : function () {
+    testCreateInvalidWriteConcernThenIncrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
         writeConcern: 2
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
-      assertEqual(2, c.properties().minReplicationFactor);
       assertEqual(2, c.properties().writeConcern);
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
           replicationFactor: 5,
-          minReplicationFactor: 5
+          writeConcern: 5
         });
         fail();
       } catch (err) {
@@ -279,7 +265,6 @@ function ClusterCollectionSuite () {
 
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(2, c.properties().replicationFactor);
-      assertEqual(2, c.properties().minReplicationFactor);
       assertEqual(2, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
@@ -289,21 +274,10 @@ function ClusterCollectionSuite () {
 /// @brief with invalid input
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidInputsMinReplicationFactor : function () {
-      const invalidMinReplFactors = [null, "a", true, false, [1,2,3], {some: "object"}];
+    testCreateInvalidInputsWriteConcernFactor : function () {
+      const invalidWriteConcernFactors = [null, "a", true, false, [1,2,3], {some: "object"}];
 
-      invalidMinReplFactors.forEach(function(minFactor) {
-        try {
-          db._create("UnitTestsClusterCrud", {
-            replicationFactor: 2,
-            minReplicationFactor: minFactor
-          });
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
-      });
-      invalidMinReplFactors.forEach(function(minFactor) {
+      invalidWriteConcernFactors.forEach(function(minFactor) {
         try {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
@@ -317,17 +291,17 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with minReplicationFactor 0 (invalid)
+/// @brief test create collection with WriteConcern 0 (invalid)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidNumbersMinReplicationFactor : function () {
-      const invalidMinReplFactors = [0];
+    testCreateInvalidNumbersWriteConcernFactor : function () {
+      const invalidWriteConcernFactors = [0];
 
-      invalidMinReplFactors.forEach(function(minFactor) {
+      invalidWriteConcernFactors.forEach(function(minFactor) {
         try {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
-            minReplicationFactor: minFactor
+            writeConcern: minFactor
           });
           fail();
         } catch (err) {
@@ -343,43 +317,28 @@ function ClusterCollectionSuite () {
       var cn = "example", id = "1234567890";
 
       db._drop(cn);
-      db._drop(id);
       try {
         var c1 = db._create(cn, {id: id});
 
         assertTypeOf("string", c1._id);
         assertEqual(id, c1._id);
         assertEqual(cn, c1.name());
-        assertTypeOf("number", c1.status());
 
         var c2 = db._collection(cn);
 
         assertEqual(c1._id, c2._id);
         assertEqual(c1.name(), c2.name());
-        assertEqual(c1.status(), c2.status());
       } finally {
         db._drop(cn);
       }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
-/// minReplicationFactor is set to replicationFactor + 1
+/// @brief test create collection with replicationFactor && writeConcern
+/// writeConcern is set to replicationFactor + 1
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidMinReplicationFactorBigger : function () {
-      try {
-        let c;
-        for ( let i = 1; i < 3; i++) {
-          c = db._create("UnitTestsClusterCrud", {
-            replicationFactor: i,
-            minReplicationFactor: i + 1
-          });
-        }
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+    testCreateInvalidWriteConcernFactorBigger : function () {
       try {
         let c;
         for ( let i = 1; i < 3; i++) {
@@ -402,7 +361,6 @@ function ClusterCollectionSuite () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
@@ -416,7 +374,6 @@ function ClusterCollectionSuite () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud", { numberOfShards: 8 });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(8, c.shards().length);
 
@@ -431,7 +388,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       c.drop();
@@ -704,7 +660,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5, shardKeys: [ "_key" ] });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
@@ -718,7 +673,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud", { shardKeys: [ "foo", "bar" ], waitForSync : true });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "foo", "bar" ], c.properties().shardKeys);
       assertTrue(c.properties().waitForSync);
@@ -732,7 +686,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
@@ -746,7 +699,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       try {
@@ -765,13 +717,13 @@ function ClusterCollectionSuite () {
 
     testCreateIllegalName1 : function () {
       try {
-        db._create("1234");
+        db._create("123abc");
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 
-      assertNull(db._collection("1234"));
+      assertNull(db._collection("123abc"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -806,6 +758,8 @@ function ClusterCollectionSuite () {
 
       assertNull(db._collection("_foo"));
     },
+
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create

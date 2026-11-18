@@ -47,7 +47,7 @@ function optimizerIndexesSortTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
     },
 
     tearDown : function () {
@@ -62,9 +62,9 @@ function optimizerIndexesSortTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       // create multiple indexes
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value RETURN i.value";
 
@@ -94,9 +94,8 @@ function optimizerIndexesSortTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       // create multiple indexes
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
 
@@ -131,9 +130,8 @@ function optimizerIndexesSortTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       // create multiple indexes
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
       waitForEstimatorSync();
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
@@ -168,9 +166,8 @@ function optimizerIndexesSortTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       // create multiple indexes
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
       waitForEstimatorSync();
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
@@ -205,8 +202,8 @@ function optimizerIndexesSortTestSuite () {
     testSingleAttributeSortNotOptimizedAwayRocksDB : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
-      c.ensureIndex({ type: "hash", fields: ["value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value3"] });
 
       var queries = [
                      "FOR j IN " + c.name() + " FILTER j.value2 == 2 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
@@ -249,7 +246,7 @@ function optimizerIndexesSortTestSuite () {
     testSingleAttributeSortOptimizedAway : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
@@ -266,7 +263,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // The HashIndex does not yet guarantee sorting, but we're filtering on a constant condition
+        // We're filtering on a constant condition, so the sort can be optimized away
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -278,7 +275,7 @@ function optimizerIndexesSortTestSuite () {
     testDontOptimizeAway : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
       var queries = [
         "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
@@ -303,7 +300,7 @@ function optimizerIndexesSortTestSuite () {
     testMultiAttributeSortOptimizedAway : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
 
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC RETURN i.value2", false ],
@@ -322,7 +319,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // The HashIndex does not yet guarantee sorting, but we can optimize it away anyway
+        // We can optimize away the sort when filtering on constant conditions
         if (query[1]) {
           assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
         }
@@ -363,8 +360,8 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseHashIndexForSortIfConstRanges : function () {
-      c.ensureIndex({ type: "hash", fields: [ "value2", "value3" ] });
+    testCannotUsePersistentIndexForSortIfConstRanges : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "value2", "value3" ] });
 
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2", false ],
@@ -384,7 +381,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // stil can optimize away the sort node as we're filtering on constant values
+        // still can optimize away the sort node as we're filtering on constant values
         if (query[1]) {
           assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
         }
@@ -398,8 +395,8 @@ function optimizerIndexesSortTestSuite () {
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseHashIndexForSortIfConstRangesMoreRocksDB : function () {
-      c.ensureIndex({ type: "hash", fields: [ "value2", "value3", "value4" ] });
+    testCannotUsePersistentIndexForSortIfConstRangesMore : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "value2", "value3", "value4" ] });
 
       var queries = [
                      [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC RETURN i.value2", true ],
@@ -440,10 +437,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoHashIndexForSort : function () {
+    testNoPersistentIndexForSort : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
@@ -466,10 +463,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoHashIndexForSortDifferentVariable : function () {
+    testNoPersistentIndexForSortDifferentVariable : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
 
       var queries = [
         "LET docs = NOOPT([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2 RETURN i.value2",
@@ -491,10 +488,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForSortIfConstRanges : function () {
+    testUsePersistentIndexForSortIfConstRanges : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3", "value4"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
@@ -534,10 +531,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCanUseSkiplistIndexForSortIfConstRanges : function () {
+    testCanUsePersistentIndexForSortIfConstRanges : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3", "value4"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
@@ -580,8 +577,8 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseSkiplistIndexForSortIfConstRanges : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3", "value4"] });
+    testCannotUsePersistentIndexForSortIfConstRanges2 : function () {
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC, i.value4 DESC RETURN i.value2",
@@ -604,10 +601,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoSkiplistIndexForSort : function () {
+    testNoPersistentIndexForSort2 : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3, i.value4 RETURN i.value2",
@@ -631,10 +628,10 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoSkiplistIndexForSortDifferentVariable : function () {
+    testNoPersistentIndexForSortDifferentVariable2 : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 SORT i.value2 RETURN i.value2",
@@ -661,7 +658,7 @@ function optimizerIndexesSortTestSuite () {
     testSparseIndexSort : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      var idx = c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      var idx = c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 > 10 SORT i.value2 RETURN i.value2",
@@ -677,7 +674,7 @@ function optimizerIndexesSortTestSuite () {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
             assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertTrue(node.indexes[0].sparse);
           }
           return node.type;
@@ -697,7 +694,7 @@ function optimizerIndexesSortTestSuite () {
     testSparseIndexNoSort : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 < 10 SORT i.value2 RETURN i.value2",
@@ -727,8 +724,8 @@ function optimizerIndexesSortTestSuite () {
     testSparseIndexesSort : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      var idx1 = c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true }); // cannot use for sort
-      var idx2 = c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: false }); // can use for sort
+      var idx1 = c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true }); // cannot use for sort
+      var idx2 = c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: false }); // can use for sort
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 < 10 SORT i.value2 RETURN i.value2",
@@ -744,7 +741,7 @@ function optimizerIndexesSortTestSuite () {
           if (node.type === "IndexNode") {
             assertNotEqual(idx1.id.replace(/^.+\//g, ''), node.indexes[0].id);
             assertEqual(idx2.id.replace(/^.+\//g, ''), node.indexes[0].id);
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertFalse(node.indexes[0].sparse);
           }
           return node.type;
@@ -763,7 +760,7 @@ function optimizerIndexesSortTestSuite () {
     testSparseIndexSortMulti : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      var idx = c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      var idx = c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
@@ -782,7 +779,7 @@ function optimizerIndexesSortTestSuite () {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
             assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertTrue(node.indexes[0].sparse);
           }
           return node.type;
@@ -802,7 +799,7 @@ function optimizerIndexesSortTestSuite () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       // If the first value is a range, the optimizer doesn't detect the index properly
-      var idx = c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      var idx = c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 >= null && i.value3 > null SORT i.value2, i.value3 RETURN i.value2",
@@ -819,7 +816,7 @@ function optimizerIndexesSortTestSuite () {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
             assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertTrue(node.indexes[0].sparse);
           }
           return node.type;
@@ -838,7 +835,7 @@ function optimizerIndexesSortTestSuite () {
     testSparseIndexNoSortMulti : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " SORT i.value2 RETURN i.value2",

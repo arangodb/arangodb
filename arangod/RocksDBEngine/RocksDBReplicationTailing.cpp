@@ -616,8 +616,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         return false;
       }
       return !TRI_ExcludeCollectionReplication(collection->name(),
-                                               _includeSystem,
-                                               /*includeFoxxQueues*/ false);
+                                               _includeSystem);
     }
     return false;
   }

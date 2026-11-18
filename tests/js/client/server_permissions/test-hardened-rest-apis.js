@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango, internal */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,10 +24,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 const fs = require('fs');
 const jsunity = require("jsunity");
-const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue, assertFalse, assertNotEqual } = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const db = internal.db;
 const arango = require('@arangodb').arango;
+const { assertEndpointGetOnly } = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 
 if (getOptions === true) {
@@ -41,13 +42,13 @@ if (getOptions === true) {
 
 if (runSetup === true) {
     let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
-  
+
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
-  
+
   return true;
 }
 
@@ -69,14 +70,28 @@ function testSuite() {
     testCanAccessVersionRo : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/version");
-      assertFalse(result.hasOwnProperty("version"));
+      assertTrue(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
+    },
+
+    testVersionOnlyAcceptsGet : function() {
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
+      let url = "/_api/version";
+      assertEndpointGetOnly(url);
     },
 
     testCanAccessEngineRw : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine");
       assertTrue(result.hasOwnProperty("name"));
+
+      let indexes = result.supports.indexes.filter((t) => t !== "vector");
+      assertEqual([
+        "primary", "edge", "ttl", "persistent",
+        "geo", "mdi", "mdi-prefixed", "inverted"
+      ], indexes);
+
+      assertEqual({ zkd: "mdi" }, result.supports.aliases.indexes);
     },
 
     testCanAccessEngineRo : function() {
@@ -105,7 +120,6 @@ function testSuite() {
       assertTrue(result.hasOwnProperty("serverInfo"));
       assertTrue(result.hasOwnProperty("server"));
       assertTrue(result.hasOwnProperty("pid"));
-      assertTrue(result.hasOwnProperty("foxxApi"));
     },
 
     testCanAccessAdminStatusRo : function() {
@@ -117,7 +131,12 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("serverInfo"));
       assertFalse(result.hasOwnProperty("server"));
       assertFalse(result.hasOwnProperty("pid"));
-      assertFalse(result.hasOwnProperty("foxxApi"));
+    },
+
+    testAdminStatusOnlyAcceptsGet : function() {
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
+      let url = "/_admin/status";
+      assertEndpointGetOnly(url);
     },
 
     testCanAccessAdminMetricsRw : function() {
@@ -144,24 +163,47 @@ function testSuite() {
       assertEqual(403, result.code);
     },
 
-    testCanAccessAdminLogRw : function() {
+    testCanAccessAdminLogEntriesRw : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
-      let result = arango.GET("/_admin/log");
-      assertTrue(result.hasOwnProperty("topic"));
-      assertTrue(result.hasOwnProperty("level"));
-      assertTrue(result.hasOwnProperty("timestamp"));
-      assertTrue(result.hasOwnProperty("text"));
+      let result = arango.GET("/_admin/log/entries");
+      assertFalse(result.error);
+      assertTrue(result.hasOwnProperty("total"));
+      assertTrue(result.hasOwnProperty("messages"));
+      assertTrue(Array.isArray(result.messages));
+      result.messages.forEach((message) => {
+        assertTrue(message.hasOwnProperty("id"));
+        assertTrue(message.hasOwnProperty("topic"));
+        assertTrue(message.hasOwnProperty("level"));
+        assertTrue(message.hasOwnProperty("date"));
+        assertTrue(message.hasOwnProperty("message"));
+      });
     },
 
-    testCanAccessAdminLogRo : function() {
+    testCanAccessAdminLogEntriesRo : function() {
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/log/entries");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
+    },
+
+    testCanAccessDeprecatedAdminLogRw : function() {
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/log");
+      assertTrue(result.error);
+      assertEqual(410, result.code);
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
+    },
+
+    testCanAccessDeprecatedAdminLogRo : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
       assertEqual(403, result.code);
-      assertFalse(result.hasOwnProperty("topic"));
-      assertFalse(result.hasOwnProperty("level"));
-      assertFalse(result.hasOwnProperty("timestamp"));
-      assertFalse(result.hasOwnProperty("text"));
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
     },
 
     testCanAccessAdminLogLevelRw : function() {
@@ -179,7 +221,7 @@ function testSuite() {
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
-    
+
     testCanAccessGetNumberOfServersRw : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       if (isCluster) {
@@ -242,6 +284,11 @@ function testSuite() {
       }
     },
 
+    testAdminTimeOnlyAcceptsGet : function() {
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
+      let url = "/_admin/time";
+      assertEndpointGetOnly(url);
+    },
   };
 }
 jsunity.run(testSuite);

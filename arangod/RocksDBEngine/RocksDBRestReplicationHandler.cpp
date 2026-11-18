@@ -30,7 +30,6 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
@@ -96,9 +95,9 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
     std::string const clientInfo = _request->value("clientInfo");
 
-    // create transaction+snapshot, ttl will be default if `ttl == 0``
-    auto ttl = VelocyPackHelper::getNumericValue<double>(
-        body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = replutils::BatchInfo::sanitizeTtl(
+        VelocyPackHelper::getNumericValue<double>(
+            body, "ttl", replutils::BatchInfo::DefaultTimeout));
     auto& engine = _vocbase.engine<RocksDBEngine>();
     auto ctx =
         _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
@@ -166,9 +165,9 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
       co_return;
     }
 
-    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    auto ttl = VelocyPackHelper::getNumericValue<double>(
-        body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = replutils::BatchInfo::sanitizeTtl(
+        VelocyPackHelper::getNumericValue<double>(
+            body, "ttl", replutils::BatchInfo::DefaultTimeout));
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
@@ -221,19 +220,6 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-/// @brief run the command that determines which transactions were open at
-/// a given tick value
-/// this is an internal method use by ArangoDB's replication that should not
-/// be called by client drivers directly
-void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
-  // rocksdb only includes finished transactions in the WAL.
-  _response->setContentType(rest::ContentType::DUMP);
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, "0");
-  // always true to satisfy continuous syncer
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
-}
-
 void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool found;
   std::string batchId = _request->value("batchId", found);
@@ -253,7 +239,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = _request->parsedValue("global", false);
@@ -278,14 +263,11 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   Result res;
   if (isGlobal) {
     builder.add(VPackValue("databases"));
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true,
-                            builder);
+    res = ctx->getInventory(_vocbase, includeSystem, true, builder);
   } else {
-    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
     if (collection.empty()) {
       // all collections in database
-      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false,
-                              builder);
+      res = ctx->getInventory(_vocbase, includeSystem, false, builder);
       TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
     } else {
       // single collection/shard in database
@@ -335,9 +317,6 @@ RocksDBRestReplicationHandler::handleCommandCreateKeys() {
         std::string("invalid quick parameter: must be boolean, got ") + quick);
     co_return;
   }
-
-  // to is ignored because the snapshot time is the latest point in time
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // get batchId from url parameters
   uint64_t batchId = _request->parsedValue("batchId", uint64_t(0));
@@ -601,13 +580,18 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-
-  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname,
-                                               auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  // This is for the single server case, in case we are a DBServer, this
+  // has already been checked in `forwardingTarget` and this check here
+  // is actually meaningless, since we are SuperUser anyway!
+  if (auto r = ExecContext::current().canDumpCollection(_vocbase.name(), cname);
+      r.fail()) {
+    generateError(r);
     return;
   }
+
+  // Now escalate to root, which is necessary on single servers to actually
+  // be able to access the collection:
+  ExecContextSuperuserScope superUser;
 
   // maximum number of documents to be returned per batch
   size_t docsPerBatch =

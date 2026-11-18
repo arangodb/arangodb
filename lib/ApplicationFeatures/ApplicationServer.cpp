@@ -154,7 +154,6 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
     auto it = _features.find(type);
     TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
-      // TODO (COR-861): remove this function by conditional registration logic
       TRI_ASSERT(it->second != nullptr);
       if (force) {
         it->second->forceDisable();
@@ -186,6 +185,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   processOptions();
 
+  maybeDumpOptions();
+
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
@@ -201,6 +202,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // turn off all features that depend on other features that have been
   // turned off
   disableDependentFeatures();
+
+  maybeDumpDependencies();
 
   // allows process control
   daemonize();
@@ -246,6 +249,36 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // stopped
   _state.store(State::STOPPED, std::memory_order_release);
   reportServerProgress(State::STOPPED);
+}
+
+void ApplicationServer::maybeDumpOptions() {
+  if (_dumpOptions) {
+    auto builder = _options->toVelocyPack(
+        false, true, [](std::string const&) { return true; });
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+}
+
+void ApplicationServer::maybeDumpDependencies() {
+  if (_dumpDependencies) {
+    std::cout << "digraph dependencies\n"
+              << "{\n"
+              << "  overlap = false;\n";
+    for (auto& [_id, feature] : _features) {
+      for (auto& before : feature->startsAfter()) {
+        std::string_view depName;
+        if (hasFeature(before)) {
+          depName = getFeature(before).name();
+        }
+        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
+      }
+    }
+    std::cout << "}\n";
+    exit(EXIT_SUCCESS);
+  }
 }
 
 // signal the server to initiate a soft shutdown
@@ -417,32 +450,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     rest::Version::print(std::cout);
     exit(EXIT_SUCCESS);
   }
-
-  if (_dumpDependencies) {
-    std::cout << "digraph dependencies\n"
-              << "{\n"
-              << "  overlap = false;\n";
-    for (auto& [_id, feature] : _features) {
-      for (auto& before : feature->startsAfter()) {
-        std::string_view depName;
-        if (hasFeature(before)) {
-          depName = getFeature(before).name();
-        }
-        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
-      }
-    }
-    std::cout << "}\n";
-    exit(EXIT_SUCCESS);
-  }
-
-  if (_dumpOptions) {
-    auto builder = _options->toVelocyPack(
-        false, true, [](std::string const&) { return true; });
-    arangodb::velocypack::Options options;
-    options.prettyPrint = true;
-    std::cout << builder.slice().toJson(&options) << std::endl;
-    exit(EXIT_SUCCESS);
-  }
 }
 
 // setup and validate all feature dependencies, determine feature order
@@ -453,14 +460,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // apply all "startsBefore" values
   for (auto& [_id, feature] : _features) {
     for (auto const& other : feature->startsBefore()) {
+      // the target may simply not be registered in this configuration
       if (!hasFeature(other)) {
-        if (failOnMissing) {
-          _fail(std::string{"feature '"}
-                    .append(feature->name())
-                    .append("' depends on unknown feature '")
-                    .append(other.name())
-                    .append("'"));
-        }
         continue;
       }
       getFeature(other).startsAfter(feature->registration());

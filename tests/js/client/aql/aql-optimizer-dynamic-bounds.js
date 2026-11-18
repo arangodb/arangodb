@@ -49,8 +49,8 @@ function singleAttributeTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
     },
 
     tearDownAll : function () {
@@ -122,7 +122,7 @@ function nonIndexedAttributeTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
 
     tearDown : function () {
@@ -189,7 +189,7 @@ function nestedAttributeTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1.value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1.value2"] });
     },
 
     tearDown : function () {

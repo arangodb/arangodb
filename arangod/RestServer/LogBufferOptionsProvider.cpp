@@ -37,6 +37,7 @@ void LogBufferOptionsProvider::declareOptionsImpl(
                   "API and web interface.",
                   new BooleanParameter(&opts.useInMemoryAppender),
                   makeDefaultFlags(Flags::Uncommon))
+      .setDeprecatedIn(40000)
       .setIntroducedIn(30800)
       .setLongDescription(R"(You can use this option to toggle storing log
 messages in memory, from which they can be consumed via the `/_admin/log`
@@ -56,6 +57,7 @@ information leakage via these means.)");
           new DiscreteValuesParameter<StringParameter>(
               &opts.minInMemoryLogLevel, logLevels),
           makeDefaultFlags(Flags::Uncommon))
+      .setDeprecatedIn(40000)
       .setLongDescription(R"(You can use this option to control which log
 messages are preserved in memory (in case `--log.in-memory` is enabled).
 

@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/common.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 
 #include "RestServer/DatabaseFeature.h"
@@ -100,9 +101,9 @@ class VocbaseTest : public ::testing::Test {
 };
 
 TEST_F(VocbaseTest, test_lookupDataSource) {
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": "
-      "\"testCollection\" }");
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{100});
+  colDescriptor.identity.guid = "testCollectionGUID";
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
@@ -132,7 +133,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
   }
 
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(colDescriptor);
   auto view = vocbase.createView(viewJson->slice(), false);
 
   EXPECT_FALSE(collection->deleted());

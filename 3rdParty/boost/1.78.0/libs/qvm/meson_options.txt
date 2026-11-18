@@ -1,2 +1,0 @@
-option('qvm_header_mode',type:'string',value:'multi',description:'Unit test header inclusion option: multi, single, single_lite')
-option('qvm_enable_unit_tests',type:'boolean',value:true,description:'Enable the building of unit test programs')

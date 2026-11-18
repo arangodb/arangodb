@@ -22,7 +22,9 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Futures/Future.h"
@@ -33,6 +35,9 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionInvariants.h"
+#include "VocBase/Properties/CollectionVersion.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
@@ -59,7 +64,6 @@ class ShardingInfo;
 
 struct Database;
 struct OperationOptions;
-struct UserInputCollectionProperties;
 
 namespace transaction {
 class Methods;
@@ -98,12 +102,13 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
+  LogicalCollection(Database& vocbase, CollectionDescriptor const& descriptor,
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
+  using Version = CollectionVersion;
 
   constexpr static Category category() noexcept {
     return Category::kCollection;
@@ -129,9 +134,13 @@ class LogicalCollection : public LogicalDataSource {
   };
 
   /// @brief hard-coded minimum version number for collections
-  static constexpr Version minimumVersion() { return Version::v30; }
+  static constexpr Version minimumVersion() {
+    return minimumCollectionVersion();
+  }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v37; }
+  static constexpr Version currentVersion() {
+    return currentCollectionVersion();
+  }
 
   static replication2::LogId shardIdToStateId(ShardID const& shardId);
   static std::optional<replication2::LogId> tryShardIdToStateId(
@@ -144,7 +153,7 @@ class LogicalCollection : public LogicalDataSource {
 
   uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const noexcept { return _type; }
+  TRI_col_type_e type() const noexcept { return _invariants.type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -165,16 +174,18 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const noexcept;
   bool cacheEnabled() const noexcept;
-  bool supportsRBAC() const noexcept;
-#ifdef USE_ENTERPRISE
-  bool isDisjoint() const noexcept { return _isDisjoint; }
-  bool isSmart() const noexcept { return _isSmart; }
-  bool isSmartChild() const noexcept { return _isSmartChild; }
-  bool hasSmartJoinAttribute() const noexcept {
-    return !_smartJoinAttribute.empty();
+  bool timeTravelEnabled() const noexcept {
+    return _invariants.timeTravelEnabled;
   }
-  bool hasSmartGraphAttribute() const noexcept {
-    return !_smartGraphAttribute.empty();
+#ifdef USE_ENTERPRISE
+  bool isDisjoint() const noexcept { return _invariants.isDisjoint; }
+  bool isSmart() const noexcept { return _invariants.isSmart; }
+  bool isSmartChild() const noexcept { return _invariants.isSmartChild; }
+  bool hasSmartJoinAttribute() const noexcept {
+    return _invariants.smartJoinAttribute.has_value();
+  }
+  bool hasSmartGraphAttribute() const {
+    return !_smartGraphAttribute.getLockedGuard()->empty();
   }
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -216,8 +227,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
-
-  UserInputCollectionProperties getCollectionProperties() const noexcept;
 
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
@@ -314,6 +323,7 @@ class LogicalCollection : public LogicalDataSource {
   using LogicalDataSource::properties;
 
   /// @brief updates properties of an existing DataSource
+  /// TODO (COR-980): Investigate if this can take a typed parse
   virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
@@ -386,7 +396,10 @@ class LogicalCollection : public LogicalDataSource {
                   VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
-  KeyGenerator& keyGenerator() const noexcept { return *_keyGenerator; }
+  KeyGenerator& keyGenerator() const noexcept {
+    TRI_ASSERT(_keyGenerator != nullptr);
+    return *_keyGenerator;
+  }
 
   transaction::CountCache& countCache() { return _countCache; }
 
@@ -412,15 +425,32 @@ class LogicalCollection : public LogicalDataSource {
       -> arangodb::replication2::agency::CollectionGroupId;
   auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
+  CollectionDescriptor properties() const;
+
  private:
-  void initializeSmartAttributesBefore(velocypack::Slice info);
-  void initializeSmartAttributesAfter(velocypack::Slice info);
+  void initializeSmartAttributesBefore(CollectionDescriptor const& descriptor);
+  void initializeSmartAttributesAfter(CollectionDescriptor const& descriptor);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
+
+  // The value as stored, but only under replication 2; the public groupID()
+  // additionally requires that it is set.
+  std::optional<replication2::agency::CollectionGroupId> groupIdIfAny()
+      const noexcept;
+
+  // The value as stored; the public replicatedStateId() additionally requires
+  // that it is set.
+  std::optional<replication2::LogId> const& replicatedStateIdIfAny()
+      const noexcept {
+    return _invariants.replicatedStateId;
+  }
+
+  // Only contains the immutable properties; single source of truth.
+  CollectionInvariants const _invariants;
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -446,39 +476,24 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Internal version used for caching
   uint32_t _v8CacheVersion;
 
-  // @brief Collection type
-  TRI_col_type_e const _type;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
-#ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition
-  // only) can only be true if _isSmart is also true
-  bool const _isDisjoint;
-  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
-  bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise
-  // Edition only)
-  bool const _isSmartChild;
-#endif
-
-  bool const _allowUserKeys;
-
   bool _usesRevisionsAsDocumentIds;
-
-  // SECTION: Properties
-  std::atomic<bool> _waitForSync;
-  std::atomic<bool> _supportsRBAC;
 
   std::atomic<bool> _syncByRevision;
 
-#ifdef USE_ENTERPRISE
-  mutable std::mutex
-      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
-  std::string _smartGraphAttribute;
+  std::atomic<bool> _waitForSync;
 
-  std::string _smartJoinAttribute;
+  // Bitmap of InternalValidatorType. Changed by the maintenance during
+  // cluster upgrades only, together with _internalValidators below.
+  uint64_t _internalValidatorTypes;
+  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+
+#ifdef USE_ENTERPRISE
+  // Set once, either during construction or by the DBServer maintenance
+  // during an upgrade. Empty means "not set".
+  Guarded<std::string> _smartGraphAttribute;
 #endif
 
   transaction::CountCache _countCache;
@@ -505,17 +520,6 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
-
-  // This is a bitmap entry of InternalValidatorType entries.
-  uint64_t _internalValidatorTypes;
-
-  std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
-
-  // Temporarily here, used for shards, only on DBServers
-  std::optional<arangodb::replication2::LogId> _replicatedStateId;
-
-  // TODO: Only quickly added
-  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb

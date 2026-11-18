@@ -33,7 +33,7 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
-  c.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
+  c.ensureIndex({ type: "persistent", fields: ["value"], sparse: true });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -43,7 +43,7 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  c.ensureIndex({ type: "hash", fields: ["a.value"], unique: true, sparse: true });
+  c.ensureIndex({ type: "persistent", fields: ["a.value"], unique: true, sparse: true });
 
   docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -53,7 +53,7 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3');
-  c.ensureIndex({ type: "hash", fields: ["a", "b"], sparse: true });
+  c.ensureIndex({ type: "persistent", fields: ["a", "b"], sparse: true });
 
   docs = [];
   for (let i = 0; i < 500; ++i) {

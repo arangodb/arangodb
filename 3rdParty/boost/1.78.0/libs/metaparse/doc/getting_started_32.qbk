@@ -1,4 +1,0 @@
-[#getting_started_32]
-
-  using plus_exp1 = foldl_start_with_parser< sequence<one_of<plus_token, minus_token>, mult_exp4>, mult_exp4, boost::mpl::quote2<binary_op> >;
-

@@ -23,6 +23,10 @@
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -35,12 +39,6 @@ using namespace arangodb::options;
 
 void GeneralServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
-  opts->addOldOption("server.allow-method-override",
-                     "http.allow-method-override");
-  opts->addOldOption("server.hide-product-header", "http.hide-product-header");
-  opts->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  opts->addOldOption("no-server", "server.rest-server");
-
   // options were removed in 3.12.10 as part of removing the telemetrics API
   // entirely.
   opts->addObsoleteOption("--server.telemetrics-api",
@@ -74,11 +72,6 @@ void GeneralServerOptionsProvider::declareOptionsImpl(
 
   opts->addSection("http", "HTTP server features");
 
-  // option was deprecated in 3.8 and removed in 3.12.
-  opts->addObsoleteOption("--http.allow-method-override",
-                          "Allow HTTP method override using special headers.",
-                          true);
-
   opts->addOption("--http.keep-alive-timeout",
                   "The keep-alive timeout for HTTP connections (in seconds).",
                   new DoubleParameter(&options.keepAliveTimeout))
@@ -86,22 +79,10 @@ void GeneralServerOptionsProvider::declareOptionsImpl(
 server automatically when the timeout is reached. A keep-alive-timeout value of
 `0` disables the keep-alive feature entirely.)");
 
-  // option was deprecated in 3.8 and removed in 3.12.
-  opts->addObsoleteOption(
-      "--http.hide-product-header",
-      "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
-
   opts->addOption(
       "--http.trusted-origin",
       "The trusted origin URLs for CORS requests with credentials.",
       new VectorParameter<StringParameter>(&options.accessControlAllowOrigins));
-
-  opts->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                  new StringParameter(&options.redirectRootTo));
-
-  opts->addOption("--http.permanently-redirect-root",
-                  "Whether to use a permanent or temporary redirect.",
-                  new BooleanParameter(&options.permanentRootRedirect));
 
   opts->addOption("--http.return-queue-time-header",
                   "Whether to return the `x-arango-queue-time-seconds` header "
@@ -129,33 +110,42 @@ original response body size.
 
 Using the value `0` disables the automatic response compression.)");
 
+  opts->addOption("--http.max-decompressed-request-body-size",
+                  "The maximum size of a compressed HTTP request body after "
+                  "decompression (in bytes).",
+                  new UInt64Parameter(&options.maxDecompressedRequestBodySize))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(A compressed request body declares how large it
+will be once decompressed, and the server allocates that much before unpacking
+it. This option caps that value, so a small request cannot force a large
+allocation.
+
+Requests exceeding the limit are rejected with HTTP 413.
+
+Note that this limits the body size *after* decompression. The size of the
+request as it arrives on the wire is limited separately.)");
+
+  opts->addOption(
+          "--http.decompressed-request-body-global-memory-limit",
+          "The maximum combined size of all decompressed request bodies held "
+          "by the server at the same time (in bytes).",
+          new UInt64Parameter(
+              &options.decompressedRequestBodyGlobalMemoryLimit),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(31213)
+      .setLongDescription(R"(Each compressed request body (gzip, deflate or lz4)
+reserves its decompressed size from this budget until the request is finished.
+Requests that would exceed the budget are rejected with HTTP 503 and can be
+retried later.
+
+The default is 10% of the physical memory. A value of `0` disables the limit.)");
+
   opts->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",
                   new BooleanParameter(&options.allowEarlyConnections))
       .setIntroducedIn(31000);
-
-  opts->addOldOption("frontend.proxy-request-check",
-                     "web-interface.proxy-request-check");
-
-  opts->addOption("--web-interface.proxy-request-check",
-                  "Enable proxy request checking.",
-                  new BooleanParameter(&options.proxyCheck),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
-
-  opts->addOldOption("frontend.trusted-proxy", "web-interface.trusted-proxy");
-
-  opts->addOption("--web-interface.trusted-proxy",
-                  "The list of proxies to trust (can be IP or network). Make "
-                  "sure `--web-interface.proxy-request-check` is enabled.",
-                  new VectorParameter<StringParameter>(&options.trustedProxies),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   opts->addOption(
@@ -179,7 +169,7 @@ the `Content-Encoding` header even if the request is not authenticated.)");
 }
 
 void GeneralServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions>, GeneralServerOptions& options) {
+    std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
   if (!options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members
     for (auto& it : options.accessControlAllowOrigins) {
@@ -206,6 +196,28 @@ void GeneralServerOptionsProvider::validateOptionsImpl(
                          return basics::StringUtils::trim(value).empty();
                        }),
         options.accessControlAllowOrigins.end());
+  }
+  uint64_t& globalBudget = options.decompressedRequestBodyGlobalMemoryLimit;
+  uint64_t& perRequestLimit = options.maxDecompressedRequestBodySize;
+  if (globalBudget != 0 && globalBudget < perRequestLimit) {
+    bool globalBudgetSet = opts->processingResult().touched(
+        "http.decompressed-request-body-global-memory-limit");
+    bool perRequestLimitSet = opts->processingResult().touched(
+        "http.max-decompressed-request-body-size");
+    if (globalBudgetSet && perRequestLimitSet) {
+      LOG_TOPIC("6d094", FATAL, Logger::FIXME)
+          << "invalid value for "
+             "`--http.decompressed-request-body-global-memory-limit`. "
+             "expecting 0 or a value >= "
+             "`--http.max-decompressed-request-body-size`";
+      FATAL_ERROR_EXIT();
+    } else if (globalBudgetSet) {
+      // a global budget below the default per-request max also caps it
+      perRequestLimit = globalBudget;
+    } else {
+      // the global budget must fit at least one allowed request
+      globalBudget = perRequestLimit;
+    }
   }
 }
 

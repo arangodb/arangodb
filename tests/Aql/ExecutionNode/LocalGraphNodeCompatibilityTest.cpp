@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
+#include "Mocks/CollectionDescriptors.h"
 #include "Mocks/Servers.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -72,15 +73,16 @@ class LocalGraphNodeCompatibilityTest : public ::testing::Test {
 
   LocalGraphNodeCompatibilityTest() {
     auto& vocbase = _server.getSystemDatabase();
-    auto graphs = velocypack::Parser::fromJson(
-        R"({"name": "_graphs", "id": 99, "isSystem": true})");
-    auto verts =
-        velocypack::Parser::fromJson(R"({"name": "verts", "id": 100})");
-    auto edges = velocypack::Parser::fromJson(
-        R"({"name": "edges", "id": 101, "type": 3})");
-    EXPECT_TRUE(vocbase.createCollection(graphs->slice()) != nullptr);
-    EXPECT_TRUE(vocbase.createCollection(verts->slice()) != nullptr);
-    auto edgeColl = vocbase.createCollection(edges->slice());
+    auto graphs = arangodb::tests::testCollectionDescriptor(
+        "_graphs", arangodb::DataSourceId{99});
+    graphs.constant.isSystem = true;
+    auto verts = arangodb::tests::testCollectionDescriptor(
+        "verts", arangodb::DataSourceId{100});
+    auto edges = arangodb::tests::testCollectionDescriptor(
+        "edges", arangodb::DataSourceId{101}, TRI_COL_TYPE_EDGE);
+    EXPECT_TRUE(vocbase.createCollection(graphs) != nullptr);
+    EXPECT_TRUE(vocbase.createCollection(verts) != nullptr);
+    auto edgeColl = vocbase.createCollection(edges);
     EXPECT_TRUE(edgeColl != nullptr);
 
     // Traversal planning needs an edge index on the edge collection.

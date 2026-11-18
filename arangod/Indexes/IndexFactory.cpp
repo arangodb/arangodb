@@ -24,19 +24,20 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FloatingPoint.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "Indexes/IndexTypeCatalog.h"
+#include "VectorIndex/Definition.h"
+#include "VectorIndex/FaissFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -53,38 +54,6 @@
 
 #include <regex>
 #include <string_view>
-
-namespace {
-
-using namespace arangodb;
-
-struct InvalidIndexFactory : public IndexTypeFactory {
-  InvalidIndexFactory(application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
-
-  bool equal(velocypack::Slice, velocypack::Slice,
-             std::string const&) const override {
-    return false;  // invalid definitions are never equal
-  }
-
-  std::shared_ptr<Index> instantiate(LogicalCollection&,
-                                     velocypack::Slice definition, IndexId,
-                                     bool) const override {
-    std::string type = basics::VelocyPackHelper::getStringValue(
-        definition, StaticStrings::IndexType, "");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid index type '" + type + "'");
-  }
-
-  Result normalize(velocypack::Builder&, velocypack::Slice definition, bool,
-                   Database const&) const override {
-    std::string type = basics::VelocyPackHelper::getStringValue(
-        definition, StaticStrings::IndexType, "");
-    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
-  }
-};
-
-}  // namespace
 
 namespace arangodb {
 namespace helpers {
@@ -118,160 +87,23 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
-IndexTypeFactory::IndexTypeFactory(
-    application_features::ApplicationServer& server)
-    : _server(server) {}
+IndexFactory::IndexFactory(application_features::ApplicationServer& server,
+                           IndexTypeCatalog const& catalog)
+    : _server(server), _catalog(catalog) {}
 
-bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
-                             velocypack::Slice rhs,
-                             bool attributeOrderMatters) const {
-  // unique must be identical if present
-  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      lhs, StaticStrings::IndexUnique, false);
-  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
-      rhs, StaticStrings::IndexUnique, false);
-  if (lhsUnique != rhsUnique) {
-    return false;
-  }
-
-  // sparse must be identical if present
-  if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX != type) {
-    bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        lhs, StaticStrings::IndexSparse, false);
-    bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
-        rhs, StaticStrings::IndexSparse, false);
-    if (lhsSparse != rhsSparse) {
-      return false;
-    }
-  }
-
-  VPackSlice value;
-
-  if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
-    // geoJson must be identical if present
-    value = lhs.get("geoJson");
-
-    if (value.isBoolean() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
-      return false;
-    }
-  } else if (Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
-    // minLength
-    value = lhs.get("minLength");
-
-    if (value.isNumber() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
-      return false;
-    }
-  } else if (Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
-    value = lhs.get(StaticStrings::IndexExpireAfter);
-
-    if (value.isNumber() &&
-        rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
-      double const expireAfter = value.getNumber<double>();
-      value = rhs.get(StaticStrings::IndexExpireAfter);
-
-      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(
-              FloatingPoint<double>{value.getNumber<double>()})) {
-        return false;
-      }
-    }
-  } else if (Index::IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX == type) {
-    value = lhs.get(StaticStrings::IndexPrefixFields);
-
-    if (value.isArray() &&
-        !basics::VelocyPackHelper::equal(
-            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
-      return false;
-    }
-  } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
-    // check if the parameters are the same
-    vector::UserVectorIndexDefinition leftDefinition;
-    vector::UserVectorIndexDefinition rightDefinition;
-    velocypack::deserialize(lhs.get("params"), leftDefinition);
-    velocypack::deserialize(rhs.get("params"), rightDefinition);
-
-    if (leftDefinition != rightDefinition) {
-      return false;
-    }
-  }
-
-  // other index types: fields must be identical if present
-  value = lhs.get(StaticStrings::IndexFields);
-
-  if (value.isArray()) {
-    if (!attributeOrderMatters) {
-      // attributes can be specified in any order
-      velocypack::ValueLength const nv = value.length();
-
-      // compare fields in arbitrary order
-      auto r = rhs.get(StaticStrings::IndexFields);
-
-      if (!r.isArray() || nv != r.length()) {
-        return false;
-      }
-
-      for (size_t i = 0; i < nv; ++i) {
-        velocypack::Slice const v = value.at(i);
-
-        bool found = false;
-
-        for (VPackSlice vr : VPackArrayIterator(r)) {
-          if (basics::VelocyPackHelper::equal(v, vr, false)) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          return false;
-        }
-      }
-    } else {
-      // attribute order matters
-      if (!basics::VelocyPackHelper::equal(
-              value, rhs.get(StaticStrings::IndexFields), false)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+void IndexFactory::setLinkCreator(LinkCreator creator) {
+  _linkCreator = std::move(creator);
 }
 
-IndexFactory::IndexFactory(application_features::ApplicationServer& server)
-    : _server(server),
-      _factories(),
-      _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
-
-void IndexFactory::clear() { _factories.clear(); }
-
-Result IndexFactory::emplace(std::string const& type,
-                             IndexTypeFactory const& factory) {
-  if (_server.hasFeature<BootstrapFeature>()) {
-    auto& feature = _server.getFeature<BootstrapFeature>();
-    // ensure new factories are not added at runtime since that would require
-    // additional locks
-    if (feature.isReady()) {
-      return Result(TRI_ERROR_INTERNAL,
-                    std::string("index factory registration is only "
-                                "allowed during server startup"));
-    }
+std::shared_ptr<Index> IndexFactory::createIResearchLink(
+    IndexCreationContext const& ctx) const {
+  if (!_linkCreator) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid index type '" +
+            std::string{iresearch::StaticStrings::ViewArangoSearchType} + "'");
   }
-
-  if (!_factories.try_emplace(type, &factory).second) {
-    return Result(
-        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-        std::string("index factory previously registered during index factory "
-                    "registration for index type '") +
-            type + "'");
-  }
-
-  return Result();
+  return _linkCreator(ctx);
 }
 
 Result IndexFactory::enhanceIndexDefinition(  // normalize definition
@@ -286,8 +118,6 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
-
   TRI_ASSERT(normalized.isEmpty());
 
   try {
@@ -300,13 +130,19 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     std::string name{helpers::extractName(definition)};
 
+    auto const* def = _catalog.definitionFor(type.stringView());
+    if (def == nullptr) {
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("invalid index type '", type.stringView(), "'"));
+    }
+
     if (name.empty()) {
       // we should set the name for special types explicitly elsewhere,
       // but just in case...
-      if (auto t = Index::type(type.stringView());
-          t == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      if (def->type() == IndexType::Primary) {
         name = StaticStrings::IndexNamePrimary;
-      } else if (t == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      } else if (def->type() == IndexType::Edge) {
         name = StaticStrings::IndexNameEdge;
       } else {
         // generate a name
@@ -324,7 +160,13 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
 
-    return factory.normalize(normalized, definition, isCreation, vocbase);
+    Result res = def->normalize(normalized, definition, isCreation, vocbase);
+    if (res.fail()) {
+      return res;
+    }
+    // must run while ObjectBuilder is still open
+    finalizeDefinition(normalized, definition, isCreation);
+    return Result();
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -332,17 +174,6 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL, "unknown exception");
   }
-}
-
-IndexTypeFactory const& IndexFactory::factory(
-    std::string const& type) const noexcept {
-  auto itr = _factories.find(type);
-  TRI_ASSERT(
-      itr == _factories.end() ||
-      false ==
-          !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
-
-  return itr == _factories.end() ? *_invalid : *(itr->second);
 }
 
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
@@ -356,9 +187,17 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index =
-      factory.instantiate(collection, definition, id, isClusterConstructor);
+  auto const* def = _catalog.definitionFor(type.stringView());
+  if (def == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("invalid index type '", type.stringView(), "'"));
+  }
+
+  IndexCreationContext ctx{collection, definition, id, isClusterConstructor};
+  std::shared_ptr<Index> index = def->type() == IndexType::IResearchLink
+                                     ? createIResearchLink(ctx)
+                                     : createIndex(def->type(), ctx);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -374,25 +213,21 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
   std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
-      "hash",
-      "skiplist",
       "ttl",
       "persistent",
       "geo",
-      "fulltext",
+
       "mdi",
       "mdi-prefixed",
-      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
-  if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-    enabledFeatures.push_back("vector");
-  }
+      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+      "vector"};
 
   return enabledFeatures;
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
 IndexFactory::indexAliases() const {
-  return {};
+  return _catalog.aliases();
 }
 
 IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,
@@ -437,7 +272,7 @@ Result IndexFactory::validateFieldsDefinition(
   auto fieldsSlice = definition.get(attributeName);
   auto const idxType = Index::type(
       definition.get(arangodb::StaticStrings::IndexType).stringView());
-  auto const isInverted = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
+  auto const isInverted = IndexType::Inverted == idxType;
 
   if (fieldsSlice.isArray()) {
     // "fields" is a list of fields
@@ -917,13 +752,13 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
-  Result const res =
+  Result processIndexFieldsResult =
       processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
-  vector::UserVectorIndexDefinition vectorIndexDefinition;
-  if (res.ok()) {
+  vector::UserDefinition vectorIndexDefinition;
+  if (processIndexFieldsResult.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(
             paramsSlice, vectorIndexDefinition);
@@ -938,12 +773,17 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
-    if (auto const res =
+    if (auto factoryRes = vector::validateFactoryString(vectorIndexDefinition);
+        factoryRes.fail()) {
+      return factoryRes;
+    }
+
+    if (auto storedValuesRes =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,
                                      /* allowOverlappingFields */ true);
-        res.fail()) {
-      return res;
+        storedValuesRes.fail()) {
+      return storedValuesRes;
     }
     builder.add(VPackValue("params"));
     velocypack::serialize(builder, vectorIndexDefinition);
@@ -953,7 +793,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     processIndexParallelism(definition, builder);
   }
 
-  return res;
+  return processIndexFieldsResult;
 }
 
 }  // namespace arangodb

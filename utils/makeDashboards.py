@@ -42,7 +42,7 @@ YAMLFILE = "Documentation/Metrics/allMetrics.yaml"
 
 # Database about categories and personas and their interests:
 
-CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
+CATEGORYNAMES = ["Health", "AQL", "Transactions", "Pregel", \
                  "Statistics", "Replication", "Disk", "Errors", \
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",\
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
@@ -55,7 +55,6 @@ PERSONAINTERESTS["all"] = \
     {"Health":       "advanced", \
      "AQL":          "advanced", \
      "Transactions": "advanced", \
-     "Foxx":         "advanced", \
      "Pregel":       "advanced", \
      "Statistics":   "advanced", \
      "Replication":  "advanced", \
@@ -78,7 +77,6 @@ PERSONAINTERESTS["dbadmin"] = \
     {"Health":       "advanced", \
      "AQL":          "advanced", \
      "Transactions": "simple", \
-     "Foxx":         "simple", \
      "Pregel":       "simple", \
      "Statistics":   "medium", \
      "Replication":  "advanced", \
@@ -101,7 +99,6 @@ PERSONAINTERESTS["sysadmin"] = \
     {"Health":       "advanced", \
      "AQL":          "simple", \
      "Transactions": "simple", \
-     "Foxx":         "simple", \
      "Pregel":       "simple", \
      "Statistics":   "medium", \
      "Replication":  "advanced", \
@@ -124,7 +121,6 @@ PERSONAINTERESTS["user"] = \
     {"Health":       "simple", \
      "AQL":          "medium", \
      "Transactions": "advanced", \
-     "Foxx":         "medium", \
      "Pregel":       "medium", \
      "Statistics":   "simple", \
      "Replication":  "simple", \
@@ -147,7 +143,6 @@ PERSONAINTERESTS["oasiscustomer"] = \
     {"Health":       "simple", \
      "AQL":          "medium", \
      "Transactions": "advanced", \
-     "Foxx":         "medium", \
      "Pregel":       "medium", \
      "Statistics":   "simple", \
      "Replication":  "medium", \
@@ -170,7 +165,6 @@ PERSONAINTERESTS["appdeveloper"] = \
     {"Health":       "medium", \
      "AQL":          "advanced", \
      "Transactions": "advanced", \
-     "Foxx":         "advanced", \
      "Pregel":       "advanced", \
      "Statistics":   "medium", \
      "Replication":  "simple", \
@@ -193,7 +187,6 @@ PERSONAINTERESTS["oasisoncall"] = \
     {"Health":       "advanced", \
      "AQL":          "medium", \
      "Transactions": "medium", \
-     "Foxx":         "medium", \
      "Pregel":       "medium", \
      "Statistics":   "medium", \
      "Replication":  "medium", \
@@ -216,7 +209,6 @@ PERSONAINTERESTS["arangodbdeveloper"] = \
     {"Health":       "advanced", \
      "AQL":          "advanced", \
      "Transactions": "advanced", \
-     "Foxx":         "advanced", \
      "Pregel":       "advanced", \
      "Statistics":   "advanced", \
      "Replication":  "advanced", \

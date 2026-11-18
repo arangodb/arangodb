@@ -175,6 +175,5 @@ class RocksDBTransactionCollection : public TransactionCollection {
       _trackedCacheRefills;
 
   bool _usageLocked;
-  bool _exclusiveWrites;
 };
 }  // namespace arangodb

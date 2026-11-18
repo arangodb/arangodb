@@ -72,7 +72,6 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
@@ -93,9 +92,11 @@ add_library(arango_aql STATIC
   QueryString.cpp
   QueryWarnings.cpp
   Range.cpp
+  RangeSpec.cpp
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
+  RegisterResolver.cpp
   RemoveModifier.cpp
   RestAqlHandler.cpp
   Scopes.cpp
@@ -123,11 +124,6 @@ add_library(arango_aql STATIC
   VariableGenerator.cpp
 )
 
-if (USE_V8)
-  target_sources(arango_aql PRIVATE
-    V8ErrorHandler.cpp)
-endif()
-
 # Generate the AQL lexer/parser into the build tree. The BISON_TARGET /
 # FLEX_TARGET macros must live in the same directory scope as the consuming
 # target (arango_aql, declared above) — when placed in
@@ -150,6 +146,7 @@ add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
 add_subdirectory(Parser)
+add_subdirectory(Match)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql
@@ -158,7 +155,6 @@ target_link_libraries(arango_aql
   arango_indexes
   arango_iresearch
   arango_network
-  arango_v8server
   immer)
 
 target_include_directories(arango_aql PRIVATE

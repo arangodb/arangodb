@@ -92,7 +92,7 @@ struct IResearchLinkHelper {
   ///        'normalized'
   /// @note missing analyzers will be created if exceuted on db-server
   /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
-  /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
+  /// @note true == !isReady() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
   static Result normalize(
       velocypack::Builder& normalized, velocypack::Slice definition,

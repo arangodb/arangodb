@@ -38,7 +38,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
+#include "VocBase/Properties/CollectionValidation.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -57,12 +58,8 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
-  if (slice.hasKey(StaticStrings::WriteConcern)) {
-    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
-                                             serverDefaults.writeConcern);
-  }
-  return Helper::getNumericValue<uint64_t>(
-      slice, StaticStrings::MinReplicationFactor, serverDefaults.writeConcern);
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
+                                           serverDefaults.writeConcern);
 }
 }  // namespace
 
@@ -396,8 +393,6 @@ void Graph::toPersistence(VPackBuilder& builder) const {
     } else {
       builder.add(StaticStrings::ReplicationFactor,
                   VPackValue(_replicationFactor));
-      builder.add(StaticStrings::MinReplicationFactor,
-                  VPackValue(_writeConcern));  // deprecated
       builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
     }
     builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
@@ -808,8 +803,6 @@ void Graph::createCollectionOptions(VPackBuilder& builder,
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
 
   if (!isSatellite()) {
-    builder.add(StaticStrings::MinReplicationFactor,
-                VPackValue(writeConcern()));  // deprecated
     builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
     TRI_ASSERT(replicationFactor() > 0);
   } else {
@@ -841,17 +834,17 @@ auto Graph::prepareCreateCollectionBodyEdge(
     std::string_view name, std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites,
     DatabaseConfiguration const& config) const noexcept
-    -> ResultT<CreateCollectionBody> {
-  CreateCollectionBody body;
-  body.name = name;
-  body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+    -> ResultT<CollectionDescriptor> {
+  CollectionDescriptor body;
+  body.mutableProps.name = name;
+  body.constant.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
 
   auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
                                             config);
   if (res.fail()) {
     return res;
   }
-  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
+  res = applyDefaultsAndValidate(body, config);
   if (res.fail()) {
     return res;
   }
@@ -862,16 +855,16 @@ auto Graph::prepareCreateCollectionBodyVertex(
     std::string_view name, std::optional<std::string> const& leadingCollection,
     std::unordered_set<std::string> const& satellites,
     DatabaseConfiguration const& config) const noexcept
-    -> ResultT<CreateCollectionBody> {
-  CreateCollectionBody body;
-  body.name = name;
-  body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
+    -> ResultT<CollectionDescriptor> {
+  CollectionDescriptor body;
+  body.mutableProps.name = name;
+  body.constant.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
                                             config);
   if (res.fail()) {
     return res;
   }
-  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
+  res = applyDefaultsAndValidate(body, config);
   if (res.fail()) {
     return res;
   }
@@ -879,7 +872,7 @@ auto Graph::prepareCreateCollectionBodyVertex(
 }
 
 auto Graph::injectShardingToCollectionBody(
-    CreateCollectionBody& body, std::optional<std::string> const&,
+    CollectionDescriptor& body, std::optional<std::string> const&,
     std::unordered_set<std::string> const&,
     DatabaseConfiguration const& config) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
@@ -888,14 +881,14 @@ auto Graph::injectShardingToCollectionBody(
     // Nothing to do for oneShardDBs we just use defaults
     return {};
   }
-  body.numberOfShards = numberOfShards();
+  body.clusteringConstant.numberOfShards = numberOfShards();
   if (!isSatellite()) {
-    body.writeConcern = writeConcern();
+    body.clusteringMutable.writeConcern = writeConcern();
     TRI_ASSERT(replicationFactor() > 0);
   } else {
     TRI_ASSERT(replicationFactor() == 0);
   }
-  body.replicationFactor = replicationFactor();
+  body.clusteringMutable.replicationFactor = replicationFactor();
   return {};
 }
 

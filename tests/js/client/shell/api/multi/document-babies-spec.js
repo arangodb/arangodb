@@ -52,7 +52,6 @@ describe('babies collection document', function () {
 
   afterEach(function () {
     if (collection) {
-      collection.unload();
       collection.drop();
       collection = null;
     }
@@ -61,25 +60,6 @@ describe('babies collection document', function () {
   });
 
   describe('basics', function () {
-    it('insert remove multi (few)', function () {
-      let req = arango.POST_RAW('/_api/document/' + cn, [{}, {}, {}]);
-
-      expect(req.code).to.equal(202);
-      expect(collection.count()).to.equal(3);
-
-      let result = req.parsedBody;
-      let ids = result.map(function (x) {
-        return x._key;
-      });
-
-      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
-        keys: ids,
-        collection: cn
-      });
-
-      expect(req.code).to.equal(200);
-      expect(collection.count()).to.equal(0);
-    });
 
     it('insert remove multi by DELETE (few)', function () {
       let req = arango.POST_RAW('/_api/document/' + cn, [{}, {}, {}]);
@@ -98,33 +78,6 @@ describe('babies collection document', function () {
       expect(collection.count()).to.equal(0);
     });
 
-    it('insert remove multi (many)', function () {
-      let l = [];
-
-      for (let i = 0; i < 10000; i++) {
-        l.push({
-          value: i
-        });
-      }
-
-      let req = arango.POST_RAW('/_api/document/' + cn, l);
-
-      expect(req.code).to.equal(202);
-      expect(collection.count()).to.equal(l.length);
-
-      let result = req.parsedBody;
-      let ids = result.map(function (x) {
-        return x._key;
-      });
-
-      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
-        keys: ids,
-        collection: cn
-      });
-
-      expect(req.code).to.equal(200);
-      expect(collection.count()).to.equal(0);
-    });
 
     it('insert remove multi (many) by DELETE', function () {
       let l = [];
@@ -151,33 +104,6 @@ describe('babies collection document', function () {
       expect(collection.count()).to.equal(0);
     });
 
-    it('insert with key remove multi (few)', function () {
-      let l = [{
-        _key: 'a'
-      }, {
-        _key: 'b'
-      }, {
-        _key: 'c'
-      }];
-
-      let req = arango.POST_RAW('/_api/document/' + cn, l);
-
-      expect(req.code).to.equal(202);
-      expect(collection.count()).to.equal(l.length);
-
-      let result = req.parsedBody;
-      let ids = result.map(function (x) {
-        return x._key;
-      });
-
-      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
-        keys: ids,
-        collection: cn
-      });
-
-      expect(req.code).to.equal(200);
-      expect(collection.count()).to.equal(0);
-    });
 
     it('insert with key remove multi (few) by DELETE', function () {
       let l = [{
@@ -204,34 +130,6 @@ describe('babies collection document', function () {
       expect(collection.count()).to.equal(0);
     });
 
-    it('insert with key remove multi (many)', function () {
-      let l = [];
-
-      for (let i = 0; i < 10000; i++) {
-        l.push({
-          _key: 'K' + i,
-          value: i
-        });
-      }
-
-      let req = arango.POST_RAW('/_api/document/' + cn, l);
-
-      expect(req.code).to.equal(202);
-      expect(collection.count()).to.equal(l.length);
-
-      let result = req.parsedBody;
-      let ids = result.map(function (x) {
-        return x._key;
-      });
-
-      req = arango.PUT_RAW('/_api/simple/remove-by-keys', {
-        keys: ids,
-        collection: cn
-      });
-
-      expect(req.code).to.equal(200);
-      expect(collection.count()).to.equal(0);
-    });
 
     it('insert with key remove multi (many) by DELETE', function () {
       let l = [];
@@ -1097,7 +995,7 @@ describe('babies collection document', function () {
       let b1 = req1.parsedBody;
       let res1 = b1[0];
 
-      let url2 = base_url + '?overwrite=true&returnOld=true';
+      let url2 = base_url + '?overwriteMode=replace&returnOld=true';
       let req2 = arango.POST_RAW(url2, [{
         '_key': res1._key,
         'ulf': 42
@@ -1122,7 +1020,7 @@ describe('babies collection document', function () {
       let res1 = b1[0];
       let key1 = res1._key;
 
-      let url2 = base_url + '?overwrite=true&returnOld=true&returnNew=true';
+      let url2 = base_url + '?overwriteMode=replace&returnOld=true&returnNew=true';
       let req2 = arango.POST_RAW(url2, [
         {
           '_key': key1,

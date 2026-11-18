@@ -97,13 +97,13 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of two hash indexes for "||" and one for "&&"
+/// @brief test use of two persistent indexes for "||" and one for "&&"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseTwoHashIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUseTwoPersistentIndexesOr : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -206,122 +206,13 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of two skiplist indexes for "||" and one for "&&"
+/// @brief test use of persistent indexes for "||" with additional queries
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseTwoSkiplistIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexesForOrExtended : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.b == "b012" || x.c == "c017"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.b === "b012" || x.c === "c017";
-                  });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.b == "b007" && x.c == "c023"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.b === "b007" && x.c === "c023";
-                  });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.b == "b044" && x.c >= "c034"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.b === "b044" && x.c >= "c034";
-                  });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.c == "c006" && x.b == "b012"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.c === "c006" && x.b === "b012";
-                  });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.c == "c007" && x.b >= "b042"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.c === "c007" && x.b >= "b042";
-                  });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.c == "c077" && x.b <= "b043"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.c === "c077" && x.b <= "b043";
-                  });
-      filterchecks.push( { type : "compare <=", nrSubs : 2 } );
-
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-        var filtercheck = filterchecks[i];
-
-        var plan = db._createStatement({query: query, bindVars: null, options: noMoveFilters}).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of skiplist index and a hash index  for "||"
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkipAndHashIndexForOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -432,11 +323,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b and c
+/// @brief test (b== || b==) && c==   with a persistent index on b and c
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexForDNF : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b", "c"] } );
 
       var queries = [];
@@ -486,11 +377,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b
+/// @brief test (b== || b==) && c==   with a persistent index on b
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexForDNF2 : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
 
       var queries = [];
@@ -540,11 +431,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on c
+/// @brief test (b== || b==) && c==   with a persistent index on c
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF3 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexForDNF3 : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -594,13 +485,13 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b and one on c
+/// @brief test (b== || b==) && c==   with a persistent index on b and one on c
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF4: function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexForDNF4: function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -650,11 +541,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on c and b
+/// @brief test (b== || b==) && c==   with a persistent index on c and b
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexForDNF5 : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c", "b"] } );
 
       var queries = [];
@@ -704,283 +595,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b and c
+/// @brief test (a== || a== || a== || a==)    with a persistent index on a
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b", "c"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on c
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistIndexForDNF3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b and one on c
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistIndexForDNF4 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on c and b
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c", "b"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
-                  });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a== || a== || a== || a==)    with a skiplist index on a
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForMultipleOr : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1034,11 +653,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a>= || a>= || a== || a==)    with a skiplist index on a
+/// @brief test (a>= || a>= || a== || a==)    with a persistent index on a
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForMultipleOr2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForMultipleOr2 : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1108,11 +727,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a> || a< || a== || a==)    with a skiplist index on a
+/// @brief test (a> || a< || a== || a==)    with a persistent index on a
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForMultipleOr3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForMultipleOr3: function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1193,11 +812,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test a in [...]    with a skiplist index on a
+/// @brief test a in [...]    with a persistent index on a
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForIn : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1246,123 +865,13 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a== || a== || a== || a==)    with a hash index on a
+/// @brief test b in [...] || c in [...]      with persistent indexes on b and c
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["a"] } );
-
-      var queries = [];
-      var makers = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.a == "a0123" || x.a == "a5564" ||
-                             x.a == "a7768" || x.a == "a0678"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.a === "a0123" || x.a === "a5564" ||
-                           x.a === "a7768" || x.a === "a0678";
-                  });
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.a == "a0123" || x.a == "a1234" ||
-                             x.a == "a4567" || x.a == "a5567"
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return x.a === "a0123" || x.a === "a1234" ||
-                           x.a === "a4567" || x.a === "a5567";
-                  });
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement({query: query, bindVars:null, options: noProjections}).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"));
-        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
-        
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test a in [...]    with a hash index on a
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseHashIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["a"] } );
-
-      var queries = [];
-      var makers = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["a0123", "a5564", "a7768", "a0678"].indexOf(x.a) !== -1;
-                  });
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["a0123", "a1234", "a4567", "a5567"].indexOf(x.a) !== -1;
-                  });
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-
-        var plan = db._createStatement({query: query, bindVars: null, options: noProjections}).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"));
-        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
-        
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c in [...]      with hash indexes on b and c
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseHashIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+    testUsePersistentIndexesForInOrIn : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -1454,111 +963,13 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c in [...]      with skiplist indexes on b and c
+/// @brief test b in [...] || c==      with persistent indexes on b and c
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexesForInOrEq : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
-
-      var queries = [];
-      var makers = [];
-      var filterchecks = [];
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b IN ["b057", "b017"]) ||
-                             (x.c IN ["c056", "c023"])
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["b057", "b017"].indexOf(x.b) !== -1 ||
-                           ["c056", "c023"].indexOf(x.c) !== -1;
-                  });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b IN ["b017", "b057"]) ||
-                             (x.c IN ["c056", "c023"])
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["b017", "b057"].indexOf(x.b) !== -1 ||
-                           ["c056", "c023"].indexOf(x.c) !== -1;
-                  });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b IN ["b057", "b017"]) ||
-                             (x.c IN ["c023", "c056"])
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["b057", "b017"].indexOf(x.b) !== -1 ||
-                           ["c023", "c056"].indexOf(x.c) !== -1;
-                  });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
-
-      queries.push(`FOR x IN ${c.name()}
-                      FILTER (x.b IN ["b017", "b057"]) ||
-                             (x.c IN ["c023", "c056"])
-                      SORT x.a
-                      RETURN x.a`);
-      makers.push(function (x) {
-                    return ["b017", "b057"].indexOf(x.b) !== -1 ||
-                           ["c023", "c056"].indexOf(x.c) !== -1;
-                  });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
-
-      for (var i = 0; i < queries.length; i++) {
-        var query = queries[i];
-        var maker = makers[i];
-        var filtercheck = filterchecks[i];
-
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertEqual("SingletonNode", nodeTypes[0], query);
-        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
-                    "found EnumerateCollection node for:" + query);
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
-                       "no index used for: " + query);
-        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
-
-        var results = db._query(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
-        assertEqual(correct, results.toArray(), query);
-        assertEqual(0, results.getExtra().stats.scannedFull);
-        assertTrue(results.getExtra().stats.scannedIndex > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c==      with skiplist index on b and hash on c
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseSkiplistRespHashIndexesForInOrEq : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -1646,11 +1057,11 @@ function optimizerIndexesMultiTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a>= && a<) || (a>= && a<) overlapping with skiplist index
+/// @brief test (a>= && a<) || (a>= && a<) overlapping with persistent index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistForOverlappingRanges : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForOverlappingRanges : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1727,8 +1138,8 @@ function optimizerIndexesMultiTestSuite () {
 /// @brief test multiple ranges with ||
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistForMultipleRangesWithOr: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+    testUsePersistentIndexForMultipleRangesWithOr: function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1883,6 +1294,49 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual(correct, results.toArray(), query);
         assertEqual(0, results.getExtra().stats.scannedFull);
         assertTrue(results.getExtra().stats.scannedIndex > 0);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that all lookups of an OR are read even if the rows of the
+/// lookups before one of them fill up output blocks exactly
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexesForOrWithLookupEndingAtBlockBoundary : function () {
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                              fields: ["a"] } );
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                              fields: ["b"] } );
+      let idx2 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
+                                  fields: ["c"] } );
+
+      try {
+        const cases = [
+          // 1000 rows, then 70 new rows
+          { filter: `x.a < "a1000" || x.b == "b012"`,
+            maker: (x) => x.a < "a1000" || x.b === "b012",
+            lookups: 2 },
+          // 80 rows, then 920 new rows, then the rest
+          { filter: `x.b == "b012" || x.a < "a0930" || x.c == "c017"`,
+            maker: (x) => x.b === "b012" || x.a < "a0930" || x.c === "c017",
+            lookups: 3 },
+        ];
+
+        cases.forEach(({ filter, maker, lookups }) => {
+          const query = `FOR x IN ${c.name()} FILTER ${filter} RETURN x.a`;
+
+          let indexNodes = db._createStatement(query).explain().plan.nodes
+                             .filter((node) => node.type === "IndexNode");
+          assertEqual(1, indexNodes.length, query);
+          assertEqual(lookups, indexNodes[0].indexes.length, query);
+
+          let results = db._query(query).toArray().sort();
+          let correct = makeResult(maker).map((x) => x.a);
+          assertEqual(correct.length, results.length, query);
+          assertEqual(correct, results, query);
+        });
+      } finally {
+        db._dropIndex(idx2);
       }
     },
 

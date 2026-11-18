@@ -26,7 +26,7 @@ if [ -x "$executable" ] ; then
        --console.pretty-print true \
        --server.authentication false \
        --server.ask-jwt-secret true \
-       --javascript.startup-directory "$installation/usr/share/arangodb3/js" \
+       --javascript.startup-directory "$installation/usr/share/arangodb4/js" \
        --javascript.client-module inspector.js \
        "$@"
 fi

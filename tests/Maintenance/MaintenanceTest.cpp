@@ -45,6 +45,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -53,13 +54,11 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
+#include "VectorIndex/Feature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -262,7 +261,6 @@ class SharedMaintenanceTest : public ::testing::Test {
     }
 
     col.add("id", VPackValue(std::to_string(localId++)));
-    col.add("status", VPackValue(3));
     col.add("keyOptions", keyOptions.slice());
     col.add("cacheEnabled", VPackValue(false));
     col.add("waitForSync", VPackValue(false));
@@ -270,7 +268,6 @@ class SharedMaintenanceTest : public ::testing::Test {
     col.add("isSystem", VPackValue(true));
     col.add("name", VPackValue(colname));
     col.add("shardingStrategy", VPackValue("hash"));
-    col.add("statusString", VPackValue("loaded"));
     col.add("shardKeys", shardKeys.slice());
   }
 
@@ -521,7 +518,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   std::map<std::string, NodePtr> localNodes;
 
-  std::unique_ptr<RocksDBEngine>
+  RocksDBEngine*
       engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
@@ -533,17 +530,17 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
     auto& roOptions = as.addFeature<RocksDBOptionFeature>();
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& dbFeature = as.addFeature<DatabaseFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
 
     as.addFeature<MaintenanceFeature>(nullptr);
     auto& dbpath = as.addFeature<DatabasePathFeature>();
@@ -551,9 +548,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
-    auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
                                                       metrics);
@@ -566,15 +560,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                                      : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<RocksDBEngine>(
-        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
-        rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
-    dbFeature.setEngineTesting(engine.get());
-  }
-
-  ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
+    engine = &as.addFeature<StorageEngine, RocksDBEngine>(
+        roOptions, metrics, dbpath, flush, dumpLimits, replicatedLogFeature,
+        scheduler, dbFeature, dbFeature, rocksDbIndexCacheRefillFeature,
+        cacheManagerFeature, agencyFeature);
   }
 
   auto dbName() const -> std::string {
@@ -1093,16 +1082,16 @@ TEST_F(MaintenanceTestActionPhaseOne,
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
+TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_bar) {
   plan = originalPlan;
-  auto cid = collectionMap(plan).at("_system/_queues");
+  auto cid = collectionMap(plan).at("_system/bar");
   auto shards =
       plan->get({"Collections", "_system", cid, "shards"})->children();
   containers::FlatHashSet<std::string> dirty{"_system"};
   bool callNotify = false;
 
-  createPlanIndex("_system", cid, "hash", {"someField"}, false, false, false,
-                  plan);
+  createPlanIndex("_system", cid, "persistent", {"someField"}, false, false,
+                  false, plan);
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;

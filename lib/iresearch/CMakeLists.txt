@@ -11,7 +11,7 @@ endif ()
 ### set required standard version
 ################################################################################
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -114,7 +114,6 @@ execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VER
 ################################################################################
 
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
-option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
 option(USE_IWYU "Include IWYU checks" OFF)
 option(USE_UTILS "Build utils" ON)
 option(USE_TESTS "Build tests" OFF)
@@ -157,26 +156,6 @@ add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>)
 # fix strange issue with utf_8_to_32_iterator failing
 # to follow std::bidirectional_iterator concept
 add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
-
-################################################################################
-### setup clang-tidy
-################################################################################
-
-unset(CLANG_TIDY_EXE CACHE)
-
-if (USE_CLANG_TIDY)
-  find_program(
-    CLANG_TIDY_EXE
-    NAMES "clang-tidy"
-    DOC "Path to clang-tidy executable"
-  )
-
-  if (CLANG_TIDY_EXE)
-    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-  else ()
-    message(STATUS "clang-tidy not found.")
-  endif ()
-endif ()
 
 ################################################################################
 ### setup IWYU
@@ -227,7 +206,6 @@ endif ()
 # find Boost
 set(IRESEARCH_EXTERNAL_INCLUDES
   ${EXTERNAL_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${Lz4_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})

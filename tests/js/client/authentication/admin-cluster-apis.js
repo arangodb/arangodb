@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail */
+/*global fail, assertTrue, assertFalse, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,10 +24,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const {assertEqual, assertTrue, assertFalse} = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue, assertFalse } = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
+const internal = require("internal");
 let IM = global.instanceManager;
 
 function AuthSuite() {
@@ -35,36 +36,49 @@ function AuthSuite() {
   const user1 = 'hackers@arango.ai';
   const user2 = 'noone@arango.ai';
   let servers = [];
-      
-  let checkClusterHealth = function() {
+
+  let checkClusterHealth = function () {
     let result = arango.GET('/_admin/cluster/health');
     assertTrue(result.hasOwnProperty('ClusterId'), result);
     assertTrue(result.hasOwnProperty('Health'), result);
+    assertFalse(result.hasOwnProperty('Timestamp'), result);
   };
 
-  let checkClusterNodeVersion = function() {
+  let checkClusterNodeVersion = function () {
     let result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('server'), result);
     assertTrue(result.hasOwnProperty('license'), result);
     assertTrue(result.hasOwnProperty('version'), result);
   };
 
-  let checkClusterNodeEngine = function() {
+  let checkClusterNodeEngine = function () {
     let result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('name'), result);
   };
 
-  let checkClusterNodeStats = function() {
-    let result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
-    assertTrue(result.hasOwnProperty('time'), result);
-    assertTrue(result.hasOwnProperty('system'), result);
+  let checkClusterNodeStats = function () {
+    const res = arango.GET_RAW('/_admin/metrics?serverId=' + servers[0]);
+    assertTrue(res.code === 200, 'GET /_admin/metrics?serverId=... should return 200');
+    const body = typeof res.body === 'string' ? res.body : String(res.body);
+
+    assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+      'Response should contain uptime metric');
+    const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
+    assertTrue(typeof uptime === 'number' && !Number.isNaN(uptime) && uptime >= 0,
+      'uptime should be present and non-negative');
+
+    assertTrue(body.indexOf('arangodb_process_statistics_') !== -1,
+      'metrics response should contain process/system statistics');
+    const numberOfThreads = internal.parsePrometheusMetric(body, 'arangodb_process_statistics_number_of_threads');
+    assertTrue(numberOfThreads !== undefined && numberOfThreads >= 0,
+      'At least one process statistic should be present and valid');
   };
 
   return {
 
     setUpAll: function () {
       IM.rememberConnection();
-      servers = Object.keys(arango.GET('/_admin/cluster/health').Health).filter(function(s) {
+      servers = Object.keys(arango.GET('/_admin/cluster/health').Health).filter(function (s) {
         return s.match(/^PRMR/);
       });
 
@@ -78,10 +92,10 @@ function AuthSuite() {
         users.remove(user2);
       } catch (err) {
       }
-      
+
       db._createDatabase('UnitTestsDatabase');
       db._useDatabase('UnitTestsDatabase');
-      
+
       users.save(user1, "foobar");
       users.save(user2, "foobar");
       users.grantDatabase(user1, 'UnitTestsDatabase');
@@ -106,67 +120,67 @@ function AuthSuite() {
       } catch (err) {
       }
     },
-    
+
     testClusterHealthRoot: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterHealth();
     },
-    
+
     testClusterHealthOtherDBRW: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterHealth();
     },
-    
+
     testClusterHealthOtherDBRO: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterHealth();
     },
-    
+
     testClusterNodeVersionRoot: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeVersion();
     },
-    
+
     testClusterNodeVersionDBRW: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeVersion();
     },
-    
+
     testClusterNodeVersionDBRO: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeVersion();
     },
-    
+
     testClusterNodeEngineRoot: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeEngine();
     },
-    
+
     testClusterNodeEngineOtherDBRW: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeEngine();
     },
-    
+
     testClusterNodeEngineOtherDBRO: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeEngine();
     },
-    
+
     testClusterNodeStatsRoot: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeStats();
     },
-    
+
     testClusterNodeStatsOtherDBRW: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeStats();
     },
-    
+
     testClusterNodeStatsOtherDBRO: function () {
       arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeStats();
     },
-    
+
   };
 }
 

@@ -60,7 +60,8 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/FaissFactory.h"
+#include "VectorIndex/TrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -73,7 +74,6 @@
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/impl/io.h"
-#include "faiss/index_factory.h"
 #include "faiss/index_io.h"
 #include "faiss/utils/distances.h"
 
@@ -182,55 +182,30 @@ VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
       _resourceMonitor(resourceMonitor),
       _docIt(std::move(bounds), db) {}
 
-std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
+ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
   auto const& def = _index.getDefinition();
   if (def.factory) {
-    auto const factoryString = std::invoke([&]() -> std::string {
-      if (isFactoryAStringScaling(*def.factory)) {
-        return resolveFactoryString(*def.factory, resolvedNLists);
-      }
-      return *def.factory;
-    });
-    std::shared_ptr<faiss::Index> index(faiss::index_factory(
-        def.dimension, factoryString.c_str(), metricToFaissMetric(def.metric)));
-
-    auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-    if (ivfIndex == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "Index definition not supported. Expected IVF index.");
-    }
-
-    if (resolvedNLists != ivfIndex->nlist) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          std::format(
-              "The nLists parameter ({}) has to agree with the actual nlists "
-              "implied by the factory string '{}' (which is {})",
-              resolvedNLists, factoryString, ivfIndex->nlist));
-    }
-
-    return ivfIndex;
-  } else {
-    auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
-      switch (def.metric) {
-        case SimilarityMetric::kL2:
-          return std::make_unique<faiss::IndexFlatL2>(def.dimension);
-        case SimilarityMetric::kCosine:
-          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
-        case SimilarityMetric::kInnerProduct:
-          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
-      }
-    });
-
-    std::shared_ptr<faiss::IndexIVF> ivfIndex =
-        std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
-                                              resolvedNLists,
-                                              metricToFaissMetric(def.metric));
-    ivfIndex->own_fields = nullptr != quantizer.release();
-    return ivfIndex;
+    return createIvfIndexFromFactory(def, resolvedNLists);
   }
+
+  auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
+    switch (def.metric) {
+      case SimilarityMetric::kL2:
+        return std::make_unique<faiss::IndexFlatL2>(def.dimension);
+      case SimilarityMetric::kCosine:
+        return std::make_unique<faiss::IndexFlatIP>(def.dimension);
+      case SimilarityMetric::kInnerProduct:
+        return std::make_unique<faiss::IndexFlatIP>(def.dimension);
+    }
+  });
+
+  std::shared_ptr<faiss::IndexIVF> ivfIndex =
+      std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
+                                            resolvedNLists,
+                                            metricToFaissMetric(def.metric));
+  ivfIndex->own_fields = nullptr != quantizer.release();
+  return ivfIndex;
 }
 
 ResultT<VectorIndexTrainer::TrainingDataset>
@@ -289,7 +264,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
       expectedReservoirBytes / (1024 * 1024), seed);
 
-  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
+  TrainingSampler sampler{def.dimension, reservoirCapacity, seed};
   std::vector<float> inputBuffer;
   inputBuffer.reserve(def.dimension);
 
@@ -378,7 +353,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
 Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
     std::size_t validSeen, std::size_t reservoirCapacity,
     std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-    VectorIndexTrainingSampler& sampler) const {
+    TrainingSampler& sampler) const {
   auto resolvedNLists = resolveNLists(validSeen);
   if (resolvedNLists.fail()) {
     return std::move(resolvedNLists).result();
@@ -419,7 +394,11 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
   }
 
   auto const& def = _index.getDefinition();
-  auto faissIndex = createFaissIndex(resolvedNLists.get());
+  auto faissIndexResult = createFaissIndex(resolvedNLists.get());
+  if (faissIndexResult.fail()) {
+    return std::move(faissIndexResult).result();
+  }
+  auto faissIndex = std::move(faissIndexResult).get();
   faissIndex->nprobe = def.defaultNProbe;
   auto const numOfTrainingVectors = trainingData.data.size() / def.dimension;
 
@@ -659,7 +638,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         auto* ptr = item.codes.get() + k * codeSize;
         return RocksDBValue::VectorIndexValue(ptr, codeSize);
       };
-    } else if (formatVersion == VectorIndexFormatVersion::kV2) {
+    } else if (formatVersion == FormatVersion::kV2) {
       return [](EncodedVectors& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
         return RocksDBValue::VectorIndexValueV2(ptr, codeSize,
@@ -759,7 +738,7 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
       _bounds(_rcoll->bounds()) {}
 
 Result VectorIndexBuilder::persistVectorIndexMetadata(
-    VectorIndexMetadata const& metadata) {
+    Metadata const& metadata) {
   velocypack::Builder builder;
   velocypack::serialize(builder, metadata);
 
@@ -845,8 +824,8 @@ Result VectorIndexBuilder::build(
 
   auto trainedData = serializeIndex(*faissIndex);
 
-  VectorIndexMetadata metadata{.trainedData = trainedData,
-                               .formatVersion = _index.formatVersion()};
+  Metadata metadata{.trainedData = trainedData,
+                    .formatVersion = _index.formatVersion()};
   if (auto res = persistVectorIndexMetadata(metadata); res.fail()) {
     _index.resetTrainingState();
     return res;

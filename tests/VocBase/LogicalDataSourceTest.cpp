@@ -32,6 +32,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "velocypack/Parser.h"
 
 namespace {
@@ -71,24 +72,22 @@ class LogicalViewImpl : public arangodb::LogicalView {
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
   arangodb::application_features::ApplicationServer server;
-  StorageEngineMock engine;
+  StorageEngineMock& engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
+  LogicalDataSourceTest()
+      : server(nullptr, nullptr),
+        engine(
+            server.addFeature<arangodb::StorageEngine, StorageEngineMock>()) {
     // setup required application features
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
-    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::DatabaseFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -113,8 +112,6 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
@@ -138,7 +135,9 @@ TEST_F(LogicalDataSourceTest, test_category) {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    arangodb::LogicalCollection instance(vocbase, json->slice(), true);
+    arangodb::LogicalCollection instance(
+        vocbase, arangodb::CollectionDescriptor::fromVelocyPack(json->slice()),
+        true);
 
     EXPECT_EQ(arangodb::LogicalDataSource::Category::kCollection,
               instance.category());
@@ -163,7 +162,9 @@ TEST_F(LogicalDataSourceTest, test_construct) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
-    arangodb::LogicalCollection instance(vocbase, json->slice(), true);
+    arangodb::LogicalCollection instance(
+        vocbase, arangodb::CollectionDescriptor::fromVelocyPack(json->slice()),
+        true);
 
     EXPECT_EQ(1, instance.id().id());
     EXPECT_EQ(2, instance.planId().id());
@@ -190,7 +191,9 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
-    arangodb::LogicalCollection instance(vocbase, json->slice(), true);
+    arangodb::LogicalCollection instance(
+        vocbase, arangodb::CollectionDescriptor::fromVelocyPack(json->slice()),
+        true);
 
     EXPECT_TRUE(instance.id().isSet());
     EXPECT_TRUE(instance.planId().isSet());

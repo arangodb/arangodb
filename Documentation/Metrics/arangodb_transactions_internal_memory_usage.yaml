@@ -16,5 +16,5 @@ description: |
   transactions that were not explicitly started by an end user.
   Internal transactions include ArangoDB-internal maintenance queries,
   queries to purge data from TTL indexes, periodic queries for
-  collecting and aggregating statistics, for maintaining the state of
-  Foxx, and transactions internally used by shard synchronization.
+  collecting and aggregating statistics, and transactions internally 
+  used by shard synchronization.

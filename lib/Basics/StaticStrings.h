@@ -53,6 +53,8 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+  static std::string const Created;  // time-travel version validity start
+  static std::string const Expired;  // time-travel version validity end
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -71,7 +73,6 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
-  static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
@@ -100,16 +101,7 @@ class StaticStrings {
   static std::string const LegacyAnalyzersCollection;
   static std::string const UsersCollection;
   static std::string const GraphsCollection;
-  static std::string const AqlFunctionsCollection;
-  static std::string const QueuesCollection;
-  static std::string const JobsCollection;
-  static std::string const AppsCollection;
-  static std::string const AppBundlesCollection;
-  static std::string const FrontendCollection;
   static std::string const QueriesCollection;
-  static std::string const StatisticsCollection;
-  static std::string const Statistics15Collection;
-  static std::string const StatisticsRawCollection;
 
   // analyzers names
   static std::string const AnalyzersRevision;
@@ -185,7 +177,6 @@ class StaticStrings {
   static std::string const ForceOneShardAttributeValue;
   static std::string const JoinStrategyType;
   static std::string const Algorithm;
-  static std::string const Legacy;
   static std::string_view constexpr PushDownMaterialization{
       "pushDownMaterialization"};
 
@@ -243,6 +234,7 @@ class StaticStrings {
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
+  static std::string const XArangoApiVersion;
   static std::string const ContentSecurityPolicy;
   static std::string const Pragma;
   static std::string const Expires;
@@ -274,7 +266,7 @@ class StaticStrings {
   static std::string const AllowUserKeys;
   static std::string const CacheEnabled;  // also used for indexes
   static std::string const ComputedValues;
-  static std::string const SupportsRBAC;
+  static std::string const EnableTimeTravel;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsLocalGraphNode;

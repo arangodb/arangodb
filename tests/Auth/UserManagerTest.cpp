@@ -28,6 +28,7 @@
 #include "Auth/User.h"
 #include "Auth/UserManagerImpl.h"
 #include "Cluster/ServerState.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
@@ -41,18 +42,17 @@ class TestQueryRegistry : public QueryRegistry {
   ~TestQueryRegistry() override = default;
 };
 
+// ---------------------------------------------------------------------------
+// Fixture using UserManagerTester (pure in-memory, no ApplicationServer)
+// Used for tests that set the user cache directly via setAuthInfo().
+// ---------------------------------------------------------------------------
 class UserManagerTest : public ::testing::Test {
  protected:
-  arangodb::application_features::ApplicationServer server;
-  TestQueryRegistry queryRegistry;
   ServerState* state;
-  auth::UserManagerImpl um;
+  auth::UserManagerTester um;
 
-  UserManagerTest()
-      : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
+  UserManagerTest() : state(ServerState::instance()) {
     state->setRole(ServerState::ROLE_SINGLE);
-
-    server.addFeature<DatabaseFeature>();
   }
 
   ~UserManagerTest() override {
@@ -143,7 +143,32 @@ TEST_F(
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
-TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
+// ---------------------------------------------------------------------------
+// Fixture using UserManagerImpl (real DB-backed implementation).
+// Used for tests that specifically verify impl behaviour (e.g. early-call
+// guard via checkIfUserDataIsAvailable).
+// ---------------------------------------------------------------------------
+class UserManagerImplTest : public ::testing::Test {
+ protected:
+  arangodb::application_features::ApplicationServer server;
+  TestQueryRegistry queryRegistry;
+  ServerState* state;
+  auth::UserManagerImpl um;
+
+  UserManagerImplTest()
+      : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
+    state->setRole(ServerState::ROLE_SINGLE);
+
+    server.addFeature<DatabaseFeature>();
+  }
+
+  ~UserManagerImplTest() override {
+    state->setServerMode(ServerState::Mode::DEFAULT);
+    state->setReadOnly(ServerState::API_FALSE);
+  }
+};
+
+TEST_F(UserManagerImplTest, usermanager_should_throw_if_called_too_early) {
   // we never start the internal thread
   // so the internal version stays 0 and every call to the following functions
   // should lead to a `TRI_ERROR_STARTING_UP` exception

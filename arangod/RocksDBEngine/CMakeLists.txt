@@ -34,7 +34,6 @@ add_library(arango_rocksdb STATIC
   RocksDBMethods.cpp
   RocksDBMethodsMemoryTracker.cpp
   RocksDBMultiDimIndex.cpp
-  RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionFeatureOptions.cpp
   RocksDBOptionFeatureOptionsProvider.cpp
@@ -69,11 +68,6 @@ add_library(arango_rocksdb STATIC
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
 
-if (USE_V8)
-  target_sources(arango_rocksdb PRIVATE
-    RocksDBV8Functions.cpp)
-endif()
-
 target_link_libraries(arango_rocksdb
   PUBLIC
     arango_cache
@@ -86,7 +80,6 @@ target_link_libraries(arango_rocksdb
     faiss
   PRIVATE
     arango_health
-    arango_v8server
     snappy)
 
 add_library(arango_rocksdb_rest STATIC

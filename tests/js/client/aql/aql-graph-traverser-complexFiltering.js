@@ -172,8 +172,8 @@ function complexFilteringSuite() {
    
     testStorePruneConditionVertexInVariableFilterWithOptions: function () {
       let condition = "v.value == 75";
-      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
-      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {bfs: true} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {order: "bfs"} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {order: "bfs"} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -496,7 +496,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
       const condition = "v.value == 75 || v.value == 25";
-      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {order: "bfs"} FILTER pruneCondition RETURN 1`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -543,7 +543,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
       const condition = "e.right == true";
-      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {order: "bfs"} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -610,7 +610,7 @@ function complexFilteringSuite() {
       // note: using NOOPT(...) here to disable the optimization that pulls
       // certain FILTER conditions into the traversal
       const condition = "NOOPT(p.edges[0].right) == true";
-      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {order: "bfs"} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -702,6 +702,39 @@ function complexFilteringSuite() {
       }
 
       assertEqual(stats.filtered, 0);
+    },
+
+    // An expansion with an inline FILTER is pushed into the traversal, so a
+    // vertex failing the condition is not expanded any further: D is dropped
+    // and its subtree is never walked. With optimize-traversals disabled the
+    // condition is a post filter and everything below D is visited first,
+    // which is what the index lookup comparison below measures.
+    // Note the inline FILTER matters here: B and D carry a `value`, A, C and F
+    // do not, so a plain ALL would reject every path.
+    testVertexInlineFilterPrunesSubtree: function () {
+      var query = `WITH ${vn}
+      FOR v, e, p IN 1..2 OUTBOUND @start @@eCol
+      FILTER p.vertices[* FILTER CURRENT.value != null].value ALL < 50
+      SORT v._key
+      RETURN v._key`;
+      var bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+
+      var cursor = executeQuery(query, bindVars);
+      assertEqual(cursor.toArray(), ['B', 'C', 'F']);
+      var stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+
+      // the same query with the pushdown disabled: same result, but the
+      // traversal has to walk everything below D and discard it afterwards
+      var noOpt = db._query(query, bindVars, {optimizer: {rules: ['-optimize-traversals']}});
+      var noOptStats = noOpt.getExtra().stats;
+      assertEqual(noOpt.toArray(), ['B', 'C', 'F']);
+      assertEqual(noOptStats.scannedFull, 0);
+      assertTrue(stats.scannedIndex < noOptStats.scannedIndex,
+        `expected fewer index lookups when the condition is pushed into the traversal, got ${stats.scannedIndex} vs ${noOptStats.scannedIndex}`);
     },
 
     testVertexLevel0: function () {

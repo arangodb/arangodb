@@ -74,7 +74,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
       c2.insert(docs);
-      c2.ensureIndex({ type: "hash", fields: ["code"], unique: true });
+      c2.ensureIndex({ type: "persistent", fields: ["code"], unique: true });
 
       c3 = internal.db._create(cn3);
       docs = [];
@@ -83,7 +83,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         docs.push({ code: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
       }
       c3.insert(docs);
-      c3.ensureIndex({ type: "skiplist", fields: ["code"], unique: true });
+      c3.ensureIndex({ type: "persistent", fields: ["code"], unique: true });
       
       docs = [];
       e = internal.db._createEdgeCollection(en);

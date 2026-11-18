@@ -51,14 +51,6 @@ void AgencyOptionsProvider::declareOptionsImpl(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent));
 
-  opts->addOption("--agency.pool-size", "The number of Agents in the pool.",
-                  new UInt64Parameter(&options.poolSize),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent))
-      .setDeprecatedIn(31100);
-
   opts->addOption(
       "--agency.election-timeout-min",
       "The minimum timeout before an Agent calls for a new election (in "
@@ -216,17 +208,6 @@ void AgencyOptionsProvider::processOptionsImpl(
   if (!result.touched("agency.size")) {
     options.size = 1;
   }
-
-  // using a pool size different to the number of agents has never been
-  // implemented properly, so bail out early here. this has to happen here,
-  // rather than in validateOptionsImpl, since it must run before options.size
-  // overwrites the pool size below
-  if (result.touched("agency.pool-size") && options.poolSize != options.size) {
-    LOG_TOPIC("af108", FATAL, Logger::AGENCY)
-        << "agency pool size is deprecated and is not expected to be set";
-    FATAL_ERROR_EXIT();
-  }
-  options.poolSize = options.size;
 
   if (options.compactionKeepSize == 0) {
     LOG_TOPIC("ca485", WARN, Logger::AGENCY)

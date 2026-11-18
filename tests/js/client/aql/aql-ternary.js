@@ -26,7 +26,13 @@
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+const errors = require("@arangodb").errors;
 const db = require("@arangodb").db;
+
+function getQueryWarnings (query, bindVars) {
+  return db._query(query, bindVars || {}).getExtra().warnings || [];
+}
   
 const cn = "UnittestsTernary";
 
@@ -465,6 +471,46 @@ RETURN upsertDoc
       assertEqual(3, c.count());
     },
 
+    testConstantFalseConditionSkipsTrueBranchDuringOptimization : function () {
+      // KEEP(null, ...) on the dead true branch must not run at plan time.
+      const query = "LET val = null RETURN val != null ? KEEP(val, 'foo') : null";
+      let cursor = db._query(query);
+      assertEqual([ null ], cursor.toArray());
+      assertEqual(0, getQueryWarnings(query).length);
+    },
+
+    testConstantTrueConditionExecutesLiveBranchDuringOptimization : function () {
+      // val == null is true when val is null: live branch is KEEP(val, 'foo').
+      const query = "LET val = null RETURN val == null ? KEEP(val, 'foo') : null";
+      assertQueryWarningAndNull(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query);
+    },
+
+    testConstantTrueConditionSkipsFalseBranchDuringOptimization : function () {
+      const query = "RETURN true ? 1 : FAIL('must not run at plan time')";
+      assertEqual([ 1 ], getQueryResults(query));
+    },
+
+    testConstantTrueConditionKeepOnLiveBranch : function () {
+      const query = "LET val = { a: 1, b: 2 } RETURN val == null ? null : KEEP(val, 'a')";
+      let cursor = db._query(query);
+      assertEqual([ { a: 1 } ], cursor.toArray());
+      assertEqual(0, getQueryWarnings(query).length);
+    },
+
+    testStringConditionWithWarning : function () {
+      const query = "LET val = 'randomvalue' RETURN val != null ? KEEP(val, 'foo') : null";
+      assertQueryWarningAndNull(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query);
+    },
+
+    testStringConditionWithoutWarning : function () {
+      const query = "LET val = 'randomvalue' RETURN val == null ? KEEP(val, 'foo') : null";
+      assertEqual(0, getQueryWarnings(query).length);
+    },
+
     testMustNotExecuteUnreachableConditions : function () {
       const query = `
 RETURN NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2'))
@@ -487,6 +533,57 @@ RETURN NOOPT(true) ?
       let result = db._query(query).toArray();
       assertEqual(1, result.length);
       assertEqual(true, result[0]);
+    },
+
+    testUntakenOperandWithExpansionIsNotExecuted : function () {
+      const sub = `(FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[0]`;
+      const operands = [
+        `[1, 2][* RETURN ASSERT(false, 'boom')]`,
+        `[1, 2][* FILTER ${sub}]`,
+        `[1, 2][* RETURN ${sub}]`,
+        `[1, 2][* LIMIT ${sub}]`,
+        `[1, 2][* LIMIT ${sub}, 1]`,
+        `[1, 2][? FILTER ${sub}]`,
+        `[1, 2][? AT LEAST (${sub}) FILTER true]`,
+        `[1, 2][? ${sub} FILTER true]`,
+        `[[1], [2]][** FILTER ${sub}]`,
+        `[[1], [2]][*][* FILTER ${sub}]`,
+        `[1, 2][* RETURN [3][* FILTER ${sub}]]`,
+        `(FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[* RETURN CURRENT]`,
+        `[[1], [2]][*][${sub}]`,
+      ];
+      operands.forEach((operand) => {
+        [
+          `RETURN NOOPT(true) ? 'ok' : ${operand}`,
+          `RETURN NOOPT(false) ? ${operand} : 'ok'`,
+          `RETURN NOOPT('ok') ? : ${operand}`,
+          `RETURN NOOPT(true) ? 'ok' : (NOOPT(true) ? 'x' : ${operand})`,
+          `RETURN NOOPT(false) ? 'x' : (NOOPT(true) ? 'ok' : ${operand})`,
+        ].forEach((query) => {
+          assertEqual(['ok'], db._query(query).toArray(), query);
+        });
+      });
+    },
+
+    testTakenOperandWithSubqueryInExpansion : function () {
+      const cases = [
+        [`[1, 2][* FILTER (RETURN true)[0]]`, [1, 2]],
+        [`[1, 2][* RETURN (RETURN 7)[0]]`, [7, 7]],
+        [`[1, 2][* LIMIT (RETURN 1)[0]]`, [1]],
+        [`[1, 2][* LIMIT (RETURN 1)[0], 1]`, [2]],
+        [`[1, 2][? FILTER (RETURN true)[0]]`, true],
+        [`[1, 2][? AT LEAST ((RETURN 2)[0]) FILTER true]`, true],
+        [`[1, 2][? (RETURN 2)[0] FILTER true]`, true],
+        [`[[1], [2]][** FILTER (RETURN true)[0]]`, [1, 2]],
+        [`[[1], [2]][*][* FILTER (RETURN true)[0]]`, [[1], [2]]],
+        [`[1, 2][* RETURN [3][* FILTER (RETURN true)[0]]]`, [[3], [3]]],
+        [`(FOR y IN 1..2 RETURN y)[* RETURN CURRENT]`, [1, 2]],
+        [`[[1], [2]][*][(RETURN 0)[0]]`, [1, 2]],
+      ];
+      cases.forEach(([operand, expected]) => {
+        const query = `RETURN NOOPT(false) ? 'ok' : ${operand}`;
+        assertEqual([expected], db._query(query).toArray(), query);
+      });
     },
 
     testShortcutTernary : function () {
