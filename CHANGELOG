@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1287: Documents with a missing or malformed vector attribute are now
+  rejected while a vector index is ingesting, instead of being accepted and
+  making the index build fail. Addresses GitHub issue #23696.
+
 * Updated ArangoDB Starter to v0.20.0-preview-22.
 
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
