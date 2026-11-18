@@ -284,6 +284,8 @@ add_library(arango_basic_http_client STATIC
         Ssl/ssl-helper.cpp
         Ssl/jwt.cpp
         Ssl/AuthInfo.cpp
+        Ssl/FipsFeature.cpp
+        Ssl/FipsFeatureOptionsProvider.cpp
         Ssl/JwtKeys.cpp
         Ssl/JwtSignature.cpp
 
