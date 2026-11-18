@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ArangodServer.h"
 
@@ -85,4 +86,11 @@ TEST(ServerSecurityFeatureTest, fedramp_high_is_on_if_variable_is_non_empty) {
   EXPECT_TRUE(detectFedRAMPHigh("false"));  // any non-empty value counts
   // flag is re-detected on each construction
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
+}
+
+TEST(ServerSecurityFeatureTest, fedramp_high_forces_security_logging) {
+  EXPECT_TRUE(detectFedRAMPHigh("1"));
+  EXPECT_TRUE(Logger::alwaysLogSecurityEvents());
+  EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
+  EXPECT_FALSE(Logger::alwaysLogSecurityEvents());
 }

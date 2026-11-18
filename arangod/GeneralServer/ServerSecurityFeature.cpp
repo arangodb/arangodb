@@ -27,6 +27,7 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
 #include "Basics/files.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -50,6 +51,10 @@ ServerSecurityFeature::ServerSecurityFeature(
   std::string value;
   _fedRAMPHigh.store(TRI_GETENV(kFedRAMPHighEnvVar, value) && !value.empty(),
                      std::memory_order_relaxed);
+
+  // in FedRAMP High mode, security events must always be logged, regardless
+  // of the configured log levels.
+  Logger::setAlwaysLogSecurityEvents(isFedRAMPHigh());
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {

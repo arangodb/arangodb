@@ -335,6 +335,28 @@ class Logger {
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
+  /// @brief like isEnabled(level, topic), but security events are always
+  /// enabled if alwaysLogSecurityEvents() is set.
+  static bool isEnabled(LogLevel level, LogTopic const& topic,
+                        std::optional<Security> security) {
+    return isEnabled(level, topic) || forceLogging(security);
+  }
+
+  /// @brief whether a message with the given security category must be
+  /// logged regardless of any configured log levels.
+  static bool forceLogging(std::optional<Security> security) noexcept {
+    return security.has_value() && alwaysLogSecurityEvents();
+  }
+
+  /// @brief if set, all log messages with a security category are logged,
+  /// regardless of the configured log levels (of topics and appenders).
+  /// this is turned on in FedRAMP High mode (see ServerSecurityFeature).
+  static void setAlwaysLogSecurityEvents(bool value) noexcept {
+    _alwaysLogSecurityEvents.store(value, std::memory_order_relaxed);
+  }
+  static bool alwaysLogSecurityEvents() noexcept {
+    return _alwaysLogSecurityEvents.load(std::memory_order_relaxed);
+  }
 
   static void initialize(bool threaded, uint32_t maxQueuedLogMessages);
   static void shutdown();
@@ -365,6 +387,7 @@ class Logger {
 
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
+  static std::atomic<bool> _alwaysLogSecurityEvents;
   static std::atomic<LogLevel> _level;
 
   static std::mutex _appenderModificationMutex;

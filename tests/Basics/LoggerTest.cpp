@@ -476,6 +476,7 @@ class LoggerSecurityTest : public ::testing::Test {
   LoggerSecurityTest() : appender(std::make_shared<CapturingLogAppender>()) {}
 
   ~LoggerSecurityTest() {
+    Logger::setAlwaysLogSecurityEvents(false);
     // restore the default test logger setup
     restartLogger(/*useJson*/ false, nullptr);
   }
@@ -569,4 +570,36 @@ TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
           << "json: " << useJson << ", message: " << messages[i];
     }
   }
+}
+
+TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {
+  startCapturing(/*useJson*/ false);
+  Logger::setAlwaysLogSecurityEvents(false);
+  // DEBUG is below the default level of both the topic and the appender
+  LOG_TOPIC("8d2f8", DEBUG, Logger::FIXME, Security::Authentication)
+      << "debug security message";
+  EXPECT_TRUE(collect().empty());
+}
+
+TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
+  startCapturing(/*useJson*/ false);
+  Logger::setAlwaysLogSecurityEvents(true);
+  // DEBUG is below the default level of both the topic and the appender
+  LOG_TOPIC("8d2f9", DEBUG, Logger::FIXME, Security::Authentication)
+      << "forced debug security message";
+  LOG_TOPIC("8d2fa", DEBUG, Logger::FIXME) << "plain debug message";
+  LOG_TOPIC_IF("8d2fb", TRACE, Logger::FIXME, Security::AccessControl, true)
+      << "forced trace security message";
+  LOG_TOPIC_IF("8d2fc", TRACE, Logger::FIXME, Security::AccessControl, false)
+      << "suppressed trace security message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 2);
+  EXPECT_NE(messages[0].find("forced debug security message"),
+            std::string::npos);
+  EXPECT_NE(messages[0].find("[arango-security-event-authentication] "),
+            std::string::npos)
+      << messages[0];
+  EXPECT_NE(messages[1].find("forced trace security message"),
+            std::string::npos);
 }

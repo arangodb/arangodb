@@ -88,8 +88,8 @@ DefaultLogGroup defaultLogGroupInstance;
 
 LogMessage::LogMessage(std::string_view function, std::string_view file,
                        int line, LogLevel level, size_t topicId,
-                       std::string&& message, uint32_t offset,
-                       bool shrunk) noexcept
+                       std::string&& message, uint32_t offset, bool shrunk,
+                       bool forceOutput) noexcept
     : _function(function),
       _file(file),
       _line(line),
@@ -97,7 +97,8 @@ LogMessage::LogMessage(std::string_view function, std::string_view file,
       _topicId(topicId),
       _message(std::move(message)),
       _offset(offset),
-      _shrunk(shrunk) {}
+      _shrunk(shrunk),
+      _forceOutput(forceOutput) {}
 
 void LogMessage::shrink(std::size_t maxLength) {
   // no need to shrink an already shrunk message
@@ -118,6 +119,7 @@ void LogMessage::shrink(std::size_t maxLength) {
 }
 
 std::atomic<bool> Logger::_active(false);
+std::atomic<bool> Logger::_alwaysLogSecurityEvents(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 std::mutex Logger::_appenderModificationMutex;
 logger::Appenders Logger::_appenders;
@@ -710,7 +712,8 @@ void Logger::log(std::string_view logid, std::string_view function,
   out.push_back('\n');
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
-                                          std::move(out), offset, shrunk);
+                                          std::move(out), offset, shrunk,
+                                          forceLogging(security));
 
   append(defaultLogGroup(), std::move(msg), false,
          [level, topicId](LogMessage const& msg) -> void {

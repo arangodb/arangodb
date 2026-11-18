@@ -67,7 +67,11 @@
 /// @brief logs a message for a topic given that a condition is true.
 /// `security` is a `std::optional<::arangodb::Security>`, which marks
 /// the log message as a security event of a specific category (or
-/// `std::nullopt` if it is not a security event).
+/// `std::nullopt` if it is not a security event). if
+/// Logger::alwaysLogSecurityEvents() is set (FedRAMP High mode), security
+/// events are logged regardless of the configured log levels.
+/// note: `security` may be evaluated more than once, so it must not have
+/// side effects.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // in maintainer mode, we *intentionally and always build all log messages* if
 // the condition is true.
@@ -75,24 +79,25 @@
 // (e.g. trace) that would otherwise go undetected. we store a boolean in the
 // LoggerStream then to indicate whether we want to emit the log message or
 // not.
-#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)  \
-  !(cond) ? (void)nullptr                                         \
-          : ::arangodb::LogVoidify() &                            \
-                (::arangodb::LoggerStream(                        \
-                     ::arangodb::Logger::isEnabled(               \
-                         (::arangodb::LogLevel::level), (topic)), \
-                     (security))                                  \
+#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)              \
+  !(cond) ? (void)nullptr                                                     \
+          : ::arangodb::LogVoidify() &                                        \
+                (::arangodb::LoggerStream(                                    \
+                     ::arangodb::Logger::isEnabled(                           \
+                         (::arangodb::LogLevel::level), (topic), (security)), \
+                     (security))                                              \
                  << (::arangodb::LogLevel::level))
 
 #else
 // outside of maintainer mode, we check if the log message should be emitted,
 // and only then build the log log message. this is a performance optimization
 // so we can save constructing log messages which will not be emitted anyway.
-#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)             \
-  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)) && \
-    (cond))                                                                  \
-      ? (void)nullptr                                                        \
-      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream((security))     \
+#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)          \
+  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic), \
+                                  (security)) &&                          \
+    (cond))                                                               \
+      ? (void)nullptr                                                     \
+      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream((security))  \
                                     << (::arangodb::LogLevel::level))
 
 #endif

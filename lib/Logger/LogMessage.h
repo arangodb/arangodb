@@ -34,7 +34,7 @@ struct LogMessage {
 
   LogMessage(std::string_view function, std::string_view file, int line,
              LogLevel level, size_t topicId, std::string&& message,
-             uint32_t offset, bool shrunk) noexcept;
+             uint32_t offset, bool shrunk, bool forceOutput = false) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
@@ -65,6 +65,9 @@ struct LogMessage {
   /// @brief whether or not the log message was already shrunk (used to
   /// prevent duplicate shrinking of message)
   bool _shrunk;
+  /// @brief whether the message must be output regardless of the configured
+  /// log levels of appenders (used for security events in FedRAMP High mode)
+  bool const _forceOutput;
 };
 
 }  // namespace arangodb
