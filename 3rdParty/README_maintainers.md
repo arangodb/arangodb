@@ -47,6 +47,14 @@ Mocking library. https://github.com/eranpeer/FakeIt
 
 Our C++ Client driver capable of velocystream.
 
+## icu-legacy
+
+Bundled ICU 64 (namespace `icu_64_64`) used for the legacy collation and AQL
+string search. Local patch to keep on update: `icu64/i18n/usearch.cpp`
+initializes `g_nfcImpl` via `umtx_initOnce` instead of an unsynchronized lazy
+init (a TSan data race when threads open their first string search
+concurrently, e.g. AQL `CONTAINS`).
+
 ## iresearch
 
 This contains the iresearch library and its sub-components, ICU is used from V8.

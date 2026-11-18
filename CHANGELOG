@@ -7,6 +7,9 @@
   arangorestore now also reports the first failed collection job instead of a
   follow-up error from creating search-alias views.
 
+* Fixed a data race in the bundled ICU 64 library when several threads ran their
+  first AQL string search (e.g. `CONTAINS`) concurrently.
+
 * Patch FAISS v1.16.0 with alubsan fix.
 
 * Updated FAISS to v1.16.0.
