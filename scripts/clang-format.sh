@@ -4,13 +4,12 @@
 # pre-requisite: Bash 4
 # pre-requisite: Git 2.9+
 # pre-requisite: sed
-# pre-requisite: grep
 # pre-requisite: cat
 
 # when invoking this script without any arguments, it will apply formatting for all
 # locally modified files that are tracked by git.
 # when invoking the script with arguments, each argument must be the name of a
-# file to check/reformat.
+# file or directory to check/reformat.
 adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 
 echo "ArangoDB directory: $adb_path"
@@ -23,40 +22,26 @@ trap "rm -f $changed_files_filename $changed_files_filename.sorted; exit" SIGINT
 
 if [[ "$#" -gt 0 ]]
 then
-  # arguments given
-  for file in $@
-  do
-    if [ -d "$file" ]
-    then
-      find "$file" -type f -name "*.ipp" -o -name "*.tpp" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.c" -o -name "*.h" >> "$changed_files_filename"
-    else
-      echo "$file" >> "$changed_files_filename"
-    fi
-  done
+  # arguments given; directories are expanded to all files below them
+  find "$@" -type f > "$changed_files_filename"
 else
-  # no arguments given
-  # now get a list of all locally modified files
-  # add unstaged changes
-  git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
-  # add staged changes
-  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  # no arguments given: all locally modified files, staged or not
+  git diff --diff-filter=ACMRT --name-only HEAD > "$changed_files_filename"
 
   ent_dir="enterprise"
   if [ -d "$ent_dir" ]
   then
     # collect changes from enterprise repository as well
     echo "Enterprise directory: $adb_path/$ent_dir"
-    pushd "$ent_dir" > /dev/null
-    # add unstaged changes
-    git diff --diff-filter=ACMRT --name-only -- Enterprise tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | sed -e "s/^/$ent_dir\//g" >> "../$changed_files_filename"
-    # add staged changes
-    git diff --diff-filter=ACMRT --name-only HEAD -- Enterprise tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | sed -e "s/^/$ent_dir\//g" >> "../$changed_files_filename"
-    popd > /dev/null
+    git -C "$ent_dir" diff --diff-filter=ACMRT --name-only HEAD | sed -e "s/^/$ent_dir\//g" >> "$changed_files_filename"
   fi
 fi
 
-if [ -s "$changed_files_filename" ]; then
-  sort "$changed_files_filename" | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | uniq > "$changed_files_filename.sorted"
+# keep only C/C++ sources, as marked in .gitattributes; enterprise paths are matched by
+# the same patterns
+sort -u "$changed_files_filename" | git check-attr --stdin clang-format | sed -n 's/: clang-format: set$//p' > "$changed_files_filename.sorted"
+
+if [ -s "$changed_files_filename.sorted" ]; then
 
   echo
   echo "About to run formatting on the following files:"

@@ -6,7 +6,7 @@
 # pre-requisite: Linux-based system || macOS-based system
 # pre-requisite: Docker
 # pre-requisite: Bash 4
-# pre-requisite: Git 2.9+
+# pre-requisite: Git 2.13+
 
 adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && pwd )"
 
@@ -18,8 +18,8 @@ changed_files_filename=".clang-format-$$.changed.tmp"
 trap "rm -f $changed_files_filename" EXIT
 trap "rm -f $changed_files_filename; exit" SIGINT SIGTERM SIGHUP
 
-# collect a list of file names of all modified files in $changed_files_filename
-git diff --cached --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+# collect a list of file names of all modified C/C++ sources (as marked in .gitattributes) in $changed_files_filename
+git diff --cached --diff-filter=ACMRT --name-only -- ':(attr:clang-format)' > "$changed_files_filename"
 
 if [ -s "$changed_files_filename" ]; then
   # hand over a list of changed files from the local filesystem into a Docker container that contains a fixed

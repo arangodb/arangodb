@@ -1,7 +1,8 @@
 # Image arangodb/clang-format: a pinned clang-format, so that every developer
-# formats code with the same version. Used by scripts/clang-format.sh ("format")
-# and .githooks/pre-commit ("validate"). It is not built by the CI pipeline in
-# scripts/docker/README.md; build and push it manually:
+# formats code with the same version. Used by the CircleCI clang-format job,
+# scripts/clang-format.sh ("format") and .githooks/pre-commit ("validate").
+# It is not built by the CI pipeline in scripts/docker/README.md; build and
+# push it manually:
 #   docker build -t arangodb/clang-format:<tag> scripts/docker/clang-format
 FROM alpine:3.24
 

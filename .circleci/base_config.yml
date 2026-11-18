@@ -673,22 +673,21 @@ jobs:
 
   clang-format:
     docker:
-      - image: alpine:3.24
+      - image: arangodb/clang-format:22.1.3
+        # the image's entrypoint is the format/validate wrapper for local use
+        entrypoint: /bin/sh
     resource_class: small
     steps:
       - attach_workspace:
           at: .
       - run:
-          name: Install clang-format
-          command: |
-            apk add --no-cache git bash coreutils grep clang22-extra-tools=22.1.3-r2
-      - run:
-          name: Print clang-format version
-          command: clang-format --version
-      - run:
           name: Run clang-format
+          # C/C++ sources are marked in .gitattributes, files to skip are listed in .clang-format-ignore
           command: |
-            scripts/clang-format-circleci.sh
+            clang-format --version
+            { git ls-files; git -C enterprise ls-files | sed 's|^|enterprise/|'; } \
+              | git check-attr --stdin clang-format | sed -n 's/: clang-format: set$//p' \
+              | xargs clang-format -i
       - run:
           name: Store diff
           command: |
