@@ -29,9 +29,9 @@
 namespace {
 
 class attribute_register
-  : public irs::tagged_generic_register<std::string_view, irs::type_info,
-                                        std::string_view, attribute_register> {
-};
+    : public irs::tagged_generic_register<std::string_view, irs::type_info,
+                                          std::string_view,
+                                          attribute_register> {};
 
 }  // namespace
 
@@ -39,7 +39,7 @@ namespace irs {
 
 bool attributes::exists(std::string_view name, bool load_library /*= true*/) {
   return static_cast<bool>(
-    attribute_register::instance().get(name, load_library));
+      attribute_register::instance().get(name, load_library));
 }
 
 type_info attributes::get(std::string_view name,
@@ -47,9 +47,7 @@ type_info attributes::get(std::string_view name,
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
-    IRS_LOG_ERROR(
-      "Caught exception while getting an attribute instance");  // cppcheck-suppress
-                                                                // syntaxError
+    IRS_LOG_ERROR("Caught exception while getting an attribute instance");
   }
 
   return {};  // invalid type id
@@ -58,9 +56,9 @@ type_info attributes::get(std::string_view name,
 attribute_registrar::attribute_registrar(const type_info& type,
                                          const char* source /*= nullptr*/) {
   const auto source_ref =
-    source ? std::string_view{source} : std::string_view{};
+      source ? std::string_view{source} : std::string_view{};
   auto entry = attribute_register::instance().set(
-    type.name(), type, IsNull(source_ref) ? nullptr : &source_ref);
+      type.name(), type, IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -69,25 +67,25 @@ attribute_registrar::attribute_registrar(const type_info& type,
 
     if (source && registered_source) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "attribute, ignoring: type '",
-                     type.name(), "' from ", source_ref, ", previously from ",
-                     *registered_source));
+          absl::StrCat("type name collision detected while registering "
+                       "attribute, ignoring: type '",
+                       type.name(), "' from ", source_ref, ", previously from ",
+                       *registered_source));
     } else if (source) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "attribute, ignoring: type '",
-                     type.name(), "' from ", source_ref));
+          absl::StrCat("type name collision detected while registering "
+                       "attribute, ignoring: type '",
+                       type.name(), "' from ", source_ref));
     } else if (registered_source) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "attribute, ignoring: type '",
-                     type.name(), "' previously from ", *registered_source));
+          absl::StrCat("type name collision detected while registering "
+                       "attribute, ignoring: type '",
+                       type.name(), "' previously from ", *registered_source));
     } else {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "attribute, ignoring: type '",
-                     type.name(), "'"));
+          absl::StrCat("type name collision detected while registering "
+                       "attribute, ignoring: type '",
+                       type.name(), "'"));
     }
   }
 }

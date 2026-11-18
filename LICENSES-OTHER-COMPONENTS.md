@@ -147,8 +147,8 @@ _Enterprise Edition only_
 #### glibc
 
 * Name: glibc
-* Version: 2.39.0
-* Date: 2024-01-31
+* Version: 2.43
+* Date: 2026-01-23
 * Project Home: https://www.gnu.org/software/libc
 * License: https://www.gnu.org/licenses/lgpl-3.0.html
 * License Name: GNU Lesser General Public License
@@ -404,11 +404,25 @@ _Enterprise Edition only_
 ### OpenSSL
 
 * Name: OpenSSL
-* Version: 1.1.1
-* Date: 2021-08-24
-* License: https://spdx.org/licenses/OpenSSL.html
-* License Name: Apache Style License
-* License Id: OpenSSL
+* Version: 3.5.9
+* Date: 2026-09-29
+* Project Home: https://www.openssl.org/
+* License: https://github.com/openssl/openssl/blob/master/LICENSE.txt
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
+#### OpenSSL FIPS provider
+
+_Only shipped with FIPS-enabled distributions, such as the
+`arangodb/core-fips-preview` Docker image, as the separate module `fips.so`_
+
+* Name: OpenSSL FIPS provider
+* Version: 3.1.2
+* Date: 2023-08-01
+* Project Home: https://www.openssl.org/
+* License: https://github.com/openssl/openssl/blob/master/LICENSE.txt
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 ### RocksDB
 
@@ -503,8 +517,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### OpenMP implementation by LLVM
 
 * Name: OpenMP
-* Version: 16.0.6
-* Date: 2023-06-14
+* Version: 22.1.8
+* Date: 2026-06-16
 * Project Home: https://github.com/llvm/llvm-project
 * License: https://github.com/llvm/llvm-project/blob/main/LICENSE.TXT
 * License Name: Apache License 2.0
@@ -513,20 +527,31 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### LAPACK
 
 * Name: LAPACK
-* Version: 3.10.0
-* Date: 2021-06-28
+* Version: 3.12.1
+* Date: 2025-01-08
 * Project Home: https://www.netlib.org/lapack/
 * License: https://www.netlib.org/lapack/LICENSE.txt
 * License Comment: The license used for the software is the modified BSD license
 
+### OpenBLAS
+
+* Name: OpenBLAS
+* Version: 0.3.32
+* Date: 2026-03-23
+* Project Home: https://www.openblas.net/
+* License: https://github.com/OpenMathLib/OpenBLAS/blob/develop/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
 ### Fortran
 
-* Name: gfortran
-* Version: 11.4.0
-* Date: 2023-05-29
+* Name: libgfortran (GNU Fortran runtime library)
+* Version: 14.3.0
+* Date: 2025-05-23
 * Project Home: https://gcc.gnu.org/wiki/GFortran
-* License: https://moinmo.in/GPL
-* License Id: GPLv2
+* License: https://www.gnu.org/licenses/gcc-exception-3.1.html
+* License Name: GNU General Public License v3.0 or later with GCC Runtime Library exception 3.1
+* License Id: GPL-3.0-or-later WITH GCC-exception-3.1
 
 ## Programs
 

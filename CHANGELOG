@@ -3,11 +3,24 @@
 
 * Add infrastructure for security logging.
 
+* Fixed a data race in the bundled ICU 64 library when several threads ran their
+  first AQL string search (e.g. `CONTAINS`) concurrently.
+
+* COR-1197: Added FIPS 140-3 support. A server built with `USE_FIPS` loads the
+  OpenSSL FIPS provider when started with `--server.fips-enable true` and then
+  uses only FIPS-approved cryptography. A nightly `arangodb/core-fips-preview`
+  Docker image is provided. Docker images are now based on Ubuntu 26.04 instead
+  of Alpine.
+
+* Patch FAISS v1.16.0 with alubsan fix.
+
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
   the vector attribute of a vector index without `storedValues`.
 
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
+
+* BTS-2450: Remove exhausted neighbour cursors, fixes a memory leak in traversal queries
 
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).
@@ -103,6 +116,14 @@
   on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
   returns each group once.
 
+* COR-1095: Remove custom AESNI code. This makes the command line
+  options
+  --temp.intermediate-results-encryption-hardware-acceleration and
+  --rocksdb.encryption-hardware-acceleration obsolete.  Benchmarking
+  has been done to ensure there are no negative impacts of this
+  removal, and upgrades from deployments using this acceleration to
+  not using it should work without problems.
+
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
 * Rename `--server.export-read-write-metrics` startup option to
@@ -142,8 +163,6 @@
 * COR-959: Fixed AQL `MATCH` silently dropping a target vertex's property
   constraints and `WHERE` expression when a pattern segment was lowered to a
   traversal.
-
-* Upgraded OpenSSL to 3.5.8.
 
 * The AQL optimizer rule `upgrade-scatter-to-distribute` distributes rows by
   the constant value when a shard key is compared with both a constant and
@@ -298,8 +317,6 @@
   enabling efficient object merging and extension with minimal effort, and now follows 
   a last-key-wins strategy instead of the previous first-key-wins behavior.
   
-* Upgraded OpenSSL to 3.5.7.
-
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
@@ -774,8 +791,6 @@
 * COR-1147: The AQL optimizer rule `smart-joins` only joins two collections
   locally on the DB-Servers if every `FOR` loop between them is over a
   SatelliteCollection.
-
-* Upgraded OpenSSL to 3.5.9.
 
 * COR-1019: Security issue fix to enable interrupting unbounded AQL analyzers.
 

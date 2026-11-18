@@ -125,13 +125,11 @@ class KeysComparator : public rocksdb::Comparator {
 
 RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
                                        StorageUsageTracker& usageTracker,
-                                       bool useEncryption,
-                                       bool allowHWAcceleration)
+                                       bool useEncryption)
     : _basePath(basePath),
       _usageTracker(usageTracker),
 #ifdef USE_ENTERPRISE
       _useEncryption(useEncryption),
-      _allowHWAcceleration(allowHWAcceleration),
 #endif
       _nextId(0),
       _db(nullptr),
@@ -172,8 +170,8 @@ Result RocksDBTempStorage::init() {
       std::string encryptionKey =
           enterprise::EncryptionUtils::generateRandomKey();
 
-      _encryptionProvider = std::make_shared<enterprise::EncryptionProvider>(
-          encryptionKey, _allowHWAcceleration);
+      _encryptionProvider =
+          std::make_shared<enterprise::EncryptionProvider>(encryptionKey);
     } catch (std::exception const& ex) {
       LOG_TOPIC("91e3c", FATAL, arangodb::Logger::STARTUP)
           << "error while creating encryption cipher: " << ex.what();
