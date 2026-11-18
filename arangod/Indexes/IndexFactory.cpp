@@ -124,7 +124,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::ObjectBuilder b(&normalized);
     auto const id = helpers::extractId(definition);
     if (id.isSet()) {
-      absl::AlphaNum toStr{id.id()};
+      absl::AlphaNum toStr(id.id());
       normalized.add(StaticStrings::IndexId, velocypack::Value{toStr.Piece()});
     }
 

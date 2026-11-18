@@ -93,7 +93,7 @@ std::string ToString(bytes_view term) {
       s += c;
     } else {
       s += " ";
-      s.append(absl::AlphaNum{int{c}}.Piece());
+      s.append(absl::AlphaNum(int{c}).Piece());
       s += " ";
     }
   }

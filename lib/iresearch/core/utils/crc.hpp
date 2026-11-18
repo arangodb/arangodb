@@ -36,8 +36,11 @@ class crc32c {
   explicit crc32c(uint32_t seed = 0) noexcept : value_{seed ^ kCrc32Xor} {}
 
   IRS_FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
-    value_ = absl::ExtendCrc32c(
-      value_, std::string_view{static_cast<const char*>(data), size}, 0);
+    // absl::ExtendCrc32c xors with 0xffffffff on entry and on exit; invert
+    // around the call to cancel both and keep the persisted xor-free format.
+    value_ = absl::crc32c_t{~static_cast<uint32_t>(absl::ExtendCrc32c(
+      absl::crc32c_t{~static_cast<uint32_t>(value_)},
+      std::string_view{static_cast<const char*>(data), size}))};
   }
 
   IRS_FORCE_INLINE void process_block(const void* begin,

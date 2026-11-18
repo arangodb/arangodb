@@ -8,15 +8,11 @@
 ---
 ## abseil-cpp
 
-13708db87b1ab69f4f2b3214f3f51e986546f282
-abseil-cpp is pulled in as a submodule - the exact commit can be found there.
+https://github.com/abseil/abseil-cpp
 
-The submodule repository is located at https://github.com/arangodb/abseil-cpp
-
-We have some changes for usage in arangodb and iresearch, so we maintain our own branch with
-these changes called "master".
-To update to a new version pull from upstream (https://github.com/google/abseil-cpp)
-and rebase onto the new version the our "master" branch.
+Unpatched upstream release, downloaded at configure time via FetchContent
+(see `abseil-cpp/CMakeLists.txt`). To update, change `ABSEIL_VERSION` and
+`ABSEIL_SHA256` there.
 
 ## boost
 
@@ -42,6 +38,10 @@ with static glibc builds and nsswitch.
 ## fakeit
 
 Mocking library. https://github.com/eranpeer/FakeIt
+
+Local patch: the unused `Dtor(mock)` macro is removed, because it breaks every
+later declaration of a member named `Dtor`, e.g. `absl::Mutex::Dtor()`. Remove
+it again after regenerating the header.
 
 ## fuerte
 
