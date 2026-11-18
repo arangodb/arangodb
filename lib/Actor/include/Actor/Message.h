@@ -121,8 +121,8 @@ struct concatenator<std::variant<Args0...>, std::variant<Args1...>, Msgs...> {
                std::move(b));
   }
   template<typename Msg>
-  requires((std::is_same_v<Msg, Msgs> || ...)) concatenator(Msg msg)
-      : item(std::move(msg)) {}
+    requires((std::is_same_v<Msg, Msgs> || ...))
+  concatenator(Msg msg) : item(std::move(msg)) {}
 };
 
 template<typename T, typename PID>

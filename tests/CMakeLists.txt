@@ -286,7 +286,6 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
   Transaction/ManagerTest.cpp
-  Transaction/OptionsTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
   Utils/ExecContextTest.cpp
@@ -380,6 +379,7 @@ target_link_libraries(arangodbtests
   gtest
   Boost::container
   Boost::core
+  Boost::crc
   Boost::lockfree
   velocypack_utils
 )

@@ -223,7 +223,9 @@ TEST_F(LogContextTest,
 
   ScopedValue v(LogContext::makeValue().with<LogKey3>("outer"));
 
-  { LogContext::ScopedContext c(ctx); }
+  {
+    LogContext::ScopedContext c(ctx);
+  }
 
   LogContext::current().visit(countingVisitor);
   EXPECT_EQ(1, cnt);

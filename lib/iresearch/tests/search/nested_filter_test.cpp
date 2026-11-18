@@ -414,7 +414,8 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
     std::array<irs::Scorer::ptr, 1> scorers{std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-      {Seek{6}, 6, {2.f}}, {Seek{7}, 13, {9.f}},
+      {Seek{6}, 6, {2.f}},
+      {Seek{7}, 13, {9.f}},
       // FIXME(gnusi): should be 9, currently
       // fails due to we don't cache score
       /*{Seek{6}, 13, {25.f}}*/

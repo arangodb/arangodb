@@ -258,7 +258,7 @@ std::string escapeUnicode(std::string_view value, bool escapeSlash) {
         // unicode range 0080 - 07ff
         else if ((c & 0xE0) == 0xC0) {
           if (ptr + 1 < end) {
-            uint8_t d = (uint8_t) * (ptr + 1);
+            uint8_t d = (uint8_t)*(ptr + 1);
 
             // correct unicode
             if ((d & 0xC0) == 0x80) {
@@ -297,12 +297,12 @@ std::string escapeUnicode(std::string_view value, bool escapeSlash) {
         // unicode range 0800 - ffff
         else if ((c & 0xF0) == 0xE0) {
           if (ptr + 1 < end) {
-            uint8_t d = (uint8_t) * (ptr + 1);
+            uint8_t d = (uint8_t)*(ptr + 1);
 
             // correct unicode
             if ((d & 0xC0) == 0x80) {
               if (ptr + 2 < end) {
-                uint8_t e = (uint8_t) * (ptr + 2);
+                uint8_t e = (uint8_t)*(ptr + 2);
 
                 // correct unicode
                 *qtr = *ptr;

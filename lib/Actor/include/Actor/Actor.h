@@ -39,7 +39,8 @@ namespace arangodb::actor {
 
 namespace {
 template<typename Runtime, typename A>
-concept IncludesAllActorRelevantTypes = std::is_class_v<typename A::State> &&
+concept IncludesAllActorRelevantTypes =
+    std::is_class_v<typename A::State> &&
     std::is_class_v<typename A::template Handler<Runtime>> &&
     std::is_class_v<typename A::Message>;
 template<typename A>
@@ -48,31 +49,34 @@ concept IncludesName = requires() {
 };
 template<typename Runtime, typename A>
 concept HandlerInheritsFromBaseHandler =
-    std::is_base_of_v < HandlerBase<Runtime, typename A::State>,
-typename A::template Handler<Runtime> > ;
+    std::is_base_of_v<HandlerBase<Runtime, typename A::State>,
+                      typename A::template Handler<Runtime>>;
 template<typename Runtime, typename A>
-concept MessageIsVariant = requires(typename Runtime::ActorPID pid,
-                                    std::shared_ptr<Runtime> runtime,
-                                    typename A::Message message) {
-  {std::visit(
-      typename A::template Handler<Runtime>{
-          {pid, pid, std::unique_ptr<typename A::State>(), runtime}},
-      message)};
-};
+concept MessageIsVariant =
+    requires(typename Runtime::ActorPID pid, std::shared_ptr<Runtime> runtime,
+             typename A::Message message) {
+      {
+        std::visit(
+            typename A::template Handler<Runtime>{
+                {pid, pid, std::unique_ptr<typename A::State>(), runtime}},
+            message)
+      };
+    };
 template<typename A>
-concept IsInspectable = requires(typename A::Message message,
-                                 typename A::State state) {
-  {std::format("{}", message)};
-  {std::format("{}", state)};
-};
+concept IsInspectable =
+    requires(typename A::Message message, typename A::State state) {
+      { std::format("{}", message) };
+      { std::format("{}", state) };
+    };
 }  // namespace
 template<typename Runtime, typename A>
-concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
-    IncludesName<A> && HandlerInheritsFromBaseHandler<Runtime, A> &&
+concept Actorable =
+    IncludesAllActorRelevantTypes<Runtime, A> && IncludesName<A> &&
+    HandlerInheritsFromBaseHandler<Runtime, A> &&
     MessageIsVariant<Runtime, A> && IsInspectable<A>;
 
 template<typename Runtime, typename Config>
-requires Actorable<Runtime, Config>
+  requires Actorable<Runtime, Config>
 struct Actor : ActorBase<typename Runtime::ActorPID> {
   using ActorPID = typename Runtime::ActorPID;
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
@@ -170,10 +174,10 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
 
  private:
   template<typename Msg>
-  requires(std::is_same_v<Msg, typename Config::Message> ||
-           std::is_same_v<Msg, message::ActorDown<ActorPID>> ||
-           std::is_same_v<Msg, message::ActorError<ActorPID>>)  //
-      void push(ActorPID sender, Msg&& msg) {
+    requires(std::is_same_v<Msg, typename Config::Message> ||
+             std::is_same_v<Msg, message::ActorDown<ActorPID>> ||
+             std::is_same_v<Msg, message::ActorError<ActorPID>>)  //
+  void push(ActorPID sender, Msg&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<
@@ -281,7 +285,6 @@ auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
 }  // namespace arangodb::actor
 
 template<typename Runtime, typename Config>
-requires arangodb::actor::Actorable<Runtime, Config>
+  requires arangodb::actor::Actorable<Runtime, Config>
 struct std::formatter<arangodb::actor::Actor<Runtime, Config>>
-    : arangodb::inspection::inspection_formatter {
-};
+    : arangodb::inspection::inspection_formatter {};

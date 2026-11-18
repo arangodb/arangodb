@@ -52,8 +52,8 @@ class aligned_storage {
 // as per MSVC documentation:
 // align(#) valid entries are integer powers of two from 1 to 8192 (bytes)
 // e.g. 2, 4, 8, 16, 32, or 64
-#pragma warning( \
-  disable : 4324)  // structure was padded due to __declspec(align())
+#pragma warning(disable \
+                : 4324)  // structure was padded due to __declspec(align())
   template<size_t Align>
   struct align_t {};
   template<>
@@ -524,7 +524,7 @@ struct maker<Class, false> {
   static ptr make(Args&&... args) {                                           \
     using type = std::enable_if_t<std::is_base_of_v<class_name, Type>, Type>; \
     using maker_t = irs::memory::maker<type>;                                 \
-    return maker_t::make(std::forward<Args>(args)...);        \
+    return maker_t::make(std::forward<Args>(args)...);                        \
   }                                                                           \
   template<typename Class, bool>                                              \
   friend struct irs::memory::maker

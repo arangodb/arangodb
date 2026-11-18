@@ -24,7 +24,7 @@
 #endif
 
 #ifndef INVALID_SET_FILE_POINTER
-#define INVALID_SET_FILE_POINTER ((DWORD)-1)
+#define INVALID_SET_FILE_POINTER ((DWORD) - 1)
 #endif
 
 voidpf ZCALLBACK win32_open_file_func OF((voidpf opaque, char const* filename,

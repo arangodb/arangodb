@@ -47,8 +47,9 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 
 namespace {
 template<typename R>
-requires std::ranges::input_range<R> &&
-    std::convertible_to<std::ranges::range_reference_t<R>, std::string_view>
+  requires std::ranges::input_range<R> &&
+           std::convertible_to<std::ranges::range_reference_t<R>,
+                               std::string_view>
 auto getActivitiesFromServers(R&& servers, std::deque<Agent> agents,
                               NetworkFeature& networkFeature,
                               std::string const& path)

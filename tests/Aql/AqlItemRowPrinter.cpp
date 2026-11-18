@@ -74,7 +74,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream,
   return stream;
 }
 
-template std::ostream& arangodb::aql::operator<<<InputAqlItemRow>(
+template std::ostream& arangodb::aql::operator<< <InputAqlItemRow>(
     std::ostream& stream, InputAqlItemRow const& row);
-template std::ostream& arangodb::aql::operator<<<ShadowAqlItemRow>(
+template std::ostream& arangodb::aql::operator<< <ShadowAqlItemRow>(
     std::ostream& stream, ShadowAqlItemRow const& row);

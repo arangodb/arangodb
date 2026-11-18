@@ -67,11 +67,11 @@ class CursorLifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
-  void append(Cursor& cursor) {
+  void append(std::unique_ptr<Cursor>&& cursor) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Entry));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.push_front({std::reference_wrapper<Cursor>(cursor)});
+    _queue.emplace_front(std::move(cursor));
     guard.steal();  // now we are responsible for tracking the memory
   }
 
@@ -131,7 +131,7 @@ class CursorLifoQueue {
       if (isEmpty()) {
         return std::nullopt;
       }
-      auto first = _queue.front();
+      auto const& first = _queue.front();
       LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
           << "<BatchedLifoQueue> Pop: "
           << (std::holds_alternative<Step>(first)
@@ -139,17 +139,17 @@ class CursorLifoQueue {
                   : "next batch");
       if (std::holds_alternative<Step>(first)) {
         _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+        auto step = std::get<Step>(first);
         _queue.pop_front();
-        return {std::get<Step>(first)};
+        return {step};
       }
-      auto& cursor = std::get<std::reference_wrapper<Cursor>>(first).get();
-      if (not cursor.hasMore()) {
+      auto& cursor = std::get<std::unique_ptr<Cursor>>(first);
+      if (not cursor->hasMore()) {
         _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
         _queue.pop_front();
-        cursor.markForDeletion();
         continue;
       }
-      for (auto&& step : cursor.next()) {
+      for (auto&& step : cursor->next()) {
         append(step);
       }
     }

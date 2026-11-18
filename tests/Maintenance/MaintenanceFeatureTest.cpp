@@ -68,7 +68,7 @@ class TestActionBasic : public ActionBase {
       if (_iteration < 0) {
         _iteration = 1;
       }  // if
-    }    // if
+    }  // if
 
     if (description.get(FAST_TRACK, value).ok()) {
       _labels.emplace(FAST_TRACK);
@@ -859,8 +859,7 @@ TEST_F(MaintenanceFeatureTestThreaded,
   // Since the rescheduled actions is not visible _before_ the old action
   // is moved to FINISHED, it is not enough to wait for all actions to be done.
   // Instead we have to wait for two actions to be done.
-  while (tf.waitRegistryComplete() != 2)
-    ;
+  while (tf.waitRegistryComplete() != 2);
 
   //
   // 5. verify completed actions

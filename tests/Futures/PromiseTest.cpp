@@ -120,7 +120,9 @@ TEST(PromiseTest, lacksPreconditionValid) {
 #define DOIT(STMT)        \
   do {                    \
     auto p = makeValid(); \
-    { STMT; }             \
+    {                     \
+      STMT;               \
+    }                     \
     copy(std::move(p));   \
     STMT;                 \
   } while (false)
