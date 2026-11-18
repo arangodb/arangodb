@@ -130,6 +130,12 @@ enable_testing()
 
 set(BUILD_SHARED_LIBS OFF)
 
+# Static and object libraries don't link against anything, so let them compile
+# without waiting for their link-only dependencies to be built first. This
+# significantly improves parallelism with the Makefile generator. Dependencies
+# that matter (add_dependencies(), generated sources, build events) are kept.
+set(CMAKE_OPTIMIZE_DEPENDENCIES ON)
+
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
