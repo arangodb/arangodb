@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -193,6 +193,70 @@ function VectorIndexWalCatchupInsertSuite() {
             assertTrue(specialDocFound(collection),
                 "Special doc inserted during ingestion should be found " +
                 "via WAL catch-up");
+        },
+
+        testInsertWithoutVectorDuringIngestionIsRejected: function () {
+            if (!IM.debugCanUseFailAt()) {
+                return;
+            }
+            IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeIngestion");
+            createVectorIndex(collection);
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kIngesting, 60),
+                "Index should reach ingesting state"
+            );
+
+            try {
+                collection.insert({_key: specialKey});
+                fail();
+            } catch (e) {
+                assertEqual(internal.errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+            }
+            assertFalse(collection.exists(specialKey));
+
+            IM.debugClearFailAt();
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kReady, 120),
+                "Index should reach ready state"
+            );
+        },
+
+        testReplaceWithoutVectorDuringIngestionIsRejected: function () {
+            if (!IM.debugCanUseFailAt()) {
+                return;
+            }
+            collection.insert({_key: specialKey, vector: specialVector});
+            IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeIngestion");
+            createVectorIndex(collection);
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kIngesting, 60),
+                "Index should reach ingesting state"
+            );
+
+            try {
+                collection.replace(specialKey, {});
+                fail();
+            } catch (e) {
+                assertEqual(internal.errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+            }
+
+            IM.debugClearFailAt();
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kReady, 120),
+                "Index should reach ready state"
+            );
+            assertTrue(specialDocFound(collection),
+                "Special doc should keep its vector after rejected replace");
         },
     };
 }
