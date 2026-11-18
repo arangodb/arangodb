@@ -167,25 +167,6 @@ void verifyDocumentStructure(velocypack::Slice document,
 #endif
 }
 
-// Time travel: build the superseded form of `doc`, i.e. the same document with
-// its (until now null) _expired stamped with the timestamp of the operation
-// that replaced it. Every other attribute is copied verbatim, including the
-// Custom-typed _id.
-void buildExpiredVersion(velocypack::Slice doc, uint64_t expired,
-                         velocypack::Builder& builder) {
-  TRI_ASSERT(doc.get(StaticStrings::Expired).isNull());
-  builder.openObject();
-  for (auto it : VPackObjectIterator(doc, true)) {
-    auto key = it.key.stringView();
-    if (key == StaticStrings::Expired) {
-      builder.add(key, VPackValue(expired));
-    } else {
-      builder.add(key, it.value);
-    }
-  }
-  builder.close();
-}
-
 LocalDocumentId generateDocumentId(LogicalCollection const& collection,
                                    RevisionId revisionId) {
   bool useRev = collection.usesRevisionsAsDocumentIds();
@@ -434,8 +415,6 @@ Result RocksDBCollection::setCacheEnabled(bool cacheEnabled) {
     primaryIndex()->destroyCache();
   }
   // nothing else to do
-  // Changes to immutable properties are simply ignored here. This could be
-  // unexpected - we should consider returning an error instead.
   return {};
 }
 
@@ -1328,12 +1307,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
                         previousDocument, options, previousRevisionId);
 }
 
-ResultT<std::optional<std::uint64_t>>
-RocksDBCollection::currentVersionTimestamp(std::string_view key) const {
-  TRI_ASSERT(_logicalCollection.timeTravelEnabled());
-  return primaryIndex()->currentVersionTimestamp(key);
-}
-
 bool RocksDBCollection::cacheEnabled() const noexcept {
   return _cacheEnabled.load(std::memory_order_relaxed);
 }
@@ -1510,7 +1483,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
+  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1828,18 +1801,7 @@ Result RocksDBCollection::modifyDocument(
   TRI_ASSERT(objectId() != 0);
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  auto* mthds = state->rocksdbMethods(_logicalCollection.id());
-
-  // Time travel: the new version's _created is the timestamp that expires the
-  // version it supersedes. The transaction already learned it before taking the
-  // key lock (see PhysicalCollection::setTimeTravelWriteTimestamp), so here it
-  // is only read back out of the body.
-  uint64_t writeTimestamp = 0;
-  if (_logicalCollection.timeTravelEnabled()) {
-    VPackSlice created = newDoc.get(StaticStrings::Created);
-    TRI_ASSERT(created.isNumber());
-    writeTimestamp = created.getNumber<uint64_t>();
-  }
+  RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1892,27 +1854,10 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  auto* documentsCf = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::Documents);
-
-  rocksdb::Status s = std::invoke([&]() {
-    if (_logicalCollection.timeTravelEnabled()) {
-      // Time travel: the superseded version is kept so earlier read timestamps
-      // can still resolve it, and is rewritten in place with the timestamp that
-      // expired it. Its key holds the old LocalDocumentId, which the new
-      // version does not share, so this rewrites exactly one entry and never
-      // collides with the PutUntracked of the new version below.
-      auto expiredVersion = ThreadLocalBuilderLeaser::lease();
-      TRI_ASSERT(writeTimestamp != 0);
-      buildExpiredVersion(oldDoc, writeTimestamp, *expiredVersion);
-      VPackSlice expired = expiredVersion->slice();
-      return mthds->PutUntracked(
-          documentsCf, key,
-          rocksdb::Slice(expired.startAs<char>(), expired.byteSize()));
-    } else {
-      return mthds->SingleDelete(documentsCf, key);
-    }
-  });
+  rocksdb::Status s =
+      mthds->SingleDelete(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&newDoc](result::Error& err) {
@@ -1923,7 +1868,7 @@ Result RocksDBCollection::modifyDocument(
     return res;
   }
 
-  // we have successfully changed a value in the WBWI. after this, we
+  // we have successfully removed a value from the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
 
@@ -2042,12 +1987,7 @@ Result RocksDBCollection::modifyDocument(
 
     res = savepoint.finish(newRevisionId);
     if (res.ok()) {
-      // Time travel: the previous version is retained in the Documents family,
-      // so it stays part of the revision tree - removing it becomes the job of
-      // the (not yet implemented) history GC.
-      if (!_logicalCollection.timeTravelEnabled()) {
-        state->trackRemove(_logicalCollection.id(), oldRevisionId);
-      }
+      state->trackRemove(_logicalCollection.id(), oldRevisionId);
       state->trackInsert(_logicalCollection.id(), newRevisionId);
     }
   }
