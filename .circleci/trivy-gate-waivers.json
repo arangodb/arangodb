@@ -1,3 +1,14 @@
 {
-  "waivers": []
+  "waivers": [
+    {
+      "id": "CVE-2026-118764",
+      "package": "minimatch",
+      "severity": "MEDIUM",
+      "class": "remediation-pending",
+      "detected": "2026-10-30",
+      "expires": "2027-01-28",
+      "reason": "The globParts amplification (GHSA-g3hv-75wg-m249) needs optimizationLevel >= 2. ArangoDB's own call sites (js/common/modules/jsunity.js, js/server/modules/@arangodb/foxx/mocha.js) use the default of 1, but minimatch ships to Foxx services through js/node and a service can opt in on its own patterns. The fix exists only in minimatch 11, which drops the makeRe/AST exports Foxx services may use; remediation is pending a decision on that breaking change for 3.12.",
+      "approved-by": "Vadim Kondratev"
+    }
+  ]
 }

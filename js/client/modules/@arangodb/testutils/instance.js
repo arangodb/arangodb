@@ -380,7 +380,7 @@ class instance {
             table[handle]['localPort'],
             table[handle]['username'],
             table[handle]['password'],
-            table[handle]['jwToken']
+            table[handle]['jwtToken']
           ]);
         });
       } catch (ex) {
@@ -1119,11 +1119,12 @@ class instance {
         if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
             !((reply.code === 500) &&
               (
-                (reply.parsedBody === "Connection closed by remote") || // http connection
+                (reply.parsedBody === "Connection closed") || // http connection
                   reply.parsedBody.includes('failed with #111')           // https connection
               ))) {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+          this.dumpConnectionTable(true);
           this.shutdownArangod(true);
           this._disconnect();
         } else {
@@ -1148,11 +1149,12 @@ class instance {
             if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
                 !((reply.code === 500) &&
                   (
-                    (reply.message === "Connection closed by remote") || // http connection
+                    (reply.message === "Connection closed") || // http connection
                       reply.message.includes('failed with #111')           // https connection
                   ))) {
               this.serverCrashedLocal = true;
               print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+              this.dumpConnectionTable(true);
               this.shutdownArangod(true);
               return false;
             }

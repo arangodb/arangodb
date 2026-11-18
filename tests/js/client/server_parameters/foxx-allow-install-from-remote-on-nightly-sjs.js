@@ -33,6 +33,26 @@ const errors = require('@arangodb').errors;
 const db = require('internal').db;
 const FoxxManager = require('@arangodb/foxx/manager');
 
+// installing from github relies on resources outside of the SUT host.
+// retry if the source could not be fetched; give up silently (with a log
+// message) instead of failing the test if github remains unreachable.
+const maxTries = 5;
+function installFromRemote(url, installFn) {
+  let res;
+  for (let i = 1; i <= maxTries; ++i) {
+    res = installFn();
+    if (!res.error || res.errorNum !== errors.ERROR_SERVICE_SOURCE_ERROR.code) {
+      return res;
+    }
+    console.warn(`attempt ${i}/${maxTries} to fetch ${url} failed: ${JSON.stringify(res)}`);
+    if (i < maxTries) {
+      require('internal').sleep(i);
+    }
+  }
+  console.warn(`giving up fetching ${url} after ${maxTries} attempts, not considering this a test failure`);
+  return null;
+}
+
 function testSuite() {
   const mount = "/test123";
 
@@ -43,7 +63,10 @@ function testSuite() {
       ];
       urls.forEach((url) => {
         try {
-          let res = arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url });
+          let res = installFromRemote(url, () => arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url }));
+          if (res === null) {
+            return;
+          }
           assertFalse(res.error);
           assertEqual("itzpapalotl", res.name);
         } finally {
@@ -60,7 +83,10 @@ function testSuite() {
       ];
       urls.forEach((url) => {
         try {
-          let res = arango.POST("/_admin/foxx/install", { appInfo: url, mount });
+          let res = installFromRemote(url, () => arango.POST("/_admin/foxx/install", { appInfo: url, mount }));
+          if (res === null) {
+            return;
+          }
           assertFalse(res.error);
           assertEqual("itzpapalotl", res.name);
         } finally {
@@ -77,7 +103,10 @@ function testSuite() {
       ];
       urls.forEach((url) => {
         try {
-          let res = arango.POST(`/_api/foxx?mount=${mount}`, { source: url });
+          let res = installFromRemote(url, () => arango.POST(`/_api/foxx?mount=${mount}`, { source: url }));
+          if (res === null) {
+            return;
+          }
           assertFalse(res.error);
           assertEqual("itzpapalotl", res.name);
         } finally {

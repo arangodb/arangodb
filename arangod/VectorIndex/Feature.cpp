@@ -26,11 +26,15 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <faiss/utils/simd_levels.h>
+
 #include <chrono>
+#include <format>
 
 namespace arangodb {
 
@@ -48,6 +52,14 @@ VectorIndexFeature::VectorIndexFeature(
       _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
+}
+
+std::map<std::string, std::string> VectorIndexFeature::versionDetails() {
+  return {
+      {"faiss-simd-dynamic-dispatch",
+       faiss::SIMDConfig::has_dynamic_dispatch() ? "true" : "false"},
+      {"faiss-simd-level", faiss::SIMDConfig::get_level_name()},
+  };
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {
@@ -70,6 +82,11 @@ void VectorIndexFeature::start() {
   if (!shouldRunBuildManager()) {
     return;
   }
+  TRI_ASSERT(faiss::SIMDConfig::has_dynamic_dispatch());
+  LOG_TOPIC("3f827", INFO, Logger::ENGINES) << std::format(
+      "faiss SIMD: dynamic dispatch {}, runtime level {}",
+      faiss::SIMDConfig::has_dynamic_dispatch() ? "enabled" : "disabled",
+      faiss::SIMDConfig::get_level_name());
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _buildManager.emplace(
       _databaseFeature, server().getFeature<MaintenanceFeature>(),

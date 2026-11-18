@@ -99,7 +99,7 @@ function hotBackup (options) {
   try {
     if (!PTK.runSetupSuite(setupFile) ||
         !PTK.runRtaMakedata() ||
-        !PTK.runRtaWaitdata() ||
+        !PTK.runRtaWaitData() ||
         !PTK.dumpFrom('UnitTestsDumpSrc') ||
         !PTK.restartInstance() ||
         !PTK.restoreTo('UnitTestsDumpDst') ||

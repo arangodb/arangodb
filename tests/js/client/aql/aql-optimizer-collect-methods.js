@@ -606,7 +606,39 @@ function optimizerCollectMethodsTestSuite () {
       const res = db._query(query).toArray();
       assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
     },
-  
+
+    // A sorted COLLECT can only reuse a preceding SORT if the group
+    // variables are its leading sort keys. Otherwise rows with the same
+    // group values are not adjacent and the optimizer must add its own SORT.
+    testSortedCollectWithPrecedingSortOnOtherAttributes : function () {
+      const queries = [
+        // group variable is not the first sort key
+        { collect: "SORT j.value, j.group COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: true },
+        { collect: "SORT j.haxe DESC, j.group COLLECT g = j.group", ret: "g", newSort: true },
+        // group variables are not the leading sort keys
+        { collect: "SORT j.haxe, j.group, j.value COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: true },
+        // group variables are the leading sort keys, in any order and direction
+        { collect: "SORT j.group DESC, j.value COLLECT g = j.group WITH COUNT INTO n", ret: "[g, n]", newSort: false },
+        { collect: "SORT j.value DESC, j.group COLLECT g = j.group, v = j.value", ret: "[g, v]", newSort: false },
+      ];
+
+      const normalize = (rows) => rows.map((r) => JSON.stringify(r)).sort();
+
+      queries.forEach(function(q) {
+        const expected = db._query(`FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "hash" } RETURN ${q.ret}`).toArray();
+        const query = `FOR j IN ${c.name()} ${q.collect} OPTIONS { method: "sorted" } RETURN ${q.ret}`;
+
+        if (!isCluster) {
+          const nodes = db._createStatement(query).explain().plan.nodes;
+          const sortNodes = nodes.filter((n) => n.type === "SortNode");
+          assertEqual(q.newSort ? 2 : 1, sortNodes.length, query);
+        }
+
+        const actual = db._query(query).toArray();
+        assertEqual(normalize(expected), normalize(actual), query);
+      });
+    },
+
   };
 }
 

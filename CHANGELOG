@@ -1,6 +1,49 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
-* COR-966 Improve foxx installer url matching
+
+* Fixed a data race in the bundled ICU 64 library when several threads ran their
+  first AQL string search (e.g. `CONTAINS`) concurrently.
+
+* Patch FAISS v1.16.0 with alubsan fix.
+
+* Updated FAISS to v1.16.0.
+
+* Fix a cluster crash for vector search queries that filter on or return only
+  the vector attribute of a vector index without `storedValues`.
+
+* COR-1177: Fix AQL REPEAT() separators bypassing the 16MB output limit, and
+  REPEAT() with an empty value and no separator taking time proportional to
+  the repetition count.
+
+* COR-1263 / github issue #23383:
+  - Fixed the extra counting issue in NGRAM_MATCH
+  - Added unit tests
+
+* COR-1179: Fix AQL SUBSTRING_BYTES() reading past the end of the string when
+  extending left from the end, which could return extra characters.
+
+* COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
+  the leader had intermediate commits while the follower didn't.
+
+* Updated ArangoDB Starter to v0.19.31.
+
+* BTS-2523: AQL range filters on `_key` and `_id` treat floating-point numbers
+  like any other number. Numbers sort before strings, so `doc._key < 1.5`
+  matches no document and `doc._key > 1.5` matches every document. Both
+  queries use the primary index.
+
+* Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
+  NEON/SVE on aarch64), speeding up vector index operations.
+
+* Updated node modules:
+ - fast-uri to 3.1.9 to resolve CVE-2026-110180, CVE-2026-110306,
+   CVE-2026-110095 and CVE-2026-110725
+ - qs to 6.16.1 to resolve CVE-2026-110816
+ 
+ * Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
+  dependencies.
+
+* COR-966 Improve foxx installer url matching.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
@@ -11,9 +54,15 @@
   The single result row was counted twice: once when produced and again during
   the fullCount phase.
 
+* The AQL optimizer lets a sorted COLLECT reuse a preceding SORT only if the
+  group variables are the leading keys of that SORT. Otherwise it adds a SORT
+  on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
+  returns each group once.
+
 * Add `--http.decompressed-request-body-global-memory-limit` startup option,
   which limits the combined size of all decompressed request bodies. Requests that 
   would exceed it are rejected with 503. The default is 10% of the physical memory.
+
 
 3.12.13 (2026-10-28)
 --------------------

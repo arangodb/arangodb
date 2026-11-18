@@ -74,7 +74,7 @@ set(ARANGODB_VERSION_MINOR "12")
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
   set(ARANGODB_VERSION_PATCH "14")
-  set(ARANGODB_VERSION_RELEASE_TYPE "devel")
+  set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
   unset(ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
@@ -1156,6 +1156,9 @@ set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
+
+# Select faiss SIMD kernels at runtime based on the CPU.
+set(FAISS_OPT_LEVEL "dd" CACHE STRING "FAISS SIMD level" FORCE)
 
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
