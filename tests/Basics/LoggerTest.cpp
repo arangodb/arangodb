@@ -27,15 +27,25 @@
 
 #include "gtest/gtest.h"
 
+#include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 
 #include <date/date.h>
 #include <format>
 
+#include <array>
 #include <filesystem>
+#include <mutex>
 #include <regex>
+#include <set>
 #include <sstream>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -62,6 +72,57 @@ struct Synchronizer {
     }
     cv.notify_all();
   }
+};
+
+/// @brief log appender which captures all messages it receives.
+class CapturingLogAppender final : public LogAppender {
+ public:
+  std::vector<std::string> take() {
+    std::lock_guard guard(_mutex);
+    return std::move(_messages);
+  }
+
+  std::string details() const override { return "capturing"; }
+
+ protected:
+  void logMessage(LogMessage const& message) override {
+    std::lock_guard guard(_mutex);
+    _messages.emplace_back(message._message);
+  }
+
+ private:
+  std::mutex _mutex;
+  std::vector<std::string> _messages;
+};
+
+/// @brief restarts the logger with the given output format. output format
+/// settings can only be changed while logging is inactive, and shutting
+/// down the logger removes all appenders, so they have to be re-added. this
+/// mirrors the logger setup in tests/main.cpp.
+void restartLogger(bool useJson,
+                   std::shared_ptr<LogAppender> const& captureAppender) {
+  Logger::shutdown();
+  Logger::setUseJson(useJson);
+  Logger::initialize(false, 10000);
+  Logger::addAppender(Logger::defaultLogGroup(), "-");
+  if (captureAppender != nullptr) {
+    Logger::addGlobalAppender(Logger::defaultLogGroup(), captureAppender);
+  }
+}
+
+constexpr std::array kAllSecurityCategories = {
+    Security::Authentication,
+    Security::AccessControl,
+    Security::AccountManagement,
+    Security::SystemAccess,
+    Security::ConfigurationChanges,
+    Security::PrivilegedOperations,
+    Security::DataAccess,
+    Security::Violations,
+    Security::ApiCalls,
+    Security::SessionManagement,
+    Security::AuditLogAccess,
+    Security::SystemErrors,
 };
 
 }  // namespace
@@ -403,5 +464,110 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
   for (size_t i = 0; i < n; ++i) {
     EXPECT_EQ(expectedValues.at(i), iterations)
         << "Thread " << i << " did not have enough messages";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            security event logging
+// -----------------------------------------------------------------------------
+
+class LoggerSecurityTest : public ::testing::Test {
+ protected:
+  LoggerSecurityTest() : appender(std::make_shared<CapturingLogAppender>()) {}
+
+  ~LoggerSecurityTest() {
+    // restore the default test logger setup
+    restartLogger(/*useJson*/ false, nullptr);
+  }
+
+  void startCapturing(bool useJson) { restartLogger(useJson, appender); }
+
+  std::vector<std::string> collect() { return appender->take(); }
+
+  std::shared_ptr<CapturingLogAppender> appender;
+};
+
+TEST_F(LoggerSecurityTest, classifiers_are_distinct_and_canonical) {
+  EXPECT_TRUE(securityClassifier(Security::None).empty());
+  std::set<std::string_view> seen;
+  for (auto s : kAllSecurityCategories) {
+    auto classifier = securityClassifier(s);
+    EXPECT_TRUE(classifier.starts_with("arango-security-event-")) << classifier;
+    EXPECT_TRUE(seen.insert(classifier).second) << classifier;
+  }
+}
+
+TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
+  startCapturing(/*useJson*/ false);
+  LOG_TOPIC("8d2f1", INFO, Logger::FIXME, Security::Authentication)
+      << "security test message";
+  LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
+  LOG_TOPIC_IF("8d2f3", INFO, Logger::FIXME, Security::AccessControl, true)
+      << "conditional security test message";
+  LOG_TOPIC_IF("8d2f4", INFO, Logger::FIXME, Security::AccessControl, false)
+      << "suppressed security test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 3);
+
+  EXPECT_NE(messages[0].find("security test message"), std::string::npos);
+  EXPECT_NE(
+      messages[0].find("{general} [arango-security-event-authentication] "),
+      std::string::npos)
+      << messages[0];
+
+  EXPECT_NE(messages[1].find("plain test message"), std::string::npos);
+  EXPECT_EQ(messages[1].find("arango-security-event-"), std::string::npos)
+      << messages[1];
+
+  EXPECT_NE(messages[2].find("conditional security test message"),
+            std::string::npos);
+  EXPECT_NE(messages[2].find("[arango-security-event-access-control] "),
+            std::string::npos)
+      << messages[2];
+}
+
+TEST_F(LoggerSecurityTest, json_format_contains_classifier) {
+  startCapturing(/*useJson*/ true);
+  LOG_TOPIC("8d2f5", INFO, Logger::FIXME, Security::DataAccess)
+      << "json \"security\" test message";
+  LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 2);
+
+  {
+    auto builder = velocypack::Parser::fromJson(messages[0]);
+    auto slice = builder->slice();
+    ASSERT_TRUE(slice.isObject()) << messages[0];
+    ASSERT_TRUE(slice.get("security").isString()) << messages[0];
+    EXPECT_EQ(slice.get("security").stringView(),
+              "arango-security-event-data-access");
+    EXPECT_EQ(slice.get("message").stringView(),
+              "json \"security\" test message");
+  }
+  {
+    auto builder = velocypack::Parser::fromJson(messages[1]);
+    auto slice = builder->slice();
+    ASSERT_TRUE(slice.isObject()) << messages[1];
+    EXPECT_TRUE(slice.get("security").isNone()) << messages[1];
+    EXPECT_EQ(messages[1].find("arango-security-event-"), std::string::npos);
+  }
+}
+
+TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
+  for (bool useJson : {false, true}) {
+    startCapturing(useJson);
+    for (auto s : kAllSecurityCategories) {
+      Logger::log("8d2f7", __FUNCTION__, __FILE__, __LINE__, LogLevel::INFO,
+                  Logger::FIXME.id(), "category test message", s);
+    }
+    auto messages = collect();
+    ASSERT_EQ(messages.size(), kAllSecurityCategories.size());
+    for (size_t i = 0; i < messages.size(); ++i) {
+      EXPECT_NE(messages[i].find(securityClassifier(kAllSecurityCategories[i])),
+                std::string::npos)
+          << "json: " << useJson << ", message: " << messages[i];
+    }
   }
 }

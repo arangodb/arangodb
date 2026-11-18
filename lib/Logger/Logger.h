@@ -69,6 +69,7 @@
 #include "Inspection/Status.h"
 #include "Logger/Appenders.h"
 #include "Logger/LogLevel.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
@@ -311,9 +312,14 @@ class Logger {
 
   static std::string_view translateLogLevel(LogLevel) noexcept;
 
+  /// @brief builds and emits a log message. if `security` is not
+  /// Security::None, the canonical security event classifier (e.g.
+  /// "arango-security-event-authentication") is included in the output,
+  /// both for the text and the JSON log formats.
   static void log(std::string_view logid, std::string_view function,
                   std::string_view file, int line, LogLevel level,
-                  size_t topicId, std::string_view message);
+                  size_t topicId, std::string_view message,
+                  Security security = Security::None);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -345,14 +351,15 @@ class Logger {
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  std::string_view message, bool& shrunk);
+                                  Security security, std::string_view message,
+                                  bool& shrunk);
 
   static void buildTextLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  std::string_view message, uint32_t& offset,
-                                  bool& shrunk);
+                                  Security security, std::string_view message,
+                                  uint32_t& offset, bool& shrunk);
 
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;

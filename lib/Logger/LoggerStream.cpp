@@ -119,7 +119,8 @@ LoggerStream::~LoggerStream() {
 
   try {
     // get a view on the stream's underlying buffer, without copying it
-    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view());
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view(),
+                _security);
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the

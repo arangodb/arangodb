@@ -41,6 +41,7 @@
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 #include "Logger/LogTopic.h"
@@ -671,7 +672,8 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
 
 void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
-                 size_t topicId, std::string_view message) try {
+                 size_t topicId, std::string_view message,
+                 Security security) try {
   TRI_ASSERT(!logid.empty());
 
   // we only determine our pid once, as currentProcessId() will
@@ -696,10 +698,10 @@ void Logger::log(std::string_view logid, std::string_view function,
 
   if (Logger::_useJson) {
     buildJsonLogMessage(out, logid, function, file, line, level, topicId,
-                        message, shrunk);
+                        security, message, shrunk);
   } else {
     buildTextLogMessage(out, logid, function, file, line, level, topicId,
-                        message, offset, shrunk);
+                        security, message, offset, shrunk);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
@@ -724,7 +726,8 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::string_view message, bool& shrunk) {
+                                 Security security, std::string_view message,
+                                 bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // construct JSON output
   arangodb::velocypack::StringSink sink(&out);
@@ -809,6 +812,15 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   // value of topic is always safe to print
   dumper.appendString(LogTopic::lookup(topicId));
 
+  // the security event classifier. this is always emitted for security
+  // events, regardless of any other log output options, so that security
+  // events can be reliably identified by downstream log processing.
+  if (security != Security::None) {
+    out.append(",\"security\":");
+    // value of the classifier is always safe to print
+    dumper.appendString(securityClassifier(security));
+  }
+
   // the logid
   if (::arangodb::Logger::getShowIds()) {
     out.append(",\"id\":");
@@ -877,8 +889,8 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::string_view message, uint32_t& offset,
-                                 bool& shrunk) {
+                                 Security security, std::string_view message,
+                                 uint32_t& offset, bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // hostname
   if (!_hostname.empty()) {
@@ -947,6 +959,15 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   }
 
   absl::StrAppend(&out, "{", LogTopic::lookup(topicId), "} ");
+
+  // the security event classifier. this is always emitted for security
+  // events, regardless of any other log output options, so that security
+  // events can be reliably identified by downstream log processing.
+  // note: it is placed after `offset`, so that it is also contained in
+  // the in-memory log buffer and in syslog output.
+  if (security != Security::None) {
+    absl::StrAppend(&out, "[", securityClassifier(security), "] ");
+  }
 
   {
     READ_LOCKER(guard, _structuredParamsLock);
