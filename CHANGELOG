@@ -1,8 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* Add infrastructure for security logging.
-
 * Fixed a data race in the bundled ICU 64 library when several threads ran their
   first AQL string search (e.g. `CONTAINS`) concurrently.
 
