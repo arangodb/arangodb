@@ -673,7 +673,7 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
 void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
                  size_t topicId, std::string_view message,
-                 Security security) try {
+                 std::optional<Security> security) try {
   TRI_ASSERT(!logid.empty());
 
   // we only determine our pid once, as currentProcessId() will
@@ -726,8 +726,8 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 Security security, std::string_view message,
-                                 bool& shrunk) {
+                                 std::optional<Security> security,
+                                 std::string_view message, bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // construct JSON output
   arangodb::velocypack::StringSink sink(&out);
@@ -815,10 +815,10 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   // the security event classifier. this is always emitted for security
   // events, regardless of any other log output options, so that security
   // events can be reliably identified by downstream log processing.
-  if (security != Security::None) {
+  if (security.has_value()) {
     out.append(",\"security\":");
     // value of the classifier is always safe to print
-    dumper.appendString(securityClassifier(security));
+    dumper.appendString(securityClassifier(*security));
   }
 
   // the logid
@@ -889,8 +889,9 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 Security security, std::string_view message,
-                                 uint32_t& offset, bool& shrunk) {
+                                 std::optional<Security> security,
+                                 std::string_view message, uint32_t& offset,
+                                 bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // hostname
   if (!_hostname.empty()) {
@@ -965,8 +966,8 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   // events can be reliably identified by downstream log processing.
   // note: it is placed after `offset`, so that it is also contained in
   // the in-memory log buffer and in syslog output.
-  if (security != Security::None) {
-    absl::StrAppend(&out, "[", securityClassifier(security), "] ");
+  if (security.has_value()) {
+    absl::StrAppend(&out, "[", securityClassifier(*security), "] ");
   }
 
   {

@@ -57,6 +57,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -312,14 +313,14 @@ class Logger {
 
   static std::string_view translateLogLevel(LogLevel) noexcept;
 
-  /// @brief builds and emits a log message. if `security` is not
-  /// Security::None, the canonical security event classifier (e.g.
+  /// @brief builds and emits a log message. if `security` is set,
+  /// the canonical security event classifier (e.g.
   /// "arango-security-event-authentication") is included in the output,
   /// both for the text and the JSON log formats.
   static void log(std::string_view logid, std::string_view function,
                   std::string_view file, int line, LogLevel level,
                   size_t topicId, std::string_view message,
-                  Security security = Security::None);
+                  std::optional<Security> security = std::nullopt);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -351,15 +352,16 @@ class Logger {
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  Security security, std::string_view message,
-                                  bool& shrunk);
+                                  std::optional<Security> security,
+                                  std::string_view message, bool& shrunk);
 
   static void buildTextLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  Security security, std::string_view message,
-                                  uint32_t& offset, bool& shrunk);
+                                  std::optional<Security> security,
+                                  std::string_view message, uint32_t& offset,
+                                  bool& shrunk);
 
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;

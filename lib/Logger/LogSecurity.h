@@ -28,10 +28,13 @@
 
 namespace arangodb {
 
-/// @brief security event category of a log message (see LOG-001).
-/// `None` means that the log message is not a security event.
+/// @brief security event category of a log message
+/// (see
+/// https://github.com/arangodb/platform-architecture/blob/main/adr/logging/LOG-001-security-log-event-categories.md).
+/// Whether or not a log message is a security event at all is expressed
+/// by passing a `std::optional<Security>` (`std::nullopt` meaning "not a
+/// security event").
 enum class Security : std::uint8_t {
-  None = 0,
   Authentication,
   AccessControl,
   AccountManagement,
@@ -47,8 +50,7 @@ enum class Security : std::uint8_t {
 };
 
 /// @brief returns the classifier literal for a security event category,
-/// e.g. "arango-security-event-authentication". Returns an empty string
-/// view for Security::None.
+/// e.g. "arango-security-event-authentication".
 std::string_view securityClassifier(Security security) noexcept;
 
 std::ostream& operator<<(std::ostream& out, Security security);

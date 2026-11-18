@@ -22,14 +22,14 @@
 
 #include "Logger/LogSecurity.h"
 
+#include "Assertions/Assert.h"
+
 #include <ostream>
 
 namespace arangodb {
 
 std::string_view securityClassifier(Security security) noexcept {
   switch (security) {
-    case Security::None:
-      return {};
     case Security::Authentication:
       return "arango-security-event-authentication";
     case Security::AccessControl:
@@ -55,6 +55,9 @@ std::string_view securityClassifier(Security security) noexcept {
     case Security::SystemErrors:
       return "arango-security-event-system-errors";
   }
+  // Just in case somebody forgets a `return` statement in the above
+  // switch statement:
+  TRI_ASSERT(false);
   return {};
 }
 

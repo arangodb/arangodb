@@ -488,7 +488,6 @@ class LoggerSecurityTest : public ::testing::Test {
 };
 
 TEST_F(LoggerSecurityTest, classifiers_are_distinct_and_canonical) {
-  EXPECT_TRUE(securityClassifier(Security::None).empty());
   std::set<std::string_view> seen;
   for (auto s : kAllSecurityCategories) {
     auto classifier = securityClassifier(s);

@@ -52,6 +52,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Logger/LogVoidify.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,9 +65,9 @@
       << ::arangodb::Logger::LOGID((id))
 
 /// @brief logs a message for a topic given that a condition is true.
-/// `security` is a value of the `::arangodb::Security` enum, which marks
+/// `security` is a `std::optional<::arangodb::Security>`, which marks
 /// the log message as a security event of a specific category (or
-/// `Security::None` if it is not a security event).
+/// `std::nullopt` if it is not a security event).
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // in maintainer mode, we *intentionally and always build all log messages* if
 // the condition is true.
@@ -102,9 +104,8 @@
 #define ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, security, cond) \
   ARANGO_INTERNAL_LOG_STREAM(level, topic, security, (cond))             \
       << (topic) << ARANGO_INTERNAL_LOG_HELPER((id))
-#define ARANGO_INTERNAL_LOG_TOPIC_IF_4(id, level, topic, cond)                 \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::arangodb::Security::None, \
-                                 cond)
+#define ARANGO_INTERNAL_LOG_TOPIC_IF_4(id, level, topic, cond) \
+  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::std::nullopt, cond)
 #define ARANGO_INTERNAL_LOG_TOPIC_IF_SELECT(_1, _2, _3, _4, _5, name, ...) name
 #define LOG_TOPIC_IF(...)                                               \
   ARANGO_INTERNAL_LOG_TOPIC_IF_SELECT(__VA_ARGS__,                      \
@@ -118,9 +119,8 @@
 /// the message is not a security event, or with four arguments
 /// (id, level, topic, security), where `security` is a value of the
 /// `::arangodb::Security` enum.
-#define ARANGO_INTERNAL_LOG_TOPIC_3(id, level, topic)                          \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::arangodb::Security::None, \
-                                 true)
+#define ARANGO_INTERNAL_LOG_TOPIC_3(id, level, topic) \
+  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::std::nullopt, true)
 #define ARANGO_INTERNAL_LOG_TOPIC_4(id, level, topic, security) \
   ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, security, true)
 #define ARANGO_INTERNAL_LOG_TOPIC_SELECT(_1, _2, _3, _4, name, ...) name
