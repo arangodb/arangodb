@@ -358,9 +358,12 @@ struct AqlValue final {
   /// being copied first.
   bool isStaticSlice() const noexcept;
 
-  /// @brief whether this is a slice pointer that is only valid while whatever
-  /// it points into stays alive.
-  bool isShortLivedSlice() const noexcept;
+  /// @brief whether this value does not own its payload and must not be kept:
+  /// a slice pointer without the static flag, valid only while whatever it
+  /// points into stays alive. this covers more than the results of borrow(),
+  /// e.g. at() into a parent or AqlValueHintSliceNoCopy. a static slice does
+  /// not own its payload either, but it can be kept, so it is not borrowed.
+  bool isBorrowed() const noexcept;
 
   /// @brief a value that does not own its payload, for reading only.
   /// managed slices and strings become a short-lived slice pointer in constant
@@ -533,8 +536,8 @@ class AqlValueGuard {
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept
       : _value{value}, _destroy{destroy} {
-    TRI_ASSERT(!(destroy && value.isShortLivedSlice()))
-        << "ownership claimed for a short-lived slice pointer";
+    TRI_ASSERT(!(destroy && value.isBorrowed()))
+        << "ownership claimed for a borrowed value";
   }
   ~AqlValueGuard() noexcept {
     if (_destroy) {

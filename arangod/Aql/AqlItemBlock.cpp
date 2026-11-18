@@ -1006,8 +1006,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr,
 void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
                             AqlValue const& value) {
   TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
-  TRI_ASSERT(!value.isShortLivedSlice())
-      << "short-lived slice pointer stored in an AqlItemBlock";
+  TRI_ASSERT(!value.isBorrowed()) << "borrowed value stored in an AqlItemBlock";
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {

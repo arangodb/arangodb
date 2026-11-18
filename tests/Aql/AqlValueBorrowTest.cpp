@@ -71,7 +71,7 @@ TEST(AqlValueBorrowTest, managed_slice_borrow_becomes_a_short_lived_pointer) {
   {
     AqlValue borrowed = owner.borrow();
     EXPECT_EQ(borrowed.type(), AqlValue::VPACK_SLICE_POINTER);
-    EXPECT_TRUE(borrowed.isShortLivedSlice());
+    EXPECT_TRUE(borrowed.isBorrowed());
     EXPECT_FALSE(borrowed.isStaticSlice());
     EXPECT_FALSE(borrowed.requiresDestruction());
     EXPECT_EQ(borrowed.slice().begin(), owner.slice().begin());
@@ -129,9 +129,9 @@ TEST(AqlValueBorrowTest, inline_borrow_is_a_plain_copy) {
     EXPECT_EQ(b.type(), v.type());
     EXPECT_FALSE(b.requiresDestruction());
     // an inline value points at nothing, so it is neither static nor
-    // short-lived
+    // borrowed
     EXPECT_FALSE(b.isStaticSlice());
-    EXPECT_FALSE(b.isShortLivedSlice());
+    EXPECT_FALSE(b.isBorrowed());
   }
 }
 
@@ -139,7 +139,7 @@ TEST(AqlValueBorrowTest, slice_pointers_default_to_short_lived) {
   auto builder = largeObject();
   AqlValue v{AqlValueHintSliceNoCopy{builder->slice()}};
   ASSERT_EQ(v.type(), AqlValue::VPACK_SLICE_POINTER);
-  EXPECT_TRUE(v.isShortLivedSlice());
+  EXPECT_TRUE(v.isBorrowed());
   EXPECT_FALSE(v.isStaticSlice());
 }
 
@@ -148,7 +148,7 @@ TEST(AqlValueBorrowTest, static_slices_are_marked) {
   AqlValue v = AqlValue::staticSlice(builder->slice().begin());
   ASSERT_EQ(v.type(), AqlValue::VPACK_SLICE_POINTER);
   EXPECT_TRUE(v.isStaticSlice());
-  EXPECT_FALSE(v.isShortLivedSlice());
+  EXPECT_FALSE(v.isBorrowed());
   EXPECT_FALSE(v.requiresDestruction());
   EXPECT_EQ(v.slice().begin(), builder->slice().begin());
   EXPECT_TRUE(v.slice().isObject());
@@ -166,7 +166,7 @@ TEST(AqlValueBorrowTest, erase_clears_the_static_marker) {
   v.erase();
   EXPECT_TRUE(v.isEmpty());
   EXPECT_FALSE(v.isStaticSlice());
-  EXPECT_FALSE(v.isShortLivedSlice());
+  EXPECT_FALSE(v.isBorrowed());
 }
 
 TEST(AqlValueBorrowTest, clone_of_a_borrow_owns_its_copy) {
@@ -233,8 +233,8 @@ TEST(AqlValueBorrowTest, a_pointer_into_a_short_lived_slice_is_short_lived) {
   AqlValue array{AqlValueHintSliceNoCopy{builder->slice()}};
 
   bool mustDestroy;
-  EXPECT_TRUE(array.at(0, mustDestroy, true).isShortLivedSlice());
-  EXPECT_TRUE(array.at(1, 2, mustDestroy, true).isShortLivedSlice());
+  EXPECT_TRUE(array.at(0, mustDestroy, true).isBorrowed());
+  EXPECT_TRUE(array.at(1, 2, mustDestroy, true).isBorrowed());
 }
 
 TEST(AqlValueBorrowTest, a_pointer_into_a_static_document_is_static) {

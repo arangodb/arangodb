@@ -1255,7 +1255,7 @@ bool AqlValue::isStaticSlice() const noexcept {
          (_data.bytes[1] & kStaticSliceFlag) != 0;
 }
 
-bool AqlValue::isShortLivedSlice() const noexcept {
+bool AqlValue::isBorrowed() const noexcept {
   return type() == VPACK_SLICE_POINTER &&
          (_data.bytes[1] & kStaticSliceFlag) == 0;
 }
