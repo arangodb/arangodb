@@ -2,9 +2,14 @@
 # mimalloc integration for ArangoDB.
 #
 # Unlike jemalloc (autotools, built via ExternalProject), mimalloc is a native
-# CMake project, so we can consume it directly via add_subdirectory. We build
-# only the static library and let it override the global allocator for the whole
+# CMake project, so we can consume it directly via FetchContent. We build only
+# the static library and let it override the global allocator for the whole
 # process, exactly as jemalloc does today.
+
+include(FetchContent)
+
+set(MIMALLOC_VERSION "3.7.0")
+set(MIMALLOC_SHA256 "1b8653b9ff9b841a97f2c50fd996e89e1a0cb712c3c5b0980ef16a027eb7acf8")
 
 # Build just the static override library -- no shared lib, object lib or tests.
 set(MI_BUILD_SHARED OFF CACHE BOOL "mimalloc: build shared library" FORCE)
@@ -13,9 +18,24 @@ set(MI_BUILD_TESTS  OFF CACHE BOOL "mimalloc: build tests" FORCE)
 set(MI_BUILD_STATIC ON  CACHE BOOL "mimalloc: build static library" FORCE)
 set(MI_OVERRIDE     ON  CACHE BOOL "mimalloc: override the standard malloc interface" FORCE)
 
+set(MIMALLOC_FETCH_OPTIONS
+  URL https://github.com/microsoft/mimalloc/archive/refs/tags/v${MIMALLOC_VERSION}.tar.gz
+  URL_HASH SHA256=${MIMALLOC_SHA256}
+)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+  list(APPEND MIMALLOC_FETCH_OPTIONS DOWNLOAD_EXTRACT_TIMESTAMP OFF)
+endif()
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.25")
+  list(APPEND MIMALLOC_FETCH_OPTIONS SYSTEM)
+endif()
 # EXCLUDE_FROM_ALL keeps mimalloc's own install() rules and unused targets out of
 # our package; mimalloc-static is still built because arangod links against it.
-add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.28")
+  list(APPEND MIMALLOC_FETCH_OPTIONS EXCLUDE_FROM_ALL)
+endif()
+
+FetchContent_Declare(mimalloc ${MIMALLOC_FETCH_OPTIONS})
+FetchContent_MakeAvailable(mimalloc)
 
 # Public wrapper target linked by arangod and the client tools.
 #
