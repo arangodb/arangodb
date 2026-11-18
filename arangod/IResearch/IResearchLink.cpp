@@ -364,7 +364,7 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   }
 
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(absl::AlphaNum{index().id().id()}.Piece()));
+              velocypack::Value(absl::AlphaNum(index().id().id()).Piece()));
   builder.add(arangodb::StaticStrings::IndexType,
               velocypack::Value(
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));

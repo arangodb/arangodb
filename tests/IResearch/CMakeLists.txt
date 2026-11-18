@@ -7,6 +7,8 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchAnalyzerFeatureTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchAqlAnalyzerTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchComparerTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchCrc32cTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchMinHashTokenStreamTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchDocumentTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFeatureTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterArrayInTest.cpp

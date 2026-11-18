@@ -625,7 +625,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
               build.add("collection", velocypack::Value{collection->name()});
             }
             build.add("index", velocypack::Value{
-                                   absl::AlphaNum{index.id().id()}.Piece()});
+                                   absl::AlphaNum(index.id().id()).Piece()});
           }
           build.close();
         }

@@ -106,7 +106,7 @@ bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
   auto it = _skipRecoveryItems.find(impl.collection().name());
   return it != _skipRecoveryItems.end() &&
          (it->second.contains(impl.name()) ||
-          it->second.contains(absl::AlphaNum{impl.id().id()}.Piece()));
+          it->second.contains(absl::AlphaNum(impl.id().id()).Piece()));
 }
 
 template<bool Force>

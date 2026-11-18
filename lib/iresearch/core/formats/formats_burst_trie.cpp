@@ -2471,7 +2471,7 @@ bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
   }
 
   // reset to common seek prefix
-  absl::strings_internal::STLStringReserveAmortized(&term_buf_, term.size());
+  term_buf_.reserve(term.size());
   absl::strings_internal::STLStringResizeUninitialized(&term_buf_, prefix);
   sstate_.resize(prefix);  // remove invalid cached arcs
 

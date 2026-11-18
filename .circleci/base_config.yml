@@ -930,11 +930,12 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
-            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist,
-            # and the headers of dependencies fetched into build/_deps (boost). Boost's
-            # header-only code includes its implementation from .ipp files.
+            # clang-tidy and cppcheck can only parse if generated headers (voc-errors.h,
+            # build.h, ...) exist, and the headers of dependencies fetched into
+            # build/_deps (boost, abseil). Boost's header-only code includes its
+            # implementation from .ipp files.
             - run:
-                name: Stage generated headers for clang-tidy
+                name: Stage generated headers for clang-tidy and cppcheck
                 command: |
                   cd /root/project
                   find build \( -name '*.h' -o -name '*.hpp' -o -name '*.ipp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
@@ -1426,6 +1427,7 @@ jobs:
           name: Run cppcheck
           command: |
             ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
             utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json
       - run:

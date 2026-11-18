@@ -378,6 +378,7 @@ target_link_libraries(arangodbtests
   gtest
   Boost::container
   Boost::core
+  Boost::crc
   Boost::lockfree
   velocypack_utils
 )
