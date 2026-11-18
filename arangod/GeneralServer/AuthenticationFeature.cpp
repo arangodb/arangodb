@@ -56,7 +56,11 @@ AuthenticationFeature::AuthenticationFeature(
       _authCache(nullptr) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
+}
 
+AuthenticationFeature::~AuthenticationFeature() = default;
+
+void AuthenticationFeature::prepare() {
   if (!_options.jwtSecretProgramOption.empty()) {
     auto res = auth::loadJwtSecretString(_options.jwtSecretProgramOption);
     if (res.ok()) {
@@ -75,11 +79,7 @@ AuthenticationFeature::AuthenticationFeature(
       FATAL_ERROR_EXIT();
     }
   }
-}
 
-AuthenticationFeature::~AuthenticationFeature() = default;
-
-void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(_userManager == nullptr);
 

@@ -67,14 +67,13 @@ class CursorWeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
-  void append(Cursor& cursor) {
+  void append(std::unique_ptr<Cursor>&& cursor) {
     // exhaust the full cursor
-    while (cursor.hasMore()) {
-      for (auto const& step : cursor.next()) {
+    while (cursor->hasMore()) {
+      for (auto const& step : cursor->next()) {
         append(step);
       }
     }
-    cursor.markForDeletion();
   }
 
   void setStartContent(std::vector<Step> startSteps) {
