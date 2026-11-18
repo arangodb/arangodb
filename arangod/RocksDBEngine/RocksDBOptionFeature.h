@@ -86,7 +86,11 @@ class RocksDBOptionFeature final
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
+  std::shared_ptr<rocksdb::Cache> makeBlockCache(uint64_t capacity,
+                                                 int shardBits) const;
+
   RocksDBOptionFeatureOptions _options;
+  mutable std::shared_ptr<rocksdb::Cache> _vectorIndexBlockCache;
 };
 
 }  // namespace arangodb

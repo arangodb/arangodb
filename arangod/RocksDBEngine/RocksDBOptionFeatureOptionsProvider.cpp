@@ -534,6 +534,26 @@ For systems with less RAM, the default values are:
 - 256 MiB for systems with between 1 and 2 GiB of RAM.
 - 128 MiB for systems with less than 1 GiB of RAM.)");
 
+  opts->addOption("--rocksdb.vector-index-block-cache-size",
+                  "The size of the dedicated block cache for vector indexes "
+                  "(in bytes).",
+                  new UInt64Parameter(&options.vectorIndexBlockCacheSize),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(40000)
+      .setLongDescription(R"(If set to a value greater than 0, the vector
+index data is cached in its own block cache of this size instead of the block
+cache shared by all other data (see `--rocksdb.block-cache-size`). The
+dedicated cache uses the same block cache type and size limit enforcement as
+the shared one, and its memory is in addition to the shared block cache.
+
+The default value is 0, which means the vector index data uses the shared
+block cache.)");
+
   opts->addOption("--rocksdb.block-cache-shard-bits",
                   "The number of shard bits to use for the block cache "
                   "(-1 = default value).",

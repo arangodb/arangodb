@@ -88,6 +88,7 @@ struct RocksDBOptionFeatureOptions {
   uint64_t targetFileSizeBase = 0;
   uint64_t targetFileSizeMultiplier = 0;
   uint64_t blockCacheSize = 0;
+  uint64_t vectorIndexBlockCacheSize = 0;
   int64_t blockCacheShardBits = 0;
   uint64_t blockCacheEstimatedEntryCharge = 0;
   uint64_t minBlobSize = 0;

@@ -205,6 +205,8 @@ void RocksDBOptionFeature::start() {
       << ", block_cache_type: " << _options.blockCacheType
       << ", use_jemalloc_allocator: " << _options.useJemallocAllocator
       << ", block_cache_size: " << _options.blockCacheSize
+      << ", vector_index_block_cache_size: "
+      << _options.vectorIndexBlockCacheSize
       << ", block_cache_shard_bits: " << _options.blockCacheShardBits
       << ", block_cache_estimated_entry_charge: "
       << _options.blockCacheEstimatedEntryCharge
@@ -438,46 +440,47 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   return result;
 }
 
+std::shared_ptr<rocksdb::Cache> RocksDBOptionFeature::makeBlockCache(
+    uint64_t capacity, int shardBits) const {
+  std::shared_ptr<rocksdb::MemoryAllocator> allocator;
+
+#ifdef ARANGODB_HAVE_JEMALLOC
+  if (_options.useJemallocAllocator) {
+    rocksdb::JemallocAllocatorOptions jopts;
+    rocksdb::Status s = rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
+    if (!s.ok()) {
+      LOG_TOPIC("004e6", FATAL, Logger::STARTUP)
+          << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif
+
+  if (_options.blockCacheType == kBlockCacheTypeLRU) {
+    rocksdb::LRUCacheOptions opts;
+
+    opts.capacity = capacity;
+    opts.num_shard_bits = shardBits;
+    opts.strict_capacity_limit = _options.enforceBlockCacheSizeLimit;
+    opts.memory_allocator = allocator;
+
+    return rocksdb::NewLRUCache(opts);
+  }
+  TRI_ASSERT(_options.blockCacheType == kBlockCacheTypeHyperClock);
+  rocksdb::HyperClockCacheOptions opts(
+      capacity, _options.blockCacheEstimatedEntryCharge, shardBits,
+      _options.enforceBlockCacheSizeLimit, allocator);
+  return opts.MakeSharedCache();
+}
+
 rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
     const {
   rocksdb::BlockBasedTableOptions result;
 
   if (_options.blockCacheSize > 0) {
-    std::shared_ptr<rocksdb::MemoryAllocator> allocator;
-
-#ifdef ARANGODB_HAVE_JEMALLOC
-    if (_options.useJemallocAllocator) {
-      rocksdb::JemallocAllocatorOptions jopts;
-      rocksdb::Status s =
-          rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
-      if (!s.ok()) {
-        LOG_TOPIC("004e6", FATAL, Logger::STARTUP)
-            << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
-        FATAL_ERROR_EXIT();
-      }
-    }
-#endif
-
-    if (_options.blockCacheType == kBlockCacheTypeLRU) {
-      rocksdb::LRUCacheOptions opts;
-
-      opts.capacity = _options.blockCacheSize;
-      opts.num_shard_bits = static_cast<int>(_options.blockCacheShardBits);
-      opts.strict_capacity_limit = _options.enforceBlockCacheSizeLimit;
-      opts.memory_allocator = allocator;
-
-      result.block_cache = rocksdb::NewLRUCache(opts);
-    } else if (_options.blockCacheType == kBlockCacheTypeHyperClock) {
-      rocksdb::HyperClockCacheOptions opts(
-          _options.blockCacheSize, _options.blockCacheEstimatedEntryCharge,
-          static_cast<int>(_options.blockCacheShardBits),
-          _options.enforceBlockCacheSizeLimit, allocator);
-
-      result.block_cache = opts.MakeSharedCache();
-    } else {
-      TRI_ASSERT(false);
-    }
-
+    result.block_cache =
+        makeBlockCache(_options.blockCacheSize,
+                       static_cast<int>(_options.blockCacheShardBits));
   } else {
     result.no_block_cache = true;
   }
@@ -606,6 +609,18 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     if (_options.partitionFilesForVectorIndexCf) {
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+    if (_options.vectorIndexBlockCacheSize > 0) {
+      if (_vectorIndexBlockCache == nullptr) {
+        // -1 lets RocksDB derive the shard count from the capacity
+        _vectorIndexBlockCache =
+            makeBlockCache(_options.vectorIndexBlockCacheSize, -1);
+      }
+      rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
+      tableOptions.no_block_cache = false;
+      tableOptions.block_cache = _vectorIndexBlockCache;
+      result.table_factory.reset(
+          rocksdb::NewBlockBasedTableFactory(tableOptions));
     }
   }
 
