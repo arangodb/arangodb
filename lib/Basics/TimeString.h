@@ -26,7 +26,7 @@
 
 inline std::string timepointToString(
     std::chrono::system_clock::time_point const& t) {
-  return std::format("%Y-%m-%dT%H:%M:%SZ",
+  return std::format("{0:%F}T{0:%T}Z",
                      std::chrono::floor<std::chrono::seconds>(t));
 }
 
