@@ -174,6 +174,11 @@ struct ColumnFamilyStats {
   uint64_t liveBlobFileSize{0};
   uint64_t liveBlobFileGarbageSize{0};
 
+  // Block cache used by this column family's table factory
+  uint64_t blockCacheCapacity{0};
+  uint64_t blockCacheUsage{0};
+  uint64_t blockCachePinnedUsage{0};
+
   // Write stall stats
   WriteStallStats writeStallStats;
 
@@ -203,6 +208,9 @@ struct ColumnFamilyStats {
         f.field("numBlobFiles", x.numBlobFiles),
         f.field("liveBlobFileSize", x.liveBlobFileSize),
         f.field("liveBlobFileGarbageSize", x.liveBlobFileGarbageSize),
+        f.field("blockCacheCapacity", x.blockCacheCapacity),
+        f.field("blockCacheUsage", x.blockCacheUsage),
+        f.field("blockCachePinnedUsage", x.blockCachePinnedUsage),
         f.field("writeStallStats", x.writeStallStats));
   }
 };

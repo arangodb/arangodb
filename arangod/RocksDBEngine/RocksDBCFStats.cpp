@@ -393,6 +393,14 @@ ColumnFamilyStats RocksDBCFStatsCollector::collect(
   stats.liveBlobFileGarbageSize = getIntProperty(
       db, cfHandle, rocksdb::DB::Properties::kLiveBlobFileGarbageSize);
 
+  // 5. Block cache stats
+  stats.blockCacheCapacity = getIntProperty(
+      db, cfHandle, rocksdb::DB::Properties::kBlockCacheCapacity);
+  stats.blockCacheUsage =
+      getIntProperty(db, cfHandle, rocksdb::DB::Properties::kBlockCacheUsage);
+  stats.blockCachePinnedUsage = getIntProperty(
+      db, cfHandle, rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
   return stats;
 }
 
