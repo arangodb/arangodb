@@ -139,7 +139,7 @@
  * this particular packing of the components of the version number; see the
  * documentation for GEODESIC_VERSION, below.
  **********************************************************************/
-#define GEODESIC_VERSION_NUM(a, b, c) ((((a)*10000 + (b)) * 100) + (c))
+#define GEODESIC_VERSION_NUM(a, b, c) ((((a) * 10000 + (b)) * 100) + (c))
 
 /**
  * The version of the geodesic library as a single integer, packed as MMmmmmpp

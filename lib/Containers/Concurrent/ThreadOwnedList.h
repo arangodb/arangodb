@@ -51,7 +51,7 @@ namespace arangodb::containers {
    well) and then destroys the node.
  */
 template<typename T>
-requires HasSnapshot<T>
+  requires HasSnapshot<T>
 struct ThreadOwnedList
     : public std::enable_shared_from_this<ThreadOwnedList<T>> {
   using Item = T;
@@ -109,9 +109,9 @@ struct ThreadOwnedList
      data types that are non-movable and non-copyable.
    */
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<T>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<T>;
+    }
   auto add(F&& create_data) noexcept -> std::shared_ptr<Node> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
@@ -143,7 +143,7 @@ struct ThreadOwnedList
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires std::invocable<F, typename T::Snapshot>
+    requires std::invocable<F, typename T::Snapshot>
   auto for_node(F&& function) noexcept -> void {
     auto guard = std::shared_lock(_mutex);
     // (2) - this load synchronizes with store in (1) and (3)

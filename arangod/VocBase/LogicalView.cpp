@@ -85,26 +85,22 @@ bool readIsSystem(velocypack::Slice definition) {
 LogicalView::LogicalView(std::pair<ViewType, std::string_view> typeInfo,
                          Database& vocbase, velocypack::Slice definition,
                          bool isUserRequest)
-    : LogicalDataSource{*this,
-                        vocbase,
-                        isUserRequest
-                            ? DataSourceId::none()
-                            : DataSourceId{basics::VelocyPackHelper::
-                                               extractIdValue(definition)},
-                        basics::VelocyPackHelper::getStringValue(
-                            definition, StaticStrings::DataSourceGuid, ""),
-                        isUserRequest
-                            ? DataSourceId::none()
-                            : DataSourceId{basics::VelocyPackHelper::
-                                               stringUInt64(definition.get(
-                                                   StaticStrings::
-                                                       DataSourcePlanId))},
-                        basics::VelocyPackHelper::getStringValue(
-                            definition, StaticStrings::DataSourceName, ""),
-                        readIsSystem(definition),
-                        basics::VelocyPackHelper::getBooleanValue(
-                            definition, StaticStrings::DataSourceDeleted,
-                            false)},
+    : LogicalDataSource{
+          *this,
+          vocbase,
+          isUserRequest ? DataSourceId::none()
+                        : DataSourceId{basics::VelocyPackHelper::extractIdValue(
+                              definition)},
+          basics::VelocyPackHelper::getStringValue(
+              definition, StaticStrings::DataSourceGuid, ""),
+          isUserRequest ? DataSourceId::none()
+                        : DataSourceId{basics::VelocyPackHelper::stringUInt64(
+                              definition.get(StaticStrings::DataSourcePlanId))},
+          basics::VelocyPackHelper::getStringValue(
+              definition, StaticStrings::DataSourceName, ""),
+          readIsSystem(definition),
+          basics::VelocyPackHelper::getBooleanValue(
+              definition, StaticStrings::DataSourceDeleted, false)},
       _typeInfo{std::move(typeInfo)} {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {

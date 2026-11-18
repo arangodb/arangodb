@@ -69,7 +69,7 @@ struct SharedResource {
   }
 
   template<class... Input>
-  requires ForwardingConstructorArgs<SharedResource, Input...>
+    requires ForwardingConstructorArgs<SharedResource, Input...>
   explicit SharedResource(Input&&... args)
       : _data{std::forward<Input>(args)...} {}
 
@@ -117,7 +117,7 @@ struct SharedPtr {
   }
 
   template<class... Input>
-  requires ForwardingConstructorArgs<SharedPtr, Input...>
+    requires ForwardingConstructorArgs<SharedPtr, Input...>
   explicit SharedPtr(Input&&... args)
       : _resource{new SharedResource<T>(std::forward<Input>(args)...)} {}
 

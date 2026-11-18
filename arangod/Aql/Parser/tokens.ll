@@ -838,8 +838,7 @@ class Parser;
 
 %%
 
-// flex calls exit() when an allocation fails. A query's memory limit can make
-// malloc return nullptr, so throw instead and let the query fail.
+// flex calls exit() when an allocation fails; throw instead so only the query fails.
 void* Aqlalloc(yy_size_t size, yyscan_t /*yyscanner*/) {
   void* p = std::malloc(size);
   if (p == nullptr) {

@@ -535,7 +535,7 @@ struct ReplicatedLogMethodsCoordinator final
     return createReplicatedLog(std::move(target))
         .thenValue([options = std::move(options),
                     self = shared_from_this()](auto&& result) mutable
-                   -> futures::Future<ResultT<CreateResult>> {
+                       -> futures::Future<ResultT<CreateResult>> {
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
             return {result};
@@ -546,14 +546,14 @@ struct ReplicatedLogMethodsCoordinator final
             return self->waitForLogReady(*options.id, 1)
                 .thenValue([self,
                             resp = std::move(response)](auto&& result) mutable
-                           -> futures::Future<ResultT<CreateResult>> {
+                               -> futures::Future<ResultT<CreateResult>> {
                   if (result.fail()) {
                     return {result.result()};
                   }
                   return self->clusterInfo
                       .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
+                                     -> ResultT<CreateResult> {
                         if (result.fail()) {
                           return {result};
                         }
@@ -1189,7 +1189,7 @@ struct ReplicatedLogMethodsCoordinator final
                                 fuerte::RestVerb::Get, std::move(path), {},
                                 opts)
         .then([](futures::Try<network::Response>&& tryResult) mutable
-              -> ResultT<velocypack::SharedSlice> {
+                  -> ResultT<velocypack::SharedSlice> {
           auto result = basics::catchToResultT(
               [&] { return std::move(tryResult.get()); });
 

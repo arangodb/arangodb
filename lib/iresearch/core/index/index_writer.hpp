@@ -89,11 +89,9 @@ using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
 // Cleanup reclaims disk space of deleted documents whereas the merge
 // reduces the total no. of segment files on disk.
 using ConsolidationPolicy =
-  std::function<void(
-                  Consolidation& candidates,
-                  const IndexReader& index,
-                  const ConsolidatingSegments& consolidating_segments,
-                  bool favorCleanupOverMerge)>;
+  std::function<void(Consolidation& candidates, const IndexReader& index,
+                     const ConsolidatingSegments& consolidating_segments,
+                     bool favorCleanupOverMerge)>;
 
 enum class ConsolidationError : uint32_t {
   // Consolidation failed
@@ -473,8 +471,10 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
   struct ConsolidationProgress {
-    //  Called after candidates are assembled and consolidation is about to begin.
-    std::function<void(const std::vector<irs::SegmentInfo>& candidates)> beginConsolidation;
+    //  Called after candidates are assembled and consolidation is about to
+    //  begin.
+    std::function<void(const std::vector<irs::SegmentInfo>& candidates)>
+      beginConsolidation;
 
     //  Called after segments merging operation is completed.
     std::function<void(const ConsolidationResult&)> endConsolidation;
@@ -522,9 +522,9 @@ class IndexWriter : private util::noncopyable {
   // given the exact same index_meta containing all segments in the
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
-  ConsolidationResult Consolidate(
-    const ConsolidationPolicy& policy,
-    const ConsolidationProgress& progress, format::ptr codec = nullptr);
+  ConsolidationResult Consolidate(const ConsolidationPolicy& policy,
+                                  const ConsolidationProgress& progress,
+                                  format::ptr codec = nullptr);
 
   // Imports index from the specified index reader into new segment
   // Reader the index reader to import.
@@ -946,12 +946,11 @@ class IndexWriter : private util::noncopyable {
   // (modification during commit()/defragment()), payload_buf_
   std::mutex commit_lock_;
   std::recursive_mutex consolidation_lock_;
-  // During consolidation, we can either perform segments merge or segments cleanup.
-  // When consolidation_merge_or_cleanup_ is true, we attempt merge operation first
-  // during consolidation.
-  // When false, we attempt cleanup first.
+  // During consolidation, we can either perform segments merge or segments
+  // cleanup. When consolidation_merge_or_cleanup_ is true, we attempt merge
+  // operation first during consolidation. When false, we attempt cleanup first.
   // We use this to alternate between merge and cleanup for fair execution
-  bool consolidation_merge_or_cleanup_ { false };
+  bool consolidation_merge_or_cleanup_{false};
   // segments that are under consolidation
   ConsolidatingSegments consolidating_segments_;
   // directory used for initialization of readers

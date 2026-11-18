@@ -558,8 +558,9 @@ string_field::string_field(
 void string_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(
-    str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+  const auto max_len =
+    (std::min)(str.size(),
+               size_t(irs::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
   value_.assign(begin, end);
@@ -601,8 +602,9 @@ string_view_field::string_view_field(
 void string_view_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(
-    str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+  const auto max_len =
+    (std::min)(str.size(),
+               size_t(irs::byte_block_pool::block_type::SIZE - size_len));
 
   value_ = std::string_view(str.data(), max_len);
 }

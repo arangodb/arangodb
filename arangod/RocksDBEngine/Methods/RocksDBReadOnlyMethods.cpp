@@ -60,7 +60,7 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
-  return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
+  return _db->Get(_readOptions, cf, key, val);
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(

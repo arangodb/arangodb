@@ -49,13 +49,13 @@ struct NodeLoadInspectorImpl
       LoadInspectorBase<NodeLoadInspectorImpl, consensus::Node const*, Context>;
 
  public:
-  explicit NodeLoadInspectorImpl(
-      consensus::Node const* node,
-      ParseOptions options = {}) requires(!Base::hasContext)
+  explicit NodeLoadInspectorImpl(consensus::Node const* node,
+                                 ParseOptions options = {})
+    requires(!Base::hasContext)
       : Base(options), _node(node) {}
-  explicit NodeLoadInspectorImpl(
-      consensus::NodePtr const& node,
-      ParseOptions options = {}) requires(!Base::hasContext)
+  explicit NodeLoadInspectorImpl(consensus::NodePtr const& node,
+                                 ParseOptions options = {})
+    requires(!Base::hasContext)
       : Base(options), _node(node.get()) {}
 
   explicit NodeLoadInspectorImpl(consensus::Node const* node,

@@ -50,7 +50,7 @@ rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(
   absl::Cleanup recharge = [val] { rechargeIfCopied(val); };
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
-  return _db->Get(withUdtReadTimestamp(_readOptions, cf), cf, key, val);
+  return _db->Get(_readOptions, cf, key, val);
 }
 
 std::unique_ptr<rocksdb::Iterator>

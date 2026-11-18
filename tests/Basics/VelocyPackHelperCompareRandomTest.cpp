@@ -383,8 +383,7 @@ TEST_F(VPackHelperRandomTest, test_vpackcmps) {
 
   std::vector<std::jthread> _threads;
   _threads.reserve(numberOfThreads);
-  std::generate_n(std::back_inserter(_threads), numberOfThreads,
-                  [&, i = 0]() mutable {
-                    return std::jthread{lambda, seed + i++};
-                  });
+  std::generate_n(
+      std::back_inserter(_threads), numberOfThreads,
+      [&, i = 0]() mutable { return std::jthread{lambda, seed + i++}; });
 }

@@ -48,7 +48,7 @@ using ActionContext =
 struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
-  explicit EmptyAction(){};
+  explicit EmptyAction() {};
 
   auto execute(ActionContext& ctx) const -> void {}
 };
@@ -71,7 +71,7 @@ auto inspect(Inspector& f, EmptyAction& x) {
 struct NoActionPossibleAction {
   static constexpr std::string_view name = "NoActionPossibleAction";
 
-  explicit NoActionPossibleAction(){};
+  explicit NoActionPossibleAction() {};
 
   auto execute(ActionContext& ctx) const -> void {}
 };
@@ -91,7 +91,7 @@ struct AddLogToPlanAction {
         _participants(std::move(participants)),
         _config(std::move(config)),
         _properties(std::move(properties)),
-        _leader(std::move(leader)){};
+        _leader(std::move(leader)) {};
   LogId _id;
   ParticipantsFlagsMap _participants;
   LogPlanConfig _config;
@@ -178,7 +178,7 @@ struct LeaderElectionAction {
       : _electedLeader{electedLeader},
         _effectiveWriteConcern{effectiveWriteConcern},
         _assumedWriteConcern{assumedWriteConcern},
-        _electionReport(electionReport){};
+        _electionReport(electionReport) {};
 
   ServerInstanceReference _electedLeader;
   size_t _effectiveWriteConcern;
@@ -214,7 +214,7 @@ struct UpdateParticipantFlagsAction {
 
   UpdateParticipantFlagsAction(ParticipantId const& participant,
                                ParticipantFlags const& flags)
-      : _participant(participant), _flags(flags){};
+      : _participant(participant), _flags(flags) {};
 
   ParticipantId _participant;
   ParticipantFlags _flags;
@@ -264,7 +264,7 @@ struct RemoveParticipantFromPlanAction {
   static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
 
   RemoveParticipantFromPlanAction(ParticipantId const& participant)
-      : _participant(participant){};
+      : _participant(participant) {};
 
   ParticipantId _participant;
 
@@ -285,7 +285,7 @@ auto inspect(Inspector& f, RemoveParticipantFromPlanAction& x) {
 struct UpdateLogConfigAction {
   static constexpr std::string_view name = "UpdateLogConfigAction";
 
-  UpdateLogConfigAction(LogPlanConfig const& config) : _config(config){};
+  UpdateLogConfigAction(LogPlanConfig const& config) : _config(config) {};
 
   LogPlanConfig _config;
 

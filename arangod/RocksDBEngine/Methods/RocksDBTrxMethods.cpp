@@ -116,7 +116,7 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  rocksdb::ReadOptions ro = withUdtReadTimestamp(_readOptions, cf);
+  rocksdb::ReadOptions const& ro = _readOptions;
   if (readOwnWrites == ReadOwnWrites::no) {
     if (_readWriteBatch) {
       return _readWriteBatch->GetFromBatchAndDB(_db, ro, cf, key, val);

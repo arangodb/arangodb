@@ -497,10 +497,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   exit(exitCode);
 }
 
-bool RocksDBEngine::isTimeTravelEnabled() const {
-  return _optionsProvider.timeTravelEnabled();
-}
-
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
@@ -732,9 +728,6 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  if (isTimeTravelEnabled()) {
-    addFamily(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-  }
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -3164,9 +3157,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  if (isTimeTravelEnabled()) {
-    addCf(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-  }
   builder.close();
 
   if (_throttleListener) {

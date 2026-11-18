@@ -233,7 +233,8 @@ concept FinishesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,       //
                                           ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<std::remove_cvref_t<T>,
                    ReplicatedOperation::IntermediateCommit>;
 

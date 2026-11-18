@@ -43,8 +43,7 @@ std::array<char const*,
         "ZkdIndex",        // We have to keep `ZkdIndex` name for backwards
                            // compatibility.
         "MdiPrefixed",     //
-        "VectorIndex",     //
-        "PrimaryIndex_TT"};
+        "VectorIndex"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
@@ -59,14 +58,13 @@ std::array<char const*,
         "replicated-logs",                          //
         "mdi",                                      //
         "mdi-prefixed",                             //
-        "vector",                                   //
-        "primary-tt"};
+        "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr, nullptr};
+                                            nullptr, nullptr, nullptr};
 
 std::vector<rocksdb::ColumnFamilyHandle*>
     RocksDBColumnFamilyManager::_validHandles;

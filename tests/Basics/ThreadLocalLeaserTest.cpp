@@ -42,7 +42,9 @@ TEST_F(ThreadLocalLeaserTest, testLeaseAccess) {
     ASSERT_EQ(&a, builder);
   }
 
-  { ASSERT_EQ(lease->isEmpty(), true); }
+  {
+    ASSERT_EQ(lease->isEmpty(), true);
+  }
 }
 
 TEST_F(ThreadLocalLeaserTest, testBuilderIsLeasable) {
@@ -60,7 +62,9 @@ TEST_F(ThreadLocalLeaserTest, testLeasedBuilderIsUsable) {
 }
 
 TEST_F(ThreadLocalLeaserTest, testLeasingAndReturningIncreasesStashSize) {
-  { auto b = ThreadLocalBuilderLeaser::lease(); }
+  {
+    auto b = ThreadLocalBuilderLeaser::lease();
+  }
   ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 1);
 }
 

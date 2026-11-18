@@ -2822,8 +2822,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
       }
     });
     std::thread thread2([&writer, &query_doc1, &first_doc]() {
-      while (!first_doc)
-        ;  // busy-wait until first document loaded
+      while (!first_doc);  // busy-wait until first document loaded
       writer->GetBatch().Remove(std::move(query_doc1));
     });
 
@@ -3034,7 +3033,9 @@ TEST_P(index_test_case, document_context) {
     std::string_view name() { return ""; }
 
     bool write(irs::data_output&) {
-      { std::lock_guard cond_lock{cond_mutex}; }
+      {
+        std::lock_guard cond_lock{cond_mutex};
+      }
 
       cond.notify_all();
 
@@ -3071,7 +3072,9 @@ TEST_P(index_test_case, document_context) {
       writer->Commit();
       AssertSnapshotEquality(*writer);
       stop = true;
-      { auto lock = std::lock_guard{field.cond_mutex}; }
+      {
+        auto lock = std::lock_guard{field.cond_mutex};
+      }
       field.cond.notify_all();
     });
 
@@ -6859,7 +6862,8 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // merge all segments
   {
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -7255,26 +7259,27 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   std::vector<std::thread> pool;
 
   for (size_t i = 0; i < thread_count; ++i) {
-    pool.emplace_back(std::thread([&wait_for_all, &writer, i, &callbacks = this->callbacks]() mutable {
-      wait_for_all();
+    pool.emplace_back(std::thread(
+      [&wait_for_all, &writer, i, &callbacks = this->callbacks]() mutable {
+        wait_for_all();
 
-      size_t num_segments = std::numeric_limits<size_t>::max();
+        size_t num_segments = std::numeric_limits<size_t>::max();
 
-      while (num_segments > 1) {
-        auto policy = [&i, &num_segments, &callbacks](
-                        irs::Consolidation& candidates,
-                        const irs::IndexReader& reader,
-                        const irs::ConsolidatingSegments& segments,
-                        bool /*favorCleanupOverMerge*/) mutable {
-          num_segments = reader.size();
-          ConsolidateRange(candidates, segments, reader, i, i + 2);
-        };
+        while (num_segments > 1) {
+          auto policy = [&i, &num_segments, &callbacks](
+                          irs::Consolidation& candidates,
+                          const irs::IndexReader& reader,
+                          const irs::ConsolidatingSegments& segments,
+                          bool /*favorCleanupOverMerge*/) mutable {
+            num_segments = reader.size();
+            ConsolidateRange(candidates, segments, reader, i, i + 2);
+          };
 
-        writer->Consolidate(policy, callbacks);
+          writer->Consolidate(policy, callbacks);
 
-        i = (i + 1) % num_segments;
-      }
-    }));
+          i = (i + 1) % num_segments;
+        }
+      }));
   }
 
   // add dedicated commit thread
@@ -7383,26 +7388,27 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   std::vector<std::thread> pool;
 
   for (size_t i = 0; i < thread_count; ++i) {
-    pool.emplace_back(std::thread([&wait_for_all, &writer, i, &callbacks = this->callbacks]() mutable {
-      wait_for_all();
+    pool.emplace_back(std::thread(
+      [&wait_for_all, &writer, i, &callbacks = this->callbacks]() mutable {
+        wait_for_all();
 
-      size_t num_segments = std::numeric_limits<size_t>::max();
+        size_t num_segments = std::numeric_limits<size_t>::max();
 
-      while (num_segments > 1) {
-        auto policy = [&i, &num_segments](
-                        irs::Consolidation& candidates,
-                        const irs::IndexReader& meta,
-                        const irs::ConsolidatingSegments& segments,
-                        bool /*favorCleanupOverMerge*/) mutable {
-          num_segments = meta.size();
-          ConsolidateRange(candidates, segments, meta, i, i + 2);
-        };
+        while (num_segments > 1) {
+          auto policy = [&i, &num_segments](
+                          irs::Consolidation& candidates,
+                          const irs::IndexReader& meta,
+                          const irs::ConsolidatingSegments& segments,
+                          bool /*favorCleanupOverMerge*/) mutable {
+            num_segments = meta.size();
+            ConsolidateRange(candidates, segments, meta, i, i + 2);
+          };
 
-        writer->Consolidate(policy, callbacks);
+          writer->Consolidate(policy, callbacks);
 
-        i = (i + 1) % num_segments;
-      }
-    }));
+          i = (i + 1) % num_segments;
+        }
+      }));
   }
 
   // add dedicated commit thread
@@ -7605,7 +7611,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     [&expected_consolidating_segments](
       irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
       const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+      bool /*favorCleanupOverMerge*/) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
@@ -7627,11 +7633,12 @@ TEST_P(index_test_case, consolidate_single_segment) {
     AssertSnapshotEquality(*writer);
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // nothing to consolidate
     ASSERT_TRUE(writer->Consolidate(
-      check_consolidating_segments, callbacks));  // check segments registered for
-                                       // consolidation
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // nothing to consolidate
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments,
+                                    callbacks));  // check segments registered
+                                                  // for consolidation
     writer->Commit();
     AssertSnapshotEquality(*writer);
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
@@ -7670,13 +7677,14 @@ TEST_P(index_test_case, consolidate_single_segment) {
     count = 0;
     dir().visit(get_number_of_files_in_segments);
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // nothing to consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // nothing to consolidate
     expected_consolidating_segments = {
       0};  // expect first segment to be marked for consolidation
-    ASSERT_TRUE(writer->Consolidate(
-      check_consolidating_segments, callbacks));  // check segments registered for
-                                       // consolidation
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments,
+                                    callbacks));  // check segments registered
+                                                  // for consolidation
     writer->Commit();
     AssertSnapshotEquality(*writer);
     ASSERT_EQ(1 + count,
@@ -7791,14 +7799,15 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     std::thread consolidation_thread([&]() {
       // consolidate
       ASSERT_TRUE(writer->Consolidate(
-        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{}), callbacks));
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{}),
+        callbacks));
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
         [&expected_consolidating_segments](
           irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
@@ -7974,13 +7983,14 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &callbacks = this->callbacks]() {
       // consolidation will fail because of
-      ASSERT_FALSE(writer->Consolidate(irs::index_utils::MakePolicy(
-        irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+      ASSERT_FALSE(writer->Consolidate(
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+        callbacks));  // consolidate
 
       auto check_consolidating_segments =
         [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*meta*/,
            const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+           bool /*favorCleanupOverMerge*/) {
           ASSERT_TRUE(consolidating_segments.empty());
         };
       // check segments registered for consolidation
@@ -8148,14 +8158,15 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     std::thread consolidation_thread([&writer, &callbacks = this->callbacks]() {
       // consolidation will fail because of
       ASSERT_TRUE(writer->Consolidate(
-        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+        callbacks));
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
         [&expected_consolidating_segments](
           irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
@@ -8309,15 +8320,16 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer, &callbacks = this->callbacks]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-        irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+      ASSERT_TRUE(writer->Consolidate(
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+        callbacks));  // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
         [&expected_consolidating_segments](
           irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
@@ -8451,7 +8463,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [&expected_consolidating_segments](
       irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
       const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+      bool /*favorCleanupOverMerge*/) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
@@ -8497,8 +8509,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->Begin();
     writer->Clear();
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
     writer->Commit();
     AssertSnapshotEquality(*writer);  // commit transaction
 
@@ -8528,8 +8541,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
                        doc3->stored.begin(), doc3->stored.end()));
 
     writer->Begin();
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
     writer->Clear();
     writer->Commit();
     AssertSnapshotEquality(*writer);  // commit transaction
@@ -8555,8 +8569,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8593,8 +8608,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     AssertSnapshotEquality(*writer);
 
     writer->Clear();
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -8614,7 +8630,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     [&expected_consolidating_segments](
       irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
       const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+      bool /*favorCleanupOverMerge*/) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
@@ -8673,8 +8689,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8684,7 +8701,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // all segments are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8697,8 +8715,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       *writer);  // commit transaction (will commit nothing)
     ASSERT_EQ(1 + count, irs::directory_cleaner::clean(
                            dir()));  // +1 for corresponding segments_* file
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // nothing to consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // nothing to consolidate
     writer->Commit();
     AssertSnapshotEquality(
       *writer);  // commit transaction (will commit nothing)
@@ -8772,8 +8791,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
                        doc4->stored.begin(), doc4->stored.end()));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8781,7 +8801,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8894,8 +8915,9 @@ TEST_P(index_test_case, segment_consolidate_commit) {
                        doc4->stored.begin(), doc4->stored.end()));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));  // segments_1
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8903,7 +8925,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9017,7 +9040,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto check_consolidating_segments =
       [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*reader*/,
          const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+         bool /*favorCleanupOverMerge*/) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
@@ -9037,7 +9060,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto merge_adjacent =
       [&j](irs::Consolidation& candidates, const irs::IndexReader& reader,
            const irs::ConsolidatingSegments& /*consolidating_segments*/,
-          bool /*favorCleanupOverMerge*/) {
+           bool /*favorCleanupOverMerge*/) {
         ASSERT_TRUE(j < reader.size());
         candidates.emplace_back(&reader[j++]);
         ASSERT_TRUE(j < reader.size());
@@ -9052,7 +9075,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto check_consolidating_segments =
       [](irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
          const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+         bool /*favorCleanupOverMerge*/) {
         ASSERT_EQ(reader.size(), consolidating_segments.size());
         for (auto& expected_consolidating_segment : reader) {
           ASSERT_TRUE(consolidating_segments.contains(
@@ -9070,7 +9093,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto check_consolidating_segments =
       [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*reader*/,
          const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+         bool /*favorCleanupOverMerge*/) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
@@ -9132,7 +9155,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [&expected_consolidating_segments](
       irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
       const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+      bool /*favorCleanupOverMerge*/) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
@@ -9146,7 +9169,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [&expected_consolidating_segments](
       irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
       const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+      bool /*favorCleanupOverMerge*/) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
@@ -9209,8 +9232,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_FALSE(
       writer->Begin());  // begin transaction (will not start transaction)
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9219,7 +9243,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     // all segments are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9237,8 +9262,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // nothing to consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // nothing to consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -9325,8 +9351,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9334,7 +9361,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9471,8 +9499,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9480,7 +9509,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9657,8 +9687,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9666,7 +9697,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9686,7 +9718,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {0, 1};
 
     // Check name only because of removals
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only, callbacks));
+    ASSERT_TRUE(
+      writer->Consolidate(check_consolidating_segments_name_only, callbacks));
 
     writer->Commit();
     AssertSnapshotEquality(*writer);  // commit pending merge
@@ -9812,8 +9845,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9821,7 +9855,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9836,7 +9871,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only, callbacks));
+    ASSERT_TRUE(
+      writer->Consolidate(check_consolidating_segments_name_only, callbacks));
 
     writer->Commit();
     AssertSnapshotEquality(*writer);  // commit pending merge
@@ -9972,7 +10008,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     auto do_commit_and_consolidate_count =
       [&](irs::Consolidation& candidates, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
         auto sub_policy =
           irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
         sub_policy(candidates, reader, consolidating_segments, true);
@@ -9980,15 +10016,18 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         AssertSnapshotEquality(*writer);
       };
 
-    ASSERT_TRUE(writer->Consolidate(do_commit_and_consolidate_count, callbacks));
+    ASSERT_TRUE(
+      writer->Consolidate(do_commit_and_consolidate_count, callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only, callbacks));
+    ASSERT_TRUE(
+      writer->Consolidate(check_consolidating_segments_name_only, callbacks));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     writer->GetBatch().Remove(*query_doc4);
 
@@ -10104,7 +10143,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -10155,19 +10195,21 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // this consolidation will be postponed
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     auto do_commit_and_consolidate_count =
       [&](irs::Consolidation& candidates, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
         writer->Commit();
         AssertSnapshotEquality(*writer);
         writer->Begin();  // another commit to process pending
@@ -10181,7 +10223,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // this should fail as segments 1 and 0 are actually consolidated on
     // previous  commit inside our test policy
-    ASSERT_FALSE(writer->Consolidate(do_commit_and_consolidate_count, callbacks));
+    ASSERT_FALSE(
+      writer->Consolidate(do_commit_and_consolidate_count, callbacks));
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
     // check all data is deleted
     const auto one_segment_count = count;
@@ -10236,19 +10279,21 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // this consolidation will be postponed
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     auto do_commit_and_consolidate_count =
       [&](irs::Consolidation& candidates, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments,
-                  bool /*favorCleanupOverMerge*/) {
+          bool /*favorCleanupOverMerge*/) {
         writer->Commit();
         AssertSnapshotEquality(*writer);
         writer->Begin();  // another commit to process pending
@@ -10265,7 +10310,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // this should fail as segments 1 and 0 are actually consolidated on
     // previous  commit inside our test policy
-    ASSERT_FALSE(writer->Consolidate(do_commit_and_consolidate_count, callbacks));
+    ASSERT_FALSE(
+      writer->Consolidate(do_commit_and_consolidate_count, callbacks));
     writer->Commit();
     AssertSnapshotEquality(*writer);
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
@@ -10309,7 +10355,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->Begin());  // begin transaction
     // this consolidation will be postponed
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
@@ -10334,7 +10381,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // could consolidate successfully
     ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // cleanup should remove old files
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
@@ -10392,8 +10440,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments, callbacks));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10401,7 +10450,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10418,7 +10468,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only, callbacks));
+    ASSERT_TRUE(
+      writer->Consolidate(check_consolidating_segments_name_only, callbacks));
 
     writer->Commit();
     AssertSnapshotEquality(*writer);  // commit pending merge
@@ -10578,8 +10629,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(writer->Begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10587,7 +10639,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10779,8 +10832,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()), callbacks));  // consolidate
+    ASSERT_TRUE(writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10788,7 +10842,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
-      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+      callbacks));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -13155,7 +13210,8 @@ TEST_P(index_test_case, segment_consolidate) {
     }
 
     ASSERT_TRUE(writer->Consolidate(
-      merge_if_masked, callbacks));  // previous removal now committed and considered
+      merge_if_masked,
+      callbacks));  // previous removal now committed and considered
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -13769,8 +13825,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateBytes options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -13852,8 +13908,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateBytes options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing non-merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -13929,8 +13985,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateBytesAccum options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
     // segments merged because segment[0] is a candidate and needs to be
@@ -13978,8 +14034,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateBytesAccum options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing non-merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -14063,8 +14119,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateDocsLive options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -14119,8 +14175,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateDocsLive options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing non-merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -14206,8 +14262,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateDocsFill options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -14261,8 +14317,8 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     AssertSnapshotEquality(*writer);
     irs::index_utils::ConsolidateDocsFill options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->Consolidate(
-      irs::index_utils::MakePolicy(options), callbacks));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(options),
+                                    callbacks));  // value garanteeing non-merge
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -14719,7 +14775,8 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
   // this consolidation should bring us to one consolidated segment without
   // removals.
   ASSERT_TRUE(writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+    callbacks));
   writer->Commit();
   AssertSnapshotEquality(*writer);
 
@@ -14787,7 +14844,8 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   // this consolidation should bring us to one consolidated segment without
   // removes.
   ASSERT_TRUE(writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+    callbacks));
   writer->Commit();
   AssertSnapshotEquality(*writer);
 
@@ -14849,7 +14907,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
 
   // this consolidation should still be ok
   ASSERT_TRUE(writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+    callbacks));
   writer->Commit();
   AssertSnapshotEquality(*writer);
 }
@@ -14893,7 +14952,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   // this consolidation should bring us to one consolidated segment without
   // removes.
   ASSERT_TRUE(writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+    callbacks));
   // Remove all documents from 'new' segment
   auto query_doc4 = MakeByTerm("name", "D");
   writer->GetBatch().Remove(*(query_doc4.get()));
@@ -14921,7 +14981,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
 
   // this consolidation should still be ok
   ASSERT_TRUE(writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()), callbacks));
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()),
+    callbacks));
   writer->Commit();
   AssertSnapshotEquality(*writer);
 }
@@ -15838,7 +15899,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
 
   sNumCalls.clear();
   const auto res = writer->Consolidate(
-    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{}), callbacks);
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{}),
+    callbacks);
   ASSERT_TRUE(res);
   ASSERT_EQ(3, res.size);
   ASSERT_TRUE(writer->Commit());
@@ -16317,7 +16379,7 @@ TEST_P(index_test_case_11, consolidate_old_format) {
   auto old_codec = irs::formats::get("1_0");
   irs::index_utils::ConsolidateCount consolidate_all;
   ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all),
-    callbacks, old_codec));
+                                  callbacks, old_codec));
   writer->Commit();
   AssertSnapshotEquality(*writer);
   validate_codec(old_codec, 1);

@@ -173,16 +173,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
  public:
   index_test_base() {
-    auto beginCons = [](const auto& ) {
-    };
-    auto endCons = [](const auto& ) {
-    };
-    auto flushProgress = []() {
-      return true;
-    };
+    auto beginCons = [](const auto&) {};
+    auto endCons = [](const auto&) {};
+    auto flushProgress = []() { return true; };
 
-    callbacks = { .beginConsolidation = beginCons,
-      .endConsolidation = endCons, .flushProgress = flushProgress };
+    callbacks = {.beginConsolidation = beginCons,
+                 .endConsolidation = endCons,
+                 .flushProgress = flushProgress};
   }
 
  public:
