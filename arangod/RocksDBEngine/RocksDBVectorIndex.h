@@ -128,6 +128,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                       rocksdb::Slice upper, RocksDBMethods* methods) override;
 
+  Result validateDocument(velocypack::Slice doc) const override;
+
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) override;
 
