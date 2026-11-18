@@ -21,9 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "attributes.hpp"
-
 #include "absl/strings/str_cat.h"
+#include "attributes.hpp"
 #include "utils/register.hpp"
 
 namespace {
