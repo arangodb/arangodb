@@ -3,6 +3,17 @@
 
 * FE-1318: bump moment from 2.30.1 to 2.31.0 to resolve CVE-2026-17495.
 
+* BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
+  `name`" when restoring a dump that contains arangosearch views into a single
+  server. The view links could get the same id as an index from the dump.
+  arangorestore now also reports the first failed collection job instead of a
+  follow-up error from creating search-alias views.
+
+* Fixed a data race in the bundled ICU 64 library when several threads ran their
+  first AQL string search (e.g. `CONTAINS`) concurrently.
+
+* Patch FAISS v1.16.0 with alubsan fix.
+
 * Updated FAISS to v1.16.0.
 
 * Fix a cluster crash for vector search queries that filter on or return only
