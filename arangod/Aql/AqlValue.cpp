@@ -856,7 +856,7 @@ AqlValue AqlValue::clone() const {
         return AqlValue{*this};
       }
       // the payload belongs to something shorter-lived, so detach from it
-      return AqlValue{slice()};
+      return AqlValue{*this};  // EXPERIMENT: devel behaviour
     default:
       break;
   }
