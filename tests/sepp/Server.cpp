@@ -177,7 +177,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
   _server.addFeature<LanguageCheckFeature>();
   _server.addFeature<LanguageFeature>();
-  _server.addFeature<TimeZoneFeature>();
   _server.addFeature<LockfileFeature>();
   _server.addFeature<LogBufferFeature>(metrics);
   _server.addFeature<LoggerFeature>(true);
