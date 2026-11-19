@@ -439,23 +439,20 @@ TEST(ngram_match_utils_test, test_similarity_repeated_ngram) {
   ASSERT_DOUBLE_EQ(
     1.f / 3.f, (irs::ngram_similarity<char, true>(three.data(), three.size(),
                                                   one.data(), one.size(), 1)));
-  ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
-                        one.data(), one.size(), three.data(), three.size(),
-                        1)));
+  ASSERT_DOUBLE_EQ(
+    1, (irs::ngram_similarity<char, true>(one.data(), one.size(), three.data(),
+                                          three.size(), 1)));
 
   const std::string_view abc = "abc";
   ASSERT_DOUBLE_EQ(
-    1.f / 3.f,
-    (irs::ngram_similarity<char, false>(three.data(), three.size(), abc.data(),
-                                        abc.size(), 1)));
+    1.f / 3.f, (irs::ngram_similarity<char, false>(three.data(), three.size(),
+                                                   abc.data(), abc.size(), 1)));
+  ASSERT_DOUBLE_EQ(1.f / 3.f,
+                   (irs::ngram_similarity<char, false>(
+                     abc.data(), abc.size(), three.data(), three.size(), 1)));
   ASSERT_DOUBLE_EQ(
-    1.f / 3.f,
-    (irs::ngram_similarity<char, false>(abc.data(), abc.size(), three.data(),
-                                        three.size(), 1)));
-  ASSERT_DOUBLE_EQ(
-    1.f / 3.f,
-    (irs::ngram_similarity<char, true>(three.data(), three.size(), abc.data(),
-                                       abc.size(), 1)));
+    1.f / 3.f, (irs::ngram_similarity<char, true>(three.data(), three.size(),
+                                                  abc.data(), abc.size(), 1)));
 }
 
 TEST(ngram_match_utils_test, test_similarity_all_empty) {

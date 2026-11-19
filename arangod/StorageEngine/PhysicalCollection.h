@@ -267,19 +267,6 @@ class PhysicalCollection {
 
   virtual bool cacheEnabled() const noexcept = 0;
 
-  // The timestamp at which the currently committed version of `key` was
-  // created, i.e. what a new version has to be newer than. Read straight from
-  // the primary index, whose entries are keyed by that timestamp. An unset
-  // optional means the key has no current version. Only ever called for
-  // collections with time travel enabled.
-  virtual ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
-      std::string_view /*key*/) const {
-    TRI_ASSERT(false);
-    return ResultT<std::optional<std::uint64_t>>::error(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "time travel is not supported by this storage engine");
-  }
-
   virtual uint64_t objectId() const noexcept { return 0; }
 
  protected:

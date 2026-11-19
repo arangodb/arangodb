@@ -421,9 +421,10 @@ int put(const std::string& path, const std::string& dir_type,
     return 1;
   }
 
-  indexer_threads = (std::min)(
-    indexer_threads, (std::numeric_limits<size_t>::max)() - 1 -
-                       consolidation_threads);  // -1 for commiter thread
+  indexer_threads =
+    (std::min)(indexer_threads,
+               (std::numeric_limits<size_t>::max)() - 1 -
+                 consolidation_threads);  // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
   irs::IndexWriterOptions opts;

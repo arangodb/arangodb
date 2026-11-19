@@ -38,6 +38,6 @@ class HttpEndpointProvider : public application_features::ApplicationFeature {
 
   HttpEndpointProvider(application_features::ApplicationServer& server,
                        std::type_index registration, std::string_view name)
-      : application_features::ApplicationFeature(server, registration, name){};
+      : application_features::ApplicationFeature(server, registration, name) {};
 };
 }  // namespace arangodb

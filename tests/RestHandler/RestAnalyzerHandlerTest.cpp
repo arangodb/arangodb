@@ -46,8 +46,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#define ASSERT_ARANGO_OK(x) \
-  { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
+#define ASSERT_ARANGO_OK(x)                  \
+  {                                          \
+    ASSERT_TRUE(x.ok()) << x.errorMessage(); \
+  }
 
 using namespace std::literals::string_literals;
 

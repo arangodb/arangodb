@@ -161,7 +161,9 @@ TEST(FutureTest, lacksPreconditionValid) {
 #define DOIT(STMT)                      \
   do {                                  \
     auto f = makeValid();               \
-    { STMT; }                           \
+    {                                   \
+      STMT;                             \
+    }                                   \
     std::ignore = ::copy(std::move(f)); \
     STMT;                               \
   } while (false)

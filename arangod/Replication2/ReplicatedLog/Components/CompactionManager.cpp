@@ -118,9 +118,8 @@ void CompactionManager::triggerAsyncCompaction(
 
       auto promises = std::move(guard->compactAggregator);
 
-      auto storeRes = basics::catchToResultT([&]() -> auto {
-        return guard->storage.transaction();
-      });
+      auto storeRes = basics::catchToResultT(
+          [&]() -> auto { return guard->storage.transaction(); });
       if (storeRes.fail()) {
         // The participant might be gone
         LOG_CTX("d7724", DEBUG, self->loggerContext)

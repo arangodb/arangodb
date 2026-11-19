@@ -29,7 +29,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/OperationOrigin.h"
-#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -60,18 +59,11 @@ namespace arangodb::tests {
 // visibility. Tests that need multi-op or read-own-writes behavior instead
 // drive a SingleCollectionTransaction directly (see the transaction-lifecycle
 // group in DocumentTest.cpp).
-//
-// Parameterized on the base data-test fixture, which selects plain vs.
-// time-travel engine and carries the matching `timeTravelEnabled` flag, so the
-// same helpers serve both worlds and the collection can never disagree with the
-// engine it runs on.
-template<class BaseDataTest>
-class BasicStorageEngineDocumentTest : public BaseDataTest {
+class StorageEngineDocumentTest : public StorageEngineDataTest {
  protected:
   void SetUp() override {
-    _database = this->makeDatabase("testDatabase", 42);
-    _collection = this->makeCollection(*_database, "testCollection",
-                                       BaseDataTest::timeTravelEnabled);
+    _database = makeDatabase("testDatabase", 42);
+    _collection = makeCollection(*_database, "testCollection");
   }
 
   void TearDown() override {
@@ -192,23 +184,9 @@ class BasicStorageEngineDocumentTest : public BaseDataTest {
   // Reads a document by key in its own read-only transaction, committing before
   // returning so the result slice stays valid for the caller.
   OperationResult read(std::string_view key) {
-    return readWith(key, transaction::Options{});
-  }
-
-  // Point-in-time read: returns the version of `key` that was valid at
-  // `timestamp`, or "document not found" if the key had no version then.
-  // Time-travel collections only.
-  OperationResult readAt(std::string_view key, uint64_t timestamp) {
-    transaction::Options trxOptions;
-    trxOptions.readTimestamp = timestamp;
-    return readWith(key, trxOptions);
-  }
-
-  OperationResult readWith(std::string_view key,
-                           transaction::Options const& trxOptions) {
     auto lookup = keyOnly(key);
     SingleCollectionTransaction trx{context(), *_collection,
-                                    AccessMode::Type::READ, trxOptions};
+                                    AccessMode::Type::READ};
     if (auto res = trx.begin(); res.fail()) {
       return OperationResult{res, OperationOptions{}};
     }
@@ -281,11 +259,5 @@ class BasicStorageEngineDocumentTest : public BaseDataTest {
   std::unique_ptr<Database> _database;
   std::shared_ptr<LogicalCollection> _collection;
 };
-
-using StorageEngineDocumentTest =
-    BasicStorageEngineDocumentTest<StorageEngineDataTest>;
-
-using TimeTravelStorageEngineDocumentTest =
-    BasicStorageEngineDocumentTest<TimeTravelStorageEngineDataTest>;
 
 }  // namespace arangodb::tests

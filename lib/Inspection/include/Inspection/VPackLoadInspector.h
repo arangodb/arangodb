@@ -53,17 +53,17 @@ struct VPackLoadInspectorImpl
       LoadInspectorBase<VPackLoadInspectorImpl, velocypack::Slice, Context>;
 
  public:
-  explicit VPackLoadInspectorImpl(
-      velocypack::Builder& builder,
-      ParseOptions options = {}) requires(!Base::hasContext)
+  explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
+                                  ParseOptions options = {})
+    requires(!Base::hasContext)
       : VPackLoadInspectorImpl(builder.slice(), options) {}
 
   explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
                                   ParseOptions options, Context const& context)
       : VPackLoadInspectorImpl(builder.slice(), options, context) {}
 
-  explicit VPackLoadInspectorImpl(
-      velocypack::Slice slice, ParseOptions options) requires(!Base::hasContext)
+  explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options)
+    requires(!Base::hasContext)
       : Base(options), _slice(slice) {}
 
   explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options,

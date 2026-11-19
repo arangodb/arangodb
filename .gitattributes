@@ -11,3 +11,13 @@ arangod/Aql/grammar.cpp merge=ours
 js/node/node_modules/* linguist-vendored
 tests/* linguist-vendored
 3rdParty/* linguist-vendored
+
+# C/C++ sources to format; this also applies to files in enterprise/.
+# Files that are not formatted are listed in .clang-format-ignore.
+*.c clang-format
+*.cc clang-format
+*.cpp clang-format
+*.h clang-format
+*.hpp clang-format
+*.ipp clang-format
+*.tpp clang-format

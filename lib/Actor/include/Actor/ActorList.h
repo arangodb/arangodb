@@ -35,8 +35,8 @@ namespace arangodb::actor {
 template<typename F, typename ActorPID>
 concept Predicate =
     requires(F fn, std::shared_ptr<ActorBase<ActorPID>> const& actor) {
-  { fn(actor) } -> std::same_as<bool>;
-};
+      { fn(actor) } -> std::same_as<bool>;
+    };
 
 template<typename ActorPID>
 struct ActorList {
@@ -105,9 +105,9 @@ struct ActorList {
   }
 
   template<typename F>
-  requires requires(F fn, std::shared_ptr<ActorBase<ActorPID>>& actor) {
-    {fn(actor)};
-  }
+    requires requires(F fn, std::shared_ptr<ActorBase<ActorPID>>& actor) {
+      { fn(actor) };
+    }
   auto apply(F&& fn) -> void {
     actors.doUnderLock([&fn](ActorMap& map) {
       for (auto&& [_, entry] : map) {

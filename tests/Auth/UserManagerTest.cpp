@@ -38,7 +38,7 @@ namespace arangodb::tests::auth_info_test {
 
 class TestQueryRegistry : public QueryRegistry {
  public:
-  TestQueryRegistry() : QueryRegistry(1.0){};
+  TestQueryRegistry() : QueryRegistry(1.0) {};
   ~TestQueryRegistry() override = default;
 };
 

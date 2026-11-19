@@ -497,7 +497,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
                 if (oldConf.isObject() && oldConf.hasKey(key)) {
                   u.setConfigData(VPackCollection::remove(
                       oldConf, std::unordered_set<std::string>{key}));
-                }       // Nothing to do. We do not have a config yet.
+                }  // Nothing to do. We do not have a config yet.
               } else {  // We need to merge the new key into the config
                 VPackBuilder b;
                 b(VPackValue(VPackValueType::Object))(key,
