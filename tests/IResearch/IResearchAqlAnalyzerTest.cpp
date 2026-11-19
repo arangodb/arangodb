@@ -1103,3 +1103,66 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array_keep_null) {
   }
   assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
+
+namespace {
+irs::analysis::analyzer::ptr makeAqlAnalyzer(std::string_view json) {
+  return irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackParser::fromJson(json)->slice()),
+      false);
+}
+}  // namespace
+
+TEST_F(IResearchAqlAnalyzerTest, test_indexed_access) {
+  // positive and negative index
+  {
+    auto ptr =
+        makeAqlAnalyzer(R"({"queryString": "RETURN SPLIT(@param, ' ')[1]"})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "quick brown fox", {{"brown", 0}}, true);
+  }
+  {
+    auto ptr =
+        makeAqlAnalyzer(R"({"queryString": "RETURN SPLIT(@param, ' ')[-1]"})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "quick brown fox", {{"fox", 0}}, true);
+  }
+  // out of bounds index returns null, which is subject to keepNull
+  {
+    auto ptr = makeAqlAnalyzer(
+        R"({"queryString": "RETURN SPLIT(@param, ' ')[5]", "keepNull": true})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "quick brown fox", {{"", 0}}, true);
+  }
+  {
+    auto ptr = makeAqlAnalyzer(
+        R"({"queryString": "RETURN SPLIT(@param, ' ')[5]", "keepNull": false})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "quick brown fox", {}, true);
+  }
+  // index computed from the input value, must be re-evaluated for every input
+  {
+    auto ptr = makeAqlAnalyzer(
+        R"({"queryString": "RETURN ['a', 'b', 'c'][TO_NUMBER(@param)]"})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "2", {{"c", 0}}, true);
+    assert_analyzer(ptr.get(), "-3", {{"a", 0}}, true);
+  }
+  // numeric-like string key (not rewritten to an attribute access)
+  {
+    auto ptr = makeAqlAnalyzer(
+        R"({"queryString": "RETURN {'1': UPPER(@param)}['1']"})");
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "abc", {{"ABC", 0}}, true);
+  }
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_indexed_access_invalid) {
+  // allowing indexed access must not allow forbidden constructs in its
+  // operands
+  ASSERT_EQ(nullptr,
+            makeAqlAnalyzer(
+                R"({"queryString": "RETURN TOKENS(@param, 'identity')[0]"})"));
+  ASSERT_EQ(nullptr,
+            makeAqlAnalyzer(R"({"queryString": "RETURN [1, 2][@other]"})"));
+}
