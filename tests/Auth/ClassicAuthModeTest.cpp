@@ -860,37 +860,33 @@ TEST_F(ClassicAuthModeTest, UserOperationsAreForbiddenWithoutSystemReadWrite) {
 // Every alternative of auth::perms::detail::AdminList. Kept explicit so that
 // adding an admin permission without extending this list is visible here
 // rather than silently untested.
-using AllAdminPermissions =
-    std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
-               p::AdminMonitoringInternal, p::AdminAuthReload,
-               p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
-               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
-               p::AdminMonitorTransactions, p::AdminKillTransactions,
-               p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
-               p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
-               p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
-               p::AdminLicense, p::AdminBackup, p::AdminReadReplicatedLog,
-               p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
-               p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
+using AllAdminPermissions = std::tuple<
+    p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
+    p::AdminMonitoringInternal, p::AdminAuthReload, p::AdminCrashHandler,
+    p::AdminApiCalls, p::AdminMonitorQueries, p::AdminKillQueries,
+    p::AdminMonitorTransactions, p::AdminKillTransactions, p::AdminShutdown,
+    p::AdminReadLogs, p::AdminSetLogLevel, p::AdminOptions,
+    p::AdminSupervisionState, p::AdminRemoveServer, p::AdminClusterInfo,
+    p::AdminMaintenance, p::AdminRebalance, p::AdminLicense, p::AdminBackup,
+    p::AdminReadReplicatedLog, p::AdminWriteReplicatedLog, p::AdminDump,
+    p::AdminRestore, p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
 
-static_assert(std::tuple_size_v<AllAdminPermissions> == 30);
+static_assert(std::tuple_size_v<AllAdminPermissions> == 29);
 
 // Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
 // that pin "forbidden without RW", which no longer holds for AdminQueryCache.
-using AllAdminPermissionsExceptQueryCache =
-    std::tuple<p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
-               p::AdminMonitoringInternal, p::AdminAuthReload,
-               p::AdminCrashHandler, p::AdminApiCalls, p::AdminAqlQueries,
-               p::AdminMonitorAqlQueries, p::AdminKillAqlQueries,
-               p::AdminMonitorTransactions, p::AdminKillTransactions,
-               p::AdminShutdown, p::AdminReadLogs, p::AdminSetLogLevel,
-               p::AdminOptions, p::AdminSupervisionState, p::AdminRemoveServer,
-               p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
-               p::AdminLicense, p::AdminBackup, p::AdminReadReplicatedLog,
-               p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
-               p::AdminWalAccess, p::AdminReadAgency>;
+using AllAdminPermissionsExceptQueryCache = std::tuple<
+    p::AdminReadUsers, p::AdminMoveShards, p::AdminMonitoring,
+    p::AdminMonitoringInternal, p::AdminAuthReload, p::AdminCrashHandler,
+    p::AdminApiCalls, p::AdminMonitorQueries, p::AdminKillQueries,
+    p::AdminMonitorTransactions, p::AdminKillTransactions, p::AdminShutdown,
+    p::AdminReadLogs, p::AdminSetLogLevel, p::AdminOptions,
+    p::AdminSupervisionState, p::AdminRemoveServer, p::AdminClusterInfo,
+    p::AdminMaintenance, p::AdminRebalance, p::AdminLicense, p::AdminBackup,
+    p::AdminReadReplicatedLog, p::AdminWriteReplicatedLog, p::AdminDump,
+    p::AdminRestore, p::AdminWalAccess, p::AdminReadAgency>;
 
-static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 29);
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 28);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();

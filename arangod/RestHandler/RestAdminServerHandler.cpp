@@ -385,7 +385,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            auth::perms::AdminAqlQueries{});
+            auth::perms::AdminMonitorQueries{});
         r.fail()) {
       generateError(r);
       return;

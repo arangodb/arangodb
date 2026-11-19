@@ -34,8 +34,8 @@
 // A user's own queries are always accessible; listing, killing or clearing
 // them asks nothing beyond the base checks. As soon as a query of another
 // user is encountered, the server asks exactly once per request for
-// `AdminMonitorAqlQueries` (lists, and clearing other users' slow queries)
-// or `AdminKillAqlQueries` (kill). In classic auth mode both mean
+// `AdminMonitorQueries` (lists, and clearing other users' slow queries)
+// or `AdminKillQueries` (kill). In classic auth mode both mean
 // read-write access to _system. A read-only user therefore neither sees nor
 // kills nor clears the other user's query, an admin does.
 //
@@ -74,8 +74,8 @@ const baseQuestions = [
   'UseApiVersion version=v1',
   `UseDatabase name=${DB} level=read`
 ];
-const monitorQuestions = baseQuestions.concat(['AdminMonitorAqlQueries']);
-const killQuestions = baseQuestions.concat(['AdminKillAqlQueries']);
+const monitorQuestions = baseQuestions.concat(['AdminMonitorQueries']);
+const killQuestions = baseQuestions.concat(['AdminKillQueries']);
 const propertiesQuestions =
   baseQuestions.concat([`UpdateQueryProperties db=${DB}`]);
 
@@ -211,7 +211,7 @@ function queryApiAuthzSuite() {
       assertEqual('alice', found[0].user);
     },
 
-    // a read-only user is asked for AdminMonitorAqlQueries and does not get to see
+    // a read-only user is asked for AdminMonitorQueries and does not get to see
     // the other user's query, its query string or its bind variables
     testListCurrentForeignQueryAsUser: function () {
       startQueryAs('alice');
@@ -253,7 +253,7 @@ function queryApiAuthzSuite() {
       assertEqual(200, res.status, JSON.stringify(res.json));
     },
 
-    // a read-only user is asked for AdminKillAqlQueries, gets 403 and the query
+    // a read-only user is asked for AdminKillQueries, gets 403 and the query
     // keeps running
     testKillForeignQueryAsUser: function () {
       const id = startQueryAs('alice');

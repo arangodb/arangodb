@@ -214,8 +214,8 @@ function miscApiAuthzSuite () {
 
     // ── /_api/query/* ────────────────────────────────────────────────────
     // RestQueryHandler asks no can() for any of these in this test: the lists
-    // and clear-slow only ask AdminMonitorAqlQueries and kill only asks
-    // AdminKillAqlQueries when they encounter a query of another user (none
+    // and clear-slow only ask AdminMonitorQueries and kill only asks
+    // AdminKillQueries when they encounter a query of another user (none
     // here, root owns every query; see queries.js), and registry / all=true
     // use isSuperuserOrDisabled(), which is not logged.
     testSlowQueries: function () {
