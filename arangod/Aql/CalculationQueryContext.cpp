@@ -32,7 +32,7 @@ CalculationQueryContext::CalculationQueryContext(
     : QueryContext(vocbase, operationOrigin),
       _resolver(vocbase),
       _transactionContext(vocbase, operationOrigin) {
-  _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
+  _ast = std::make_unique<Ast>(*this, resourceMonitor(), NON_CONST_PARAMETERS);
   _trx = AqlTransaction::create(newTrxContext(), _collections,
                                 _queryOptions.transactionOptions,
                                 std::unordered_set<std::string>{});

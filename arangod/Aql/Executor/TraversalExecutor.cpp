@@ -364,7 +364,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
-      _ast(infos.getQuery()),
+      _ast(infos.getQuery(), infos.getQuery().resourceMonitor()),
       _inputRow{CreateInvalidInputRowHint{}},
       _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is

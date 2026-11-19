@@ -654,7 +654,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(_trx, _input, infos),
       _infos(infos),
-      _ast(_infos.query()),
+      _ast(_infos.query(), _infos.query().resourceMonitor()),
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());

@@ -55,7 +55,7 @@ TEST_F(ParserTest, parseSimpleTernaryCondition) {
 
   auto queryContext = aql::StandaloneCalculation::buildQueryContext(
       vocbase, transaction::OperationOriginTestCase{});
-  auto ast = aql::Ast(*queryContext);
+  auto ast = aql::Ast(*queryContext, queryContext->resourceMonitor());
   auto queryString =
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
@@ -95,7 +95,7 @@ TEST_F(ParserTest, parseSimpleTernaryConditionForceInline) {
 
   auto queryContext = aql::StandaloneCalculation::buildQueryContext(
       vocbase, transaction::OperationOriginTestCase{});
-  auto ast = aql::Ast(*queryContext);
+  auto ast = aql::Ast(*queryContext, queryContext->resourceMonitor());
   auto queryString =
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
@@ -136,7 +136,7 @@ TEST_F(ParserTest, parseTernaryWithSubquery) {
 
   auto queryContext = aql::StandaloneCalculation::buildQueryContext(
       vocbase, transaction::OperationOriginTestCase{});
-  auto ast = aql::Ast(*queryContext);
+  auto ast = aql::Ast(*queryContext, queryContext->resourceMonitor());
   auto queryString = aql::QueryString(std::string_view(
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 
@@ -258,7 +258,7 @@ TEST_F(ParserTest, parseTernaryWithSubqueryForceInline) {
 
   auto queryContext = aql::StandaloneCalculation::buildQueryContext(
       vocbase, transaction::OperationOriginTestCase{});
-  auto ast = aql::Ast(*queryContext);
+  auto ast = aql::Ast(*queryContext, queryContext->resourceMonitor());
   auto queryString = aql::QueryString(std::string_view(
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 

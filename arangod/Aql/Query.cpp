@@ -1465,7 +1465,7 @@ void Query::init(bool createProfile) {
   if (_queryOptions.optimizePlanForCaching) {
     flags |= AstPropertyFlag::NON_CONST_PARAMETERS;
   }
-  _ast = std::make_unique<Ast>(*this, flags);
+  _ast = std::make_unique<Ast>(*this, this->resourceMonitor(), flags);
 }
 
 void Query::registerQueryInTransactionState() {

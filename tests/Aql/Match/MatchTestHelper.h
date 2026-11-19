@@ -118,7 +118,8 @@ class MatchTestFixture : public ::testing::Test {
         vocbase, transaction::OperationOriginTestCase{});
     queryContext->queryOptions().enableMatchStatement = "experimental";
 
-    auto ast = std::make_unique<Ast>(*queryContext);
+    auto ast =
+        std::make_unique<Ast>(*queryContext, queryContext->resourceMonitor());
     auto queryString = QueryString(query);
     Parser parser(*queryContext, &queryContext->warnings(), *ast, queryString);
     parser.parse();

@@ -44,7 +44,7 @@ class FilterBuilderTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   std::shared_ptr<Query> query{server.createFakeQuery()};
-  Ast ast{*query};
+  Ast ast{*query, query->resourceMonitor()};
   ExecutionPlan plan{&ast, false};
   FilterBuilder filters{plan, &ast};
 };

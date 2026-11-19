@@ -150,7 +150,7 @@ void parseAndValidateReturnExpression(tests::mocks::MockAqlServer const& server,
   auto queryContext = StandaloneCalculation::buildQueryContext(
       server.getSystemDatabase(), transaction::OperationOriginTestCase{});
 
-  Ast ast(*queryContext);
+  Ast ast(*queryContext, queryContext->resourceMonitor());
 
   QueryString queryString(query);
   Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
@@ -172,7 +172,7 @@ void parseAndOptimizeReturnExpression(tests::mocks::MockAqlServer const& server,
   auto queryContext = StandaloneCalculation::buildQueryContext(
       server.getSystemDatabase(), transaction::OperationOriginTestCase{});
 
-  Ast ast(*queryContext);
+  Ast ast(*queryContext, queryContext->resourceMonitor());
 
   QueryString queryString(query);
   Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
@@ -419,7 +419,7 @@ TEST_F(AstNodeTest,
 TEST_F(AstNodeTest, constantObjectWithSpliceCanMaterializeToVPack) {
   auto queryContext = StandaloneCalculation::buildQueryContext(
       _server.getSystemDatabase(), transaction::OperationOriginTestCase{});
-  Ast ast(*queryContext);
+  Ast ast(*queryContext, queryContext->resourceMonitor());
   QueryString queryString(
       std::string_view("RETURN { ...{ a: 1, b: 2 }, c: 3 }"));
   Parser parser(*queryContext, &queryContext->warnings(), ast, queryString);
