@@ -238,14 +238,13 @@ auto loadJwtSecretFolder(std::filesystem::path path) -> ResultT<AuthInfo> {
   return result;
 }
 
-auto generateRandomHS256AuthInfo() -> AuthInfo {
-  uint16_t m = 254;
-  auto result = std::string();
-  result.reserve(HS256Key::kMaxSecretLength);
-  for (size_t i = 0; i < HS256Key::kMaxSecretLength; i++) {
-    result += static_cast<char>(1 + RandomGenerator::interval(m));
+auto generateRandomHS256AuthInfo() -> ResultT<AuthInfo> {
+  auto result = rest::SslInterface::sslRandBytes(HS256Key::kMaxSecretLength);
+  if (!result.has_value()) {
+    return Result{TRI_ERROR_INTERNAL, "Failed to generate a random HS256 key"};
   }
-  return AuthInfo{.activeSecret = HS256Key{result}, .passiveSecrets = {}};
+  return AuthInfo{.activeSecret = HS256Key{result.value()},
+                  .passiveSecrets = {}};
 }
 
 }  // namespace arangodb::auth
