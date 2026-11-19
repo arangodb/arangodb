@@ -22,8 +22,6 @@
 
 #include "Logger/LogSecurity.h"
 
-#include "Assertions/Assert.h"
-
 #include <ostream>
 
 namespace arangodb {
@@ -55,10 +53,10 @@ std::string_view securityClassifier(Security security) noexcept {
     case Security::SystemErrors:
       return "arango-security-event-system-errors";
   }
-  // Just in case somebody forgets a `return` statement in the above
-  // switch statement:
-  TRI_ASSERT(false);
-  return {};
+  // If we forget a case above, the compiler complains twice, first
+  // because the `switch` does not handle a case, and second, because
+  // the function can reach its end without a return statement.
+  // Therefore we do not return anything here nor assert.
 }
 
 std::ostream& operator<<(std::ostream& out, Security security) {
