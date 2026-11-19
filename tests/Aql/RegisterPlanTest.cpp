@@ -68,7 +68,13 @@ struct ExecutionNodeMock {
                     std::vector<Variable const*> input,
                     std::vector<Variable const*> output,
                     std::vector<ExecutionNodeMock>* subquery = nullptr)
-      : _type(type), _input(), _output(), _plan(type), _subquery(subquery) {
+      : _type(type),
+        _input(),
+        _output(),
+        _alwaysCopiesRows(ExecutionNode::alwaysCopiesRows(type)),
+        _isIncreaseDepth(ExecutionNode::isIncreaseDepth(type)),
+        _plan(type),
+        _subquery(subquery) {
     for (auto const& v : input) {
       _input.emplace(v);
     }
@@ -81,12 +87,18 @@ struct ExecutionNodeMock {
 
   auto id() const noexcept -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
-  auto isIncreaseDepth() -> bool {
-    return ExecutionNode::isIncreaseDepth(getType());
-  }
+  auto isIncreaseDepth() -> bool { return _isIncreaseDepth; }
 
-  auto alwaysCopiesRows() -> bool {
-    return ExecutionNode::alwaysCopiesRows(getType());
+  auto alwaysCopiesRows() -> bool { return _alwaysCopiesRows; }
+
+  // Some node classes override the defaults of their node type. For example,
+  // MaterializeRocksDBNode passes blocks through although MATERIALIZE copies
+  // rows by default.
+  auto overrideRowHandling(bool alwaysCopiesRows,
+                           bool isIncreaseDepth) && -> ExecutionNodeMock&& {
+    _alwaysCopiesRows = alwaysCopiesRows;
+    _isIncreaseDepth = isIncreaseDepth;
+    return std::move(*this);
   }
 
   auto getType() const noexcept -> ExecutionNode::NodeType { return _type; }
@@ -189,6 +201,8 @@ struct ExecutionNodeMock {
   ExecutionNode::NodeType _type;
   VarSet _input;
   VarSet _output;
+  bool _alwaysCopiesRows;
+  bool _isIncreaseDepth;
   VarSetStack _usedLaterStack;
   VarSetStack _varsValidStack;
   RegIdSetStack _regsToKeep;
@@ -419,6 +433,24 @@ TEST_F(RegisterPlanTest,
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
       ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
       ExecutionNodeMock{ExecutionNode::CALCULATION, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 1);
+  assertPlanKeepsAllVariables(plan, myList);
+}
+
+TEST_F(
+    RegisterPlanTest,
+    planRegisters_should_not_reuse_register_if_node_overrides_to_passthrough) {
+  auto&& [vars, ptrs] = generateVars<2>();
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::MATERIALIZE, {&vars[0]}, {&vars[1]}}
+          .overrideRowHandling(false, false),
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
