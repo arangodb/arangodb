@@ -10,7 +10,7 @@
   },
   "license": {
    "name": "Business Source License 1.1",
-   "url": "https://github.com/arangodb/arangodb/blob/devel/LICENSE"
+   "url": "https://github.com/arangodb/arangodb/blob/3.12/LICENSE"
   },
   "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",

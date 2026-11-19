@@ -10,7 +10,7 @@
   },
   "license": {
    "name": "Business Source License 1.1",
-   "url": "https://github.com/arangodb/arangodb/blob/devel/LICENSE"
+   "url": "https://github.com/arangodb/arangodb/blob/3.12/LICENSE"
   },
   "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",
@@ -24739,7 +24739,7 @@
   },
   "/_db/{database-name}/_api/index": {
    "get": {
-    "description": "Returns an object with an `indexes` attribute containing an array of all\nindex descriptions for the given collection. The same information is also\navailable in the `identifiers` attribute as an object with the index identifiers\nas object keys.\n",
+    "description": "Returns an object with an `indexes` attribute containing an array of all\nindex descriptions for the given collection. The same information is also\navailable in the `identifiers` attribute as an object with the index identifiers\nas object keys.\n\nThe user account you authenticate with needs at least `ro` access to\nthe collection. In cluster deployments, Coordinators didn't check\nthis access level for all requests up to v3.12.12.\n",
     "operationId": "listIndexes",
     "parameters": [
      {
@@ -24785,6 +24785,9 @@
     "responses": {
      "200": {
       "description": "returns a JSON object containing a list of indexes on that collection.\n"
+     },
+     "403": {
+      "description": "The user account you authenticate with has `none` access to the\ncollection.\n"
      }
     },
     "summary": "List all indexes of a collection",
@@ -26263,7 +26266,7 @@
     ]
    },
    "get": {
-    "description": "The result is an object describing the index. It has at least the following\nattributes:\n\n- `id`: the identifier of the index\n\n- `type`: the index type\n\nAll other attributes are type-dependent. For example, some indexes provide\n`unique` or `sparse` flags, whereas others don't. Some indexes also provide\na selectivity estimate in the `selectivityEstimate` attribute of the result.\n",
+    "description": "The result is an object describing the index. It has at least the following\nattributes:\n\n- `id`: the identifier of the index\n\n- `type`: the index type\n\nAll other attributes are type-dependent. For example, some indexes provide\n`unique` or `sparse` flags, whereas others don't. Some indexes also provide\na selectivity estimate in the `selectivityEstimate` attribute of the result.\n\nThe user account you authenticate with needs at least `ro` access to\nthe collection. In cluster deployments, Coordinators didn't check\nthis access level for all requests up to v3.12.12.\n",
     "operationId": "getIndex",
     "parameters": [
      {
@@ -26289,6 +26292,9 @@
     "responses": {
      "200": {
       "description": "If the index exists, then a *HTTP 200* is returned.\n"
+     },
+     "403": {
+      "description": "The user account you authenticate with has `none` access to the\ncollection.\n"
      },
      "404": {
       "description": "If the index does not exist, then a *HTTP 404*\nis returned.\n"
@@ -27391,7 +27397,7 @@
   },
   "/_db/{database-name}/_api/query/current": {
    "get": {
-    "description": "Returns a list of the AQL queries that currently run in the specified\ndatabase.\n\nQuery tracking needs to be enabled by the\n[`--query.tracking` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--querytracking)\nor at runtime with the `enabled` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf query tracking is disabled for the current database,\nan **empty list** is returned.\n",
+    "description": "Returns a list of the AQL queries that currently run in the specified\ndatabase.\n\nQuery tracking needs to be enabled by the\n[`--query.tracking` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--querytracking)\nor at runtime with the `enabled` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf query tracking is disabled for the current database,\nan **empty list** is returned.\n\nFrom v3.12.13 onward, only the queries of the user account you\nauthenticate with are returned, unless you are an administrator.\nAdministrators get the queries of all users.\nBeing an administrator means that the user account you authenticate with\nhas `rw` access to the `_system` database (classic authorization) or the\n`coredb-admin` role (RBAC). Requests with a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens) are not restricted.\n",
     "operationId": "listAqlQueries",
     "parameters": [
      {
@@ -27715,7 +27721,7 @@
     ]
    },
    "put": {
-    "description": "Modify one or more query tracking properties at runtime for the\nspecified database.\n",
+    "description": "Modify one or more query tracking properties at runtime for the\nspecified database.\n\nFrom v3.12.13 onward, the user account you authenticate with needs\n`rw` access to the specified database (classic authorization).\nWith RBAC, none of the predefined roles grants the permission to change\nthe query tracking properties, so only requests with a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens) can do so.\nChanging the properties is not possible in read-only mode, except with a\nsuperuser JWT. Up to v3.12.12, any user account with at least `ro`\naccess to the database could change the properties.\n",
     "operationId": "updateAqlQueryTrackingProperties",
     "parameters": [
      {
@@ -27867,6 +27873,42 @@
        }
       },
       "description": "The request is malformed.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The user account you authenticate with lacks `rw` access to\nthe specified database, or the server is in read-only mode\n(from v3.12.13 onward).\n"
      }
     },
     "summary": "Update the AQL query tracking configuration",
@@ -27963,7 +28005,7 @@
   },
   "/_db/{database-name}/_api/query/slow": {
    "delete": {
-    "description": "Clears the list of slow AQL queries for the current database.\n",
+    "description": "Clears the list of slow AQL queries for the current database.\n\nFrom v3.12.13 onward, only the entries of the user account you\nauthenticate with are removed from the list, unless you are an\nadministrator. Administrators clear the entire list.\nBeing an administrator means that the user account you authenticate with\nhas `rw` access to the `_system` database (classic authorization) or the\n`coredb-admin` role (RBAC). Requests with a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens) are not restricted.\n",
     "operationId": "clearSlowAqlQueryList",
     "parameters": [
      {
@@ -28057,7 +28099,7 @@
     ]
    },
    "get": {
-    "description": "Returns a list of the recently finished AQL queries that exceeded the\nslow query threshold in the specified database.\n\nSlow query tracking needs to be enabled by the\n[`--query.tracking-slow-queries` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--querytracking-slow-queries)\nor at runtime with the `trackSlowQueries` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf slow query tracking is disabled for the current database,\nan **empty list** is returned.\n\nThe maximum amount of queries in the list can be controlled by setting\nthe `maxSlowQueries` query tracking property via the\n`PUT /_db/{database-name}/_api/query/properties` endpoint at runtime.\n\nThe threshold for treating a query as *slow* can be adjusted separate\nfor queries with the `stream` option on or off by setting the\n[`--query.slow-threshold`](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--queryslow-threshold)\nand [`--query.slow-streaming-threshold`](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--queryslow-streaming-threshold)\nstartup options or at runtime with the `slowQueryThreshold` and\n`slowStreamingQueryThreshold` query tracking properties of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\n",
+    "description": "Returns a list of the recently finished AQL queries that exceeded the\nslow query threshold in the specified database.\n\nSlow query tracking needs to be enabled by the\n[`--query.tracking-slow-queries` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--querytracking-slow-queries)\nor at runtime with the `trackSlowQueries` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf slow query tracking is disabled for the current database,\nan **empty list** is returned.\n\nThe maximum amount of queries in the list can be controlled by setting\nthe `maxSlowQueries` query tracking property via the\n`PUT /_db/{database-name}/_api/query/properties` endpoint at runtime.\n\nThe threshold for treating a query as *slow* can be adjusted separate\nfor queries with the `stream` option on or off by setting the\n[`--query.slow-threshold`](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--queryslow-threshold)\nand [`--query.slow-streaming-threshold`](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--queryslow-streaming-threshold)\nstartup options or at runtime with the `slowQueryThreshold` and\n`slowStreamingQueryThreshold` query tracking properties of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\n\nFrom v3.12.13 onward, only the slow queries of the user account you\nauthenticate with are returned, unless you are an administrator.\nAdministrators get the slow queries of all users.\nBeing an administrator means that the user account you authenticate with\nhas `rw` access to the `_system` database (classic authorization) or the\n`coredb-admin` role (RBAC). Requests with a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens) are not restricted.\n",
     "operationId": "listSlowAqlQueries",
     "parameters": [
      {
@@ -28258,7 +28300,7 @@
   },
   "/_db/{database-name}/_api/query/{query-id}": {
    "delete": {
-    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancellation point.\n",
+    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancellation point.\n\nFrom v3.12.13 onward, you can only kill queries of the user account you\nauthenticate with, unless you are an administrator. Administrators can\nkill the queries of all users.\nBeing an administrator means that the user account you authenticate with\nhas `rw` access to the `_system` database (classic authorization) or the\n`coredb-admin` role (RBAC). Requests with a\n[superuser JWT](https://docs.arango.ai/arangodb/3.12/develop/http-api/authentication/#jwt-superuser-tokens) are not restricted.\n",
     "operationId": "deleteAqlQuery",
     "parameters": [
      {
@@ -28299,7 +28341,7 @@
       "description": "The request is malformed.\n"
      },
      "403": {
-      "description": "In case the `all` parameter is used but the request was made in a\ndifferent database than `_system`, or by a non-privileged user.\n"
+      "description": "In case the `all` parameter is used but the request was made in a\ndifferent database than `_system`, or by a non-privileged user.\n\nAlso returned if the query belongs to a different user and the user\naccount you authenticate with lacks `rw` access to the `_system`\ndatabase (from v3.12.13 onward).\n"
      },
      "404": {
       "description": "A query with the specified identifier cannot be found.\n"
@@ -28342,7 +28384,7 @@
        "schema": {
         "properties": {
          "ttl": {
-          "description": "The time-to-live for the new batch (in seconds).\n",
+          "description": "The time-to-live for the new batch (in seconds).\nValues above `86400` (24 hours) are capped from v3.12.13 onward.\n",
           "type": "number"
          }
         },
@@ -28442,7 +28484,7 @@
        "schema": {
         "properties": {
          "ttl": {
-          "description": "The time-to-live for the new batch (in seconds)\n",
+          "description": "The new time-to-live for the batch (in seconds).\nValues above `86400` (24 hours) are capped from v3.12.13 onward.\n",
           "type": "number"
          }
         },
