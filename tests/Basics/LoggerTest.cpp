@@ -623,8 +623,8 @@ TEST_F(LoggerSecurityTest, combination_cache_is_thread_safe) {
 
 TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
   startCapturing(/*useJson*/ false);
-  LOG_TOPIC("8d2fd", INFO, Logger::FIXME,
-            Security::Authentication | Security::Violations)
+  LOG_SECURITY("8d2fd", INFO, Logger::FIXME,
+               Security::Authentication | Security::Violations)
       << "multi security test message";
 
   auto messages = collect();
@@ -637,8 +637,8 @@ TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
 
 TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
   startCapturing(/*useJson*/ true);
-  LOG_TOPIC("8d2fe", INFO, Logger::FIXME,
-            Security::DataAccess | Security::AccessControl)
+  LOG_SECURITY("8d2fe", INFO, Logger::FIXME,
+               Security::DataAccess | Security::AccessControl)
       << "multi json security test message";
 
   auto messages = collect();
@@ -654,12 +654,12 @@ TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
 
 TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
   startCapturing(/*useJson*/ false);
-  LOG_TOPIC("8d2f1", INFO, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, Security::Authentication)
       << "security test message";
   LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
-  LOG_TOPIC_IF("8d2f3", INFO, Logger::FIXME, Security::AccessControl, true)
+  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, Security::AccessControl, true)
       << "conditional security test message";
-  LOG_TOPIC_IF("8d2f4", INFO, Logger::FIXME, Security::AccessControl, false)
+  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, Security::AccessControl, false)
       << "suppressed security test message";
 
   auto messages = collect();
@@ -684,7 +684,7 @@ TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
 
 TEST_F(LoggerSecurityTest, json_format_contains_classifier) {
   startCapturing(/*useJson*/ true);
-  LOG_TOPIC("8d2f5", INFO, Logger::FIXME, Security::DataAccess)
+  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, Security::DataAccess)
       << "json \"security\" test message";
   LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
 
@@ -731,7 +731,7 @@ TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(false);
   // DEBUG is below the default level of both the topic and the appender
-  LOG_TOPIC("8d2f8", DEBUG, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f8", DEBUG, Logger::FIXME, Security::Authentication)
       << "debug security message";
   EXPECT_TRUE(collect().empty());
 }
@@ -740,12 +740,12 @@ TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(true);
   // DEBUG is below the default level of both the topic and the appender
-  LOG_TOPIC("8d2f9", DEBUG, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f9", DEBUG, Logger::FIXME, Security::Authentication)
       << "forced debug security message";
   LOG_TOPIC("8d2fa", DEBUG, Logger::FIXME) << "plain debug message";
-  LOG_TOPIC_IF("8d2fb", TRACE, Logger::FIXME, Security::AccessControl, true)
+  LOG_SECURITY_IF("8d2fb", TRACE, Logger::FIXME, Security::AccessControl, true)
       << "forced trace security message";
-  LOG_TOPIC_IF("8d2fc", TRACE, Logger::FIXME, Security::AccessControl, false)
+  LOG_SECURITY_IF("8d2fc", TRACE, Logger::FIXME, Security::AccessControl, false)
       << "suppressed trace security message";
 
   auto messages = collect();

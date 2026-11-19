@@ -64,8 +64,8 @@
       << ::arangodb::Logger::FUNCTION(__FUNCTION__) \
       << ::arangodb::Logger::LOGID((id))
 
-/// @brief logs a message for a topic given that a condition is true.
-/// `security` is a `std::optional<::arangodb::Security>`, which marks
+/// @brief internal helper: logs a message for a topic given that a condition
+/// is true. `security` is a `std::optional<::arangodb::Security>`, which marks
 /// the log message as a security event of a specific category (or
 /// `std::nullopt` if it is not a security event). if
 /// Logger::alwaysLogSecurityEvents() is set (FedRAMP High mode), security
@@ -102,37 +102,30 @@
 
 #endif
 
-/// LOG_TOPIC_IF can be called with four arguments (id, level, topic, cond),
-/// in which case the message is not a security event, or with five arguments
-/// (id, level, topic, security, cond), where `security` is a value of the
-/// `::arangodb::Security` enum.
-#define ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, security, cond) \
-  ARANGO_INTERNAL_LOG_STREAM(level, topic, security, (cond))             \
+/// @brief logs a message for a topic given that a condition is true, and
+/// marks it as a security event. `security` is a value of the
+/// `::arangodb::Security` enum (possibly several categories OR-ed together).
+/// all other logging macros delegate to this one.
+#define LOG_SECURITY_IF(id, level, topic, security, cond)    \
+  ARANGO_INTERNAL_LOG_STREAM(level, topic, security, (cond)) \
       << (topic) << ARANGO_INTERNAL_LOG_HELPER((id))
-#define ARANGO_INTERNAL_LOG_TOPIC_IF_4(id, level, topic, cond) \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::std::nullopt, cond)
-#define ARANGO_INTERNAL_LOG_TOPIC_IF_SELECT(_1, _2, _3, _4, _5, name, ...) name
-#define LOG_TOPIC_IF(...)                                               \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_SELECT(__VA_ARGS__,                      \
-                                      ARANGO_INTERNAL_LOG_TOPIC_IF_5,   \
-                                      ARANGO_INTERNAL_LOG_TOPIC_IF_4, ) \
-  (__VA_ARGS__)
+
+/// @brief logs a message for a topic given that a condition is true.
+/// the message is not a security event.
+#define LOG_TOPIC_IF(id, level, topic, cond) \
+  LOG_SECURITY_IF(id, level, topic, ::std::nullopt, cond)
+
+/// @brief logs a message for a topic and marks it as a security event.
+/// this simply redirects to LOG_SECURITY_IF(...) with an always true
+/// condition.
+#define LOG_SECURITY(id, level, topic, security) \
+  LOG_SECURITY_IF(id, level, topic, security, true)
 
 /// @brief logs a message for a topic.
-/// this simply redirects to LOG_TOPIC_IF(...) with an always true condition.
-/// it can be called with three arguments (id, level, topic), in which case
-/// the message is not a security event, or with four arguments
-/// (id, level, topic, security), where `security` is a value of the
-/// `::arangodb::Security` enum.
-#define ARANGO_INTERNAL_LOG_TOPIC_3(id, level, topic) \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, ::std::nullopt, true)
-#define ARANGO_INTERNAL_LOG_TOPIC_4(id, level, topic, security) \
-  ARANGO_INTERNAL_LOG_TOPIC_IF_5(id, level, topic, security, true)
-#define ARANGO_INTERNAL_LOG_TOPIC_SELECT(_1, _2, _3, _4, name, ...) name
-#define LOG_TOPIC(...)                                                       \
-  ARANGO_INTERNAL_LOG_TOPIC_SELECT(__VA_ARGS__, ARANGO_INTERNAL_LOG_TOPIC_4, \
-                                   ARANGO_INTERNAL_LOG_TOPIC_3, )            \
-  (__VA_ARGS__)
+/// this simply redirects to LOG_SECURITY_IF(...) without a security category
+/// and with an always true condition.
+#define LOG_TOPIC(id, level, topic) \
+  LOG_SECURITY_IF(id, level, topic, ::std::nullopt, true)
 
 /// @brief logs a message for debugging during development
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
