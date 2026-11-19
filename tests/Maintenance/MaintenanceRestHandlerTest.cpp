@@ -37,7 +37,7 @@ class TestHandler : public arangodb::MaintenanceRestHandler {
  public:
   TestHandler(arangodb::application_features::ApplicationServer& server,
               arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
-      : arangodb::MaintenanceRestHandler(server, req, res){};
+      : arangodb::MaintenanceRestHandler(server, req, res) {};
 
   bool test_parsePutBody(VPackSlice const& parameters) {
     return parsePutBody(parameters);

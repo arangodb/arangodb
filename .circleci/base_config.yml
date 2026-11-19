@@ -678,22 +678,21 @@ jobs:
 
   clang-format:
     docker:
-      - image: alpine:3.15
+      - image: arangodb/clang-format:22.1.3
+        # the image's entrypoint is the format/validate wrapper for local use
+        entrypoint: /bin/sh
     resource_class: small
     steps:
       - attach_workspace:
           at: .
       - run:
-          name: Install clang-format
-          command: |
-            apk add --no-cache git bash coreutils grep clang-extra-tools=12.0.1-r1
-      - run:
-          name: Print clang-format version
-          command: clang-format --version
-      - run:
           name: Run clang-format
+          # C/C++ sources are marked in .gitattributes, files to skip are listed in .clang-format-ignore
           command: |
-            scripts/clang-format-circleci.sh
+            clang-format --version
+            { git ls-files; git -C enterprise ls-files | sed 's|^|enterprise/|'; } \
+              | git check-attr --stdin clang-format | sed -n 's/: clang-format: set$//p' \
+              | xargs clang-format -i
       - run:
           name: Store diff
           command: |
@@ -930,11 +929,12 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
-            # clang-tidy can only parse if generated headers (voc-errors.h, ...) exist,
-            # and the headers of dependencies fetched into build/_deps (boost). Boost's
-            # header-only code includes its implementation from .ipp files.
+            # clang-tidy and cppcheck can only parse if generated headers (voc-errors.h,
+            # build.h, ...) exist, and the headers of dependencies fetched into
+            # build/_deps (boost, abseil). Boost's header-only code includes its
+            # implementation from .ipp files.
             - run:
-                name: Stage generated headers for clang-tidy
+                name: Stage generated headers for clang-tidy and cppcheck
                 command: |
                   cd /root/project
                   find build \( -name '*.h' -o -name '*.hpp' -o -name '*.ipp' -o -name '*.inc' -o -name '*.csx' \) -print0 \
@@ -1426,6 +1426,7 @@ jobs:
           name: Run cppcheck
           command: |
             ln -s /root/workspace/build/ /root/project/
+            cp -r /root/workspace/tidy-headers/build/. /root/workspace/build/
             cd /root/project/
             utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json
       - run:

@@ -92,7 +92,9 @@ TEST_F(CollectionMutablePropertiesTest, test_empty_input) {
   // but applyDefaultsAndValidate() rejects it, which is tested in the
   // CreateCollectionRequestTest.
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok()) << " On body " << body.toJson();
   EXPECT_TRUE(testee->name.empty());

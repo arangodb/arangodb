@@ -1430,7 +1430,9 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
           "collection ");
       errorMsg += shard;
       LOG_TOPIC("33a3b", DEBUG, Logger::MAINTENANCE) << errorMsg;
-      { VPackObjectBuilder o(&ret); }
+      {
+        VPackObjectBuilder o(&ret);
+      }
       return {ret, true, true};
     }
 
@@ -1555,7 +1557,9 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     errorMsg += e.what();
     errorMsg += " (this is expected if the database was recently deleted).";
     LOG_TOPIC("7fe5d", WARN, Logger::MAINTENANCE) << errorMsg;
-    { VPackObjectBuilder o(&ret); }
+    {
+      VPackObjectBuilder o(&ret);
+    }
     return {ret, true, true};
   }
 }
@@ -1611,7 +1615,9 @@ static VPackBuilder assembleLocalDatabaseInfo(
     errorMsg += ", exception: ";
     errorMsg += e.what();
     LOG_TOPIC("989b6", DEBUG, Logger::MAINTENANCE) << errorMsg;
-    { VPackObjectBuilder o(&ret); }
+    {
+      VPackObjectBuilder o(&ret);
+    }
     return ret;
   }
 }

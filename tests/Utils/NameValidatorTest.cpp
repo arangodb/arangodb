@@ -766,9 +766,9 @@ TEST(IndexNameValidatorTest, test_isAllowedName_traditionalNames) {
   EXPECT_FALSE(
       arangodb::IndexNameValidator::validateName(false, std::string_view("😀"))
           .ok());
-  EXPECT_FALSE(
-      arangodb::IndexNameValidator::validateName(false, std::string_view("😀 🍺"))
-          .ok());
+  EXPECT_FALSE(arangodb::IndexNameValidator::validateName(
+                   false, std::string_view("😀 🍺"))
+                   .ok());
   EXPECT_FALSE(arangodb::IndexNameValidator::validateName(
                    false, std::string_view("maçã"))
                    .ok());
@@ -883,9 +883,9 @@ TEST(IndexNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_TRUE(
       arangodb::IndexNameValidator::validateName(true, std::string_view("😀"))
           .ok());
-  EXPECT_TRUE(
-      arangodb::IndexNameValidator::validateName(true, std::string_view("😀 🍺"))
-          .ok());
+  EXPECT_TRUE(arangodb::IndexNameValidator::validateName(
+                  true, std::string_view("😀 🍺"))
+                  .ok());
   EXPECT_TRUE(
       arangodb::IndexNameValidator::validateName(true, std::string_view("maçã"))
           .ok());
@@ -1123,9 +1123,9 @@ TEST(AnalyzerNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::validateName(
                   true, std::string_view("mötör"))
                   .ok());
-  EXPECT_TRUE(
-      arangodb::AnalyzerNameValidator::validateName(true, std::string_view("😀"))
-          .ok());
+  EXPECT_TRUE(arangodb::AnalyzerNameValidator::validateName(
+                  true, std::string_view("😀"))
+                  .ok());
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::validateName(
                   true, std::string_view("😀 🍺"))
                   .ok());
@@ -1425,8 +1425,8 @@ TEST(ViewNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_TRUE(arangodb::ViewNameValidator::validateName(true, true,
                                                         std::string_view("😀"))
                   .ok());
-  EXPECT_TRUE(arangodb::ViewNameValidator::validateName(true, true,
-                                                        std::string_view("😀 🍺"))
+  EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
+                  true, true, std::string_view("😀 🍺"))
                   .ok());
   EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
                   true, true, std::string_view("maçã"))

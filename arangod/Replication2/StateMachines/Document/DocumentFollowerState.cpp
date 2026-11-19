@@ -283,7 +283,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
       .then([weak = weak_from_this(), leader = std::move(leader), snapshotId,
              snapshotVersion](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
-            -> futures::Future<SnapshotTransferResult> {
+                -> futures::Future<SnapshotTransferResult> {
         auto catchRes =
             basics::catchToResultT([&] { return std::move(tryResult).get(); });
         if (catchRes.fail()) {

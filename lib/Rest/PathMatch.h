@@ -87,7 +87,7 @@ constexpr static bool match_constant_v =
 template<typename A, typename P = std::remove_reference_t<A>,
          typename T = std::remove_pointer_t<P>>
 constexpr static bool match_variable_v =
-    std::is_pointer_v<P>&& std::is_assignable_v<T, std::string_view>;
+    std::is_pointer_v<P> && std::is_assignable_v<T, std::string_view>;
 template<typename T>
 constexpr static bool valid_match_component_v =
     match_constant_v<T> || match_variable_v<T>;

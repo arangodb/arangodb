@@ -245,12 +245,12 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   if (forPersistence) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add(arangodb::StaticStrings::ObjectId,
-                VPackValue(absl::AlphaNum{objectId()}.Piece()));
+                VPackValue(absl::AlphaNum(objectId()).Piece()));
   }
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(absl::AlphaNum{_iid.id()}.Piece()));
+              velocypack::Value(absl::AlphaNum(_iid.id()).Piece()));
   builder.add(arangodb::StaticStrings::IndexType,
               velocypack::Value(oldtypeName(type())));
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
@@ -283,7 +283,7 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
     }
     // Short circuit. If id is correct the index is identical.
     std::string_view idRef = value.stringView();
-    return idRef == absl::AlphaNum{id().id()}.Piece();
+    return idRef == absl::AlphaNum(id().id()).Piece();
   }
   return IResearchInvertedIndex::matchesDefinition(other,
                                                    collection().vocbase());

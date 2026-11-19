@@ -56,7 +56,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
   return AttributeNamePath(std::move(vec), resMonitor);
 };
-}
+}  // namespace
 
 class IResearchInvertedIndexConditionTest
     : public ::testing::Test,

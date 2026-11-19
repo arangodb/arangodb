@@ -120,7 +120,9 @@ TEST(BackgroundJwtRenewalTest, stopsPromptlyOnDestruction) {
       clock.timeSource());
 
   auto const start = std::chrono::steady_clock::now();
-  { auto const renewal = BackgroundJwtRenewal{token, 10s}; }
+  {
+    auto const renewal = BackgroundJwtRenewal{token, 10s};
+  }
 
   EXPECT_LT(std::chrono::steady_clock::now() - start, 2s);
 }

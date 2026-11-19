@@ -10224,9 +10224,6 @@ namespace fakeit {
 #define CONST_R_VAL_REF_OVERLOADED_METHOD_PTR(mock, method, prototype) \
     fakeit::Prototype<prototype>::MemberType<typename MOCK_TYPE(mock)>::getConstRValRef(&MOCK_TYPE(mock)::method)
 
-#define Dtor(mock) \
-    (mock).dtor().setMethodDetails(#mock,"destructor")
-
 #define Method(mock, method) \
     (mock).template stub<__COUNTER__>(&MOCK_TYPE(mock)::method).setMethodDetails(#mock,#method)
 

@@ -248,7 +248,9 @@ class CreateCollectionRequestTest : public ::testing::Test {
 
 TEST_F(CreateCollectionRequestTest, test_requires_some_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   assertParsingThrows(body);
 }
 

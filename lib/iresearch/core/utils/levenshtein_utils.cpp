@@ -199,7 +199,7 @@ class parametric_states {
       return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(SEED));
     }
 
-    bool operator()(const parametric_state& state) const noexcept {
+    size_t operator()(const parametric_state& state) const noexcept {
       size_t value = parametric_state_hash::seed();
       for (auto& pos : state) {
         // cppcheck-suppress unreadVariable

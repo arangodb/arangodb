@@ -85,7 +85,9 @@ class CollectionIdentityTest : public ::testing::Test {
 
 TEST_F(CollectionIdentityTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->id.id(), 0);
