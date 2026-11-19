@@ -1,4 +1,4 @@
-add_executable(async_registry_gdb_pretty_printer EXCLUDE_FROM_ALL
+add_executable(async_registry_gdb_pretty_printer
   async_registry_gdb_pretty_printer_test.cpp)
 target_link_libraries(async_registry_gdb_pretty_printer
   PRIVATE
