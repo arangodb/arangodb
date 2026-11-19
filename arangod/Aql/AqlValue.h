@@ -353,24 +353,19 @@ struct AqlValue final {
   /// @brief whether or not the value must be destroyed
   bool requiresDestruction() const noexcept;
 
-  /// @brief whether this is a slice pointer into memory that outlives every
-  /// AqlItemBlock. only such a pointer may be stored in a block cell without
-  /// being copied first.
+  /// @brief whether this is a slice pointer into memory that outlives the
+  /// query execution. This pointer can be stored in an AqlItemBlock.
   bool isStaticSlice() const noexcept;
 
-  /// @brief whether this value does not own its payload and must not be kept:
-  /// a slice pointer without the static flag, valid only while whatever it
-  /// points into stays alive. this covers more than the results of borrow(),
-  /// e.g. at() into a parent or AqlValueHintSliceNoCopy. a static slice does
-  /// not own its payload either, but it can be kept, so it is not borrowed.
+  /// @brief whether this value does not own its payload and must not be kept.
+  /// This is usually because this AqlValue points into memory owned by
+  /// another AqlValue.
   bool isBorrowed() const noexcept;
 
-  /// @brief a value that does not own its payload, for reading only.
-  /// managed slices and strings become a short-lived slice pointer in constant
-  /// time. inline values and slice pointers are returned unchanged. a RANGE is
-  /// copied, because it has no pointer form and is treated as a value.
-  /// the caller should destroy() the result either way; that is a no-op for
-  /// everything except the range copy.
+  /// @brief creates a borrowed value. For already borrowed values or inline
+  /// values this is a noop. For ranges, this is a copy. Managed slices will
+  /// result in borrowed slices and the lifetime of the returned AqlValue is
+  /// bound to `this`.
   AqlValue borrow() const;
 
   /// @brief a slice pointer into memory that outlives every AqlItemBlock.
