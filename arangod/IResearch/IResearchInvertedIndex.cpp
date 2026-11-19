@@ -284,10 +284,8 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
   }
 
  private:
-  aql::AqlValue getVariableValue(aql::Variable const*, bool,
-                                 bool& mustDestroy) const final {
+  aql::AqlValue getVariableValue(aql::Variable const*) const final {
     TRI_ASSERT(false);
-    mustDestroy = false;
     return {};
   }
 

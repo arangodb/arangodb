@@ -49,8 +49,12 @@ class ExpressionContext : public arangodb::ICancellationToken {
 
   virtual ~ExpressionContext() = default;
 
-  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                                    bool& mustDestroy) const = 0;
+  /// @brief the value is borrowed from the context or from the current input
+  /// row, so detach() it to keep it beyond the current evaluation. some values
+  /// are returned as owned copies instead, e.g. a range, which has no borrowed
+  /// form. so the caller must destroy the result if requiresDestruction() is
+  /// true.
+  virtual AqlValue getVariableValue(Variable const* variable) const = 0;
 
   virtual void registerWarning(ErrorCode errorCode, std::string_view msg) = 0;
   virtual void registerError(ErrorCode errorCode, std::string_view msg) = 0;

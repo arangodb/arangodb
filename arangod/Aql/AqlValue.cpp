@@ -854,7 +854,7 @@ AqlValue AqlValue::clone() const {
         return AqlValue{*this};
       }
       // the payload belongs to something shorter-lived, so detach from it
-      return AqlValue{*this};  // EXPERIMENT: devel behaviour
+      return AqlValue{slice()};
     default:
       break;
   }
@@ -1293,6 +1293,12 @@ bool AqlValue::isRange() const noexcept { return type() == RANGE; }
 Range const* AqlValue::range() const {
   TRI_ASSERT(isRange());
   return _data.rangeMeta.range;
+}
+
+AqlValue AqlValue::detach() && {
+  AqlValue result = isBorrowed() ? clone() : AqlValue{*this};
+  erase();
+  return result;
 }
 
 void AqlValue::erase() noexcept {

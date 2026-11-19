@@ -70,30 +70,20 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
 
   ~EnumerateListExpressionContext() override = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override {
+  AqlValue getVariableValue(Variable const* variable) const override {
     return QueryExpressionContext::getVariableValue(
-        variable, doCopy, mustDestroy,
-        [this](Variable const* variable, bool doCopy,
-               bool& mustDestroy) -> AqlValue {
-          mustDestroy = doCopy;
+        variable, [this](Variable const* variable) -> AqlValue {
           auto const searchId = variable->id;
           for (size_t i = 0; i < _outputVariables.size(); ++i) {
             if (searchId == _outputVariables[i]->id) {
-              if (doCopy) {
-                return _currentValues[i].clone();
-              }
-              return _currentValues[i];
+              return _currentValues[i].borrow();
             }
           }
 
           for (auto const& [varId, regId] : _varsToRegister) {
             if (varId == searchId) {
               TRI_ASSERT(_inputRow.has_value());
-              if (doCopy) {
-                return _inputRow->get().getValue(regId).clone();
-              }
-              return _inputRow->get().getValue(regId);
+              return _inputRow->get().getValue(regId).borrow();
             }
           }
           THROW_ARANGO_EXCEPTION_MESSAGE(

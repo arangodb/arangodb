@@ -47,20 +47,14 @@ void ExecutorExpressionContext::adjustInputRow(
   _inputRow = inputRow;
 }
 
-AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
-                                                     bool doCopy,
-                                                     bool& mustDestroy) const {
+AqlValue ExecutorExpressionContext::getVariableValue(
+    Variable const* variable) const {
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
-        mustDestroy = doCopy;
+      variable, [this](Variable const* variable) {
         auto const searchId = variable->id;
         for (auto const& [varId, regId] : _varsToRegister) {
           if (varId == searchId) {
-            if (doCopy) {
-              return _inputRow.get().getValue(regId).clone();
-            }
-            return _inputRow.get().getValue(regId);
+            return _inputRow.get().getValue(regId).borrow();
           }
         }
         THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -359,7 +359,7 @@ struct AqlValue final {
 
   /// @brief whether this value does not own its payload and must not be kept.
   /// This is usually because this AqlValue points into memory owned by
-  /// another AqlValue.
+  /// another AqlValue. Use detach() to get a value that can be kept.
   bool isBorrowed() const noexcept;
 
   /// @brief creates a borrowed value. For already borrowed values or inline
@@ -474,6 +474,12 @@ struct AqlValue final {
 
   /// @brief clone a value
   AqlValue clone() const;
+
+  /// @brief a value that can be kept: a borrowed value is cloned, and any
+  /// other value is returned as it is. an owned payload is handed over
+  /// instead of copied. afterwards this value is always None, so destroying
+  /// it again is a no-op.
+  AqlValue detach() &&;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
   void erase() noexcept;

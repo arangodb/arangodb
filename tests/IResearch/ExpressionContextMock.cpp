@@ -33,8 +33,7 @@ ExpressionContextMock::~ExpressionContextMock() {
 }
 
 arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
-    arangodb::aql::Variable const* variable, bool doCopy,
-    bool& mustDestroy) const {
+    arangodb::aql::Variable const* variable) const {
   auto it = vars.find(variable->name);
   if (vars.end() == it) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -42,13 +41,7 @@ arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
     //    return {};
   }
 
-  if (doCopy) {
-    mustDestroy = true;
-    return it->second.clone();
-  }
-
-  mustDestroy = false;
-  return it->second;
+  return it->second.borrow();
 }
 
 // TRI_vocbase_t& ExpressionContextMock::vocbase() const {

@@ -69,48 +69,29 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+    Variable const* variable) const {
   TRI_ASSERT(_input.isInitialized());
 
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+      variable, [this](Variable const* variable) {
         for (size_t i = 0; i < _vars.size(); ++i) {
           auto const& v = _vars[i];
           if (v->id == variable->id) {
             TRI_ASSERT(i < _regs.size());
-            mustDestroy = doCopy;
-            if (doCopy) {
-              if (i == _vertexVarIdx) {
-                return _vertexValue.clone();
-              }
-              if (i == _edgeVarIdx) {
-                return _edgeValue.clone();
-              }
-              if (i == _pathVarIdx) {
-                return _pathValue.clone();
-              }
-              // Search InputRow
-              RegisterId const& regId = _regs[i];
-              TRI_ASSERT(regId.isConstRegister() ||
-                         regId < _input.getNumRegisters());
-              return _input.getValue(regId).clone();
-            } else {
-              if (i == _vertexVarIdx) {
-                return _vertexValue;
-              }
-              if (i == _edgeVarIdx) {
-                return _edgeValue;
-              }
-              if (i == _pathVarIdx) {
-                return _pathValue;
-              }
-              // Search InputRow
-              RegisterId const& regId = _regs[i];
-              TRI_ASSERT(regId.isConstRegister() ||
-                         regId < _input.getNumRegisters());
-              return _input.getValue(regId);
+            if (i == _vertexVarIdx) {
+              return _vertexValue.borrow();
             }
+            if (i == _edgeVarIdx) {
+              return _edgeValue.borrow();
+            }
+            if (i == _pathVarIdx) {
+              return _pathValue.borrow();
+            }
+            // Search InputRow
+            RegisterId const& regId = _regs[i];
+            TRI_ASSERT(regId.isConstRegister() ||
+                       regId < _input.getNumRegisters());
+            return _input.getValue(regId).borrow();
           }
         }
 

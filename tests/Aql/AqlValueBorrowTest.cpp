@@ -186,6 +186,52 @@ TEST(AqlValueBorrowTest, clone_of_a_borrow_owns_its_copy) {
   copy.destroy();
 }
 
+TEST(AqlValueBorrowTest, detach_of_a_borrow_owns_its_copy) {
+  auto builder = largeObject();
+  AqlValue owner{builder->slice()};
+  AqlValue borrowed = owner.borrow();
+
+  AqlValue detached = std::move(borrowed).detach();
+  EXPECT_TRUE(detached.requiresDestruction());
+  EXPECT_NE(detached.slice().begin(), owner.slice().begin());
+  EXPECT_TRUE(borrowed.isNone());
+
+  owner.destroy();
+  EXPECT_EQ(detached.slice().get("someLongAttributeName").stringView(),
+            "someLongAttributeValue");
+  detached.destroy();
+}
+
+TEST(AqlValueBorrowTest, detach_of_an_owned_value_passes_on_the_payload) {
+  auto builder = largeObject();
+  AqlValue owner{builder->slice()};
+  auto const* payload = owner.slice().begin();
+
+  AqlValue detached = std::move(owner).detach();
+  EXPECT_TRUE(detached.requiresDestruction());
+  EXPECT_EQ(detached.slice().begin(), payload);
+  // the source no longer owns the payload, so destroying both is safe
+  EXPECT_TRUE(owner.isNone());
+  owner.destroy();
+  detached.destroy();
+}
+
+TEST(AqlValueBorrowTest, detach_keeps_static_and_inline_values) {
+  auto builder = largeObject();
+  AqlValue staticValue = AqlValue::staticSlice(builder->slice().begin());
+  AqlValue inlineValue{AqlValueHintInt{42}};
+
+  AqlValue detachedStatic = std::move(staticValue).detach();
+  EXPECT_TRUE(detachedStatic.isStaticSlice());
+  EXPECT_EQ(detachedStatic.slice().begin(), builder->slice().begin());
+  EXPECT_TRUE(staticValue.isNone());
+
+  AqlValue detachedInline = std::move(inlineValue).detach();
+  EXPECT_FALSE(detachedInline.requiresDestruction());
+  EXPECT_EQ(detachedInline.toInt64(), 42);
+  EXPECT_TRUE(inlineValue.isNone());
+}
+
 TEST(AqlValueBorrowTest, clone_of_a_static_slice_shares_the_payload) {
   auto builder = largeObject();
   AqlValue v = AqlValue::staticSlice(builder->slice().begin());

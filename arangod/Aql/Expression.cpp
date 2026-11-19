@@ -147,31 +147,41 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
 
   TRI_ASSERT(_type != ExpressionType::kUnprocessed);
 
-  // and execute
-  switch (_type) {
-    case ExpressionType::kJson: {
-      mustDestroy = false;
-      TRI_ASSERT(_data != nullptr);
-      return AqlValue::staticSlice(_data);
+  auto result = [&]() -> AqlValue {
+    switch (_type) {
+      case ExpressionType::kJson: {
+        mustDestroy = false;
+        TRI_ASSERT(_data != nullptr);
+        return AqlValue::staticSlice(_data);
+      }
+
+      case ExpressionType::kSimple: {
+        return executeSimpleExpression(*ctx, _node, mustDestroy, true);
+      }
+
+      case ExpressionType::kAttributeAccess: {
+        TRI_ASSERT(_accessor != nullptr);
+        auto resolver = ctx->trx().resolver();
+        TRI_ASSERT(resolver != nullptr);
+        return _accessor->get(*resolver, ctx, mustDestroy);
+      }
+
+      case ExpressionType::kUnprocessed: {
+        // fall-through to exception
+      }
     }
 
-    case ExpressionType::kSimple: {
-      return executeSimpleExpression(*ctx, _node, mustDestroy, true);
-    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid expression type");
+  }();
 
-    case ExpressionType::kAttributeAccess: {
-      TRI_ASSERT(_accessor != nullptr);
-      auto resolver = ctx->trx().resolver();
-      TRI_ASSERT(resolver != nullptr);
-      return _accessor->get(*resolver, ctx, mustDestroy);
-    }
-
-    case ExpressionType::kUnprocessed: {
-      // fall-through to exception
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid expression type");
+  // callers can replace mustDestroy with result.requiresDestruction() only if
+  // the two agree: an owned result must be destroyed, and a borrowed one must
+  // not be.
+  TRI_ASSERT(mustDestroy ? !result.isBorrowed() : !result.requiresDestruction())
+      << "mustDestroy is " << mustDestroy << " for a value that "
+      << (result.isBorrowed() ? "is borrowed" : "requires destruction");
+  return result;
 }
 
 /// @brief replace variables in the expression with other variables
@@ -978,10 +988,14 @@ AqlValue Expression::executeSimpleExpressionReference(ExpressionContext& ctx,
                                                       AstNode const* node,
                                                       bool& mustDestroy,
                                                       bool doCopy) {
-  mustDestroy = false;
   auto v = static_cast<Variable const*>(node->getData());
   TRI_ASSERT(v != nullptr);
-  return ctx.getVariableValue(v, doCopy, mustDestroy);
+  AqlValue value = ctx.getVariableValue(v);
+  if (doCopy) {
+    value = std::move(value).detach();
+  }
+  mustDestroy = value.requiresDestruction();
+  return value;
 }
 
 // execute an expression of type ExpressionType::kSimple with RANGE

@@ -47,8 +47,7 @@ struct ExpressionContextMock final
   ~ExpressionContextMock();
 
   arangodb::aql::AqlValue getVariableValue(
-      arangodb::aql::Variable const* variable, bool doCopy,
-      bool& mustDestroy) const override;
+      arangodb::aql::Variable const* variable) const override;
 
   void setVariable(arangodb::aql::Variable const* variable,
                    arangodb::velocypack::Slice value) override {

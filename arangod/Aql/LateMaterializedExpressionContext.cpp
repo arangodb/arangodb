@@ -40,13 +40,11 @@ LateMaterializedExpressionContext::LateMaterializedExpressionContext(
       _covering(nullptr) {}
 
 AqlValue LateMaterializedExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+    Variable const* variable) const {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(_covering != nullptr);
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
-        mustDestroy = doCopy;
+      variable, [this](Variable const* variable) {
         auto const it = _outNonMaterializedIndVars.find(variable);
         if (it != _outNonMaterializedIndVars.end()) {
           // return data from current index entry
@@ -61,9 +59,6 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
           } else {  // primary/edge
             s = _covering->value();
           }
-          if (doCopy) {
-            return AqlValue(AqlValueHintSliceCopy(s));
-          }
           return AqlValue(AqlValueHintSliceNoCopy(s));
         }
 
@@ -73,10 +68,7 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
           // we can only get here in a post-filter expression
           TRI_ASSERT(regId.isConstRegister() ||
                      regId < _inputRow.getNumRegisters());
-          if (doCopy) {
-            return _inputRow.getValue(regId).clone();
-          }
-          return _inputRow.getValue(regId);
+          return _inputRow.getValue(regId).borrow();
         }
 
         // should never happen

@@ -86,9 +86,7 @@ void ViewExpressionContext::clearVariable(
 // --SECTION--                              ViewExpressionContext implementation
 // -----------------------------------------------------------------------------
 
-AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
-                                                 bool doCopy,
-                                                 bool& mustDestroy) const {
+AqlValue ViewExpressionContext::getVariableValue(Variable const* var) const {
   TRI_ASSERT(var);
 
   if (var == &outVariable()) {
@@ -123,12 +121,9 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
 
     if (it != _variables.end()) {
       // copy the slice we found
-      mustDestroy = true;
       return AqlValue((*it).second);
     }
   }
-
-  mustDestroy = false;
 
   auto const [reg, status] = registers().lookup(var->id);
 
@@ -145,14 +140,7 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
   }
 
   TRI_ASSERT(_inputRow.isInitialized());
-  AqlValue const& value = _inputRow.getValue(reg);
-
-  if (doCopy) {
-    mustDestroy = true;
-    return value.clone();
-  }
-
-  return value;
+  return _inputRow.getValue(reg).borrow();
 }
 
 }  // namespace arangodb::iresearch

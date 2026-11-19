@@ -34,24 +34,17 @@ FixedVarExpressionContext::FixedVarExpressionContext(
     AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
 
-AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
-                                                     bool doCopy,
-                                                     bool& mustDestroy) const {
+AqlValue FixedVarExpressionContext::getVariableValue(
+    Variable const* variable) const {
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+      variable, [this](Variable const* variable) {
         // now check our own temporary variables
         auto it = _vars.find(variable);
         if (it == _vars.end()) {
           TRI_ASSERT(false);
-          mustDestroy = false;
           return AqlValue(AqlValueHintNull());
         }
-        mustDestroy = doCopy;
-        if (doCopy) {
-          return it->second.clone();
-        }
-        return it->second;
+        return it->second.borrow();
       });
 }
 
@@ -87,10 +80,8 @@ NoVarExpressionContext::NoVarExpressionContext(transaction::Methods& trx,
                                                AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
 
-AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
-                                                  bool /*doCopy*/,
-                                                  bool& mustDestroy) const {
-  mustDestroy = false;
+AqlValue NoVarExpressionContext::getVariableValue(
+    Variable const* /*variable*/) const {
   return AqlValue(AqlValueHintNull());
 }
 

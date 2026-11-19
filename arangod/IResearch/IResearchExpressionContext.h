@@ -112,8 +112,7 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(arangodb::aql::Variable const* variable) noexcept override;
 
-  aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
-                                 bool& mustDestroy) const override;
+  aql::AqlValue getVariableValue(aql::Variable const* variable) const override;
 
   inline auto const& outVariable() const noexcept { return _outVar; }
   inline auto const& registers() const noexcept { return _registers; }

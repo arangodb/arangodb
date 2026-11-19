@@ -46,8 +46,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 
   ~ExecutorExpressionContext() override = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 
   void adjustInputRow(InputAqlItemRow const& inputRow) noexcept;
   ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }

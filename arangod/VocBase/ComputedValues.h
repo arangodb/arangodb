@@ -98,8 +98,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   bool killed() const override { return false; }
 
-  aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
-                                 bool& mustDestroy) const override;
+  aql::AqlValue getVariableValue(aql::Variable const* variable) const override;
 
   void setVariable(aql::Variable const* variable,
                    velocypack::Slice value) override;

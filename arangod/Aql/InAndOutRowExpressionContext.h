@@ -53,8 +53,7 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
 
   void invalidateInputRow();
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 
   bool needsVertexValue() const;
   bool needsEdgeValue() const;

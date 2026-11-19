@@ -50,16 +50,11 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
   bool isLateMaterialized() const noexcept override { return false; }
 #endif
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override {
-    mustDestroy = doCopy;
+  AqlValue getVariableValue(Variable const* variable) const override {
     auto const searchId = variable->id;
     {
       auto it = _varsToIndex.find(searchId);
       if (it != _varsToIndex.end()) {
-        if (doCopy) {
-          return AqlValue(_sliceSpan[it->second]);
-        }
         return AqlValue(AqlValueHintSliceNoCopy{_sliceSpan[it->second]});
       }
     }
@@ -67,10 +62,7 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
       auto it = _varsToRegister.find(searchId);
       if (it != _varsToRegister.end()) {
         TRI_ASSERT(_inputRow.isInitialized());
-        if (doCopy) {
-          return _inputRow.getValue(it->second).clone();
-        }
-        return _inputRow.getValue(it->second);
+        return _inputRow.getValue(it->second).borrow();
       }
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(

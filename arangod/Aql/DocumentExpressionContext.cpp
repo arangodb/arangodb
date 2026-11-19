@@ -49,16 +49,11 @@ SimpleDocumentExpressionContext::SimpleDocumentExpressionContext(
                                 inputRow, outputVariable) {}
 
 AqlValue SimpleDocumentExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+    Variable const* variable) const {
   TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* /*variable*/, bool doCopy, bool& mustDestroy) {
-        mustDestroy = doCopy;
+      variable, [this](Variable const* /*variable*/) {
         // return current document
-        if (doCopy) {
-          return AqlValue(AqlValueHintSliceCopy(_document));
-        }
         return AqlValue(AqlValueHintSliceNoCopy(_document));
       });
 }
@@ -72,17 +67,12 @@ GenericDocumentExpressionContext::GenericDocumentExpressionContext(
                                 inputRow, outputVariable) {}
 
 AqlValue GenericDocumentExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
+    Variable const* variable) const {
   TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
-        mustDestroy = doCopy;
+      variable, [this](Variable const* variable) {
         if (variable->id == _outputVariable->id) {
           // return current document
-          if (doCopy) {
-            return AqlValue(AqlValueHintSliceCopy(_document));
-          }
           return AqlValue(AqlValueHintSliceNoCopy(_document));
         }
         auto regId = registerForVariable(variable->id);
@@ -95,10 +85,7 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
                      regId < _inputRow.getNumRegisters())
               << "variable " << variable->name << " (" << variable->id
               << "), register " << regId.value() << " not found";
-          if (doCopy) {
-            return _inputRow.getValue(regId).clone();
-          }
-          return _inputRow.getValue(regId);
+          return _inputRow.getValue(regId).borrow();
         }
 
         // referred-to variable not found. should never happen

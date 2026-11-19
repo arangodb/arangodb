@@ -42,8 +42,7 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   ~FixedVarExpressionContext() = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 
   void clearVariableValues() noexcept;
 
@@ -71,8 +70,7 @@ class NoVarExpressionContext final : public QueryExpressionContext {
 
   ~NoVarExpressionContext() = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 };
 
 }  // namespace aql

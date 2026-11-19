@@ -78,8 +78,7 @@ class SimpleDocumentExpressionContext final : public DocumentExpressionContext {
 
   ~SimpleDocumentExpressionContext() = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 };
 
 // expression context which has multiple variables available
@@ -95,8 +94,7 @@ class GenericDocumentExpressionContext final
 
   ~GenericDocumentExpressionContext() = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 };
 
 }  // namespace aql

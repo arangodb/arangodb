@@ -57,8 +57,7 @@ class LateMaterializedExpressionContext final
   bool isLateMaterialized() const noexcept override { return true; }
 #endif
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable) const override;
 
   void setCurrentCoveringData(
       IndexIteratorCoveringData const* covering) noexcept {
