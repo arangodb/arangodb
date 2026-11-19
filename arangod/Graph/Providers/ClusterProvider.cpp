@@ -104,6 +104,17 @@ ClusterProvider<StepImpl>::ClusterProvider(
       _stats{} {}
 
 template<class StepImpl>
+ClusterProvider<StepImpl>::ClusterProvider(ClusterProvider<StepImpl>&& other)
+    : _trx(std::move(other._trx)),
+      _query(other._query),
+      _resourceMonitor(other._resourceMonitor),
+      _opts(std::move(other._opts)),
+      _stats(std::move(other._stats)),
+      _vertexConnectedEdges(std::move(other._vertexConnectedEdges)) {
+  other._vertexConnectedEdges.clear();
+}
+
+template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
   clearWithForce();  // Make sure we actually free all memory in the edge cache!
 }
