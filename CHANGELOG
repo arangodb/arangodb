@@ -1,6 +1,8 @@
 3.12.14 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to v0.19.33.
+
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
   server. The view links could get the same id as an index from the dump.
@@ -30,8 +32,6 @@
 
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
-
-* Updated ArangoDB Starter to v0.19.31.
 
 * BTS-2523: AQL range filters on `_key` and `_id` treat floating-point numbers
   like any other number. Numbers sort before strings, so `doc._key < 1.5`
