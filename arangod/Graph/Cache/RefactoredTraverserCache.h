@@ -38,11 +38,11 @@ namespace arangodb::graph {
 class RefactoredTraverserCache {
  public:
   RefactoredTraverserCache(arangodb::ResourceMonitor& resourceMonitor);
+  RefactoredTraverserCache(RefactoredTraverserCache&&);
 
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
-  RefactoredTraverserCache(RefactoredTraverserCache&&) = default;
 
   RefactoredTraverserCache& operator=(RefactoredTraverserCache const&) = delete;
 
