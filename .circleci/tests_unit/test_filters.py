@@ -14,6 +14,7 @@ from src.config_lib import (
     DeploymentType,
     TestDefinitionFile,
     BuildVariant,
+    Architecture,
 )
 from src.filters import (
     FilterCriteria,
@@ -36,6 +37,7 @@ class TestFilterCriteria:
         assert criteria.v8 is True
         assert criteria.build_variant is None
         assert criteria.enterprise is True
+        assert criteria.run_upgrade_tests is False
 
     def test_custom_values(self):
         """Test setting custom criteria values."""
@@ -869,6 +871,86 @@ class TestV8Filtering:
         # But if we check the suite directly, it should be included
         suite = job.suites[0]
         assert should_include_suite(suite, criteria_v8)
+
+
+class TestRunUpgradeTestsFiltering:
+    """Test run-upgrade-tests filtering at job and suite level."""
+
+    def test_job_without_upgrade_constraint_included_in_all_builds(self):
+        """Job without run-upgrade-tests field runs whether or not upgrade tests are requested."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(),
+        )
+
+        assert should_include_job(job, FilterCriteria(run_upgrade_tests=False))
+        assert should_include_job(job, FilterCriteria(run_upgrade_tests=True))
+
+    def test_job_with_upgrade_true_only_when_requested(self):
+        """Job with run-upgrade-tests=True should only run if upgrade tests are requested."""
+        job = TestJob(
+            name="rta_upgrade",
+            suites=[SuiteConfig(name="rta_upgrade")],
+            requires=TestRequirements(run_upgrade_tests=True),
+        )
+
+        assert not should_include_job(job, FilterCriteria())
+        assert not should_include_job(job, FilterCriteria(run_upgrade_tests=False))
+        assert should_include_job(job, FilterCriteria(run_upgrade_tests=True))
+
+    def test_job_with_upgrade_false_runs_in_all_builds(self):
+        """run-upgrade-tests=False is not an exclusion: such jobs also run in upgrade pipelines."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(run_upgrade_tests=False),
+        )
+
+        assert should_include_job(job, FilterCriteria(run_upgrade_tests=False))
+        assert should_include_job(job, FilterCriteria(run_upgrade_tests=True))
+
+    def test_upgrade_and_architecture_requirements_combine(self):
+        """Upgrade jobs pinned to an architecture need both criteria to match."""
+        job = TestJob(
+            name="rta_upgrade",
+            suites=[SuiteConfig(name="rta_upgrade")],
+            requires=TestRequirements(
+                run_upgrade_tests=True, architecture=Architecture.AARCH64
+            ),
+        )
+
+        assert should_include_job(
+            job,
+            FilterCriteria(run_upgrade_tests=True, architecture=Architecture.AARCH64),
+        )
+        assert not should_include_job(
+            job, FilterCriteria(run_upgrade_tests=True, architecture=Architecture.X64)
+        )
+        assert not should_include_job(
+            job,
+            FilterCriteria(run_upgrade_tests=False, architecture=Architecture.AARCH64),
+        )
+
+    def test_filter_suites_by_upgrade(self):
+        """Suite-level run-upgrade-tests requirement filters individual suites."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(
+                    name="upgrade_suite",
+                    requires=TestRequirements(run_upgrade_tests=True),
+                ),
+                SuiteConfig(name="any_suite"),
+            ],
+            options=TestOptions(),
+        )
+
+        result = filter_suites(job, FilterCriteria(run_upgrade_tests=False))
+        assert [suite.name for suite in result] == ["any_suite"]
+
+        result = filter_suites(job, FilterCriteria(run_upgrade_tests=True))
+        assert [suite.name for suite in result] == ["upgrade_suite", "any_suite"]
 
 
 class TestDeploymentTypeFiltering:

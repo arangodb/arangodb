@@ -717,6 +717,7 @@ class TestTestRequirements:
         assert reqs.coverage is None
         assert reqs.instrumentation is None
         assert reqs.v8 is None
+        assert reqs.run_upgrade_tests is None
         assert reqs.architecture is None
 
     @pytest.mark.parametrize(
@@ -745,6 +746,7 @@ class TestTestRequirements:
             "coverage": False,
             "instrumentation": True,
             "v8": False,
+            "run-upgrade-tests": True,
             "arch": "x64",
         }
         reqs = TestRequirements.from_dict(data)
@@ -753,6 +755,7 @@ class TestTestRequirements:
         assert reqs.coverage is False
         assert reqs.instrumentation is True
         assert reqs.v8 is False
+        assert reqs.run_upgrade_tests is True
         assert reqs.architecture == Architecture.X64
 
     def test_merge_preserves_base_when_override_is_none(self):
@@ -808,3 +811,16 @@ class TestTestRequirements:
         assert merged.coverage is False
         assert merged.instrumentation is True
         assert merged.v8 is True
+
+    def test_merge_run_upgrade_tests(self):
+        """run_upgrade_tests is inherited from the job and can be overridden by a suite."""
+        job_reqs = TestRequirements(run_upgrade_tests=True)
+
+        assert job_reqs.merge_with(None).run_upgrade_tests is True
+        assert job_reqs.merge_with(TestRequirements()).run_upgrade_tests is True
+        assert (
+            job_reqs.merge_with(
+                TestRequirements(run_upgrade_tests=False)
+            ).run_upgrade_tests
+            is False
+        )
