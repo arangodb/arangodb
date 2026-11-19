@@ -83,7 +83,6 @@ enum hook_dalloc_e {
 };
 typedef enum hook_dalloc_e hook_dalloc_t;
 
-
 enum hook_expand_e {
 	hook_expand_realloc,
 	hook_expand_rallocx,
@@ -91,23 +90,22 @@ enum hook_expand_e {
 };
 typedef enum hook_expand_e hook_expand_t;
 
-typedef void (*hook_alloc)(
-    void *extra, hook_alloc_t type, void *result, uintptr_t result_raw,
-    uintptr_t args_raw[3]);
+typedef void (*hook_alloc)(void *extra, hook_alloc_t type, void *result,
+    uintptr_t result_raw, uintptr_t args_raw[3]);
 
 typedef void (*hook_dalloc)(
     void *extra, hook_dalloc_t type, void *address, uintptr_t args_raw[3]);
 
-typedef void (*hook_expand)(
-    void *extra, hook_expand_t type, void *address, size_t old_usize,
-    size_t new_usize, uintptr_t result_raw, uintptr_t args_raw[4]);
+typedef void (*hook_expand)(void *extra, hook_expand_t type, void *address,
+    size_t old_usize, size_t new_usize, uintptr_t result_raw,
+    uintptr_t args_raw[4]);
 
 typedef struct hooks_s hooks_t;
 struct hooks_s {
-	hook_alloc alloc_hook;
+	hook_alloc  alloc_hook;
 	hook_dalloc dalloc_hook;
 	hook_expand expand_hook;
-	void *extra;
+	void       *extra;
 };
 
 /*
@@ -156,8 +154,8 @@ void hook_remove(tsdn_t *tsdn, void *opaque);
 void hook_invoke_alloc(hook_alloc_t type, void *result, uintptr_t result_raw,
     uintptr_t args_raw[3]);
 
-void hook_invoke_dalloc(hook_dalloc_t type, void *address,
-    uintptr_t args_raw[3]);
+void hook_invoke_dalloc(
+    hook_dalloc_t type, void *address, uintptr_t args_raw[3]);
 
 void hook_invoke_expand(hook_expand_t type, void *address, size_t old_usize,
     size_t new_usize, uintptr_t result_raw, uintptr_t args_raw[4]);

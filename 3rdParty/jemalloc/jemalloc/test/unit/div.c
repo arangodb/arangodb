@@ -11,12 +11,12 @@ TEST_BEGIN(test_div_exhaustive) {
 			max = 1000 * 1000;
 		}
 		for (size_t dividend = 0; dividend < 1000 * divisor;
-		    dividend += divisor) {
-			size_t quotient = div_compute(
-			    &div_info, dividend);
+		     dividend += divisor) {
+			size_t quotient = div_compute(&div_info, dividend);
 			expect_zu_eq(dividend, quotient * divisor,
 			    "With divisor = %zu, dividend = %zu, "
-			    "got quotient %zu", divisor, dividend, quotient);
+			    "got quotient %zu",
+			    divisor, dividend, quotient);
 		}
 	}
 }
@@ -24,6 +24,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_div_exhaustive);
+	return test_no_reentrancy(test_div_exhaustive);
 }

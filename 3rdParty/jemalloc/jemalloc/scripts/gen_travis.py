@@ -96,6 +96,15 @@ class Option(object):
         return (isinstance(obj, Option) and obj.type == self.type
                 and obj.value == self.value)
 
+    def __repr__(self):
+        type_names = {
+            Option.Type.COMPILER: 'COMPILER',
+            Option.Type.COMPILER_FLAG: 'COMPILER_FLAG',
+            Option.Type.CONFIGURE_FLAG: 'CONFIGURE_FLAG',
+            Option.Type.MALLOC_CONF: 'MALLOC_CONF',
+            Option.Type.FEATURE: 'FEATURE'
+        }
+        return f"Option({type_names[self.type]}, {repr(self.value)})"
 
 # The 'default' configuration is gcc, on linux, with no compiler or configure
 # flags.  We also test with clang, -m32, --enable-debug, --enable-prof,
@@ -125,7 +134,9 @@ configure_flag_unusuals = [Option.as_configure_flag(opt) for opt in (
     '--disable-libdl',
     '--enable-opt-safety-checks',
     '--with-lg-page=16',
+    '--with-lg-page=16 --with-lg-hugepage=29',
 )]
+LARGE_HUGEPAGE = Option.as_configure_flag("--with-lg-page=16 --with-lg-hugepage=29")
 
 
 malloc_conf_unusuals = [Option.as_malloc_conf(opt) for opt in (
@@ -246,8 +257,20 @@ def generate_linux(arch):
     if arch == PPC64LE:
         # Avoid 32 bit builds and clang on PowerPC
         exclude = (CROSS_COMPILE_32BIT, CLANG,)
+    if arch == ARM64:
+        # Avoid 32 bit build on ARM64
+        exclude = (CROSS_COMPILE_32BIT,)
 
-    return generate_jobs(os, arch, exclude, max_unusual_opts)
+    if arch != ARM64:
+        exclude += [LARGE_HUGEPAGE]
+
+    linux_configure_flags = list(configure_flag_unusuals)
+    linux_configure_flags.append(Option.as_configure_flag("--enable-prof --enable-prof-frameptr"))
+
+    linux_unusuals = (compilers_unusual + feature_unusuals
+                    + linux_configure_flags + malloc_conf_unusuals)
+
+    return generate_jobs(os, arch, exclude, max_unusual_opts, linux_unusuals)
 
 
 def generate_macos(arch):
@@ -260,6 +283,9 @@ def generate_macos(arch):
             'background_thread:true')] +
         [Option.as_configure_flag('--enable-prof')] +
         [CLANG,])
+
+    if arch != ARM64:
+        exclude += [LARGE_HUGEPAGE]
 
     return generate_jobs(os, arch, exclude, max_unusual_opts)
 
@@ -307,14 +333,24 @@ EXTRA_CFLAGS="-Werror -Wno-array-bounds"
 
 def main():
     jobs = '\n'.join((
-        generate_windows(AMD64),
+        # Travis is failing on Windows due to infra failures, comment it out for
+        # now.  Should resume once it is fixed.
 
-        generate_freebsd(AMD64),
+        # generate_windows(AMD64),
+
+        # Travis currently provides only FreeBSD 12.1 which is EOL.  Builds are
+        # not working as of Jan 2024.  Disable the tests for now to avoid the
+        # noise / confusion.
+
+        # generate_freebsd(AMD64),
 
         generate_linux(AMD64),
-        generate_linux(PPC64LE),
+        # PPC tests on travis has been down for a while, disable it for now.
+        # generate_linux(PPC64LE),
+        generate_linux(ARM64),
 
-        generate_macos(AMD64),
+        # Starting April 1st, 2025, Travis no longer supports OSx/macOS builds
+        # generate_macos(AMD64),
 
         get_manual_jobs(),
     ))

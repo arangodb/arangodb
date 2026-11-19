@@ -49,16 +49,16 @@ TEST_END
 
 static size_t
 ecf_count(edata_cache_fast_t *ecf) {
-	size_t count = 0;
+	size_t   count = 0;
 	edata_t *cur;
-	ql_foreach(cur, &ecf->list.head, ql_link_inactive) {
+	ql_foreach (cur, &ecf->list.head, ql_link_inactive) {
 		count++;
 	}
 	return count;
 }
 
 TEST_BEGIN(test_edata_cache_fast_simple) {
-	edata_cache_t ec;
+	edata_cache_t      ec;
 	edata_cache_fast_t ecf;
 
 	test_edata_cache_init(&ec);
@@ -96,7 +96,7 @@ TEST_BEGIN(test_edata_cache_fast_simple) {
 TEST_END
 
 TEST_BEGIN(test_edata_cache_fill) {
-	edata_cache_t ec;
+	edata_cache_t      ec;
 	edata_cache_fast_t ecf;
 
 	test_edata_cache_init(&ec);
@@ -179,7 +179,7 @@ TEST_BEGIN(test_edata_cache_fill) {
 TEST_END
 
 TEST_BEGIN(test_edata_cache_disable) {
-	edata_cache_t ec;
+	edata_cache_t      ec;
 	edata_cache_fast_t ecf;
 
 	test_edata_cache_init(&ec);
@@ -198,7 +198,8 @@ TEST_BEGIN(test_edata_cache_disable) {
 
 	expect_zu_eq(0, ecf_count(&ecf), "");
 	expect_zu_eq(EDATA_CACHE_FAST_FILL,
-	    atomic_load_zu(&ec.count, ATOMIC_RELAXED), "Disabling should flush");
+	    atomic_load_zu(&ec.count, ATOMIC_RELAXED),
+	    "Disabling should flush");
 
 	edata_t *edata = edata_cache_fast_get(TSDN_NULL, &ecf);
 	expect_zu_eq(0, ecf_count(&ecf), "");
@@ -218,9 +219,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_edata_cache,
-	    test_edata_cache_fast_simple,
-	    test_edata_cache_fill,
-	    test_edata_cache_disable);
+	return test(test_edata_cache, test_edata_cache_fast_simple,
+	    test_edata_cache_fill, test_edata_cache_disable);
 }

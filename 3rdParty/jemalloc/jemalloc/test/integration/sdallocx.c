@@ -10,26 +10,23 @@ TEST_BEGIN(test_basic) {
 TEST_END
 
 TEST_BEGIN(test_alignment_and_size) {
-	size_t nsz, sz, alignment, total;
+	size_t   nsz, sz, alignment, total;
 	unsigned i;
-	void *ps[NITER];
+	void    *ps[NITER];
 
 	for (i = 0; i < NITER; i++) {
 		ps[i] = NULL;
 	}
 
-	for (alignment = 8;
-	    alignment <= MAXALIGN;
-	    alignment <<= 1) {
+	for (alignment = 8; alignment <= MAXALIGN; alignment <<= 1) {
 		total = 0;
-		for (sz = 1;
-		    sz < 3 * alignment && sz < (1U << 31);
-		    sz += (alignment >> (LG_SIZEOF_PTR-1)) - 1) {
+		for (sz = 1; sz < 3 * alignment && sz < (1U << 31);
+		     sz += (alignment >> (LG_SIZEOF_PTR - 1)) - 1) {
 			for (i = 0; i < NITER; i++) {
-				nsz = nallocx(sz, MALLOCX_ALIGN(alignment) |
-				    MALLOCX_ZERO);
-				ps[i] = mallocx(sz, MALLOCX_ALIGN(alignment) |
-				    MALLOCX_ZERO);
+				nsz = nallocx(sz,
+				    MALLOCX_ALIGN(alignment) | MALLOCX_ZERO);
+				ps[i] = mallocx(sz,
+				    MALLOCX_ALIGN(alignment) | MALLOCX_ZERO);
 				total += nsz;
 				if (total >= (MAXALIGN << 1)) {
 					break;
@@ -49,7 +46,5 @@ TEST_END
 
 int
 main(void) {
-	return test_no_reentrancy(
-	    test_basic,
-	    test_alignment_and_size);
+	return test_no_reentrancy(test_basic, test_alignment_and_size);
 }

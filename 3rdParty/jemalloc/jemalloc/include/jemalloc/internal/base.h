@@ -6,8 +6,14 @@
 #include "jemalloc/internal/ehooks.h"
 #include "jemalloc/internal/mutex.h"
 
+/*
+ * Alignment when THP is not enabled.  Set to constant 2M in case the HUGEPAGE
+ * value is unexpected high (which would cause VM over-reservation).
+ */
+#define BASE_BLOCK_MIN_ALIGN ((size_t)2 << 20)
+
 enum metadata_thp_mode_e {
-	metadata_thp_disabled   = 0,
+	metadata_thp_disabled = 0,
 	/*
 	 * Lazily enable hugepage for metadata. To avoid high RSS caused by THP
 	 * + low usage arena (i.e. THP becomes a significant percentage), the
@@ -16,16 +22,15 @@ enum metadata_thp_mode_e {
 	 * arena), "auto" behaves the same as "always", i.e. madvise hugepage
 	 * right away.
 	 */
-	metadata_thp_auto       = 1,
-	metadata_thp_always     = 2,
+	metadata_thp_auto = 1,
+	metadata_thp_always = 2,
 	metadata_thp_mode_limit = 3
 };
 typedef enum metadata_thp_mode_e metadata_thp_mode_t;
 
 #define METADATA_THP_DEFAULT metadata_thp_disabled
 extern metadata_thp_mode_t opt_metadata_thp;
-extern const char *const metadata_thp_mode_names[];
-
+extern const char *const   metadata_thp_mode_names[];
 
 /* Embedded at the beginning of every block of base-managed virtual memory. */
 typedef struct base_block_s base_block_t;
@@ -97,24 +102,24 @@ metadata_thp_enabled(void) {
 }
 
 base_t *b0get(void);
-base_t *base_new(tsdn_t *tsdn, unsigned ind,
-    const extent_hooks_t *extent_hooks, bool metadata_use_hooks);
-void base_delete(tsdn_t *tsdn, base_t *base);
-ehooks_t *base_ehooks_get(base_t *base);
-ehooks_t *base_ehooks_get_for_metadata(base_t *base);
-extent_hooks_t *base_extent_hooks_set(base_t *base,
-    extent_hooks_t *extent_hooks);
-void *base_alloc(tsdn_t *tsdn, base_t *base, size_t size, size_t alignment);
+base_t *base_new(tsdn_t *tsdn, unsigned ind, const extent_hooks_t *extent_hooks,
+    bool metadata_use_hooks);
+void    base_delete(tsdn_t *tsdn, base_t *base);
+ehooks_t       *base_ehooks_get(base_t *base);
+ehooks_t       *base_ehooks_get_for_metadata(base_t *base);
+extent_hooks_t *base_extent_hooks_set(
+    base_t *base, extent_hooks_t *extent_hooks);
+void    *base_alloc(tsdn_t *tsdn, base_t *base, size_t size, size_t alignment);
 edata_t *base_alloc_edata(tsdn_t *tsdn, base_t *base);
-void *base_alloc_rtree(tsdn_t *tsdn, base_t *base, size_t size);
-void *b0_alloc_tcache_stack(tsdn_t *tsdn, size_t size);
-void b0_dalloc_tcache_stack(tsdn_t *tsdn, void *tcache_stack);
-void base_stats_get(tsdn_t *tsdn, base_t *base, size_t *allocated,
-    size_t *edata_allocated, size_t *rtree_allocated, size_t *resident,
-    size_t *mapped, size_t *n_thp);
-void base_prefork(tsdn_t *tsdn, base_t *base);
-void base_postfork_parent(tsdn_t *tsdn, base_t *base);
-void base_postfork_child(tsdn_t *tsdn, base_t *base);
-bool base_boot(tsdn_t *tsdn);
+void    *base_alloc_rtree(tsdn_t *tsdn, base_t *base, size_t size);
+void    *b0_alloc_tcache_stack(tsdn_t *tsdn, size_t size);
+void     b0_dalloc_tcache_stack(tsdn_t *tsdn, void *tcache_stack);
+void     base_stats_get(tsdn_t *tsdn, base_t *base, size_t *allocated,
+        size_t *edata_allocated, size_t *rtree_allocated, size_t *resident,
+        size_t *mapped, size_t *n_thp);
+void     base_prefork(tsdn_t *tsdn, base_t *base);
+void     base_postfork_parent(tsdn_t *tsdn, base_t *base);
+void     base_postfork_child(tsdn_t *tsdn, base_t *base);
+bool     base_boot(tsdn_t *tsdn);
 
 #endif /* JEMALLOC_INTERNAL_BASE_H */

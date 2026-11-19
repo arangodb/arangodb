@@ -1,5 +1,5 @@
 #ifdef JEMALLOC_INTERNAL_TSD_TLS_H
-#error This file should be included only once, by tsd.h.
+#	error This file should be included only once, by tsd.h.
 #endif
 #define JEMALLOC_INTERNAL_TSD_TLS_H
 
@@ -11,7 +11,7 @@
 
 extern JEMALLOC_TSD_TYPE_ATTR(tsd_t) tsd_tls;
 extern pthread_key_t tsd_tsd;
-extern bool tsd_booted;
+extern bool          tsd_booted;
 
 /* Initialization/cleanup. */
 JEMALLOC_ALWAYS_INLINE bool

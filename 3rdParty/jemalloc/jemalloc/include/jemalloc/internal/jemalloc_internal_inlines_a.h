@@ -20,12 +20,12 @@ malloc_getcpu(void) {
 	return (malloc_cpuid_t)sched_getcpu();
 #elif defined(JEMALLOC_HAVE_RDTSCP)
 	unsigned int ecx;
-	asm volatile("rdtscp" : "=c" (ecx) :: "eax", "edx");
+	asm volatile("rdtscp" : "=c"(ecx)::"eax", "edx");
 	return (malloc_cpuid_t)(ecx & 0xfff);
 #elif defined(__aarch64__) && defined(__APPLE__)
 	/* Other oses most likely use tpidr_el0 instead */
 	uintptr_t c;
-	asm volatile("mrs %x0, tpidrro_el0" : "=r"(c) :: "memory");
+	asm volatile("mrs %x0, tpidrro_el0" : "=r"(c)::"memory");
 	return (malloc_cpuid_t)(c & (1 << 3) - 1);
 #else
 	not_reached();
@@ -42,8 +42,8 @@ percpu_arena_choose(void) {
 	assert(cpuid >= 0);
 
 	unsigned arena_ind;
-	if ((opt_percpu_arena == percpu_arena) || ((unsigned)cpuid < ncpus /
-	    2)) {
+	if ((opt_percpu_arena == percpu_arena)
+	    || ((unsigned)cpuid < ncpus / 2)) {
 		arena_ind = cpuid;
 	} else {
 		assert(opt_percpu_arena == per_phycpu_arena);

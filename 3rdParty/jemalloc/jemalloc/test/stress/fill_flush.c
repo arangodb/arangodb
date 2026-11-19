@@ -5,6 +5,7 @@
 #define LARGE_ALLOC_SIZE SC_LARGE_MINCLASS
 #define NALLOCS 1000
 
+const char *malloc_conf = "tcache_ncached_max:8-128:1024";
 /*
  * We make this volatile so the 1-at-a-time variants can't leave the allocation
  * in a register, just to try to get the cache behavior closer.
@@ -34,9 +35,9 @@ item_alloc_dalloc_small(void) {
 }
 
 TEST_BEGIN(test_array_vs_item_small) {
-	compare_funcs(1 * 1000, 10 * 1000,
-	    "array of small allocations", array_alloc_dalloc_small,
-	    "small item allocation", item_alloc_dalloc_small);
+	compare_funcs(1 * 1000, 10 * 1000, "array of small allocations",
+	    array_alloc_dalloc_small, "small item allocation",
+	    item_alloc_dalloc_small);
 }
 TEST_END
 
@@ -63,14 +64,14 @@ item_alloc_dalloc_large(void) {
 }
 
 TEST_BEGIN(test_array_vs_item_large) {
-	compare_funcs(100, 1000,
-	    "array of large allocations", array_alloc_dalloc_large,
-	    "large item allocation", item_alloc_dalloc_large);
+	compare_funcs(100, 1000, "array of large allocations",
+	    array_alloc_dalloc_large, "large item allocation",
+	    item_alloc_dalloc_large);
 }
 TEST_END
 
-int main(void) {
+int
+main(void) {
 	return test_no_reentrancy(
-	    test_array_vs_item_small,
-	    test_array_vs_item_large);
+	    test_array_vs_item_small, test_array_vs_item_large);
 }

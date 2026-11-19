@@ -1137,7 +1137,7 @@ mallctl("arena." STRINGIFY(MALLCTL_ARENAS_ALL) ".decay",
         </term>
         <listitem><para>Maximum number of background threads that will be created
         if <link linkend="background_thread">background_thread</link> is set.
-        Defaults to number of cpus.</para></listitem>
+        Defaults to 4.</para></listitem>
       </varlistentry>
 
       <varlistentry id="opt.dirty_decay_ms">
@@ -1185,7 +1185,7 @@ mallctl("arena." STRINGIFY(MALLCTL_ARENAS_ALL) ".decay",
         purged according to a sigmoidal decay curve that starts and ends with
         zero purge rate.  A decay time of 0 causes all unused muzzy pages to be
         purged immediately upon creation.  A decay time of -1 disables purging.
-        The default decay time is 10 seconds.  See <link
+        Muzzy decay is disabled by default (with decay time 0).  See <link
         linkend="arenas.muzzy_decay_ms"><mallctl>arenas.muzzy_decay_ms</mallctl></link>
         and <link
         linkend="arena.i.muzzy_decay_ms"><mallctl>arena.&lt;i&gt;.muzzy_decay_ms</mallctl></link>
@@ -1409,6 +1409,17 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         extent hooks.</para></listitem>
       </varlistentry>
 
+      <varlistentry id="opt.prof_bt_max">
+        <term>
+          <mallctl>opt.prof_bt_max</mallctl>
+          (<type>unsigned</type>)
+          <literal>r-</literal>
+          [<option>--enable-prof</option>]
+        </term>
+        <listitem><para>Maximum number of stack frames to record in profiling
+        backtraces.  The default is 128.</para></listitem>
+      </varlistentry>
+
       <varlistentry id="opt.prof">
         <term>
           <mallctl>opt.prof</mallctl>
@@ -1512,6 +1523,23 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         the application, this can impose a large memory overhead, and the
         cumulative counts are not always of interest.  This option is disabled
         by default.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="opt.prof_pid_namespace">
+        <term>
+          <mallctl>opt.prof_pid_namespace</mallctl>
+          (<type>bool</type>)
+          <literal>r-</literal>
+          [<option>--enable-prof</option>]
+        </term>
+        <listitem><para>Enable adding the pid namespace to the profile
+        filename. Profiles are dumped to files named according to the pattern
+        <filename>&lt;prefix&gt;.&lt;pid_namespace&gt;.&lt;pid&gt;.&lt;seq&gt;.i&lt;iseq&gt;.heap</filename>,
+        where <literal>&lt;prefix&gt;</literal> is controlled by the <link
+        linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link> and
+        <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>
+        options.
+        </para></listitem>
       </varlistentry>
 
       <varlistentry id="opt.lg_prof_interval">
@@ -1637,6 +1665,53 @@ malloc_conf = "xmalloc:true";]]></programlisting>
 	leak-free cannot assume either behavior, and must therefore never call
 	realloc with a size of 0.  The <quote>abort</quote> option enables these
 	testing this behavior.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="opt.debug_double_free_max_scan">
+        <term>
+          <mallctl>opt.debug_double_free_max_scan</mallctl>
+          (<type>unsigned</type>)
+          <literal>r-</literal>
+          [<option>--enable-debug</option>]
+        </term>
+        <listitem><para>Maximum number of cached pointers to scan in the
+        thread cache when checking for double-free errors on deallocation.
+        When debug is enabled, each deallocation into the tcache scans up to
+        this many recently cached pointers to detect whether the same pointer
+        is being freed twice.  Setting this to 0 disables the check.  This
+        option is set to 0 and has no effect when debug is not enabled.  The
+        default is 32.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="opt.disable_large_size_classes">
+        <term>
+          <mallctl>opt.disable_large_size_classes</mallctl>
+          (<type>bool</type>)
+          <literal>r-</literal>
+        </term>
+        <listitem><para>When enabled (the default), large allocations
+        (i.e. allocations of size &gt;= <constant>SC_LARGE_MINCLASS</constant>)
+        are rounded up to the nearest page boundary rather than the nearest
+        large size class.  This minimizes memory overhead, especially when
+        using hugepages, at the cost of disabling the standard large size
+        class hierarchy.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="opt.process_madvise_max_batch">
+        <term>
+          <mallctl>opt.process_madvise_max_batch</mallctl>
+          (<type>size_t</type>)
+          <literal>r-</literal>
+        </term>
+        <listitem><para>Maximum number of memory regions to include in each
+        <citerefentry><refentrytitle>process_madvise</refentrytitle>
+        <manvolnum>2</manvolnum></citerefentry> batch call.  When set to 0
+        (the default), process_madvise is not used, and the standard
+        <citerefentry><refentrytitle>madvise</refentrytitle>
+        <manvolnum>2</manvolnum></citerefentry> is used instead.  Setting this
+        to a positive value enables batched purging via process_madvise, which
+        can reduce the number of system calls needed for
+        purging.</para></listitem>
       </varlistentry>
 
       <varlistentry id="thread.arena">
@@ -1773,6 +1848,47 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         activity, so it is possible for a thread that stops
         allocating/deallocating to retain its cache indefinitely, in which case
         the developer may find manual flushing useful.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="thread.tcache.max">
+        <term>
+          <mallctl>thread.tcache.max</mallctl>
+          (<type>size_t</type>)
+          <literal>rw</literal>
+        </term>
+        <listitem><para>Get or set the maximum cached size class
+        (<varname>tcache_max</varname>) for the calling thread's tcache.  The
+        value is clamped to the maximum allowed limit and rounded up to the
+        nearest size class boundary.  Changing this value will resize the
+        thread cache accordingly.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="thread.tcache.ncached_max.read_sizeclass">
+        <term>
+          <mallctl>thread.tcache.ncached_max.read_sizeclass</mallctl>
+          (<type>size_t</type>)
+          <literal>rw</literal>
+        </term>
+        <listitem><para>Query the maximum number of cached objects
+        (<varname>ncached_max</varname>) for a given size class in the calling
+        thread's tcache.  The size class is passed in via
+        <parameter>newp</parameter>, and the corresponding
+        <varname>ncached_max</varname> is returned via
+        <parameter>oldp</parameter>.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="thread.tcache.ncached_max.write">
+        <term>
+          <mallctl>thread.tcache.ncached_max.write</mallctl>
+          (<type>char *</type>)
+          <literal>-w</literal>
+        </term>
+        <listitem><para>Set the maximum number of cached objects
+        (<varname>ncached_max</varname>) for size classes in the calling
+        thread's tcache.  The input is a string of pipe-separated settings,
+        where each setting specifies a size range and a count, in the same
+        format as the <mallctl>opt.tcache_ncached_max</mallctl> runtime
+        option.</para></listitem>
       </varlistentry>
 
       <varlistentry id="thread.prof.name">
@@ -1956,6 +2072,24 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         recycle the arena index.  Destruction will fail if any threads are
         currently associated with the arena as a result of calls to <link
         linkend="thread.arena"><mallctl>thread.arena</mallctl></link>.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="arena.i.name">
+        <term>
+          <mallctl>arena.&lt;i&gt;.name</mallctl>
+          (<type>char *</type>)
+          <literal>rw</literal>
+        </term>
+        <listitem><para>Get or set a descriptive name for arena &lt;i&gt;.
+        Arena names can be up to 32 characters long (including the null
+        terminator); longer names are truncated.  When reading, the caller
+        passes a pointer to a pre-allocated buffer (of at least 32 bytes) via
+        <parameter>oldp</parameter>, and
+        <parameter>*oldlenp</parameter> must be
+        <code language="C">sizeof(<type>char *</type>)</code>.
+        Arena names are also included in the output of <link
+        linkend="stats_print"><function>malloc_stats_print()</function></link>.
+        </para></listitem>
       </varlistentry>
 
       <varlistentry id="arena.i.dss">
@@ -2315,6 +2449,18 @@ struct extent_hooks_s {
         <listitem><para>Page size.</para></listitem>
       </varlistentry>
 
+      <varlistentry id="arenas.hugepage">
+        <term>
+          <mallctl>arenas.hugepage</mallctl>
+          (<type>size_t</type>)
+          <literal>r-</literal>
+        </term>
+        <listitem><para>Hugepage size.  This value is also reported in the
+        output of <link
+        linkend="stats_print"><function>malloc_stats_print()</function></link>.
+        </para></listitem>
+      </varlistentry>
+
       <varlistentry id="arenas.tcache_max">
         <term>
           <mallctl>arenas.tcache_max</mallctl>
@@ -2532,6 +2678,24 @@ struct extent_hooks_s {
         <link
         linkend="opt.lg_prof_interval"><mallctl>opt.lg_prof_interval</mallctl></link>
         option for additional information.</para></listitem>
+      </varlistentry>
+
+      <varlistentry id="approximate_stats.active">
+        <term>
+          <mallctl>approximate_stats.active</mallctl>
+          (<type>size_t</type>)
+          <literal>r-</literal>
+        </term>
+        <listitem><para>Return the total number of bytes in active pages
+        collected in an unsynchronized manner, without requiring an
+        <link linkend="epoch"><mallctl>epoch</mallctl></link> update.
+        As a result, this value should NOT be compared with other
+        stats.  For example, the relative ordering between
+        <mallctl>approximate_stats.active</mallctl> and <link
+        linkend="stats.active"><mallctl>stats.active</mallctl></link> or <link
+        linkend="stats.resident"><mallctl>stats.resident</mallctl></link> is
+        not guaranteed.  This interface is intended for lightweight monitoring
+        where an approximate value is sufficient.</para></listitem>
       </varlistentry>
 
       <varlistentry id="stats.allocated">

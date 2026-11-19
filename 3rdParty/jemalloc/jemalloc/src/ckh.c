@@ -49,8 +49,8 @@
 /******************************************************************************/
 /* Function prototypes for non-inline static functions. */
 
-static bool	ckh_grow(tsd_t *tsd, ckh_t *ckh);
-static void	ckh_shrink(tsd_t *tsd, ckh_t *ckh);
+static bool ckh_grow(tsd_t *tsd, ckh_t *ckh);
+static void ckh_shrink(tsd_t *tsd, ckh_t *ckh);
 
 /******************************************************************************/
 
@@ -60,7 +60,7 @@ static void	ckh_shrink(tsd_t *tsd, ckh_t *ckh);
  */
 static size_t
 ckh_bucket_search(ckh_t *ckh, size_t bucket, const void *key) {
-	ckhc_t *cell;
+	ckhc_t  *cell;
 	unsigned i;
 
 	for (i = 0; i < (ZU(1) << LG_CKH_BUCKET_CELLS); i++) {
@@ -98,20 +98,20 @@ ckh_isearch(ckh_t *ckh, const void *key) {
 }
 
 static bool
-ckh_try_bucket_insert(ckh_t *ckh, size_t bucket, const void *key,
-    const void *data) {
-	ckhc_t *cell;
+ckh_try_bucket_insert(
+    ckh_t *ckh, size_t bucket, const void *key, const void *data) {
+	ckhc_t  *cell;
 	unsigned offset, i;
 
 	/*
 	 * Cycle through the cells in the bucket, starting at a random position.
 	 * The randomness avoids worst-case search overhead as buckets fill up.
 	 */
-	offset = (unsigned)prng_lg_range_u64(&ckh->prng_state,
-	    LG_CKH_BUCKET_CELLS);
+	offset = (unsigned)prng_lg_range_u64(
+	    &ckh->prng_state, LG_CKH_BUCKET_CELLS);
 	for (i = 0; i < (ZU(1) << LG_CKH_BUCKET_CELLS); i++) {
-		cell = &ckh->tab[(bucket << LG_CKH_BUCKET_CELLS) +
-		    ((i + offset) & ((ZU(1) << LG_CKH_BUCKET_CELLS) - 1))];
+		cell = &ckh->tab[(bucket << LG_CKH_BUCKET_CELLS)
+		    + ((i + offset) & ((ZU(1) << LG_CKH_BUCKET_CELLS) - 1))];
 		if (cell->key == NULL) {
 			cell->key = key;
 			cell->data = data;
@@ -130,12 +130,12 @@ ckh_try_bucket_insert(ckh_t *ckh, size_t bucket, const void *key,
  * eviction/relocation bucket cycle.
  */
 static bool
-ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
-    void const **argdata) {
+ckh_evict_reloc_insert(
+    ckh_t *ckh, size_t argbucket, void const **argkey, void const **argdata) {
 	const void *key, *data, *tkey, *tdata;
-	ckhc_t *cell;
-	size_t hashes[2], bucket, tbucket;
-	unsigned i;
+	ckhc_t     *cell;
+	size_t      hashes[2], bucket, tbucket;
+	unsigned    i;
 
 	bucket = argbucket;
 	key = *argkey;
@@ -149,15 +149,18 @@ ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
 		 * were an item for which both hashes indicated the same
 		 * bucket.
 		 */
-		i = (unsigned)prng_lg_range_u64(&ckh->prng_state,
-		    LG_CKH_BUCKET_CELLS);
+		i = (unsigned)prng_lg_range_u64(
+		    &ckh->prng_state, LG_CKH_BUCKET_CELLS);
 		cell = &ckh->tab[(bucket << LG_CKH_BUCKET_CELLS) + i];
 		assert(cell->key != NULL);
 
 		/* Swap cell->{key,data} and {key,data} (evict). */
-		tkey = cell->key; tdata = cell->data;
-		cell->key = key; cell->data = data;
-		key = tkey; data = tdata;
+		tkey = cell->key;
+		tdata = cell->data;
+		cell->key = key;
+		cell->data = data;
+		key = tkey;
+		data = tdata;
 
 #ifdef CKH_COUNT
 		ckh->nrelocs++;
@@ -167,8 +170,8 @@ ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
 		ckh->hash(key, hashes);
 		tbucket = hashes[1] & ((ZU(1) << ckh->lg_curbuckets) - 1);
 		if (tbucket == bucket) {
-			tbucket = hashes[0] & ((ZU(1) << ckh->lg_curbuckets)
-			    - 1);
+			tbucket = hashes[0]
+			    & ((ZU(1) << ckh->lg_curbuckets) - 1);
 			/*
 			 * It may be that (tbucket == bucket) still, if the
 			 * item's hashes both indicate this bucket.  However,
@@ -201,8 +204,8 @@ ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
 }
 
 static bool
-ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata) {
-	size_t hashes[2], bucket;
+ckh_try_insert(ckh_t *ckh, void const **argkey, void const **argdata) {
+	size_t      hashes[2], bucket;
 	const void *key = *argkey;
 	const void *data = *argdata;
 
@@ -232,7 +235,7 @@ ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata) {
  */
 static bool
 ckh_rebuild(ckh_t *ckh, ckhc_t *aTab) {
-	size_t count, i, nins;
+	size_t      count, i, nins;
 	const void *key, *data;
 
 	count = ckh->count;
@@ -254,8 +257,8 @@ ckh_rebuild(ckh_t *ckh, ckhc_t *aTab) {
 
 static bool
 ckh_grow(tsd_t *tsd, ckh_t *ckh) {
-	bool ret;
-	ckhc_t *tab, *ttab;
+	bool     ret;
+	ckhc_t  *tab, *ttab;
 	unsigned lg_prevbuckets, lg_curcells;
 
 #ifdef CKH_COUNT
@@ -274,8 +277,7 @@ ckh_grow(tsd_t *tsd, ckh_t *ckh) {
 
 		lg_curcells++;
 		usize = sz_sa2u(sizeof(ckhc_t) << lg_curcells, CACHELINE);
-		if (unlikely(usize == 0
-		    || usize > SC_LARGE_MAXCLASS)) {
+		if (unlikely(usize == 0 || usize > SC_LARGE_MAXCLASS)) {
 			ret = true;
 			goto label_return;
 		}
@@ -309,8 +311,8 @@ label_return:
 
 static void
 ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
-	ckhc_t *tab, *ttab;
-	size_t usize;
+	ckhc_t  *tab, *ttab;
+	size_t   usize;
 	unsigned lg_prevbuckets, lg_curcells;
 
 	/*
@@ -358,8 +360,8 @@ ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
 bool
 ckh_new(tsd_t *tsd, ckh_t *ckh, size_t minitems, ckh_hash_t *ckh_hash,
     ckh_keycomp_t *keycomp) {
-	bool ret;
-	size_t mincells, usize;
+	bool     ret;
+	size_t   mincells, usize;
 	unsigned lg_mincells;
 
 	assert(minitems > 0);
@@ -386,8 +388,7 @@ ckh_new(tsd_t *tsd, ckh_t *ckh, size_t minitems, ckh_hash_t *ckh_hash,
 	assert(LG_CKH_BUCKET_CELLS > 0);
 	mincells = ((minitems + (3 - (minitems % 3))) / 3) << 2;
 	for (lg_mincells = LG_CKH_BUCKET_CELLS;
-	    (ZU(1) << lg_mincells) < mincells;
-	    lg_mincells++) {
+	     (ZU(1) << lg_mincells) < mincells; lg_mincells++) {
 		/* Do nothing. */
 	}
 	ckh->lg_minbuckets = lg_mincells - LG_CKH_BUCKET_CELLS;
@@ -417,11 +418,12 @@ ckh_delete(tsd_t *tsd, ckh_t *ckh) {
 	assert(ckh != NULL);
 
 #ifdef CKH_VERBOSE
-	malloc_printf(
-	    "%s(%p): ngrows: %"FMTu64", nshrinks: %"FMTu64","
-	    " nshrinkfails: %"FMTu64", ninserts: %"FMTu64","
-	    " nrelocs: %"FMTu64"\n", __func__, ckh,
-	    (unsigned long long)ckh->ngrows,
+	malloc_printf("%s(%p): ngrows: %" FMTu64 ", nshrinks: %" FMTu64
+	              ","
+	              " nshrinkfails: %" FMTu64 ", ninserts: %" FMTu64
+	              ","
+	              " nrelocs: %" FMTu64 "\n",
+	    __func__, ckh, (unsigned long long)ckh->ngrows,
 	    (unsigned long long)ckh->nshrinks,
 	    (unsigned long long)ckh->nshrinkfails,
 	    (unsigned long long)ckh->ninserts,
@@ -445,8 +447,9 @@ bool
 ckh_iter(ckh_t *ckh, size_t *tabind, void **key, void **data) {
 	size_t i, ncells;
 
-	for (i = *tabind, ncells = (ZU(1) << (ckh->lg_curbuckets +
-	    LG_CKH_BUCKET_CELLS)); i < ncells; i++) {
+	for (i = *tabind,
+	    ncells = (ZU(1) << (ckh->lg_curbuckets + LG_CKH_BUCKET_CELLS));
+	     i < ncells; i++) {
 		if (ckh->tab[i].key != NULL) {
 			if (key != NULL) {
 				*key = (void *)ckh->tab[i].key;
@@ -486,8 +489,8 @@ label_return:
 }
 
 bool
-ckh_remove(tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key,
-    void **data) {
+ckh_remove(
+    tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key, void **data) {
 	size_t cell;
 
 	assert(ckh != NULL);
@@ -505,9 +508,9 @@ ckh_remove(tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key,
 
 		ckh->count--;
 		/* Try to halve the table if it is less than 1/4 full. */
-		if (ckh->count < (ZU(1) << (ckh->lg_curbuckets
-		    + LG_CKH_BUCKET_CELLS - 2)) && ckh->lg_curbuckets
-		    > ckh->lg_minbuckets) {
+		if (ckh->count < (ZU(1)
+		        << (ckh->lg_curbuckets + LG_CKH_BUCKET_CELLS - 2))
+		    && ckh->lg_curbuckets > ckh->lg_minbuckets) {
 			/* Ignore error due to OOM. */
 			ckh_shrink(tsd, ckh);
 		}
@@ -554,8 +557,8 @@ ckh_string_keycomp(const void *k1, const void *k2) {
 void
 ckh_pointer_hash(const void *key, size_t r_hash[2]) {
 	union {
-		const void	*v;
-		size_t		i;
+		const void *v;
+		size_t      i;
 	} u;
 
 	assert(sizeof(u.v) == sizeof(u.i));
