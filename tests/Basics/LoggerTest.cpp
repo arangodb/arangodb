@@ -41,7 +41,9 @@
 #include <date/date.h>
 #include <format>
 
+#include <absl/strings/str_cat.h>
 #include <array>
+#include <bit>
 #include <filesystem>
 #include <mutex>
 #include <regex>
@@ -495,6 +497,91 @@ TEST_F(LoggerSecurityTest, classifiers_are_distinct_and_canonical) {
     EXPECT_TRUE(classifier.starts_with("arango-security-event-")) << classifier;
     EXPECT_TRUE(seen.insert(classifier).second) << classifier;
   }
+}
+
+TEST_F(LoggerSecurityTest, categories_are_distinct_single_bits) {
+  std::uint32_t seen = 0;
+  for (auto s : kAllSecurityCategories) {
+    auto bits = static_cast<std::uint16_t>(s);
+    EXPECT_TRUE(std::has_single_bit(bits)) << bits;
+    EXPECT_EQ(seen & bits, 0u) << bits;
+    seen |= bits;
+  }
+}
+
+TEST_F(LoggerSecurityTest, single_category_classifiers) {
+  for (auto s : kAllSecurityCategories) {
+    auto classifier = securityClassifier(s);
+    EXPECT_FALSE(classifier.empty());
+    EXPECT_EQ(securityClassifiers(s), classifier);
+    std::ostringstream os;
+    os << s;
+    EXPECT_EQ(os.str(), classifier);
+  }
+}
+
+TEST_F(LoggerSecurityTest, two_category_classifiers) {
+  auto s = Security::SessionManagement | Security::Authentication;
+  EXPECT_TRUE(hasSecurityCategory(s, Security::Authentication));
+  EXPECT_TRUE(hasSecurityCategory(s, Security::SessionManagement));
+  EXPECT_FALSE(hasSecurityCategory(s, Security::DataAccess));
+  // not a single category
+  EXPECT_TRUE(securityClassifier(s).empty());
+  // ordered by bit position, not by order of OR-ing
+  std::string_view expected =
+      "arango-security-event-authentication,"
+      "arango-security-event-session-management";
+  EXPECT_EQ(securityClassifiers(s), expected);
+  std::string out = "prefix ";
+  appendSecurityClassifiers(out, s);
+  EXPECT_EQ(out, absl::StrCat("prefix ", expected));
+  std::ostringstream os;
+  os << s;
+  EXPECT_EQ(os.str(), expected);
+}
+
+TEST_F(LoggerSecurityTest, all_category_classifiers) {
+  Security all = kAllSecurityCategories[0];
+  std::string expected;
+  for (auto s : kAllSecurityCategories) {
+    all |= s;
+    if (!expected.empty()) {
+      expected += kSecurityClassifierSeparator;
+    }
+    expected += securityClassifier(s);
+  }
+  EXPECT_EQ(securityClassifiers(all), expected);
+}
+
+TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
+  startCapturing(/*useJson*/ false);
+  LOG_TOPIC("8d2fd", INFO, Logger::FIXME,
+            Security::Authentication | Security::Violations)
+      << "multi security test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  EXPECT_NE(messages[0].find("[arango-security-event-authentication,"
+                             "arango-security-event-violations] "),
+            std::string::npos)
+      << messages[0];
+}
+
+TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
+  startCapturing(/*useJson*/ true);
+  LOG_TOPIC("8d2fe", INFO, Logger::FIXME,
+            Security::DataAccess | Security::AccessControl)
+      << "multi json security test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  auto slice = builder->slice();
+  ASSERT_TRUE(slice.isObject()) << messages[0];
+  ASSERT_TRUE(slice.get("security").isString()) << messages[0];
+  EXPECT_EQ(slice.get("security").stringView(),
+            "arango-security-event-access-control,"
+            "arango-security-event-data-access");
 }
 
 TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
