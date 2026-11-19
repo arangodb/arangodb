@@ -72,8 +72,8 @@ struct CombinationCache {
 CombinationCache& combinationCache() {
   // intentionally leaked, so that the cache (and string_views into it)
   // remain valid during static destruction, when logging may still happen.
-  static auto* cache = new CombinationCache();
-  return *cache;
+  static CombinationCache cache;
+  return cache;
 }
 
 std::string buildCombination(std::uint16_t bits) {
