@@ -43,8 +43,12 @@ class ServerSecurityFeature final
   bool isRestApiHardened() const noexcept;
 
   /// @brief name of the environment variable which enables FedRAMP High
-  /// mode. FedRAMP High mode is enabled if the variable is set to a
-  /// non-empty value.
+  /// mode. FedRAMP High mode is enabled if the variable is set to *any*
+  /// non-empty value. This is intentional: the value is not interpreted,
+  /// so e.g. "0", "false" or "no" also enable FedRAMP High mode. This
+  /// fails safe, i.e. a mistyped or unexpected value can never accidentally
+  /// disable the mode. FedRAMP High mode is only off if the variable is
+  /// unset or set to the empty string.
   static constexpr char const* kFedRAMPHighEnvVar = "FedRAMPHigh";
 
   /// @brief whether the server runs in FedRAMP High mode. this is detected

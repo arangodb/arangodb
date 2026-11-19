@@ -48,6 +48,8 @@ ServerSecurityFeature::ServerSecurityFeature(
 
   // detect FedRAMP High mode as early as possible, so that the flag is
   // already available while other features are being set up.
+  // note: any non-empty value enables the mode, regardless of its content
+  // (even "0" or "false"). this is intentional, see kFedRAMPHighEnvVar.
   std::string value;
   _fedRAMPHigh.store(TRI_GETENV(kFedRAMPHighEnvVar, value) && !value.empty(),
                      std::memory_order_relaxed);

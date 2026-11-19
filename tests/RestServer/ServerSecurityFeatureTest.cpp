@@ -83,8 +83,20 @@ TEST(ServerSecurityFeatureTest, fedramp_high_is_off_if_variable_is_empty) {
 
 TEST(ServerSecurityFeatureTest, fedramp_high_is_on_if_variable_is_non_empty) {
   EXPECT_TRUE(detectFedRAMPHigh("1"));
-  EXPECT_TRUE(detectFedRAMPHigh("false"));  // any non-empty value counts
+  EXPECT_TRUE(detectFedRAMPHigh("true"));
+  EXPECT_TRUE(detectFedRAMPHigh("on"));
   // flag is re-detected on each construction
+  EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
+}
+
+// intentionally, the value of the variable is not interpreted: any
+// non-empty value enables FedRAMP High mode, even values which look like
+// "off". this fails safe, so that the mode cannot be disabled by accident.
+TEST(ServerSecurityFeatureTest,
+     fedramp_high_is_on_even_if_variable_looks_like_false) {
+  for (char const* value : {"0", "false", "FALSE", "no", "off", " "}) {
+    EXPECT_TRUE(detectFedRAMPHigh(value)) << "value: '" << value << "'";
+  }
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
 }
 
