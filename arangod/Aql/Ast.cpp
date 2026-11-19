@@ -29,6 +29,7 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/AstNode.h"
+#include "Aql/Ast/ParseModificationOptions.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
@@ -708,9 +709,8 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
-    auto ops = ExecutionPlan::parseModificationOptions(
-        query(), "INSERT", options, /*addWarnings*/ false);
-    returnOld = ops.isOverwriteModeUpdateReplace();
+    auto parseResult = ast::parseModificationOptions("INSERT", options);
+    returnOld = parseResult.options.isOverwriteModeUpdateReplace();
   }
 
   node->reserve(returnOld ? 5 : 4);
