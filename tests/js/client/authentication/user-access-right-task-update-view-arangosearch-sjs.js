@@ -88,7 +88,10 @@ const executeJS = (code) => {
 };
 
 
-let name = "";
+// names will have the from : UnitTest_<systemLevel>_<dbLevel>_<colLevel>.
+// the first suite, which only checks that all users exist, runs as root:
+// reconnecting with an empty username connects unauthenticated
+let name = "root";
 function rootTestCollection (colName, switchBack = true) {
   helper.switchUser('root', dbName);
   let col = db._collection(colName);
