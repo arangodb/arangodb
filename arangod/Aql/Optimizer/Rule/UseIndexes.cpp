@@ -22,7 +22,7 @@
 
 #include "UseIndexes.h"
 
-#include "Aql/ConditionFinder.h"
+#include "Aql/Optimizer/Utils/ConditionFinder.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
