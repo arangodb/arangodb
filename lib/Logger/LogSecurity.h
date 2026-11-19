@@ -24,7 +24,6 @@
 
 #include <cstdint>
 #include <iosfwd>
-#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -77,23 +76,25 @@ constexpr bool hasSecurityCategory(Security security,
 /// belongs to more than one category.
 inline constexpr std::string_view kSecurityClassifierSeparator = ",";
 
-/// @brief returns the classifier literal for a single security event
-/// category, e.g. "arango-security-event-authentication". If `security`
-/// does not have exactly one known bit set, an empty string_view is
-/// returned. Use appendSecurityClassifiers() / securityClassifiers() to
-/// handle combinations of categories.
-std::string_view securityClassifier(Security security) noexcept;
-
-/// @brief appends the classifier literals of all categories contained in
-/// `security` to `out`, separated by kSecurityClassifierSeparator, e.g.
-/// "arango-security-event-authentication,arango-security-event-session-management".
-/// Does not allocate an intermediate string; for a single category this is
-/// a single append of a static literal.
-void appendSecurityClassifiers(std::string& out, Security security);
-
-/// @brief returns the classifier literals of all categories contained in
-/// `security`, separated by kSecurityClassifierSeparator.
-std::string securityClassifiers(Security security);
+/// @brief returns the classifier of `security`, e.g.
+/// "arango-security-event-authentication" for a single category, or
+/// "arango-security-event-authentication,arango-security-event-session-management"
+/// for a combination of categories. Multiple classifiers are ordered by bit
+/// position (not by the order of OR-ing) and separated by
+/// kSecurityClassifierSeparator. Unknown bits are ignored; if no known bit is
+/// set, an empty string_view is returned.
+///
+/// The returned string_view stays valid for the lifetime of the process, so
+/// it can be stored and used without copying:
+/// - a single category (by far the most common case) is a lock-free lookup
+///   of a compile-time static literal.
+/// - a combination of categories is computed lazily on first use, under a
+///   write lock, and then cached forever in a process-global table which never
+///   frees or moves its strings. Subsequent lookups of the same combination
+///   only take a read lock. Since there are at most 2^12 combinations (and
+///   in practice only a handful are used), the cache is bounded.
+/// Thread-safe.
+std::string_view securityClassifier(Security security);
 
 std::ostream& operator<<(std::ostream& out, Security security);
 

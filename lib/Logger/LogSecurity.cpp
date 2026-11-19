@@ -22,9 +22,15 @@
 
 #include "Logger/LogSecurity.h"
 
+#include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
+
 #include <array>
 #include <bit>
 #include <ostream>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -53,61 +59,70 @@ static_assert(static_cast<std::uint16_t>(Security::SystemErrors) ==
 constexpr std::uint16_t kAllBits =
     static_cast<std::uint16_t>((1u << kClassifiers.size()) - 1);
 
-// calls `cb` with the classifier of every known category in `bits`,
-// in ascending bit order
-template<typename F>
-void forEachClassifier(std::uint16_t bits, F&& cb) {
-  bits &= kAllBits;
+// lazily populated cache of classifier strings for combinations of more
+// than one category. entries are never removed, and since std::unordered_map
+// is node-based, neither rehashing nor inserting moves existing elements, so
+// the characters of a stored string never move and string_views into them
+// stay valid forever.
+struct CombinationCache {
+  basics::ReadWriteLock lock;
+  std::unordered_map<std::uint16_t, std::string> classifiers;
+};
+
+CombinationCache& combinationCache() {
+  // intentionally leaked, so that the cache (and string_views into it)
+  // remain valid during static destruction, when logging may still happen.
+  static auto* cache = new CombinationCache();
+  return *cache;
+}
+
+std::string buildCombination(std::uint16_t bits) {
+  std::string result;
   while (bits != 0) {
-    cb(kClassifiers[std::countr_zero(bits)]);
+    if (!result.empty()) {
+      result.append(kSecurityClassifierSeparator);
+    }
+    result.append(kClassifiers[std::countr_zero(bits)]);
     bits &= bits - 1;  // clear lowest set bit
   }
+  return result;
 }
 
 }  // namespace
 
-std::string_view securityClassifier(Security security) noexcept {
-  auto bits = static_cast<std::uint16_t>(security);
-  if (std::has_single_bit(bits) && (bits & kAllBits) != 0) {
+std::string_view securityClassifier(Security security) {
+  auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
+                                         kAllBits);
+
+  // fast path: exactly one category, which is by far the most common case
+  if (std::has_single_bit(bits)) {
     return kClassifiers[std::countr_zero(bits)];
   }
-  return {};
-}
-
-void appendSecurityClassifiers(std::string& out, Security security) {
-  auto bits = static_cast<std::uint16_t>(security);
-  // fast path: exactly one category, which is by far the most common case
-  if (std::has_single_bit(bits) && (bits & kAllBits) != 0) {
-    out.append(kClassifiers[std::countr_zero(bits)]);
-    return;
+  if (bits == 0) {
+    return {};
   }
-  bool first = true;
-  forEachClassifier(bits, [&](std::string_view classifier) {
-    if (!first) {
-      out.append(kSecurityClassifierSeparator);
-    }
-    first = false;
-    out.append(classifier);
-  });
-}
 
-std::string securityClassifiers(Security security) {
-  std::string result;
-  appendSecurityClassifiers(result, security);
-  return result;
+  auto& cache = combinationCache();
+  {
+    READ_LOCKER(guard, cache.lock);
+    if (auto it = cache.classifiers.find(bits); it != cache.classifiers.end()) {
+      return it->second;
+    }
+  }
+
+  WRITE_LOCKER(guard, cache.lock);
+  // recheck: another thread may have added the combination between our
+  // releasing the read lock and acquiring the write lock.
+  if (auto it = cache.classifiers.find(bits); it != cache.classifiers.end()) {
+    return it->second;
+  }
+  // build the string before inserting, so that an exception cannot leave an
+  // empty entry behind.
+  return cache.classifiers.emplace(bits, buildCombination(bits)).first->second;
 }
 
 std::ostream& operator<<(std::ostream& out, Security security) {
-  bool first = true;
-  forEachClassifier(static_cast<std::uint16_t>(security),
-                    [&](std::string_view classifier) {
-                      if (!first) {
-                        out << kSecurityClassifierSeparator;
-                      }
-                      first = false;
-                      out << classifier;
-                    });
-  return out;
+  return out << securityClassifier(security);
 }
 
 }  // namespace arangodb

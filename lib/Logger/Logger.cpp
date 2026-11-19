@@ -821,12 +821,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   if (security.has_value()) {
     out.append(",\"security\":");
     // value of the classifier is always safe to print
-    if (auto classifier = securityClassifier(*security); !classifier.empty()) {
-      // fast path: a single category, no need to build a string
-      dumper.appendString(classifier);
-    } else {
-      dumper.appendString(securityClassifiers(*security));
-    }
+    dumper.appendString(securityClassifier(*security));
   }
 
   // the logid
@@ -976,7 +971,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   // the in-memory log buffer and in syslog output.
   if (security.has_value()) {
     out.push_back('[');
-    appendSecurityClassifiers(out, *security);
+    out.append(securityClassifier(*security));
     out.append("] ");
   }
 
