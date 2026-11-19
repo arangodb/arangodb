@@ -50,7 +50,7 @@ void LogAppender::logMessageGuarded(LogMessage const& message) {
     level = LogLevel::INFO;
   }
 
-  if (message._level <= level || message._forceOutput) {
+  if (message.isEnabledFor(level)) {
     // Only one thread is allowed to actually write logs to the file.
     // We use a recusive lock here, just in case writing the log message
     // causes a crash, in this case we may trigger another force-direct

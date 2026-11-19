@@ -560,6 +560,20 @@ TEST_F(LoggerSecurityTest, all_category_classifiers) {
   EXPECT_EQ(securityClassifier(all), expected);
 }
 
+TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
+  LogMessage plain("f", "file", 1, LogLevel::DEBUG, 0, "msg", 0, false);
+  EXPECT_TRUE(plain.isEnabledFor(LogLevel::TRACE));
+  EXPECT_TRUE(plain.isEnabledFor(LogLevel::DEBUG));
+  EXPECT_FALSE(plain.isEnabledFor(LogLevel::INFO));
+  EXPECT_FALSE(plain.isEnabledFor(LogLevel::FATAL));
+
+  LogMessage forced("f", "file", 1, LogLevel::TRACE, 0, "msg", 0, false,
+                    /*forceOutput*/ true);
+  EXPECT_TRUE(forced.isEnabledFor(LogLevel::TRACE));
+  EXPECT_TRUE(forced.isEnabledFor(LogLevel::INFO));
+  EXPECT_TRUE(forced.isEnabledFor(LogLevel::FATAL));
+}
+
 TEST_F(LoggerSecurityTest, empty_and_unknown_bits) {
   EXPECT_TRUE(securityClassifier(static_cast<Security>(0)).empty());
   // bits above the known categories are ignored
