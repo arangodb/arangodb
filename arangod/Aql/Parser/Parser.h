@@ -43,7 +43,7 @@ class Parser {
   Parser& operator=(Parser const&) = delete;
 
   /// @brief create the parser
-  explicit Parser(QueryContext&, QueryWarnings*, Ast&, QueryString&);
+  explicit Parser(QueryWarnings*, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
@@ -54,9 +54,6 @@ class Parser {
 
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
-
-  /// @brief return the query during parsing
-  QueryContext& query() { return _query; }
 
   /// @brief return the scanner
   void* scanner() const { return _scanner; }
@@ -148,9 +145,6 @@ class Parser {
  private:
   /// @brief a pointer to the start of the query string
   QueryString const& queryString() const { return _queryString; }
-
-  /// @brief the query
-  QueryContext& _query;
 
   /// @brief abstract syntax tree for the query, build during parsing
   Ast& _ast;

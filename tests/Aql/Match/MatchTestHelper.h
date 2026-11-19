@@ -120,15 +120,14 @@ class MatchTestFixture : public ::testing::Test {
 
     auto ast = std::make_unique<Ast>(*queryContext);
     auto queryString = QueryString(query);
-    Parser parser(*queryContext, &queryContext->warnings(), *ast, queryString);
+    Parser parser(&queryContext->warnings(), *ast, queryString);
     parser.parse();
 
     std::unique_ptr<BindParameters> parameters;
     if (injectBindParameters) {
       parameters =
           makeBindParameters(queryContext->resourceMonitor(), bindParams);
-      ast->injectBindParametersFirstStage(*parameters,
-                                          queryContext->resolver());
+      ast->injectBindParametersFirstStage(*parameters);
       ast->injectBindParametersSecondStage(*parameters);
     }
 

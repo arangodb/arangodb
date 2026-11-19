@@ -283,14 +283,12 @@ class Ast {
   /// this function will return either an AST collection or an AST view node
   /// if failIfDoesNotExist is true, the function will throw if the specified
   /// data source does not exist
-  AstNode* createNodeDataSource(CollectionNameResolver const& resolver,
-                                std::string_view name,
+  AstNode* createNodeDataSource(std::string_view name,
                                 AccessMode::Type accessType, bool validateName,
                                 bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(CollectionNameResolver const& resolver,
-                                std::string_view name,
+  AstNode* createNodeCollection(std::string_view name,
                                 AccessMode::Type accessType);
 
   /// @brief create an AST reference node
@@ -423,12 +421,10 @@ class Ast {
   AstNode* createNodeDestructuring(AstNode const* value, bool isObject);
 
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections(AstNode const*,
-                                     CollectionNameResolver const& resolver);
+  AstNode* createNodeWithCollections(AstNode const*);
 
   /// @brief create an AST collection list node
-  AstNode* createNodeCollectionList(AstNode const*,
-                                    CollectionNameResolver const& resolver);
+  AstNode* createNodeCollectionList(AstNode const*);
 
   /// @brief create an AST direction node
   AstNode* createNodeDirection(uint64_t, uint64_t);
@@ -506,8 +502,7 @@ class Ast {
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
   /// e.g. @@foo and `doc.@attr`).
-  void injectBindParametersFirstStage(BindParameters& parameters,
-                                      CollectionNameResolver const& resolver);
+  void injectBindParametersFirstStage(BindParameters& parameters);
 
   /// @brief injects second-stage bind parameter values into the AST
   /// (i.e. all value bind parameters)
@@ -548,8 +543,7 @@ class Ast {
 
   /// @brief Adds vertex collections that are implied by using edge collection
   /// syntax in graph operations.
-  void addGraphNodeImplicitVertexCollections(
-      CollectionNameResolver const& resolver);
+  void addGraphNodeImplicitVertexCollections();
 
   /// @brief optimizes the AST
   void validateAndOptimize(transaction::Methods&,

@@ -51,7 +51,7 @@ Result StandaloneCalculation::validateQuery(
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);
-    Parser parser(queryContext, &queryContext.warnings(), *ast, qs);
+    Parser parser(&queryContext.warnings(), *ast, qs);
     if (isComputedValue) {
       // force the condition of the ternary operator (condition ? truePart :
       // falsePart) to be always inlined and not be extracted into its own LET
