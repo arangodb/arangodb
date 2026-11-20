@@ -31,6 +31,11 @@
 * Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
   (previously g++-13).
 
+* BTS-2568: The internal `readPipe()` function of arangosh returns right away
+  for an external process that has no open output pipe, for example because
+  its executable wasn't found. The test runner therefore finishes on systems
+  without `netstat` instead of hanging after the first test suite.
+
 * Update libunwind from 1.7.2 to 1.8.3.
 
 * COR-1263 / github issue #23383:
