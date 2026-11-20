@@ -47,9 +47,6 @@
 namespace arangodb {
 class TransactionState;
 
-template<typename>  
-struct async;
-
 namespace application_features {
 class ApplicationServer;
 }  // namespace application_features
@@ -335,7 +332,7 @@ class Manager final : public IManager {
   /// @brief Aborts a managed transaction. Should it be still in
   /// use, soft-abort instead, so it is aborted when its current
   /// user returns it, or by the next garbage collection run
-  async<Result> abortOrSoftAbortManagedTrx(
+  futures::Future<Result> abortOrSoftAbortManagedTrx(
       TransactionId tid, std::string const& database);
 
   /// @brief Mark a managed transaction expired, it is aborted

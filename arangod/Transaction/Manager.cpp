@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Async/async.h"
 #include "Auth/TokenCache.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
@@ -317,11 +316,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            auto res = abortOrSoftAbortManagedTrx(tid, databaseName);
-	    if (res.fail()) {
-	      LOG_TOPIC("7fe52", WARN, Logger::TRANSACTIONS)
-		<< "error while soft aborting transaction: " << tid;
-	    }
+            abortOrSoftAbortManagedTrx(tid, databaseName).waitAndGet();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -1368,7 +1363,7 @@ void Manager::iterateManagedTrx(
   }
 }
 
-async<Result> Manager::abortOrSoftAbortManagedTrx(
+futures::Future<Result> Manager::abortOrSoftAbortManagedTrx(
     TransactionId tid, std::string const& database) {
   Result res = co_await abortManagedTrx(tid, database);
   if (res.is(TRI_ERROR_LOCKED)) {
