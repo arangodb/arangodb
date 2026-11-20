@@ -762,9 +762,10 @@ void V8ClientConnection::connectHandle(
   _handles.activate(handle, std::move(*cached));
   adoptClientSettings(_handles.config());
   // the db object caches what it read via the previous handle, which may
-  // have been another database, server or user
-  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._flushCache();",
-                              "reload db object", false);
+  // have been another database, server or user. it is not refilled here, as
+  // switching handles must not send requests
+  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._forgetCache();",
+                              "forget db object cache", false);
 
   TRI_V8_RETURN_TRUE();
 }
