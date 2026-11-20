@@ -31,6 +31,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <map>
+#include <string>
 #include <thread>
 
 using namespace arangodb;
@@ -92,16 +94,32 @@ TEST(RbacAuthorizationCacheTest, keyComponentsAreDistinct) {
   EXPECT_TRUE(cache.lookup("tok", "db:Read", "db:database:d").has_value());
 }
 
-TEST(RbacAuthorizationCacheTest, disabledCacheStoresNothing) {
+TEST(RbacAuthorizationCacheTest, optionsActiveDependsOnUnusedTimeout) {
+  EXPECT_TRUE(Cache::Options{}.active());
+  EXPECT_TRUE(makeOptions(1ms, 30s).active());
+  EXPECT_FALSE(makeOptions(0s, 30s).active());
+}
+
+TEST(RbacAuthorizationCacheTest, inactiveCacheStoresNothing) {
   ManualClock clock;
   Cache cache{makeOptions(0s, 30s), clock.function()};
-  EXPECT_FALSE(cache.enabled());
+  EXPECT_FALSE(cache.active());
   cache.insert("tok", "db:Read", "db:database:d", allow);
   EXPECT_EQ(cache.size(), 0u);
   EXPECT_FALSE(cache.lookup("tok", "db:Read", "db:database:d").has_value());
 }
 
-TEST(RbacAuthorizationCacheTest, disablingViaOptionsClearsEntries) {
+TEST(RbacAuthorizationCacheTest, activatingViaOptions) {
+  ManualClock clock;
+  Cache cache{makeOptions(0s, 30s), clock.function()};
+  EXPECT_FALSE(cache.active());
+  cache.setOptions(makeOptions(60s, 30s));
+  EXPECT_TRUE(cache.active());
+  cache.insert("tok", "db:Read", "db:database:d", allow);
+  EXPECT_EQ(cache.lookup("tok", "db:Read", "db:database:d"), allow);
+}
+
+TEST(RbacAuthorizationCacheTest, deactivatingViaOptionsClearsEntries) {
   ManualClock clock;
   Cache cache{makeOptions(60s, 30s), clock.function()};
   cache.insert("tok", "db:Read", "db:database:d", allow);
@@ -220,6 +238,66 @@ TEST(RbacAuthorizationCacheTest, veryOldEntriesAreNotServed) {
   // A fresh insert makes it servable again.
   cache.insert("tok", "db:Read", "x", deny);
   EXPECT_EQ(cache.lookup("tok", "db:Read", "x"), deny);
+}
+
+TEST(RbacAuthorizationCacheTest, chunkedMaintenanceHandlesManyEntries) {
+  // Many more entries than one maintenance chunk: every entry must still be
+  // evicted or refreshed exactly once.
+  ManualClock clock;
+  Cache cache{makeOptions(100s, 10s), clock.function()};
+  std::size_t const n = 10 * Cache::kMaintenanceChunkEntries + 7;
+  std::map<std::string, int> refreshCount;
+  cache.setRefresher([&](Cache::Key const& key) {
+    ++refreshCount[key.resource];
+    return std::optional{deny};
+  });
+  for (std::size_t i = 0; i < n; ++i) {
+    cache.insert("tok", "db:Read", std::to_string(i), allow);
+  }
+  clock.advance(60s);
+  // Use the even ones, so the odd ones become unused.
+  for (std::size_t i = 0; i < n; i += 2) {
+    ASSERT_FALSE(cache.lookup("tok", "db:Read", std::to_string(i)));  // stale
+    cache.insert("tok", "db:Read", std::to_string(i), allow);
+  }
+  clock.advance(50s);  // odd: unused for 110s; even: 50s old, used 50s ago
+
+  cache.runMaintenance();
+
+  EXPECT_EQ(cache.size(), (n + 1) / 2);
+  EXPECT_EQ(refreshCount.size(), (n + 1) / 2);
+  for (auto const& [resource, count] : refreshCount) {
+    EXPECT_EQ(count, 1) << resource;
+    EXPECT_EQ(std::stoul(resource) % 2, 0u) << resource;
+    EXPECT_EQ(cache.lookup("tok", "db:Read", resource), deny);
+  }
+}
+
+TEST(RbacAuthorizationCacheTest, concurrentAccessDuringMaintenance) {
+  // Lookups and inserts (which may rehash the map) run while maintenance
+  // scans in chunks. Mainly meant to be meaningful under ASan/TSan.
+  Cache cache{makeOptions(50ms, 10ms)};
+  cache.setRefresher(
+      [](Cache::Key const&) { return std::optional<Cache::Decision>{allow}; });
+  for (int i = 0; i < 2000; ++i) {
+    cache.insert("tok", "db:Read", std::to_string(i), allow);
+  }
+  std::atomic<bool> done = false;
+  std::thread worker([&] {
+    int i = 0;
+    while (!done.load()) {
+      auto resource = std::to_string(i++ % 5000);
+      if (!cache.lookup("tok", "db:Read", resource)) {
+        cache.insert("tok", "db:Read", resource, allow);
+      }
+    }
+  });
+  for (int round = 0; round < 5; ++round) {
+    std::this_thread::sleep_for(5ms);
+    EXPECT_NO_THROW(cache.runMaintenance());
+  }
+  done.store(true);
+  worker.join();
 }
 
 TEST(RbacAuthorizationCacheTest, maintenanceThreadEvictsInBackground) {

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
@@ -115,7 +116,9 @@ class AuthorizationCache {
 
   void setOptions(Options options);
   [[nodiscard]] Options options() const;
-  [[nodiscard]] bool active() const;
+  // Lock-free; lookup() and insert() use it to skip the mutex entirely when
+  // the cache is not active.
+  [[nodiscard]] bool active() const noexcept;
 
   // Returns the cached decision and bumps the last-used time, or std::nullopt
   // on a miss (or if the cache is not active).
@@ -185,6 +188,11 @@ class AuthorizationCache {
 
   mutable std::mutex _mutex;
   Options _options;
+  // Mirrors _options.active(), so that the hot path can check it without
+  // taking _mutex. Only written under _mutex. Relaxed ordering suffices: an
+  // active cache is only ever accessed under _mutex, which re-checks
+  // _options, and a stale value only delays (de)activation by a moment.
+  std::atomic<bool> _active;
   std::unordered_map<Key, Entry, KeyHash, KeyEqual> _entries;
 
   // Held while calling the refresher, see setRefresher().

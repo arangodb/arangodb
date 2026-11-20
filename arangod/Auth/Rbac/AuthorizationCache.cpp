@@ -54,13 +54,14 @@ std::size_t AuthorizationCache::KeyHash::operator()(
 AuthorizationCache::AuthorizationCache() : AuthorizationCache(Options{}) {}
 
 AuthorizationCache::AuthorizationCache(Options options, ClockFunction clock)
-    : _clock(std::move(clock)), _options(options) {}
+    : _clock(std::move(clock)), _options(options), _active(options.active()) {}
 
 AuthorizationCache::~AuthorizationCache() { stopMaintenanceThread(); }
 
 void AuthorizationCache::setOptions(Options options) {
   std::lock_guard guard{_mutex};
   _options = options;
+  _active.store(_options.active(), std::memory_order_relaxed);
   if (!_options.active()) {
     _entries.clear();
   }
@@ -71,16 +72,21 @@ auto AuthorizationCache::options() const -> Options {
   return _options;
 }
 
-bool AuthorizationCache::active() const {
-  std::lock_guard guard{_mutex};
-  return _options.active();
+bool AuthorizationCache::active() const noexcept {
+  return _active.load(std::memory_order_relaxed);
 }
 
 auto AuthorizationCache::lookup(std::string_view token, std::string_view action,
                                 std::string_view resource)
     -> std::optional<Decision> {
+  // Fast path without taking the mutex if the cache is not active.
+  if (!active()) {
+    return std::nullopt;
+  }
   auto now = _clock();
   std::lock_guard guard{_mutex};
+  // Re-check under the lock: setOptions() may have deactivated the cache
+  // in the meantime.
   if (!_options.active()) {
     return std::nullopt;
   }
@@ -99,8 +105,14 @@ auto AuthorizationCache::lookup(std::string_view token, std::string_view action,
 
 void AuthorizationCache::insert(std::string_view token, std::string_view action,
                                 std::string_view resource, Decision decision) {
+  // Fast path without taking the mutex if the cache is not active.
+  if (!active()) {
+    return;
+  }
   auto now = _clock();
   std::lock_guard guard{_mutex};
+  // Re-check under the lock, so that nothing is inserted after setOptions()
+  // has deactivated the cache and cleared it.
   if (!_options.active()) {
     return;
   }
@@ -122,6 +134,11 @@ void AuthorizationCache::setRefresher(Refresher refresher) {
 void AuthorizationCache::runMaintenance() { runMaintenance(std::stop_token{}); }
 
 void AuthorizationCache::runMaintenance(std::stop_token const& stopToken) {
+  // Nothing to do if the cache is not active: setOptions() already cleared it.
+  if (!active()) {
+    return;
+  }
+
   // Phase 1: scan the map in chunks, evicting unused entries and collecting
   // the ones due for a refresh. The scan walks the hash buckets and releases
   // _mutex after every kMaintenanceChunkEntries entries (or
