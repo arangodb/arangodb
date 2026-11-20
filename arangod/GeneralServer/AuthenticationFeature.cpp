@@ -130,7 +130,7 @@ void AuthenticationFeature::start() {
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 
-  if (rbacEnabled() && _rbacAuthorizationCache->enabled()) {
+  if (rbacEnabled() && _rbacAuthorizationCache->active()) {
     _rbacAuthorizationCache->startMaintenanceThread();
   }
 }

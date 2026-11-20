@@ -41,6 +41,11 @@ struct AuthorizationCacheOptions {
   std::chrono::steady_clock::duration unusedTimeout = std::chrono::seconds{60};
   // Entries older than this are refreshed by the maintenance pass.
   std::chrono::steady_clock::duration refreshAge = std::chrono::seconds{30};
+
+  // The cache is active unless the unused timeout is zero.
+  [[nodiscard]] bool active() const noexcept {
+    return unusedTimeout > std::chrono::steady_clock::duration::zero();
+  }
 };
 
 // A process-local cache for answers of the external RBAC authorization
@@ -62,13 +67,23 @@ struct AuthorizationCacheOptions {
 // behind, lookup() never returns an entry older than 2 * refreshAge.
 //
 // All operations are thread-safe. The map is protected by a single mutex,
-// which is never held while talking to the authorization service.
+// which is never held while talking to the authorization service. The
+// maintenance scan only holds it for chunks of kMaintenanceChunkEntries
+// entries and pauses for kMaintenancePause in between, so that lookups are
+// not blocked for long even when the cache is large.
 class AuthorizationCache {
  public:
   using Clock = std::chrono::steady_clock;
   using Duration = Clock::duration;
 
   using Options = AuthorizationCacheOptions;
+
+  // The maintenance scan releases the mutex and pauses after this many
+  // entries (or hash buckets, which matters for a sparse map), so that it
+  // never blocks lookups for long.
+  static constexpr std::size_t kMaintenanceChunkEntries = 100;
+  static constexpr std::size_t kMaintenanceChunkBuckets = 10000;
+  static constexpr std::chrono::milliseconds kMaintenancePause{1};
 
   // The cached answer to one authorization question.
   struct Decision {
@@ -100,16 +115,16 @@ class AuthorizationCache {
 
   void setOptions(Options options);
   [[nodiscard]] Options options() const;
-  [[nodiscard]] bool enabled() const;
+  [[nodiscard]] bool active() const;
 
   // Returns the cached decision and bumps the last-used time, or std::nullopt
-  // on a miss (or if the cache is disabled).
+  // on a miss (or if the cache is not active).
   [[nodiscard]] std::optional<Decision> lookup(std::string_view token,
                                                std::string_view action,
                                                std::string_view resource);
 
   // Inserts or overwrites an entry, with creation and last-used time = now.
-  // No-op if the cache is disabled.
+  // No-op if the cache is not active.
   void insert(std::string_view token, std::string_view action,
               std::string_view resource, Decision decision);
 

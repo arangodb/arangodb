@@ -61,7 +61,7 @@ AuthorizationCache::~AuthorizationCache() { stopMaintenanceThread(); }
 void AuthorizationCache::setOptions(Options options) {
   std::lock_guard guard{_mutex};
   _options = options;
-  if (_options.unusedTimeout <= Duration::zero()) {
+  if (!_options.active()) {
     _entries.clear();
   }
 }
@@ -71,9 +71,9 @@ auto AuthorizationCache::options() const -> Options {
   return _options;
 }
 
-bool AuthorizationCache::enabled() const {
+bool AuthorizationCache::active() const {
   std::lock_guard guard{_mutex};
-  return _options.unusedTimeout > Duration::zero();
+  return _options.active();
 }
 
 auto AuthorizationCache::lookup(std::string_view token, std::string_view action,
@@ -81,7 +81,7 @@ auto AuthorizationCache::lookup(std::string_view token, std::string_view action,
     -> std::optional<Decision> {
   auto now = _clock();
   std::lock_guard guard{_mutex};
-  if (_options.unusedTimeout <= Duration::zero()) {
+  if (!_options.active()) {
     return std::nullopt;
   }
   auto it = _entries.find(KeyView{token, action, resource});
@@ -101,7 +101,7 @@ void AuthorizationCache::insert(std::string_view token, std::string_view action,
                                 std::string_view resource, Decision decision) {
   auto now = _clock();
   std::lock_guard guard{_mutex};
-  if (_options.unusedTimeout <= Duration::zero()) {
+  if (!_options.active()) {
     return;
   }
   auto it = _entries.find(KeyView{token, action, resource});
@@ -122,31 +122,74 @@ void AuthorizationCache::setRefresher(Refresher refresher) {
 void AuthorizationCache::runMaintenance() { runMaintenance(std::stop_token{}); }
 
 void AuthorizationCache::runMaintenance(std::stop_token const& stopToken) {
+  // Phase 1: scan the map in chunks, evicting unused entries and collecting
+  // the ones due for a refresh. The scan walks the hash buckets and releases
+  // _mutex after every kMaintenanceChunkEntries entries (or
+  // kMaintenanceChunkBuckets buckets), pausing briefly, so that lookups by
+  // request threads are never blocked for long. Erasing does not rehash, so
+  // bucket indexes are stable while the lock is held. An insert during a pause
+  // may rehash; then this pass may miss some entries (the next pass catches
+  // them) or see some twice (phase 2 re-checks each entry, so that is
+  // harmless).
   std::vector<Key> toRefresh;
-  {
-    auto now = _clock();
-    std::lock_guard guard{_mutex};
-    if (_options.unusedTimeout <= Duration::zero()) {
-      _entries.clear();
+  std::size_t bucket = 0;
+  while (true) {
+    if (stopToken.stop_requested()) {
       return;
     }
-    for (auto it = _entries.begin(); it != _entries.end();) {
-      if (now - it->second.lastUsed >= _options.unusedTimeout) {
-        it = _entries.erase(it);
-        continue;
+    {
+      auto now = _clock();
+      std::lock_guard guard{_mutex};
+      if (!_options.active()) {
+        _entries.clear();
+        return;
       }
-      if (now - it->second.created >= _options.refreshAge) {
-        toRefresh.push_back(it->first);
+      std::size_t const bucketCount = _entries.bucket_count();
+      std::size_t entriesVisited = 0;
+      std::size_t bucketsVisited = 0;
+      std::vector<Key const*> toErase;
+      while (bucket < bucketCount &&
+             entriesVisited < kMaintenanceChunkEntries &&
+             bucketsVisited < kMaintenanceChunkBuckets) {
+        for (auto it = _entries.cbegin(bucket); it != _entries.cend(bucket);
+             ++it) {
+          ++entriesVisited;
+          if (now - it->second.lastUsed >= _options.unusedTimeout) {
+            toErase.push_back(&it->first);
+          } else if (now - it->second.created >= _options.refreshAge) {
+            toRefresh.push_back(it->first);
+          }
+        }
+        ++bucket;
+        ++bucketsVisited;
       }
-      ++it;
+      // Erasing an element leaves pointers to all other elements valid.
+      for (auto const* key : toErase) {
+        _entries.erase(_entries.find(*key));
+      }
+      if (bucket >= bucketCount) {
+        break;
+      }
     }
+    std::this_thread::sleep_for(kMaintenancePause);
   }
 
-  // Refresh outside of _mutex, so that request threads are never blocked by
-  // the network round-trip to the authorization service.
+  // Phase 2: refresh outside of _mutex, so that request threads are never
+  // blocked by the network round-trip to the authorization service.
   for (auto const& key : toRefresh) {
     if (stopToken.stop_requested()) {
       return;
+    }
+    {
+      // The entry may have been evicted, re-inserted by a request thread, or
+      // already refreshed (if the scan saw it twice) in the meantime.
+      auto now = _clock();
+      std::lock_guard guard{_mutex};
+      auto it = _entries.find(key);
+      if (it == _entries.end() ||
+          now - it->second.created < _options.refreshAge) {
+        continue;
+      }
     }
     std::optional<Decision> decision;
     {

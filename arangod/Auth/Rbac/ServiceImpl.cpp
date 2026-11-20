@@ -394,7 +394,7 @@ auto ServiceImpl::check(JwtToken const& token,
   // Only single-pair checks are cached: the service reports one aggregate
   // decision per batch, which cannot be attributed to individual pairs.
   bool const useCache =
-      _cache != nullptr && queries.size() == 1 && _cache->enabled();
+      _cache != nullptr && queries.size() == 1 && _cache->active();
   if (useCache) {
     auto const& item = items.items.front();
     if (auto hit = _cache->lookup(token.jwtToken, item.action, item.resource);
