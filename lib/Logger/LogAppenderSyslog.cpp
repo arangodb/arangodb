@@ -138,7 +138,8 @@ void LogAppenderSyslog::logMessage(LogMessage const& message) {
       priority = LOG_INFO;
       break;
     case LogLevel::TRACE:
-      priority = LOG_DEBUG;
+      // Need to have at least LOG_INFO for forced security messages:
+      priority = message.isForcedOutput() ? LOG_INFO : LOG_DEBUG;
       break;
   }
 

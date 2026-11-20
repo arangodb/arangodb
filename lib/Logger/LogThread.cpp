@@ -69,7 +69,8 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     Logger::onDroppedMessage();
   });
 
-  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel) {
+  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel &&
+      !message->isForcedOutput()) {
     // log queue is full, and the message is not important enough
     // to push it anyway. this will execute the rollback.
     return false;

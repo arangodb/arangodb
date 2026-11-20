@@ -34,13 +34,25 @@ struct LogMessage {
 
   LogMessage(std::string_view function, std::string_view file, int line,
              LogLevel level, size_t topicId, std::string&& message,
-             uint32_t offset, bool shrunk) noexcept;
+             uint32_t offset, bool shrunk, bool forceOutput = false) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
 
   /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
   void shrink(std::size_t maxLength);
+
+  /// @brief whether the message should be output by a sink (e.g. an appender)
+  /// that is configured to log messages up to and including `maxLevel`.
+  /// this is true if the message's level is at most `maxLevel`, or if the
+  /// message is forced to be output regardless of the configured log levels
+  /// (security events in FedRAMP High mode).
+  bool isEnabledFor(LogLevel maxLevel) const noexcept {
+    return _level <= maxLevel || _forceOutput;
+  }
+
+  // @brief whether the message must be output because it is security relevant
+  bool isForcedOutput() const noexcept { return _forceOutput; }
 
   /// @brief all details about the log message. we need to
   /// keep all this data around and not just the big log
@@ -65,6 +77,9 @@ struct LogMessage {
   /// @brief whether or not the log message was already shrunk (used to
   /// prevent duplicate shrinking of message)
   bool _shrunk;
+  /// @brief whether the message must be output regardless of the configured
+  /// log levels of appenders (used for security events in FedRAMP High mode)
+  bool const _forceOutput;
 };
 
 }  // namespace arangodb

@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/ServerSecurityFeatureOptions.h"
 
@@ -40,8 +42,27 @@ class ServerSecurityFeature final
 
   bool isRestApiHardened() const noexcept;
 
+  /// @brief name of the environment variable which enables FedRAMP High
+  /// mode. FedRAMP High mode is enabled if the variable is set to *any*
+  /// non-empty value. This is intentional: the value is not interpreted,
+  /// so e.g. "0", "false" or "no" also enable FedRAMP High mode. This
+  /// fails safe, i.e. a mistyped or unexpected value can never accidentally
+  /// disable the mode. FedRAMP High mode is only off if the variable is
+  /// unset or set to the empty string.
+  static constexpr char const* kFedRAMPHighEnvVar = "FedRAMPHigh";
+
+  /// @brief whether the server runs in FedRAMP High mode. this is detected
+  /// from the environment in the constructor of this feature, i.e. very
+  /// early during server startup, and can be used anywhere afterwards to
+  /// adjust behavior accordingly.
+  static bool isFedRAMPHigh() noexcept {
+    return _fedRAMPHigh.load(std::memory_order_relaxed);
+  }
+
  private:
   ServerSecurityFeatureOptions _options;
+
+  static std::atomic<bool> _fedRAMPHigh;
 };
 
 }  // namespace arangodb

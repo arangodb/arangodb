@@ -63,7 +63,7 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  public:
   void logMessage(LogMessage const& message) override {
-    if (message._level > _minLogLevel) {
+    if (!message.isEnabledFor(_minLogLevel)) {
       // logger not configured to log these messages
       return;
     }

@@ -57,6 +57,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -69,6 +70,7 @@
 #include "Inspection/Status.h"
 #include "Logger/Appenders.h"
 #include "Logger/LogLevel.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
@@ -311,9 +313,14 @@ class Logger {
 
   static std::string_view translateLogLevel(LogLevel) noexcept;
 
+  /// @brief builds and emits a log message. if `security` is set,
+  /// the canonical security event classifier (e.g.
+  /// "arango-security-event-authentication") is included in the output,
+  /// both for the text and the JSON log formats.
   static void log(std::string_view logid, std::string_view function,
                   std::string_view file, int line, LogLevel level,
-                  size_t topicId, std::string_view message);
+                  size_t topicId, std::string_view message,
+                  std::optional<Security> security = std::nullopt);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -327,6 +334,28 @@ class Logger {
     return (int)level <= (int)((topic.level() == LogLevel::DEFAULT)
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
+  }
+  /// @brief like isEnabled(level, topic), but security events are always
+  /// enabled if alwaysLogSecurityEvents() is set.
+  static bool isEnabled(LogLevel level, LogTopic const& topic,
+                        std::optional<Security> security) {
+    return isEnabled(level, topic) || forceLogging(security);
+  }
+
+  /// @brief whether a message with the given security category must be
+  /// logged regardless of any configured log levels.
+  static bool forceLogging(std::optional<Security> security) noexcept {
+    return security.has_value() && alwaysLogSecurityEvents();
+  }
+
+  /// @brief if set, all log messages with a security category are logged,
+  /// regardless of the configured log levels (of topics and appenders).
+  /// this is turned on in FedRAMP High mode (see ServerSecurityFeature).
+  static void setAlwaysLogSecurityEvents(bool value) noexcept {
+    _alwaysLogSecurityEvents.store(value, std::memory_order_relaxed);
+  }
+  static bool alwaysLogSecurityEvents() noexcept {
+    return _alwaysLogSecurityEvents.load(std::memory_order_relaxed);
   }
 
   static void initialize(bool threaded, uint32_t maxQueuedLogMessages);
@@ -345,17 +374,20 @@ class Logger {
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
+                                  std::optional<Security> security,
                                   std::string_view message, bool& shrunk);
 
   static void buildTextLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
+                                  std::optional<Security> security,
                                   std::string_view message, uint32_t& offset,
                                   bool& shrunk);
 
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
+  static std::atomic<bool> _alwaysLogSecurityEvents;
   static std::atomic<LogLevel> _level;
 
   static std::mutex _appenderModificationMutex;

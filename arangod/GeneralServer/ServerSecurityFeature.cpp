@@ -20,14 +20,20 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
+#include "Basics/files.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+std::atomic<bool> ServerSecurityFeature::_fedRAMPHigh{false};
 
 ServerSecurityFeature::ServerSecurityFeature(
     application_features::ApplicationServer& server)
@@ -39,6 +45,18 @@ ServerSecurityFeature::ServerSecurityFeature(
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
+
+  // detect FedRAMP High mode as early as possible, so that the flag is
+  // already available while other features are being set up.
+  // note: any non-empty value enables the mode, regardless of its content
+  // (even "0" or "false"). this is intentional, see kFedRAMPHighEnvVar.
+  std::string value;
+  _fedRAMPHigh.store(TRI_GETENV(kFedRAMPHighEnvVar, value) && !value.empty(),
+                     std::memory_order_relaxed);
+
+  // in FedRAMP High mode, security events must always be logged, regardless
+  // of the configured log levels.
+  Logger::setAlwaysLogSecurityEvents(isFedRAMPHigh());
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {

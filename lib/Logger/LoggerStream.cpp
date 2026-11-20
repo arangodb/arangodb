@@ -27,13 +27,19 @@
 
 #include "LoggerStream.h"
 
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase(bool enabled)
+    : LoggerStreamBase(enabled, std::nullopt) {}
+
+LoggerStreamBase::LoggerStreamBase(bool enabled,
+                                   std::optional<Security> security)
     : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
       _level(LogLevel::DEFAULT),
+      _security(security),
       _line(0),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enabled(enabled),
@@ -41,6 +47,14 @@ LoggerStreamBase::LoggerStreamBase(bool enabled)
       _logid(),
       _file(),
       _function() {
+  // a security event must belong to at least one known category. an empty
+  // mask (e.g. the result of `s & Security::DataAccess` when `s` lacks that
+  // bit) or one with only unknown bits would produce an empty classifier
+  // label. use std::nullopt instead to mark a message as "not a security
+  // event".
+  TRI_ASSERT(!security.has_value() || isValidSecurity(*security))
+      << "invalid security category mask "
+      << static_cast<std::uint16_t>(security.value_or(Security{}));
 }
 
 LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
@@ -94,9 +108,15 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
+
+LoggerStream::LoggerStream(bool enabled, std::optional<Security> security)
+    : LoggerStreamBase(enabled, security) {}
 #endif
 
 LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
+
+LoggerStream::LoggerStream(std::optional<Security> security)
+    : LoggerStreamBase(true, security) {}
 
 LoggerStream::~LoggerStream() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -109,7 +129,8 @@ LoggerStream::~LoggerStream() {
 
   try {
     // get a view on the stream's underlying buffer, without copying it
-    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view());
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view(),
+                _security);
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the
