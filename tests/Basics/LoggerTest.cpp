@@ -583,6 +583,18 @@ TEST_F(LoggerSecurityTest, empty_and_unknown_bits) {
             securityClassifier(Security::DataAccess));
 }
 
+TEST_F(LoggerSecurityTest, is_valid_security) {
+  EXPECT_TRUE(isValidSecurity(Security::Authentication));
+  EXPECT_TRUE(isValidSecurity(Security::SystemErrors));
+  EXPECT_TRUE(isValidSecurity(Security::DataAccess | Security::ApiCalls));
+  EXPECT_TRUE(isValidSecurity(static_cast<Security>(kAllSecurityBits)));
+  EXPECT_FALSE(isValidSecurity(static_cast<Security>(0)));
+  EXPECT_FALSE(isValidSecurity(static_cast<Security>(1u << 12)));
+  EXPECT_FALSE(isValidSecurity(static_cast<Security>(1u << 15)));
+  EXPECT_FALSE(
+      isValidSecurity(Security::DataAccess | static_cast<Security>(1u << 15)));
+}
+
 TEST_F(LoggerSecurityTest, combination_cache_is_stable_under_growth) {
   // populate the cache with many combinations (forcing rehashes) and check
   // that string_views handed out earlier are still valid and unchanged

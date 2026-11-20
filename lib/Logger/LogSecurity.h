@@ -72,6 +72,17 @@ constexpr bool hasSecurityCategory(Security security,
   return (security & category) == category;
 }
 
+/// @brief bit mask of all known security categories.
+inline constexpr std::uint16_t kAllSecurityBits = static_cast<std::uint16_t>(
+    (static_cast<std::uint16_t>(Security::SystemErrors) << 1) - 1);
+
+/// @brief returns true if `security` contains at least one category and no
+/// bits other than those of known categories.
+constexpr bool isValidSecurity(Security security) noexcept {
+  auto bits = static_cast<std::uint16_t>(security);
+  return bits != 0 && (bits & ~kAllSecurityBits) == 0;
+}
+
 /// @brief separator between multiple classifiers of a security event that
 /// belongs to more than one category.
 inline constexpr std::string_view kSecurityClassifierSeparator = ",";

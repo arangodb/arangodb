@@ -56,8 +56,8 @@ static_assert(static_cast<std::uint16_t>(Security::SystemErrors) ==
                   (1u << (kClassifiers.size() - 1)),
               "kClassifiers must have one entry per Security category");
 
-constexpr std::uint16_t kAllBits =
-    static_cast<std::uint16_t>((1u << kClassifiers.size()) - 1);
+static_assert(kAllSecurityBits == (1u << kClassifiers.size()) - 1,
+              "kAllSecurityBits must cover exactly the Security categories");
 
 // lazily populated cache of classifier strings for combinations of more
 // than one category. entries are never removed, and since std::unordered_map
@@ -92,7 +92,7 @@ std::string buildCombination(std::uint16_t bits) {
 
 std::string_view securityClassifier(Security security) {
   auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
-                                         kAllBits);
+                                         kAllSecurityBits);
 
   // fast path: exactly one category, which is by far the most common case
   if (std::has_single_bit(bits)) {
