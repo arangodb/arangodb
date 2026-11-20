@@ -229,6 +229,24 @@ function arangoshProvidedTokenRenewalSuite() {
       assertTrue(res.status, JSON.stringify(res));
     },
 
+    // the token is renewed at the endpoint of the active handle: after
+    // switching back from an unreachable endpoint, renewing there would fail,
+    // and the healthy connection would be refused once the token expires
+    testArangoshRenewsProvidedTokenAtTheActiveHandle: function() {
+      const res = runArangoshWithToken(fetchToken("root", ""), `
+        const handle = arango.getConnectionHandle();
+        try {
+          arango.reconnect("tcp://127.0.0.1:1", "_system", "root", "");
+        } catch (err) {
+          // nothing listens there
+        }
+        if (!arango.connectHandle(handle)) {
+          throw new Error("cannot switch back to " + handle);
+        }
+        ${requestsFor12Seconds}`, 2);
+      assertTrue(res.status, JSON.stringify(res));
+    },
+
     testArangoshReportsTheTokenUser: function() {
       const users = require("@arangodb/users");
       users.save("tokenuser", "tokenpw");
