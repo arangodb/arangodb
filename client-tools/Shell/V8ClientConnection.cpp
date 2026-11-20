@@ -497,7 +497,8 @@ void V8ClientConnection::renewTokenIfDue() {
     case TokenRenewal::Kind::kNone:
       return;
     case TokenRenewal::Kind::kJwtTokenOption:
-      // the ClientFeature renews the --server.jwt-token in the background
+      // the ClientFeature renews the --server.jwt-token in the background, at
+      // its endpoint, which adoptClientSettings() keeps at the active handle's
       newToken = _client.jwtToken();
       break;
     case TokenRenewal::Kind::kLogin: {
