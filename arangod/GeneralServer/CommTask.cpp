@@ -963,16 +963,15 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setJwtToken(authToken.jwtToken());
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
-    // successful authentications with the cluster-internal superuser JWT
-    // (no user name) are not logged: these are used for every single
-    // server-to-server request in the cluster and are never presented by
-    // external clients, so logging them would only produce a huge amount of
-    // noise. failed authentications are always logged (see below).
-    LOG_SECURITY_IF("3669b", TRACE, Logger::AUTHENTICATION,
-                    Security::Authentication, !req.user().empty())
+    // every successful authentication is logged, including those with the
+    // cluster-internal superuser JWT (which carries no user name and is
+    // marked with superuser=true).
+    LOG_SECURITY("3669b", TRACE, Logger::AUTHENTICATION,
+                 Security::Authentication)
         << "authentication succeeded: method="
         << authenticationMethodName(authMethod) << ", user='" << req.user()
-        << "', client=" << req.connectionInfo().fullClient()
+        << "', superuser=" << (req.user().empty() ? "true" : "false")
+        << ", client=" << req.connectionInfo().fullClient()
         << ", request=" << GeneralRequest::translateMethod(req.requestType())
         << " " << req.fullUrl();
   } else {
