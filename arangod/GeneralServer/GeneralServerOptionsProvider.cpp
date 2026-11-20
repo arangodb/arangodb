@@ -127,21 +127,21 @@ request as it arrives on the wire is limited separately.)");
 
   opts->addOption("--http.max-global-body-size",
                   "The maximum total size of all HTTP/1.1 and HTTP/2 request "
-                  "bodies currently being buffered process-wide, before "
-                  "authentication (in bytes).",
+                  "bodies being received at the same time, process-wide (in "
+                  "bytes).",
                   new UInt64Parameter(&options.maxGlobalBodySize),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
       .setIntroducedIn(31214)
-      .setLongDescription(R"(Request bodies are buffered before
-authentication, so the size of a single request body is already capped. This
-option additionally caps the sum of all such buffered bytes across every
-HTTP/1.1 and HTTP/2 connection in the process at once, so that many connections
-opened concurrently cannot together exhaust memory even while each individually
-respects its own limit.
+      .setLongDescription(R"(Each request body is limited on its own; this
+option limits their sum over all connections, so that many concurrent
+connections cannot together exhaust memory.
 
-Requests exceeding the limit are rejected with HTTP 503 and the connection is
-closed (HTTP/1.1), or the stream is reset (HTTP/2).
+An HTTP/1.1 request whose `Content-Length` is larger than the limit is rejected
+with HTTP 413, one that doesn't fit at the moment with HTTP 503, both before the
+body is read. A body that exceeds the limit while it arrives is rejected with
+HTTP 503 and the connection is closed (HTTP/1.1), or the stream is reset
+(HTTP/2).
 
 The default is 10% of the physical memory, but at least 1 GiB, the maximum size
 of a single request body. A value of `0` disables the limit.)");

@@ -223,7 +223,7 @@ template<SocketType T>
       return resetStream();
     }
     if (!me->_generalServerFeature.reserveRequestBodyBytes(len)) {
-      LOG_TOPIC("2823e", WARN, Logger::REQUESTS)
+      LOG_TOPIC("2823e", DEBUG, Logger::REQUESTS)
           << "<http2> request body on stream " << stream_id
           << " exceeds the global process-wide limit, resetting the stream";
       return resetStream();

@@ -1,0 +1,21 @@
+name: arangodb_http_global_body_rejections_total
+introducedIn: "3.12.14"
+help: |
+  Total number of HTTP request bodies rejected by the process-wide body size
+  limit.
+unit: number
+type: counter
+category: Statistics
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Counts HTTP/1.1 and HTTP/2 requests rejected because their body would not
+  fit into `--http.max-global-body-size`, with HTTP 413, HTTP 503 or a reset
+  HTTP/2 stream.
+troubleshoot: |
+  If this increases, compare with `arangodb_http_global_body_bytes`. Raise
+  `--http.max-global-body-size` if the load is legitimate.

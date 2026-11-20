@@ -27,14 +27,24 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 let IM = global.instanceManager;
 
-// must match the hardcoded limit in GeneralServerFeature::lowerGlobalBodySizeLimit
-const FAILPOINT_LIMIT_BYTES = 16;
+// must match GeneralServerFeature::maxGlobalBodySize under the failure point,
+// more than one HTTP/2 DATA frame (16 KiB)
+const FAILPOINT_LIMIT_BYTES = 32768;
 
-function globalBodyBytes() {
+function metric(name) {
   const res = arango.GET_RAW("/_admin/metrics");
   assertEqual(200, res.code);
-  const body = typeof res.body === 'string' ? res.body : String(res.body);
-  return internal.parsePrometheusMetric(body, "arangodb_http_global_body_bytes") || 0;
+  const value = internal.parsePrometheusMetric(String(res.body), name);
+  assertTrue(value !== undefined, `metric ${name} not found`);
+  return value;
+}
+
+function bodyBytes() {
+  return metric("arangodb_http_global_body_bytes");
+}
+
+function rejections() {
+  return metric("arangodb_http_global_body_rejections_total");
 }
 
 function canRun() {
@@ -42,14 +52,13 @@ function canRun() {
   return (protocol === "http" || protocol === "http2") && IM.debugCanUseFailAt();
 }
 
-// h2 resets the stream, http1 sends a real 503
-function assertRejected(res) {
-  assertTrue(res.error, `expected the body to be rejected, got: ${JSON.stringify(res)}`);
-  if (arango.protocol() === "http2") {
-    assertEqual(503, res.errorNum);
-  } else {
-    assertEqual(503, res.code);
-  }
+function body(size) {
+  return new Array(size + 1).join("a");
+}
+
+// any response from the handler means the body got through, GET only
+function assertAccepted(res) {
+  assertEqual(405, res.code, JSON.stringify(res));
 }
 
 function GlobalRequestBodySizeLimitSuite() {
@@ -65,56 +74,56 @@ function GlobalRequestBodySizeLimitSuite() {
       arango.compressTransfer(compressTransfer);
     },
 
+    setUp: function () {
+      if (canRun()) {
+        IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
+        // HTTP/1.1 bodies then arrive in several parser calls
+        IM.debugSetFailAt("HttpCommTask<T>::readCallback_in_small_chunks");
+      }
+    },
+
     tearDown: function () {
       IM.debugClearFailAt();
     },
 
-    testOversizedBodyExceedsGlobalLimitButServerStillServes: function () {
+    testBodyAtExactLimitIsAcceptedAndReleased: function () {
       if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
-      const before = globalBodyBytes();
+      const before = bodyBytes();
+      const rejectedBefore = rejections();
 
-      const body = new Array(FAILPOINT_LIMIT_BYTES * 4 + 1).join("a");
-      const res = arango.POST_RAW("/_admin/auth/reload", body);
-      assertRejected(res);
+      assertAccepted(arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES)));
 
-      // http1 reconnects here
-      const res2 = arango.GET_RAW("/_admin/auth/reload");
-      assertEqual(200, res2.code);
-
-      // a rejected request must not leak its reservation
-      assertEqual(before, globalBodyBytes());
+      assertEqual(before, bodyBytes());
+      assertEqual(rejectedBefore, rejections());
     },
 
-    testBodyAtExactGlobalLimitSucceeds: function () {
+    testBodyOverLimitIsRejectedAndReleased: function () {
       if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
-      const before = globalBodyBytes();
+      const before = bodyBytes();
+      const rejectedBefore = rejections();
 
-      const body = new Array(FAILPOINT_LIMIT_BYTES + 1).join("a");
-      const res = arango.POST_RAW("/_admin/auth/reload", body);
-      assertEqual(200, res.code);
+      // HTTP/2 resets after two full frames were reserved, HTTP/1.1 answers
+      // 413 before reading the body, but a TCP reset can beat that response
+      const res = arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES + 1));
+      assertTrue(res.error, JSON.stringify(res));
 
-      // a completed request must release its reservation
-      assertEqual(before, globalBodyBytes());
+      assertEqual(rejectedBefore + 1, rejections());
+      assertEqual(before, bodyBytes());
     },
 
-    testBodyOneByteOverGlobalLimitFails: function () {
+    testServerStillServesAfterRejection: function () {
       if (!canRun()) {
         return;
       }
-      IM.debugSetFailAt("GeneralServerFeature::lowerGlobalBodySizeLimit");
-      const before = globalBodyBytes();
+      arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES * 2));
 
-      const body = new Array(FAILPOINT_LIMIT_BYTES + 2).join("a");
-      const res = arango.POST_RAW("/_admin/auth/reload", body);
-      assertRejected(res);
-
-      assertEqual(before, globalBodyBytes());
+      // HTTP/1.1 reconnects here
+      assertEqual(200, arango.GET_RAW("/_api/version").code);
+      assertAccepted(arango.POST_RAW("/_api/version", body(16)));
     },
   };
 }

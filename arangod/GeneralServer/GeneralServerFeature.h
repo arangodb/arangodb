@@ -29,6 +29,7 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerOptions.h"
+#include "GeneralServer/RequestBodyBudget.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Metrics/Counter.h"
 #include "Metrics/FixScale.h"
@@ -99,7 +100,9 @@ class GeneralServerFeature final
 
   void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
 
-  bool reserveRequestBodyBytes(std::uint64_t len) noexcept;
+  /// OK, REQUEST_ENTITY_TOO_LARGE or SERVICE_UNAVAILABLE
+  [[nodiscard]] rest::ResponseCode admitRequestBody(std::uint64_t len) noexcept;
+  [[nodiscard]] bool reserveRequestBodyBytes(std::uint64_t len) noexcept;
   void releaseRequestBodyBytes(std::uint64_t len) noexcept;
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
@@ -123,6 +126,7 @@ class GeneralServerFeature final
   }
 
  private:
+  std::uint64_t maxGlobalBodySize() const noexcept;
   // build HTTP server(s)
   void buildServers();
   // open REST interface for listening
@@ -174,6 +178,8 @@ class GeneralServerFeature final
   metrics::Gauge<double>& _connectionHttp;
 
   metrics::Gauge<std::uint64_t>& _globalBodyBytes;
+  metrics::Counter& _globalBodyRejections;
+  RequestBodyBudget _requestBodyBudget{_globalBodyBytes, _globalBodyRejections};
   metrics::MetricsFeature& _metricsFeature;
 
   GlobalResourceMonitor _decompressionGlobal;

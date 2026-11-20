@@ -209,6 +209,13 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
+  // before 100-continue, so the client doesn't upload a body we'd refuse
+  if (auto code = me->_generalServerFeature.admitRequestBody(p->content_length);
+      code != rest::ResponseCode::OK) {
+    me->sendSimpleResponse(code, rest::ContentType::UNSET, 1,
+                           VPackBuffer<uint8_t>());
+    return HPE_USER;
+  }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
   std::string const& expect =
@@ -243,9 +250,9 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  // per chunk, so a slow client can't hold budget for bytes it hasn't sent
+  // as bytes arrive, a client can't hold budget for bytes it never sends
   if (!me->_generalServerFeature.reserveRequestBodyBytes(len)) {
-    LOG_TOPIC("2823f", WARN, Logger::REQUESTS)
+    LOG_TOPIC("2823f", DEBUG, Logger::REQUESTS)
         << "<http> request body exceeds the global process-wide limit, "
            "closing the connection";
     me->releaseBufferedBody();

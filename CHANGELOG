@@ -1,13 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-1007: Added `--http.max-global-body-size` startup option, which
-  limits the total size of all HTTP/1.1 and HTTP/2 request bodies being
-  buffered across the whole process at once, before authentication. The
-  default is 10% of the physical memory, but at least 1 GiB. Requests
-  exceeding it are rejected with HTTP 503 (HTTP/1.1) or a stream reset
-  (HTTP/2). The new `arangodb_http_global_body_bytes` metric reports the
-  current total.
+* COR-1007: Added `--http.max-global-body-size` startup option, limiting the
+  total size of HTTP/1.1 and HTTP/2 request bodies being received across the
+  process. Default: 10% of physical memory, at least 1 GB; `0` disables it.
+  Requests over the limit get HTTP 413 or 503, or an HTTP/2 stream reset.
+  New metrics: `arangodb_http_global_body_bytes` and
+  `arangodb_http_global_body_rejections_total`.
 
 * Patch FAISS v1.16.0 with alubsan fix.
 

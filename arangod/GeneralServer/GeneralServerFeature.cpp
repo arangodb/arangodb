@@ -147,8 +147,11 @@ DECLARE_COUNTER(arangodb_http_response_code_total,
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 DECLARE_GAUGE(arangodb_http_global_body_bytes, std::uint64_t,
-              "Bytes currently buffered across all HTTP/1.1 and HTTP/2 "
-              "request bodies, process-wide");
+              "Bytes of HTTP/1.1 and HTTP/2 request bodies currently being "
+              "received, process-wide");
+DECLARE_COUNTER(arangodb_http_global_body_rejections_total,
+                "Total number of HTTP request bodies rejected by the "
+                "process-wide body size limit");
 
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
@@ -232,6 +235,8 @@ GeneralServerFeature::GeneralServerFeature(
       _connectionHttp(metrics.add(
           arangodb_client_connection_statistics_client_connections{})),
       _globalBodyBytes(metrics.add(arangodb_http_global_body_bytes{})),
+      _globalBodyRejections(
+          metrics.add(arangodb_http_global_body_rejections_total{})),
       _metricsFeature(metrics) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -391,28 +396,33 @@ void GeneralServerFeature::countHttpResponseCode(
   }
 }
 
-bool GeneralServerFeature::reserveRequestBodyBytes(std::uint64_t len) noexcept {
-  std::uint64_t maxGlobalSize = _options.maxGlobalBodySize;
+std::uint64_t GeneralServerFeature::maxGlobalBodySize() const noexcept {
   TRI_IF_FAILURE("GeneralServerFeature::lowerGlobalBodySizeLimit") {
-    // lets tests trigger the limit without sending gigabytes of data
-    maxGlobalSize = 16;
+    // above one HTTP/2 DATA frame, so a rejected body was partly reserved
+    return 32768;
   }
-  // CAS retry so the gauge never transiently exceeds the limit under
-  // concurrent reservations, unlike a fetch_add-then-rollback-on-reject
-  std::uint64_t cur = _globalBodyBytes.load(std::memory_order_relaxed);
-  std::uint64_t next;
-  do {
-    next = cur + len;
-    if (maxGlobalSize != 0 && next > maxGlobalSize) {
-      return false;
-    }
-  } while (!_globalBodyBytes.compare_exchange_weak(cur, next));
-  return true;
+  return _options.maxGlobalBodySize;
+}
+
+rest::ResponseCode GeneralServerFeature::admitRequestBody(
+    std::uint64_t len) noexcept {
+  switch (_requestBodyBudget.admit(len, maxGlobalBodySize())) {
+    case RequestBodyBudget::Admission::kFits:
+      return rest::ResponseCode::OK;
+    case RequestBodyBudget::Admission::kNeverFits:
+      return rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE;
+    case RequestBodyBudget::Admission::kNotNow:
+      return rest::ResponseCode::SERVICE_UNAVAILABLE;
+  }
+  ADB_UNREACHABLE;
+}
+
+bool GeneralServerFeature::reserveRequestBodyBytes(std::uint64_t len) noexcept {
+  return _requestBodyBudget.reserve(len, maxGlobalBodySize());
 }
 
 void GeneralServerFeature::releaseRequestBodyBytes(std::uint64_t len) noexcept {
-  TRI_ASSERT(_globalBodyBytes.load(std::memory_order_relaxed) >= len);
-  _globalBodyBytes.fetch_sub(len);
+  _requestBodyBudget.release(len);
 }
 
 void GeneralServerFeature::prepare() {
