@@ -8022,7 +8022,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     auto& segment = *(reader.begin());
 
     // read attribute from invalid column
-    { ASSERT_EQ(nullptr, segment.column("invalid_column")); }
+    {
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
+    }
 
     // check number of values in the column
     {
@@ -8103,7 +8105,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     auto& segment = *(reader.begin());
 
     // read attribute from invalid column
-    { ASSERT_EQ(nullptr, segment.column("invalid_column")); }
+    {
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
+    }
 
     {
       // iterate over 'name' column (not cached)

@@ -23,7 +23,7 @@ parameters:
     description: "Use compiled local arangod instead of arango-image. The 'nightly-package-x64' CMake preset is used."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-28214ffe"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-a8978021"
     description: "Only with build-arango: Ubuntu build image the compile job runs in."
   run-origin:
     type: enum
@@ -249,6 +249,7 @@ jobs:
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
       PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+      ANN_GIT_BRANCH: << pipeline.git.branch >>
       # The store's TLS certificate is expired and won't be renewed.
       RESULTS_ARANGO_INSECURE: "1"
     steps:

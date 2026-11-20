@@ -357,7 +357,7 @@ struct EnumStorage {
 
   explicit EnumStorage(Enum e)
       : code(static_cast<std::underlying_type_t<Enum>>(e)),
-        message(to_string(e)){};
+        message(to_string(e)) {};
   explicit EnumStorage() {}
 
   operator Enum() const { return Enum(code); }

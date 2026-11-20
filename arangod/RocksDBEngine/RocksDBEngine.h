@@ -551,8 +551,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
-  [[nodiscard]] bool isTimeTravelEnabled() const;
-
 #ifdef USE_ENTERPRISE
   void prepareEnterprise();
 

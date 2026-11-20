@@ -79,7 +79,7 @@ template<typename Step>
 struct MockNeighbourCursor {
   auto next() -> std::vector<Step> { return {}; };
   auto hasMore() -> bool { return false; };
-  auto markForDeletion() -> void{};
+  auto markForDeletion() -> void {};
 };
 TEST_F(WeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);

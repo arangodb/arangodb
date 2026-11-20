@@ -1,9 +1,9 @@
---- debian/rules.d/build.mk.orig	2023-12-05 20:49:26.513919555 +0100
-+++ debian/rules.d/build.mk	2023-12-05 20:49:47.054342582 +0100
-@@ -109,6 +109,7 @@
- 		--without-selinux \
+--- debian/rules.d/build.mk.orig	2026-11-13 12:48:14.077380837 +0000
++++ debian/rules.d/build.mk	2026-11-13 12:48:14.093380838 +0000
+@@ -118,6 +118,7 @@
+ 		--enable-bind-now \
+ 		--enable-fortify-source \
  		--enable-stackguard-randomization \
- 		--enable-stack-protector=strong \
 +		--enable-static-nss=yes \
  		--with-pkgversion="Ubuntu GLIBC $(DEB_VERSION)" \
  		--with-default-link=no \

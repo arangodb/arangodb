@@ -41,7 +41,9 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
  public:
   static constexpr bool isLoading = true;
 
-  ValidateInspector() requires(!Base::hasContext) = default;
+  ValidateInspector()
+    requires(!Base::hasContext)
+  = default;
   ValidateInspector(Context const& context) : Base(context) {}
 
   template<class T>

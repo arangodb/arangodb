@@ -32,7 +32,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
   return AttributeNamePath(std::move(vec), resMonitor);
 };
-}
+}  // namespace
 
 TEST(AttributeNamePathTest, empty) {
   arangodb::GlobalResourceMonitor global{};

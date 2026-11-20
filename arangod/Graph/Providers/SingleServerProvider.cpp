@@ -175,14 +175,10 @@ auto SingleServerProvider<Step>::expand(
 template<class Step>
 auto SingleServerProvider<Step>::createNeighbourCursor(Step const& step,
                                                        size_t position)
-    -> SingleServerNeighbourCursor<Step>& {
-  _neighbourCursors.remove_if(
-      [](SingleServerNeighbourCursor<Step> const& cursor) {
-        return cursor._deletable;
-      });
-  return _neighbourCursors.emplace_back(SingleServerNeighbourCursor<Step>{
+    -> std::unique_ptr<NeighbourCursor> {
+  return std::make_unique<NeighbourCursor>(
       step, position, _ast, *this, _opts, _trx.get(), _monitor, _stats, _cache,
-      aql::ExecutionBlock::DefaultBatchSize});
+      aql::ExecutionBlock::DefaultBatchSize);
 }
 
 template<class Step>

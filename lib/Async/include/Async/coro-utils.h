@@ -29,13 +29,11 @@
 namespace arangodb {
 
 template<typename T>
-concept HasOperatorCoAwait = requires(T t) {
-  operator co_await(std::forward<T>(t));
-};
+concept HasOperatorCoAwait =
+    requires(T t) { operator co_await(std::forward<T>(t)); };
 template<typename T>
-concept HasMemberOperatorCoAwait = requires(T t) {
-  std::forward<T>(t).operator co_await();
-};
+concept HasMemberOperatorCoAwait =
+    requires(T t) { std::forward<T>(t).operator co_await(); };
 
 template<typename T>
 auto get_awaitable_object(T&& t) -> T&& {
@@ -53,7 +51,7 @@ auto get_awaitable_object(T&& t) {
 template<typename T>
 concept CanUpdateRequester =
     requires(T t, std::optional<async_registry::PromiseId> requester) {
-  t.update_requester(requester);
-};
+      t.update_requester(requester);
+    };
 
 }  // namespace arangodb

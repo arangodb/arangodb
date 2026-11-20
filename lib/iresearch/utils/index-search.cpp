@@ -622,8 +622,7 @@ int search(std::string_view path, std::string_view dir_type,
     void reset(std::vector<task_t>&& lines, size_t repeat, bool shuffle) {
       repeat = std::max(repeat, size_t(1));  // repeat at least once
 
-      for (; !task_list.empty(); task_list.pop())
-        ;  // empty free list
+      for (; !task_list.empty(); task_list.pop());  // empty free list
 
       tasks = std::move(lines);
       task_ids.resize(tasks.size() * repeat);

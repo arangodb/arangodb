@@ -104,6 +104,17 @@ ClusterProvider<StepImpl>::ClusterProvider(
       _stats{} {}
 
 template<class StepImpl>
+ClusterProvider<StepImpl>::ClusterProvider(ClusterProvider<StepImpl>&& other)
+    : _trx(std::move(other._trx)),
+      _query(other._query),
+      _resourceMonitor(other._resourceMonitor),
+      _opts(std::move(other._opts)),
+      _stats(std::move(other._stats)),
+      _vertexConnectedEdges(std::move(other._vertexConnectedEdges)) {
+  other._vertexConnectedEdges.clear();
+}
+
+template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
   clearWithForce();  // Make sure we actually free all memory in the edge cache!
 }
@@ -609,14 +620,9 @@ auto ClusterProvider<StepImpl>::expand(
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::createNeighbourCursor(Step const& step,
                                                       size_t position)
-    -> ClusterNeighbourCursor<Step>& {
-  _neighbourCursors.remove_if([](ClusterNeighbourCursor<Step> const& cursor) {
-    return cursor._deletable;
-  });
-
-  _neighbourCursors.emplace_back(
-      ClusterNeighbourCursor<Step>{step, position, _trx.get(), _opts, _stats});
-  return _neighbourCursors.back();
+    -> std::unique_ptr<NeighbourCursor> {
+  return std::make_unique<NeighbourCursor>(step, position, _trx.get(), _opts,
+                                           _stats);
 }
 
 template<class StepImpl>

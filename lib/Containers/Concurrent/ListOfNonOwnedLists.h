@@ -31,20 +31,16 @@
 namespace arangodb::containers {
 
 template<typename List>
-concept HasItemType = requires(List l) {
-  typename List::Item;
-};
+concept HasItemType = requires(List l) { typename List::Item; };
 template<typename List, typename F>
-concept IteratorOverNodes = requires(List l, F f) {
-  l.for_node(f);
-};
+concept IteratorOverNodes = requires(List l, F f) { l.for_node(f); };
 template<typename List, typename F>
-concept IteratorOverSnapshots = IteratorOverNodes<List, F> &&
+concept IteratorOverSnapshots =
+    IteratorOverNodes<List, F> &&
     std::invocable<F, typename List::Item::Snapshot>;
 template<typename T>
-concept HasExernalGarbageCollection = requires(T t) {
-  t.garbage_collect_external();
-};
+concept HasExernalGarbageCollection =
+    requires(T t) { t.garbage_collect_external(); };
 
 /**
    List of non-owned lists.
@@ -53,7 +49,7 @@ concept HasExernalGarbageCollection = requires(T t) {
    point. Can iterate over all elements in all lists.
  */
 template<typename List>
-requires HasItemType<List> && HasExernalGarbageCollection<List>
+  requires HasItemType<List> && HasExernalGarbageCollection<List>
 struct ListOfNonOwnedLists {
  protected:
   Guarded<std::vector<std::weak_ptr<List>>> _lists;
@@ -79,7 +75,7 @@ struct ListOfNonOwnedLists {
      Executes a function on each item in each list.
    */
   template<typename F>
-  requires IteratorOverSnapshots<List, F>
+    requires IteratorOverSnapshots<List, F>
   auto for_node(F&& function) -> void {
     auto lists = _lists.copy();
     for (auto& weak_list : lists) {

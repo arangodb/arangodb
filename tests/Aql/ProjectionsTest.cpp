@@ -44,7 +44,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
   return AttributeNamePath(std::move(vec), resMonitor);
 };
-}
+}  // namespace
 
 TEST(ProjectionsTest, buildEmpty) {
   Projections p;

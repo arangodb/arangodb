@@ -1766,10 +1766,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             break;  // we don`t care about specific revision.
           }
           {
-            size_t const nameHash = _lastLoad.hash_ref()(name.first);
-
             READ_LOCKER(lock, _mutex);
-            if (auto itr = _lastLoad.find(name.first, nameHash);
+            if (auto itr = _lastLoad.find(name.first);
                 itr != _lastLoad.end() && itr->second >= revision) {
               break;  // expected or later revision is loaded
             }
@@ -2994,11 +2992,8 @@ void IResearchAnalyzerFeature::invalidate(
     const TRI_vocbase_t& vocbase,
     transaction::OperationOrigin operationOrigin) {
   std::string_view const database{vocbase.name()};
-  size_t const databaseHash{_lastLoad.hash_ref()(database)};
-
   WRITE_LOCKER(lock, _mutex);
-  if (auto const itr = _lastLoad.find(database, databaseHash);
-      itr != _lastLoad.end()) {
+  if (auto const itr = _lastLoad.find(database); itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
   }

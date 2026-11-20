@@ -94,7 +94,7 @@ class SoftShutdownTracker
   };
 
   explicit SoftShutdownTracker(application_features::ApplicationServer& server);
-  ~SoftShutdownTracker(){};
+  ~SoftShutdownTracker() {};
 
   void initiateSoftShutdown();
 
