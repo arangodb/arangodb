@@ -661,6 +661,9 @@ class CircleCIGenerator(OutputGenerator):
 
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
+        elif bucket_count and job.is_multi_suite():
+            # suites are distributed over the buckets, never leave one empty
+            bucket_count = min(bucket_count, len(filtered_suites))
 
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
