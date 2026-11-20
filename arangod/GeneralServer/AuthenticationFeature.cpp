@@ -103,7 +103,13 @@ void AuthenticationFeature::prepare() {
   if (!_authInfo.getLockedGuard()->has_value()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
-    _authInfo.assign(auth::generateRandomHS256AuthInfo());
+
+    auto res = auth::generateRandomHS256AuthInfo();
+    if (!res.ok()) {
+      LOG_TOPIC("43397", FATAL, Logger::AUTHENTICATION)
+          << "Could not start AuthenticationFeature: " << res.errorMessage();
+    }
+    _authInfo.assign(res.get());
   }
 
   _authCache->setJwtSecrets(*_authInfo.copy());

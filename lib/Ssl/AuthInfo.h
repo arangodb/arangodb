@@ -38,6 +38,6 @@ auto loadJwtSecretString(std::string key) -> ResultT<AuthInfo>;
 auto loadJwtSecretFile(std::filesystem::path filename) -> ResultT<AuthInfo>;
 auto loadJwtSecretFolder(std::filesystem::path folder) -> ResultT<AuthInfo>;
 
-auto generateRandomHS256AuthInfo() -> AuthInfo;
+auto generateRandomHS256AuthInfo() -> ResultT<AuthInfo>;
 
 }  // namespace arangodb::auth
