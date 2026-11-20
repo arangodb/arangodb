@@ -33,6 +33,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -196,6 +197,109 @@ TEST(RenewingJwtTokenTest, failedRenewalKeepsTokenAndSchedulesRetry) {
   EXPECT_EQ(after.nextAttemptAt, at(705));
 }
 
+// renewOrLogin
+
+namespace {
+
+/**
+ * Token request that always answers with the same outcome and counts its
+ * calls
+ */
+struct ScriptedRequest {
+  TokenOutcome outcome;
+  int calls = 0;
+
+  auto asFunction() -> std::function<TokenOutcome()> {
+    return [this] {
+      ++calls;
+      return outcome;
+    };
+  }
+};
+
+auto validUntil1000() -> JwtTokenState {
+  return JwtTokenState{
+      .token = "t", .obtainedAt = at(0), .expiresAt = at(1000)};
+}
+
+auto loggedInToken() -> TokenOutcome {
+  return TokenOutcome::success(std::optional{tokenExpiringAt(3000)});
+}
+
+}  // namespace
+
+TEST(RenewingJwtTokenTest, renewOrLoginRenewsAValidTokenWithoutLoggingIn) {
+  auto renew = ScriptedRequest{.outcome = renewedToken()};
+  auto login = ScriptedRequest{.outcome = loggedInToken()};
+
+  auto const outcome = renewOrLogin(validUntil1000(), at(700),
+                                    renew.asFunction(), login.asFunction());
+
+  ASSERT_TRUE(outcome.ok());
+  EXPECT_EQ(outcome.get(), renewedToken().get());
+  EXPECT_EQ(renew.calls, 1);
+  EXPECT_EQ(login.calls, 0);
+}
+
+TEST(RenewingJwtTokenTest, renewOrLoginAcceptsThatNoTokenWasIssuedYet) {
+  auto renew = ScriptedRequest{.outcome = TokenOutcome::success(std::nullopt)};
+  auto login = ScriptedRequest{.outcome = loggedInToken()};
+
+  auto const outcome = renewOrLogin(validUntil1000(), at(700),
+                                    renew.asFunction(), login.asFunction());
+
+  ASSERT_TRUE(outcome.ok());
+  EXPECT_EQ(outcome.get(), std::nullopt);
+  EXPECT_EQ(login.calls, 0);
+}
+
+TEST(RenewingJwtTokenTest, renewOrLoginLogsInWhenTheRenewalIsRefused) {
+  auto renew = ScriptedRequest{.outcome = TokenOutcome::error(
+                                   TRI_ERROR_HTTP_UNAUTHORIZED, "refused")};
+  auto login = ScriptedRequest{.outcome = loggedInToken()};
+
+  auto const outcome = renewOrLogin(validUntil1000(), at(700),
+                                    renew.asFunction(), login.asFunction());
+
+  ASSERT_TRUE(outcome.ok());
+  EXPECT_EQ(outcome.get(), loggedInToken().get());
+  EXPECT_EQ(renew.calls, 1);
+  EXPECT_EQ(login.calls, 1);
+}
+
+TEST(RenewingJwtTokenTest, renewOrLoginKeepsTransientRenewalErrors) {
+  // the token is still valid, so sending the password would not help
+  for (auto const error :
+       {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, TRI_ERROR_FAILED,
+        ErrorCode{503}}) {
+    auto renew =
+        ScriptedRequest{.outcome = TokenOutcome::error(error, "unavailable")};
+    auto login = ScriptedRequest{.outcome = loggedInToken()};
+
+    auto const outcome = renewOrLogin(validUntil1000(), at(700),
+                                      renew.asFunction(), login.asFunction());
+
+    ASSERT_TRUE(outcome.fail());
+    EXPECT_EQ(outcome.errorNumber(), error);
+    EXPECT_EQ(login.calls, 0);
+  }
+}
+
+TEST(RenewingJwtTokenTest, renewOrLoginLogsInWithoutRenewingAnExpiredToken) {
+  for (auto const now : {at(1000), at(1500)}) {
+    auto renew = ScriptedRequest{.outcome = renewedToken()};
+    auto login = ScriptedRequest{.outcome = loggedInToken()};
+
+    auto const outcome = renewOrLogin(validUntil1000(), now,
+                                      renew.asFunction(), login.asFunction());
+
+    ASSERT_TRUE(outcome.ok());
+    EXPECT_EQ(outcome.get(), loggedInToken().get());
+    EXPECT_EQ(renew.calls, 0);
+    EXPECT_EQ(login.calls, 1);
+  }
+}
+
 // parseTokenResponse
 
 TEST(RenewingJwtTokenTest, parsesRenewedTokenFromResponse) {
@@ -225,7 +329,7 @@ TEST(RenewingJwtTokenTest, parsesInvalidTokenAsNoTokenIssued) {
 
 TEST(RenewingJwtTokenTest, parsesHttpErrorIntoErrorNumberAndMessage) {
   auto const outcome = parseTokenResponse(
-      TokenRequest::kRenew,
+      TokenRequest::kLogin,
       *completeResponse(
           401,
           R"({"error":true,"errorNum":11,"errorMessage":"User not authenticated","code":401})"));
@@ -260,17 +364,21 @@ TEST(RenewingJwtTokenTest, parsesUnimplementedLoginEndpointAsNoTokenIssued) {
   }
 }
 
-TEST(RenewingJwtTokenTest, parsesRefusedRenewalAsError) {
+TEST(RenewingJwtTokenTest, parsesRefusedRenewalAsUnauthorized) {
   // /_open/auth/renew answers 404 to a token it does not accept, such as an
-  // expired one
-  auto const outcome = parseTokenResponse(
-      TokenRequest::kRenew,
-      *completeResponse(
-          404,
-          R"({"error":true,"errorNum":1703,"errorMessage":"user not found","code":404})"));
+  // expired one; 401 and 403 refuse it as well
+  for (auto const status : {401, 403, 404}) {
+    auto const outcome = parseTokenResponse(
+        TokenRequest::kRenew,
+        *completeResponse(
+            status,
+            R"({"error":true,"errorNum":1703,"errorMessage":"user not found"})"));
 
-  ASSERT_TRUE(outcome.fail());
-  EXPECT_NE(outcome.errorMessage().find("user not found"), std::string::npos);
+    ASSERT_TRUE(outcome.fail()) << status;
+    EXPECT_EQ(outcome.errorNumber(), TRI_ERROR_HTTP_UNAUTHORIZED) << status;
+    EXPECT_NE(outcome.errorMessage().find("user not found"), std::string::npos)
+        << status;
+  }
 }
 
 TEST(RenewingJwtTokenTest, parsesHttpErrorWithoutErrorBodyIntoStatus) {
