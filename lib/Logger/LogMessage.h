@@ -51,6 +51,9 @@ struct LogMessage {
     return _level <= maxLevel || _forceOutput;
   }
 
+  // @brief whether the message must be output because it is security relevant
+  bool isForcedOutput() const noexcept { return _forceOutput; }
+
   /// @brief all details about the log message. we need to
   /// keep all this data around and not just the big log
   /// message string, because some LogAppenders will refer
