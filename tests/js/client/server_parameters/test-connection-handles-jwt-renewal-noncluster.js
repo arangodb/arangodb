@@ -271,6 +271,7 @@ function connectionHandlesJwtRenewalSuite() {
         assertTrue(arango.connectHandle(rootHandle));
         assertEqual(database, arango.getDatabaseName());
         assertEqual(database, db._name());
+        assertEqual(collection, db[collection].name());
         assertEqual(1, arango.importJson(file, collection).created);
       } finally {
         connectAsRoot();
