@@ -527,9 +527,8 @@ void V8ClientConnection::renewTokenIfDue() {
             << "' failed: " << outcome.errorMessage() << "; retrying in "
             << kRenewalRetryInterval.count() << " seconds at the earliest";
       }
-      _handles.config().renewal.token =
-          applyRenewal(std::move(_handles.config().renewal.token), outcome,
-                       JwtClock::now());
+      _handles.config().renewal.token = applyRenewal(
+          std::move(_handles.config().renewal.token), outcome, JwtClock::now());
       newToken = _handles.config().renewal.token.token;
       break;
     }
@@ -703,28 +702,28 @@ void V8ClientConnection::getConnectionHandleTable(
         .FromMaybe(false);
   };
 
-  auto const addEntry =
-      [&](std::string const& id, std::shared_ptr<fu::Connection> const& conn,
-          Configuration const& config, bool isActive) {
-        v8::Local<v8::Object> entry = v8::Object::New(isolate);
+  auto const addEntry = [&](std::string const& id,
+                            std::shared_ptr<fu::Connection> const& conn,
+                            Configuration const& config, bool isActive) {
+    v8::Local<v8::Object> entry = v8::Object::New(isolate);
 
-        setBool("active", isActive, entry);
-        if (conn) {
-          setBool("connected",
-                  conn->state() == fu::Connection::State::Connected, entry);
-          setString("endpoint", conn->endpoint(), entry);
-          setString("localPort", conn->localEndpoint(), entry);
-        } else {
-          setBool("connected", false, entry);
-          setString("endpoint", "N/A", entry);
-          setString("localPort", "N/A", entry);
-        }
-        setString("username", config.username, entry);
-        setString("password", config.password, entry);
-        setString("jwtToken", config.builder.jwtToken(), entry);
+    setBool("active", isActive, entry);
+    if (conn) {
+      setBool("connected", conn->state() == fu::Connection::State::Connected,
+              entry);
+      setString("endpoint", conn->endpoint(), entry);
+      setString("localPort", conn->localEndpoint(), entry);
+    } else {
+      setBool("connected", false, entry);
+      setString("endpoint", "N/A", entry);
+      setString("localPort", "N/A", entry);
+    }
+    setString("username", config.username, entry);
+    setString("password", config.password, entry);
+    setString("jwtToken", config.builder.jwtToken(), entry);
 
-        table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
-      };
+    table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
+  };
 
   for (auto const& [id, cached] : _handles.inactive()) {
     addEntry(id, cached.connection, cached.config, /*isActive=*/false);
