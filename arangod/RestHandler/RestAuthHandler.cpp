@@ -43,6 +43,35 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+/// @brief security log for the outcome of a login attempt (issuing a JWT
+/// from user credentials or renewing a JWT). failed attempts are both
+/// authentication events and security violations, so they are tagged with
+/// both categories.
+void logLoginSuccess(GeneralRequest const& req, std::string_view action,
+                     std::string_view username, double expirySeconds) {
+  LOG_SECURITY("a220f", INFO, Logger::AUTHENTICATION, Security::Authentication)
+      << action << " succeeded for user '" << username
+      << "', JWT issued with expiry time " << expirySeconds
+      << "s, client=" << req.connectionInfo().fullClient()
+      << ", request=" << GeneralRequest::translateMethod(req.requestType())
+      << " " << req.fullUrl();
+}
+
+void logLoginFailure(GeneralRequest const& req, std::string_view action,
+                     std::string_view username, std::string_view reason) {
+  LOG_SECURITY("a210f", INFO, Logger::AUTHENTICATION,
+               Security::Authentication | Security::Violations)
+      << action << " failed for user '" << username << "': reason='" << reason
+      << "', client=" << req.connectionInfo().fullClient()
+      << ", request=" << GeneralRequest::translateMethod(req.requestType())
+      << " " << req.fullUrl();
+}
+
+constexpr std::string_view kLogin = "login";
+constexpr std::string_view kRenew = "JWT renewal";
+}  // namespace
+
 RestAuthHandler::RestAuthHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
@@ -78,7 +107,10 @@ RestStatus RestAuthHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
-    LOG_TOPIC("2e7d4", WARN, Logger::AUTHENTICATION) << msg;
+    LOG_SECURITY("2e7d4", WARN, Logger::AUTHENTICATION,
+                 Security::Authentication | Security::Violations)
+        << msg << ", login attempt rejected, client="
+        << _request->connectionInfo().fullClient();
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
                   msg);
     return RestStatus::DONE;
@@ -91,6 +123,8 @@ RestStatus RestAuthHandler::execute() {
     if (!_request->authenticated() || _request->user().empty() ||
         _request->authenticationMethod() !=
             arangodb::rest::AuthenticationMethod::JWT) {
+      logLoginFailure(*_request, kRenew, _request->user(),
+                      "request is not authenticated with a user JWT");
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
     } else {
       VPackBuilder resultBuilder;
@@ -104,6 +138,8 @@ RestStatus RestAuthHandler::execute() {
               static_cast<uint64_t>(af->sessionTimeout()));
           resultBuilder.add("jwt",
                             VPackValue(generateJwt(_request->user(), expiry)));
+          logLoginSuccess(*_request, kRenew, _request->user(),
+                          static_cast<double>(expiry.count()));
         }
         // otherwise we will send an empty body back. callers must handle
         // this case!
@@ -113,6 +149,28 @@ RestStatus RestAuthHandler::execute() {
     }
     return RestStatus::DONE;
   }
+
+  // security logging of the login attempt. every exit path below either
+  // issues a JWT (success) or rejects the attempt (failure). the reason is
+  // updated as we go, so that the scope guard can log it.
+  std::string username;
+  // user name as resolved by the user manager (e.g. for access tokens, the
+  // given user name may be empty)
+  std::string resolvedUsername;
+  bool loginSucceeded = false;
+  double expiryTimeSeconds = 0.0;
+  std::string_view failureReason = "invalid request body";
+  auto securityLogGuard = scopeGuard([&]() noexcept {
+    try {
+      if (loginSucceeded) {
+        logLoginSuccess(*_request, kLogin, resolvedUsername, expiryTimeSeconds);
+      } else {
+        logLoginFailure(*_request, kLogin, username, failureReason);
+      }
+    } catch (...) {
+      // nothing we can do
+    }
+  });
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
@@ -129,9 +187,8 @@ RestStatus RestAuthHandler::execute() {
   VPackSlice passwordSlice = slice.get("password");
   VPackSlice expiryTimeSlice = slice.get("expiryTime");
 
-  std::string username;
   std::string password;
-  double expiryTimeSeconds = af->sessionTimeout();  // default value
+  expiryTimeSeconds = af->sessionTimeout();  // default value
 
   if (usernameSlice.isString() && passwordSlice.isString()) {
     username = usernameSlice.copyString();
@@ -147,6 +204,7 @@ RestStatus RestAuthHandler::execute() {
     expiryTimeSeconds = expiryTimeSlice.getNumber<double>();
 
     // Validate against min/max bounds
+    failureReason = "invalid expiryTime";
     if (expiryTimeSeconds < af->minimalJwtExpiryTime()) {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -166,6 +224,7 @@ RestStatus RestAuthHandler::execute() {
     }
   } else if (!expiryTimeSlice.isNone()) {
     // expiryTime was provided but is not a number
+    failureReason = "invalid expiryTime";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expiryTime must be a number");
     return RestStatus::DONE;
@@ -185,8 +244,10 @@ RestStatus RestAuthHandler::execute() {
     }
   });
 
+  failureReason = "wrong credentials";
   std::string un;
   if (um->checkCredentials(username, password, un)) {
+    failureReason = "internal error while generating JWT";
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
@@ -195,6 +256,8 @@ RestStatus RestAuthHandler::execute() {
     }
 
     isValid = true;
+    loginSucceeded = true;
+    resolvedUsername = un;
     generateResult(rest::ResponseCode::OK, resultBuilder.slice());
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
