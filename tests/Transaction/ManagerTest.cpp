@@ -976,8 +976,7 @@ ErrorCode leaseErrorNumber(transaction::Manager& mgr, TransactionId tid) {
 
 /// @brief details entry of the transaction as reported by toVelocyPack()
 std::shared_ptr<arangodb::velocypack::Builder> transactionDetails(
-    transaction::Manager& mgr, std::string const& database,
-    TransactionId tid) {
+    transaction::Manager& mgr, std::string const& database, TransactionId tid) {
   arangodb::velocypack::Builder builder;
   {
     arangodb::velocypack::ArrayBuilder guard(&builder);
@@ -1001,7 +1000,8 @@ TEST_F(TransactionManagerTest, soft_abort_unknown_transaction) {
   EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::UNDEFINED);
 }
 
-TEST_F(TransactionManagerTest, soft_aborted_transaction_is_aborted_not_expired) {
+TEST_F(TransactionManagerTest,
+       soft_aborted_transaction_is_aborted_not_expired) {
   arangodb::ExecContextSuperuserScope exeScope;
   beginWriteTransaction(vocbase, *mgr, tid);
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
@@ -1101,8 +1101,9 @@ TEST_F(TransactionManagerTest, shutdown_soft_aborts_transaction_in_use) {
   EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
   // tombstones are not listed anymore
   EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), tid)->isEmpty());
-  EXPECT_EQ(mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet().errorNumber(),
-            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+  EXPECT_EQ(
+      mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet().errorNumber(),
+      TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

@@ -301,9 +301,7 @@ void Manager::ManagedTrx::updateExpiry() noexcept {
 
 void Manager::ManagedTrx::softAbort() noexcept { softAborted = true; }
 
-bool Manager::ManagedTrx::aborted() const noexcept {
-  return softAborted;
-}
+bool Manager::ManagedTrx::aborted() const noexcept { return softAborted; }
 
 arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
     TransactionState const& state) {
@@ -1436,8 +1434,7 @@ bool Manager::garbageCollect(bool abortAll) {
             TRI_ASSERT(it.first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
             LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
-                << "aborting "
-                << (mtrx.aborted() ? "soft-aborted" : "expired")
+                << "aborting " << (mtrx.aborted() ? "soft-aborted" : "expired")
                 << " transaction " << it.first;
           } else if (abortAll) {  // transaction is in use but we want to abort
             LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS)
