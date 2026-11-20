@@ -60,6 +60,33 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
+std::string_view authenticationMethodName(AuthenticationMethod method) {
+  switch (method) {
+    case AuthenticationMethod::BASIC:
+      return "basic";
+    case AuthenticationMethod::JWT:
+      return "jwt";
+    case AuthenticationMethod::NONE:
+      break;
+  }
+  return "none";
+}
+
+/// @brief security log for a failed authentication attempt of an incoming
+/// request. failed authentications are both authentication events and
+/// security violations, so they are tagged with both categories.
+void logAuthenticationFailure(GeneralRequest const& req,
+                              AuthenticationMethod method,
+                              std::string_view reason) {
+  LOG_SECURITY("77749", DEBUG, Logger::AUTHENTICATION,
+               Security::Authentication | Security::Violations)
+      << "authentication failed: reason='" << reason
+      << "', method=" << authenticationMethodName(method) << ", user='"
+      << req.user() << "', client=" << req.connectionInfo().fullClient()
+      << ", request=" << GeneralRequest::translateMethod(req.requestType())
+      << " " << req.fullUrl();
+}
+
 VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
                                      GeneralRequest& req) {
   // get database name from request
@@ -880,6 +907,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   std::string::size_type methodPos = authStr.find(' ');
   if (methodPos == std::string::npos) {
     events::UnknownAuthenticationMethod(req);
+    logAuthenticationFailure(req, AuthenticationMethod::NONE,
+                             "malformed authorization header");
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -906,6 +935,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setAuthenticationMethod(authMethod);
   if (authMethod == AuthenticationMethod::NONE) {
     events::UnknownAuthenticationMethod(req);
+    logAuthenticationFailure(req, authMethod,
+                             "unsupported authentication method");
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -916,6 +947,9 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
     // a JWT.
     // do not audit-log anything in this case, because there is
     // nothing we can do to verify the credentials.
+    logAuthenticationFailure(
+        req, authMethod,
+        "only JWT authentication is available during server startup");
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -929,8 +963,21 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setJwtToken(authToken.jwtToken());
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
+    // successful authentications with the cluster-internal superuser JWT
+    // (no user name) are not logged: these are used for every single
+    // server-to-server request in the cluster and are never presented by
+    // external clients, so logging them would only produce a huge amount of
+    // noise. failed authentications are always logged (see below).
+    LOG_SECURITY_IF("3669b", TRACE, Logger::AUTHENTICATION,
+                    Security::Authentication, !req.user().empty())
+        << "authentication succeeded: method="
+        << authenticationMethodName(authMethod) << ", user='" << req.user()
+        << "', client=" << req.connectionInfo().fullClient()
+        << ", request=" << GeneralRequest::translateMethod(req.requestType())
+        << " " << req.fullUrl();
   } else {
     events::CredentialsBad(req, authMethod);
+    logAuthenticationFailure(req, authMethod, "invalid credentials");
   }
   return authToken;
 }
