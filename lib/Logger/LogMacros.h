@@ -106,6 +106,9 @@
 /// marks it as a security event. `security` is a value of the
 /// `::arangodb::Security` enum (possibly several categories OR-ed together).
 /// all other logging macros delegate to this one.
+/// note: `security` (and `topic`) may be evaluated more than once, so they
+/// must not have side effects. if computing `security` has side effects or
+/// is expensive, compute it into a local variable first.
 #define LOG_SECURITY_IF(id, level, topic, security, cond)    \
   ARANGO_INTERNAL_LOG_STREAM(level, topic, security, (cond)) \
       << (topic) << ARANGO_INTERNAL_LOG_HELPER((id))
@@ -118,6 +121,8 @@
 /// @brief logs a message for a topic and marks it as a security event.
 /// this simply redirects to LOG_SECURITY_IF(...) with an always true
 /// condition.
+/// note: `security` (and `topic`) may be evaluated more than once, so they
+/// must not have side effects.
 #define LOG_SECURITY(id, level, topic, security) \
   LOG_SECURITY_IF(id, level, topic, security, true)
 
