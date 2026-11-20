@@ -157,6 +157,7 @@ use RBAC if you run ArangoDB standalone.
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31215)
       .setLongDescription(R"(When RBAC is enabled via
 `--server.external-rbac-service`, answers of the external authorization service
 are cached per JWT token, action, and resource, so that repeated permission
@@ -180,6 +181,7 @@ every permission check asks the external service.)");
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31215)
       .setLongDescription(R"(A background thread re-asks the external RBAC
 service for every cached authorization decision older than this many seconds,
 and replaces the entry with the new answer. This bounds how long a change of
