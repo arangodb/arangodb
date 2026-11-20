@@ -13,6 +13,7 @@ target_sources(arangodbtests
   HybridLogicalClockTest.cpp
   InputProcessorsTest.cpp
   OverloadTest.cpp
+  ProcessUtilsTest.cpp
   SizeLimitedStringTest.cpp
   SourceLocationTest.cpp
   StringBufferTest.cpp
