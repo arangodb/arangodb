@@ -524,8 +524,9 @@ void V8ClientConnection::renewTokenIfDue() {
             << "' failed: " << outcome.errorMessage() << "; retrying in "
             << kRenewalRetryInterval.count() << " seconds at the earliest";
       }
-      _handles.config().renewal.token = applyRenewal(
-          std::move(_handles.config().renewal.token), outcome, now);
+      _handles.config().renewal.token =
+          applyRenewal(std::move(_handles.config().renewal.token), outcome,
+                       JwtClock::now());
       newToken = _handles.config().renewal.token.token;
       break;
     }
