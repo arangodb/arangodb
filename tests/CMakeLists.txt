@@ -234,6 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
+  GeneralServer/RequestBodyBudgetTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp

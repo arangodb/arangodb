@@ -75,6 +75,10 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void processRequest();
   void doProcessRequest();
 
+  /// safe to call twice
+  void releaseBufferedBody() noexcept;
+  void sendBodyLimitError(rest::ResponseCode code);
+
   // called on IO context thread
   void writeResponse(RequestTimingData data);
 
@@ -93,6 +97,8 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _url;
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
+  // reserved from the global body budget
+  size_t _bufferedBodyBytes = 0;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;

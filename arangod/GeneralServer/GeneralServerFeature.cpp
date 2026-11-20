@@ -146,6 +146,12 @@ DECLARE_COUNTER(arangodb_http_response_code_total,
                 "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
+DECLARE_GAUGE(arangodb_http_global_body_bytes, std::uint64_t,
+              "Bytes of HTTP/1.1 and HTTP/2 request bodies currently being "
+              "received, process-wide");
+DECLARE_COUNTER(arangodb_http_global_body_rejections_total,
+                "Total number of HTTP request bodies rejected by the "
+                "process-wide body size limit");
 
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
@@ -228,6 +234,9 @@ GeneralServerFeature::GeneralServerFeature(
           metrics.add(arangodb_client_connection_statistics_connection_time{})),
       _connectionHttp(metrics.add(
           arangodb_client_connection_statistics_client_connections{})),
+      _globalBodyBytes(metrics.add(arangodb_http_global_body_bytes{})),
+      _globalBodyRejections(
+          metrics.add(arangodb_http_global_body_rejections_total{})),
       _metricsFeature(metrics) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -385,6 +394,36 @@ void GeneralServerFeature::countHttpResponseCode(
   } catch (...) {
     // must not throw from this noexcept function
   }
+}
+
+std::uint64_t GeneralServerFeature::requestBodyGlobalMemoryLimit()
+    const noexcept {
+  TRI_IF_FAILURE("GeneralServerFeature::lowerGlobalBodySizeLimit") {
+    // > one 16 KiB HTTP/2 frame, so rejections happen mid-body
+    return 32768;
+  }
+  return _options.requestBodyGlobalMemoryLimit;
+}
+
+rest::ResponseCode GeneralServerFeature::admitRequestBody(
+    std::uint64_t len) noexcept {
+  switch (_requestBodyBudget.admit(len, requestBodyGlobalMemoryLimit())) {
+    case RequestBodyBudget::Admission::kFits:
+      return rest::ResponseCode::OK;
+    case RequestBodyBudget::Admission::kNeverFits:
+      return rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE;
+    case RequestBodyBudget::Admission::kNotNow:
+      return rest::ResponseCode::SERVICE_UNAVAILABLE;
+  }
+  ADB_UNREACHABLE;
+}
+
+bool GeneralServerFeature::reserveRequestBodyBytes(std::uint64_t len) noexcept {
+  return _requestBodyBudget.reserve(len, requestBodyGlobalMemoryLimit());
+}
+
+void GeneralServerFeature::releaseRequestBodyBytes(std::uint64_t len) noexcept {
+  _requestBodyBudget.release(len);
 }
 
 void GeneralServerFeature::prepare() {
