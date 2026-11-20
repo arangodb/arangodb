@@ -202,7 +202,7 @@ template<SocketType T>
       << "<http2> received data for stream " << stream_id;
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
-  if (strm) {
+  if (strm && !strm->bodyLimitExceeded) {
     // auth only runs at END_STREAM, so cap the body as it arrives
     size_t maxBodySize = CommTask::MaximalBodySize;
     TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {

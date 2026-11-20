@@ -134,14 +134,15 @@ request as it arrives on the wire is limited separately.)");
                       arangodb::options::Flags::Dynamic))
       .setIntroducedIn(40000)
       .setLongDescription(R"(Each request body is limited on its own; this
-option limits their sum over all connections, so that many concurrent
-connections cannot together exhaust memory.
+option limits their sum over all connections while they are being received,
+so that many concurrent connections cannot together exhaust memory.
 
 An HTTP/1.1 request whose `Content-Length` is larger than the limit is rejected
 with HTTP 413, one that doesn't fit at the moment with HTTP 503, both before the
-body is read. A body that exceeds the limit while it arrives is rejected with
-HTTP 503 and the connection is closed (HTTP/1.1), or the stream is reset
-(HTTP/2).
+body is read. HTTP/2 has no such upfront check. A body that exceeds the limit
+while it arrives is rejected with HTTP 503 and the connection is closed
+(HTTP/1.1), or the stream is reset (HTTP/2). A client still sending its body may
+only see the connection being closed.
 
 The default is 10% of the physical memory, but at least 1 GiB, the maximum size
 of a single request body. A value of `0` disables the limit.)");

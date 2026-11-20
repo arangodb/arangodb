@@ -110,7 +110,12 @@ function GlobalRequestBodySizeLimitSuite() {
       const res = arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES + 1));
       assertTrue(res.error, JSON.stringify(res));
 
-      assertEqual(rejectedBefore + 1, rejections());
+      if (arango.protocol() === "http2") {
+        assertEqual(rejectedBefore + 1, rejections());
+      } else {
+        // arangosh retries once after the connection is closed
+        assertTrue(rejections() >= rejectedBefore + 1);
+      }
       assertEqual(before, bodyBytes());
     },
 
@@ -118,11 +123,13 @@ function GlobalRequestBodySizeLimitSuite() {
       if (!canRun()) {
         return;
       }
+      const before = bodyBytes();
       arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES * 2));
 
       // HTTP/1.1 reconnects here
       assertEqual(200, arango.GET_RAW("/_api/version").code);
       assertAccepted(arango.POST_RAW("/_api/version", body(16)));
+      assertEqual(before, bodyBytes());
     },
   };
 }
