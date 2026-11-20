@@ -1316,10 +1316,15 @@ pattern_node_pattern:
            T_CLOSE {
         $$ = parser->ast()->createPatternNodePattern($variable, $label, $kv_expr, $where, $projection);
     }
-    | 
-		T_OPEN variable_name 
+    |
+		T_OPEN variable_name
+		       pattern_maybe_property_key_value_expression[kv_expr]
+		       pattern_maybe_where_expression[where]
+		       pattern_maybe_projection[projection]
 		       T_CLOSE {
-			  $$ = parser->ast()->createPatternVertexReference({$variable_name.value, $variable_name.length});
+			  $$ = parser->ast()->createPatternVertexReference(
+            {$variable_name.value, $variable_name.length},
+            $kv_expr, $where, $projection);
 		}
 
 %type <node> pattern_out_variable;
