@@ -27,8 +27,7 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 let IM = global.instanceManager;
 
-// must match GeneralServerFeature::maxGlobalBodySize under the failure point,
-// more than one HTTP/2 DATA frame (16 KiB)
+// GeneralServerFeature::requestBodyGlobalMemoryLimit under the failure point
 const FAILPOINT_LIMIT_BYTES = 32768;
 
 function metric(name) {
@@ -56,7 +55,7 @@ function body(size) {
   return new Array(size + 1).join("a");
 }
 
-// any response from the handler means the body got through, GET only
+// /_api/version only allows GET, so 405 means the body got through
 function assertAccepted(res) {
   assertEqual(405, res.code, JSON.stringify(res));
 }
@@ -106,8 +105,8 @@ function GlobalRequestBodySizeLimitSuite() {
       const before = bodyBytes();
       const rejectedBefore = rejections();
 
-      // HTTP/2 resets after two full frames were reserved, HTTP/1.1 answers
-      // 413 before reading the body, but a TCP reset can beat that response
+      // HTTP/2 resets mid-body, HTTP/1.1 sends 413 upfront, which a TCP reset
+      // can beat
       const res = arango.POST_RAW("/_api/version", body(FAILPOINT_LIMIT_BYTES + 1));
       assertTrue(res.error, JSON.stringify(res));
 

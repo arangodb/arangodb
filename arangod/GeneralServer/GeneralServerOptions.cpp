@@ -33,8 +33,8 @@ namespace arangodb {
 GeneralServerOptions::GeneralServerOptions()
     : numIoThreads(NetworkFeature::defaultIOThreads()),
       // must fit at least one maximum-size request body
-      maxGlobalBodySize(std::max<uint64_t>(PhysicalMemory::getValue() / 10,
-                                           rest::CommTask::MaximalBodySize)),
+      requestBodyGlobalMemoryLimit(std::max<uint64_t>(
+          PhysicalMemory::getValue() / 10, rest::CommTask::MaximalBodySize)),
       decompressedRequestBodyGlobalMemoryLimit(PhysicalMemory::getValue() /
                                                10) {}
 

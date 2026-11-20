@@ -77,6 +77,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
 
   /// safe to call twice
   void releaseBufferedBody() noexcept;
+  void sendBodyLimitError(rest::ResponseCode code);
 
   // called on IO context thread
   void writeResponse(RequestTimingData data);

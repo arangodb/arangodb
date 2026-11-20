@@ -396,17 +396,18 @@ void GeneralServerFeature::countHttpResponseCode(
   }
 }
 
-std::uint64_t GeneralServerFeature::maxGlobalBodySize() const noexcept {
+std::uint64_t GeneralServerFeature::requestBodyGlobalMemoryLimit()
+    const noexcept {
   TRI_IF_FAILURE("GeneralServerFeature::lowerGlobalBodySizeLimit") {
-    // above one HTTP/2 DATA frame, so a rejected body was partly reserved
+    // > one 16 KiB HTTP/2 frame, so rejections happen mid-body
     return 32768;
   }
-  return _options.maxGlobalBodySize;
+  return _options.requestBodyGlobalMemoryLimit;
 }
 
 rest::ResponseCode GeneralServerFeature::admitRequestBody(
     std::uint64_t len) noexcept {
-  switch (_requestBodyBudget.admit(len, maxGlobalBodySize())) {
+  switch (_requestBodyBudget.admit(len, requestBodyGlobalMemoryLimit())) {
     case RequestBodyBudget::Admission::kFits:
       return rest::ResponseCode::OK;
     case RequestBodyBudget::Admission::kNeverFits:
@@ -418,7 +419,7 @@ rest::ResponseCode GeneralServerFeature::admitRequestBody(
 }
 
 bool GeneralServerFeature::reserveRequestBodyBytes(std::uint64_t len) noexcept {
-  return _requestBodyBudget.reserve(len, maxGlobalBodySize());
+  return _requestBodyBudget.reserve(len, requestBodyGlobalMemoryLimit());
 }
 
 void GeneralServerFeature::releaseRequestBodyBytes(std::uint64_t len) noexcept {

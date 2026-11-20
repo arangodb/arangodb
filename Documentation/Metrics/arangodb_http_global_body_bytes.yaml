@@ -1,5 +1,5 @@
 name: arangodb_http_global_body_bytes
-introducedIn: "3.12.14"
+introducedIn: "4.0.0"
 help: |
   Bytes of HTTP/1.1 and HTTP/2 request bodies currently being received,
   process-wide.
@@ -16,9 +16,9 @@ description: |
   Total number of bytes of request bodies currently being received, summed
   over all HTTP/1.1 and HTTP/2 connections of the process. A body stops
   counting once it is complete. Bounded by the
-  `--http.max-global-body-size` startup option.
+  `--http.request-body-global-memory-limit` startup option.
 troubleshoot: |
-  If this stays close to `--http.max-global-body-size`, requests are being
-  rejected, see `arangodb_http_global_body_rejections_total`. Either many
-  clients upload large bodies at once, or some clients send their bodies very
-  slowly. Raise the limit if the load is legitimate.
+  If this stays close to `--http.request-body-global-memory-limit`, requests
+  are being rejected, see `arangodb_http_global_body_rejections_total`. Either
+  many clients upload large bodies at once, or some clients send their bodies
+  very slowly. Raise the limit if the load is legitimate.

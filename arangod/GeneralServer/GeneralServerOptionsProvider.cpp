@@ -125,14 +125,14 @@ Requests exceeding the limit are rejected with HTTP 413.
 Note that this limits the body size *after* decompression. The size of the
 request as it arrives on the wire is limited separately.)");
 
-  opts->addOption("--http.max-global-body-size",
+  opts->addOption("--http.request-body-global-memory-limit",
                   "The maximum total size of all HTTP/1.1 and HTTP/2 request "
                   "bodies being received at the same time, process-wide (in "
                   "bytes).",
-                  new UInt64Parameter(&options.maxGlobalBodySize),
+                  new UInt64Parameter(&options.requestBodyGlobalMemoryLimit),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(31214)
+      .setIntroducedIn(40000)
       .setLongDescription(R"(Each request body is limited on its own; this
 option limits their sum over all connections, so that many concurrent
 connections cannot together exhaust memory.

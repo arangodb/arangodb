@@ -212,8 +212,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   // before 100-continue, so the client doesn't upload a body we'd refuse
   if (auto code = me->_generalServerFeature.admitRequestBody(p->content_length);
       code != rest::ResponseCode::OK) {
-    me->sendSimpleResponse(code, rest::ContentType::UNSET, 1,
-                           VPackBuffer<uint8_t>());
+    me->sendBodyLimitError(code);
     return HPE_USER;
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
@@ -258,8 +257,7 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
     me->releaseBufferedBody();
     // rest of the body stays unread, connection can't be reused
     me->_shouldKeepAlive = false;
-    me->sendSimpleResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendBodyLimitError(rest::ResponseCode::SERVICE_UNAVAILABLE);
     return HPE_USER;
   }
   me->_bufferedBodyBytes += len;
@@ -319,7 +317,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
 
 template<SocketType T>
 HttpCommTask<T>::~HttpCommTask() noexcept {
-  // dropped mid-body
+  // connection closed mid-body
   releaseBufferedBody();
 }
 
@@ -328,6 +326,20 @@ void HttpCommTask<T>::releaseBufferedBody() noexcept {
   if (_bufferedBodyBytes != 0) {
     this->_generalServerFeature.releaseRequestBodyBytes(_bufferedBodyBytes);
     _bufferedBodyBytes = 0;
+  }
+}
+
+template<SocketType T>
+void HttpCommTask<T>::sendBodyLimitError(rest::ResponseCode code) {
+  if (code == rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE) {
+    this->sendErrorResponse(
+        code, rest::ContentType::UNSET, 1, TRI_ERROR_RESOURCE_LIMIT,
+        "request body is larger than the global request body memory limit");
+  } else {
+    this->sendErrorResponse(code, rest::ContentType::UNSET, 1,
+                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                            "global request body memory limit reached, try "
+                            "again later");
   }
 }
 
@@ -399,7 +411,6 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
-      // same release point as H2CommTask::processStream
       releaseBufferedBody();
       if (_urlCorrupt) {
         LOG_TOPIC("33323", WARN, Logger::REQUESTS)

@@ -126,7 +126,7 @@ class GeneralServerFeature final
   }
 
  private:
-  std::uint64_t maxGlobalBodySize() const noexcept;
+  std::uint64_t requestBodyGlobalMemoryLimit() const noexcept;
   // build HTTP server(s)
   void buildServers();
   // open REST interface for listening
