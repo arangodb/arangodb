@@ -55,11 +55,14 @@ class RocksDBAllIndexIterator final : public IndexIterator {
         _upperBound(_bounds.end()),
         _mustSeek(true),
         _bytesRead(0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    rocksdb::ColumnFamilyDescriptor desc;
-    _bounds.columnFamily()->GetDescriptor(&desc);
-    TRI_ASSERT(desc.options.prefix_extractor);
-#endif
+// Temporarily commented out because this creates a rocksdb block cache
+// which triggers allocation failures by memory hit; rocksdb doesn't
+// handle nullptr from malloc() actually
+// #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//     rocksdb::ColumnFamilyDescriptor desc;
+//     _bounds.columnFamily()->GetDescriptor(&desc);
+//     TRI_ASSERT(desc.options.prefix_extractor);
+// #endif
   }
 
   ~RocksDBAllIndexIterator() {

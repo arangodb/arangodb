@@ -1,0 +1,122 @@
+--- a/absl/container/internal/raw_hash_set.cc	2026-11-19 22:07:53.698962970 +0100
++++ b/absl/container/internal/raw_hash_set.cc	2026-11-19 22:08:14.299364477 +0100
+@@ -1125,10 +1125,12 @@
+   const bool has_infoz = infoz.IsSampled();
+   void* alloc = policy.get_char_alloc(common);
+ 
+-  common.set_capacity(new_capacity);
+-  common.init_blocked_element_count(blocked_element_count);
+   const auto [new_ctrl, new_slots] = AllocBackingArray(
+       common, policy, new_capacity, has_infoz, alloc, blocked_element_count);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(new_capacity);
++  common.init_blocked_element_count(blocked_element_count);
+   common.set_control(new_ctrl);
+   common.generate_new_seed(has_infoz);
+ 
+@@ -1208,13 +1210,14 @@
+     has_infoz = true;
+   }
+ 
+-  common.set_capacity(new_capacity);
+-
+   // We do not set control and slots in CommonFields yet to avoid overriding
+   // SOO data.
+   const auto [new_ctrl, new_slots] =
+       AllocBackingArray(common, policy, new_capacity, has_infoz, alloc,
+                         /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(new_capacity);
+ 
+   InsertOldSooSlotAndInitializeControlBytes(common, policy, new_ctrl, new_slots,
+                                             has_infoz);
+@@ -1731,11 +1734,12 @@
+   void* alloc = policy.get_char_alloc(common);
+   HashtablezInfoHandle infoz = common.infoz();
+   const bool has_infoz = infoz.IsSampled();
+-  common.set_capacity(kNewCapacity);
+-
+   const auto [new_ctrl, new_slots] =
+       AllocBackingArray(common, policy, kNewCapacity, has_infoz, alloc,
+                         /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(kNewCapacity);
+   common.set_control(new_ctrl);
+   SanitizerPoisonMemoryRegion(new_slots, kNewCapacity * slot_size);
+ 
+@@ -1792,8 +1796,6 @@
+ 
+   HashtablezInfoHandle infoz = common.infoz();
+   const bool has_infoz = infoz.IsSampled();
+-  common.set_capacity(new_capacity);
+-  common.set_blocked_element_count_to_zero();
+   const size_t slot_size = policy.slot_size;
+   const size_t slot_align = policy.slot_align;
+   void* alloc = policy.get_char_alloc(common);
+@@ -1801,6 +1803,10 @@
+   const auto [new_ctrl, new_slots] =
+       AllocBackingArray(common, policy, new_capacity, has_infoz, alloc,
+                         /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(new_capacity);
++  common.set_blocked_element_count_to_zero();
+   common.set_control(new_ctrl);
+   SanitizerPoisonMemoryRegion(new_slots, new_capacity * slot_size);
+ 
+@@ -1872,7 +1878,6 @@
+   ABSL_SWISSTABLE_ASSERT(common.capacity() == 0);
+   constexpr size_t kNewCapacity = 1;
+ 
+-  common.set_capacity(kNewCapacity);
+   HashtablezInfoHandle infoz;
+   const bool should_sample =
+       policy.is_hashtablez_eligible && ShouldSampleNextTable();
+@@ -1886,6 +1891,9 @@
+   const auto [new_ctrl, new_slots] =
+       AllocBackingArray(common, policy, kNewCapacity, has_infoz, alloc,
+                         /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(kNewCapacity);
+   common.set_control(new_ctrl);
+ 
+   static_assert(NextCapacity(0) == 1);
+@@ -2118,11 +2126,13 @@
+   const bool has_infoz = infoz.IsSampled();
+   void* alloc = policy.get_char_alloc(common);
+ 
+-  common.set_capacity(new_capacity);
+-  common.set_blocked_element_count_to_zero();
+   const auto [new_ctrl, new_slots] =
+       AllocBackingArray(common, policy, new_capacity, has_infoz, alloc,
+                         /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(new_capacity);
++  common.set_blocked_element_count_to_zero();
+   common.set_control(new_ctrl);
+   common.generate_new_seed(has_infoz);
+ 
+@@ -2158,8 +2168,6 @@
+   static constexpr size_t kNewCapacity = NextCapacity(SooCapacity());
+   const size_t slot_size = policy.slot_size;
+   void* alloc = policy.get_char_alloc(common);
+-  common.set_capacity(kNewCapacity);
+-
+   // Since the table is not empty, it will not be sampled.
+   // The decision to sample was already made during the first insertion.
+   //
+@@ -2168,6 +2176,9 @@
+   const auto [new_ctrl, new_slots] = AllocBackingArray(
+       common, policy, kNewCapacity, /*has_infoz=*/false, alloc,
+       /*blocked_element_count=*/0);
++  // Set only after the allocation succeeded, so a throwing allocator leaves
++  // the table unchanged.
++  common.set_capacity(kNewCapacity);
+ 
+   PrepareInsertCommon(common);
+   ABSL_SWISSTABLE_ASSERT(common.size() == 2);

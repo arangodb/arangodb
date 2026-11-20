@@ -27,6 +27,7 @@
 #include "Basics/voc-errors.h"
 #include "infra/AllocHeader.h"
 #include "infra/CacheMonitors.h"
+#include "infra/MallocOverride.h"
 #include "infra/MonitorRegistry.h"
 #include "infra/ResourceMonitor.h"
 #include "infra/ResourceMonitorScope.h"
@@ -59,6 +60,12 @@ auto headerBytes(std::uint64_t allocations) -> std::uint64_t {
   return allocations * sizeof(infra::AllocHeader);
 }
 
+// Unlimited monitor for the diagnostic log line below.
+auto diagnosticsMonitor() noexcept -> infra::StaticResourceMonitor& {
+  static infra::StaticResourceMonitor monitor;
+  return monitor;
+}
+
 }  // namespace
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
@@ -86,6 +93,8 @@ ResourceMonitor::~ResourceMonitor() {
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
   auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
+  infra::ResourceMonitorScope diagnosticsScope{
+      infra::ResourceMonitorRef{diagnosticsMonitor()}};
   auto& rocksdb = infra::rocksdbMonitor();
   auto& cache = infra::cacheMonitor();
   std::ostringstream phases;
