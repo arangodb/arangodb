@@ -43,7 +43,8 @@ enum class ErrorCode : uint32_t {
   not_impl_error,
   illegal_argument,
   illegal_state,
-  undefined_error
+  undefined_error,
+  query_killed = 1500U  //  ERROR_QUERY_KILLED
 };
 
 #define DECLARE_ERROR_CODE(class_name)                          \
@@ -173,6 +174,17 @@ struct illegal_state : detailed_error_base {
 
   template<typename T>
   explicit illegal_state(T&& error)
+    : detailed_error_base(std::forward<T>(error)) {}
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct query_killed
+//////////////////////////////////////////////////////////////////////////////
+struct query_killed : detailed_error_base {
+  DECLARE_ERROR_CODE(query_killed);
+
+  template<typename T>
+  explicit query_killed(T&& error)
     : detailed_error_base(std::forward<T>(error)) {}
 };
 
