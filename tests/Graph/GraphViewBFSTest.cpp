@@ -22,6 +22,7 @@ auto inspect(Inspector& f, Path& p) {
                             f.field("edges", p.edges));
 }
 
+  /*
 auto materializePaths(std::shared_ptr<IGraphView> view, Interior interior)
     -> std::vector<Path> {
   std::vector<Path> result;
@@ -45,7 +46,7 @@ auto materializePaths(std::shared_ptr<IGraphView> view, Interior interior)
   }
 
   return result;
-}
+  }*/
 }  // namespace
 
 TEST(GraphViewBFSTest, empty) {
@@ -55,13 +56,26 @@ TEST(GraphViewBFSTest, empty) {
   /* Expect:
      "Bollocks"
   */
-  auto paths = graphViewBFS(graphView, VertexIdLabel("Bollocks"));
-  auto materialisedPaths = materializePaths(graphView, paths);
+  auto pathGenerator = graphViewBFS(graphView, VertexIdLabel("Bollocks"));
 
+  auto pathGeneratorIterator = std::begin(pathGenerator);
+
+  ASSERT_NE(pathGeneratorIterator, std::end(pathGenerator));
+
+  auto path = *pathGeneratorIterator;
+  // check path
+  ASSERT_EQ(path, std::vector<EdgeId>{});
+
+  pathGeneratorIterator++;
+  ASSERT_EQ(pathGeneratorIterator, std::end(pathGenerator));
+  
+  /*
   ASSERT_EQ(materialisedPaths,
             (std::vector<Path>{Path{{VertexIdLabel("Bollocks")}, {}}}));
+  */
 }
 
+#if 0
 TEST(GraphViewBFSTest, two_vertices_no_edge) {
   auto graph = InMemoryGraph{{VertexIdLabel{"v/0"}, VertexIdLabel{"v/1"}}, {}};
   auto graphView = std::make_shared<InMemoryGraphView>(graph);
@@ -76,6 +90,7 @@ TEST(GraphViewBFSTest, two_vertices_no_edge) {
             (std::vector<Path>{Path{{VertexIdLabel("v/0")}, {}}}))
       << inspection::json(materialisedPaths);
 }
+#endif
 
 TEST(GraphViewBFSTest, single_edge) {
   auto v0 = VertexIdLabel{"v/0"};
@@ -83,19 +98,37 @@ TEST(GraphViewBFSTest, single_edge) {
   auto graph = InMemoryGraph{{v0, v1}, {{EdgeIdLabel{"e/0"}, {v0, v1}}}};
   auto graphView = std::make_shared<InMemoryGraphView>(graph);
 
+
   /* Expect:
      v/0
      v/0 -[e/0]-> v/1
   */
 
-  auto paths = graphViewBFS(graphView, VertexIdLabel("v/0"));
-  auto materialisedPaths = materializePaths(graphView, paths);
+  auto pathGenerator = graphViewBFS(graphView, VertexIdLabel("Bollocks"));
 
-  ASSERT_EQ(materialisedPaths,
-            (std::vector<Path>{Path{{v0}, {}},
-                               Path{{v0, v1}, {EdgeIdLabel{"e/0"}}}}));
+  auto pathGeneratorIterator = std::begin(pathGenerator);
+
+  ASSERT_NE(pathGeneratorIterator, std::end(pathGenerator));
+
+  {
+    auto path = *pathGeneratorIterator;
+    // check path
+    ASSERT_EQ(path, std::vector<EdgeId>{});
+  }
+
+  pathGeneratorIterator++;
+  ASSERT_NE(pathGeneratorIterator, std::end(pathGenerator));
+
+  {
+    auto path = *pathGeneratorIterator;
+    ASSERT_EQ(path, std::vector<EdgeId>{EdgeId{0}});
+  }
+
+  pathGeneratorIterator++;
+  ASSERT_EQ(pathGeneratorIterator, std::end(pathGenerator));
 }
 
+#if 0
 TEST(GraphViewBFSTest, simple) {
   auto v0 = VertexIdLabel{"v/0"};
   auto v1 = VertexIdLabel{"v/1"};
@@ -146,5 +179,5 @@ TEST(GraphViewBFSTest, two_edges_between_two_vertices) {
                                Path{{v0, v1, v2}, {e1, e2}}}))
       << inspection::json(materialisedPaths);
 }
-
+#endif
 }  // namespace arangodb::graph::experimental

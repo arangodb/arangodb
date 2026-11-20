@@ -7,6 +7,7 @@
 #include <string>
 #include "Graph/Types/VertexRef.h"
 #include "Graph/SimplifiedTraversal/IGraphView.h"
+#include "Inspection/Format.h"
 
 namespace arangodb::graph::experimental {
 
@@ -17,7 +18,13 @@ struct InMemoryGraph {
       std::unordered_map<EdgeIdLabel, std::tuple<VertexIdLabel, VertexIdLabel>>
           edges)
       : _vertexIdLabels{std::move(vertexIdLabels)},
-        _edgeIdLabels{std::move(edges)} {}
+        _edgeIdLabels{std::move(edges)} {
+    for (auto&& [e, v] : _edgeIdLabels) {
+      std::cerr << inspection::json(e) << ", "
+                << inspection::json(std::get<0>(v)) << ", "
+                << inspection::json(std::get<1>(v)) << std::endl;
+    }
+  }
 
   auto retrieveEdgeIdLabel(VertexIdLabel const& from, VertexIdLabel const& to)
       -> std::optional<EdgeIdLabel> {

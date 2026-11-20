@@ -109,7 +109,7 @@ class CursorLifoQueue {
     std::vector<Step*> steps;
     for (auto& item : _queue) {
       if (std::holds_alternative<Step>(item)) {
-        auto step = std::get<Step>(item);
+        auto& step = std::get<Step>(item);
         if (!step.isProcessable()) {
           steps.emplace_back(&step);
         }
@@ -171,7 +171,7 @@ class CursorLifoQueue {
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& item : _queue) {
       if (std::holds_alternative<Step>(item)) {
-        auto step = std::get<Step>(item);
+        auto& step = std::get<Step>(item);
         if (!step.edgeFetched() && !step.isUnknown()) {
           steps.emplace_back(&step);
         }

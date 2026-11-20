@@ -167,7 +167,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
       if (_queue.usesCursor()) {
-        auto cursor = _provider.createNeighbourCursor(step, posPrevious);
+        auto cursor = _provider.createNeighbourCursor(step, position);
         _queue.append(std::move(cursor));
         LOG_TRAVERSAL << "Pushed   " << inspection::json(step) << " | "
                       << inspection::json(_queue);
