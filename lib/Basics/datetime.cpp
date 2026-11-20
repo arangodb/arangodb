@@ -36,9 +36,6 @@
 #include <utility>
 #include <vector>
 
-#include <date/date.h>
-#include <date/iso_week.h>
-
 #include "Basics/NumberUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
@@ -286,15 +283,10 @@ std::
                  }},
                 {"%kk",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   iso_week::year_weeknum_weekday yww{
-                       std::chrono::floor<std::chrono::days>(tp)};
-                   uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-                   if (isoWeek < 10) {
-                     wrk.append("0");
-                   }
-                   wrk.append(std::to_string(isoWeek));
+                   auto days = std::chrono::floor<std::chrono::days>(tp);
+                   auto iw = std::format("{0:%W}", days);
+                   wrk.append(iw);
                  }},
-
                 {"%t",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    auto diffDuration = tp - unixEpoch;
@@ -382,10 +374,12 @@ std::
                  }},
                 {"%k",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   iso_week::year_weeknum_weekday yww{
-                       std::chrono::floor<std::chrono::days>(tp)};
-                   uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
-                   wrk.append(std::to_string(isoWeek));
+                   auto iw = std::format("{0:%W}", tp);
+                   if (iw[0] == '0') {
+                     wrk.append(iw.substr(1));
+                   } else {
+                     wrk.append(iw);
+                   }
                  }},
                 {"%l",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
