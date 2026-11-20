@@ -45,6 +45,8 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const { assertEqual, assertNotEqual, assertTrue, assertFalse } = jsunity.jsUnity.assertions;
 const internal = require('internal');
+const fs = require('fs');
+const db = internal.db;
 const users = require('@arangodb/users');
 const IM = global.instanceManager;
 
@@ -207,6 +209,76 @@ function connectionHandlesJwtRenewalSuite() {
       assertEqual(otherUser, arango.connectedUser());
     },
 
+    // whatever the authentication mode, each handle keeps the credentials it
+    // was created with
+    testHandleTableReportsTheCredentialsOfEachHandle: function () {
+      const rootHandle = connectAsRoot();
+      const otherHandle = connectAsOther();
+
+      const table = handleTable();
+      assertEqual('root', table[rootHandle].username, JSON.stringify(table));
+      assertEqual('', table[rootHandle].password, JSON.stringify(table));
+      assertEqual(otherUser, table[otherHandle].username, JSON.stringify(table));
+      assertEqual(otherPassword, table[otherHandle].password, JSON.stringify(table));
+    },
+
+    // arangosh helpers that open their own connections, such as importJson(),
+    // authenticate with the client settings, which have to follow the active
+    // handle. otherUser may only read, so importing as otherUser fails
+    testImportUsesTheCredentialsOfTheActiveHandle: function () {
+      const collection = 'UnitTestsHandleImport';
+      const file = fs.getTempFile();
+      fs.write(file, JSON.stringify({ value: 1 }));
+      db._create(collection);
+      try {
+        const connectWithSecret = () => {
+          arango.reconnect(IM.endpoint, '_system', undefined, undefined, false, jwtSecret);
+          return arango.getConnectionHandle();
+        };
+        for (const connect of [connectAsRoot, connectWithSecret]) {
+          const handle = connect();
+          connectAsOther();
+          assertTrue(arango.connectHandle(handle));
+
+          assertEqual(1, arango.importJson(file, collection).created);
+        }
+      } finally {
+        connectAsRoot();
+        db._drop(collection);
+        fs.remove(file);
+      }
+    },
+
+    // a handle keeps the database it last used; it is no part of its identity,
+    // so the database is switched on the same connection. importJson() checks
+    // that the client settings follow: the collection only exists there
+    testHandleKeepsItsDatabase: function () {
+      const database = 'UnitTestsHandleDatabase';
+      const collection = 'UnitTestsHandleDatabaseImport';
+      const file = fs.getTempFile();
+      fs.write(file, JSON.stringify({ value: 1 }));
+      db._createDatabase(database);
+      try {
+        const rootHandle = connectAsRoot();
+        db._useDatabase(database);
+        assertEqual(rootHandle, arango.getConnectionHandle());
+        db._create(collection);
+
+        connectAsOther();
+        assertEqual('_system', arango.getDatabaseName());
+        assertEqual('_system', db._name());
+
+        assertTrue(arango.connectHandle(rootHandle));
+        assertEqual(database, arango.getDatabaseName());
+        assertEqual(database, db._name());
+        assertEqual(1, arango.importJson(file, collection).created);
+      } finally {
+        connectAsRoot();
+        db._dropDatabase(database);
+        fs.remove(file);
+      }
+    },
+
     // a failed renewal keeps the expired token, so requests are refused; it
     // neither switches the handle's user nor breaks later logins
     testFailedRenewalIsReportedAndRecoverable: function () {
@@ -308,22 +380,35 @@ function connectionHandlesJwtRenewalSuite() {
       assertEqual(IM.endpoint, arango.getEndpoint());
     },
 
-    // a failed login neither drops nor retargets the active connection
+    // a failed login neither drops nor retargets the active connection, nor
+    // leaves the client settings at what it tried. importJson() checks the
+    // latter: it fails with the credentials or database of the failed login
     testFailedReconnectKeepsActiveConnection: function () {
+      const collection = 'UnitTestsFailedReconnectImport';
+      const file = fs.getTempFile();
+      fs.write(file, JSON.stringify({ value: 1 }));
       const rootHandle = connectAsRoot();
-
-      let failed = false;
+      db._create(collection);
       try {
-        arango.reconnect(IM.endpoint, '_system', otherUser, 'wrong password');
-      } catch (err) {
-        failed = true;
-      }
+        let failed = false;
+        try {
+          arango.reconnect(IM.endpoint, 'UnitTestsNoSuchDatabase', otherUser, 'wrong password');
+        } catch (err) {
+          failed = true;
+        }
 
-      assertTrue(failed);
-      assertEqual(rootHandle, arango.getConnectionHandle());
-      assertEqual(IM.endpoint, arango.getEndpoint());
-      assertEqual('root', arango.connectedUser());
-      assertEqual(200, readRootUser());
+        assertTrue(failed);
+        assertEqual(rootHandle, arango.getConnectionHandle());
+        assertEqual(IM.endpoint, arango.getEndpoint());
+        assertEqual('root', arango.connectedUser());
+        assertEqual('_system', arango.getDatabaseName());
+        assertEqual(200, readRootUser());
+        assertEqual(1, arango.importJson(file, collection).created);
+      } finally {
+        connectAsRoot();
+        db._drop(collection);
+        fs.remove(file);
+      }
     },
 
     testDisconnectedHandleIsGone: function () {

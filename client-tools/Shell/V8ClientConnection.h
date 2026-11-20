@@ -89,14 +89,16 @@ class V8ClientConnection {
 
   std::string protocol() const;
 
-  std::string const& databaseName() const { return _databaseName; }
+  /// @brief the database of the active connection, which it keeps while
+  /// inactive
+  std::string databaseName() const;
   void setDatabaseName(std::string const& value);
   void setForceJson(bool value) { _forceJson = value; };
-  /// @brief endpoint and user of the active connection, as configured when
-  /// it was created; those of the client before the first connect
+  /// @brief endpoint and credentials of the active connection, as configured
+  /// when it was created; those of the client before the first connect
   std::string endpoint() const;
   std::string username() const;
-  std::string password() const { return _handles.config().builder.password(); }
+  std::string password() const;
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
@@ -190,9 +192,8 @@ class V8ClientConnection {
       kJwtTokenOption,
     };
     Kind kind = Kind::kNone;
-    // password and token state of kLogin; the user is that of the
+    // token state of kLogin, which logs in with the credentials of the
     // Configuration
-    std::string password;
     JwtTokenState token;
   };
 
@@ -200,9 +201,15 @@ class V8ClientConnection {
   struct Configuration {
     fuerte::ConnectionBuilder builder;
     TokenRenewal renewal;
-    // the endpoint and user as given by the client
+    // the endpoint and credentials as given by the client, whichever of them
+    // the authentication mode uses
     std::string endpoint;
     std::string username;
+    std::string password;
+    std::string jwtSecret;
+    // not part of the identity: requests name their database, so switching
+    // it keeps the connection
+    std::string databaseName;
   };
 
   using Handles = ConnectionHandles<Configuration>;
@@ -252,11 +259,14 @@ class V8ClientConnection {
   // connection with the new token
   void renewTokenIfDue();
 
+  // Points the client settings at the endpoint, credentials and database of
+  // config, so that whatever reads them, such as the importers, the prompt
+  // and reconnect() defaults, follows the active handle
+  void adoptClientSettings(Configuration const& config);
+
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
-
-  std::string _databaseName;
 
   // the last superuser token, and the jwt secret it was generated with
   std::string _internalToken;

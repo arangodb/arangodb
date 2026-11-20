@@ -191,7 +191,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     if (_forceJson) {
       req->header.acceptType(fu::ContentType::Json);
     }
-    req->header.database = _databaseName;
+    req->header.database = candidate.config.databaseName;
     req->timeout(std::chrono::seconds(30));
     retryCount -= 1;
     try {
@@ -367,8 +367,14 @@ application_features::ApplicationServer& V8ClientConnection::server() {
   return _server;
 }
 
+std::string V8ClientConnection::databaseName() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().databaseName;
+}
+
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = value;
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  _handles.config().databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -387,6 +393,12 @@ std::string V8ClientConnection::username() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   return _handles.config().endpoint.empty() ? _client.username()
                                             : _handles.config().username;
+}
+
+std::string V8ClientConnection::password() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.password()
+                                            : _handles.config().password;
 }
 
 std::string V8ClientConnection::protocol() const {
@@ -509,7 +521,7 @@ void V8ClientConnection::renewTokenIfDue() {
           }
         }
         return requestToken(TokenRequest::kLogin, config.builder,
-                            config.username, config.renewal.password);
+                            config.username, config.password);
       }();
       if (outcome.fail()) {
         LOG_TOPIC("7552f", WARN, arangodb::Logger::AUTHENTICATION)
@@ -553,7 +565,6 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
-  _databaseName = _client.databaseName();
 
   // configure a copy, so that a failed login leaves the configuration
   // untouched. each authentication mode clears the fields of the others;
@@ -584,11 +595,10 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
                                          login.errorMessage());
     }
     if (auto const& token = login.get(); token.has_value()) {
-      // Server has authentication enabled, use the JWT token and keep the
-      // credentials for renewing it
+      // Server has authentication enabled, use the JWT token and renew it
+      // with the credentials of the configuration
       useJwt(*token);
       renewal = TokenRenewal{.kind = TokenRenewal::Kind::kLogin,
-                             .password = _client.password(),
                              .token = tokenStateFor(*token, JwtClock::now())};
     } else {
       // the server does not implement the _open/auth API, or has
@@ -608,8 +618,19 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   _handles.config() = Configuration{.builder = std::move(builder),
                                     .renewal = std::move(renewal),
                                     .endpoint = _client.endpoint(),
-                                    .username = _client.username()};
+                                    .username = _client.username(),
+                                    .password = _client.password(),
+                                    .jwtSecret = _client.jwtSecret(),
+                                    .databaseName = _client.databaseName()};
   return ResultT<std::string>::success("");
+}
+
+void V8ClientConnection::adoptClientSettings(Configuration const& config) {
+  _client.setEndpoint(config.endpoint);
+  _client.setUsername(config.username);
+  _client.setPassword(config.password);
+  _client.setJwtSecret(config.jwtSecret);
+  _client.setDatabaseName(config.databaseName);
 }
 
 ResultT<std::string> V8ClientConnection::connect() {
@@ -626,6 +647,11 @@ ResultT<std::string> V8ClientConnection::reconnect() {
 
   auto res = prepareConnection();
   if (!res.ok()) {
+    // the caller already put the failed settings into the client. before the
+    // first connect there is no configuration to go back to
+    if (!_handles.config().endpoint.empty()) {
+      adoptClientSettings(_handles.config());
+    }
     return res;
   }
 
@@ -640,7 +666,7 @@ ResultT<std::string> V8ClientConnection::reconnect() {
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC("2d416", INFO, arangodb::Logger::HTTPCLIENT)
         << ClientFeature::buildConnectedMessage(
-               endpointSpecification(), _version, _role, _mode, _databaseName,
+               endpointSpecification(), _version, _role, _mode, databaseName(),
                _client.username());
   } else {
     if (_client.getWarnConnect()) {
@@ -681,7 +707,7 @@ void V8ClientConnection::getConnectionHandleTable(
 
   auto const addEntry =
       [&](std::string const& id, std::shared_ptr<fu::Connection> const& conn,
-          fu::ConnectionBuilder const& builder, bool isActive) {
+          Configuration const& config, bool isActive) {
         v8::Local<v8::Object> entry = v8::Object::New(isolate);
 
         setBool("active", isActive, entry);
@@ -695,20 +721,19 @@ void V8ClientConnection::getConnectionHandleTable(
           setString("endpoint", "N/A", entry);
           setString("localPort", "N/A", entry);
         }
-        setString("username", builder.user(), entry);
-        setString("password", builder.password(), entry);
-        setString("jwtToken", builder.jwtToken(), entry);
+        setString("username", config.username, entry);
+        setString("password", config.password, entry);
+        setString("jwtToken", config.builder.jwtToken(), entry);
 
         table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
       };
 
   for (auto const& [id, cached] : _handles.inactive()) {
-    addEntry(id, cached.connection, cached.config.builder, /*isActive=*/false);
+    addEntry(id, cached.connection, cached.config, /*isActive=*/false);
   }
 
   if (_handles.connection() != nullptr) {
-    addEntry(_handles.activeHandle(), _handles.connection(),
-             _handles.config().builder,
+    addEntry(_handles.activeHandle(), _handles.connection(), _handles.config(),
              /*isActive=*/true);
   }
 
@@ -738,6 +763,11 @@ void V8ClientConnection::connectHandle(
   // brings its own renewal state, so an expired token is renewed on the next
   // request
   _handles.activate(handle, std::move(*cached));
+  adoptClientSettings(_handles.config());
+  // the db object caches what it read via the previous handle, which may
+  // have been another database, server or user
+  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._flushCache();",
+                              "reload db object", false);
 
   TRI_V8_RETURN_TRUE();
 }
@@ -3078,7 +3108,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req, method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, databaseName(), _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
@@ -3154,7 +3184,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req, method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, databaseName(), _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson,
