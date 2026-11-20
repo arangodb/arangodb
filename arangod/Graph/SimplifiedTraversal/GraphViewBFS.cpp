@@ -4,6 +4,9 @@
 #include <limits>
 #include <unordered_set>
 #include <deque>
+#include <generator>
+
+#include "Inspection/Format.h"
 
 namespace arangodb::graph::experimental {
 
@@ -43,15 +46,28 @@ namespace arangodb::graph::experimental {
 
  */
 
+//
+
 auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
-    -> Interior {
+  -> std::generator<std::vector<EdgeId>> {
   Interior interior;
+  // queue contains Interior::Entry, because the queue contains candidates for
+  // extensions of an already found path; the entry on the queue points to the
+  // end of the path that is being extended.
+  //
+  // This also means that Interior and queue are in a relationship;
   std::deque<Interior::Entry> queue;
 
   // TODO: possibly this should be a single command for the GraphView
   auto startId = view->ensureVertex(start);
   interior._startVertex = startId;
+
+  std::cerr << "suspend 1";
+  co_yield {}; // path that only contains the start vertex!
+  std::cerr << "resume 1";
+
   auto initialEdges = view->outEdges(startId);
+  std::cerr << inspection::json(initialEdges);
 
   for (auto&& ie : initialEdges) {
     queue.emplace_back(Interior::Entry{-1, std::move(ie)});
@@ -62,16 +78,26 @@ auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
     auto nextItem = queue.front();
     queue.pop_front();
 
-    auto const outEdges = view->outEdges(nextItem.second);
-
     interior._screamer.emplace_back(nextItem);
+    auto path = interior.trace(nextItem.first);
+    std::cerr << "suspend 2";
+    co_yield path;
+    std::cerr << "resume 2";
 
+    auto const outEdges = view->outEdges(nextItem.second);
     for (auto&& ie : outEdges) {
+      // shouldEmplace(view, interior, ie)
+      //  should this support
+      //    - filtering,
+      //    - pruning,
+      //    - min/max depth,
+      //    - (global) uniqueness of vertices
+      //    - uniqueness of edges
       if (!interior.shouldEmplace(ie)) {
         queue.emplace_back(Interior::Entry{nextItem.first, ie});
       }
     }
   }
-  return interior;
+  std::cerr << "done";
 }
 }  // namespace arangodb::graph::experimental
