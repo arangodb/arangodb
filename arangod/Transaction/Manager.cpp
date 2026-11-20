@@ -250,6 +250,7 @@ Manager::ManagedTrx::ManagedTrx(ManagerFeatureOptions const& options,
     : type(t),
       intermediateCommits(false),
       wasExpired(false),
+      softAborted(false),
       sideUsers(0),
       finalStatus(Status::UNDEFINED),
       timeToLive(ttl),
@@ -298,6 +299,10 @@ void Manager::ManagedTrx::updateExpiry() noexcept {
   expiryTime = TRI_microtime() + timeToLive;
 }
 
+void Manager::ManagedTrx::softAbort() noexcept { softAborted = true; }
+
+bool Manager::ManagedTrx::aborted() const noexcept { return softAborted; }
+
 arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
     TransactionState const& state) {
   arangodb::cluster::CallbackGuard rGuard;
@@ -311,7 +316,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, databaseName).waitAndGet();
+            abortOrSoftAbortManagedTrx(tid, databaseName).waitAndGet();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -880,6 +885,11 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
                        " has already been committed"));
     }
 
+    if (mtrx.aborted()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_ABORTED,
+          absl::StrCat("transaction ", tid.id(), " has already been aborted"));
+    }
     if (mtrx.expired()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_NOT_FOUND,
@@ -1013,7 +1023,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
       // here, because we have not acquired it before!
     } else {
       // garbageCollection might soft abort used transactions
-      isSoftAborted = it->second.expiryTime == 0;
+      isSoftAborted = it->second.aborted();
       if (!isSoftAborted) {
         it->second.updateExpiry();
       }
@@ -1049,7 +1059,7 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
 
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
-  } else if (!mtrx.expired() && mtrx.state != nullptr) {
+  } else if (!mtrx.aborted() && !mtrx.expired() && mtrx.state != nullptr) {
     return transaction::Status::RUNNING;
   } else {
     return transaction::Status::ABORTED;
@@ -1240,7 +1250,10 @@ Result Manager::updateTransactionIf(
     }
     TRI_ASSERT(mtrx.type == MetaType::Managed);
 
-    if (mtrx.expired()) {
+    if (mtrx.aborted()) {
+      // soft-aborted transactions must not be committed
+      status = transaction::Status::ABORTED;
+    } else if (mtrx.expired()) {
       // we will update the expire time of the tombstone shortly afterwards,
       // but we need to store the fact that this transaction originally expired
       wasExpired = true;
@@ -1350,6 +1363,35 @@ void Manager::iterateManagedTrx(
   }
 }
 
+futures::Future<Result> Manager::abortOrSoftAbortManagedTrx(
+    TransactionId tid, std::string const& database) {
+  Result res = co_await abortManagedTrx(tid, database);
+  if (res.is(TRI_ERROR_LOCKED)) {
+    // The transaction is still in use after waiting for it. if it's left it
+    // may never get aborted. The lock remains here until expiry.
+    if (softAbortManagedTrx(tid)) {
+      LOG_TOPIC("1f9e5", INFO, Logger::TRANSACTIONS)
+          << "soft-aborting transaction " << tid << " which is in use";
+    }
+  }
+  co_return res;
+}
+
+bool Manager::softAbortManagedTrx(TransactionId tid) noexcept {
+  size_t bucket = getBucket(tid);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+  auto it = _transactions[bucket]._managed.find(tid);
+  if (it == _transactions[bucket]._managed.end() ||
+      it->second.type != MetaType::Managed) {
+    return false;
+  }
+  // returnManagedTrx() aborts the transaction when it finds it soft-aborted,
+  // and garbageCollect() aborts it as an expired transaction otherwise
+  it->second.softAbort();
+  return true;
+}
+
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1381,7 +1423,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
-        if (abortAll || mtrx.expired()) {
+        if (abortAll || mtrx.aborted() || mtrx.expired()) {
           ++numAborted;
 
           TRY_WRITE_LOCKER(tryGuard,
@@ -1392,11 +1434,12 @@ bool Manager::garbageCollect(bool abortAll) {
             TRI_ASSERT(it.first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
             LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
-                << "aborting expired transaction " << it.first;
+                << "aborting " << (mtrx.aborted() ? "soft-aborted" : "expired")
+                << " transaction " << it.first;
           } else if (abortAll) {  // transaction is in use but we want to abort
             LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS)
                 << "soft-aborting expired transaction " << it.first;
-            mtrx.expiryTime = 0;  // soft-abort transaction
+            mtrx.softAbort();
             didWork = true;
             LOG_TOPIC("7ad4f", INFO, Logger::TRANSACTIONS)
                 << "soft aborting transaction " << it.first;
@@ -1485,8 +1528,13 @@ bool Manager::abortSelectedTrx(std::vector<SelectedTrx> const& selected) {
   for (auto const& trx : selected) {
     Result res = updateAuthorizedTransaction(trx.tid, Status::ABORTED,
                                              /*clearSrvs*/ true);
-    if (res.fail() &&
-        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // the transaction was selected, but is in use now. make sure it does
+      // not survive its current user
+      softAbortManagedTrx(trx.tid);
+    } else if (res.fail() &&
+               !res.is(
+                   TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)
           << "error aborting transaction " << trx.tid << ": "
           << res.errorMessage();
@@ -1624,6 +1672,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
           entry.add("type", VPackValue(typeName(trx.type)));
           if (trx.type != MetaType::Tombstone) {
             entry.add("expired", VPackValue(trx.expired()));
+            entry.add("softAborted", VPackValue(trx.aborted()));
           }
           entry.add("hasPerformedIntermediateCommits",
                     VPackValue(trx.hasPerformedIntermediateCommits()));
