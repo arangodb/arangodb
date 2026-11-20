@@ -599,12 +599,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       case arangodb::graph::PathType::Type::AllShortestPaths:
         return _makeExecutionBlockImpl<
             AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
-            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                        std::move(backwardProviderOptions),
-                                        enumeratorOptions, validatorOptions,
-                                        outReg, engine, sourceInput,
-                                        targetInput, registerInfos,
-                                        std::move(filterConditionVariables));
+            ClusterBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outReg, engine, sourceInput, targetInput,
+            registerInfos, std::move(filterConditionVariables));
       case arangodb::graph::PathType::Type::KShortestPaths:
         // TODO: deduplicate with SingleServer && SingleServer non-traced
         //  variant. Too much code duplication right now.
