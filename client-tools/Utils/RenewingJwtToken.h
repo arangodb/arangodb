@@ -24,6 +24,8 @@
 
 #include "Basics/ResultT.h"
 
+#include <velocypack/Slice.h>
+
 #include <chrono>
 #include <functional>
 #include <mutex>
@@ -73,6 +75,11 @@ using TokenOutcome = ResultT<std::optional<JwtToken>>;
 constexpr auto kRenewalRetryInterval = std::chrono::seconds{5};
 
 /**
+ * State of a token obtained at now
+ */
+auto tokenStateFor(JwtToken token, JwtClock::time_point now) -> JwtTokenState;
+
+/**
  * Whether a renewal request should be sent now
  *
  * Due once the token is within renewalThreshold of its expiry, but never
@@ -86,16 +93,53 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
  * Folds one renewal outcome into the state
  *
  * A new token replaces the old one. Otherwise the token is kept and the
- * next attempt is scheduled kRenewalRetryInterval later.
+ * next attempt is scheduled kRenewalRetryInterval later. now is when the
+ * attempt completed, lest a slow failure schedule its retry in the past.
  */
 auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
 
 /**
- * Interprets the complete HTTP reply of a POST to /_open/auth or
- * /_open/auth/renew
+ * Obtains a successor of the token in state, via renew or login
+ *
+ * A token that is still valid is renewed, which sends no password. One that
+ * has expired, or whose renewal the server refuses, requires logging in
+ * again. Other renewal errors, such as timeouts or HTTP 5xx, are returned,
+ * so that applyRenewal() schedules a retry instead of sending the password
+ * to a failing server.
  */
-auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
+auto renewOrLogin(JwtTokenState const& state, JwtClock::time_point now,
+                  std::function<TokenOutcome()> const& renew,
+                  std::function<TokenOutcome()> const& login) -> TokenOutcome;
+
+/**
+ * The request a token reply answers
+ */
+enum class TokenRequest {
+  /// POST /_open/auth with credentials
+  kLogin,
+  /// POST /_open/auth/renew with the current token
+  kRenew,
+};
+
+/**
+ * Interprets the reply to a POST to /_open/auth or /_open/auth/renew
+ *
+ * body is the parsed reply body, or None if it is empty or no valid JSON. A
+ * server that has authentication disabled issues no token, nor does one that
+ * does not implement /_open/auth (HTTP 404 or 501). /_open/auth/renew answers
+ * HTTP 404 to a token it does not accept; that and HTTP 401 or 403 are
+ * reported as TRI_ERROR_HTTP_UNAUTHORIZED, whatever the error number in the
+ * body.
+ */
+auto parseTokenReply(TokenRequest request, int httpStatus,
+                     velocypack::Slice body) -> TokenOutcome;
+
+/**
+ * Interprets the HTTP reply of a POST to /_open/auth or /_open/auth/renew
+ */
+auto parseTokenResponse(TokenRequest request,
+                        httpclient::SimpleHttpResult const& response)
     -> TokenOutcome;
 
 /**
