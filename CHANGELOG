@@ -7,6 +7,8 @@
    CVE-2026-83614, CVE-2026-83615, CVE-2026-83616 and CVE-2026-83619
  - minimatch 10.2.5 patched with the upstream fix to resolve CVE-2026-118764
 
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
 
