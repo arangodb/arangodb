@@ -254,8 +254,8 @@ TEST(RenewingJwtTokenTest, renewOrLoginAcceptsThatNoTokenWasIssuedYet) {
 }
 
 TEST(RenewingJwtTokenTest, renewOrLoginLogsInWhenTheRenewalIsRefused) {
-  auto renew = ScriptedRequest{.outcome = TokenOutcome::error(
-                                   TRI_ERROR_HTTP_UNAUTHORIZED, "refused")};
+  auto renew = ScriptedRequest{
+      .outcome = TokenOutcome::error(TRI_ERROR_HTTP_UNAUTHORIZED, "refused")};
   auto login = ScriptedRequest{.outcome = loggedInToken()};
 
   auto const outcome = renewOrLogin(validUntil1000(), at(700),
@@ -269,9 +269,8 @@ TEST(RenewingJwtTokenTest, renewOrLoginLogsInWhenTheRenewalIsRefused) {
 
 TEST(RenewingJwtTokenTest, renewOrLoginKeepsTransientRenewalErrors) {
   // the token is still valid, so sending the password would not help
-  for (auto const error :
-       {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, TRI_ERROR_FAILED,
-        ErrorCode{503}}) {
+  for (auto const error : {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                           TRI_ERROR_FAILED, ErrorCode{503}}) {
     auto renew =
         ScriptedRequest{.outcome = TokenOutcome::error(error, "unavailable")};
     auto login = ScriptedRequest{.outcome = loggedInToken()};
@@ -290,8 +289,8 @@ TEST(RenewingJwtTokenTest, renewOrLoginLogsInWithoutRenewingAnExpiredToken) {
     auto renew = ScriptedRequest{.outcome = renewedToken()};
     auto login = ScriptedRequest{.outcome = loggedInToken()};
 
-    auto const outcome = renewOrLogin(validUntil1000(), now,
-                                      renew.asFunction(), login.asFunction());
+    auto const outcome = renewOrLogin(validUntil1000(), now, renew.asFunction(),
+                                      login.asFunction());
 
     ASSERT_TRUE(outcome.ok());
     EXPECT_EQ(outcome.get(), loggedInToken().get());
@@ -480,15 +479,15 @@ TEST(RenewingJwtTokenTest, renewIfDueRetriesAfterTheFailedAttemptCompleted) {
   // repeated right away
   auto now = at(0);
   auto calls = 0;
-  auto token = RenewingJwtToken{
-      tokenExpiringAt(1000),
-      [&](JwtToken const&) {
-        ++calls;
-        now += 10s;
-        return TokenOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   "timeout");
-      },
-      threshold, [&now] { return now; }};
+  auto token = RenewingJwtToken{tokenExpiringAt(1000),
+                                [&](JwtToken const&) {
+                                  ++calls;
+                                  now += 10s;
+                                  return TokenOutcome::error(
+                                      TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                      "timeout");
+                                },
+                                threshold, [&now] { return now; }};
 
   now = at(700);
   token.renewIfDue();
