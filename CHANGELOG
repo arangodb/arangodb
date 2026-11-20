@@ -1,14 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* Updated ArangoDB Starter to v0.20.0-preview-22.
-
-* BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
-  `name`" when restoring a dump that contains arangosearch views into a single
-  server. The view links could get the same id as an index from the dump.
-  arangorestore now also reports the first failed collection job instead of a
-  follow-up error from creating search-alias views.
-
 * Fixed a data race in the bundled ICU 64 library when several threads ran their
   first AQL string search (e.g. `CONTAINS`) concurrently.
 
@@ -60,6 +52,8 @@
 * Removed support for Unix domain sockets. `unix://` endpoints are no longer
   accepted by arangod or the client tools. The startup option
   `--server.authentication-unix-sockets` is now obsolete and has no effect.
+
+* Updated ArangoDB Starter to v0.20.0-preview-21.
 
 * BTS-2523: AQL range filters on `_key` and `_id` treat floating-point numbers
   like any other number. Numbers sort before strings, so `doc._key < 1.5`
