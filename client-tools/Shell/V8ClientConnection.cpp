@@ -511,22 +511,15 @@ void V8ClientConnection::renewTokenIfDue() {
       if (!isRenewalDue(_handles.config().renewal.token, now, threshold)) {
         return;
       }
-      // a token that is still valid is renewed without sending the password.
-      // an expired one, or one the server refuses to renew, requires logging
-      // in again at the server of this connection, as the user it was created
-      // for
-      auto const outcome = [&]() -> TokenOutcome {
-        auto const& config = _handles.config();
-        auto const& expiresAt = config.renewal.token.expiresAt;
-        if (expiresAt.has_value() && now < *expiresAt) {
-          auto renewed = requestToken(TokenRequest::kRenew, config.builder);
-          if (renewed.ok()) {
-            return renewed;
-          }
-        }
-        return requestToken(TokenRequest::kLogin, config.builder,
-                            config.username, config.password);
-      }();
+      // both at the server of this connection, as the user it was created for
+      auto const& config = _handles.config();
+      auto const outcome = renewOrLogin(
+          config.renewal.token, now,
+          [&] { return requestToken(TokenRequest::kRenew, config.builder); },
+          [&] {
+            return requestToken(TokenRequest::kLogin, config.builder,
+                                config.username, config.password);
+          });
       if (outcome.fail()) {
         LOG_TOPIC("7552f", WARN, arangodb::Logger::AUTHENTICATION)
             << "renewing the JWT token of user '" << _handles.config().username
