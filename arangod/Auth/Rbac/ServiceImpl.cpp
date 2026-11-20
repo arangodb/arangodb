@@ -24,10 +24,16 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Auth/Rbac/Actions.h"
+#include "Auth/Rbac/AuthorizationCache.h"
 #include "Basics/overload.h"
 #include "Basics/voc-errors.h"
+#include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 
+#include <exception>
 #include <format>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <variant>
@@ -308,10 +314,65 @@ auto failureMessage(std::span<ActionResource const> queries,
   return std::format("Failed to {}. {}", describeAll(queries), reason);
 }
 
+// Sends the batch to the backend and returns the aggregate decision. Transport
+// or parse errors are thrown: the decision must only reflect allow or deny.
+auto evaluate(Backend& backend, JwtToken const& token,
+              Backend::RequestItems const& items)
+    -> AuthorizationCache::Decision {
+  // Service::check (and the whole IAuth::check chain) is synchronous for now,
+  // so we use the synchronous backend call directly.
+  auto result = backend.evaluateTokenManySync(token, items);
+  if (!result.ok()) {
+    THROW_ARANGO_EXCEPTION(std::move(result).result());
+  }
+  auto& response = result.get();
+  return {.allowed = response.effect == Backend::Effect::Allow,
+          .message = std::move(response.message)};
+}
+
+auto toResult(std::span<ActionResource const> queries,
+              AuthorizationCache::Decision const& decision) -> Result {
+  if (decision.allowed) {
+    return {};
+  }
+  return {TRI_ERROR_FORBIDDEN,
+          failureMessage(queries, decision.message.empty()
+                                      ? "insufficient permissions"
+                                      : decision.message)};
+}
+
 }  // namespace
 
-ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
-    : _backend(std::move(backend)) {}
+ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend,
+                         AuthorizationCache* cache)
+    : _backend(std::move(backend)), _cache(cache) {
+  if (_cache != nullptr) {
+    _cache->setRefresher(
+        [backend = _backend.get()](AuthorizationCache::Key const& key)
+            -> std::optional<AuthorizationCache::Decision> {
+          Backend::RequestItems items;
+          items.items.push_back(Backend::RequestItem{.action = key.action,
+                                                     .resource = key.resource,
+                                                     .attributeValues = {}});
+          try {
+            return evaluate(*backend, JwtToken{key.token}, items);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("8d1e0", DEBUG, Logger::AUTHORIZATION)
+                << "failed to refresh cached RBAC decision for action '"
+                << key.action << "' on resource '" << key.resource
+                << "': " << ex.what();
+            return std::nullopt;
+          }
+        });
+  }
+}
+
+ServiceImpl::~ServiceImpl() {
+  if (_cache != nullptr) {
+    // Blocks until an in-flight refresh using our backend has finished.
+    _cache->setRefresher(nullptr);
+  }
+}
 
 auto ServiceImpl::check(JwtToken const& token,
                         std::span<ActionResource const> queries) -> Result {
@@ -330,23 +391,24 @@ auto ServiceImpl::check(JwtToken const& token,
         .attributeValues = {}});
   }
 
-  // Service::check (and the whole IAuth::check chain) is synchronous for now,
-  // so we use the synchronous backend call directly.
-  auto result = _backend->evaluateTokenManySync(token, items);
+  // Only single-pair checks are cached: the service reports one aggregate
+  // decision per batch, which cannot be attributed to individual pairs.
+  bool const useCache =
+      _cache != nullptr && queries.size() == 1 && _cache->enabled();
+  if (useCache) {
+    auto const& item = items.items.front();
+    if (auto hit = _cache->lookup(token.jwtToken, item.action, item.resource);
+        hit.has_value()) {
+      return toResult(queries, *hit);
+    }
+  }
 
-  if (!result.ok()) {
-    // transport or parse errors must be exceptions, the Result
-    // return value must reflect allow or deny.
-    THROW_ARANGO_EXCEPTION(std::move(result).result());
+  auto decision = evaluate(*_backend, token, items);
+  if (useCache) {
+    auto const& item = items.items.front();
+    _cache->insert(token.jwtToken, item.action, item.resource, decision);
   }
-  auto const& response = result.get();
-  if (response.effect == Backend::Effect::Allow) {
-    return {};
-  }
-  return {TRI_ERROR_FORBIDDEN,
-          failureMessage(queries, response.message.empty()
-                                      ? "insufficient permissions"
-                                      : response.message)};
+  return toResult(queries, decision);
 }
 
 }  // namespace arangodb::rbac

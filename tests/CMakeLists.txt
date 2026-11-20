@@ -191,6 +191,7 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/ClassicAuthModeTest.cpp
   Auth/RbacAuthModeTest.cpp
+  Auth/RbacAuthorizationCacheTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
   Auth/RbacIntegrationTest.cpp

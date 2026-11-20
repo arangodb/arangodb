@@ -36,6 +36,10 @@
 
 namespace arangodb {
 
+namespace rbac {
+class AuthorizationCache;
+}  // namespace rbac
+
 namespace auth {
 class TokenCache;
 class UserManager;
@@ -74,6 +78,11 @@ class AuthenticationFeature final
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;
 
+  /// @return Cache for answers of the external RBAC authorization service.
+  /// Exists for the whole lifetime of the feature; its maintenance thread
+  /// runs between start() and stop() if RBAC and the cache are enabled.
+  rbac::AuthorizationCache& rbacAuthorizationCache() const noexcept;
+
   /// @brief user manager may be null on DBServers and Agency
   /// @return user manager singleton
   auth::UserManager* userManager() const noexcept;
@@ -100,6 +109,7 @@ class AuthenticationFeature final
   AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
+  std::unique_ptr<rbac::AuthorizationCache> _rbacAuthorizationCache;
 
   Guarded<std::optional<auth::AuthInfo>> _authInfo{std::nullopt};
 

@@ -2,6 +2,7 @@ add_library(arango_auth STATIC
   AuthMode.cpp
   Common.cpp
   Permissions.cpp
+  Rbac/AuthorizationCache.cpp
   Rbac/Backend.cpp
   Rbac/RbacFeature.cpp
   Rbac/ServiceImpl.cpp
