@@ -475,6 +475,34 @@ TEST(RenewingJwtTokenTest, renewIfDueRetriesLaterWhenNoTokenWasIssued) {
   EXPECT_EQ(token.current(), tokenExpiringAt(1000));
 }
 
+TEST(RenewingJwtTokenTest, renewIfDueRetriesAfterTheFailedAttemptCompleted) {
+  // a renewal that fails only after its retry interval passed must not be
+  // repeated right away
+  auto now = at(0);
+  auto calls = 0;
+  auto token = RenewingJwtToken{
+      tokenExpiringAt(1000),
+      [&](JwtToken const&) {
+        ++calls;
+        now += 10s;
+        return TokenOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                   "timeout");
+      },
+      threshold, [&now] { return now; }};
+
+  now = at(700);
+  token.renewIfDue();
+  EXPECT_EQ(calls, 1);
+
+  now = at(714);
+  token.renewIfDue();
+  EXPECT_EQ(calls, 1);
+
+  now = at(715);
+  token.renewIfDue();
+  EXPECT_EQ(calls, 2);
+}
+
 TEST(RenewingJwtTokenTest, currentDoesNotWaitForARenewalInProgress) {
   auto now = at(0);
   std::atomic<bool> renewalStarted{false};

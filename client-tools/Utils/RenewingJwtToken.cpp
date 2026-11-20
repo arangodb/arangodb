@@ -240,10 +240,11 @@ void RenewingJwtToken::renewIfDue() {
   }
 
   auto const outcome = _renewer(*currentToken);
+  auto const completedAt = _now();
 
   auto const guard = std::lock_guard{_mutex};
-  _state = applyRenewal(std::move(_state), outcome, now);
-  logRenewal(outcome, _state, now);
+  _state = applyRenewal(std::move(_state), outcome, completedAt);
+  logRenewal(outcome, _state, completedAt);
 }
 
 }  // namespace arangodb

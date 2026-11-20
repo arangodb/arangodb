@@ -93,7 +93,8 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
  * Folds one renewal outcome into the state
  *
  * A new token replaces the old one. Otherwise the token is kept and the
- * next attempt is scheduled kRenewalRetryInterval later.
+ * next attempt is scheduled kRenewalRetryInterval later. now is when the
+ * attempt completed, lest a slow failure schedule its retry in the past.
  */
 auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
