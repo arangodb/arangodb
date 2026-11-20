@@ -20,8 +20,6 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <date/date.h>
-
 #include "Basics/datetime.h"
 #include "gtest/gtest.h"
 
@@ -30,7 +28,6 @@ using namespace arangodb::basics;
 
 TEST(DateTimeTest, testing) {
   using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp;
 
