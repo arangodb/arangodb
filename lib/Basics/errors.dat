@@ -66,6 +66,7 @@ ERROR_HTTP_GATEWAY_TIMEOUT,504,"gateway timeout","Will be raised when a service 
 
 ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation of a JSON object is corrupt."
 ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised when the URL contains superfluous suffices."
+ERROR_HTTP_API_VERSION_MISMATCH,602,"API version mismatch","Will be raised when the API version requested via the x-arango-api-version header is not compatible with the API version the server serves."
 
 ################################################################################
 ## Internal ArangoDB storage errors
