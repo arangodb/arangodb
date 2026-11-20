@@ -85,7 +85,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
-  -DABSL_INCLUDE_DIR=${CMAKE_SOURCE_DIR}/3rdParty/abseil-cpp
+  -DABSL_INCLUDE_DIR=${ABSL_INCLUDE_DIR}
   -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dtarget_arch=${V8_PROC_ARCH}

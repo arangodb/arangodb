@@ -166,8 +166,8 @@ struct AuthMode {
 
     // construct from any compatible unique_ptr:
     template<typename T, typename D>
-    requires std::derived_from<T, IAuth> Mockable(std::unique_ptr<T, D> mock)
-        : mock(std::move(mock)) {}
+      requires std::derived_from<T, IAuth>
+    Mockable(std::unique_ptr<T, D> mock) : mock(std::move(mock)) {}
 
     // construct from a shared_ptr
     Mockable(std::shared_ptr<IAuth> mock) : mock(std::move(mock)) {}

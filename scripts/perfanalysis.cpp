@@ -15,7 +15,7 @@ struct StrTok {
   string& s;
   size_t pos;
   bool done;
-  
+
   void advance() {
     while (pos < s.size() && s[pos] == ' ') {
       ++pos;
@@ -23,9 +23,7 @@ struct StrTok {
     done = pos >= s.size();
   }
 
-  StrTok(string& t) : s(t), pos(0), done(false) {
-    advance();
-  }
+  StrTok(string& t) : s(t), pos(0), done(false) { advance(); }
 
   const char* get() {
     if (done) {
@@ -77,8 +75,8 @@ struct Event {
         name = name.substr(14);
       }
       auto l = name.size();
-      if (l >= 3 && name[l-1] == 't' && name[l-2] == 'e' && 
-          name[l-3] == 'R') {
+      if (l >= 3 && name[l - 1] == 't' && name[l - 2] == 'e' &&
+          name[l - 3] == 'R') {
         isRet = true;
         name.pop_back();
         name.pop_back();
@@ -107,7 +105,7 @@ struct Event {
   }
 };
 
-int main(int /*argc*/, char* /*argv*/ []) {
+int main(int /*argc*/, char* /*argv*/[]) {
   unordered_map<string, unique_ptr<Event>> table;
   vector<unique_ptr<Event>> list;
 
@@ -120,11 +118,11 @@ int main(int /*argc*/, char* /*argv*/ []) {
       if (!event->isRet) {
         auto it = table.find(id);
         if (it != table.end()) {
-          //cout << "Alarm, double event found:\n" << line << endl;
+          // cout << "Alarm, double event found:\n" << line << endl;
         } else {
           table.insert(make_pair(id, move(event)));
         }
-      // update duration in table
+        // update duration in table
       } else {
         auto it = table.find(id);
         if (it == table.end()) {
@@ -138,37 +136,39 @@ int main(int /*argc*/, char* /*argv*/ []) {
       }
     }
   }
-  //cout << "Unreturned events:\n";
-  //for (auto& p : table) {
-  //  cout << p.second->pretty() << "\n";
-  //}
+  // cout << "Unreturned events:\n";
+  // for (auto& p : table) {
+  //   cout << p.second->pretty() << "\n";
+  // }
   sort(list.begin(), list.end(),
-       [](unique_ptr<Event>const& a, unique_ptr<Event>const& b) -> bool { return *a < *b; });
+       [](unique_ptr<Event> const& a, unique_ptr<Event> const& b) -> bool {
+         return *a < *b;
+       });
   cout << "Events sorted by name and time:\n";
   string current;
   size_t startPos = 0;
   bool bootstrap = true;
   auto printStats = [&](size_t i) -> void {
     cout << "Statistics in microseconds for " << current << ":\n"
-      << "  Number of calls: " << i - startPos << "\n"
-      << "  Minimal time   : " 
-      << static_cast<uint64_t>(list[startPos]->duration * 1000000.0) << "\n";
+         << "  Number of calls: " << i - startPos << "\n"
+         << "  Minimal time   : "
+         << static_cast<uint64_t>(list[startPos]->duration * 1000000.0) << "\n";
     size_t pos = (i - startPos) / 2 + startPos;
-    cout << "  50%ile         : " 
-      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    cout << "  50%ile         : "
+         << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
     pos = ((i - startPos) * 90) / 100 + startPos;
-    cout << "  90%ile         : " 
-      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    cout << "  90%ile         : "
+         << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
     pos = ((i - startPos) * 99) / 100 + startPos;
-    cout << "  99%ile         : " 
-      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    cout << "  99%ile         : "
+         << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
     pos = ((i - startPos) * 999) / 1000 + startPos;
-    cout << "  99.9%ile       : " 
-      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
-    cout << "  Maximal time   : " 
-      << static_cast<uint64_t>(list[i-1]->duration * 1000000.0) << "\n";
-    size_t j = (i-startPos > 30) ? i-30 : startPos;
-    cout << "  Top " << i-j << " times   :";
+    cout << "  99.9%ile       : "
+         << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    cout << "  Maximal time   : "
+         << static_cast<uint64_t>(list[i - 1]->duration * 1000000.0) << "\n";
+    size_t j = (i - startPos > 30) ? i - 30 : startPos;
+    cout << "  Top " << i - j << " times   :";
     while (j < i) {
       cout << " " << static_cast<uint64_t>(list[j++]->duration * 1000000.0);
     }

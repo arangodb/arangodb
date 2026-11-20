@@ -352,7 +352,7 @@ struct FilterCtx : irs::attribute_provider {
 
   arangodb::iresearch::ExpressionExecutionContext*
       _execCtx;  // expression execution context
-};               // FilterCtx
+};  // FilterCtx
 
 }  // namespace
 

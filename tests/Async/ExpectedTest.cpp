@@ -51,7 +51,7 @@ struct MoveConstructible {
 struct NothrowMoveConstructible {
   explicit NothrowMoveConstructible(int) {}
   NothrowMoveConstructible(NothrowMoveConstructible const&) = delete;
-  NothrowMoveConstructible(NothrowMoveConstructible&&) noexcept(true){};
+  NothrowMoveConstructible(NothrowMoveConstructible&&) noexcept(true) {};
   NothrowMoveConstructible& operator=(NothrowMoveConstructible const&) = delete;
   NothrowMoveConstructible& operator=(NothrowMoveConstructible&&) noexcept(
       true) {

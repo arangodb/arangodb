@@ -188,7 +188,9 @@ class SharedMaintenanceTest : public ::testing::Test {
       builder.add("coordinator",
                   VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
       builder.add(VPackValue("options"));
-      { VPackObjectBuilder oo(&builder); }
+      {
+        VPackObjectBuilder oo(&builder);
+      }
       builder.add("name", VPackValue(dbname));
     }
     return builder;
@@ -428,7 +430,9 @@ TEST_F(MaintenanceTestActionDescription,
 TEST_F(MaintenanceTestActionDescription,
        retrieve_empty_object_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder empty(props.get()); }
+  {
+    VPackObjectBuilder empty(props.get());
+  }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false,
                          props);
   ASSERT_EQ(desc.get("name"), "SomeAction");

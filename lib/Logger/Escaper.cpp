@@ -143,7 +143,7 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
         p++;
         continue;
       }
-      uint8_t d = (uint8_t) * (p + 1);
+      uint8_t d = (uint8_t)*(p + 1);
       if ((d & 0xC0) == 0x80) {  // is within the rules for representing unicode
                                  // characters for the second byte
         UnicodeCharHandler::writeCharIntoOutputBuffer(
@@ -162,12 +162,12 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
         p++;
         continue;
       }
-      uint8_t d = (uint8_t) * (p + 1);
+      uint8_t d = (uint8_t)*(p + 1);
       if ((d & 0xC0) ==
           0x80) {  // second byte is within the rules for representing a unicode
                    // character that requires 3 bytes for representation
         ++p;
-        uint8_t e = (uint8_t) * (p + 1);
+        uint8_t e = (uint8_t)*(p + 1);
         if ((e & 0xC0) == 0x80) {  // third byte is within the rules for
                                    // representing a unicode character that
                                    // requires 3 bytes for representation
@@ -192,17 +192,17 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
         p++;
         continue;
       }
-      uint8_t d = (uint8_t) * (p + 1);
+      uint8_t d = (uint8_t)*(p + 1);
       if ((d & 0xC0) ==
           0x80) {  // second byte is within the rules for representing a unicode
                    // character that requires 3 bytes for representation
         ++p;
-        uint8_t e = (uint8_t) * (p + 1);
+        uint8_t e = (uint8_t)*(p + 1);
         if ((e & 0xC0) == 0x80) {  // third byte is within the rules for
                                    // representing a unicode character that
                                    // requires 3 bytes for representation
           ++p;
-          uint8_t f = (uint8_t) * (p + 1);
+          uint8_t f = (uint8_t)*(p + 1);
           if ((f & 0xC0) == 0x80) {  // fourth byte is within the rules for
                                      // representing a unicode character that
                                      // requires 3 bytes for representation

@@ -245,9 +245,13 @@ void Supervision::upgradeOne(Builder& builder) {
         VPackObjectBuilder oper(&builder);
         builder.add("/Agency/Definition", VPackValue(1));
         builder.add(VPackValue("/Target/ToDo"));
-        { VPackObjectBuilder empty(&builder); }
+        {
+          VPackObjectBuilder empty(&builder);
+        }
         builder.add(VPackValue("/Target/Pending"));
-        { VPackObjectBuilder empty(&builder); }
+        {
+          VPackObjectBuilder empty(&builder);
+        }
       }
       {
         VPackObjectBuilder o(&builder);
@@ -275,7 +279,9 @@ void Supervision::upgradeZero(Builder& builder) {
           if (fails->slice().length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails->slice())) {
               builder.add(VPackValue(fail.stringView()));
-              { VPackArrayBuilder ooo(&builder); }
+              {
+                VPackArrayBuilder ooo(&builder);
+              }
             }
           }
         }
@@ -1952,7 +1958,9 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
           VPackObjectBuilder guard3(envelope.get());
           envelope->add("op", VPackValue("set"));
           envelope->add(VPackValue("new"));
-          { VPackObjectBuilder guard4(envelope.get()); }
+          {
+            VPackObjectBuilder guard4(envelope.get());
+          }
         }
       }
       {
