@@ -572,8 +572,8 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     setFailure(_engine->getQuery().allocationFailure(
         absl::StrCat(" [node #", getPlanNode()->id().id(), ": ",
                      getPlanNode()->getTypeString(), "]")));
-    LOG_QUERY("5c0e1", DEBUG) << printBlockInfo()
-                              << " local statemachine failed: out of memory";
+    LOG_QUERY("5c0e1", DEBUG)
+        << printBlockInfo() << " local statemachine failed: out of memory";
     settlePrefetchTask();
     THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
@@ -1021,7 +1021,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
             [block = this, task = _prefetchTask,
              monitor =
                  _engine->getQuery().resourceMonitor().monitorRef]() mutable {
-              infra::ResourceMonitorScope memoryScope(std::move(monitor));
               TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
                 // We need to simulate that we are not picking up this task.
                 // So we simply continue sleeping until the failure point is
@@ -1051,7 +1050,13 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
               // destroyed, because in this case we will not be able to claim
               // the task and simply return early without accessing the block.
               try {
+                infra::ResourceMonitorScope memoryScope(std::move(monitor));
                 task->execute();
+              } catch (std::bad_alloc const&) {
+                task->setFailure(
+                    block->_engine->getQuery().allocationFailure(absl::StrCat(
+                        " [node #", block->getPlanNode()->id().id(), ": ",
+                        block->getPlanNode()->getTypeString(), "]")));
               } catch (basics::Exception const& ex) {
                 task->setFailure(
                     {ex.code(),

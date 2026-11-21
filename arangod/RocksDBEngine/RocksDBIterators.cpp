@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ThreadLocalLeaser.h"
+#include "infra/RocksDBMonitors.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -55,14 +56,14 @@ class RocksDBAllIndexIterator final : public IndexIterator {
         _upperBound(_bounds.end()),
         _mustSeek(true),
         _bytesRead(0) {
-// Temporarily commented out because this creates a rocksdb block cache
-// which triggers allocation failures by memory hit; rocksdb doesn't
-// handle nullptr from malloc() actually
-// #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//     rocksdb::ColumnFamilyDescriptor desc;
-//     _bounds.columnFamily()->GetDescriptor(&desc);
-//     TRI_ASSERT(desc.options.prefix_extractor);
-// #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // `desc` builds a throwaway block cache; this should be counted toward
+    // rocksdb memory monitor
+    infra::ResourceMonitorScope memoryScope = infra::rocksdbScope();
+    rocksdb::ColumnFamilyDescriptor desc;
+    _bounds.columnFamily()->GetDescriptor(&desc);
+    TRI_ASSERT(desc.options.prefix_extractor);
+#endif
   }
 
   ~RocksDBAllIndexIterator() {

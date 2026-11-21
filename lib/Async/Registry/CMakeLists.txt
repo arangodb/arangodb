@@ -7,5 +7,6 @@ target_link_libraries(arango_async_registry
   PRIVATE
   arango_thread_owning_list
   arango_assertions
+  arango_infra # temporary; needs to be included in a proper lib
   PUBLIC
   arango_metrics_base)

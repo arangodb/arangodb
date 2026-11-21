@@ -1,5 +1,7 @@
 #include "Activities/Activity.h"
 
+#include "infra/RegistryMonitors.h"
+
 namespace arangodb::activities {
 
 auto Activity::parentId() const noexcept -> std::optional<ActivityId> {
@@ -20,6 +22,8 @@ auto Activity::threads() const noexcept -> std::vector<basics::ThreadInfo> {
 }
 
 auto Activity::addCurrentThread() -> ThreadListIterator {
+  // Charge the entry to the activities registry, not to the current query.
+  auto memoryScope = arangodb::infra::activitiesScope();
   return _threads.doUnderLock([](auto& threads) {
     threads.push_back({basics::ThreadInfo::current()});
     return std::prev(threads.end());

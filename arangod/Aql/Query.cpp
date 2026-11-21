@@ -167,7 +167,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
   // set memory limit for query
-  // Temporary: the query's memoryLimit drives the new monitor instead of the old one.
+  // Temporary: the query's memoryLimit drives the new monitor instead of the
+  // old one.
   _resourceMonitor->newMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateFromOptions(_queryOptions);
 
@@ -556,7 +557,9 @@ async<void> Query::prepareQuery() {
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
-    setResult({ex.code(), ex.what()});
+    setResult(ex.code() == TRI_ERROR_OUT_OF_MEMORY
+                  ? allocationFailure({})
+                  : Result(ex.code(), ex.what()));
     throw;
   } catch (std::bad_alloc const&) {
     setResult(allocationFailure({}));
@@ -905,7 +908,6 @@ futures::Future<futures::Unit> Query::execute(
           queryResult.data->reserve(16 * 1024);
           queryResult.data->openArray(/*unindexed*/ true);
         }
-        
 
         _executionPhase = ExecutionPhase::EXECUTE;
         trackExecutionStart();
@@ -964,7 +966,8 @@ futures::Future<futures::Unit> Query::execute(
           }
 
           if (!_queryOptions.silent && resultRegister.isValid()) {
-            infra::ResourceMonitorScope memoryScope(resourceMonitor().monitorRef);
+            infra::ResourceMonitorScope memoryScope(
+                resourceMonitor().monitorRef);
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;

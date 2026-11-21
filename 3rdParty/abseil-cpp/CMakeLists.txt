@@ -7,6 +7,7 @@ set(ABSEIL_FETCH_OPTIONS
   URL https://github.com/abseil/abseil-cpp/releases/download/${ABSEIL_VERSION}/abseil-cpp-${ABSEIL_VERSION}.tar.gz
   URL_HASH SHA256=${ABSEIL_SHA256}
   PATCH_COMMAND patch -p1 -N -i ${CMAKE_CURRENT_SOURCE_DIR}/raw-hash-set-alloc-failure.patch
+        COMMAND patch -p1 -N -i ${CMAKE_CURRENT_SOURCE_DIR}/raw-hash-set-insert-failure.patch
 )
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
   list(APPEND ABSEIL_FETCH_OPTIONS DOWNLOAD_EXTRACT_TIMESTAMP OFF)

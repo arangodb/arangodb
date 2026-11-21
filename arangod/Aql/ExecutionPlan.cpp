@@ -2629,6 +2629,9 @@ void ExecutionPlan::findVarUsage() {
     return;
   }
 
+  bool const wasValid = _planValid;
+  _planValid = false;
+
   // reset all counters
   for (auto& counter : _typeCounts) {
     counter = 0;
@@ -2638,6 +2641,7 @@ void ExecutionPlan::findVarUsage() {
   VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
 
+  _planValid = wasValid;
   setVarUsageComputed();
 }
 
