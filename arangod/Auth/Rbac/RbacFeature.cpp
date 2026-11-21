@@ -22,6 +22,7 @@
 
 #include "RbacFeature.h"
 
+#include "Auth/Rbac/AuthorizationCache.h"
 #include "Auth/Rbac/BackendImpl.h"
 #include "Auth/Rbac/ServiceImpl.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -61,7 +62,8 @@ void RbacFeature::prepare() {
   auto endpoint = _authenticationFeature.externalRbacService();
   auto backend = std::make_unique<rbac::BackendImpl>(
       *pool, std::string{endpoint}, &requestDuration);
-  _service = std::make_unique<rbac::ServiceImpl>(std::move(backend));
+  _service = std::make_unique<rbac::ServiceImpl>(
+      std::move(backend), &_authenticationFeature.rbacAuthorizationCache());
 
   LOG_TOPIC("66f4a", INFO, Logger::AUTHORIZATION)
       << "External RBAC service enabled, endpoint: " << endpoint;

@@ -34,6 +34,11 @@ struct AuthenticationOptions {
 
   bool active = true;
   std::string externalRbacService;  // empty string means deactivated RBAC
+  // RBAC authorization cache: entries unused for this long are evicted
+  // (0 = cache disabled), entries older than the refresh age are re-checked
+  // with the external RBAC service in the background. Both in seconds.
+  double rbacCacheUnusedTimeout = 60.0;
+  double rbacCacheRefreshAge = 30.0;
   double authenticationTimeout = static_cast<double>(1 * 3600);  // 1 hour
   double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
   double minimalJwtExpiryTime = 10.0;                     // 10 seconds

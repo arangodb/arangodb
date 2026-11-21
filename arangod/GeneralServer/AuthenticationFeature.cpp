@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/voc-errors.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Auth/Rbac/AuthorizationCache.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManagerImpl.h"
 #include "Basics/StringUtils.h"
@@ -35,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <chrono>
 #include <filesystem>
 
 using namespace arangodb::options;
@@ -53,7 +55,8 @@ AuthenticationFeature::AuthenticationFeature(
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
       _userManager(nullptr),
-      _authCache(nullptr) {
+      _authCache(nullptr),
+      _rbacAuthorizationCache(std::make_unique<rbac::AuthorizationCache>()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -113,6 +116,15 @@ void AuthenticationFeature::prepare() {
   }
 
   _authCache->setJwtSecrets(*_authInfo.copy());
+
+  auto toDuration = [](double seconds) {
+    return std::chrono::duration_cast<rbac::AuthorizationCache::Duration>(
+        std::chrono::duration<double>(seconds));
+  };
+  _rbacAuthorizationCache->setOptions(rbac::AuthorizationCache::Options{
+      .unusedTimeout = toDuration(_options.rbacCacheUnusedTimeout),
+      .refreshAge = toDuration(_options.rbacCacheRefreshAge)});
+
   INSTANCE.store(this, std::memory_order_release);
 }
 
@@ -123,9 +135,14 @@ void AuthenticationFeature::start() {
   out << "Authentication is turned " << (_options.active ? "on" : "off");
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+
+  if (rbacEnabled() && _rbacAuthorizationCache->active()) {
+    _rbacAuthorizationCache->startMaintenanceThread();
+  }
 }
 
 void AuthenticationFeature::stop() {
+  _rbacAuthorizationCache->stopMaintenanceThread();
   if (_userManager) {
     _userManager->shutdown();
   }
@@ -159,6 +176,12 @@ auth::TokenCache& AuthenticationFeature::tokenCache() const noexcept {
 
 /// @brief user manager may be null on DBServers and Agency
 /// @return user manager singleton
+rbac::AuthorizationCache& AuthenticationFeature::rbacAuthorizationCache()
+    const noexcept {
+  TRI_ASSERT(_rbacAuthorizationCache);
+  return *_rbacAuthorizationCache;
+}
+
 auth::UserManager* AuthenticationFeature::userManager() const noexcept {
   return _userManager.get();
 }
