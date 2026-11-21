@@ -882,6 +882,28 @@ class TestCreateTestJob:
         # Should have 2 buckets (2 PR suites remaining after filter)
         assert job_data["buckets"] == 2
 
+    def test_create_test_job_fixed_buckets_with_filtering(self):
+        """Test that fixed multi-suite buckets never exceed the remaining suites."""
+        gen = self.create_generator(full=False)  # Only PR tests
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="pr_suite1", requires=TestRequirements(full=False)),
+                SuiteConfig(name="pr_suite2", requires=TestRequirements(full=False)),
+                SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
+            ],
+            options=TestOptions(buckets=3),
+        )
+        build_config = BuildConfig(architecture=Architecture.X64)
+
+        result = gen._create_test_job(
+            job, DeploymentType.SINGLE, build_config, ["build-job"]
+        )
+
+        job_data = result["run-linux-tests"]
+        assert job_data["suites"] == "pr_suite1,pr_suite2"
+        assert job_data["buckets"] == 2
+
     def test_create_test_job_time_limit(self):
         """Test that time limit is included."""
         gen = self.create_generator()
