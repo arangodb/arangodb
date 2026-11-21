@@ -1,5 +1,6 @@
 add_library(arango_infra STATIC
   MonitorRegistry.cpp
+  ResourceMonitorRef.cpp
   ResourceMonitorScope.cpp)
 
 # MallocOverride.cpp is deliberately not part of this library. It must be a

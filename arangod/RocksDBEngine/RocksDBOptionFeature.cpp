@@ -35,6 +35,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBMonitoredMutex.h"
 
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>
@@ -270,6 +271,7 @@ rocksdb::TransactionDBOptions RocksDBOptionFeature::getTransactionDBOptions()
   result.num_stripes =
       std::max(size_t(1), static_cast<size_t>(_options.transactionLockStripes));
   result.transaction_lock_timeout = _options.transactionLockTimeout;
+  result.custom_mutex_factory = std::make_shared<RocksDBMonitoredMutexFactory>();
   return result;
 }
 

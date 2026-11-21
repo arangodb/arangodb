@@ -24,6 +24,7 @@
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Async/Registry/registry_variable.h"
 #include "Containers/Concurrent/thread.h"
+#include "infra/RegistryMonitors.h"
 
 using namespace arangodb::async_registry;
 
@@ -47,9 +48,13 @@ auto arangodb::async_registry::get_current_coroutine() noexcept
 }
 
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
-    : node_in_registry{get_thread_registry().add([&]() {
-        return Promise{*get_current_coroutine(), std::move(loc)};
-      })} {}
+    : node_in_registry{[&] {
+        // Charge the node to the registry, not to the coroutine's query.
+        auto memoryScope = arangodb::infra::asyncRegistryScope();
+        return get_thread_registry().add([&]() {
+          return Promise{*get_current_coroutine(), std::move(loc)};
+        });
+      }()} {}
 
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (node_in_registry != nullptr) {

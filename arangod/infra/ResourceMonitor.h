@@ -42,6 +42,7 @@ class ResourceMonitor : public ResourceMonitorBase {
     if (_parent != nullptr) {
       // TODO - count in chunks
       if (!_parent->increase(requested, actual)) {
+        setLimitHit();
         ResourceMonitorBase::decrease(requested, actual);
         return false;
       }
@@ -79,7 +80,8 @@ class ResourceMonitor : public ResourceMonitorBase {
   }
 
   [[nodiscard]] auto isReclaimable() const noexcept -> bool {
-    return isRetired() && actualBytes() == 0;
+    return isRetired() && actualBytes() == 0 &&
+           _externalRefs.load(std::memory_order_acquire) == 0;
   }
 
   [[nodiscard]] auto parent() const noexcept -> StaticResourceMonitor* {

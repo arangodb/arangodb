@@ -47,4 +47,7 @@ ResourceMonitorScope::~ResourceMonitorScope() {
   tlsCurrentMonitor = _previous;
 }
 
+// Replaced by the strong definition in MallocOverride.cpp where it is linked.
+__attribute__((weak)) bool rechargeAllocation(void*) noexcept { return true; }
+
 }  // namespace arangodb::infra

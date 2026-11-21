@@ -1,0 +1,76 @@
+diff --git a/absl/container/internal/raw_hash_set.h b/absl/container/internal/raw_hash_set.h
+--- a/absl/container/internal/raw_hash_set.h
++++ b/absl/container/internal/raw_hash_set.h
+@@ -3036,7 +3036,14 @@
+     if (res.second) {
+       slot_type* slot = res.first;
+       allocator_type alloc(char_alloc_ref());
+-      std::forward<F>(f)(constructor(&alloc, &slot));
++      ABSL_INTERNAL_TRY { std::forward<F>(f)(constructor(&alloc, &slot)); }
++      ABSL_INTERNAL_CATCH_ANY {
++        // `slot` is reset only after the element was constructed.
++        if (slot != nullptr) {
++          erase_meta_only(non_iterable_iterator_at_slot(res.first));
++        }
++        ABSL_INTERNAL_RETHROW;
++      }
+       ABSL_SWISSTABLE_ASSERT(!slot);
+     }
+     return non_iterable_iterator_at_slot(res.first);
+@@ -3790,7 +3797,13 @@
+   // POSTCONDITION: *m.iterator_at(i) == value_type(forward<Args>(args)...).
+   template <class... Args>
+   void emplace_at(slot_type* slot, Args&&... args) {
+-    construct(slot, std::forward<Args>(args)...);
++    // The slot is already marked full. Unmark it if construction throws, so a
++    // throwing allocator or constructor leaves the table unchanged.
++    ABSL_INTERNAL_TRY { construct(slot, std::forward<Args>(args)...); }
++    ABSL_INTERNAL_CATCH_ANY {
++      erase_meta_only(non_iterable_iterator_at_slot(slot));
++      ABSL_INTERNAL_RETHROW;
++    }
+ 
+     // When is_small, find calls find_small and if size is 0, then it will
+     // return an end iterator. This can happen in the raw_hash_set copy ctor.
+diff --git a/absl/container/node_hash_map.h b/absl/container/node_hash_map.h
+--- a/absl/container/node_hash_map.h
++++ b/absl/container/node_hash_map.h
+@@ -656,8 +656,15 @@
+         Allocator>::template rebind_alloc<value_type>;
+     PairAlloc pair_alloc(*alloc);
+     value_type* res = std::allocator_traits<PairAlloc>::allocate(pair_alloc, 1);
+-    std::allocator_traits<PairAlloc>::construct(pair_alloc, res,
+-                                                std::forward<Args>(args)...);
++    // Free the node if constructing the element throws.
++    ABSL_INTERNAL_TRY {
++      std::allocator_traits<PairAlloc>::construct(pair_alloc, res,
++                                                  std::forward<Args>(args)...);
++    }
++    ABSL_INTERNAL_CATCH_ANY {
++      std::allocator_traits<PairAlloc>::deallocate(pair_alloc, res, 1);
++      ABSL_INTERNAL_RETHROW;
++    }
+     return res;
+   }
+ 
+diff --git a/absl/container/node_hash_set.h b/absl/container/node_hash_set.h
+--- a/absl/container/node_hash_set.h
++++ b/absl/container/node_hash_set.h
+@@ -558,8 +558,15 @@
+         typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
+     ValueAlloc value_alloc(*alloc);
+     T* res = std::allocator_traits<ValueAlloc>::allocate(value_alloc, 1);
+-    std::allocator_traits<ValueAlloc>::construct(value_alloc, res,
+-                                                 std::forward<Args>(args)...);
++    // Free the node if constructing the element throws.
++    ABSL_INTERNAL_TRY {
++      std::allocator_traits<ValueAlloc>::construct(value_alloc, res,
++                                                   std::forward<Args>(args)...);
++    }
++    ABSL_INTERNAL_CATCH_ANY {
++      std::allocator_traits<ValueAlloc>::deallocate(value_alloc, res, 1);
++      ABSL_INTERNAL_RETHROW;
++    }
+     return res;
+   }
+ 

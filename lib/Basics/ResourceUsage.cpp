@@ -25,11 +25,64 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "infra/AllocHeader.h"
+#include "infra/CacheMonitors.h"
+#include "infra/MallocOverride.h"
+#include "infra/MonitorRegistry.h"
+#include "infra/ResourceMonitor.h"
+#include "infra/ResourceMonitorScope.h"
+#include "infra/RocksDBMonitors.h"
+#include "Logger/LogMacros.h"
+
+#include <sstream>
+#include <string>
 
 using namespace arangodb;
 
+namespace {
+
+// Every monitor in the registry with its bytes, including those of finished
+// queries that still have memory charged to them.
+auto describeRegistry() -> std::string {
+  std::ostringstream out;
+  out << '[';
+  char const* sep = "";
+  infra::globalMonitorRegistry().forEach([&](infra::ResourceMonitorBase& m) {
+    out << sep << &m << '=' << m.actualBytes();
+    sep = ", ";
+  });
+  out << ']';
+  return out.str();
+}
+
+// Header bytes of `allocations` live allocations.
+auto headerBytes(std::uint64_t allocations) -> std::uint64_t {
+  return allocations * sizeof(infra::AllocHeader);
+}
+
+// Unlimited monitor for the diagnostic log line below.
+auto diagnosticsMonitor() noexcept -> infra::StaticResourceMonitor& {
+  static infra::StaticResourceMonitor monitor;
+  return monitor;
+}
+
+}  // namespace
+
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
-    : _current(0), _peak(0), _limit(0), _global(global) {}
+    : _current(0), _peak(0), _exactPeak(0), _limit(0), _global(global) {
+  monitorRef = infra::ResourceMonitorRef::create();
+  // Test only. Monitors created inside a running query (sub-queries,
+  // per-value dummies) must not reset the peak of the outer query.
+  if (infra::detail::currentResourceMonitor() == nullptr) {
+    infra::rocksdbMonitor().resetPeak();
+  }
+}
+
+void ResourceMonitor::recordPhase(Phase phase) noexcept {
+  auto* m = monitorRef.get();
+  _phases[static_cast<std::size_t>(phase)] = {
+      .peak = m->peakBytes(), .now = m->actualBytes(), .recorded = true};
+}
 
 ResourceMonitor::~ResourceMonitor() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -39,11 +92,66 @@ ResourceMonitor::~ResourceMonitor() {
   [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
   TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
 #endif
+  auto* m = static_cast<infra::ResourceMonitor*>(monitorRef.get());
+  infra::ResourceMonitorScope diagnosticsScope{
+      infra::ResourceMonitorRef{diagnosticsMonitor()}};
+  auto& rocksdb = infra::rocksdbMonitor();
+  auto& cache = infra::cacheMonitor();
+  std::ostringstream phases;
+  char const* names[] = {"plan", "inst", "exec"};
+  for (std::size_t i = 0; i < _phases.size(); ++i) {
+    phases << ' ' << names[i] << '=';
+    if (_phases[i].recorded) {
+      phases << _phases[i].peak << '/' << _phases[i].now;
+    } else {
+      phases << '-';
+    }
+  }
+  // Per requested-size bucket: count/requested/no-header/actual bytes.
+  std::ostringstream sizes;
+  for (auto const& b : m->allocSizeStats().buckets) {
+    sizes << ' ' << b.count.load(std::memory_order_relaxed) << '/'
+          << b.requested.load(std::memory_order_relaxed) << '/'
+          << b.noHeader.load(std::memory_order_relaxed) << '/'
+          << b.actual.load(std::memory_order_relaxed);
+  }
+  LOG_TOPIC("a0cd7", INFO, Logger::QUERIES)
+      << "query memory " << m
+      << " | old: peak=" << peak() << " exact=" << exactPeak()
+      << " | new: peak=" << m->peakBytes()
+      << " (req=" << m->peakRequestedBytes()
+      << " hdr=" << headerBytes(m->peakLiveAllocations()) << ")"
+      << " left=" << m->actualBytes()
+      << " (req=" << m->requestedBytes()
+      << " hdr=" << headerBytes(m->liveAllocations()) << ")"
+      << " | nohdr: peak=" << m->peakNoHeaderBytes()
+      << " left=" << m->noHeaderBytes()
+      << " | rocksdb: peak=" << rocksdb.peakBytes()
+      << " now=" << rocksdb.actualBytes()
+      << " (req=" << rocksdb.requestedBytes()
+      << " hdr=" << headerBytes(rocksdb.liveAllocations()) << ")"
+      << " | cache: now= " << cache.actualBytes()
+      << " (req=" << cache.requestedBytes()
+      << " hdr=" << headerBytes(cache.liveAllocations()) << ")"
+      << " | phases:" << phases.str()
+      << " | sizes:" << sizes.str()
+      << " | monitors: " << describeRegistry();
+
+  m->retire();
+  monitorRef.reset();
 }
 
 /// @brief sets a memory limit
 void ResourceMonitor::memoryLimit(std::uint64_t value) noexcept {
   _limit = value;
+}
+
+void ResourceMonitor::newMemoryLimit(std::uint64_t value) noexcept {
+  monitorRef.get()->setLimit(value);
+}
+
+bool ResourceMonitor::newMemoryLimitHit() const noexcept {
+  return monitorRef.get()->limitHit();
 }
 
 /// @brief returns the current memory limit
@@ -174,6 +282,13 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       }
     }
   }
+
+  // Diagnostics: the peak without the chunk rounding above.
+  std::uint64_t exact = _exactPeak.load(std::memory_order_relaxed);
+  while (exact < current &&
+         !_exactPeak.compare_exchange_weak(exact, current,
+                                           std::memory_order_relaxed)) {
+  }
 }
 
 void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
@@ -213,9 +328,14 @@ std::uint64_t ResourceMonitor::peak() const noexcept {
   return _peak.load(std::memory_order_relaxed);
 }
 
+std::uint64_t ResourceMonitor::exactPeak() const noexcept {
+  return _exactPeak.load(std::memory_order_relaxed);
+}
+
 void ResourceMonitor::clear() noexcept {
   _current = 0;
   _peak = 0;
+  _exactPeak = 0;
 }
 
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,

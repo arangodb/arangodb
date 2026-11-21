@@ -3031,12 +3031,7 @@ void AstNode::addMember(AstNode* node) {
   if (node == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  try {
-    members.emplace_back(node);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  members.emplace_back(node);
 }
 
 void AstNode::addMember(AstNode const* node) {

@@ -33,6 +33,7 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
+#include "infra/CacheMonitors.h"
 
 #include <atomic>
 #include <cstdint>
@@ -225,6 +226,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   struct SimpleInserter {
     SimpleInserter(CacheType& cache, void const* key, std::size_t keySize,
                    void const* value, std::size_t valueSize) {
+      // blast radius: edge index (2 sites), persistent index (2 sites),
+      // primary index cache (1 site), document cache (1 site)
+      auto memoryScope = infra::cacheScope();
       std::unique_ptr<CachedValue> cv{
           CachedValue::construct(key, keySize, value, valueSize)};
       if (ADB_LIKELY(cv) && cache.insert(cv.get()) == TRI_ERROR_NO_ERROR) {

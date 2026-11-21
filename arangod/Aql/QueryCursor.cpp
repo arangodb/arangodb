@@ -283,10 +283,8 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
   } catch (std::bad_alloc const&) {
     this->setDeleted();
     return {ExecutionState::DONE,
-            Result(TRI_ERROR_OUT_OF_MEMORY,
-                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                                QueryExecutionState::toStringWithPrefix(
-                                    _query->state())))};
+            _query->allocationFailure(
+                QueryExecutionState::toStringWithPrefix(_query->state()))};
   } catch (std::exception const& ex) {
     this->setDeleted();
     return {
@@ -351,10 +349,8 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
                      QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::bad_alloc const&) {
     this->setDeleted();
-    return Result(
-        TRI_ERROR_OUT_OF_MEMORY,
-        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                     QueryExecutionState::toStringWithPrefix(_query->state())));
+    return _query->allocationFailure(
+        QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (std::exception const& ex) {
     this->setDeleted();
     return Result(
