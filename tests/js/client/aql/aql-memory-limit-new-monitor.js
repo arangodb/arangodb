@@ -483,13 +483,13 @@ function newMonitorLimitSpecialSuite() {
   return suite;
 }
 
-// jsunity.run(newMonitorMemoryLimitSuite);
-// jsunity.run(newMonitorLimitPureAqlSuite);
- jsunity.run(newMonitorLimitDocumentsSuite);
-// jsunity.run(newMonitorLimitGeoSearchSuite);
-//jsunity.run(newMonitorLimitCachesSuite);
-// jsunity.run(newMonitorLimitWritesSuite);
-//jsunity.run(newMonitorLimitGraphSuite); // all good
-// jsunity.run(newMonitorLimitSpecialSuite);
+jsunity.run(newMonitorMemoryLimitSuite);
+jsunity.run(newMonitorLimitPureAqlSuite);
+jsunity.run(newMonitorLimitDocumentsSuite);
+jsunity.run(newMonitorLimitGeoSearchSuite);
+jsunity.run(newMonitorLimitCachesSuite);
+jsunity.run(newMonitorLimitWritesSuite);
+jsunity.run(newMonitorLimitGraphSuite); // all good
+jsunity.run(newMonitorLimitSpecialSuite);
 
 return jsunity.done();

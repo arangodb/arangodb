@@ -1,7 +1,25 @@
 diff --git a/absl/container/internal/raw_hash_set.h b/absl/container/internal/raw_hash_set.h
 --- a/absl/container/internal/raw_hash_set.h
 +++ b/absl/container/internal/raw_hash_set.h
-@@ -3036,7 +3036,14 @@
+@@ -2974,7 +2974,16 @@
+ 
+     construct(slot, std::forward<Args>(args)...);
+     const auto& elem = PolicyTraits::element(slot);
+-    return PolicyTraits::apply(InsertSlot<true>{*this, std::move(*slot)}, elem);
++    // `raw` is not destroyed on unwinding, so destroy the element if the
++    // insert throws, e.g. when growing the table fails.
++    ABSL_INTERNAL_TRY {
++      return PolicyTraits::apply(InsertSlot<true>{*this, std::move(*slot)},
++                                 elem);
++    }
++    ABSL_INTERNAL_CATCH_ANY {
++      destroy(slot);
++      ABSL_INTERNAL_RETHROW;
++    }
+   }
+ 
+   template <class... Args>
+@@ -3036,7 +3045,14 @@
      if (res.second) {
        slot_type* slot = res.first;
        allocator_type alloc(char_alloc_ref());
@@ -17,7 +35,7 @@ diff --git a/absl/container/internal/raw_hash_set.h b/absl/container/internal/ra
        ABSL_SWISSTABLE_ASSERT(!slot);
      }
      return non_iterable_iterator_at_slot(res.first);
-@@ -3790,7 +3797,13 @@
+@@ -3790,7 +3806,13 @@
    // POSTCONDITION: *m.iterator_at(i) == value_type(forward<Args>(args)...).
    template <class... Args>
    void emplace_at(slot_type* slot, Args&&... args) {
