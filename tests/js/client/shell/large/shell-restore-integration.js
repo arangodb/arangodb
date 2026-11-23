@@ -104,6 +104,11 @@ function restoreIntegrationSuite() {
     },
 
     tearDown: function () {
+      ["v", "sa"].forEach((name) => {
+        if (db._view(name) !== null) {
+          db._dropView(name);
+        }
+      });
       db._drop(cn);
       db._databases().forEach((database) => {
         if (database !== "_system") {
@@ -1038,6 +1043,64 @@ function restoreIntegrationSuite() {
       }
       let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 42 RETURN doc").toArray();
       assertEqual(100, result.length);
+      fs.removeDirectoryRecursive(path, true);
+    },
+
+    testRestoreLinkIdsDoNotCollideWithDumpedIndexIds: function () {
+      if (isCluster) {
+        return;  // COR-1281 will fix the ID collision issue in cluster mode
+      }
+      // pick a dumped index id far ahead of the server's current counter
+      const probe = db._create(cn + "Probe");
+      const dumpedId = String(Number(probe._id) + 1000000);
+      db._drop(cn + "Probe");
+
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      fs.write(fs.join(path, cn + ".structure.json"), JSON.stringify({
+        indexes: [{id: dumpedId, type: "persistent", fields: ["value"], name: "idx"}],
+        parameters: {name: cn, type: 2},
+      }));
+      fs.write(fs.join(path, "v.view.json"), JSON.stringify({
+        name: "v", type: "arangosearch", links: {[cn]: {includeAllFields: true}},
+      }));
+
+      runRestore(path, ['--collection', cn, '--view', 'v', '--import-data', 'false'], 0);
+
+      const indexes = db._collection(cn).indexes(false, true);  // include links
+      const idOf = (idx) => Number(idx.id.split('/')[1]);
+      assertEqual(Number(dumpedId), idOf(indexes.find((i) => i.name === "idx")));
+      const link = indexes.find((i) => i.type === "arangosearch");
+      assertTrue(idOf(link) > Number(dumpedId), link);
+      fs.removeDirectoryRecursive(path, true);
+    },
+
+    testRestoreReportsIndexErrorBeforeSearchAliasViewError: function () {
+      if (isCluster) {
+        return;
+      }
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      // same name, different fields: the second index fails, so "inv" is never created
+      fs.write(fs.join(path, cn + ".structure.json"), JSON.stringify({
+        indexes: [
+          {id: "100", type: "persistent", fields: ["a"], name: "dup"},
+          {id: "101", type: "persistent", fields: ["b"], name: "dup"},
+          {id: "102", type: "inverted", fields: ["c"], name: "inv"},
+        ],
+        parameters: {name: cn, type: 2},
+      }));
+      fs.write(fs.join(path, "sa.view.json"), JSON.stringify({
+        name: "sa", type: "search-alias", indexes: [{collection: cn, index: "inv"}],
+      }));
+
+      const logFile = fs.join(path, "restore.log");
+      runRestore(path, ['--collection', cn, '--view', 'sa', '--import-data', 'false',
+                        '--log.ids', 'true', '--log.output', 'file://' + logFile], 1);
+
+      // the final error arangorestore reports, not the earlier per-job warning
+      const finalError = fs.read(logFile).split('\n').find((line) => line.includes('[cb69f]'));
+      assertTrue(finalError.includes("duplicate value"), finalError);
       fs.removeDirectoryRecursive(path, true);
     },
 
