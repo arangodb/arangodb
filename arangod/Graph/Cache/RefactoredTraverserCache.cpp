@@ -39,6 +39,14 @@ RefactoredTraverserCache::RefactoredTraverserCache(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
+RefactoredTraverserCache::RefactoredTraverserCache(
+    RefactoredTraverserCache&& other)
+    : _stringHeap(std::move(other._stringHeap)),
+      _persistedStrings(std::move(other._persistedStrings)),
+      _resourceMonitor(other._resourceMonitor) {
+  other._persistedStrings.clear();
+}
+
 RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
 
 void RefactoredTraverserCache::clear() {

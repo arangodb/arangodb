@@ -38,6 +38,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
+#include <date/date.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

@@ -178,6 +178,15 @@ bool sslRand(int32_t* value) {
          1;
 }
 
+std::optional<std::string> sslRandBytes(uint32_t const randomBytes) {
+  std::string buffer(randomBytes, '\0');
+  if (RAND_bytes(reinterpret_cast<unsigned char*>(buffer.data()),
+                 buffer.size()) != 1) {
+    return std::nullopt;
+  }
+  return buffer;
+}
+
 int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY* pkey, std::string const& msg,
                 std::string& sign, std::string& error) {
   size_t signLength;

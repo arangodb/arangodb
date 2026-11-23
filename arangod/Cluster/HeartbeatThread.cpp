@@ -55,7 +55,6 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
-#include <date/date.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;

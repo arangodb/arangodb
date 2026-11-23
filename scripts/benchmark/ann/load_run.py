@@ -200,10 +200,12 @@ def load(db, meta, rows):
            "started_at": meta["started_at"]}
     run_id = db.one(
         "INSERT MERGE(@run, {major_version: @major, docker_image_version: @image, "
-        "ended_at: @ended, machine: @machine}) INTO run RETURN NEW._key",
+        "ended_at: @ended, machine: @machine, git_branch: @branch}) "
+        "INTO run RETURN NEW._key",
         {"run": run, "major": meta["arangodb_version"].split(".")[0],
          "image": meta["image"], "ended": meta["ended_at"],
-         "machine": meta.get("machine")},
+         "machine": meta.get("machine"),
+         "branch": meta.get("git_branch") or None},
     )
 
     dataset_ids = {}

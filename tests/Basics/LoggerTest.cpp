@@ -38,7 +38,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-#include <date/date.h>
 #include <format>
 
 #include <absl/strings/str_cat.h>
@@ -258,14 +257,14 @@ TEST_F(LoggerTest, testTimeFormats) {
     sys_seconds startTp;
     {
       std::istringstream in{"2016-12-11 13:59:55"};
-      in >> date::parse("%F %T", startTp);
+      in >> std::chrono::parse("%F %T", startTp);
     }
 
     // time point we are testing
     sys_seconds tp;
     {
       std::istringstream in{"2016-12-11 14:02:43"};
-      in >> date::parse("%F %T", tp);
+      in >> std::chrono::parse("%F %T", tp);
     }
 
     std::string out;
@@ -329,17 +328,17 @@ TEST_F(LoggerTest, testTimeFormats) {
 
   {
     // server start time point
-    date::sys_time<milliseconds> startTp;
+    std::chrono::sys_time<milliseconds> startTp;
     {
       std::istringstream in{"2020-12-02 11:57:02.701"};
-      in >> date::parse("%F %T", startTp);
+      in >> std::chrono::parse("%F %T", startTp);
     }
 
     // time point we are testing
-    date::sys_time<milliseconds> tp;
+    std::chrono::sys_time<milliseconds> tp;
     {
       std::istringstream in{"2020-12-02 11:57:26.004"};
-      in >> date::parse("%F %T", tp);
+      in >> std::chrono::parse("%F %T", tp);
     }
 
     std::string out;
