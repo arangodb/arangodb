@@ -42,7 +42,9 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
  public:
   static constexpr bool isLoading = false;
 
-  SaveInspectorBase() requires(!Base::hasContext) = default;
+  SaveInspectorBase()
+    requires(!Base::hasContext)
+  = default;
   explicit SaveInspectorBase(Context const& context) : Base(context) {}
 
   template<class T>
@@ -57,7 +59,7 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
            |
            [&]() {
              return f.template processTuple<0, std::tuple_size_v<T>>(data);
-           }                                  //
+           }  //
            | [&]() { return f.endArray(); };  //
   }
 

@@ -114,7 +114,6 @@ arangodb::CollectionInvariants makeInvariants(
           .isSmart = descriptor.constant.isSmart,
           .isDisjoint = descriptor.constant.isDisjoint,
           .isSmartChild = descriptor.internal.isSmartChild,
-          .timeTravelEnabled = descriptor.constant.enableTimeTravel,
           .smartJoinAttribute = descriptor.constant.smartJoinAttribute,
           .groupId = descriptor.clusteringConstant.groupId,
           .replicatedStateId = descriptor.clusteringConstant.replicatedStateId};
@@ -307,7 +306,6 @@ CollectionDescriptor LogicalCollection::properties() const {
   d.constant.isSystem = system();
   d.constant.isSmart = _invariants.isSmart;
   d.constant.isDisjoint = _invariants.isDisjoint;
-  d.constant.enableTimeTravel = _invariants.timeTravelEnabled;
   if (auto const& sja = _invariants.smartJoinAttribute; sja.has_value()) {
     d.constant.smartJoinAttribute = *sja;
   }
@@ -847,10 +845,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   build.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   build.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
-  if (forPersistence) {
-    // internal for now, so users must not see it
-    build.add(StaticStrings::EnableTimeTravel, VPackValue(timeTravelEnabled()));
-  }
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
@@ -1450,13 +1444,14 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, std::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        std::format(formatString, std::forward<Args>(args)...), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           std::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            std::format(formatString, std::forward<Args>(args)...), location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {

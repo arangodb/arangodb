@@ -29,11 +29,13 @@ ARANGO_USER="${ARANGO_USER:-root}"
 ARANGO_PASSWORD="${ARANGO_PASSWORD:-}"
 # Recorded in run_meta.json only; whoever started arangod knows the image.
 ARANGODB_IMAGE="${ARANGODB_IMAGE:-}"
+# Branch the run belongs to; the dashboards group runs by it.
+ANN_GIT_BRANCH="${ANN_GIT_BRANCH:-}"
 
 # ann-benchmarks fork, pinned. The circle-ci branch carries the CI sweep:
 # arangodb-ivf = single nLists=16384 build + nProbe query sweep.
 ANN_FORK_URL="${ANN_FORK_URL:-https://github.com/arangodb/ann-benchmarks.git}"
-ANN_FORK_REF="${ANN_FORK_REF:-1967a1c9b6be75f7213c89d8be29d05715e2850c}"
+ANN_FORK_REF="${ANN_FORK_REF:-4a2ae01a249ce2bd084aea6cb3bd72031bc346c6}"
 ANN_ALGORITHM="${ANN_ALGORITHM:-arangodb-ivf}"
 # TODO ANN_DATASETS="${ANN_DATASETS:-sift-128-euclidean glove-100-angular}"
 ANN_DATASETS="${ANN_DATASETS:-glove-100-angular}"
@@ -108,11 +110,12 @@ collect_meta() {
   jq -n \
     --arg version "${ver}" --arg version_full "${ver_full}" \
     --arg build_id "${bid}" --arg license "${lic}" \
-    --arg image "${ARANGODB_IMAGE}" \
+    --arg image "${ARANGODB_IMAGE}" --arg git_branch "${ANN_GIT_BRANCH}" \
     --arg started_at "${ANN_STARTED_AT:-}" \
     --arg cpu "${cpu}" --arg cores "${cores}" --arg mem "${mem}" --arg os "${os}" \
     '{arangodb_version: $version, arangodb_version_full: $version_full,
       build_id: $build_id, license: $license, image: $image,
+      git_branch: $git_branch,
       machine: {cpu: $cpu, cores: ($cores | tonumber? // null),
                 memory_bytes: ($mem | tonumber? // null), os: $os},
       started_at: $started_at, ended_at: ""}' \
@@ -200,13 +203,13 @@ run_sweep() {
 # produced no results (run.py exits 0 even then).
 validate_results() {
   local runlog="${ANN_OUTPUT_DIR}/run.log" csv="${ANN_OUTPUT_DIR}/results.csv"
+  [[ -f "${csv}" ]] \
+    || die "no results: ${csv} was not written (see run.log / arangod.log)"
   local expected
   expected="$(grep -oE 'query argument group [0-9]+ of [0-9]+' "${runlog}" 2>/dev/null \
                 | grep -oE '[0-9]+$' | sort -rn | head -n1 || true)"
-  if [[ -z "${expected}" ]]; then
-    log "WARNING: could not determine expected config count; skipping validation"
-    return 0
-  fi
+  [[ -n "${expected}" ]] \
+    || die "no query configs ran: run.log has no 'query argument group' lines"
   local failed=0 ds actual
   for ds in ${ANN_DATASETS}; do
     # dataset is the last CSV column (no commas); strip the CRLF that Python's

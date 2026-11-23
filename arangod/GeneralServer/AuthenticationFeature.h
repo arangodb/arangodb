@@ -68,7 +68,6 @@ class AuthenticationFeature final
 
   bool isActive() const noexcept;
 
-  bool authenticationUnixSockets() const noexcept;
   std::string_view externalRbacService() const noexcept;
   bool rbacEnabled() const noexcept;
 

@@ -85,7 +85,7 @@ int dump(const std::string& path, const std::string& dir_type,
              << " docsCount=" << field.docs_count() << std::endl;
 
       auto term = field.iterator(irs::SeekMode::NORMAL);
-      auto const& term_meta = irs::get<irs::term_meta>(*term);
+      const auto& term_meta = irs::get<irs::term_meta>(*term);
       stream << "Values" << std::endl;
       for (; term->next();) {
         term->read();

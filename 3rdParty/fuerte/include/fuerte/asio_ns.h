@@ -40,7 +40,6 @@
 #include <asio/io_context.hpp>
 #include <asio/io_context_strand.hpp>
 #include <asio/ip/tcp.hpp>
-#include <asio/local/stream_protocol.hpp>
 #include <asio/read.hpp>
 #include <asio/signal_set.hpp>
 #include <asio/ssl.hpp>
@@ -66,10 +65,6 @@ using system_error = boost::system::system_error;
 }}  // namespace boost::asio
 
 namespace asio_ns = boost::asio;
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-#define ASIO_HAS_LOCAL_SOCKETS
-#endif
 
 #endif
 #endif

@@ -493,9 +493,13 @@ RegisterId RegisterPlanT<T>::registerVariable(
 template<typename T>
 void RegisterPlanT<T>::toVelocyPackEmpty(velocypack::Builder& builder) {
   builder.add(VPackValue("varInfoList"));
-  { VPackArrayBuilder guard(&builder); }
+  {
+    VPackArrayBuilder guard(&builder);
+  }
   builder.add(VPackValue("nrRegs"));
-  { VPackArrayBuilder guard(&builder); }
+  {
+    VPackArrayBuilder guard(&builder);
+  }
 }
 
 template<typename T>

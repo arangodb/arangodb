@@ -124,7 +124,9 @@ JOB_STATUS ReconfigureReplicatedLog::status() {
         addUndoSetLeader(trx);
       }
     }
-    { VPackObjectBuilder b(&trx); }
+    {
+      VPackObjectBuilder b(&trx);
+    }
   }
 
   // Transact to agency:

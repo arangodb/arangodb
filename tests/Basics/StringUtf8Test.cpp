@@ -341,7 +341,9 @@ TEST_F(CStringUtf8Test, tst_klingon) {
   size_t outLength;
   char* unescaped =
       TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
-  EXPECT_EQ(std::string(unescaped), "   ");
+  EXPECT_EQ(
+      std::string(unescaped),
+      "   ");
   TRI_FreeString(unescaped);
 }
 

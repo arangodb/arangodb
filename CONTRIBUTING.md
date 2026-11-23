@@ -144,9 +144,11 @@ or along with a build by setting `USE_CLANG_TIDY=On`:
 
 #### On demand
 
-This requires `clang-tidy`, `run-clang-tidy` and `jq` in PATH. It also needs an
-existing build directory; defaulting to `./build/`, which can be overridden with
-`--build` or `-B`.
+This requires `clang-tidy-22`, `run-clang-tidy-22` and `jq` in PATH. It also
+needs an existing build directory; defaulting to `./build/`, which can be
+overridden with `--build` or `-B`. The script passes clang-tidy the GCC
+installation that `clang++-22` selects, so that both parse the same C++ standard
+library headers (see [Building Locally](#building-locally)).
 
     ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
     ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
@@ -346,11 +348,41 @@ configuration files in `usr/etc/arangodb4/`, and so on.
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
+### Building with FIPS support
+
+The `USE_FIPS` CMake option, set by the `pr-x64-fips` and `pr-arm64-fips`
+presets, builds an `arangod` that can use the OpenSSL FIPS provider. Such a
+build links glibc dynamically instead of statically, because OpenSSL loads the
+provider (`fips.so`) at runtime. The build container provides the provider of
+OpenSSL 3.1.2 at `/opt/lib/ossl-modules/fips.so`.
+
+The startup option `--server.fips-enable true` makes the server load the
+provider from `/opt/lib/ossl-modules/`, with the configuration
+`/opt/ssl/fips-only.cnf`, which includes `/opt/ssl/fipsmodule.cnf`. To set
+these up in the build container:
+
+    mkdir -p /opt/ssl
+    cp scripts/docker/deploy/fips-only.cnf /opt/ssl/
+    openssl fipsinstall -module /opt/lib/ossl-modules/fips.so -out /opt/ssl/fipsmodule.cnf
+
+Builds without `USE_FIPS` refuse to start with `--server.fips-enable`. The
+`arangodb/core-fips-preview` Docker image, which the nightly pipeline builds
+when its `build-fips-image` parameter is set, does this setup in its entrypoint
+and enables the option.
+
+To run a CircleCI test pipeline in FIPS mode, trigger it with `use-fips: true`:
+every workflow (including sanitizer builds) is then compiled with `USE_FIPS`,
+the tests start the servers with `--server.fips-enable`, and the workflow names
+carry `-fips` (e.g. `x64-fips-pr-tsan`). The test image always contains the
+provider and its configuration. Docker images requested in such a pipeline are
+`arangodb/core-fips-test` / `arangodb/core-fips-preview`, while the client-tools
+image still comes from a regular, fully static build.
+
 ### Building Locally
 
 Debian-based Linux is recommended. Dependencies:
-- `clang-19`
-- `libomp-19-dev`
+- `clang-22`
+- `libomp-22-dev`
 - `liblapack-dev`
 - `libopenblas-dev`
 - `cmake` (at least 3.21)
@@ -359,9 +391,25 @@ Debian-based Linux is recommended. Dependencies:
 - `bison`
 - `flex`
 
+The code is compiled as C++26 (`CXX_STANDARD` in [`VERSIONS`](VERSIONS)), which
+is why a recent C++ standard library such as `libstdc++-14-dev` is required.
+
+Clang uses the C++ standard library of the newest GCC installation it finds.
+The build image pins it to GCC 14 (`GCC_LINUX` in [`VERSIONS`](VERSIONS)), as
+Ubuntu 26.04 defaults to GCC 15, with `--gcc-install-dir` in the `clang.cfg` and
+`clang++.cfg` files next to the clang binary. To do the same on a system with a
+newer GCC:
+
+    GCC_DIR=/usr/lib/gcc/$(uname -m)-linux-gnu/14
+    CLANG_DIR=$(dirname "$(readlink -f "$(command -v clang-22)")")
+    echo "--gcc-install-dir=$GCC_DIR" | sudo tee "$CLANG_DIR/clang.cfg" "$CLANG_DIR/clang++.cfg"
+
+`clang++-22 -v -x c++ /dev/null -fsyntax-only` shows which installation clang
+selects.
+
 Dependencies for a Fedora-based distribution:
 ```
-dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
+dnf install clang-22 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
 ```
 
 After installing, follow the general build steps above.
@@ -1004,13 +1052,73 @@ The `rta_makedata` testsuite can be invoked with:
 - `--cluster false` - to be ran on a single server setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
-These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
+These combinations are also engaged via [tests.yml](tests/tests.yml).
 
 Invoke it like this:
 
     ./scripts/unittest rta_makedata --cluster true
 
 (you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
+
+### Invoking MakeData, CheckData, WaitData against your local build
+
+The wrapper scripts in [scripts](scripts/)
+run the [makedata framework](#makedata--checkdata-suite) against a server you
+started yourself, e.g. a debug build you are working on or running in `gdb`.
+They pass the same arguments as the `rta_makedata` testsuite does, without
+letting `scripts/unittest` start and stop its own instances:
+
+- `scripts/makedata` - create the test data
+- `scripts/checkdata` - verify the test data is (still) there
+- `scripts/waitdata` - wait for the test data to become available, i.e. after a failover
+- `scripts/cleardata` - remove the test data again, so makedata can be run once more
+
+They pick up `build/bin/arangosh` and the `js/` directory of the source tree
+they live in (or the one a symlink to them lives in); use `--build <dir>` for a
+different build directory.
+
+Start a local debug single server without authentication:
+
+    ./build/bin/arangod --server.endpoint tcp://127.0.0.1:8529 \
+                        --server.authentication false \
+                        ../arangodb-data-makedata
+
+Then run a full create / check / clear cycle against it:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529
+
+To work on a single hook, filter the suites in `3rdParty/rta-makedata/test_data/makedata_suites`
+with a comma separated list; `--skip` filters the other way round:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8529 --test 100_collections,140
+
+Use a database of its own instead of `_system` by passing its name as the first
+argument; its name should start with `system_`:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+    ./scripts/cleardata --server.endpoint tcp://127.0.0.1:8529 system_mytest --test 140
+
+Against a local cluster started with `scripts/startLocalCluster`, point them at the Coordinator:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 --minReplicationFactor 2
+    ./scripts/waitdata  --server.endpoint tcp://127.0.0.1:8530
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530
+
+`--one-shard` creates and checks a OneShard database, just like `--forceOneShard` in the testsuite;
+pass it to every script of the cycle:
+
+    ./scripts/makedata  --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+    ./scripts/checkdata --server.endpoint tcp://127.0.0.1:8530 system_oneshard --one-shard
+
+Options with a `.` in their name (`--server.endpoint`, `--server.password`, `--log.level`, ...)
+go to arangosh, all others to the javascript file; `--server.password` is also passed on as `--passvoid`.
+Unless `--oldVersion` is given, the version of the server is used for it.
+
+- `--help` lists the wrapper options and all options of the respective javascript file, without contacting a server
+- `--dry-run` prints the arangosh command line instead of running it
 
 ### Driver tests
 

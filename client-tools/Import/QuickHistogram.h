@@ -244,7 +244,7 @@ class QuickHistogram : public arangodb::BasicThread {
       } else {
         retVal = std::chrono::microseconds(0);
       }  // else
-    }    // else
+    }  // else
 
     return retVal;
   }  // calcPercentile

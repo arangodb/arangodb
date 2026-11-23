@@ -48,7 +48,6 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
-#include "Indexes/IndexTypeCatalog.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -919,22 +918,6 @@ void IResearchFeature::stop() {
   _searchExecutionPool.stop();
 }
 
-void IResearchFeature::unprepare() {
-  TRI_ASSERT(isEnabled());
-  if (!server().hasFeature<StorageEngine>()) {
-    return;
-  }
-  // catalog holds non-owning pointers, so we must unregister them before
-  // they're destroyed
-  auto& catalog = server().getFeature<StorageEngine>().indexTypeCatalog();
-  if (_linkDefinition) {
-    catalog.remove(StaticStrings::ViewArangoSearchType);
-  }
-  if (_invertedDefinition) {
-    catalog.remove(iresearch::IRESEARCH_INVERTED_INDEX_TYPE);
-  }
-}
-
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
   std::filesystem::path path{dbPathFeature.directory()};
@@ -1044,10 +1027,9 @@ void IResearchFeature::registerIndexFactory() {
   auto& engine = server().getFeature<StorageEngine>();
 
   auto addDefinition = [&]() {
-    // register before replacing, so a failed add() can't leave a dangling ptr
-    auto newDefinition = std::make_unique<IResearchLinkDefinition>(server());
-    auto r = engine.indexTypeCatalog().add(StaticStrings::ViewArangoSearchType,
-                                           *newDefinition);
+    auto r = engine.registerIndexDefinition(
+        StaticStrings::ViewArangoSearchType,
+        std::make_unique<IResearchLinkDefinition>(server()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1055,15 +1037,12 @@ void IResearchFeature::registerIndexFactory() {
                        "index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
-    _linkDefinition = std::move(newDefinition);
   };
 
   auto addInvertedDefinition = [&]() {
-    // register before replacing, so a failed add() can't leave a dangling ptr
-    auto newDefinition =
-        std::make_unique<IResearchInvertedIndexDefinition>(server());
-    auto r = engine.indexTypeCatalog().add(
-        iresearch::IRESEARCH_INVERTED_INDEX_TYPE, *newDefinition);
+    auto r = engine.registerIndexDefinition(
+        iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+        std::make_unique<IResearchInvertedIndexDefinition>(server()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           r.errorNumber(),
@@ -1071,15 +1050,14 @@ void IResearchFeature::registerIndexFactory() {
                        "definition with index type catalog from feature '",
                        engine.name(), "': ", r.errorMessage()));
     }
-    _invertedDefinition = std::move(newDefinition);
   };
 
   if (dynamic_cast<ClusterEngine*>(&engine) != nullptr) {
-    engine.mutableIndexFactory().setLinkCreator(&createLinkCoordinator);
+    engine.setLinkCreator(&createLinkCoordinator);
     addDefinition();
     addInvertedDefinition();
   } else if (dynamic_cast<RocksDBEngine*>(&engine) != nullptr) {
-    engine.mutableIndexFactory().setLinkCreator(&createRocksDBLink);
+    engine.setLinkCreator(&createRocksDBLink);
     addDefinition();
     addInvertedDefinition();
   }

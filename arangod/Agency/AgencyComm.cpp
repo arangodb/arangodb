@@ -718,7 +718,9 @@ std::string AgencyComm::version() {
 
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   VPackBuilder builder;
-  { VPackObjectBuilder dir(&builder); }
+  {
+    VPackObjectBuilder dir(&builder);
+  }
 
   AgencyOperation operation(key, AgencyValueOperationType::SET,
                             builder.slice());
@@ -1371,11 +1373,17 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
-      { VPackArrayBuilder dd(&builder); }
+      {
+        VPackArrayBuilder dd(&builder);
+      }
       builder.add(VPackValue("ToBeCleanedServers"));
-      { VPackArrayBuilder dd(&builder); }
+      {
+        VPackArrayBuilder dd(&builder);
+      }
       builder.add(VPackValue("FailedServers"));
-      { VPackObjectBuilder dd(&builder); }
+      {
+        VPackObjectBuilder dd(&builder);
+      }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);

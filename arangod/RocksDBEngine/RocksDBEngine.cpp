@@ -293,8 +293,11 @@ RocksDBEngine::RocksDBEngine(
     IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
-    : StorageEngine(server, kEngineName, name(), databaseProvider,
-                    databaseBootstrap),
+    : StorageEngine(
+          server, kEngineName, name(), databaseProvider, databaseBootstrap,
+          [&server](IndexTypeCatalog const& catalog) {
+            return std::make_unique<RocksDBIndexFactory>(server, catalog);
+          }),
       _databasePathProvider(databasePathProvider),
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
@@ -350,9 +353,6 @@ RocksDBEngine::RocksDBEngine(
           metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
-  setIndexFactory(
-      std::make_unique<RocksDBIndexFactory>(server, indexTypeCatalog()));
-
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -495,10 +495,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
   TRI_EXIT_FUNCTION(exitCode, nullptr);
   exit(exitCode);
-}
-
-bool RocksDBEngine::isTimeTravelEnabled() const {
-  return _optionsProvider.timeTravelEnabled();
 }
 
 void RocksDBEngine::start() {
@@ -732,9 +728,6 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  if (isTimeTravelEnabled()) {
-    addFamily(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-  }
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -3164,9 +3157,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  if (isTimeTravelEnabled()) {
-    addCf(RocksDBColumnFamilyManager::Family::PrimaryIndex_TT);
-  }
   builder.close();
 
   if (_throttleListener) {

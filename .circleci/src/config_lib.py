@@ -647,12 +647,13 @@ class TestJob:
         """Validate buckets usage rules."""
         job_buckets = self.options.buckets
 
-        # Multi-suite jobs with explicit buckets must use "auto"
-        if len(self.suites) > 1 and job_buckets is not None:
-            if job_buckets != "auto":
+        # Multi-suite jobs distribute their suites over the buckets, so there
+        # can't be more buckets than suites ("auto" means one suite per bucket)
+        if len(self.suites) > 1 and isinstance(job_buckets, int):
+            if job_buckets > len(self.suites):
                 raise ValueError(
-                    f"TestJob '{self.name}': Multi-suite jobs with buckets must use buckets='auto', "
-                    f"got: {job_buckets}"
+                    f"TestJob '{self.name}': Multi-suite jobs can't have more buckets "
+                    f"({job_buckets}) than suites ({len(self.suites)})"
                 )
 
         # Single-suite jobs cannot use "auto"

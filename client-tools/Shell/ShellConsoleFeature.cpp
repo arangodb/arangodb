@@ -269,8 +269,6 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
             ep = ep.substr(strlen("http+tcp://"));
           } else if (ep.compare(0, strlen("ssl://"), "ssl://") == 0) {
             ep = ep.substr(strlen("ssl://"));
-          } else if (ep.compare(0, strlen("unix://"), "unix://") == 0) {
-            ep = ep.substr(strlen("unix://"));
           }
         }
 

@@ -1,9 +1,9 @@
 # Arguments used through multiple build stages
-ARG COMPILER_VERSION=13
-ARG CLANG_VERSION=19
+ARG COMPILER_VERSION=14
+ARG CLANG_VERSION=22
 
 # First rebuild glibc with a special option and provide some .deb files:
-FROM ubuntu:24.04 AS glibcdebs
+FROM ubuntu:26.04 AS glibcdebs
 
 COPY ./static /static
 RUN /static/prepare.sh
@@ -12,7 +12,7 @@ RUN /static/rebuild_glibc.sh
 # Now prepare a standard Ubuntu image and install the provided .deb files
 # for glibc as a preparation:
 
-FROM ubuntu:24.04 AS prepare
+FROM ubuntu:26.04 AS prepare
 
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
@@ -20,7 +20,7 @@ RUN apt-get update --fix-missing && \
       software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
       vim exuberant-ctags gdb fish psmisc sudo jq libdb-dev \
-      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
+      gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev \
       cmake ninja-build git liblapack-dev python3-pip libgd3 linux-libc-dev libcrypt-dev \
       libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2 \
       clamav \
@@ -31,7 +31,7 @@ RUN dpkg -i /debs/*.deb
 
 # Now build V8:
 
-#FROM ubuntu:24.04 AS v81
+#FROM ubuntu:26.04 AS v81
 #
 #COPY ./tools/build_v8.sh /tools/build_v8.sh
 #RUN /tools/build_v8.sh
@@ -42,7 +42,7 @@ RUN dpkg -i /debs/*.deb
 #RUN /tools/install_v8.sh
 
 # Build OpenMP static library
-FROM ubuntu:24.04 AS openmp
+FROM ubuntu:26.04 AS openmp
 
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
@@ -74,7 +74,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch 
+RUN git apply /diff_llvm.patch
 
 WORKDIR build
 
@@ -95,9 +95,9 @@ LABEL org.opencontainers.image.authors="Max Neunhoeffer <max@arango.ai>"
 ARG ARCH="x86_64"
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
-ARG SCCACHE_VERSION="0.10.0"
+ARG SCCACHE_VERSION="0.19.0"
 
-# We provide gcc 13.2.0 as well as clang 19 (latest) from LLVM
+# We provide gcc 14.3.0 as well as clang 22 (latest) from LLVM
 
 ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
@@ -111,11 +111,23 @@ RUN curl -o- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.g
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update --fix-missing && \
-  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
+  apt-get install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} libgfortran-${COMPILER_VERSION}-dev \
     clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
     libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
     libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev findutils clang-tidy-${CLANG_VERSION} && \
   rm -rf /var/cache/apt/archives /var/lib/apt/lists
+
+# 26.04's default GCC (pulled in by build-essential) is 15, and clang uses the
+# newest GCC installation it finds for libstdc++, libgcc and libgfortran. Pin it
+# to GCC ${COMPILER_VERSION}, the one this image installs libgfortran for, via
+# clang's default config files next to the clang binary; fail if it doesn't take.
+RUN GCC_DIR="$(dirname "$(gcc-${COMPILER_VERSION} -print-libgcc-file-name)")" && \
+    CLANG_DIR="$(dirname "$(readlink -f "$(command -v clang-${CLANG_VERSION})")")" && \
+    for driver in clang clang++; do \
+      echo "--gcc-install-dir=${GCC_DIR}" > "${CLANG_DIR}/${driver}.cfg"; \
+    done && \
+    clang++-${CLANG_VERSION} -v -x c++ /dev/null -fsyntax-only 2>&1 | \
+      grep -q "Selected GCC installation: ${GCC_DIR}$"
 
 # make clang-tidy-VERSION available as clang-tidy standalone
 RUN ln -s $(which clang-tidy-${CLANG_VERSION}) /usr/local/bin/clang-tidy

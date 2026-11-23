@@ -53,7 +53,9 @@ class InvalidGeoJSONInputTest : public ::testing::Test {
 };
 
 TEST_F(InvalidGeoJSONInputTest, empty_object) {
-  { velocypack::ObjectBuilder object(&builder); }
+  {
+    velocypack::ObjectBuilder object(&builder);
+  }
   VPackSlice vpack = builder.slice();
 
   ASSERT_EQ(geo::json::Type::UNKNOWN, geo::json::type(vpack));

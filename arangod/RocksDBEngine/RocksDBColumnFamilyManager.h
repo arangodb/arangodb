@@ -50,7 +50,6 @@ struct RocksDBColumnFamilyManager {
     MdiIndex = 8,
     MdiVPackIndex = 9,
     VectorIndex = 10,
-    PrimaryIndex_TT = 11,  // time-travel primary idx (User-Defined Timestamps)
 
     Invalid = 1024  // special placeholder
   };
@@ -61,7 +60,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 12;
+  static constexpr size_t numberOfColumnFamilies = 11;
 
   static void initialize();
 
@@ -78,7 +77,7 @@ struct RocksDBColumnFamilyManager {
                           NameMode mode = NameMode::External);
 
   /// All initialized handles, in family order. Handles left at nullptr (a
-  /// disabled optional family, e.g. VectorIndex or PrimaryIndex_TT) are skipped
+  /// disabled optional family, e.g. VectorIndex) are skipped
   /// Maintained by set()/reset(), so this is a cheap reference, not a rebuild.
   static std::vector<rocksdb::ColumnFamilyHandle*> const& allHandles();
 

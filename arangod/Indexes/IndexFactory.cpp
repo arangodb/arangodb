@@ -124,19 +124,25 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::ObjectBuilder b(&normalized);
     auto const id = helpers::extractId(definition);
     if (id.isSet()) {
-      absl::AlphaNum toStr{id.id()};
+      absl::AlphaNum toStr(id.id());
       normalized.add(StaticStrings::IndexId, velocypack::Value{toStr.Piece()});
     }
 
     std::string name{helpers::extractName(definition)};
 
+    auto const* def = _catalog.definitionFor(type.stringView());
+    if (def == nullptr) {
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("invalid index type '", type.stringView(), "'"));
+    }
+
     if (name.empty()) {
       // we should set the name for special types explicitly elsewhere,
       // but just in case...
-      if (auto t = _catalog.resolve(type.stringView());
-          t == IndexType::Primary) {
+      if (def->type() == IndexType::Primary) {
         name = StaticStrings::IndexNamePrimary;
-      } else if (t == IndexType::Edge) {
+      } else if (def->type() == IndexType::Edge) {
         name = StaticStrings::IndexNameEdge;
       } else {
         // generate a name
@@ -154,8 +160,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
 
-    Result res = _catalog.normalizeType(type.stringView(), normalized,
-                                        definition, isCreation, vocbase);
+    Result res = def->normalize(normalized, definition, isCreation, vocbase);
     if (res.fail()) {
       return res;
     }

@@ -317,5 +317,37 @@ TEST_F(NgramMatchFunctionTest, test) {
       assertNgramMatch(__LINE__, false, &Attribute, &Target2,
                        &ValidAnalyzerName);
     }
+    // One attribute bigram against the same bigram repeated on the target.
+    // Longest common sequence is 1 of 3, so similarity is 1/3.
+    {
+      AqlValue const Attribute{"aa"};
+      AqlValue const Target{"aaaa"};
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold05);
+      assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold02);
+      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName,
+                       &Threshold05);
+    }
+  }
+  // text_en tokens: ["quick"] vs ["quick", "quick", "quick"] is 1/3.
+  // A stale diagonal from the previous row used to report a match at 0.5.
+  {
+    AqlValue const TextEn{"text_en"};
+    AqlValue const Attribute{"quick"};
+    AqlValue Repeated{"quick quick quick"};
+    AqlValueGuard RepeatedGuard(Repeated, true);
+
+    AqlValue const Pair{"quick quick"};
+    AqlValue const Threshold05{AqlValueHintDouble{0.5}};
+    AqlValue const Threshold03{AqlValueHintDouble{0.3}};
+    assertNgramMatch(__LINE__, false, &Attribute, &Repeated, &TextEn,
+                     &Threshold05);
+    assertNgramMatch(__LINE__, true, &Attribute, &Repeated, &TextEn,
+                     &Threshold03);
+    assertNgramMatch(__LINE__, true, &Repeated, &Attribute, &TextEn,
+                     &Threshold05);
+    // Two attribute tokens still form a sequence of length 2 (2/3 >= 0.5).
+    assertNgramMatch(__LINE__, true, &Pair, &Repeated, &TextEn, &Threshold05);
   }
 }

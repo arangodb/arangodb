@@ -75,10 +75,11 @@ class ClusterProvider {
                   ClusterBaseProviderOptions opts,
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
-  ClusterProvider(ClusterProvider&&) = default;
+  ClusterProvider(ClusterProvider&&);
   ~ClusterProvider();
 
   ClusterProvider& operator=(ClusterProvider const&) = delete;
+  ClusterProvider& operator=(ClusterProvider&&) = delete;
 
   void clear();
   void clearWithForce();
@@ -92,7 +93,7 @@ class ClusterProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
   auto createNeighbourCursor(Step const& step, size_t position)
-      -> ClusterNeighbourCursor<Step>&;
+      -> std::unique_ptr<NeighbourCursor>;
 
   void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
@@ -151,8 +152,6 @@ class ClusterProvider {
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;
-
-  std::list<ClusterNeighbourCursor<Step>> _neighbourCursors;
 };
 }  // namespace graph
 }  // namespace arangodb

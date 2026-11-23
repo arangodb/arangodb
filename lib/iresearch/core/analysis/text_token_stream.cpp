@@ -229,8 +229,7 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
 
         // find first whitespace
         for (size_t length = line.size(); i < length && !std::isspace(line[i]);
-             ++i)
-          ;
+             ++i);
 
         // skip lines starting with whitespace
         if (i > 0) {

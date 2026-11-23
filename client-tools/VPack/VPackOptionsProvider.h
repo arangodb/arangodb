@@ -36,7 +36,7 @@ struct VPackOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           VPackFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           VPackFeatureOptions& /*options*/){};
+                           VPackFeatureOptions& /*options*/) {};
 };
 
 }  // namespace arangodb

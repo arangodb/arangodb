@@ -606,7 +606,7 @@ VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
   builder.openObject();
   if (objectId) {
     builder.add(arangodb::StaticStrings::ObjectId,
-                VPackValue(absl::AlphaNum{objectId}.Piece()));
+                VPackValue(absl::AlphaNum(objectId).Piece()));
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
   builder.add(arangodb::StaticStrings::IndexType,
@@ -743,7 +743,7 @@ Result IResearchLinkHelper::normalize(
     if (idSlice.isNumber()) {
       normalized.add(
           arangodb::StaticStrings::IndexId,
-          VPackValue(absl::AlphaNum{idSlice.getNumber<uint64_t>()}.Piece()));
+          VPackValue(absl::AlphaNum(idSlice.getNumber<uint64_t>()).Piece()));
     } else {
       normalized.add(arangodb::StaticStrings::IndexId, idSlice);
     }

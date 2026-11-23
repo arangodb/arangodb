@@ -258,7 +258,7 @@ std::string escapeUnicode(std::string_view value, bool escapeSlash) {
         // unicode range 0080 - 07ff
         else if ((c & 0xE0) == 0xC0) {
           if (ptr + 1 < end) {
-            uint8_t d = (uint8_t) * (ptr + 1);
+            uint8_t d = (uint8_t)*(ptr + 1);
 
             // correct unicode
             if ((d & 0xC0) == 0x80) {
@@ -297,12 +297,12 @@ std::string escapeUnicode(std::string_view value, bool escapeSlash) {
         // unicode range 0800 - ffff
         else if ((c & 0xF0) == 0xE0) {
           if (ptr + 1 < end) {
-            uint8_t d = (uint8_t) * (ptr + 1);
+            uint8_t d = (uint8_t)*(ptr + 1);
 
             // correct unicode
             if ((d & 0xC0) == 0x80) {
               if (ptr + 2 < end) {
-                uint8_t e = (uint8_t) * (ptr + 2);
+                uint8_t e = (uint8_t)*(ptr + 2);
 
                 // correct unicode
                 *qtr = *ptr;
@@ -1687,6 +1687,7 @@ std::string escapeRegexParams(std::string_view in) {
 }
 
 std::string formatSize(uint64_t value) {
+  auto constexpr fmt = "{0:.5f}";
   std::string out, label;
   if (value < 1000) {
     if (value == 1) {
@@ -1697,16 +1698,16 @@ std::string formatSize(uint64_t value) {
       label = "bytes";
     }
   } else if (value < 1000'000ULL) {
-    out = std::to_string((double)value / double(1000));
+    out = std::format(fmt, (double)value / double(1000));
     label = "KB";
   } else if (value < 1'000'000'000ULL) {
-    out = std::to_string((double)value / 1e6);
+    out = std::format(fmt, (double)value / 1e6);
     label = "MB";
   } else if (value < 1'000'000'000'000ULL) {
-    out = std::to_string((double)value / 1e9);
+    out = std::format(fmt, (double)value / 1e9);
     label = "GB";
   } else if (value < 1'000'000'000'000'000ULL) {
-    out = std::to_string((double)value / 1e12);
+    out = std::format(fmt, (double)value / 1e12);
     label = "TB";
   }
   out = arangodb::basics::StringUtils::replace(out, ",", ".");

@@ -47,8 +47,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::Created("_created");
-std::string const StaticStrings::Expired("_expired");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
@@ -214,7 +212,7 @@ std::string const StaticStrings::Etag("etag");
 std::string const StaticStrings::Expect("expect");
 std::string const StaticStrings::ExposedCorsHeaders(
     "etag, content-encoding, content-length, location, server, "
-    "x-arango-errors, x-arango-async-id");
+    "x-arango-errors, x-arango-async-id, x-arango-api-version");
 std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
@@ -237,6 +235,7 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoApiVersion("x-arango-api-version");
 std::string const StaticStrings::ContentSecurityPolicy(
     "content-security-policy");
 std::string const StaticStrings::Pragma("pragma");
@@ -271,7 +270,6 @@ std::string const StaticStrings::ParsedBody("parsedBody");
 std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::ComputedValues("computedValues");
-std::string const StaticStrings::EnableTimeTravel("enableTimeTravel");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsLocalGraphNode("isLocalGraphNode");

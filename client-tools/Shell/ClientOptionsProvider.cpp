@@ -70,12 +70,12 @@ void ClientOptionsProvider::declareOptionsImpl(
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://.";
+        "server endpoint, otherwise http+tcp://.";
   } else {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp:// or unix://";
+        "server endpoint, otherwise http+tcp://";
   }
 
   auto& opt = opts->addOption(

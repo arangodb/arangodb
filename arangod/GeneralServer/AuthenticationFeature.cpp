@@ -56,7 +56,11 @@ AuthenticationFeature::AuthenticationFeature(
       _authCache(nullptr) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
+}
 
+AuthenticationFeature::~AuthenticationFeature() = default;
+
+void AuthenticationFeature::prepare() {
   if (!_options.jwtSecretProgramOption.empty()) {
     auto res = auth::loadJwtSecretString(_options.jwtSecretProgramOption);
     if (res.ok()) {
@@ -75,11 +79,7 @@ AuthenticationFeature::AuthenticationFeature(
       FATAL_ERROR_EXIT();
     }
   }
-}
 
-AuthenticationFeature::~AuthenticationFeature() = default;
-
-void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(_userManager == nullptr);
 
@@ -103,7 +103,13 @@ void AuthenticationFeature::prepare() {
   if (!_authInfo.getLockedGuard()->has_value()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
-    _authInfo.assign(auth::generateRandomHS256AuthInfo());
+
+    auto res = auth::generateRandomHS256AuthInfo();
+    if (!res.ok()) {
+      LOG_TOPIC("43397", FATAL, Logger::AUTHENTICATION)
+          << "Could not start AuthenticationFeature: " << res.errorMessage();
+    }
+    _authInfo.assign(res.get());
   }
 
   _authCache->setJwtSecrets(*_authInfo.copy());
@@ -115,11 +121,6 @@ void AuthenticationFeature::start() {
   std::ostringstream out;
 
   out << "Authentication is turned " << (_options.active ? "on" : "off");
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  out << ", authentication for unix sockets is turned "
-      << (_options.authenticationUnixSockets ? "on" : "off");
-#endif
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
@@ -140,10 +141,6 @@ AuthenticationFeature* AuthenticationFeature::instance() noexcept {
 
 bool AuthenticationFeature::isActive() const noexcept {
   return _options.active && isEnabled();
-}
-
-bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
-  return _options.authenticationUnixSockets;
 }
 
 std::string_view AuthenticationFeature::externalRbacService() const noexcept {

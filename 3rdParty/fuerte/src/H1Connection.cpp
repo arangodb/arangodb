@@ -542,8 +542,5 @@ void H1Connection<ST>::setIOTimeout() {
 
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Ssl>;
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-template class arangodb::fuerte::v1::http::H1Connection<SocketType::Unix>;
-#endif
 
 }}}}  // namespace arangodb::fuerte::v1::http

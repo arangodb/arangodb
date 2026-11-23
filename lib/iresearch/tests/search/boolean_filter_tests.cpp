@@ -15504,7 +15504,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { CheckQuery(irs::Or(), Docs{}, rdr); }
+  {
+    CheckQuery(irs::Or(), Docs{}, rdr);
+  }
 
   {
     irs::Or root;
@@ -15773,7 +15775,9 @@ TEST_P(boolean_filter_test_case, and_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { CheckQuery(irs::And(), Docs{}, rdr); }
+  {
+    CheckQuery(irs::And(), Docs{}, rdr);
+  }
 
   // name=V
   {
@@ -16007,7 +16011,9 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { CheckQuery(irs::Not(), Docs{}, rdr); }
+  {
+    CheckQuery(irs::Not(), Docs{}, rdr);
+  }
 
   // single not statement - empty result
   {
@@ -16040,113 +16046,125 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   }
 
   // * AND NOT *
-  {{irs::And root;
-  root.add<irs::all>();
-  root.add<irs::Not>().filter<irs::all>();
-  CheckQuery(root, Docs{}, rdr);
-}
-
-{
-  irs::Or root;
-  root.add<irs::all>();
-  root.add<irs::Not>().filter<irs::all>();
-  CheckQuery(root, Docs{}, rdr);
-}
-}  // namespace tests
-
-// duplicated=abcd AND NOT name=A
-{{irs::And root;
-root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
-                                                                        "A");
-CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
-}
-
-{
-  irs::Or root;
-  root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-  root.add<irs::Not>().filter<irs::by_term>() =
-    make_filter<irs::by_term>("name", "A");
-  CheckQuery(
-    root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
-               18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-    rdr);
-}
-// check 'all' filter added for Not nodes does not affects score
-{
-  irs::Or root;
-  auto& left_branch = root.add<irs::And>();
-  // this three filters fire at same doc so it will get score = 3
-  append<irs::by_term>(left_branch, "name", "A");
-  append<irs::by_term>(left_branch, "duplicated", "abcd");
-  append<irs::by_term>(left_branch, "same", "xyz");
-
-  auto& right_branch = root.add<irs::And>();
-  append<irs::by_term>(right_branch, "name", "B");  // +1 score
-  auto& sub = right_branch.add<irs::Or>();          // this OR we actually test
-  append<irs::by_term>(sub, "name", "B");           // +1 score
-  // will exclude some docs (but A will stay) and produce 'all'
-  sub.add<irs::Not>().filter<irs::by_term>() =
-    make_filter<irs::by_term>("prefix", "abcde");
-  // will exclude some docs (but A will stay) and produce another 'all'
-  sub.add<irs::Not>().filter<irs::by_term>() =
-    make_filter<irs::by_term>("duplicated", "abcd");
-  // if 'all' will add at least 1 to score totals score will be 3 and expected
-  // order will break
-  irs::Scorer::ptr sort{std::make_unique<tests::sort::boost>()};
-  CheckQuery(root, std::span{&sort, 1}, Docs{2, 1}, rdr);
-}
-}
-
-// duplicated=abcd AND NOT name=A AND NOT name=A
-{{irs::And root;
-root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
-                                                                        "A");
-root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
-                                                                        "A");
-CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
-}
-
-{
-  irs::Or root;
-  root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-  root.add<irs::Not>().filter<irs::by_term>() =
-    make_filter<irs::by_term>("name", "A");
-  root.add<irs::Not>().filter<irs::by_term>() =
-    make_filter<irs::by_term>("name", "A");
-  CheckQuery(
-    root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
-               18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-    rdr);
-}
-}
-
-// duplicated=abcd AND NOT name=A AND NOT name=E
-{
   {
-    irs::And root;
-    root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-    root.add<irs::Not>().filter<irs::by_term>() =
-      make_filter<irs::by_term>("name", "A");
-    root.add<irs::Not>().filter<irs::by_term>() =
-      make_filter<irs::by_term>("name", "E");
-    CheckQuery(root, Docs{11, 21, 27, 31}, rdr);
+    {
+      irs::And root;
+      root.add<irs::all>();
+      root.add<irs::Not>().filter<irs::all>();
+      CheckQuery(root, Docs{}, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::all>();
+      root.add<irs::Not>().filter<irs::all>();
+      CheckQuery(root, Docs{}, rdr);
+    }
+  }  // namespace tests
+
+  // duplicated=abcd AND NOT name=A
+  {
+    {
+      irs::And root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                            24, 25, 26, 27, 28, 29, 30, 31, 32},
+                 rdr);
+    }
+    // check 'all' filter added for Not nodes does not affects score
+    {
+      irs::Or root;
+      auto& left_branch = root.add<irs::And>();
+      // this three filters fire at same doc so it will get score = 3
+      append<irs::by_term>(left_branch, "name", "A");
+      append<irs::by_term>(left_branch, "duplicated", "abcd");
+      append<irs::by_term>(left_branch, "same", "xyz");
+
+      auto& right_branch = root.add<irs::And>();
+      append<irs::by_term>(right_branch, "name", "B");  // +1 score
+      auto& sub = right_branch.add<irs::Or>();  // this OR we actually test
+      append<irs::by_term>(sub, "name", "B");   // +1 score
+      // will exclude some docs (but A will stay) and produce 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("prefix", "abcde");
+      // will exclude some docs (but A will stay) and produce another 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      // if 'all' will add at least 1 to score totals score will be 3 and
+      // expected order will break
+      irs::Scorer::ptr sort{std::make_unique<tests::sort::boost>()};
+      CheckQuery(root, std::span{&sort, 1}, Docs{2, 1}, rdr);
+    }
   }
 
+  // duplicated=abcd AND NOT name=A AND NOT name=A
   {
-    irs::Or root;
-    root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
-    root.add<irs::Not>().filter<irs::by_term>() =
-      make_filter<irs::by_term>("name", "A");
-    root.add<irs::Not>().filter<irs::by_term>() =
-      make_filter<irs::by_term>("prefix", "abcd");
-    CheckQuery(
-      root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
-                 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-      rdr);
+    {
+      irs::And root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                            24, 25, 26, 27, 28, 29, 30, 31, 32},
+                 rdr);
+    }
   }
-}
+
+  // duplicated=abcd AND NOT name=A AND NOT name=E
+  {
+    {
+      irs::And root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "E");
+      CheckQuery(root, Docs{11, 21, 27, 31}, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::by_term>() =
+        make_filter<irs::by_term>("duplicated", "abcd");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("name", "A");
+      root.add<irs::Not>().filter<irs::by_term>() =
+        make_filter<irs::by_term>("prefix", "abcd");
+      CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                            24, 25, 26, 27, 28, 29, 30, 31, 32},
+                 rdr);
+    }
+  }
 }
 
 TEST_P(boolean_filter_test_case, not_standalone_sequential) {
@@ -16160,7 +16178,9 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { CheckQuery(irs::Not(), Docs{}, rdr); }
+  {
+    CheckQuery(irs::Not(), Docs{}, rdr);
+  }
 
   // single not statement - empty result
   {
@@ -16850,4 +16870,4 @@ INSTANTIATE_TEST_SUITE_P(boolean_filter_test, boolean_filter_test_case,
                                             ::testing::Values("1_0")),
                          boolean_filter_test_case::to_string);
 
-}  // tests
+}  // namespace tests

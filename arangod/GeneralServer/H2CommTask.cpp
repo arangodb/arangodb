@@ -967,12 +967,12 @@ void H2CommTask<T>::queueHttp2Responses() {
 
 #ifdef USE_DTRACE
 // Moved out to avoid duplication by templates.
-static void __attribute__((noinline))
-DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
+static void __attribute__((noinline)) DTraceH2CommTaskBeforeAsyncWrite(
+    size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskBeforeAsyncWrite, th);
 }
-static void __attribute__((noinline))
-DTraceH2CommTaskAfterAsyncWrite(size_t th) {
+static void __attribute__((noinline)) DTraceH2CommTaskAfterAsyncWrite(
+    size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
 }
 #else
@@ -1086,6 +1086,5 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-template class arangodb::rest::H2CommTask<SocketType::Unix>;
 
 }  // namespace arangodb::rest
