@@ -30,6 +30,7 @@
 #include <memory>
 
 #include "Basics/ResultT.h"
+#include "Utils/ConnectionHandles.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -90,8 +91,10 @@ class V8ClientConnection {
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value);
   void setForceJson(bool value) { _forceJson = value; };
-  std::string username() const { return _builder.user(); }
-  std::string password() const { return _builder.password(); }
+  std::string username() const { return _handles.config().builder.user(); }
+  std::string password() const {
+    return _handles.config().builder.password();
+  }
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
@@ -100,8 +103,8 @@ class V8ClientConnection {
   std::string endpointSpecification() const;
 
   std::string getLocalEndpoint() {
-    if (_connection) {
-      return _connection->localEndpoint();
+    if (auto const& connection = _handles.connection(); connection) {
+      return connection->localEndpoint();
     } else {
       return "not connected";
     }
@@ -174,6 +177,13 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
+  // how a connection is configured
+  struct Configuration {
+    fuerte::ConnectionBuilder builder;
+  };
+
+  using Handles = ConnectionHandles<Configuration>;
+
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
@@ -193,8 +203,8 @@ class V8ClientConnection {
                                     std::unique_ptr<fuerte::Response> response,
                                     fuerte::Error ec);
 
-  /// @brief shuts down the connection _connection and resets the pointer
-  /// to a nullptr
+  /// @brief cancels the active connection, which stays active but closed
+  /// until it is replaced
   void shutdownConnection();
 
   void setCustomError(int httpCode, std::string const& msg) {
@@ -237,24 +247,19 @@ class V8ClientConnection {
   std::string _role;
 
   fuerte::EventLoopService _loop;
-  fuerte::ConnectionBuilder _builder;
-  fuerte::ConnectionBuilder _connectedBuilder;
-  std::string _currentConnectionId;
-  std::shared_ptr<fuerte::Connection> _connection;
   bool _foundConnectionClose;
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;
 
-  // a per-endpoint, per-user cache for connections. whenever we reconnect
-  // to another endpoint, we can put the old connection into this cache,
-  // and recycle it later. the goal is to not use too many separate connections
-  // and ephemeral ports for patterns such as "connect-to-leader" ->
-  // "connect-to-follower"
-  // -> "connect-to-leader" etc.
-  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>>
-      _connectionCache;
-  std::unordered_map<std::string, fuerte::ConnectionBuilder>
-      _connectionBuilderCache;
+  // the active connection and a per-endpoint, per-user cache of inactive
+  // ones. whenever we reconnect to another endpoint, we can put the old
+  // connection into this cache, and recycle it later. the goal is to not use
+  // too many separate connections and ephemeral ports for patterns such as
+  // "connect-to-leader" -> "connect-to-follower" -> "connect-to-leader" etc.
+  // the config() of the active entry is the one to connect with next while no
+  // connection is active; whoever retargets it to another connection has to
+  // deactivate() the active connection first
+  Handles _handles;
 };
 }  // namespace arangodb
