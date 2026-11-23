@@ -1,6 +1,9 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.18.35.
 
 * A sorted AQL COLLECT reuses a preceding SORT if the group variables are the
@@ -13,9 +16,6 @@ v3.11.14.7 (XXXX-XX-XX)
    CVE-2026-110306, CVE-2026-110095 and CVE-2026-110725
  - lodash to 4.18.1 to resolve CVE-2026-2950
  - qs to 6.16.1 to resolve CVE-2026-110816
-
-* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
-  dependencies.
 
 * Update timezone database as of 05.10.2026.
 
