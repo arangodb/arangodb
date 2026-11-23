@@ -337,7 +337,7 @@ void HttpCommTask<T>::sendBodyLimitError(rest::ResponseCode code) {
         "request body is larger than the global request body memory limit");
   } else {
     this->sendErrorResponse(code, rest::ContentType::UNSET, 1,
-                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                            TRI_ERROR_OUT_OF_MEMORY,
                             "global request body memory limit reached, try "
                             "again later");
   }

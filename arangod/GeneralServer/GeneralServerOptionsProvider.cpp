@@ -144,7 +144,7 @@ while it arrives is rejected with HTTP 503 and the connection is closed
 (HTTP/1.1), or the stream is reset (HTTP/2). A client still sending its body may
 only see the connection being closed.
 
-The default is 10% of the physical memory, but at least 1 GiB, the maximum size
+The default is 10% of the physical memory, but at least 1 GB, the maximum size
 of a single request body. A value of `0` disables the limit.)");
 
   opts->addOption(
