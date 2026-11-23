@@ -37,7 +37,7 @@
 //   - Hardened actions (license, metrics) ask nothing without --server.harden.
 //   - isSuperuser / isSuperuserOrDisabled checks do not call can().
 //   - The real extra questions come from RestAdminServerHandler:
-//     PUT mode -> AdminMaintenance, api-calls -> AdminApiCalls,
+//     PUT mode -> AdminReadOnlyMode, api-calls -> AdminApiCalls,
 //     aql-queries -> AdminAqlQueries.
 
 if (getOptions === true) {
@@ -210,7 +210,7 @@ function serverApiAuthzSuite() {
                 },
 
                 // PUT /_admin/server/mode - RestAdminServerHandler::handleMode() asks
-                // canUseAdminAction(AdminMaintenance) (line 201). Body {mode:"default"} is
+                // canUseAdminAction(AdminReadOnlyMode) (line 201). Body {mode:"default"} is
                 // a no-op when the server is already in default mode.
                 testSetMode: function () {
                         beginObserve();
@@ -218,7 +218,7 @@ function serverApiAuthzSuite() {
                         assertPermissions([
                                 "UseApiVersion version=v1",
                                 "UseDatabase name=_system level=read",
-                                "AdminMaintenance"
+                                "AdminReadOnlyMode"
                         ], endObserve());
                 },
 

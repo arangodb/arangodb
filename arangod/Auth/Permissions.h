@@ -112,6 +112,7 @@ struct AdminDump {};
 struct AdminRestore {};
 struct AdminWalAccess {};
 struct AdminReadAgency {};
+struct AdminReadOnlyMode {};
 struct AdminQueryCache {};
 
 namespace detail {
@@ -123,7 +124,7 @@ using AdminList = meta::TypeList<
     AdminOptions, AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
     AdminMaintenance, AdminRebalance, AdminLicense, AdminBackup,
     AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump, AdminRestore,
-    AdminWalAccess, AdminReadAgency, AdminQueryCache>;
+    AdminWalAccess, AdminReadAgency, AdminReadOnlyMode, AdminQueryCache>;
 }
 
 template<typename T>
