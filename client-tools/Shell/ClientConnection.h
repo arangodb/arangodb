@@ -66,14 +66,14 @@ class Connection;
 /// @brief class for http requests
 ////////////////////////////////////////////////////////////////////////////////
 
-class V8ClientConnection {
-  V8ClientConnection(V8ClientConnection const&) = delete;
-  V8ClientConnection& operator=(V8ClientConnection const&) = delete;
+class ClientConnection {
+  ClientConnection(ClientConnection const&) = delete;
+  ClientConnection& operator=(ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&,
-                              ClientFeature&);
-  ~V8ClientConnection();
+  explicit ClientConnection(application_features::ApplicationServer&,
+                            ClientFeature&);
+  ~ClientConnection();
 
   void setInterrupted(bool interrupted);
 

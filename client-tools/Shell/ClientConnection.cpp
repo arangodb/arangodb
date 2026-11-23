@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8ClientConnection.h"
+#include "ClientConnection.h"
 
 #include "Utils/RequestCoding.h"
 
@@ -87,7 +87,7 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder const& builder) {
 
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(
+ClientConnection::ClientConnection(
     application_features::ApplicationServer& server, ClientFeature& client)
     : _server(server),
       _client(client),
@@ -97,7 +97,7 @@ V8ClientConnection::V8ClientConnection(
       _version("arango"),
       _mode("unknown mode"),
       _role("UNKNOWN"),
-      _loop(1, "V8ClientConnection"),
+      _loop(1, "ClientConnection"),
       _foundConnectionClose(false),
       _forceJson(false),
       _setCustomError(false) {
@@ -119,13 +119,13 @@ V8ClientConnection::V8ClientConnection(
   });
 }
 
-V8ClientConnection::~V8ClientConnection() {
+ClientConnection::~ClientConnection() {
   _handles.config().builder.onFailure(nullptr);  // reset callback
   shutdownConnection();
   _loop.stop();
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
+std::shared_ptr<fu::Connection> ClientConnection::createConnection(
     bool bypassCache) {
   if (endpoint() == "none") {
     setCustomError(400, "no endpoint specified");
@@ -286,7 +286,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   return nullptr;
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
+std::shared_ptr<fu::Connection> ClientConnection::acquireConnection(
     bool bypassCache) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
@@ -305,7 +305,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
   return _handles.connection();
 }
 
-void V8ClientConnection::setInterrupted(bool interrupted) {
+void ClientConnection::setInterrupted(bool interrupted) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (interrupted && _handles.connection() != nullptr) {
     shutdownConnection();
@@ -316,7 +316,7 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   }
 }
 
-bool V8ClientConnection::isConnected() const {
+bool ClientConnection::isConnected() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_handles.connection()) {
     if (_handles.connection()->state() == fu::Connection::State::Connected) {
@@ -329,7 +329,7 @@ bool V8ClientConnection::isConnected() const {
   return false;
 }
 
-std::string V8ClientConnection::endpointSpecification() const {
+std::string ClientConnection::endpointSpecification() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_handles.connection()) {
     return _handles.connection()->endpoint();
@@ -337,45 +337,45 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-application_features::ApplicationServer& V8ClientConnection::server() {
+application_features::ApplicationServer& ClientConnection::server() {
   return _server;
 }
 
-std::string V8ClientConnection::databaseName() const {
+std::string ClientConnection::databaseName() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   return _handles.config().databaseName;
 }
 
-void V8ClientConnection::setDatabaseName(std::string const& value) {
+void ClientConnection::setDatabaseName(std::string const& value) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   _handles.config().databaseName = value;
 }
 
-double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
+double ClientConnection::timeout() const { return _requestTimeout.count(); }
 
-void V8ClientConnection::timeout(double value) {
+void ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
 
-std::string V8ClientConnection::endpoint() const {
+std::string ClientConnection::endpoint() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   return _handles.config().endpoint.empty() ? _client.endpoint()
                                             : _handles.config().endpoint;
 }
 
-std::string V8ClientConnection::username() const {
+std::string ClientConnection::username() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   return _handles.config().endpoint.empty() ? _client.username()
                                             : _handles.config().username;
 }
 
-std::string V8ClientConnection::password() const {
+std::string ClientConnection::password() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   return _handles.config().endpoint.empty() ? _client.password()
                                             : _handles.config().password;
 }
 
-std::string V8ClientConnection::protocol() const {
+std::string ClientConnection::protocol() const {
   switch (_handles.config().builder.protocolType()) {
     case fuerte::ProtocolType::Http:
       return "http";
@@ -387,9 +387,10 @@ std::string V8ClientConnection::protocol() const {
 }
 
 // Helper function to authenticate via /_open/auth endpoint
-TokenOutcome V8ClientConnection::requestToken(
-    TokenRequest request, fu::ConnectionBuilder const& target,
-    std::string const& username, std::string const& password) {
+TokenOutcome ClientConnection::requestToken(TokenRequest request,
+                                            fu::ConnectionBuilder const& target,
+                                            std::string const& username,
+                                            std::string const& password) {
   try {
     std::shared_ptr<fu::Connection> connection;
     if (request == TokenRequest::kRenew && _handles.connection() != nullptr &&
@@ -464,7 +465,7 @@ TokenOutcome V8ClientConnection::requestToken(
   return TokenOutcome::error(TRI_ERROR_FAILED, "unknown error");
 }
 
-void V8ClientConnection::renewTokenIfDue() {
+void ClientConnection::renewTokenIfDue() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   std::string newToken;
   switch (_handles.config().renewal.kind) {
@@ -516,7 +517,7 @@ void V8ClientConnection::renewTokenIfDue() {
   }
 }
 
-std::string const& V8ClientConnection::internalToken(
+std::string const& ClientConnection::internalToken(
     std::string const& jwtSecret) {
   // superuser tokens do not expire, and a new one would only differ in its
   // "iat" claim. reusing it lets a reconnect reuse the cached connection,
@@ -529,7 +530,7 @@ std::string const& V8ClientConnection::internalToken(
   return _internalToken;
 }
 
-ResultT<std::string> V8ClientConnection::prepareConnection() {
+ResultT<std::string> ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
@@ -593,7 +594,7 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   return ResultT<std::string>::success("");
 }
 
-void V8ClientConnection::adoptClientSettings(Configuration const& config) {
+void ClientConnection::adoptClientSettings(Configuration const& config) {
   _client.setEndpoint(config.endpoint);
   _client.setUsername(config.username);
   _client.setPassword(config.password);
@@ -601,7 +602,7 @@ void V8ClientConnection::adoptClientSettings(Configuration const& config) {
   _client.setDatabaseName(config.databaseName);
 }
 
-ResultT<std::string> V8ClientConnection::connect() {
+ResultT<std::string> ClientConnection::connect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   auto res = prepareConnection();
   if (res.ok()) {
@@ -610,7 +611,7 @@ ResultT<std::string> V8ClientConnection::connect() {
   return res;
 }
 
-ResultT<std::string> V8ClientConnection::reconnect() {
+ResultT<std::string> ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
   auto res = prepareConnection();
@@ -649,10 +650,10 @@ ResultT<std::string> V8ClientConnection::reconnect() {
   return ResultT<std::string>::success("");
 }
 
-std::string V8ClientConnection::getHandle() { return _handles.activeHandle(); }
+std::string ClientConnection::getHandle() { return _handles.activeHandle(); }
 
-std::vector<V8ClientConnection::HandleInfo>
-V8ClientConnection::connectionHandleTable() const {
+std::vector<ClientConnection::HandleInfo>
+ClientConnection::connectionHandleTable() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   std::vector<HandleInfo> table;
   auto const addEntry = [&](std::string const& id,
@@ -684,7 +685,7 @@ V8ClientConnection::connectionHandleTable() const {
   return table;
 }
 
-V8ClientConnection::HandleSwitch V8ClientConnection::connectHandle(
+ClientConnection::HandleSwitch ClientConnection::connectHandle(
     std::string const& handle) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC("8aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
@@ -705,7 +706,7 @@ V8ClientConnection::HandleSwitch V8ClientConnection::connectHandle(
   return HandleSwitch::kSwitched;
 }
 
-bool V8ClientConnection::disconnectHandle(std::string const& handle) {
+bool ClientConnection::disconnectHandle(std::string const& handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_handles.take(handle).has_value()) {
     return true;
@@ -717,13 +718,13 @@ bool V8ClientConnection::disconnectHandle(std::string const& handle) {
   return false;
 }
 
-void V8ClientConnection::flushConnectionCache() {
+void ClientConnection::flushConnectionCache() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   _handles.clear();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
+void ClientConnection::reconnectWithNewPassword(std::string const& password) {
   _client.setPassword(password);
   this->reconnect();
 }
@@ -731,7 +732,7 @@ void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
 
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
+uint32_t ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   std::shared_ptr<fu::Connection> connection = acquireConnection(true);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     return kFuzzNotConnected;
@@ -784,7 +785,7 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
 }
 #endif
 
-ResultT<V8ClientConnection::RequestOutcome> V8ClientConnection::sendRequest(
+ResultT<ClientConnection::RequestOutcome> ClientConnection::sendRequest(
     fu::RestVerb verb, std::string_view location,
     std::unordered_map<std::string, std::string> const& headerFields,
     RequestBody const& body, std::chrono::milliseconds timeout) {
@@ -842,7 +843,7 @@ ResultT<V8ClientConnection::RequestOutcome> V8ClientConnection::sendRequest(
 }
 
 // forces a new connection to be used
-void V8ClientConnection::forceNewConnection() {
+void ClientConnection::forceNewConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
   _lastErrorMessage.clear();
@@ -852,7 +853,7 @@ void V8ClientConnection::forceNewConnection() {
   createConnection(/*bypassCache*/ true);
 }
 
-void V8ClientConnection::shutdownConnection() {
+void ClientConnection::shutdownConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_handles.connection()) {
     _handles.connection()->cancel();

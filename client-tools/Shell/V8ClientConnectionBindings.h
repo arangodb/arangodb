@@ -26,12 +26,12 @@
 
 namespace arangodb {
 class ClientFeature;
-class V8ClientConnection;
+class ClientConnection;
 
 // Exposes connection as SYS_ARANGO and the ArangoConnection constructor to the
 // scripts of isolate
 void TRI_InitV8ClientConnection(v8::Isolate* isolate,
                                 v8::Local<v8::Context> context,
-                                V8ClientConnection& connection,
+                                ClientConnection& connection,
                                 ClientFeature& client);
 }  // namespace arangodb

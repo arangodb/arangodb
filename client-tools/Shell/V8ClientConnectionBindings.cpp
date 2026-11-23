@@ -22,7 +22,7 @@
 
 #include "V8ClientConnectionBindings.h"
 
-#include "V8ClientConnection.h"
+#include "ClientConnection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -221,8 +221,8 @@ velocypack::Options const& requestBodyOptions() {
 }
 
 v8::Local<v8::Value> resultToV8(v8::Isolate* isolate,
-                                V8ClientConnection const& connection,
-                                V8ClientConnection::RequestOutcome& outcome) {
+                                ClientConnection const& connection,
+                                ClientConnection::RequestOutcome& outcome) {
   auto context = TRI_IGETC;
   v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!outcome.response) {
@@ -247,8 +247,8 @@ v8::Local<v8::Value> resultToV8(v8::Isolate* isolate,
   return result;
 }
 
-v8::Local<v8::Value> rawResultToV8(
-    v8::Isolate* isolate, V8ClientConnection::RequestOutcome& outcome) {
+v8::Local<v8::Value> rawResultToV8(v8::Isolate* isolate,
+                                   ClientConnection::RequestOutcome& outcome) {
   auto context = TRI_IGETC;
   v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!outcome.response) {
@@ -300,7 +300,7 @@ v8::Local<v8::Value> rawResultToV8(
 
 // isFile: body is the name of the file to send
 v8::Local<v8::Value> requestData(
-    v8::Isolate* isolate, V8ClientConnection& connection, fu::RestVerb verb,
+    v8::Isolate* isolate, ClientConnection& connection, fu::RestVerb verb,
     std::string_view location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw,
     bool isFile = false) {
@@ -345,7 +345,7 @@ v8::Local<v8::Value> requestData(
 
 v8::Local<v8::Value> handleTableToV8(
     v8::Isolate* isolate,
-    std::vector<V8ClientConnection::HandleInfo> const& handles) {
+    std::vector<ClientConnection::HandleInfo> const& handles) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::Object> table = v8::Object::New(isolate);
 
@@ -383,7 +383,7 @@ v8::Local<v8::Value> handleTableToV8(
 /// @brief weak reference callback for connections (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
+static void DestroyV8ClientConnection(ClientConnection* v8connection) {
   TRI_ASSERT(v8connection != nullptr);
 
   auto it = Connections.find(v8connection);
@@ -405,17 +405,17 @@ static void ClientConnection_DestructorCallback(
   auto persistent = data.GetParameter();
   auto myConnection =
       v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
-  auto v8connection = static_cast<V8ClientConnection*>(myConnection->Value());
+  auto v8connection = static_cast<ClientConnection*>(myConnection->Value());
 
   DestroyV8ClientConnection(v8connection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrap V8ClientConnection in a v8::Object
+/// @brief wrap ClientConnection in a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Local<v8::Value> WrapV8ClientConnection(
-    v8::Isolate* isolate, V8ClientConnection* v8connection) {
+    v8::Isolate* isolate, ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
   auto localConnectionTempl =
       v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
@@ -449,7 +449,7 @@ static void ClientConnection_ConstructorCallback(
   TRI_GET_GLOBALS();
 
   auto v8connection =
-      std::make_unique<V8ClientConnection>(v8g->server(), *client);
+      std::make_unique<ClientConnection>(v8g->server(), *client);
   auto res = v8connection->connect();
   if (res.ok() && v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
@@ -483,7 +483,7 @@ static void ClientConnection_protocol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -511,7 +511,7 @@ static void ClientConnection_reconnect(
     return;
   }
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -620,7 +620,7 @@ static void ClientConnection_setJwtSecret(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -653,7 +653,7 @@ static void ClientConnection_getHandle(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -672,7 +672,7 @@ static void ClientConnection_getHandleTable(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -696,7 +696,7 @@ static void ClientConnection_connectHandle(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -711,10 +711,10 @@ static void ClientConnection_connectHandle(
 
   auto handle = TRI_ObjectToString(isolate, args[0]);
   switch (v8connection->connectHandle(handle)) {
-    case V8ClientConnection::HandleSwitch::kUnknownHandle:
+    case ClientConnection::HandleSwitch::kUnknownHandle:
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                      "Handle not found in the connection list");
-    case V8ClientConnection::HandleSwitch::kSwitched:
+    case ClientConnection::HandleSwitch::kSwitched:
       // the db object caches what it read via the previous handle, which may
       // have been another database, server or user. it is not refilled here,
       // as switching handles must not send requests
@@ -722,7 +722,7 @@ static void ClientConnection_connectHandle(
                                   "require('internal').db._forgetCache();",
                                   "forget db object cache", false);
       break;
-    case V8ClientConnection::HandleSwitch::kAlreadyActive:
+    case ClientConnection::HandleSwitch::kAlreadyActive:
       break;
   }
   TRI_V8_RETURN_TRUE();
@@ -739,7 +739,7 @@ static void ClientConnection_disconnectHandle(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -770,7 +770,7 @@ static void ClientConnection_flushConnectionCache(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -798,7 +798,7 @@ static void ClientConnection_connectedUser(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -826,7 +826,7 @@ static void ClientConnection_httpGetAny(
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -884,7 +884,7 @@ static void ClientConnection_httpHeadAny(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -943,7 +943,7 @@ static void ClientConnection_httpDeleteAny(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1007,7 +1007,7 @@ static void ClientConnection_httpOptionsAny(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1066,7 +1066,7 @@ static void ClientConnection_httpPostAny(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1126,7 +1126,7 @@ static void ClientConnection_httpFuzzRequests(
 
   auto context = TRI_IGETC;
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, context);
 
   if (v8connection == nullptr) {
@@ -1223,7 +1223,7 @@ static void ClientConnection_httpFuzzRequests(
 
   for (uint64_t i = 0; i < numReqs; ++i) {
     uint32_t returnCode = v8connection->sendFuzzRequest(fuzzer);
-    if (returnCode == V8ClientConnection::kFuzzNotConnected) {
+    if (returnCode == ClientConnection::kFuzzNotConnected) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                      "connection lost during fuzzing tests");
     }
@@ -1236,19 +1236,18 @@ static void ClientConnection_httpFuzzRequests(
   builder.add("totalRequests", velocypack::Value(numReqs));
 
   if (auto it = fuzzReturnCodesCount.find(
-          V8ClientConnection::kFuzzClosedConnectionCode);
+          ClientConnection::kFuzzClosedConnectionCode);
       it != fuzzReturnCodesCount.end()) {
     builder.add("connectionClosed", velocypack::Value(it->second));
   }
 
   if (auto it =
-          fuzzReturnCodesCount.find(V8ClientConnection::kFuzzNoResponseCode);
+          fuzzReturnCodesCount.find(ClientConnection::kFuzzNoResponseCode);
       it != fuzzReturnCodesCount.end()) {
     builder.add("noResponse", velocypack::Value(it->second));
   }
 
-  if (auto it =
-          fuzzReturnCodesCount.find(V8ClientConnection::kFuzzNotConnected);
+  if (auto it = fuzzReturnCodesCount.find(ClientConnection::kFuzzNotConnected);
       it != fuzzReturnCodesCount.end()) {
     builder.add("notConnected", velocypack::Value(it->second));
   }
@@ -1256,9 +1255,9 @@ static void ClientConnection_httpFuzzRequests(
   builder.add(velocypack::Value("returnCodes"));
   builder.openObject();
   for (auto const& [returnCode, count] : fuzzReturnCodesCount) {
-    if (returnCode != V8ClientConnection::kFuzzClosedConnectionCode &&
-        returnCode != V8ClientConnection::kFuzzNoResponseCode &&
-        returnCode != V8ClientConnection::kFuzzNotConnected) {
+    if (returnCode != ClientConnection::kFuzzClosedConnectionCode &&
+        returnCode != ClientConnection::kFuzzNoResponseCode &&
+        returnCode != ClientConnection::kFuzzNotConnected) {
       builder.add(std::to_string(returnCode), velocypack::Value(count));
     }
   }
@@ -1284,7 +1283,7 @@ static void ClientConnection_httpPutAny(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1343,7 +1342,7 @@ static void ClientConnection_httpPatchAny(
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1402,7 +1401,7 @@ static void ClientConnection_httpSendFile(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1461,7 +1460,7 @@ static void ClientConnection_getEndpoint(
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -1552,7 +1551,7 @@ static void ClientConnection_importCsv(
     }
   }
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   application_features::ApplicationServer& server = v8connection->server();
@@ -1648,7 +1647,7 @@ static void ClientConnection_importJson(
     TRI_V8_THROW_TYPE_ERROR("<collection> must be a UTF-8 filename");
   }
 
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   application_features::ApplicationServer& server = v8connection->server();
@@ -1728,7 +1727,7 @@ static void ClientConnection_lastHttpReturnCode(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1760,7 +1759,7 @@ static void ClientConnection_lastErrorMessage(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1792,7 +1791,7 @@ static void ClientConnection_isConnected(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1826,7 +1825,7 @@ static void ClientConnection_forceJson(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1867,7 +1866,7 @@ static void ClientConnection_timeout(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -1971,7 +1970,7 @@ static void ClientConnection_toString(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2012,7 +2011,7 @@ static void ClientConnection_getVersion(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2043,7 +2042,7 @@ static void ClientConnection_getMode(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2073,7 +2072,7 @@ static void ClientConnection_getRole(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2103,7 +2102,7 @@ static void ClientConnection_getDatabaseName(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2134,7 +2133,7 @@ static void ClientConnection_setDatabaseName(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -2174,7 +2173,7 @@ static void ClientConnection_reconnectWithNewPassword(
   }
 
   // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+  ClientConnection* v8connection = TRI_UnwrapClass<ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
@@ -2234,7 +2233,7 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 void arangodb::TRI_InitV8ClientConnection(v8::Isolate* isolate,
                                           v8::Local<v8::Context> context,
-                                          V8ClientConnection& connection,
+                                          ClientConnection& connection,
                                           ClientFeature& client) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, &client);
 

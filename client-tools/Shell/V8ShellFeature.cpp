@@ -460,7 +460,7 @@ void V8ShellFeature::setup(v8::Local<v8::Context>& context,
       haveClient = true;
       ClientFeature& client =
           server().getFeature<HttpEndpointProvider, ClientFeature>();
-      _connection = std::make_shared<V8ClientConnection>(server(), client);
+      _connection = std::make_shared<ClientConnection>(server(), client);
       if (client.isEnabled()) {
         _connection->connect();
       }
