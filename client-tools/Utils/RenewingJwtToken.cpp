@@ -62,6 +62,15 @@ auto expiryOf(JwtToken const& token) -> std::optional<JwtClock::time_point> {
 }
 
 /**
+ * Whether /_open/auth/renew answered that it does not accept the token
+ */
+auto isRefusal(int httpStatus) -> bool {
+  return httpStatus == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
+         httpStatus == static_cast<int>(rest::ResponseCode::FORBIDDEN) ||
+         httpStatus == static_cast<int>(rest::ResponseCode::NOT_FOUND);
+}
+
+/**
  * Reports the outcome of a renewal attempt
  */
 void logRenewal(TokenOutcome const& outcome, JwtTokenState const& state,
@@ -122,6 +131,18 @@ auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
   return state;
 }
 
+auto renewOrLogin(JwtTokenState const& state, JwtClock::time_point now,
+                  std::function<TokenOutcome()> const& renew,
+                  std::function<TokenOutcome()> const& login) -> TokenOutcome {
+  if (state.expiresAt.has_value() && now < *state.expiresAt) {
+    auto renewed = renew();
+    if (!renewed.is(TRI_ERROR_HTTP_UNAUTHORIZED)) {
+      return renewed;
+    }
+  }
+  return login();
+}
+
 auto parseTokenReply(TokenRequest request, int httpStatus,
                      velocypack::Slice body) -> TokenOutcome {
   if (request == TokenRequest::kLogin &&
@@ -141,6 +162,10 @@ auto parseTokenReply(TokenRequest request, int httpStatus,
           msg.isString()) {
         errorMessage = msg.copyString();
       }
+    }
+    if (request == TokenRequest::kRenew && isRefusal(httpStatus)) {
+      // the caller logs in again on a refusal, but not on other errors
+      errorNum = TRI_ERROR_HTTP_UNAUTHORIZED;
     }
     return TokenOutcome::error(
         errorNum, absl::StrCat("got invalid response from server: HTTP ",

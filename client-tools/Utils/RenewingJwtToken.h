@@ -100,6 +100,19 @@ auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
 
 /**
+ * Obtains a successor of the token in state, via renew or login
+ *
+ * A token that is still valid is renewed, which sends no password. One that
+ * has expired, or whose renewal the server refuses, requires logging in
+ * again. Other renewal errors, such as timeouts or HTTP 5xx, are returned,
+ * so that applyRenewal() schedules a retry instead of sending the password
+ * to a failing server.
+ */
+auto renewOrLogin(JwtTokenState const& state, JwtClock::time_point now,
+                  std::function<TokenOutcome()> const& renew,
+                  std::function<TokenOutcome()> const& login) -> TokenOutcome;
+
+/**
  * The request a token reply answers
  */
 enum class TokenRequest {
@@ -114,7 +127,10 @@ enum class TokenRequest {
  *
  * body is the parsed reply body, or None if it is empty or no valid JSON. A
  * server that has authentication disabled issues no token, nor does one that
- * does not implement /_open/auth (HTTP 404 or 501).
+ * does not implement /_open/auth (HTTP 404 or 501). /_open/auth/renew answers
+ * HTTP 404 to a token it does not accept; that and HTTP 401 or 403 are
+ * reported as TRI_ERROR_HTTP_UNAUTHORIZED, whatever the error number in the
+ * body.
  */
 auto parseTokenReply(TokenRequest request, int httpStatus,
                      velocypack::Slice body) -> TokenOutcome;

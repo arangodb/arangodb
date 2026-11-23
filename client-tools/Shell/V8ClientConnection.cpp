@@ -76,13 +76,18 @@ namespace fu = arangodb::fuerte;
 
 namespace {
 // return an identifier to a connection configuration, consisting of
-// endpoint, username, password, jwt, authentication and protocol type
+// endpoint, username, password, jwt, authentication and protocol type.
+// the time claims of the jwt are left out, so that a renewed or regenerated
+// token for the same identity keeps the identifier
 std::string connectionIdentifier(fuerte::ConnectionBuilder const& builder) {
-  std::string const raw =
-      absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
-                   builder.password(), "/", builder.jwtToken(), "/",
-                   to_string(builder.authenticationType()), "/",
-                   to_string(builder.protocolType()));
+  std::string const jwtToken = builder.jwtToken();
+  std::string const raw = absl::StrCat(
+      builder.normalizedEndpoint(), "/", builder.user(), "/",
+      builder.password(), "/",
+      arangodb::rest::SslInterface::jwt::extractTimelessClaims(jwtToken)
+          .value_or(jwtToken),
+      "/", to_string(builder.authenticationType()), "/",
+      to_string(builder.protocolType()));
   // create md5
   boost::hash2::md5_128 hash;
   hash.update(raw.c_str(), raw.size());
@@ -109,7 +114,6 @@ V8ClientConnection::V8ClientConnection(
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
-      _jwtTokenExpiry(0.0),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
@@ -163,8 +167,17 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   bool wasFromCache = false;
   if (!bypassCache) {
     if (auto cached = _handles.take(id); cached.has_value()) {
-      candidate.connection = std::move(cached->connection);
-      wasFromCache = true;
+      if (cached->config.builder.jwtToken() ==
+          _handles.config().builder.jwtToken()) {
+        // reuse the connection, but keep the new configuration: it holds
+        // the endpoint and username as the client gave them this time
+        candidate.connection = std::move(cached->connection);
+        wasFromCache = true;
+      } else if (cached->connection != nullptr) {
+        // same identity, but a newer token. a connection keeps the token it
+        // was created with, so the cached one is replaced
+        cached->connection->cancel();
+      }
     }
   }
   if (candidate.connection == nullptr) {
@@ -306,6 +319,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
+  // renew the token before sending a request with it
+  renewTokenIfDue();
+
   if (!_handles.connection() ||
       (_handles.connection()->state() == fu::Connection::State::Closed) ||
       _foundConnectionClose) {
@@ -373,187 +389,145 @@ std::string V8ClientConnection::protocol() const {
 }
 
 // Helper function to authenticate via /_open/auth endpoint
-ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
-  // Create a temporary connection builder for the auth request
-  fuerte::ConnectionBuilder tempBuilder;
-  tempBuilder.endpoint(_client.endpoint());
-
-  // Create connection without authentication
+TokenOutcome V8ClientConnection::requestToken(
+    TokenRequest request, fu::ConnectionBuilder const& target,
+    std::string const& username, std::string const& password) {
   try {
-    auto connection = tempBuilder.connect(_loop);
+    std::shared_ptr<fu::Connection> connection;
+    if (request == TokenRequest::kRenew && _handles.connection() != nullptr &&
+        _handles.connection()->state() == fu::Connection::State::Connected &&
+        _handles.config().builder.jwtToken() == target.jwtToken()) {
+      // the active connection already authenticates with the token
+      connection = _handles.connection();
+    } else {
+      // a temporary connection to the endpoint of target and with its
+      // settings, which does not report failures as errors of this
+      // connection. a login sends credentials instead of a token
+      fu::ConnectionBuilder tempBuilder = target;
+      tempBuilder.onFailure(nullptr);
+      if (request == TokenRequest::kLogin) {
+        tempBuilder.user("").password("").jwtToken("").authenticationType(
+            fu::AuthenticationType::None);
+      }
+      connection = tempBuilder.connect(_loop);
+    }
     if (!connection) {
-      return ResultT<std::string>::error(
+      return TokenOutcome::error(
           TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
           "Failed to create connection for authentication");
     }
-    // Prepare the authentication request
     auto req = std::make_unique<fu::Request>();
     req->header.restVerb = fu::RestVerb::Post;
-    req->header.path = "/_open/auth";
+    req->header.path =
+        request == TokenRequest::kLogin ? "/_open/auth" : "/_open/auth/renew";
     req->header.contentType(fu::ContentType::Json);
     req->header.acceptType(fu::ContentType::Json);
     req->timeout(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-    // Create JSON body with username and password
-    velocypack::Builder bodyBuilder;
-    bodyBuilder.openObject();
-    bodyBuilder.add("username", _client.username());
-    bodyBuilder.add("password", _client.password());
-    bodyBuilder.close();
-
-    // Add the JSON body to the request
-    std::string jsonBody = bodyBuilder.slice().toJson();
-    req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
-                   jsonBody.size());
+    if (request == TokenRequest::kLogin) {
+      velocypack::Builder bodyBuilder;
+      bodyBuilder.openObject();
+      bodyBuilder.add("username", username);
+      bodyBuilder.add("password", password);
+      bodyBuilder.close();
+      std::string jsonBody = bodyBuilder.slice().toJson();
+      req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
+                     jsonBody.size());
+    }
 
     // Send the request
     auto response = connection->sendRequest(std::move(req));
     if (!response) {
-      return ResultT<std::string>::error(
-          TRI_ERROR_FAILED, "Failed to send authentication request");
+      return TokenOutcome::error(TRI_ERROR_FAILED,
+                                 "Failed to send authentication request");
     }
-    // Parse the response to extract the JWT token
-    if (response->payloadSize() == 0) {
-      if (response->statusCode() != fuerte::StatusOK) {
-        return ResultT<std::string>::error(
-            ::ErrorCode{static_cast<int>(response->statusCode())},
-            "Empty response from authentication endpoint");
-      } else {
-        return ResultT<std::string>::error(
-            TRI_ERROR_MALFORMED_JSON,
-            "Empty response from authentication endpoint");
+    std::shared_ptr<VPackBuilder> parsedBody;
+    VPackSlice body;
+    if (response->payloadSize() > 0) {
+      try {
+        parsedBody = VPackParser::fromJson(
+            reinterpret_cast<char const*>(response->payload().data()),
+            response->payload().size());
+        body = parsedBody->slice();
+      } catch (std::exception const&) {
+        // not JSON; body stays None
       }
     }
-
-    try {
-      auto parsedBody = VPackParser::fromJson(
-          reinterpret_cast<char const*>(response->payload().data()),
-          response->payload().size());
-      auto slice = parsedBody->slice();
-
-      if (response->statusCode() != fuerte::StatusOK) {
-        std::string errorMsg = "Authentication failed with status code: " +
-                               std::to_string(response->statusCode());
-        if (slice.isObject() && slice.hasKey("errorMessage")) {
-          errorMsg =
-              VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
-        }
-
-        // This means that open/auth endpoint is not implemented and we are not
-        // communicating to the coordinator
-        if (slice.hasKey("code") && slice.get(StaticStrings::Code).isNumber()) {
-          auto const errorCode =
-              ErrorCode(slice.get(StaticStrings::Code).getNumber<int>());
-          if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
-              errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
-            return ResultT<std::string>::error(TRI_ERROR_ARANGO_TRY_AGAIN, "");
-          }
-          if (VPackSlice errorNumSlice = slice.get(StaticStrings::ErrorNum);
-              errorNumSlice.isNumber()) {
-            auto const errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
-            return ResultT<std::string>::error(errorNum, errorMsg);
-          }
-        }
-        return ResultT<std::string>::error(
-            ::ErrorCode{static_cast<int>(response->statusCode())}, errorMsg);
-      }
-      if (!slice.isObject() || !slice.hasKey("jwt")) {
-        return ResultT<std::string>::error(
-            TRI_ERROR_MALFORMED_JSON,
-            "Invalid response format from authentication endpoint");
-      }
-
-      return ResultT<std::string>::success(
-          VelocyPackHelper::getStringValue(slice, "jwt", ""));
-    } catch (std::exception const& ex) {
-      return ResultT<std::string>::error(TRI_ERROR_MALFORMED_JSON, ex.what());
-    }
+    return parseTokenReply(request, static_cast<int>(response->statusCode()),
+                           body);
   } catch (std::exception const& ex) {
-    return ResultT<std::string>::error(TRI_ERROR_FAILED, ex.what());
+    return TokenOutcome::error(TRI_ERROR_FAILED, ex.what());
   } catch (fu::Error const& ec) {
-    return ResultT<std::string>::error(TRI_ERROR_FAILED,
-                                       fuerte::v1::to_string(ec));
+    return TokenOutcome::error(TRI_ERROR_FAILED, fuerte::v1::to_string(ec));
   } catch (...) {
     // intentional fall through to error
   }
-  return ResultT<std::string>::error(TRI_ERROR_FAILED, "unknown error");
+  return TokenOutcome::error(TRI_ERROR_FAILED, "unknown error");
 }
 
-// Helper function to check if JWT token needs renewal
-bool V8ClientConnection::needsTokenRenewal() {
-  // If we don't have stored credentials, we can't renew
-  if (_storedUsername.empty() && _storedPassword.empty()) {
-    return false;
-  }
-
-  // If we don't have a JWT token or expiry time, no renewal needed
-  if (_currentJwtToken.empty() || _jwtTokenExpiry == 0.0) {
-    return false;
-  }
-
-  // Get current time in seconds since epoch
-  double now = TRI_microtime();
-
-  // Get renewal threshold from client feature (configurable via
-  // --server.jwt-renewal-threshold)
-  double renewalThreshold = _client.jwtRenewalThreshold();
-
-  // Check if token is expired or will expire within the threshold
-  return (now + renewalThreshold) >= _jwtTokenExpiry;
-}
-
-// Helper function to renew JWT token
-ResultT<std::string> V8ClientConnection::renewJwtToken() {
+void V8ClientConnection::renewTokenIfDue() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-
-  // Temporarily store the current values to restore them later
-  auto oldUsername = _client.username();
-  auto oldPassword = _client.password();
-
-  // Set the stored credentials for authentication
-  _client.setUsername(_storedUsername);
-  _client.setPassword(_storedPassword);
-
-  // Authenticate and get new JWT token
-  auto const res = authenticateViaOpenAuth();
-  if (res.ok()) {
-    std::string newJwtToken = res.get();
-    if (!newJwtToken.empty() && newJwtToken != "invalid") {
-      // Force reconnection with the new token. the old connection is not
-      // kept: it is closed, and its token is outdated
-      shutdownConnection();
-      _handles.dropActive();
-      _handles.config().builder.jwtToken(newJwtToken);
-      _handles.config().builder.authenticationType(
-          fu::AuthenticationType::Jwt);
-
-      // Store the new token and extract its expiration time
-      _currentJwtToken = newJwtToken;
-      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-          _currentJwtToken);
-      _jwtTokenExpiry = expiry.value_or(0.0);
-
-      createConnection();
+  std::string newToken;
+  switch (_handles.config().renewal.kind) {
+    case TokenRenewal::Kind::kNone:
+      return;
+    case TokenRenewal::Kind::kJwtTokenOption:
+      // the ClientFeature renews the --server.jwt-token in the background
+      newToken = _client.jwtToken();
+      break;
+    case TokenRenewal::Kind::kLogin: {
+      auto const now = JwtClock::now();
+      auto const threshold = std::chrono::duration_cast<JwtClock::duration>(
+          std::chrono::duration<double>{_client.jwtRenewalThreshold()});
+      if (!isRenewalDue(_handles.config().renewal.token, now, threshold)) {
+        return;
+      }
+      // both at the server of this connection, as the user it was created for
+      auto const& config = _handles.config();
+      auto const outcome = renewOrLogin(
+          config.renewal.token, now,
+          [&] { return requestToken(TokenRequest::kRenew, config.builder); },
+          [&] {
+            return requestToken(TokenRequest::kLogin, config.builder,
+                                config.username, config.password);
+          });
+      if (outcome.fail()) {
+        LOG_TOPIC("7552f", WARN, arangodb::Logger::AUTHENTICATION)
+            << "renewing the JWT token of user '" << _handles.config().username
+            << "' at '" << _handles.config().endpoint
+            << "' failed: " << outcome.errorMessage() << "; retrying in "
+            << kRenewalRetryInterval.count() << " seconds at the earliest";
+      }
+      _handles.config().renewal.token = applyRenewal(
+          std::move(_handles.config().renewal.token), outcome, JwtClock::now());
+      newToken = _handles.config().renewal.token.token;
+      break;
     }
-    // Restore original client credentials (in case they were different)
-    _client.setUsername(oldUsername);
-    _client.setPassword(oldPassword);
   }
-  return res;
-}
-
-void V8ClientConnection::adoptRenewedJwtToken() {
-  std::lock_guard<std::recursive_mutex> guard(_lock);
-  auto const token = _client.jwtToken();
-  if (token.empty() || token == _handles.config().builder.jwtToken()) {
+  if (newToken.empty() || newToken == _handles.config().builder.jwtToken()) {
     return;
   }
-  // the old connection is not kept: it is closed, and its token is outdated
-  shutdownConnection();
-  _handles.dropActive();
-  _handles.config().builder.jwtToken(token);
-  createConnection();
+  // a connection keeps the token it was created with, so switch to a new
+  // one. its identifier stays the same, so it supersedes the old connection
+  _handles.config().builder.jwtToken(newToken);
+  if (_handles.connection() != nullptr) {
+    shutdownConnection();
+    createConnection();
+  }
+}
+
+std::string const& V8ClientConnection::internalToken(
+    std::string const& jwtSecret) {
+  // superuser tokens do not expire, and a new one would only differ in its
+  // "iat" claim. reusing it lets a reconnect reuse the cached connection,
+  // which keeps the token it was created with
+  if (_internalToken.empty() || _internalTokenSecret != jwtSecret) {
+    _internalToken = arangodb::rest::SslInterface::jwt::generateInternalToken(
+        jwtSecret, "arangosh");
+    _internalTokenSecret = jwtSecret;
+  }
+  return _internalToken;
 }
 
 ResultT<std::string> V8ClientConnection::prepareConnection() {
@@ -562,59 +536,60 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
 
-  // the configuration describes the active connection, so put that into the
-  // cache for later reuse before retargeting it
-  _handles.deactivate();
-  auto& builder = _handles.config().builder;
+  // configure a copy, so that a failed login leaves the configuration
+  // untouched. each authentication mode clears the fields of the others;
+  // leftovers would become part of the connection identifier
+  fu::ConnectionBuilder builder = _handles.config().builder;
   builder.endpoint(_client.endpoint());
+  TokenRenewal renewal;
+  auto const useJwt = [&builder](std::string const& token) {
+    builder.jwtToken(token).user("").password("").authenticationType(
+        fu::AuthenticationType::Jwt);
+  };
 
   // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
   TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
 
   if (!_client.jwtToken().empty()) {
-    builder.jwtToken(_client.jwtToken());
-    builder.authenticationType(fu::AuthenticationType::Jwt);
-    return ResultT<std::string>::success("");
+    useJwt(_client.jwtToken());
+    renewal.kind = TokenRenewal::Kind::kJwtTokenOption;
   } else if (!_client.jwtSecret().empty()) {
-    builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
-        _client.jwtSecret(), "arangosh"));
-    builder.authenticationType(fu::AuthenticationType::Jwt);
-    return ResultT<std::string>::success("");
+    useJwt(internalToken(_client.jwtSecret()));
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
-    auto const res = authenticateViaOpenAuth();
-    std::string jwtToken;
-
-    if (res.ok()) {
-      jwtToken = res.get();
-      // Server has authentication enabled, use the JWT token
-      builder.jwtToken(jwtToken);
-      builder.authenticationType(fu::AuthenticationType::Jwt);
-
-      // Store credentials and JWT token for automatic renewal
-      _storedUsername = _client.username();
-      _storedPassword = _client.password();
-      _currentJwtToken = jwtToken;
-
-      // Extract and store the expiration time
-      auto expiry = arangodb::rest::SslInterface::jwt::extractExpiration(
-          _currentJwtToken);
-      _jwtTokenExpiry = expiry.value_or(0.0);
+    auto const login = requestToken(TokenRequest::kLogin, builder,
+                                    _client.username(), _client.password());
+    if (login.fail()) {
+      return ResultT<std::string>::error(login.errorNumber(),
+                                         login.errorMessage());
     }
-    if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
-        jwtToken == "invalid") {
-      // This happens only on agents and dbsevers since they do noe implement
-      // _open/auth API and we will try basic auth. Used only in tests
-      builder.user(_client.username()).password(_client.password());
-      builder.authenticationType(fu::AuthenticationType::Basic);
-
-      // Store credentials for potential future use
-      _storedUsername = _client.username();
-      _storedPassword = _client.password();
+    if (auto const& token = login.get(); token.has_value()) {
+      // Server has authentication enabled, use the JWT token and renew it
+      // with the credentials of the configuration
+      useJwt(*token);
+      renewal = TokenRenewal{.kind = TokenRenewal::Kind::kLogin,
+                             .token = tokenStateFor(*token, JwtClock::now())};
+    } else {
+      // the server does not implement the _open/auth API, or has
+      // authentication disabled and issues no real token: use basic auth
+      builder.user(_client.username())
+          .password(_client.password())
+          .jwtToken("")
+          .authenticationType(fu::AuthenticationType::Basic);
     }
-    return res;
+  } else {
+    builder.user("").password("").jwtToken("").authenticationType(
+        fu::AuthenticationType::None);
   }
+  // the configuration describes the active connection, so put that into the
+  // cache for later reuse before retargeting it
+  _handles.deactivate();
+  _handles.config() = Configuration{.builder = std::move(builder),
+                                    .renewal = std::move(renewal),
+                                    .endpoint = _client.endpoint(),
+                                    .username = _client.username(),
+                                    .password = _client.password()};
   return ResultT<std::string>::success("");
 }
 
@@ -740,7 +715,9 @@ void V8ClientConnection::connectHandle(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                    "Handle not found in the connection list");
   }
-  // cache hit. make it the active connection, caching the previous one
+  // cache hit. make it the active connection, caching the previous one. it
+  // brings its own renewal state, so an expired token is renewed on the next
+  // request
   _handles.activate(handle, std::move(*cached));
 
   TRI_V8_RETURN_TRUE();
@@ -3074,12 +3051,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
-  // Check if JWT token needs renewal before sending request
-  if (needsTokenRenewal()) {
-    renewJwtToken();
-  }
-  adoptRenewedJwtToken();
-
   bool retry = true;
 
 again:
@@ -3156,12 +3127,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  // Check if JWT token needs renewal before sending request
-  if (needsTokenRenewal()) {
-    renewJwtToken();
-  }
-  adoptRenewedJwtToken();
-
   bool retry = true;
 
 again:
