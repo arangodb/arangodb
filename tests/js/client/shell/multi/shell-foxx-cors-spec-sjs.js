@@ -10,7 +10,7 @@ const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'tes
 const origin = global.instanceManager.endpoint;
 
 const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow',
-  'x-arango-queue-time-seconds', 'content-security-policy', 'cache-control', 'pragma', 'expires', 'strict-transport-security'];
+  'x-arango-queue-time-seconds', 'x-arango-api-version', 'content-security-policy', 'cache-control', 'pragma', 'expires', 'strict-transport-security'];
 function filterIrrelevant(header) {
   return !header.startsWith('x-content-type-options') &&
     !header.startsWith('access-control-') &&
@@ -37,7 +37,7 @@ describe('HTTP headers in Foxx services', function () {
       var opts = { origin };
       var result = arango.OPTIONS_RAW("/unittest/headers/header-echo", "", opts);
       expect(result.code).to.equal(200);
-      expect(result.headers['access-control-expose-headers']).to.equal('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id');
+      expect(result.headers['access-control-expose-headers']).to.equal('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id, x-arango-api-version');
       expect(result.headers).not.to.have.property('access-control-allow-headers');
       expect(result.headers['access-control-allow-credentials']).to.equal('false');
       expect(result.headers['access-control-allow-origin']).to.equal(origin);
