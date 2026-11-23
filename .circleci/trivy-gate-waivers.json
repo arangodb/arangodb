@@ -4,10 +4,10 @@
       "id": "CVE-2026-118764",
       "package": "minimatch",
       "severity": "MEDIUM",
-      "class": "remediation-pending",
+      "class": "design-acceptance",
       "detected": "2026-10-30",
-      "expires": "2027-01-28",
-      "reason": "The globParts amplification (GHSA-g3hv-75wg-m249) needs optimizationLevel >= 2. ArangoDB's own call sites (js/common/modules/jsunity.js, js/server/modules/@arangodb/foxx/mocha.js) use the default of 1, but minimatch ships to Foxx services through js/node and a service can opt in on its own patterns. The fix exists only in minimatch 11, which drops the makeRe/AST exports Foxx services may use; remediation is pending a decision on that breaking change for 3.12.",
+      "expires": "2027-10-30",
+      "reason": "Fixed by js/node/patches/minimatch+10.2.5.patch, a backport of the minimatch 11.0.1 fix (firstPhasePreProcess stops splitting **/.. at braceExpandMax, secondPhasePreProcess skips the pairwise pass above 1000 parts); Trivy still reports it because it matches on the 10.2.5 version. The upgrade to minimatch 11 is not taken in 3.12 because it drops the makeRe/AST exports Foxx services may use.",
       "approved-by": "Vadim Kondratev"
     }
   ]

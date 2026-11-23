@@ -1004,7 +1004,7 @@ License Id: -
 #### @xmldom/xmldom
 
 * Name: @xmldom/xmldom
-* Version: 0.8.13
+* Version: 0.8.15
 * Project Home: <https://github.com/xmldom/xmldom>
 * License: <https://raw.githubusercontent.com/xmldom/xmldom/master/LICENSE>
 * License Name: MIT License
