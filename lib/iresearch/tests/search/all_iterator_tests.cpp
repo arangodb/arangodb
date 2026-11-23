@@ -1,15 +1,15 @@
+#include "index/segment_reader.hpp"
+#include "search/all_iterator.hpp"
+#include "search/exclusion.hpp"
 #include "tests_shared.hpp"
 #include "utils/memory.hpp"
-#include "search/exclusion.hpp"
-#include "search/all_iterator.hpp"
-#include "index/segment_reader.hpp"
 
 using namespace irs;
 struct test_doc_iterator : public doc_iterator {
   using ptr = memory::managed_ptr<test_doc_iterator>;
 
   test_doc_iterator(const std::vector<doc_id_t>& elements)
-      : begin_(elements.begin()), end_(elements.end()) {}
+    : begin_(elements.begin()), end_(elements.end()) {}
 
   virtual doc_id_t value() const override { return doc_.value; }
 
@@ -54,7 +54,7 @@ class all_iterator_test : public ::testing::TestWithParam<size_t> {
     auto scorers = Scorers();
     score_t boost = 0.0;
     auto allItr = memory::make_managed<AllIterator>(
-        reader, nullptr, Scorers::kUnordered, docs_count, boost);
+      reader, nullptr, Scorers::kUnordered, docs_count, boost);
     return allItr;
   }
 
@@ -84,7 +84,7 @@ TEST_F(all_iterator_test, exclusion_smoketest) {
   auto inclItr = memory::make_managed<test_doc_iterator>(incl);
   auto exclItr = memory::make_managed<test_doc_iterator>(excl);
   auto testItr =
-      memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
+    memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
 
   EXPECT_EQ(testItr->value(), 0);
 
@@ -109,7 +109,7 @@ TEST_F(all_iterator_test, exclusion_using_AllIterator) {
   auto exclItr = memory::make_managed<test_doc_iterator>(excl);
 
   auto exclusionItr =
-      memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
+    memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
 
   EXPECT_EQ(exclusionItr->value(), 0);
   auto result = exclusionItr->seek(1);

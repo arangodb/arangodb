@@ -26,8 +26,8 @@
 
 namespace arangodb::actor::test {
 struct MockScheduler : IScheduler {
-  auto start(size_t number_of_threads) -> void{};
-  auto stop() -> void{};
+  auto start(size_t number_of_threads) -> void {};
+  auto stop() -> void {};
   template<class Fn>
   auto isIdle(Fn idleCheck) const -> bool {
     return idleCheck();

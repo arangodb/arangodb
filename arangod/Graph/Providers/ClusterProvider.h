@@ -75,10 +75,11 @@ class ClusterProvider {
                   ClusterBaseProviderOptions opts,
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
-  ClusterProvider(ClusterProvider&&) = default;
+  ClusterProvider(ClusterProvider&&);
   ~ClusterProvider();
 
   ClusterProvider& operator=(ClusterProvider const&) = delete;
+  ClusterProvider& operator=(ClusterProvider&&) = delete;
 
   void clear();
   void clearWithForce();

@@ -68,17 +68,6 @@ using namespace arangodb::basics;
 
 namespace {
 using PrimaryIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
-
-// Select the primary-index column family for a collection: the UDT-aware
-// PrimaryIndex_TT for time-travel collections, the regular PrimaryIndex
-// otherwise. The versioning of index entries is a consequence of that column
-// family's timestamp-aware comparator.
-RocksDBColumnFamilyManager::Family primaryIndexFamily(
-    LogicalCollection& collection) {
-  return collection.timeTravelEnabled()
-             ? RocksDBColumnFamilyManager::Family::PrimaryIndex_TT
-             : RocksDBColumnFamilyManager::Family::PrimaryIndex;
-}
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -342,8 +331,9 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _memoryUsage(0) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamilyManager::get(
-                                            primaryIndexFamily(*collection)));
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::PrimaryIndex));
   }
 
   ~RocksDBPrimaryIndexRangeIterator() override {
@@ -547,7 +537,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
           std::vector<std::vector<basics::AttributeName>>(
               {{basics::AttributeName(StaticStrings::KeyString, false)}}),
           true, false,
-          RocksDBColumnFamilyManager::get(primaryIndexFamily(collection)),
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::PrimaryIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
           /*useCache*/
           static_cast<RocksDBCollection*>(collection.getPhysical())
@@ -563,8 +554,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
                       {AttributeName(StaticStrings::IdString, false)}}),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()) {
-  TRI_ASSERT(_cf ==
-             RocksDBColumnFamilyManager::get(primaryIndexFamily(collection)));
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
+                        RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
 
   if (_cacheEnabled) {
@@ -644,39 +635,6 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   }
 
   return RocksDBValue::documentId(val);
-}
-
-ResultT<std::optional<std::uint64_t>>
-RocksDBPrimaryIndex::currentVersionTimestamp(std::string_view key) const {
-  TRI_ASSERT(_cf->GetComparator()->timestamp_size() > 0);
-
-  RocksDBKey indexKey(ThreadLocalStringLeaser::lease());
-  indexKey.constructPrimaryIndexValue(objectId(), key);
-
-  // Deliberately read the committed state rather than going through a
-  // transaction: the caller wants to know what the key actually looks like
-  // now, which is exactly what its own (possibly older) snapshot cannot show.
-  rocksdb::Slice latest = rocksdb::MaxU64Ts();
-  rocksdb::ReadOptions ro;
-  ro.timestamp = &latest;
-  rocksdb::PinnableSlice value;
-  std::string timestamp;
-  rocksdb::Status s =
-      _engine.db()->Get(ro, _cf, indexKey.string(), &value, &timestamp);
-  if (s.IsNotFound()) {
-    return ResultT<std::optional<std::uint64_t>>::success(std::nullopt);
-  }
-  if (!s.ok()) {
-    return rocksutils::convertStatus(s, rocksutils::index);
-  }
-
-  // the entry's own timestamp is the _created of the version it points at
-  std::uint64_t created = 0;
-  if (auto d = rocksdb::DecodeU64Ts(rocksdb::Slice(timestamp), &created);
-      !d.ok()) {
-    return rocksutils::convertStatus(d, rocksutils::index);
-  }
-  return ResultT<std::optional<std::uint64_t>>::success(created);
 }
 
 /// @brief reads a revision id from the primary index

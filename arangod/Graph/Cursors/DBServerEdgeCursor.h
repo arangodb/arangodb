@@ -32,7 +32,7 @@ namespace arangodb::graph {
 template<typename T>
 concept IndexCursor = requires(T t, EdgeCursor::Callback const& callback,
                                std::string_view vertex, uint64_t batchSize) {
-  {t.all(callback)};
+  { t.all(callback) };
   { t.next(callback) } -> std::convertible_to<bool>;
   { t.nextBatch(callback, batchSize) } -> std::same_as<uint64_t>;
   { t.rearm(vertex) };

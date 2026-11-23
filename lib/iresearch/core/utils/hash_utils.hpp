@@ -55,6 +55,12 @@ class hashed_basic_string_view : public basic_string_view<Elem> {
 
   size_t hash() const noexcept { return hash_; }
 
+  // lets absl::Hash reuse the precomputed hash instead of rehashing the bytes
+  template<typename H>
+  friend H AbslHashValue(H state, const hashed_basic_string_view& value) {
+    return H::combine(std::move(state), value.hash_);
+  }
+
  private:
   size_t hash_;
 };
@@ -90,17 +96,6 @@ struct elsa<std::string_view> {
 };
 
 }  // namespace frozen
-
-namespace absl::hash_internal {
-
-template<typename Char>
-struct HashImpl<::irs::hashed_basic_string_view<Char>> {
-  size_t operator()(const ::irs::hashed_basic_string_view<Char>& value) const {
-    return value.hash();
-  }
-};
-
-}  // namespace absl::hash_internal
 
 template<typename Char>
 struct std::hash<::irs::hashed_basic_string_view<Char>> {

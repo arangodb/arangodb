@@ -70,7 +70,7 @@ enum AttributeType : uint8_t {
   AT_ID = basics::VelocyPackHelper::IdAttribute,      // _id
   AT_FROM = basics::VelocyPackHelper::FromAttribute,  // _from
   AT_TO = basics::VelocyPackHelper::ToAttribute       // _to
-};                                                    // AttributeType
+};  // AttributeType
 
 static_assert(adjacencyChecker<AttributeType>::checkAdjacency<
                   AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),

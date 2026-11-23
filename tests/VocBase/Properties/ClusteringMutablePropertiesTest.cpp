@@ -86,7 +86,9 @@ class ClusteringMutablePropertiesTest : public ::testing::Test {
 
 TEST_F(ClusteringMutablePropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder bodyBuilder{&body}; }
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
   // Test Default values

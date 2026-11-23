@@ -52,9 +52,6 @@ struct CollectionConstantProperties {
   bool isSmart = false;
   bool isDisjoint = false;
 
-  // Internal for now: neither accepted from nor reported to users.
-  bool enableTimeTravel = false;
-
   inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
       std::nullopt;
 
@@ -73,13 +70,6 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::EnableTimeTravel, props.enableTimeTravel)
-          .fallback(f.keep())
-          .when([]() {
-            return isInternalContext<Inspector>
-                       ? inspection::FieldCondition::Process
-                       : inspection::FieldCondition::Ignore;
-          }),
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
       f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),

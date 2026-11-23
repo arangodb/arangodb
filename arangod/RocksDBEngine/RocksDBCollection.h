@@ -157,9 +157,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   bool cacheEnabled() const noexcept override;
 
-  ResultT<std::optional<std::uint64_t>> currentVersionTimestamp(
-      std::string_view key) const override;
-
   bool hasDocuments() override;
 
   void freeMemory() noexcept override;

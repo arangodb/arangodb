@@ -109,7 +109,9 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
   }
 
   // test clean before initializing directory
-  { ASSERT_EQ(0, irs::directory_cleaner::clean(dir)); }
+  {
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+  }
 
   // add a more dummy files
   {
@@ -250,8 +252,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
   filter::ptr query_doc1 = MakeByTerm("name", "A");
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");

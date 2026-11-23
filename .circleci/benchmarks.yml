@@ -249,6 +249,7 @@ jobs:
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
       PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+      ANN_GIT_BRANCH: << pipeline.git.branch >>
       # The store's TLS certificate is expired and won't be renewed.
       RESULTS_ARANGO_INSECURE: "1"
     steps:

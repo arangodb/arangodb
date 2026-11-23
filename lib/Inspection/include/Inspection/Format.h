@@ -76,8 +76,8 @@ namespace arangodb::inspection {
 struct inspection_formatter : std::formatter<VPackSlice> {
   template<typename T, typename FormatContext,
            typename Inspector = VPackSaveInspector<NoContext>>
-  requires detail::HasInspectOverload<T, Inspector>::value auto format(
-      const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
+    requires detail::HasInspectOverload<T, Inspector>::value
+  auto format(const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
     auto sharedSlice = inspection::serializeWithErrorT(value);
     if (not sharedSlice.ok()) {
       VPackBuilder error;

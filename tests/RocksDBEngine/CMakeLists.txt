@@ -9,7 +9,6 @@ add_library(arango_tests_rocksdb_engine OBJECT
   CollectionTest.cpp
   LogicalCollectionDescriptorTest.cpp
   DocumentTest.cpp
-  TimeTravelTest.cpp
   IndexTest.cpp)
 
 target_include_directories(arango_tests_rocksdb_engine PRIVATE
