@@ -310,8 +310,10 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
 }
 
 TokenOutcome ClientFeature::postForToken(
-    std::string const& path, std::string const& body,
+    TokenRequest request, std::string const& body,
     std::unordered_map<std::string, std::string> const& headers) const {
+  auto const path =
+      request == TokenRequest::kLogin ? "/_open/auth" : "/_open/auth/renew";
   try {
     // a malformed endpoint is reported by the tool's own client, not here
     auto const client = createBareHttpClient(
@@ -322,7 +324,7 @@ TokenOutcome ClientFeature::postForToken(
       return TokenOutcome::error(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  client->getErrorMessage());
     }
-    return parseTokenResponse(*response);
+    return parseTokenResponse(request, *response);
   } catch (std::exception const& ex) {
     return TokenOutcome::error(TRI_ERROR_INTERNAL, ex.what());
   }
@@ -341,13 +343,13 @@ TokenOutcome ClientFeature::loginViaOpenAuth() const {
     return builder.toJson();
   }();
   return postForToken(
-      "/_open/auth", credentials,
+      TokenRequest::kLogin, credentials,
       {{StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson}});
 }
 
 TokenOutcome ClientFeature::renewJwtViaOpenAuth(JwtToken const& token) const {
   return postForToken(
-      "/_open/auth/renew", "",
+      TokenRequest::kRenew, "",
       {{StaticStrings::Authorization, absl::StrCat("bearer ", token)}});
 }
 

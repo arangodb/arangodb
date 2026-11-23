@@ -24,6 +24,8 @@
 
 #include "Basics/ResultT.h"
 
+#include <velocypack/Slice.h>
+
 #include <chrono>
 #include <functional>
 #include <mutex>
@@ -73,6 +75,11 @@ using TokenOutcome = ResultT<std::optional<JwtToken>>;
 constexpr auto kRenewalRetryInterval = std::chrono::seconds{5};
 
 /**
+ * State of a token obtained at now
+ */
+auto tokenStateFor(JwtToken token, JwtClock::time_point now) -> JwtTokenState;
+
+/**
  * Whether a renewal request should be sent now
  *
  * Due once the token is within renewalThreshold of its expiry, but never
@@ -86,16 +93,37 @@ auto isRenewalDue(JwtTokenState const& state, JwtClock::time_point now,
  * Folds one renewal outcome into the state
  *
  * A new token replaces the old one. Otherwise the token is kept and the
- * next attempt is scheduled kRenewalRetryInterval later.
+ * next attempt is scheduled kRenewalRetryInterval later. now is when the
+ * attempt completed, lest a slow failure schedule its retry in the past.
  */
 auto applyRenewal(JwtTokenState state, TokenOutcome const& outcome,
                   JwtClock::time_point now) -> JwtTokenState;
 
 /**
- * Interprets the complete HTTP reply of a POST to /_open/auth or
- * /_open/auth/renew
+ * The request a token reply answers
  */
-auto parseTokenResponse(httpclient::SimpleHttpResult const& response)
+enum class TokenRequest {
+  /// POST /_open/auth with credentials
+  kLogin,
+  /// POST /_open/auth/renew with the current token
+  kRenew,
+};
+
+/**
+ * Interprets the reply to a POST to /_open/auth or /_open/auth/renew
+ *
+ * body is the parsed reply body, or None if it is empty or no valid JSON. A
+ * server that has authentication disabled issues no token, nor does one that
+ * does not implement /_open/auth (HTTP 404 or 501).
+ */
+auto parseTokenReply(TokenRequest request, int httpStatus,
+                     velocypack::Slice body) -> TokenOutcome;
+
+/**
+ * Interprets the HTTP reply of a POST to /_open/auth or /_open/auth/renew
+ */
+auto parseTokenResponse(TokenRequest request,
+                        httpclient::SimpleHttpResult const& response)
     -> TokenOutcome;
 
 /**
