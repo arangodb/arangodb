@@ -524,6 +524,48 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
   }
 }
 
+TEST_F(AqlItemBlockTest, test_clone_shadow_row_with_shared_value) {
+  auto const expected = VPackParser::fromJson(
+      R"({"thisField": "is too large to be inlined, deliberately so"})");
+
+  auto block = itemBlockManager.requestBlock(2, 2);
+  AqlValue shared{AqlValueHintSliceCopy{expected->slice()}};
+  block->setValue(1, 0, shared);
+  block->setValue(1, 1, shared);
+  block->makeShadowRow(1, 0);
+
+  SharedAqlItemBlockPtr copy = block->cloneDataAndMoveShadow();
+  block.reset(nullptr);
+
+  for (RegisterId::value_t col : {0, 1}) {
+    ASSERT_FALSE(copy->getValueReference(1, col).isEmpty());
+    EXPECT_EQ(VelocyPackHelper::compare(copy->getValueReference(1, col).slice(),
+                                        expected->slice(), false),
+              0);
+  }
+}
+
+TEST_F(AqlItemBlockTest, test_steal_value_shared_pointer_keeps_refcount) {
+  auto const expected = VPackParser::fromJson(
+      R"({"thisField": "is too large to be inlined, deliberately so"})");
+
+  auto block = itemBlockManager.requestBlock(2, 1);
+  AqlValue shared{AqlValueHintSliceCopy{expected->slice()}};
+  block->setValue(0, 0, shared);
+  block->setValue(1, 0, shared);
+
+  InputAqlItemRow row{block, 0};
+  AqlValue stolen = row.stealValue(RegisterId{0});
+  AqlValueGuard guard{stolen, true};
+  EXPECT_NE(stolen.data(), shared.data());
+
+  block->destroyValue(0, 0);
+
+  EXPECT_EQ(VelocyPackHelper::compare(block->getValueReference(1, 0).slice(),
+                                      expected->slice(), false),
+            0);
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

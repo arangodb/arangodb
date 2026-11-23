@@ -162,7 +162,10 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
     }
 
     // Now no one is responsible for AqlValue a
-    block().steal(a);
+    if (!block().steal(a)) {
+      // still referenced elsewhere in this block
+      return a.clone();
+    }
   }
   // This cannot fail, caller needs to take immediate ownership.
   return a;
