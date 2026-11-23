@@ -1,6 +1,8 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded the base of the Docker image to Alpine 3.24.
+
 * Updated node modules:
  - @xmldom/xmldom to 0.8.15 to resolve CVE-2026-83605, CVE-2026-83607,
    CVE-2026-83608, CVE-2026-83610, CVE-2026-83611, CVE-2026-83613,
