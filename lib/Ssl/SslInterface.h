@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -97,6 +98,14 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
 //////////////////////////////////////////////////////////////////////////
 
 bool sslRand(int32_t*);
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief generate a random number of bytes and returns as binary string
+///
+/// will return string on success or empty optional on failure
+//////////////////////////////////////////////////////////////////////////
+
+std::optional<std::string> sslRandBytes(uint32_t randomBytes);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief RSA private key signing

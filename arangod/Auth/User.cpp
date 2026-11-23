@@ -29,13 +29,10 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/UniformCharacter.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
@@ -48,10 +45,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-UniformCharacter UCR(20);
-}  // namespace
 
 // create a hash in _outHash_ given a method like "sha1" and an input string.
 static ErrorCode HexHashFromData(std::string_view hashMethod,
@@ -141,7 +134,12 @@ auth::User auth::User::newUser(std::string const& user,
   entry._username = user;
   entry._passwordMethod = "sha256";
 
-  std::string salt = UniformCharacter(8, "0123456789abcdef").random();
+  auto rand = SslInterface::sslRandBytes(16);
+  if (!rand.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Could not generate random data");
+  }
+  std::string const salt = StringUtils::encodeHex(rand.value());
   std::string hash;
   auto res = HexHashFromData("sha256", salt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -462,13 +460,19 @@ Result auth::User::createAccessToken(std::string const& name, double validUntil,
     active = false;
   }
 
+  auto rand = SslInterface::sslRandBytes(32);
+  if (!rand.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Could not generate random data");
+  }
+
   VPackBuilder jwt;
   {
     VPackObjectBuilder o(&jwt, true);
     o->add("e", uint64_t(validUntil));
     o->add("c", uint64_t(now));
     o->add("u", _username);
-    o->add("r", UCR.random());
+    o->add("r", StringUtils::encodeHex(rand.value()));
   }
 
   StringBuffer buffer;
