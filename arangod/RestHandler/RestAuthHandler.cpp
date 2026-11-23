@@ -26,6 +26,7 @@
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -44,13 +45,21 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
+/// @brief whether security logging of login events is done on this server.
+/// this is only the case on single servers and coordinators, but not on
+/// DB-servers and agents.
+bool shouldLogSecurityEvents() noexcept {
+  return ServerState::instance()->isSingleServerOrCoordinator();
+}
+
 /// @brief security log for the outcome of a login attempt (issuing a JWT
 /// from user credentials or renewing a JWT). failed attempts are both
 /// authentication events and security violations, so they are tagged with
 /// both categories.
 void logLoginSuccess(GeneralRequest const& req, std::string_view action,
                      std::string_view username, double expirySeconds) {
-  LOG_SECURITY("a220f", INFO, Logger::AUTHENTICATION, Security::Authentication)
+  LOG_SECURITY_IF("a220f", INFO, Logger::AUTHENTICATION,
+                  Security::Authentication, shouldLogSecurityEvents())
       << action << " succeeded for user '" << username
       << "', JWT issued with expiry time " << expirySeconds
       << "s, client=" << req.connectionInfo().fullClient()
@@ -60,8 +69,9 @@ void logLoginSuccess(GeneralRequest const& req, std::string_view action,
 
 void logLoginFailure(GeneralRequest const& req, std::string_view action,
                      std::string_view username, std::string_view reason) {
-  LOG_SECURITY("a210f", INFO, Logger::AUTHENTICATION,
-               Security::Authentication | Security::Violations)
+  LOG_SECURITY_IF("a210f", INFO, Logger::AUTHENTICATION,
+                  Security::Authentication | Security::Violations,
+                  shouldLogSecurityEvents())
       << action << " failed for user '" << username << "': reason='" << reason
       << "', client=" << req.connectionInfo().fullClient()
       << ", request=" << GeneralRequest::translateMethod(req.requestType())
@@ -107,10 +117,14 @@ RestStatus RestAuthHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
-    LOG_SECURITY("2e7d4", WARN, Logger::AUTHENTICATION,
-                 Security::Authentication | Security::Violations)
-        << msg << ", login attempt rejected, client="
-        << _request->connectionInfo().fullClient();
+    if (shouldLogSecurityEvents()) {
+      LOG_SECURITY("2e7d4", WARN, Logger::AUTHENTICATION,
+                   Security::Authentication | Security::Violations)
+          << msg << ", login attempt rejected, client="
+          << _request->connectionInfo().fullClient();
+    } else {
+      LOG_TOPIC("df689", WARN, Logger::AUTHENTICATION) << msg;
+    }
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
                   msg);
     return RestStatus::DONE;
@@ -161,6 +175,9 @@ RestStatus RestAuthHandler::execute() {
   double expiryTimeSeconds = 0.0;
   std::string_view failureReason = "invalid request body";
   auto securityLogGuard = scopeGuard([&]() noexcept {
+    if (!shouldLogSecurityEvents()) {
+      return;
+    }
     try {
       if (loginSucceeded) {
         logLoginSuccess(*_request, kLogin, resolvedUsername, expiryTimeSeconds);

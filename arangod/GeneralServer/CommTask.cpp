@@ -72,14 +72,23 @@ std::string_view authenticationMethodName(AuthenticationMethod method) {
   return "none";
 }
 
+/// @brief whether security logging of authentication events is done on
+/// this server. this is only the case on single servers and coordinators,
+/// but not on DB-servers and agents, which only see cluster-internal
+/// traffic.
+bool shouldLogSecurityEvents() noexcept {
+  return ServerState::instance()->isSingleServerOrCoordinator();
+}
+
 /// @brief security log for a failed authentication attempt of an incoming
 /// request. failed authentications are both authentication events and
 /// security violations, so they are tagged with both categories.
 void logAuthenticationFailure(GeneralRequest const& req,
                               AuthenticationMethod method,
                               std::string_view reason) {
-  LOG_SECURITY("77749", DEBUG, Logger::AUTHENTICATION,
-               Security::Authentication | Security::Violations)
+  LOG_SECURITY_IF("77749", DEBUG, Logger::AUTHENTICATION,
+                  Security::Authentication | Security::Violations,
+                  shouldLogSecurityEvents())
       << "authentication failed: reason='" << reason
       << "', method=" << authenticationMethodName(method) << ", user='"
       << req.user() << "', client=" << req.connectionInfo().fullClient()
@@ -966,8 +975,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
     // every successful authentication is logged, including those with the
     // cluster-internal superuser JWT (which carries no user name and is
     // marked with superuser=true).
-    LOG_SECURITY("3669b", TRACE, Logger::AUTHENTICATION,
-                 Security::Authentication)
+    LOG_SECURITY_IF("3669b", TRACE, Logger::AUTHENTICATION,
+                    Security::Authentication, shouldLogSecurityEvents())
         << "authentication succeeded: method="
         << authenticationMethodName(authMethod) << ", user='" << req.user()
         << "', superuser=" << (req.user().empty() ? "true" : "false")
