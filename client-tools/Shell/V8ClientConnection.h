@@ -172,13 +172,16 @@ class V8ClientConnection {
                             std::string const& handle);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // sendFuzzRequest() yields the HTTP status of the response, or one of these
+  static constexpr uint32_t kFuzzClosedConnectionCode = 1000;
+  static constexpr uint32_t kFuzzNoResponseCode = 1001;
+  static constexpr uint32_t kFuzzNotConnected = 1002;
+
   uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
 #endif
 
   // forces a new connection to be used
   void forceNewConnection();
-
-  void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
   // how the jwt token of a connection is kept fresh

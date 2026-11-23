@@ -24,6 +24,7 @@ add_executable(${BIN_ARANGOSH}
   ShellFeature.cpp
   ShellOptionsProvider.cpp
   V8ClientConnection.cpp
+  V8ClientConnectionBindings.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp
   ProcessMonitoringFeature.cpp
