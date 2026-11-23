@@ -82,6 +82,31 @@ void assertNoTLSWithFips(
       LOG_TOPIC("dfe35", FATAL, Logger::STARTUP)
           << "--server.fips-enable was provided. "
           << "Please remove everything related to TLS/SSL.";
+                FATAL_ERROR_EXIT();
+    }
+  }
+#endif  // USE_ENTERPRISE
+}
+
+void assertNoEncryptionAtRestWithFips(
+    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
+    [[maybe_unused]] RocksDBEngineOptions const& rocksDBEngineOptions) {
+#ifdef USE_ENTERPRISE
+  if (fipsOptions.enableFips) {
+    auto const& eeOptions = rocksDBEngineOptions.eeOptions;
+    // Whatever combination we have here, the moment this true it means that
+    // the customer provided some argument regarding encryption-at-rest.
+    // We do not allow that with FIPS enabled.
+    bool const encryptionAtRestRequested =
+        eeOptions.optionKeyFile.has_value() ||
+        eeOptions.optionKeyGenerator.has_value() ||
+        eeOptions.optionKeyFolder.has_value() ||
+        eeOptions.optionGenerateRandomKey ||
+        eeOptions.encryptionKeyRotationEnabled;
+    if (encryptionAtRestRequested) {
+      LOG_TOPIC("dbf29", FATAL, Logger::STARTUP)
+          << "--server.fips-enable was provided. "
+          << "Please remove everything related to encryption at rest.";
       FATAL_ERROR_EXIT();
     }
   }
@@ -150,6 +175,8 @@ void ArangodServer::processOptions() {
   auto const& fipsOptions = getOptions<FipsFeatureOptionsProvider>();
   auto const& sslServerOption = getOptions<SslServerOptionsProvider>();
   assertNoTLSWithFips(fipsOptions, sslServerOption);
+  auto const& rocksDBEngineOptions = getOptions<RocksDBEngineOptionsProvider>();
+  assertNoEncryptionAtRestWithFips(fipsOptions, rocksDBEngineOptions);
 }
 
 void ArangodServer::validateOptions() {
