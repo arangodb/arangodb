@@ -110,7 +110,8 @@ ClusterProvider<StepImpl>::ClusterProvider(ClusterProvider<StepImpl>&& other)
       _resourceMonitor(other._resourceMonitor),
       _opts(std::move(other._opts)),
       _stats(std::move(other._stats)),
-      _vertexConnectedEdges(std::move(other._vertexConnectedEdges)) {
+      _vertexConnectedEdges(std::move(other._vertexConnectedEdges)),
+      _neighbourCursors(std::move(other._neighbourCursors)) {
   other._vertexConnectedEdges.clear();
 }
 
