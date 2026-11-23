@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Utils/OperationResult.h"
@@ -137,7 +138,8 @@ struct Collections {
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
   static futures::Future<Result> properties(Context& ctxt,
-                                            velocypack::Builder&);
+                                            velocypack::Builder&,
+                                            ApiVersion apiVersion);
   static futures::Future<Result> updateProperties(
       LogicalCollection& collection, velocypack::Slice props,
       OperationOptions const& options);

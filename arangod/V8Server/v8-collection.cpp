@@ -1290,7 +1290,8 @@ static void JS_PropertiesVocbaseCol(
   if (coll) {
     VPackObjectBuilder object(&builder, true);
     methods::Collections::Context ctxt(coll);
-    Result res = methods::Collections::properties(ctxt, builder).waitAndGet();
+    Result res = methods::Collections::properties(ctxt, builder, ApiVersion::V0)
+                     .waitAndGet();
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);

@@ -374,8 +374,11 @@ async<void> RestCollectionHandler::handleCommandPost() {
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
-  auto planCollection =
-      CreateCollectionRequest::fromCreateAPIBody(body, config);
+  // v1 requests must strictly follow the new conventions
+  bool const activateBackwardsCompatibility =
+      _request->requestedApiVersion() == ApiVersion::V0;
+  auto planCollection = CreateCollectionRequest::fromCreateAPIBody(
+      body, config, activateBackwardsCompatibility);
 
   if (planCollection.fail()) {
     // error message generated in inspect
@@ -858,7 +861,8 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentation(
     _builder.add(StaticStrings::DataSourceSystem, VPackValue(coll->system()));
     _builder.add(StaticStrings::DataSourceGuid, VPackValue(coll->guid()));
   } else {
-    Result res = co_await methods::Collections::properties(ctxt, _builder);
+    Result res = co_await methods::Collections::properties(
+        ctxt, _builder, _request->requestedApiVersion());
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }

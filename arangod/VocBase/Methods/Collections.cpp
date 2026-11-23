@@ -654,7 +654,8 @@ void Collections::createSystemCollectionProperties(
 }
 
 futures::Future<Result> Collections::properties(Context& ctxt,
-                                                VPackBuilder& builder) {
+                                                VPackBuilder& builder,
+                                                ApiVersion apiVersion) {
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
@@ -692,9 +693,13 @@ futures::Future<Result> Collections::properties(Context& ctxt,
     // graph collections.
     ignoreKeys.insert(
         {StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
-         StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
-         StaticStrings::MinReplicationFactor, StaticStrings::ShardKeys,
-         StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
+         StaticStrings::NumberOfShards, StaticStrings::MinReplicationFactor,
+         StaticStrings::ShardKeys, StaticStrings::ShardingStrategy,
+         StaticStrings::IsDisjoint});
+    // v1 no longer drops replicationFactor on creation, so it must be visible
+    if (apiVersion == ApiVersion::V0) {
+      ignoreKeys.insert(StaticStrings::ReplicationFactor);
+    }
 
     // this transaction is held longer than the following if...
     auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
