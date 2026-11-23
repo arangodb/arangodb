@@ -25,17 +25,20 @@
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
-#include <v8.h>
 
+#include <chrono>
 #include <memory>
 
+#include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Utils/ConnectionHandles.h"
 #include "Utils/RenewingJwtToken.h"
+#include "Utils/RequestCoding.h"
 #include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 class ClientFeature;
@@ -115,61 +118,46 @@ class V8ClientConnection {
   }
   application_features::ApplicationServer& server();
 
-  v8::Handle<v8::Value> getData(
-      v8::Isolate* isolate, std::string_view location,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
+  struct RequestOutcome {
+    // uncompressed; null if no response arrived
+    std::unique_ptr<fuerte::Response> response;
+    // why no response arrived
+    Result error;
+  };
 
-  v8::Handle<v8::Value> headData(
-      v8::Isolate* isolate, std::string_view location,
+  // Sends a request to the database of the active connection, once more if
+  // the server closed the connection meanwhile. Fails if the request cannot
+  // be sent, or its response cannot be uncompressed
+  ResultT<RequestOutcome> sendRequest(
+      fuerte::RestVerb verb, std::string_view location,
       std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
-
-  v8::Handle<v8::Value> deleteData(
-      v8::Isolate* isolate, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
-
-  v8::Handle<v8::Value> optionsData(
-      v8::Isolate* isolate, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
-
-  v8::Handle<v8::Value> postData(
-      v8::Isolate* isolate, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw = false, bool isFile = false);
-
-  v8::Handle<v8::Value> putData(
-      v8::Isolate* isolate, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
-
-  v8::Handle<v8::Value> patchData(
-      v8::Isolate* isolate, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool raw);
+      request_coding::RequestBody const& body,
+      std::chrono::milliseconds timeout);
 
   std::string getHandle();
 
-  void getConnectionHandleTable(
-      v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args);
+  struct HandleInfo {
+    std::string handle;
+    bool active;
+    struct Peer {
+      bool connected;
+      std::string endpoint;
+      std::string localEndpoint;
+    };
+    // empty if the handle has no connection
+    std::optional<Peer> peer;
+    std::string username;
+    std::string password;
+    std::string jwtToken;
+  };
+  std::vector<HandleInfo> connectionHandleTable() const;
 
-  void connectHandle(v8::Isolate* isolate,
-                     v8::FunctionCallbackInfo<v8::Value> const& args,
-                     std::string const& handle);
+  enum class HandleSwitch { kAlreadyActive, kSwitched, kUnknownHandle };
+  HandleSwitch connectHandle(std::string const& handle);
 
-  void disconnectHandle(v8::Isolate* isolate,
-                        v8::FunctionCallbackInfo<v8::Value> const& args,
-                        std::string const& handle);
-  void flushConnectionCache(v8::Isolate* isolate,
-                            v8::FunctionCallbackInfo<v8::Value> const& args,
-                            std::string const& handle);
+  // false if the handle is unknown
+  bool disconnectHandle(std::string const& handle);
+  void flushConnectionCache();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // sendFuzzRequest() yields the HTTP status of the response, or one of these
@@ -221,21 +209,6 @@ class V8ClientConnection {
       bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
 
-  v8::Local<v8::Value> requestData(
-      v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields,
-      bool isFile = false);
-
-  v8::Local<v8::Value> requestDataRaw(
-      v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,
-      v8::Local<v8::Value> const& body,
-      std::unordered_map<std::string, std::string> const& headerFields);
-
-  v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
-                                    std::unique_ptr<fuerte::Response> response,
-                                    fuerte::Error ec);
-
   /// @brief cancels the active connection, which stays active but closed
   /// until it is replaced
   void shutdownConnection();
@@ -285,7 +258,6 @@ class V8ClientConnection {
 
   fuerte::EventLoopService _loop;
   bool _foundConnectionClose;
-  velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;
 

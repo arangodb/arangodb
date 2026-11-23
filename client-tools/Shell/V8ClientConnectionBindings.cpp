@@ -120,6 +120,265 @@ static void ObjectToMap(v8::Isolate* isolate,
   }
 }
 
+namespace {
+bool canParseResponse(fu::Response const& response) {
+  return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
+         (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
+          response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
+          response.contentEncoding() == fuerte::ContentEncoding::Deflate) &&
+         response.payloadSize() > 0;
+}
+
+v8::Local<v8::Value> parseReplyBodyToV8(fu::Response& response,
+                                        v8::Isolate* isolate) {
+  if (response.contentType() != fu::ContentType::VPack &&
+      response.contentType() != fu::ContentType::Json) {
+    return v8::Undefined(isolate);
+  }
+
+  if (response.contentType() == fu::ContentType::VPack) {
+    auto const& slices = response.slices();
+    return TRI_VPackToV8(isolate, slices[0]);
+  }
+  TRI_ASSERT(response.contentType() == fu::ContentType::Json);
+  auto responseBody = response.payload();
+  try {
+    auto parsedBody = VPackParser::fromJson(
+        reinterpret_cast<char const*>(responseBody.data()),
+        responseBody.size());
+    return TRI_VPackToV8(isolate, parsedBody->slice());
+  } catch (std::exception const& ex) {
+    std::string err =
+        absl::StrCat("Error parsing the server JSON reply: ", ex.what());
+    TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+  }
+  return v8::Undefined(isolate);
+}
+
+v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
+                                             v8::Isolate* isolate) {
+  auto responseBody = response.payload();
+  if (response.contentEncoding() == fuerte::ContentEncoding::Identity &&
+      (response.isContentTypeJSON() || response.isContentTypeText() ||
+       response.isContentTypeHtml())) {
+    char const* bodyStr = reinterpret_cast<char const*>(responseBody.data());
+    return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+  }
+  V8Buffer* buffer =
+      V8Buffer::New(isolate, static_cast<char const*>(responseBody.data()),
+                    responseBody.size());
+  return v8::Local<v8::Object>::New(isolate, buffer->_handle);
+}
+
+void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
+                      bool isError, unsigned lastHttpReturnCode,
+                      std::string const& message,
+                      v8::Local<v8::Object> result) {
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+            v8::Boolean::New(isolate, true))
+      .FromMaybe(isError);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+            v8::Integer::New(isolate, lastHttpReturnCode))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+            TRI_V8_STD_STRING(isolate, message))
+      .FromMaybe(false);
+}
+
+void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
+                      bool isError, unsigned lastHttpReturnCode,
+                      v8::Local<v8::Object> result) {
+  // create raw response
+  result
+      ->Set(context, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::Code),
+            v8::Integer::New(isolate, lastHttpReturnCode))
+      .FromMaybe(false);
+
+  if (lastHttpReturnCode >= 400) {
+    std::string msg(GeneralResponse::responseString(
+        static_cast<ResponseCode>(lastHttpReturnCode)));
+    setResultMessage(isolate, context, isError, lastHttpReturnCode, msg,
+                     result);
+  } else {
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+              v8::Boolean::New(isolate, false))
+        .FromMaybe(false);
+  }
+}
+
+velocypack::Options const& requestBodyOptions() {
+  static velocypack::Options const options = [] {
+    velocypack::Options options = velocypack::Options::Defaults;
+    options.buildUnindexedObjects = true;
+    options.buildUnindexedArrays = true;
+    return options;
+  }();
+  return options;
+}
+
+v8::Local<v8::Value> resultToV8(v8::Isolate* isolate,
+                                V8ClientConnection const& connection,
+                                V8ClientConnection::RequestOutcome& outcome) {
+  auto context = TRI_IGETC;
+  v8::Local<v8::Object> result = v8::Object::New(isolate);
+  if (!outcome.response) {
+    setResultMessage(isolate, context, true,
+                     static_cast<int>(outcome.error.errorNumber()),
+                     std::string(outcome.error.errorMessage()), result);
+    result
+        ->Set(context, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::Code),
+              v8::Integer::New(isolate, connection.lastHttpReturnCode()))
+        .FromMaybe(false);
+    return result;
+  }
+
+  fu::Response& response = *outcome.response;
+  if (canParseResponse(response)) {
+    return parseReplyBodyToV8(response, isolate);
+  }
+  if (response.payloadSize() > 0) {
+    return translateResultBodyToV8(response, isolate);
+  }
+  setResultMessage(isolate, context, false, response.statusCode(), result);
+  return result;
+}
+
+v8::Local<v8::Value> rawResultToV8(
+    v8::Isolate* isolate, V8ClientConnection::RequestOutcome& outcome) {
+  auto context = TRI_IGETC;
+  v8::Local<v8::Object> result = v8::Object::New(isolate);
+  if (!outcome.response) {
+    setResultMessage(
+        isolate, context, true,
+        static_cast<unsigned>(rest::ResponseCode::SERVICE_UNAVAILABLE),
+        std::string(outcome.error.errorMessage()), result);
+    return result;
+  }
+
+  fu::Response& response = *outcome.response;
+  setResultMessage(isolate, context, false, response.statusCode(), result);
+
+  v8::Local<v8::Object> headers = v8::Object::New(isolate);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers)
+      .FromMaybe(false);
+
+  if (canParseResponse(response)) {
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ParsedBody),
+              parseReplyBodyToV8(response, isolate))
+        .FromMaybe(false);
+  }
+  if (response.payloadSize() > 0) {
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Body),
+              translateResultBodyToV8(response, isolate))
+        .FromMaybe(false);
+  }
+
+  if (response.contentType() != fuerte::ContentType::Custom) {
+    auto contentType =
+        TRI_V8_STD_STRING(isolate, fu::to_string(response.contentType()));
+    headers
+        ->Set(context,
+              TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader),
+              contentType)
+        .FromMaybe(false);
+  }
+  for (auto const& it : response.header.meta()) {
+    headers
+        ->Set(context, TRI_V8_STD_STRING(isolate, it.first),
+              TRI_V8_STD_STRING(isolate, it.second))
+        .FromMaybe(false);
+  }
+
+  return result;
+}
+
+// isFile: body is the name of the file to send
+v8::Local<v8::Value> requestData(
+    v8::Isolate* isolate, V8ClientConnection& connection, fu::RestVerb verb,
+    std::string_view location, v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw,
+    bool isFile = false) {
+  // keep what the request body refers to until the request is sent
+  std::optional<TRI_Utf8ValueNFC> text;
+  VPackBuilder value(&requestBodyOptions());
+
+  request_coding::RequestBody requestBody = request_coding::NoBody{};
+  if (isFile && !raw) {
+    requestBody = request_coding::FileBody{TRI_ObjectToString(isolate, body)};
+  } else if (body->IsString() || body->IsStringObject()) {
+    text.emplace(isolate, body);
+    requestBody =
+        request_coding::JsonBody{std::string_view(**text, text->length())};
+  } else if (body->IsObject() && V8Buffer::hasInstance(isolate, body)) {
+    char const* data = V8Buffer::data(isolate, body.As<v8::Object>());
+    size_t size = V8Buffer::length(isolate, body.As<v8::Object>());
+    if (data == nullptr) {
+      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid <body> buffer value");
+      return v8::Undefined(isolate);
+    }
+    requestBody = request_coding::BinaryBody{std::string_view(data, size)};
+  } else if (!body->IsNullOrUndefined()) {
+    TRI_V8ToVPack(isolate, value, body, false);
+    requestBody = request_coding::ValueBody{value.slice()};
+  }
+
+  auto const timeout = correctTimeoutToExecutionDeadline(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::duration<double>(connection.timeout())));
+  auto outcome = connection.sendRequest(verb, location, headerFields,
+                                        requestBody, timeout);
+  if (outcome.fail()) {
+    TRI_CreateErrorObject(isolate, outcome.errorNumber(),
+                          outcome.errorMessage(), true);
+    return v8::Undefined(isolate);
+  }
+  return raw ? rawResultToV8(isolate, outcome.get())
+             : resultToV8(isolate, connection, outcome.get());
+}
+
+v8::Local<v8::Value> handleTableToV8(
+    v8::Isolate* isolate,
+    std::vector<V8ClientConnection::HandleInfo> const& handles) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Local<v8::Object> table = v8::Object::New(isolate);
+
+  for (auto const& info : handles) {
+    v8::Local<v8::Object> entry = v8::Object::New(isolate);
+    auto const setString = [&](char const* key, std::string const& value) {
+      entry
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+                TRI_V8_STD_STRING(isolate, value))
+          .FromMaybe(false);
+    };
+    auto const setBool = [&](char const* key, bool value) {
+      entry
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+                value ? v8::True(isolate) : v8::False(isolate))
+          .FromMaybe(false);
+    };
+
+    setBool("active", info.active);
+    setBool("connected", info.peer.has_value() && info.peer->connected);
+    setString("endpoint", info.peer ? info.peer->endpoint : "N/A");
+    setString("localPort", info.peer ? info.peer->localEndpoint : "N/A");
+    setString("username", info.username);
+    setString("password", info.password);
+    setString("jwtToken", info.jwtToken);
+
+    table->Set(context, TRI_V8_STRING(isolate, info.handle), entry)
+        .FromMaybe(false);
+  }
+  return table;
+}
+}  // namespace
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for connections (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +681,8 @@ static void ClientConnection_getHandleTable(
         "instance.");
   }
 
-  v8connection->getConnectionHandleTable(isolate, args);
+  TRI_V8_RETURN(
+      handleTableToV8(isolate, v8connection->connectionHandleTable()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -450,7 +710,22 @@ static void ClientConnection_connectHandle(
   }
 
   auto handle = TRI_ObjectToString(isolate, args[0]);
-  v8connection->connectHandle(isolate, args, handle);
+  switch (v8connection->connectHandle(handle)) {
+    case V8ClientConnection::HandleSwitch::kUnknownHandle:
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                     "Handle not found in the connection list");
+    case V8ClientConnection::HandleSwitch::kSwitched:
+      // the db object caches what it read via the previous handle, which may
+      // have been another database, server or user. it is not refilled here,
+      // as switching handles must not send requests
+      TRI_ExecuteJavaScriptString(isolate,
+                                  "require('internal').db._forgetCache();",
+                                  "forget db object cache", false);
+      break;
+    case V8ClientConnection::HandleSwitch::kAlreadyActive:
+      break;
+  }
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -478,7 +753,10 @@ static void ClientConnection_disconnectHandle(
   }
 
   auto handle = TRI_ObjectToString(isolate, args[0]);
-  v8connection->disconnectHandle(isolate, args, handle);
+  if (v8connection->disconnectHandle(handle)) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -505,8 +783,8 @@ static void ClientConnection_flushConnectionCache(
     TRI_V8_THROW_EXCEPTION_USAGE("flushConnectionCache()");
   }
 
-  auto handle = TRI_ObjectToString(isolate, args[0]);
-  v8connection->flushConnectionCache(isolate, args, handle);
+  v8connection->flushConnectionCache();
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -569,8 +847,9 @@ static void ClientConnection_httpGetAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->getData(
-      isolate, std::string_view(*url, url.length()), headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Get,
+                            std::string_view(*url, url.length()),
+                            v8::Undefined(isolate), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -627,8 +906,9 @@ static void ClientConnection_httpHeadAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->headData(
-      isolate, std::string_view(*url, url.length()), headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Head,
+                            std::string_view(*url, url.length()),
+                            v8::Undefined(isolate), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -680,9 +960,9 @@ static void ClientConnection_httpDeleteAny(
 
   std::unordered_map<std::string, std::string> headerFields;
   if (args.Length() == 1) {  // no body provided
-    TRI_V8_RETURN(
-        v8connection->deleteData(isolate, std::string_view(*url, url.length()),
-                                 v8::Undefined(isolate), headerFields, raw));
+    TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Delete,
+                              std::string_view(*url, url.length()),
+                              v8::Undefined(isolate), headerFields, raw));
   }
 
   // check header fields
@@ -690,9 +970,9 @@ static void ClientConnection_httpDeleteAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate,
-                                         std::string_view(*url, url.length()),
-                                         args[1], headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Delete,
+                            std::string_view(*url, url.length()), args[1],
+                            headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -749,9 +1029,9 @@ static void ClientConnection_httpOptionsAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->optionsData(isolate,
-                                          std::string_view(*url, url.length()),
-                                          args[1], headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Options,
+                            std::string_view(*url, url.length()), args[1],
+                            headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -807,9 +1087,9 @@ static void ClientConnection_httpPostAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->postData(isolate,
-                                       std::string_view(*url, url.length()),
-                                       args[1], headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Post,
+                            std::string_view(*url, url.length()), args[1],
+                            headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1026,9 +1306,9 @@ static void ClientConnection_httpPutAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->putData(isolate,
-                                      std::string_view(*url, url.length()),
-                                      args[1], headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Put,
+                            std::string_view(*url, url.length()), args[1],
+                            headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1084,9 +1364,9 @@ static void ClientConnection_httpPatchAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->patchData(isolate,
-                                        std::string_view(*url, url.length()),
-                                        args[1], headerFields, raw));
+  TRI_V8_RETURN(requestData(isolate, *v8connection, fu::RestVerb::Patch,
+                            std::string_view(*url, url.length()), args[1],
+                            headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1155,8 +1435,9 @@ static void ClientConnection_httpSendFile(
   }
 
   v8::Local<v8::Value> result =
-      v8connection->postData(isolate, std::string_view(*url, url.length()),
-                             args[1], headerFields, false, /*isFile*/ true);
+      requestData(isolate, *v8connection, fu::RestVerb::Post,
+                  std::string_view(*url, url.length()), args[1], headerFields,
+                  false, /*isFile*/ true);
 
   if (tryCatch.HasCaught()) {
     isolate->ThrowException(tryCatch.Exception());
