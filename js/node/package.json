@@ -35,7 +35,7 @@
     "vary": "^1.1.2"
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.8.13",
+    "@xmldom/xmldom": "^0.8.15",
     "ansi_up": "^5.1.0",
     "eslint": "^5.16.0",
     "node-netstat": "^1.9.0",
@@ -45,6 +45,10 @@
   "overrides": {
     "joi": {
       "hoek": "npm:@hapi/hoek@8.5.1"
+    },
+    "eslint": {
+      "flatted": "^3.4.2",
+      "tmp": "^0.2.6"
     }
   },
   "scripts": {

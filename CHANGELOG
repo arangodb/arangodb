@@ -1,6 +1,15 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Updated node modules:
+ - @xmldom/xmldom to 0.8.15 to resolve CVE-2026-83605, CVE-2026-83607,
+   CVE-2026-83608, CVE-2026-83610, CVE-2026-83611, CVE-2026-83613,
+   CVE-2026-83614, CVE-2026-83615, CVE-2026-83616 and CVE-2026-83619
+ - ajv (eslint) to 6.15.0 to resolve CVE-2025-69873
+ - cross-spawn (eslint) to 6.0.6 to resolve CVE-2024-21538
+ - flatted (eslint) to 3.4.4 to resolve CVE-2026-32141 and CVE-2026-33228
+ - tmp (eslint) to 0.2.7 to resolve CVE-2025-54798 and CVE-2026-44705
+
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
 
