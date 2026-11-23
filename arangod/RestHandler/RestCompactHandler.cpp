@@ -42,7 +42,7 @@ RestCompactHandler::RestCompactHandler(
 
 // Mounted at /_admin/compact (exact)
 RestStatus RestCompactHandler::execute() {
-  if (!ExecContext::current().isSuperuserOrDisabled()) {
+  if (ExecContext::current().can(auth::perms::FullCompaction{}).fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "compaction is only allowed for superusers");
     return RestStatus::DONE;

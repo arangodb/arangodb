@@ -44,7 +44,6 @@ enum class Action {
   AdminMoveShards = 100,
   AdminMonitoring,
   AdminMonitoringInternal,
-  AdminCompaction,
   AdminAuthReload,
   AdminCrashHandler,
   AdminApiCalls,

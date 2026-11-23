@@ -363,6 +363,12 @@ struct UseApiVersion {
   ApiVersion version;
 };
 
+// ---------------------------------------------------------------------------
+// Superuser only
+// ---------------------------------------------------------------------------
+
+struct FullCompaction {};
+
 namespace detail {
 // Currently there's no need to subdivide this list, but feel free to
 // do that when it becomes useful.
@@ -383,7 +389,9 @@ using NonAdminList = meta::TypeList<
     // user permissions
     ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions,
     // api version permissions
-    UseApiVersion>;
+    UseApiVersion,
+    // superuser-only permissions
+    FullCompaction>;
 
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail
