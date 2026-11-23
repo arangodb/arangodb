@@ -197,8 +197,8 @@ struct IndexDescriptor
                    MdiIndexDescriptor, ZkdIndexDescriptor,
                    VectorIndexDescriptor> {
   IndexCommonProperties const& common() const {
-    return std::visit(
-        [](auto const& d) -> auto const& { return d.common; }, *this);
+    return std::visit([](auto const& d) -> auto const& { return d.common; },
+                      *this);
   }
   IndexType type() const {
     return std::visit(
