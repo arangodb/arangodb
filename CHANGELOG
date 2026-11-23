@@ -1,3 +1,10 @@
+3.12.15 (XXXX-XX-XX)
+--------------------
+
+* BTS-2543: Fix memory and file handle leaks in the zip file functions when a
+  path access check failed or threw an exception.
+
+
 3.12.14 (2026-11-19)
 --------------------
 
