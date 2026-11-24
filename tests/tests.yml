@@ -81,7 +81,7 @@
 - shell_api_multi_permissions:
     options:
       priority: 500
-      type: single
+      type: mixed
     suites:
       - shell_api
       - shell_api_multi:
