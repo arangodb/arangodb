@@ -28,6 +28,8 @@
   
 * COR-1299: Prevent --tls.cafile / --tls.keyfile to work with --server.fips-enable.
 
+* COR-1296: Prevent encryption at rest when --server.fips-enable is turned on.
+
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
