@@ -284,7 +284,7 @@ std::
                 {"%kk",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                    auto days = std::chrono::floor<std::chrono::days>(tp);
-                   auto iw = std::format("{0:%W}", days);
+                   auto iw = std::format("{0:%V}", days);
                    wrk.append(iw);
                  }},
                 {"%t",
@@ -374,7 +374,7 @@ std::
                  }},
                 {"%k",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   auto iw = std::format("{0:%W}", tp);
+                   auto iw = std::format("{0:%V}", tp);
                    if (iw[0] == '0') {
                      wrk.append(iw.substr(1));
                    } else {
